@@ -1,9 +1,9 @@
 'use client';
 
 import { clientPublic } from '@gredice/client';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Card } from '@signalco/ui-primitives/Card';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Card } from '@gredice/ui/Card';
+import { Typography } from '@gredice/ui/Typography';
 import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 

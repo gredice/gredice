@@ -2,9 +2,9 @@
 
 import type { OccasionData } from '@gredice/client';
 import { slugify } from '@gredice/js/slug';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { List } from '@signalco/ui-primitives/List';
-import { ListItem } from '@signalco/ui-primitives/ListItem';
+import { Chip } from '@gredice/ui/Chip';
+import { List } from '@gredice/ui/List';
+import { ListItem } from '@gredice/ui/ListItem';
 import type { Route } from 'next';
 import { usePathname } from 'next/navigation';
 

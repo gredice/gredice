@@ -1,42 +1,26 @@
-import { directoriesClient } from '@gredice/client';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { PageHeader } from '@gredice/ui/PageHeader';
+import { Stack } from '@gredice/ui/Stack';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { PageFilterInputNoSSR } from '../../components/shared/PageFilterInputNoSSR';
-import { PageHeader } from '../../components/shared/PageHeader';
+import { getBlocksData } from '../../lib/blocks/getBlocksData';
 import { getPlantsData } from '../../lib/plants/getPlantsData';
-import { lSystemPlantsFlag } from '../flags';
-import { BlockGallery } from './BlockGallery';
-import { PlantBlockGallery } from './PlantBlockGallery';
+import { createPublicMetadata } from '../../lib/seo/publicMetadata';
+import { KnownPages } from '../../src/KnownPages';
+import { BlockPlantGalleries } from './BlockPlantGalleries';
 
-export const revalidate = 3600; // 1 hour
-export const metadata: Metadata = {
+export const revalidate = 43200; // 12 hours
+export const metadata: Metadata = createPublicMetadata({
     title: 'Blokovi',
     description: 'Pregledaj sve blokove koje možeš koristiti u svom vrtu.',
-};
-
-async function getBlocksData() {
-    try {
-        const { data, error } =
-            await directoriesClient().GET('/entities/block');
-        if (error) {
-            console.error('Failed to fetch blocks data', error);
-            return [];
-        }
-
-        return data ?? [];
-    } catch (error) {
-        console.error('Failed to fetch blocks data', error);
-        return [];
-    }
-}
+    path: KnownPages.Blocks,
+    category: '3D vrt',
+});
 
 export default async function BlocksPage() {
-    const lSystemPlants = await lSystemPlantsFlag();
     const [blocks, plants] = await Promise.all([
         getBlocksData(),
-        lSystemPlants ? getPlantsData() : Promise.resolve([]),
+        getPlantsData(),
     ]);
     return (
         <Stack>
@@ -54,18 +38,8 @@ export default async function BlocksPage() {
                 </Suspense>
             </PageHeader>
             <Suspense>
-                <BlockGallery blocks={blocks} />
+                <BlockPlantGalleries blocks={blocks} plants={plants} />
             </Suspense>
-            {lSystemPlants && (
-                <Stack spacing={2} className="mt-8">
-                    <Typography level="h3" className="px-2">
-                        Biljke
-                    </Typography>
-                    <Suspense>
-                        <PlantBlockGallery plants={plants} />
-                    </Suspense>
-                </Stack>
-            )}
         </Stack>
     );
 }

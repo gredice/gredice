@@ -11,6 +11,7 @@ const iconModules = import.meta.glob(
 // Only icons that require props beyond SVGProps need an entry here.
 const iconDefaultProps: Record<string, Record<string, unknown>> = {
     RaisedBedIcon: { physicalId: null },
+    GameRaisedBedIcon: { physicalId: null },
     RaisedBedIdentifierIcon: { physicalId: null },
     PlantGridIcon: { totalPlants: 4 },
 };
@@ -62,7 +63,7 @@ function IconsShowcase() {
                     placeholder="Filter icons…"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    className="w-full max-w-sm rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full max-w-sm rounded-md border border-border bg-background px-3 py-2 text-sm outline-hidden focus:ring-2 focus:ring-primary"
                 />
                 <span className="shrink-0 text-sm text-muted-foreground">
                     {filtered.length} / {allIcons.length}

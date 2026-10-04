@@ -1,6 +1,6 @@
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { ProfileAvatar } from './ProfileAvatar';
 
@@ -8,7 +8,7 @@ export function ProfileInfo() {
     const currentUser = useCurrentUser();
 
     return (
-        <Row spacing={2} className="pr-4">
+        <Row spacing={4} className="pr-4">
             <ProfileAvatar />
             <Stack className="overflow-hidden">
                 <Typography

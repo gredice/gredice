@@ -5,10 +5,19 @@ import os from 'node:os';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+    getAppByName,
     getAppByPackagePath,
     getAppDevPort,
     getAppStartPort,
+    localAppHostnameUrl,
 } from './app-registry.ts';
+import {
+    childProcessTreeOptions,
+    shutdownSignals,
+    signalExitCode,
+    terminateChildProcessTree,
+    waitForChildProcessTreeExit,
+} from './process-tree.mjs';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, '..');
@@ -79,35 +88,128 @@ function getSpawnOptions(command, args) {
     };
 }
 
-function signalExitCode(signal) {
-    const signalNumber = signalNumbers?.[signal];
-    if (typeof signalNumber === 'number') {
-        return 128 + signalNumber;
+function trimTrailingSlash(value) {
+    return value.replace(/\/+$/, '');
+}
+
+function parsePort(value) {
+    if (!value?.trim()) {
+        return null;
     }
 
-    return 1;
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isNaN(parsed) || parsed < 1 || parsed > 65_535) {
+        throw new Error(`Invalid port value: ${value}`);
+    }
+
+    return parsed;
+}
+
+function formatLocalDomainUrl(targetApp, port) {
+    const portSegment = port === 443 ? '' : `:${port}`;
+    return `https://${targetApp.localDomain}${portSegment}`;
+}
+
+function appPortForCommand(targetApp) {
+    return commandName === 'start'
+        ? getAppStartPort(targetApp)
+        : getAppDevPort(targetApp);
+}
+
+function localAppServerUrl(targetApp) {
+    return localAppHostnameUrl(
+        targetApp,
+        'localhost',
+        appPortForCommand(targetApp),
+    );
+}
+
+function localAppBrowserOrigin(targetApp) {
+    const proxyHttpsPort = parsePort(process.env.GREDICE_PROXY_HTTPS_PORT);
+    if (proxyHttpsPort) {
+        return formatLocalDomainUrl(targetApp, proxyHttpsPort);
+    }
+
+    return localAppServerUrl(targetApp);
+}
+
+function applyLocalServiceEnv() {
+    const appOrigins = {
+        api: getAppByName('api'),
+        app: getAppByName('app'),
+        farm: getAppByName('farm'),
+        garden: getAppByName('garden'),
+        news: getAppByName('news'),
+        www: getAppByName('www'),
+    };
+
+    process.env.GREDICE_API_HOST ??= localAppServerUrl(appOrigins.api);
+    process.env.GREDICE_WWW_REVALIDATE_URL ??= trimTrailingSlash(
+        localAppServerUrl(appOrigins.www),
+    );
+
+    process.env.NEXT_PUBLIC_GREDICE_API_ORIGIN ??= trimTrailingSlash(
+        localAppBrowserOrigin(appOrigins.api),
+    );
+    process.env.NEXT_PUBLIC_GREDICE_APP_ORIGIN ??= trimTrailingSlash(
+        localAppBrowserOrigin(appOrigins.app),
+    );
+    process.env.NEXT_PUBLIC_GREDICE_FARM_ORIGIN ??= trimTrailingSlash(
+        localAppBrowserOrigin(appOrigins.farm),
+    );
+    process.env.NEXT_PUBLIC_GREDICE_GARDEN_ORIGIN ??= trimTrailingSlash(
+        localAppBrowserOrigin(appOrigins.garden),
+    );
+    process.env.NEXT_PUBLIC_GREDICE_NEWS_ORIGIN ??= trimTrailingSlash(
+        localAppBrowserOrigin(appOrigins.news),
+    );
+    process.env.NEXT_PUBLIC_GREDICE_WWW_ORIGIN ??= trimTrailingSlash(
+        localAppBrowserOrigin(appOrigins.www),
+    );
+
+    process.env.GREDICE_NEWS_HOST ??= trimTrailingSlash(
+        localAppServerUrl(appOrigins.news),
+    );
 }
 
 try {
+    applyLocalServiceEnv();
     const appCommand = commandForApp();
     const spawnOptions = getSpawnOptions(appCommand.command, appCommand.args);
     const child = spawn(spawnOptions.command, spawnOptions.args, {
         stdio: 'inherit',
         env: process.env,
+        ...childProcessTreeOptions(),
     });
-    const signals = ['SIGINT', 'SIGTERM', 'SIGQUIT'];
-    const forwardSignal = (signal) => {
-        child.kill(signal);
+    let shutdownPromise = null;
+    let shutdownError = null;
+    let requestedSignal = null;
+    const signalHandlers = shutdownSignals.map((signal) => {
+        const handler = () => {
+            requestedSignal ??= signal;
+            shutdownPromise ??= terminateChildProcessTree(
+                child,
+                {
+                    signal,
+                    gracefulTimeoutMs: 8000,
+                },
+            ).catch((error) => {
+                shutdownError = error;
+                return false;
+            });
+        };
+        process.on(signal, handler);
+        return [signal, handler];
+    });
+
+    const removeSignalHandlers = () => {
+        for (const [signal, handler] of signalHandlers) {
+            process.off(signal, handler);
+        }
     };
 
-    for (const signal of signals) {
-        process.on(signal, forwardSignal);
-    }
-
     child.on('error', (error) => {
-        for (const signal of signals) {
-            process.off(signal, forwardSignal);
-        }
+        removeSignalHandlers();
 
         if (error?.code === 'ENOENT') {
             console.error(
@@ -123,16 +225,34 @@ try {
     });
 
     child.on('exit', (code, signal) => {
-        for (const signalName of signals) {
-            process.off(signalName, forwardSignal);
-        }
+        void (async () => {
+            removeSignalHandlers();
 
-        if (signal) {
-            process.exit(signalExitCode(signal));
-            return;
-        }
+            if (shutdownPromise) {
+                await shutdownPromise;
+                if (shutdownError) {
+                    throw shutdownError;
+                }
+            } else if (signal) {
+                await waitForChildProcessTreeExit(child, { timeoutMs: 2000 });
+            }
 
-        process.exit(code ?? 0);
+            const exitSignal = signal ?? requestedSignal;
+            if (exitSignal) {
+                process.exit(signalExitCode(exitSignal, signalNumbers));
+                return;
+            }
+
+            process.exit(code ?? 0);
+        })().catch((error) => {
+            if (error?.message) {
+                console.error(error.message);
+            } else {
+                console.error(error);
+            }
+
+            process.exit(1);
+        });
     });
 } catch (error) {
     if (error?.message) {

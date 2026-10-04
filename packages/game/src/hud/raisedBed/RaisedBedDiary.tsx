@@ -1,19 +1,28 @@
+import { Alert } from '@gredice/ui/Alert';
+import { Chip } from '@gredice/ui/Chip';
 import { ImageGallery } from '@gredice/ui/ImageGallery';
-import { Alert } from '@signalco/ui/Alert';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { List } from '@signalco/ui-primitives/List';
-import { ListItem } from '@signalco/ui-primitives/ListItem';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Spinner } from '@signalco/ui-primitives/Spinner';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
-import { type ReactNode, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import { useGameFlags } from '../../GameFlagsContext';
+import { List } from '@gredice/ui/List';
+import { ListItem } from '@gredice/ui/ListItem';
+import { Row } from '@gredice/ui/Row';
+import { Spinner } from '@gredice/ui/Spinner';
+import { Stack } from '@gredice/ui/Stack';
+import { sunflowerMascotArtwork } from '@gredice/ui/SunflowerVisuals';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
+import Image from 'next/image';
+import type { ReactNode } from 'react';
+import { isDiaryCancelTargetEligible } from '../../hooks/useCancelDiaryEntry';
 import { useRaisedBedDiaryEntries } from '../../hooks/useRaisedBedDiaryEntries';
 import { useRaisedBedFieldDiaryEntries } from '../../hooks/useRaisedBedFieldDiaryEntries';
+import {
+    type DiaryRescheduleTarget,
+    isDiaryRescheduleTargetEligible,
+} from '../../hooks/useRescheduleDiaryEntry';
+import { GameModal } from '../../shared-ui/game-modal';
+import { RaisedBedAiOperationMarkdown } from './RaisedBedAiOperationMarkdown';
 import { RaisedBedDiaryAiAction } from './RaisedBedDiaryAiAction';
+import { RaisedBedDiaryCancelAction } from './RaisedBedDiaryCancelAction';
+import { RaisedBedDiaryRescheduleAction } from './RaisedBedDiaryRescheduleAction';
 
 type DiaryEntry = {
     id: number;
@@ -23,12 +32,18 @@ type DiaryEntry = {
     timestamp: Date;
     imageUrls?: string[] | null;
     isMarkdown?: boolean;
+    rescheduleTarget?: DiaryRescheduleTarget;
 };
 
 type DiaryEntryAiHistory = {
     count: number;
     latestTimestamp: Date;
     entries: DiaryEntry[];
+};
+
+type DiaryEntryActions = {
+    compactActions?: ReactNode;
+    detailAction?: ReactNode;
 };
 
 function relateAiHistory(entries: DiaryEntry[] | undefined) {
@@ -86,228 +101,327 @@ function relateAiHistory(entries: DiaryEntry[] | undefined) {
 function DiaryEntryImages({
     name,
     imageUrls,
+    className,
 }: {
     name: string;
     imageUrls?: string[] | null;
+    className?: string;
 }) {
     if (!imageUrls?.length) {
         return null;
     }
 
     return (
-        <ImageGallery
-            images={imageUrls.map((url) => ({ src: url, alt: name }))}
-            previewWidth={80}
-            previewHeight={80}
-            previewAs="div"
-            previewVariant="carousel"
-        />
+        <div
+            className={cx('min-w-0 max-w-full overflow-hidden', className)}
+            data-diary-entry-images
+        >
+            <ImageGallery
+                images={imageUrls.map((url) => ({ src: url, alt: name }))}
+                previewWidth={80}
+                previewHeight={80}
+                previewAs="div"
+                previewVariant="carousel"
+            />
+        </div>
     );
 }
 
-function DiaryList({
+function diaryEntryImagesClassName(imageUrls?: string[] | null) {
+    return cx('w-20 shrink-0', (imageUrls?.length ?? 0) > 1 && 'sm:w-44');
+}
+
+function diaryEntryActions({
+    aiAction,
+    entry,
+    gardenId,
+}: {
+    aiAction?: ReactNode;
+    entry: DiaryEntry;
+    gardenId: number;
+}) {
+    const rescheduleTarget = entry.rescheduleTarget;
+    const rescheduleAction = isDiaryRescheduleTargetEligible(
+        rescheduleTarget,
+    ) ? (
+        <RaisedBedDiaryRescheduleAction
+            entryName={entry.name}
+            gardenId={gardenId}
+            target={rescheduleTarget}
+        />
+    ) : null;
+    const cancelAction = isDiaryCancelTargetEligible(rescheduleTarget) ? (
+        <RaisedBedDiaryCancelAction
+            entryName={entry.name}
+            gardenId={gardenId}
+            target={rescheduleTarget}
+        />
+    ) : null;
+
+    if (!aiAction && !rescheduleAction && !cancelAction) {
+        return null;
+    }
+
+    return {
+        compactActions:
+            rescheduleAction || cancelAction ? (
+                <>
+                    {rescheduleAction}
+                    {cancelAction}
+                </>
+            ) : undefined,
+        detailAction: aiAction,
+    };
+}
+
+function SavedAiDiaryEntryButton({
+    entry,
+    gardenId,
+}: {
+    entry: DiaryEntry;
+    gardenId: number;
+}) {
+    return (
+        <GameModal
+            title={entry.name}
+            className="md:max-w-3xl"
+            trigger={
+                <button
+                    type="button"
+                    className="relative inline-flex h-auto w-fit min-w-0 items-center justify-start gap-2 rounded-md p-0 text-left text-xs font-medium text-primary underline-offset-4 transition-colors hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                    Klikni za prikaz savjeta suncokreta
+                </button>
+            }
+        >
+            <Stack spacing={4}>
+                <DiaryEntryImages
+                    name={entry.name}
+                    imageUrls={entry.imageUrls}
+                />
+                <div className="prose prose-sm max-w-none dark:prose-invert">
+                    <RaisedBedAiOperationMarkdown gardenId={gardenId}>
+                        {entry.description ?? ''}
+                    </RaisedBedAiOperationMarkdown>
+                </div>
+                <Typography
+                    level="body3"
+                    className="text-muted-foreground text-right"
+                >
+                    {entry.timestamp.toLocaleDateString('hr-HR')}
+                </Typography>
+            </Stack>
+        </GameModal>
+    );
+}
+
+export function DiaryList({
     error,
+    gardenId,
     isLoading,
     entries,
     renderEntryAction,
 }: {
     error: Error | null;
+    gardenId: number;
     isLoading: boolean;
     entries: DiaryEntry[] | undefined;
     renderEntryAction?: (
         entry: DiaryEntry,
         aiHistory?: DiaryEntryAiHistory,
-    ) => ReactNode;
+    ) => DiaryEntryActions | null | undefined;
 }) {
     const aiHistoryByEntryId = relateAiHistory(entries);
-    const [expandedAiEntry, setExpandedAiEntry] = useState<DiaryEntry | null>(
-        null,
-    );
 
     return (
-        <>
-            <List>
-                {error && (
-                    <Alert color="danger">
-                        <Typography level="body2">
-                            {
-                                'Došlo je do pogreške prilikom učitavanja dnevnika. Pokušaj ponovno.'
-                            }
-                        </Typography>
-                    </Alert>
-                )}
-                {isLoading && (
-                    <Spinner
-                        loading
-                        loadingLabel="Učitavanje dnevnika..."
-                        className="mx-auto my-8 flex items-center justify-center"
-                    />
-                )}
-                {!isLoading && !entries?.length && (
-                    <ListItem
-                        label={
-                            <Typography level="body2" className="px-2 py-4">
-                                Nema unosa u dnevniku.
-                            </Typography>
+        <List className="w-full max-w-full overflow-x-hidden" data-diary-list>
+            {error && (
+                <Alert color="danger">
+                    <Typography level="body2">
+                        {
+                            'Došlo je do pogreške prilikom učitavanja dnevnika. Pokušaj ponovno.'
                         }
-                    />
-                )}
-                {entries?.map((entry) => {
-                    const aiHistory = aiHistoryByEntryId.get(entry.id);
-                    const entryAction = renderEntryAction?.(entry, aiHistory);
+                    </Typography>
+                </Alert>
+            )}
+            {isLoading && (
+                <Spinner
+                    loading
+                    loadingLabel="Učitavanje dnevnika..."
+                    className="mx-auto my-8 flex items-center justify-center"
+                />
+            )}
+            {!isLoading && !entries?.length && (
+                <ListItem
+                    label={
+                        <Typography level="body2" className="px-2 py-4">
+                            Nema unosa u dnevniku.
+                        </Typography>
+                    }
+                />
+            )}
+            {entries?.map((entry) => {
+                const aiHistory = aiHistoryByEntryId.get(entry.id);
+                const entryActions = renderEntryAction?.(entry, aiHistory);
 
-                    return (
-                        <div
-                            key={entry.id}
-                            className={entryAction ? 'space-y-1' : undefined}
-                        >
-                            {entry.isMarkdown ? (
-                                <ListItem
-                                    nodeId={entry.id.toString()}
-                                    onSelected={() => setExpandedAiEntry(entry)}
-                                    className="cursor-pointer hover:bg-muted/50 transition-colors"
-                                    label={
+                return (
+                    <div
+                        key={entry.id}
+                        className="w-full min-w-0 max-w-full"
+                        data-diary-entry
+                    >
+                        {entry.isMarkdown ? (
+                            <ListItem
+                                className="max-w-full"
+                                label={
+                                    <Row
+                                        spacing={4}
+                                        className="w-full min-w-0 flex-col items-stretch justify-between font-normal sm:flex-row sm:items-start"
+                                    >
                                         <Row
-                                            spacing={2}
-                                            className="justify-between font-normal"
+                                            spacing={4}
+                                            className="min-w-0 flex-1 items-start"
                                         >
-                                            <Row
-                                                spacing={2}
-                                                className="items-start flex-1"
-                                            >
-                                                <DiaryEntryImages
-                                                    name={entry.name}
-                                                    imageUrls={entry.imageUrls}
-                                                />
-                                                <Stack>
-                                                    <Typography
-                                                        level="body1"
-                                                        semiBold
-                                                    >
-                                                        {entry.name}
-                                                    </Typography>
-                                                    <Typography level="body2">
-                                                        Klikni za prikaz analize
-                                                    </Typography>
-                                                </Stack>
-                                            </Row>
-                                            <Typography
-                                                level="body2"
-                                                noWrap
-                                                className="shrink-0"
-                                            >
-                                                {entry.timestamp.toLocaleDateString(
-                                                    'hr-HR',
+                                            <DiaryEntryImages
+                                                name={entry.name}
+                                                imageUrls={entry.imageUrls}
+                                                className={diaryEntryImagesClassName(
+                                                    entry.imageUrls,
                                                 )}
-                                            </Typography>
-                                        </Row>
-                                    }
-                                />
-                            ) : (
-                                <ListItem
-                                    label={
-                                        <Row
-                                            spacing={2}
-                                            className="justify-between font-normal"
-                                        >
-                                            <Row
-                                                spacing={2}
-                                                className="items-start flex-1"
+                                            />
+                                            <Stack
+                                                className="min-w-0 flex-1"
+                                                data-diary-entry-content
                                             >
-                                                <DiaryEntryImages
-                                                    name={entry.name}
-                                                    imageUrls={entry.imageUrls}
-                                                />
-                                                <Stack>
-                                                    <Typography
-                                                        level="body1"
-                                                        semiBold
-                                                    >
-                                                        {entry.name}
-                                                    </Typography>
-                                                    <Typography level="body2">
-                                                        {entry.description}
-                                                    </Typography>
-                                                </Stack>
-                                            </Row>
-                                            <Stack className="items-end shrink-0">
-                                                {entry.status && (
-                                                    <Chip
-                                                        color={
-                                                            entry.status ===
-                                                            'Novo'
-                                                                ? 'warning'
-                                                                : entry.status ===
-                                                                    'Završeno'
-                                                                  ? 'success'
-                                                                  : entry.status ===
-                                                                      'Planirano'
-                                                                    ? 'info'
-                                                                    : entry.status ===
-                                                                            'Neuspješno' ||
-                                                                        entry.status ===
-                                                                            'Otkazano'
-                                                                      ? 'error'
-                                                                      : 'neutral'
+                                                <Typography
+                                                    level="body1"
+                                                    semiBold
+                                                    className="flex min-w-0 items-center gap-1.5 break-words"
+                                                >
+                                                    <Image
+                                                        src={
+                                                            sunflowerMascotArtwork
                                                         }
-                                                        className="shrink-0 w-fit self-end"
-                                                    >
-                                                        {entry.status}
-                                                    </Chip>
+                                                        alt=""
+                                                        width={18}
+                                                        height={18}
+                                                        className="size-[18px] shrink-0"
+                                                    />
+                                                    <span className="min-w-0 break-words">
+                                                        {entry.name}
+                                                    </span>
+                                                </Typography>
+                                                <SavedAiDiaryEntryButton
+                                                    entry={entry}
+                                                    gardenId={gardenId}
+                                                />
+                                            </Stack>
+                                        </Row>
+                                        <Typography
+                                            level="body2"
+                                            noWrap
+                                            className="shrink-0 self-start sm:self-auto"
+                                        >
+                                            {entry.timestamp.toLocaleDateString(
+                                                'hr-HR',
+                                            )}
+                                        </Typography>
+                                    </Row>
+                                }
+                            />
+                        ) : (
+                            <ListItem
+                                className="max-w-full"
+                                label={
+                                    <Row
+                                        spacing={4}
+                                        className="w-full min-w-0 flex-col items-stretch justify-between font-normal sm:flex-row sm:items-start"
+                                    >
+                                        <Row
+                                            spacing={4}
+                                            className="min-w-0 flex-1 items-start"
+                                        >
+                                            <DiaryEntryImages
+                                                name={entry.name}
+                                                imageUrls={entry.imageUrls}
+                                                className={diaryEntryImagesClassName(
+                                                    entry.imageUrls,
                                                 )}
+                                            />
+                                            <Stack
+                                                className="min-w-0 flex-1"
+                                                data-diary-entry-content
+                                            >
+                                                <Typography
+                                                    level="body1"
+                                                    semiBold
+                                                    className="break-words"
+                                                >
+                                                    {entry.name}
+                                                </Typography>
+                                                <Typography
+                                                    level="body2"
+                                                    className="break-words"
+                                                >
+                                                    {entry.description}
+                                                </Typography>
+                                                {entryActions?.detailAction && (
+                                                    <div className="mt-2 w-fit max-w-full">
+                                                        {
+                                                            entryActions.detailAction
+                                                        }
+                                                    </div>
+                                                )}
+                                            </Stack>
+                                        </Row>
+                                        <Stack className="w-full min-w-0 items-start sm:w-auto sm:shrink-0 sm:items-end">
+                                            {entry.status && (
+                                                <Chip
+                                                    color={
+                                                        entry.status === 'Novo'
+                                                            ? 'warning'
+                                                            : entry.status ===
+                                                                'Završeno'
+                                                              ? 'success'
+                                                              : entry.status ===
+                                                                  'Planirano'
+                                                                ? 'info'
+                                                                : entry.status ===
+                                                                        'Neuspješno' ||
+                                                                    entry.status ===
+                                                                        'Otkazano'
+                                                                  ? 'error'
+                                                                  : 'neutral'
+                                                    }
+                                                    className="shrink-0 w-fit max-w-full self-start sm:self-end"
+                                                >
+                                                    {entry.status}
+                                                </Chip>
+                                            )}
+                                            <Row
+                                                spacing={1}
+                                                className="min-w-0 max-w-full flex-nowrap items-center self-start sm:self-end"
+                                            >
                                                 <Typography
                                                     level="body2"
                                                     noWrap
+                                                    className="min-w-0"
                                                 >
                                                     {entry.timestamp.toLocaleDateString(
                                                         'hr-HR',
                                                     )}
                                                 </Typography>
-                                            </Stack>
-                                        </Row>
-                                    }
-                                />
-                            )}
-                            {entryAction && (
-                                <div className="flex justify-end px-2 pb-2">
-                                    {entryAction}
-                                </div>
-                            )}
-                        </div>
-                    );
-                })}
-            </List>
-            <Modal
-                open={expandedAiEntry !== null}
-                onOpenChange={(open) => {
-                    if (!open) setExpandedAiEntry(null);
-                }}
-                title={expandedAiEntry?.name ?? 'AI analiza'}
-                className="md:max-w-3xl"
-            >
-                {expandedAiEntry && (
-                    <Stack spacing={2}>
-                        <DiaryEntryImages
-                            name={expandedAiEntry.name}
-                            imageUrls={expandedAiEntry.imageUrls}
-                        />
-                        <div className="prose prose-sm max-w-none dark:prose-invert">
-                            <ReactMarkdown>
-                                {expandedAiEntry.description ?? ''}
-                            </ReactMarkdown>
-                        </div>
-                        <Typography
-                            level="body3"
-                            className="text-muted-foreground text-right"
-                        >
-                            {expandedAiEntry.timestamp.toLocaleDateString(
-                                'hr-HR',
-                            )}
-                        </Typography>
-                    </Stack>
-                )}
-            </Modal>
-        </>
+                                                {entryActions?.compactActions}
+                                            </Row>
+                                        </Stack>
+                                    </Row>
+                                }
+                            />
+                        )}
+                    </div>
+                );
+            })}
+        </List>
     );
 }
 
@@ -315,39 +429,45 @@ export function RaisedBedFieldDiary({
     gardenId,
     raisedBedId,
     positionIndex,
+    disableActions = false,
 }: {
     gardenId: number;
     raisedBedId: number;
     positionIndex: number;
+    disableActions?: boolean;
 }) {
     const {
         data: entries,
         isLoading,
         error,
     } = useRaisedBedFieldDiaryEntries(gardenId, raisedBedId, positionIndex);
-    const flags = useGameFlags();
-    const renderEntryAction = flags.raisedBedImageAI
+    const renderEntryAction = !disableActions
         ? (entry: DiaryEntry, aiHistory?: DiaryEntryAiHistory) => {
-              if (!entry.imageUrls?.length || entry.isMarkdown) {
-                  return null;
-              }
+              const aiAction =
+                  entry.imageUrls?.length && !entry.isMarkdown ? (
+                      <RaisedBedDiaryAiAction
+                          gardenId={gardenId}
+                          raisedBedId={raisedBedId}
+                          positionIndex={positionIndex}
+                          entryName={entry.name}
+                          imageUrls={entry.imageUrls}
+                          referenceDate={entry.timestamp}
+                          historyEntries={aiHistory?.entries}
+                      />
+                  ) : undefined;
 
-              return (
-                  <RaisedBedDiaryAiAction
-                      gardenId={gardenId}
-                      raisedBedId={raisedBedId}
-                      positionIndex={positionIndex}
-                      entryName={entry.name}
-                      imageUrls={entry.imageUrls}
-                      historyEntries={aiHistory?.entries}
-                  />
-              );
+              return diaryEntryActions({
+                  aiAction,
+                  entry,
+                  gardenId,
+              });
           }
         : undefined;
 
     return (
         <DiaryList
             error={error}
+            gardenId={gardenId}
             isLoading={isLoading}
             entries={entries}
             renderEntryAction={renderEntryAction}
@@ -367,28 +487,33 @@ export function RaisedBedDiary({
         isLoading,
         error,
     } = useRaisedBedDiaryEntries(gardenId, raisedBedId);
-    const flags = useGameFlags();
-    const renderEntryAction = flags.raisedBedImageAI
-        ? (entry: DiaryEntry, aiHistory?: DiaryEntryAiHistory) => {
-              if (!entry.imageUrls?.length || entry.isMarkdown) {
-                  return null;
-              }
+    const renderEntryAction = (
+        entry: DiaryEntry,
+        aiHistory?: DiaryEntryAiHistory,
+    ) => {
+        const aiAction =
+            entry.imageUrls?.length && !entry.isMarkdown ? (
+                <RaisedBedDiaryAiAction
+                    gardenId={gardenId}
+                    raisedBedId={raisedBedId}
+                    entryName={entry.name}
+                    imageUrls={entry.imageUrls}
+                    referenceDate={entry.timestamp}
+                    historyEntries={aiHistory?.entries}
+                />
+            ) : undefined;
 
-              return (
-                  <RaisedBedDiaryAiAction
-                      gardenId={gardenId}
-                      raisedBedId={raisedBedId}
-                      entryName={entry.name}
-                      imageUrls={entry.imageUrls}
-                      historyEntries={aiHistory?.entries}
-                  />
-              );
-          }
-        : undefined;
+        return diaryEntryActions({
+            aiAction,
+            entry,
+            gardenId,
+        });
+    };
 
     return (
         <DiaryList
             error={error}
+            gardenId={gardenId}
             isLoading={isLoading}
             entries={entries}
             renderEntryAction={renderEntryAction}

@@ -1,7 +1,7 @@
 'use client';
 
-import { Input } from '@signalco/ui-primitives/Input';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Input } from '@gredice/ui/Input';
+import { Stack } from '@gredice/ui/Stack';
 import { useState } from 'react';
 import { IconPicker } from '../../../../components/admin/directories/IconPicker';
 
@@ -13,7 +13,7 @@ export function EntityTypeCategoryFormFields({
     const [icon, setIcon] = useState(defaults?.icon ?? '');
 
     return (
-        <Stack spacing={3}>
+        <Stack spacing={6}>
             <Input
                 name="name"
                 label="Naziv"

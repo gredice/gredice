@@ -1,8 +1,10 @@
 'use client';
 
-import { Calendar, Close, Filter } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Chip } from '@signalco/ui-primitives/Chip';
+import type { ReactNode } from 'react';
+import { useCallback, useMemo } from 'react';
+import { Button } from '../Button';
+import { Chip } from '../Chip';
+import { Calendar, Close, Filter } from '../icons';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -10,14 +12,13 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
-} from '@signalco/ui-primitives/Menu';
-import { Row } from '@signalco/ui-primitives/Row';
-import type { ReactNode } from 'react';
-import { useCallback, useMemo } from 'react';
+} from '../Menu';
+import { Row } from '../Row';
 
 export interface FilterOption {
     key: string;
     label: string;
+    activeLabel?: string | null;
     icon?: ReactNode;
     options: Array<{
         value: string;
@@ -75,7 +76,7 @@ export function TableFilter({
 
     return (
         <div className={className}>
-            <Row spacing={2} className="items-center flex-wrap">
+            <Row spacing={4} className="items-center flex-wrap">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button
@@ -119,7 +120,7 @@ export function TableFilter({
                                         className="justify-between cursor-pointer pl-6"
                                     >
                                         <Row
-                                            spacing={2}
+                                            spacing={4}
                                             className="items-center"
                                         >
                                             {option.icon}
@@ -155,6 +156,10 @@ export function TableFilter({
                 {Object.entries(currentFilters).map(([key, value]) => {
                     const filter = filters.find((f) => f.key === key);
                     if (!filter) return null;
+                    const activeLabel =
+                        filter.activeLabel === undefined
+                            ? filter.label
+                            : filter.activeLabel;
 
                     return (
                         <Chip
@@ -163,10 +168,10 @@ export function TableFilter({
                             size="sm"
                             onClick={() => onFilterChange(key, '')}
                         >
-                            <Row spacing={1} className="items-center">
+                            <Row spacing={2} className="items-center">
                                 {filter.icon}
                                 <span>
-                                    {filter.label}:{' '}
+                                    {activeLabel ? `${activeLabel}: ` : null}
                                     {getOptionLabel(filter, value)}
                                 </span>
                                 <Close className="size-3" />

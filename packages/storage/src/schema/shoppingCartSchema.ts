@@ -1,8 +1,10 @@
+import type { AdvancedSowingCartAuthorizationV1 } from '@gredice/js/plants';
 import { relations } from 'drizzle-orm';
 import {
     boolean,
     index,
     integer,
+    jsonb,
     pgTable,
     serial,
     text,
@@ -62,6 +64,27 @@ export const shoppingCartItems = pgTable(
         index('shopping_cart_items_is_deleted_idx').on(table.isDeleted),
         index('shopping_cart_items_status_idx').on(table.status),
     ],
+);
+
+/**
+ * Server-owned checkout authorization. Deliberately kept outside the cart-item
+ * relation so generic cart reads and API object spreads cannot expose it.
+ */
+export const shoppingCartItemAdvancedSowingAuthorizations = pgTable(
+    'shopping_cart_item_advanced_sowing_authorizations',
+    {
+        cartItemId: integer('cart_item_id')
+            .primaryKey()
+            .references(() => shoppingCartItems.id, { onDelete: 'cascade' }),
+        authorization: jsonb('authorization')
+            .$type<AdvancedSowingCartAuthorizationV1>()
+            .notNull(),
+        createdAt: timestamp('created_at').notNull().defaultNow(),
+        updatedAt: timestamp('updated_at')
+            .notNull()
+            .defaultNow()
+            .$onUpdate(() => new Date()),
+    },
 );
 
 export const shoppingCartRelations = relations(

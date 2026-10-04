@@ -1,25 +1,46 @@
-import { Check } from '@signalco/ui-icons';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
+'use client';
+
+import { IconButton } from '@gredice/ui/IconButton';
+import { Check } from '@gredice/ui/icons';
 import { acceptOperationAction } from '../../(actions)/operationActions';
 import { AcceptRequestModal } from './AcceptRequestModal';
+import { canAcceptOperationTask } from './scheduleShared';
 
 interface AcceptOperationModalProps {
     operationId: number;
+    expectedEntityId: number;
+    expectedTaskVersionEventId: number;
+    operationStatus?: string | null;
     label: string;
+    raisedBedPhysicalId?: string;
     disabled?: boolean;
+    onConfirm?: () => unknown | Promise<unknown>;
 }
 
 export function AcceptOperationModal({
     operationId,
+    expectedEntityId,
+    expectedTaskVersionEventId,
+    operationStatus,
     label,
+    raisedBedPhysicalId,
     disabled = false,
+    onConfirm,
 }: AcceptOperationModalProps) {
+    if (!canAcceptOperationTask(operationStatus)) {
+        return null;
+    }
+
     const handleConfirm = async () => {
-        try {
-            await acceptOperationAction(operationId);
-        } catch (error) {
-            console.error('Error accepting operation:', error);
+        if (onConfirm) {
+            return onConfirm();
         }
+
+        return acceptOperationAction(
+            operationId,
+            expectedEntityId,
+            expectedTaskVersionEventId,
+        );
     };
 
     return (
@@ -29,6 +50,7 @@ export function AcceptOperationModal({
             trigger={
                 <IconButton
                     variant="plain"
+                    size="xs"
                     title="Potvrdi operaciju"
                     disabled={disabled}
                 >
@@ -37,6 +59,7 @@ export function AcceptOperationModal({
             }
             title="Potvrda radnje"
             header="Potvrda radnje"
+            raisedBedPhysicalId={raisedBedPhysicalId}
         />
     );
 }

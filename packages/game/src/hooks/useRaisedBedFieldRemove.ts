@@ -1,4 +1,9 @@
 import { clientAuthenticated } from '@gredice/client';
+import {
+    canRemovePlantWithoutOperation,
+    getActivePlantCycleStatusChanges,
+    plantRemovalRequiresOperationError,
+} from '@gredice/js/plants';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { handleOptimisticUpdate } from '../helpers/queryHelpers';
 import { useGameState } from '../useGameState';
@@ -7,6 +12,7 @@ import {
     isRaisedBedFieldOccupied,
 } from '../utils/raisedBedFields';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
+import { tutorialChecklistKeys } from './useTutorialChecklist';
 
 const mutationKey = ['gardens', 'current', 'raisedBedFieldRemove'];
 
@@ -19,9 +25,17 @@ export function useRaisedBedFieldRemove() {
     return useMutation({
         mutationKey,
         mutationFn: async ({
+            cleanHarvest,
+            expectedPlantCycleEventId,
+            expectedPlantCycleVersionEventId,
+            expectedPlantSortId,
             raisedBedId,
             positionIndex,
         }: {
+            cleanHarvest?: boolean;
+            expectedPlantCycleEventId: number;
+            expectedPlantCycleVersionEventId: number;
+            expectedPlantSortId: number;
             raisedBedId: number;
             positionIndex: number;
         }) => {
@@ -45,11 +59,16 @@ export function useRaisedBedFieldRemove() {
                 throw new Error('Field not found');
             }
 
-            // Check if the field is marked for removal (toBeRemoved)
-            if (!field.toBeRemoved) {
-                throw new Error(
-                    'Plant cannot be removed at this time. Only plants that are dead, harvested, or failed to sprout can be removed.',
-                );
+            if (
+                !canRemovePlantWithoutOperation({
+                    plantStatus: field.plantStatus,
+                    statusChanges: getActivePlantCycleStatusChanges(
+                        field.plantCycles,
+                    ),
+                    cleanHarvest,
+                })
+            ) {
+                throw new Error(plantRemovalRequiresOperationError);
             }
 
             // Call the backend API to update the plant status to 'removed'
@@ -62,6 +81,9 @@ export function useRaisedBedFieldRemove() {
                     positionIndex: positionIndex.toString(),
                 },
                 json: {
+                    expectedPlantCycleEventId,
+                    expectedPlantCycleVersionEventId,
+                    expectedPlantSortId,
                     status: 'removed',
                 },
             });
@@ -124,6 +146,9 @@ export function useRaisedBedFieldRemove() {
             if (queryClient.isMutating({ mutationKey }) === 1) {
                 await queryClient.invalidateQueries({
                     queryKey: gardenQueryKey,
+                });
+                await queryClient.invalidateQueries({
+                    queryKey: tutorialChecklistKeys,
                 });
             }
         },

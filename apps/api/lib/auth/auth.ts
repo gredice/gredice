@@ -1,7 +1,7 @@
 import 'server-only';
 import { createHmac } from 'node:crypto';
+import { initAuth, initRbac, isAccessTokenPayload } from '@gredice/auth';
 import { getUser as storageGetUser } from '@gredice/storage';
-import { initAuth, initRbac } from '@signalco/auth-server';
 import type { Context } from 'hono';
 import { deleteCookie, setCookie as honoSetCookie } from 'hono/cookie';
 import {
@@ -22,6 +22,7 @@ type User = {
     id: string;
     userName: string;
     accountIds: string[];
+    isTemporary: boolean;
     role: string;
 };
 
@@ -40,6 +41,7 @@ async function getUser(id: string): Promise<User | null> {
         id: user.id,
         userName: user.userName,
         accountIds: user.accounts.map((accountUsers) => accountUsers.accountId),
+        isTemporary: user.isTemporary,
         role: user.role,
     };
 }
@@ -83,7 +85,41 @@ const rbac = initRbac(
     }),
 );
 
-export const { withAuth, verifyJwt, auth } = rbac;
+export const { withAuth, verifyJwt, verifyAccessJwt, auth } = rbac;
+
+export function createOAuthStateJwt(userId: string) {
+    return rbac.createJwtWithClaims(userId, { tokenUse: 'oauth_state' }, '10m');
+}
+
+export async function verifyOAuthStateJwt(token: string) {
+    const verified = await verifyJwt(token);
+    const payload = verified.result?.payload;
+    if (
+        payload &&
+        payload.tokenUse !== 'oauth_state' &&
+        !(payload.tokenUse === undefined && isAccessTokenPayload(payload))
+    ) {
+        return { error: new Error('Unauthorized: Invalid OAuth state token') };
+    }
+    return verified;
+}
+
+export function createDeliveryMobileAccessJwt(input: {
+    userId: string;
+    accountId: string;
+    scope: string;
+    expiresInMs: number;
+}) {
+    return rbac.createJwtWithClaims(
+        input.userId,
+        {
+            account_id: input.accountId,
+            scope: input.scope,
+        },
+        input.expiresInMs,
+        { audience: 'delivery-android' },
+    );
+}
 
 type CreateJwtExpiration = Parameters<typeof rbac.createJwt>[1];
 type CreateJwtOverride = Parameters<typeof rbac.createJwt>[2];

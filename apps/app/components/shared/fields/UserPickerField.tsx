@@ -1,8 +1,8 @@
 'use client';
 
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { SelectItems } from '@gredice/ui/SelectItems';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useMemo } from 'react';
 
 export type UserPickerOption = {
@@ -58,7 +58,7 @@ export function UserPickerField({
     );
 
     return (
-        <Stack spacing={1}>
+        <Stack spacing={2}>
             {items.length > 0 ? (
                 <SelectItems
                     label={label}

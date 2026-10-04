@@ -1,27 +1,37 @@
+import {
+    gardenActionUrl,
+    isGardenOperationApplication,
+} from '@gredice/js/gardenActions';
 import { getHarvestOperationRemovalDisclaimer } from '@gredice/js/plants';
 import { decodeRouteParam } from '@gredice/js/uri';
+import { GameReceiptIcon } from '@gredice/ui/GameIcons';
 import { Markdown } from '@gredice/ui/Markdown';
+import { NavigatingButton } from '@gredice/ui/NavigatingButton';
 import { OperationImage } from '@gredice/ui/OperationImage';
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
-import { Euro } from '@signalco/ui-icons';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { PageHeader } from '@gredice/ui/PageHeader';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { AttributeCard } from '../../../components/attributes/DetailCard';
+import { PriceAttributeCard } from '../../../components/attributes/PriceAttributeCard';
+import { CommunityEditButton } from '../../../components/community-edits/CommunityEditButton';
+import { RelatedFaq } from '../../../components/faq/RelatedFaq';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
-import { PageHeader } from '../../../components/shared/PageHeader';
+import { PublicBreadcrumbs } from '../../../components/shared/seo/PublicBreadcrumbs';
 import { StructuredDataScript } from '../../../components/shared/seo/StructuredDataScript';
+import { getOperationPriceAvailability } from '../../../lib/operationPricing';
 import { getOperationsData } from '../../../lib/plants/getOperationsData';
+import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
 import { KnownPages } from '../../../src/KnownPages';
 import { merchantReturnPolicy } from '../../../src/merchantReturnPolicy';
 import { matchesPageAlias, toPageAlias } from '../../../src/pageAliases';
+import { getOperationImageViewTransitionName } from '../operationViewTransition';
 import { OperationApplicationsList } from './OperationApplicationsList';
 import { OperationAttributesCards } from './OperationAttributesCards';
 
-export const revalidate = 3600; // 1 hour
+export const revalidate = 43200; // 12 hours
 
 export async function generateMetadata(
     props: PageProps<'/radnje/[alias]'>,
@@ -33,22 +43,25 @@ export async function generateMetadata(
         matchesPageAlias(op.information.label, alias),
     );
     if (!operation) {
-        return {
-            title: 'Radnja nije pronađena',
-            description: 'Radnja koju tražiš nije pronađena.',
-        };
+        notFound();
     }
-    return {
+    return createPublicMetadata({
         title: operation.information.label,
         description: operation.information.shortDescription,
-    };
+        path: KnownPages.Operation(
+            operation.slug || operation.information.label,
+        ),
+        category: 'Vrtlarska radnja',
+        imageUrl: operation.image?.cover?.url,
+        imageAlt: `Prikaz radnje ${operation.information.label}`,
+    });
 }
 
 export async function generateStaticParams() {
     const entities = await getOperationsData();
     return (
         entities?.map((entity) => ({
-            alias: toPageAlias(String(entity.information.label)),
+            alias: entity.slug || toPageAlias(String(entity.information.label)),
         })) ?? []
     );
 }
@@ -70,76 +83,129 @@ export default async function OperationPage(
     const harvestPlantRemovalDescription = isHarvestOperation
         ? getHarvestOperationRemovalDisclaimer(operation.actions?.removePlant)
         : null;
+    const operationPath = KnownPages.Operation(
+        operation.slug || operation.information.label,
+    );
+    const priceAvailability = getOperationPriceAvailability(operation);
 
     return (
         <div className="operation-page py-8">
             <StructuredDataScript
                 data={{
                     '@context': 'https://schema.org',
-                    '@type': 'Product',
+                    '@type': 'Service',
                     name: operation.information.label,
                     description:
                         operation.information.shortDescription ??
                         operation.information.description,
-                    category: 'Radnja',
+                    serviceType: 'Vrtlarska radnja',
                     image: operation.image?.cover?.url,
-                    brand: {
-                        '@type': 'Brand',
+                    provider: {
+                        '@type': 'Organization',
                         name: 'Gredice',
                     },
-                    url: `https://www.gredice.com${KnownPages.Operation(operation.information.label)}`,
-                    offers: {
-                        '@type': 'Offer',
-                        price: operation.prices.perOperation.toFixed(2),
-                        priceCurrency: 'EUR',
-                        availability: 'https://schema.org/InStock',
-                        url: `https://www.gredice.com${KnownPages.Operation(operation.information.label)}`,
-                        hasMerchantReturnPolicy: merchantReturnPolicy,
-                    },
+                    url: `https://www.gredice.com${operationPath}`,
+                    ...(priceAvailability === 'available'
+                        ? {
+                              offers: {
+                                  '@type': 'Offer',
+                                  price: operation.prices.perOperation.toFixed(
+                                      2,
+                                  ),
+                                  priceCurrency: 'EUR',
+                                  availability: 'https://schema.org/InStock',
+                                  url: `https://www.gredice.com${operationPath}`,
+                                  hasMerchantReturnPolicy: merchantReturnPolicy,
+                              },
+                          }
+                        : {}),
                 }}
             />
-            <Stack spacing={4}>
-                <Breadcrumbs
+            <Stack spacing={8}>
+                <PublicBreadcrumbs
                     items={[
                         { label: 'Radnje', href: KnownPages.Operations },
                         { label: operation.information.label },
                     ]}
                 />
                 <PageHeader
-                    visual={<OperationImage operation={operation} size={192} />}
+                    visual={
+                        <span
+                            className="public-content-card-view-transition inline-flex size-48 items-center justify-center overflow-hidden"
+                            style={{
+                                viewTransitionName:
+                                    getOperationImageViewTransitionName(
+                                        operation.id,
+                                    ),
+                            }}
+                        >
+                            <OperationImage
+                                variant="game"
+                                operation={operation}
+                                size={192}
+                            />
+                        </span>
+                    }
                     header={operation.information.label}
                     subHeader={operation.information.shortDescription}
+                    headerChildren={
+                        operation.attributes.internal !== true &&
+                        isGardenOperationApplication(
+                            operation.attributes.application,
+                        ) ? (
+                            <NavigatingButton
+                                href={gardenActionUrl(KnownPages.GardenApp, {
+                                    type: 'operation',
+                                    operationId: operation.id,
+                                })}
+                                className="bg-green-800 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 text-white"
+                            >
+                                Moj vrt
+                            </NavigatingButton>
+                        ) : undefined
+                    }
                 >
                     <Stack>
                         <Typography level="h5" component="h2" gutterBottom>
                             Informacije
                         </Typography>
-                        <Stack spacing={1}>
+                        <Stack spacing={2}>
                             <div className="grid grid-cols-2 gap-2">
-                                <AttributeCard
-                                    icon={<Euro />}
+                                <PriceAttributeCard
+                                    icon={<GameReceiptIcon aria-hidden />}
                                     header="Cijena"
-                                    value={`${operation.prices.perOperation.toFixed(2)}€`}
+                                    currentPrice={operation.prices.perOperation}
+                                    availability={priceAvailability}
                                 />
                             </div>
-                            <FeedbackModal
-                                topic={'www/operations/information'}
-                                data={{
-                                    operationId: operation.id,
-                                    operationAlias: operation.information.label,
-                                }}
-                                className="self-end group-hover:opacity-100 opacity-0 transition-opacity"
-                            />
-                            <Typography level="body2" secondary>
-                                Nisi zadovoljan uslugom? Dostupan je{' '}
-                                <Link
-                                    className="underline"
-                                    href={KnownPages.Refunds}
-                                >
-                                    povrat novca do 30 dana
-                                </Link>
-                                .
-                            </Typography>
+                            <Row spacing={1} className="self-end">
+                                <CommunityEditButton
+                                    entityTypeName="operation"
+                                    entityId={operation.id}
+                                    publicPath={operationPath}
+                                    sectionKey="overview"
+                                />
+                                <FeedbackModal
+                                    topic={'www/operations/information'}
+                                    data={{
+                                        operationId: operation.id,
+                                        operationAlias:
+                                            operation.information.label,
+                                    }}
+                                />
+                            </Row>
+                            {priceAvailability === 'available' && (
+                                <Typography level="body2" secondary>
+                                    Nisi zadovoljan uslugom? Dostupan je{' '}
+                                    <Link
+                                        className="underline"
+                                        href={KnownPages.Refunds}
+                                    >
+                                        povrat novca do 30 dana
+                                    </Link>
+                                    .
+                                </Typography>
+                            )}
                             {harvestPlantRemovalDescription && (
                                 <Typography level="body2" secondary>
                                     {harvestPlantRemovalDescription}
@@ -149,18 +215,26 @@ export default async function OperationPage(
                         <Typography level="h5" component="h2" gutterBottom>
                             Svojstva
                         </Typography>
-                        <Stack spacing={1}>
+                        <Stack spacing={2}>
                             <OperationAttributesCards
                                 attributes={operation.attributes}
                             />
-                            <FeedbackModal
-                                topic={'www/operations/attributes'}
-                                data={{
-                                    operationId: operation.id,
-                                    operationAlias: operation.information.label,
-                                }}
-                                className="self-end group-hover:opacity-100 opacity-0 transition-opacity"
-                            />
+                            <Row spacing={1} className="self-end">
+                                <CommunityEditButton
+                                    entityTypeName="operation"
+                                    entityId={operation.id}
+                                    publicPath={operationPath}
+                                    sectionKey="attributes"
+                                />
+                                <FeedbackModal
+                                    topic={'www/operations/attributes'}
+                                    data={{
+                                        operationId: operation.id,
+                                        operationAlias:
+                                            operation.information.label,
+                                    }}
+                                />
+                            </Row>
                         </Stack>
                     </Stack>
                 </PageHeader>
@@ -170,6 +244,14 @@ export default async function OperationPage(
                             'Nema opisa za ovu radnju.'}
                     </Markdown>
                 </div>
+                <Row className="justify-end">
+                    <CommunityEditButton
+                        entityTypeName="operation"
+                        entityId={operation.id}
+                        publicPath={operationPath}
+                        sectionKey="description"
+                    />
+                </Row>
                 <Typography level="h2" className="text-2xl">
                     Postupak
                 </Typography>
@@ -179,11 +261,20 @@ export default async function OperationPage(
                             'Nema postupka za ovu radnju.'}
                     </Markdown>
                 </div>
+                <Row className="justify-end">
+                    <CommunityEditButton
+                        entityTypeName="operation"
+                        entityId={operation.id}
+                        publicPath={operationPath}
+                        sectionKey="instructions"
+                    />
+                </Row>
                 <Typography level="h2" className="text-2xl">
                     Dostupno za
                 </Typography>
                 <OperationApplicationsList operationId={operation.id} />
-                <Row spacing={2}>
+                <RelatedFaq placement="operations" />
+                <Row spacing={4}>
                     <Typography level="body1">
                         Jesu li ti informacije o ovoj radnji korisne?
                     </Typography>

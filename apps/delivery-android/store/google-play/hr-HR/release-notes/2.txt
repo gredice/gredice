@@ -1,0 +1,1 @@
+Ispravljeno rušenje aplikacije pri pokretanju na telefonu. Funkcionalnost oglednih stanica u sustavu Android Auto nije promijenjena.

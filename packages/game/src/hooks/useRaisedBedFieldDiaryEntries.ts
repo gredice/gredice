@@ -11,12 +11,13 @@ export const queryKeys = {
     ],
 };
 
-export function useRaisedBedFieldDiaryEntries(
+export function raisedBedFieldDiaryEntriesQueryOptions(
     gardenId: number,
     raisedBedId: number,
     positionIndex: number,
+    options: { enabled?: boolean } = {},
 ) {
-    return useQuery({
+    return {
         queryKey: queryKeys.byId(raisedBedId, positionIndex),
         queryFn: async () => {
             const entries = await clientAuthenticated().api.gardens[
@@ -51,8 +52,25 @@ export function useRaisedBedFieldDiaryEntries(
         },
         staleTime: 5 * 60 * 1000, // 5 minutes
         enabled:
+            (options.enabled ?? true) &&
             Boolean(gardenId) &&
             Boolean(raisedBedId) &&
             typeof positionIndex === 'number',
-    });
+    };
+}
+
+export function useRaisedBedFieldDiaryEntries(
+    gardenId: number,
+    raisedBedId: number,
+    positionIndex: number,
+    options: { enabled?: boolean } = {},
+) {
+    return useQuery(
+        raisedBedFieldDiaryEntriesQueryOptions(
+            gardenId,
+            raisedBedId,
+            positionIndex,
+            options,
+        ),
+    );
 }

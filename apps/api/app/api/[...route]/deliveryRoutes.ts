@@ -1,14 +1,18 @@
-import { notifyDeliveryRequestEvent } from '@gredice/notifications';
 import {
-    cancelDeliveryRequest,
     createDeliveryAddress,
+    createDeliveryRequest,
+    DeliveryAddressMutationError,
+    DeliveryRunAssignmentError,
     deleteDeliveryAddress,
     getDeliveryAddress,
     getDeliveryAddresses,
     getDeliveryRequestsWithEvents,
     getPickupLocations,
+    getTimeSlotEffectiveClosesAt,
     getTimeSlots,
     type InsertDeliveryAddress,
+    type TimeSlotStatus,
+    TimeSlotStatuses,
     type UpdateDeliveryAddress,
     updateDeliveryAddress,
     validateDeliveryAddress,
@@ -16,12 +20,16 @@ import {
 import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
+import { createDeliveryRequestCalendarEvent } from '../../../lib/delivery/calendarSync';
+import { cancelDeliveryRequestForCurrentAccount } from '../../../lib/delivery/cancelDeliveryRequestForAccount';
+import { customerDeliveryRequest } from '../../../lib/delivery/customerDeliveryRequest';
 import { authSecurity, publicSecurity } from '../../../lib/docs/security';
 import {
     type AuthVariables,
     authValidator,
 } from '../../../lib/hono/authValidator';
 import { getPostHogClient } from '../../../lib/posthog-server';
+import deliveryMobileRoutes from './deliveryMobileRoutes';
 
 // Validation schemas
 const createAddressSchema = z.object({
@@ -53,6 +61,17 @@ const slotsQuerySchema = z.object({
     from: z.iso.datetime().optional(),
     to: z.iso.datetime().optional(),
     locationId: z.coerce.number().optional(),
+    includeClosed: z.literal('true').optional(),
+    includeArchived: z.literal('true').optional(),
+});
+
+const createRequestSchema = z.object({
+    operationId: z.number(),
+    slotId: z.number(),
+    mode: z.enum(['delivery', 'pickup']),
+    addressId: z.number().optional(),
+    locationId: z.number().optional(),
+    notes: z.string().max(500).optional(),
 });
 
 const cancelRequestSchema = z.object({
@@ -61,6 +80,7 @@ const cancelRequestSchema = z.object({
 });
 
 const app = new Hono<{ Variables: AuthVariables }>()
+    .route('/mobile/v1', deliveryMobileRoutes)
     // GET /addresses - list current user addresses
     .get(
         '/addresses',
@@ -94,7 +114,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const validationErrors = validateDeliveryAddress(data);
             if (validationErrors.length > 0) {
                 return context.json(
-                    { error: 'Validation failed', details: validationErrors },
+                    {
+                        error: 'Validation failed',
+                        details: validationErrors,
+                    },
                     400,
                 );
             }
@@ -138,7 +161,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const validationErrors = validateDeliveryAddress(data);
             if (validationErrors.length > 0) {
                 return context.json(
-                    { error: 'Validation failed', details: validationErrors },
+                    {
+                        error: 'Validation failed',
+                        details: validationErrors,
+                    },
                     400,
                 );
             }
@@ -148,7 +174,29 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 ...data,
             };
 
-            await updateDeliveryAddress(updateData, accountId);
+            try {
+                await updateDeliveryAddress(updateData, accountId);
+            } catch (error) {
+                if (error instanceof DeliveryAddressMutationError) {
+                    return context.json(
+                        {
+                            error: 'Adresa nije pronađena.',
+                            code: error.code,
+                        },
+                        404,
+                    );
+                }
+                if (error instanceof DeliveryRunAssignmentError) {
+                    return context.json(
+                        {
+                            error: 'Adresa je dio aktivne dostavne rute. Najprije dovrši ili napusti rutu.',
+                            code: error.code,
+                        },
+                        409,
+                    );
+                }
+                throw error;
+            }
             const updatedAddress = await getDeliveryAddress(id, accountId);
             return context.json(updatedAddress);
         },
@@ -167,7 +215,29 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const { accountId } = context.get('authContext');
             const { id } = context.req.valid('param');
 
-            await deleteDeliveryAddress(id, accountId);
+            try {
+                await deleteDeliveryAddress(id, accountId);
+            } catch (error) {
+                if (error instanceof DeliveryAddressMutationError) {
+                    return context.json(
+                        {
+                            error: 'Adresa nije pronađena.',
+                            code: error.code,
+                        },
+                        404,
+                    );
+                }
+                if (error instanceof DeliveryRunAssignmentError) {
+                    return context.json(
+                        {
+                            error: 'Adresa je dio aktivne dostavne rute. Najprije dovrši ili napusti rutu.',
+                            code: error.code,
+                        },
+                        409,
+                    );
+                }
+                throw error;
+            }
             return context.json({ success: true });
         },
     )
@@ -188,28 +258,50 @@ const app = new Hono<{ Variables: AuthVariables }>()
     .get(
         '/slots',
         describeRoute({
-            description: 'Get available time slots for delivery or pickup',
+            description:
+                'Get time slots for delivery or pickup, with optional closed and archived slots',
             security: publicSecurity,
             tags: ['Delivery'],
         }),
         zValidator('query', slotsQuerySchema),
         async (context) => {
-            const { type, from, to, locationId } = context.req.valid('query');
+            const {
+                type,
+                from,
+                to,
+                locationId,
+                includeClosed,
+                includeArchived,
+            } = context.req.valid('query');
 
             // Default to next 14 days if no date range provided
             const fromDate = from ? new Date(from) : new Date();
             const toDate = to
                 ? new Date(to)
                 : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+            const statuses: TimeSlotStatus[] = [TimeSlotStatuses.SCHEDULED];
+
+            if (includeClosed) {
+                statuses.push(TimeSlotStatuses.CLOSED);
+            }
+
+            if (includeArchived) {
+                statuses.push(TimeSlotStatuses.ARCHIVED);
+            }
 
             const slots = await getTimeSlots({
                 type,
                 locationId,
                 fromDate,
                 toDate,
-                status: 'scheduled', // Only return bookable slots
+                status: statuses,
             });
-            return context.json(slots);
+            return context.json(
+                slots.map((slot) => ({
+                    ...slot,
+                    effectiveClosesAt: getTimeSlotEffectiveClosesAt(slot),
+                })),
+            );
         },
     )
     // GET /requests - list user's delivery requests
@@ -224,7 +316,57 @@ const app = new Hono<{ Variables: AuthVariables }>()
         async (context) => {
             const { accountId } = context.get('authContext');
             const requests = await getDeliveryRequestsWithEvents(accountId);
-            return context.json(requests);
+            return context.json(
+                requests.flatMap((request) => {
+                    const customerRequest = customerDeliveryRequest(request);
+                    return customerRequest ? [customerRequest] : [];
+                }),
+            );
+        },
+    )
+    // POST /requests - create delivery request
+    .post(
+        '/requests',
+        describeRoute({
+            description: 'Create a new delivery request',
+            security: authSecurity,
+            tags: ['Delivery'],
+        }),
+        authValidator(['user', 'admin']),
+        zValidator('json', createRequestSchema),
+        async (context) => {
+            const { accountId } = context.get('authContext');
+            const data = context.req.valid('json');
+
+            try {
+                const requestId = await createDeliveryRequest({
+                    ...data,
+                    accountId,
+                });
+
+                void createDeliveryRequestCalendarEvent(requestId);
+
+                return context.json({ id: requestId }, 201);
+            } catch (error) {
+                console.error('Failed to create delivery request:', error);
+                const errorMessage =
+                    error instanceof Error ? error.message : 'Unknown error';
+
+                if (errorMessage.endsWith('or access denied')) {
+                    return context.json(
+                        { error: 'Delivery resource not found' },
+                        404,
+                    );
+                }
+
+                return context.json(
+                    {
+                        error: 'Failed to create delivery request',
+                        details: errorMessage,
+                    },
+                    500,
+                );
+            }
         },
     )
     // PATCH /requests/:id/cancel - cancel delivery request
@@ -239,31 +381,19 @@ const app = new Hono<{ Variables: AuthVariables }>()
         zValidator('param', z.object({ id: z.string().uuid() })),
         zValidator('json', cancelRequestSchema),
         async (context) => {
-            const { accountId } = context.get('authContext');
+            const { accountId, userId } = context.get('authContext');
             const { id } = context.req.valid('param');
             const { cancelReason, note } = context.req.valid('json');
 
             try {
                 // TODO: Move to service
                 // TODO: Add email notification for delivery cancellation
-                await cancelDeliveryRequest(
-                    id,
-                    'user',
+                await cancelDeliveryRequestForCurrentAccount({
+                    requestId: id,
+                    accountId,
+                    actorUserId: userId,
                     cancelReason,
                     note,
-                    accountId,
-                );
-                await notifyDeliveryRequestEvent(id, 'cancelled', {
-                    reason: cancelReason,
-                    note,
-                });
-                (await getPostHogClient()).capture({
-                    distinctId: accountId,
-                    event: 'delivery_request_cancelled',
-                    properties: {
-                        request_id: id,
-                        cancel_reason: cancelReason,
-                    },
                 });
                 return context.json({ success: true });
             } catch (error) {
@@ -274,8 +404,18 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 // Handle specific error cases
                 if (errorMessage.includes('cutoff time has passed')) {
                     return context.json(
-                        { error: 'CUTOFF_EXPIRED', message: errorMessage },
+                        {
+                            error: 'CUTOFF_EXPIRED',
+                            message: errorMessage,
+                        },
                         400,
+                    );
+                }
+
+                if (errorMessage === 'Delivery request not found') {
+                    return context.json(
+                        { error: 'Delivery request not found' },
+                        404,
                     );
                 }
 

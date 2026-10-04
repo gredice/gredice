@@ -1,23 +1,26 @@
 import type { PlantData } from '@gredice/client';
 import { calculatePlantsPerField, FIELD_SIZE_LABEL } from '@gredice/js/plants';
-import { PlantGridIcon } from '@gredice/ui/GridIcons';
 import {
-    ArrowDownToLine,
-    Ruler,
-    Sprout,
-    Thermometer,
-    Timer,
-} from '@signalco/ui-icons';
+    GameRulerIcon,
+    GameSeedlingIcon,
+    GameSowingDepthIcon,
+    GameThermometerIcon,
+    GameTimerIcon,
+} from '@gredice/ui/GameIcons';
+import { PlantGridIcon } from '@gredice/ui/GridIcons';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
 import { KnownPages } from '../../../src/KnownPages';
 
 export function SowingAttributeCards({
     attributes,
+    plantName,
 }: {
     attributes: PlantData['attributes'] | undefined;
+    plantName: string;
 }) {
     const { totalPlants } = calculatePlantsPerField(
         attributes?.seedingDistance,
+        plantName,
     );
     const formatDayRange = (
         min?: number | null,
@@ -47,7 +50,7 @@ export function SowingAttributeCards({
                 navigateLabel="Više o gredicama"
             />
             <AttributeCard
-                icon={<Ruler />}
+                icon={<GameRulerIcon aria-hidden />}
                 header="Razmak sijanja/sadnje"
                 value={`${
                     attributes?.seedingDistance != null
@@ -56,7 +59,7 @@ export function SowingAttributeCards({
                 } cm`}
             />
             <AttributeCard
-                icon={<ArrowDownToLine />}
+                icon={<GameSowingDepthIcon aria-hidden />}
                 header="Dubina sijanja"
                 value={`${
                     attributes?.seedingDepth != null
@@ -65,17 +68,17 @@ export function SowingAttributeCards({
                 } cm`}
             />
             <AttributeCard
-                icon={<Sprout />}
+                icon={<GameSeedlingIcon aria-hidden />}
                 header="Klijanje"
                 value={attributes?.germinationType ?? '-'}
             />
             <AttributeCard
-                icon={<Thermometer />}
+                icon={<GameThermometerIcon aria-hidden />}
                 header="Temperatura klijanja"
                 value={`${attributes?.gernimationTemperature ?? '-'}°C`}
             />
             <AttributeCard
-                icon={<Timer />}
+                icon={<GameTimerIcon aria-hidden />}
                 header="Vrijeme klijanja"
                 value={formatDayRange(
                     attributes?.germinationWindowMin,

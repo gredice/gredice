@@ -1,6 +1,6 @@
 'use client';
 
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
+import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
 import { usePathname } from 'next/navigation';
 import { KnownPages } from '../../../src/KnownPages';
 import {

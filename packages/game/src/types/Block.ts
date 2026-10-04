@@ -3,4 +3,5 @@ export type Block = {
     name: string;
     rotation: number;
     variant?: number | null;
+    message?: string | null;
 };

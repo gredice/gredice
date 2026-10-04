@@ -1,38 +1,54 @@
 import { getGarden } from '@gredice/storage';
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
-import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
+import { Card, CardOverflow } from '@gredice/ui/Card';
+import { Chip } from '@gredice/ui/Chip';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import {
+    EntityDetailsPanelCard,
+    EntityDetailsPropertiesLayout,
+    EntityDetailsPropertiesPanel,
+    EntityDetailsPropertiesProvider,
+    EntityDetailsPropertiesToggle,
+    EntityDetailsPropertyList,
+    type EntityDetailsPropertyListItem,
+} from '../../../../components/admin/details';
 import { AdminPageHeader } from '../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { AdminPageTitle } from '../../../../components/admin/navigation/AdminPageTitle';
-import { Field } from '../../../../components/shared/fields/Field';
-import { FieldSet } from '../../../../components/shared/fields/FieldSet';
 import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
 import { RaisedBedsTableCard } from '../../accounts/[accountId]/RaisedBedsTableCard';
+import { AdminGardenVisibilityToggle } from './AdminGardenVisibilityToggle';
 
 export const dynamic = 'force-dynamic';
 
 function GardenPreviewCard({
-    gardenId,
     gardenName,
+    previewImageUrl,
 }: {
-    gardenId: number;
     gardenName: string;
+    previewImageUrl?: string | null;
 }) {
     return (
         <Card className="overflow-hidden">
             <CardOverflow>
-                <Image
-                    src={`https://vrt.gredice.com/vrtovi/${gardenId}/opengraph-image?fullscreen=true`}
-                    alt={gardenName}
-                    layout="responsive"
-                    width={1200}
-                    height={630}
-                />
+                {previewImageUrl ? (
+                    <Image
+                        src={previewImageUrl}
+                        alt={`Prikaz vrta ${gardenName}`}
+                        width={1200}
+                        height={630}
+                        className="h-auto w-full"
+                    />
+                ) : (
+                    <div className="grid aspect-[1200/630] place-items-center bg-muted px-6 text-center text-muted-foreground text-sm">
+                        Pregled vrta još nije generiran.
+                    </div>
+                )}
             </CardOverflow>
         </Card>
     );
@@ -50,67 +66,102 @@ export default async function GardenPage({
     if (!garden) {
         notFound();
     }
+    const publicGardenUrl = KnownPages.GredicePublicGarden(garden.id);
+    const propertyItems: EntityDetailsPropertyListItem[] = [
+        { id: 'id', label: 'ID vrta', value: garden.id, mono: true },
+        { id: 'name', label: 'Naziv', value: garden.name },
+        {
+            id: 'public',
+            label: 'Javan',
+            value: garden.isPublic ? 'Da' : 'Ne',
+        },
+        {
+            id: 'account',
+            label: 'Račun',
+            value: garden.accountId ? (
+                <Link href={KnownPages.Account(garden.accountId)}>
+                    {garden.accountId}
+                </Link>
+            ) : (
+                '-'
+            ),
+            mono: true,
+        },
+        { id: 'deleted', label: 'Obrisan', value: garden.isDeleted },
+        {
+            id: 'created-at',
+            label: 'Datum kreiranja',
+            value: garden.createdAt,
+        },
+        {
+            id: 'updated-at',
+            label: 'Datum ažuriranja',
+            value: garden.updatedAt,
+        },
+    ];
+    const propertiesPanel = (
+        <EntityDetailsPropertiesPanel>
+            <EntityDetailsPanelCard title="Detalji">
+                <EntityDetailsPropertyList items={propertyItems} />
+            </EntityDetailsPanelCard>
+            <EntityDetailsPanelCard
+                title="Vidljivost"
+                action={
+                    garden.isPublic ? (
+                        <Chip color="success" size="sm" variant="soft">
+                            Public
+                        </Chip>
+                    ) : (
+                        <Chip color="neutral" size="sm" variant="soft">
+                            Private
+                        </Chip>
+                    )
+                }
+            >
+                <AdminGardenVisibilityToggle
+                    gardenId={garden.id}
+                    isPublic={garden.isPublic}
+                    publicUrl={publicGardenUrl}
+                />
+            </EntityDetailsPanelCard>
+        </EntityDetailsPropertiesPanel>
+    );
 
     return (
-        <Stack spacing={4}>
-            <AdminPageTitle title={garden.name} />
-            <AdminPageHeader
-                breadcrumbs={
-                    <Breadcrumbs
-                        items={[
-                            {
-                                label: <AdminBreadcrumbLevelSelector />,
-                                href: KnownPages.Gardens,
-                            },
-                            { label: garden?.name },
-                        ]}
-                    />
-                }
-                heading={garden.name}
-            />
-            <Stack spacing={2}>
-                <Stack spacing={2}>
-                    <FieldSet>
-                        <Field name="ID vrta" value={garden?.id} mono />
-                        <Field name="Naziv" value={garden?.name} />
-                        <Field
-                            name="Račun"
-                            value={
-                                <Link
-                                    href={
-                                        garden?.accountId
-                                            ? KnownPages.Account(
-                                                  garden.accountId,
-                                              )
-                                            : '#'
-                                    }
-                                >
-                                    {garden?.accountId}
-                                </Link>
-                            }
-                            mono
+        <EntityDetailsPropertiesProvider>
+            <Stack spacing={8}>
+                <AdminPageTitle title={garden.name} />
+                <AdminPageHeader
+                    breadcrumbs={
+                        <Breadcrumbs
+                            items={[
+                                {
+                                    label: <AdminBreadcrumbLevelSelector />,
+                                    href: KnownPages.Gardens,
+                                },
+                                { label: garden?.name },
+                            ]}
                         />
-                        <Field name="Obrisan" value={garden?.isDeleted} />
-                    </FieldSet>
-                    <FieldSet>
-                        <Field
-                            name="Datum kreiranja"
-                            value={garden?.createdAt}
-                        />
-                        <Field
-                            name="Datum ažuriranja"
-                            value={garden?.updatedAt}
-                        />
-                    </FieldSet>
-                </Stack>
-            </Stack>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <GardenPreviewCard
-                    gardenId={gardenId}
-                    gardenName={garden.name}
+                    }
+                    actions={
+                        <Row className="items-center" spacing={2}>
+                            <EntityDetailsPropertiesToggle />
+                        </Row>
+                    }
+                    heading={garden.name}
                 />
-            </div>
-            <RaisedBedsTableCard gardenId={gardenId} />
-        </Stack>
+                <EntityDetailsPropertiesLayout properties={propertiesPanel}>
+                    <Stack spacing={8}>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            <GardenPreviewCard
+                                gardenName={garden.name}
+                                previewImageUrl={garden.previewImage?.url}
+                            />
+                        </div>
+                        <RaisedBedsTableCard gardenId={gardenId} />
+                    </Stack>
+                </EntityDetailsPropertiesLayout>
+            </Stack>
+        </EntityDetailsPropertiesProvider>
     );
 }

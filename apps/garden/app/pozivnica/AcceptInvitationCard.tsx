@@ -1,11 +1,11 @@
 'use client';
 
 import { clientAuthenticated } from '@gredice/client';
-import { SignedIn, SignedOut } from '@signalco/auth-client/components';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Card } from '@signalco/ui-primitives/Card';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { SignedIn, SignedOut } from '@gredice/ui/auth';
+import { Button } from '@gredice/ui/Button';
+import { Card } from '@gredice/ui/Card';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
@@ -63,7 +63,7 @@ export function AcceptInvitationCard() {
 
     return (
         <Card className="max-w-md mx-auto mt-10 p-6 text-center bg-background">
-            <Stack spacing={4} alignItems="center">
+            <Stack spacing={8} alignItems="center">
                 <Typography level="h5" semiBold>
                     Pozivnica za pridruživanje
                 </Typography>

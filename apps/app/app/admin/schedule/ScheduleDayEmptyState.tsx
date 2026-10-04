@@ -1,4 +1,4 @@
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Typography } from '@gredice/ui/Typography';
 import { getScheduleDayData } from './scheduleData';
 
 interface ScheduleDayEmptyStateProps {
@@ -10,11 +10,16 @@ export async function ScheduleDayEmptyState({
     isToday,
     date,
 }: ScheduleDayEmptyStateProps) {
-    const { scheduledFields, scheduledOperations, todaysDeliveryRequests } =
-        await getScheduleDayData(date.toISOString(), isToday);
+    const {
+        scheduledFields,
+        scheduledOperations,
+        scheduledSelectedPlantings,
+        todaysDeliveryRequests,
+    } = await getScheduleDayData(date, isToday);
 
     if (
         scheduledFields.length +
+            scheduledSelectedPlantings.length +
             scheduledOperations.length +
             todaysDeliveryRequests.length >
         0

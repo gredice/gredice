@@ -1,18 +1,20 @@
-import { Container } from '@signalco/ui-primitives/Container';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
-import type { Metadata } from 'next';
-import { PageHeader } from '../../components/shared/PageHeader';
+import { Container } from '@gredice/ui/Container';
+import { PageHeader } from '@gredice/ui/PageHeader';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
+import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
     title: 'Legalno',
-    description: 'Pravni dokumenti i informacije',
-};
+    description: 'Pravni dokumenti i informacije.',
+    path: '/legalno',
+    eyebrow: 'Pravne informacije',
+});
 
 export default function LegalnoPage() {
     return (
         <Container maxWidth="sm">
-            <Stack className="pb-24" spacing={1}>
+            <Stack className="pb-24" spacing={2}>
                 <PageHeader padded header="Legalno" />
                 <Typography>
                     Ovdje se nalaze svi dokumenti koji ti mogu biti korisni.

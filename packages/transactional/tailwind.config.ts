@@ -1,4 +1,4 @@
-import { config } from '@signalco/ui-themes-minimal/config';
+import { grediceThemePreset } from '@gredice/ui/theme';
 import type { Config } from 'tailwindcss';
 
 const tailwindConfig: Config = {
@@ -6,6 +6,6 @@ const tailwindConfig: Config = {
         './emails/**/*.{js,ts,jsx,tsx,mdx}',
         './components/**/*.{js,ts,jsx,tsx,mdx}',
     ],
-    presets: [config],
+    presets: [grediceThemePreset],
 };
 export default tailwindConfig;

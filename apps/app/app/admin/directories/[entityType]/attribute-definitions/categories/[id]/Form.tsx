@@ -1,7 +1,7 @@
 'use client';
 
 import type { getAttributeDefinitionCategories } from '@gredice/storage';
-import { Input } from '@signalco/ui-primitives/Input';
+import { Input } from '@gredice/ui/Input';
 import { type ChangeEvent, useState } from 'react';
 import { upsertAttributeDefinitionCategory } from '../../../../../../(actions)/definitionActions';
 

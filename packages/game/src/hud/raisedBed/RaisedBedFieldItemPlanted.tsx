@@ -1,55 +1,129 @@
-import { PlantOrSortImage } from '@gredice/ui/plants';
-import { SegmentedCircularProgress } from '@gredice/ui/SegmentedCircularProgress';
 import {
-    Book,
+    plantFieldStatusLabel,
+    userAllowedPlantStatusTransitions,
+} from '@gredice/js/plants';
+import {
+    GamePlantStatusIcon,
+    GameHistoryIcon as History,
+    GameSeedlingIcon as Sprout,
+} from '@gredice/ui/GameIcons';
+import {
     Check,
     ExternalLink,
-    Hammer,
-    Sprout,
+    Home,
+    MoreHorizontal,
     Warning,
-} from '@signalco/ui-icons';
-import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
-import { Link } from '@signalco/ui-primitives/Link';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import {
-    Tabs,
-    TabsContent,
-    TabsList,
-    TabsTrigger,
-} from '@signalco/ui-primitives/Tabs';
-import { Typography } from '@signalco/ui-primitives/Typography';
-import { useState } from 'react';
+} from '@gredice/ui/icons';
+import { Link } from '@gredice/ui/Link';
+import { PlantOrSortImage } from '@gredice/ui/plants';
+import { Row } from '@gredice/ui/Row';
+import { ScrollArea } from '@gredice/ui/ScrollArea';
+import { SegmentedCircularProgress } from '@gredice/ui/SegmentedCircularProgress';
+import { Stack } from '@gredice/ui/Stack';
+import { Tabs, TabsContent } from '@gredice/ui/Tabs';
+import { Typography } from '@gredice/ui/Typography';
+import { type ReactElement, useEffect, useState } from 'react';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { usePlantSort } from '../../hooks/usePlantSorts';
 import { KnownPages } from '../../knownPages';
-import { findRaisedBedOccupiedField } from '../../utils/raisedBedFields';
-import { RaisedBedFieldDiary } from './RaisedBedDiary';
+import { GameModal } from '../../shared-ui/game-modal';
+import type { RaisedBedFieldTabValue } from '../../useUrlState';
+import {
+    findRaisedBedFieldWithPlant,
+    findRaisedBedOccupiedField,
+    getRaisedBedFieldActivePlantIdentity,
+    type RaisedBedFieldPlantHistoryEntry,
+} from '../../utils/raisedBedFields';
+import { SuncokretChatTrigger } from '../SuncokretChatTrigger';
+import { suncokretContextConversationLabel } from '../suncokretChatContext';
+import type { AdvancedSowingGardenPlantingVisual } from './advancedSowingGardenVisuals';
+import { GreenhouseSeedlingPlantVisual } from './GreenhouseSeedlingPlantVisual';
+import { GreenhouseSeedlingProgress } from './GreenhouseSeedlingProgress';
+import { GreenhouseSeedlingTransplantAction } from './GreenhouseSeedlingTransplantAction';
+import {
+    isGreenhouseSeedlingField,
+    useGreenhouseSeedlingProgressData,
+} from './greenhouseSeedlings';
+import { RaisedBedAdvancedSowingPlantingDetails } from './RaisedBedAdvancedSowingPlantingDetails';
+import { RaisedBedDetailsTabsList } from './RaisedBedDetailsTabsList';
+import { RaisedBedFieldIconStack } from './RaisedBedFieldIconStack';
 import { RaisedBedFieldItemButton } from './RaisedBedFieldItemButton';
 import {
     RaisedBedFieldLifecycleTab,
     useRaisedBedFieldLifecycleData,
 } from './RaisedBedFieldLifecycleTab';
 import { RaisedBedFieldOperationsTab } from './RaisedBedFieldOperationsTab';
-
-type RaisedBedFieldTabValue = 'lifecycle' | 'diary' | 'operations';
+import { RaisedBedFieldPlantHistoryModal } from './RaisedBedFieldPlantHistoryModal';
+import { RaisedBedFieldStatusChange } from './RaisedBedFieldStatusChange';
+import { RaisedBedOperationHistoryList } from './RaisedBedOperationHistoryList';
+import { RaisedBedPhotosModal } from './RaisedBedPhotosModal';
+import {
+    type RaisedBedPlantTab,
+    RaisedBedPlantTabsList,
+} from './RaisedBedPlantTabsList';
+import { RecommendationsCard } from './RecommendationsCard';
+import {
+    parseScheduledSowingDateValue,
+    ScheduledSowingDateBadge,
+} from './ScheduledSowingDateBadge';
+import { SelectedPlantingDiary } from './SelectedPlantingDiary';
+import { SelectedPlantingOperations } from './SelectedPlantingOperations';
+import { selectedPlantingField } from './selectedPlantingField';
 
 export function RaisedBedFieldItemPlanted({
     raisedBedId,
     positionIndex,
+    fieldOverride: providedFieldOverride,
+    selectedPlanting,
+    interactionDisabled = false,
+    onOpenChange,
+    open: openProp,
+    requestedTab,
+    plantHistory = [],
+    plantTabs,
+    isHistorical = false,
+    triggerOverride,
+    triggerVariant = 'field',
 }: {
     raisedBedId: number;
     positionIndex: number;
+    fieldOverride?: RaisedBedFieldPlantHistoryEntry;
+    selectedPlanting?: AdvancedSowingGardenPlantingVisual;
+    interactionDisabled?: boolean;
+    onOpenChange?: (open: boolean) => void;
+    open?: boolean;
+    requestedTab?: RaisedBedFieldTabValue;
+    plantHistory?: RaisedBedFieldPlantHistoryEntry[];
+    plantTabs?: {
+        items: readonly RaisedBedPlantTab[];
+        onValueChange: (value: string) => void;
+        value: string;
+    };
+    isHistorical?: boolean;
+    triggerOverride?: ReactElement | null;
+    triggerVariant?: 'field' | 'avatar';
 }) {
     const { data: garden, isLoading: isGardenLoading } = useCurrentGarden();
     const { track } = useGameAnalytics();
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
-    const field = findRaisedBedOccupiedField(raisedBed?.fields, positionIndex);
+    const fieldOverride = selectedPlanting
+        ? selectedPlantingField(selectedPlanting, positionIndex)
+        : providedFieldOverride;
+    const field =
+        fieldOverride ??
+        (isHistorical
+            ? findRaisedBedFieldWithPlant(raisedBed?.fields, positionIndex)
+            : findRaisedBedOccupiedField(raisedBed?.fields, positionIndex));
     const plantSortId = field?.plantSortId;
     const { data: plantSort, isLoading: isPlantSortLoading } =
         usePlantSort(plantSortId);
+    const lifecycleData = useRaisedBedFieldLifecycleData(
+        raisedBedId,
+        positionIndex,
+        isHistorical,
+        fieldOverride,
+    );
     const {
         germinationValue,
         germinationPercentage,
@@ -57,11 +131,30 @@ export function RaisedBedFieldItemPlanted({
         growthPercentage,
         harvestValue,
         harvestPercentage,
-    } = useRaisedBedFieldLifecycleData(raisedBedId, positionIndex);
+    } = lifecycleData;
+    const plantAttributes = plantSort?.information.plant.attributes;
+    const greenhouseSeedlingLifecycleData = useGreenhouseSeedlingProgressData(
+        field,
+        plantAttributes,
+    );
+    const isGreenhouseSeedling =
+        !isHistorical && isGreenhouseSeedlingField(field);
     const isHarvested = field?.plantHarvestedDate;
-    const [open, setOpen] = useState(false);
+    const [internalOpen, setInternalOpen] = useState(false);
     const [activeTab, setActiveTab] =
         useState<RaisedBedFieldTabValue>('lifecycle');
+    const chatUiContext = {
+        surface: 'plant-details' as const,
+        tab: activeTab,
+    };
+    const isOpenControlled = openProp !== undefined;
+    const open = openProp ?? internalOpen;
+
+    useEffect(() => {
+        if (open && requestedTab) {
+            setActiveTab(requestedTab);
+        }
+    }, [open, requestedTab]);
 
     if (!raisedBed) {
         return null;
@@ -78,6 +171,14 @@ export function RaisedBedFieldItemPlanted({
     const isLoading =
         isGardenLoading || (Boolean(plantSortId) && isPlantSortLoading);
     if (isLoading) {
+        if (triggerOverride !== undefined) {
+            return triggerOverride;
+        }
+
+        if (triggerVariant === 'avatar') {
+            return null;
+        }
+
         return (
             <RaisedBedFieldItemButton
                 isLoading={true}
@@ -88,6 +189,14 @@ export function RaisedBedFieldItemPlanted({
 
     // Error state (plant sort unknown)
     if (!plantSort) {
+        if (triggerOverride !== undefined) {
+            return triggerOverride;
+        }
+
+        if (triggerVariant === 'avatar') {
+            return null;
+        }
+
         return (
             <RaisedBedFieldItemButton positionIndex={positionIndex}>
                 <Warning className="size-10" />
@@ -137,158 +246,533 @@ export function RaisedBedFieldItemPlanted({
             plantSort.information.name,
         plantSort.information.name,
     );
+    const title = `${isHistorical ? 'Prethodna biljka' : 'Biljka'} "${plantSort.information.name}"`;
+    const modalTitle = isGreenhouseSeedling
+        ? `Sadnica u stakleniku "${plantSort.information.name}"`
+        : title;
+    const openPlantDetails = () => {
+        track('game_planted_item_opened', {
+            active_tab: activeTab,
+            is_historical: isHistorical,
+            plant_sort_id: plantSort.id,
+            position_index: positionIndex,
+            raised_bed_id: raisedBedId,
+        });
+        if (!isOpenControlled) {
+            setInternalOpen(true);
+        }
+        onOpenChange?.(true);
+    };
+    const fieldBadge = isHistorical
+        ? {
+              className: 'bg-muted',
+              icon: <History className="size-4 text-muted-foreground" />,
+          }
+        : isGreenhouseSeedling
+          ? {
+                className: 'bg-emerald-600',
+                icon: <Home className="size-4 text-white" />,
+            }
+          : harvestValue && !isHarvested
+            ? {
+                  className: 'bg-blue-600',
+                  icon: <Sprout className="size-4 text-white" />,
+              }
+            : isHarvested
+              ? {
+                    className: 'bg-green-600',
+                    icon: <Check className="size-4 text-white" />,
+                }
+              : null;
+    const scheduledSowingDate = parseScheduledSowingDateValue(
+        field.plantScheduledDate,
+    );
+    const shouldShowScheduledSowingDate =
+        triggerVariant === 'field' &&
+        Boolean(scheduledSowingDate) &&
+        !field.plantSowDate;
+    const visiblePlantHistory =
+        triggerVariant === 'field' ? plantHistory.slice(-2) : [];
+    const shouldShowAllPlantHistory =
+        triggerVariant === 'field' && plantHistory.length > 2;
+    const shouldShowIndicatorStack =
+        triggerVariant === 'field' &&
+        (Boolean(fieldBadge) || plantHistory.length > 0);
+    const greenhouseRecommendationStatus =
+        isGreenhouseSeedling &&
+        (field.plantStatus === 'pendingVerification' ||
+            field.plantStatus === 'sowed' ||
+            field.plantStatus === 'sprouted')
+            ? field.plantStatus
+            : undefined;
+    const localizedStatus = plantFieldStatusLabel(
+        field.plantStatus ?? undefined,
+    );
+    const currentPlantIdentity = selectedPlanting
+        ? undefined
+        : getRaisedBedFieldActivePlantIdentity(field);
+    const canChangeStatus = Boolean(
+        currentPlantIdentity &&
+            field.plantStatus &&
+            userAllowedPlantStatusTransitions[field.plantStatus]?.length,
+    );
+    const statusContent = (
+        <>
+            <GamePlantStatusIcon
+                status={field.plantStatus ?? undefined}
+                className="size-7 shrink-0"
+                aria-hidden="true"
+            />
+            <Typography level="body1" className="text-center" semiBold>
+                {localizedStatus.shortLabel}
+            </Typography>
+        </>
+    );
+    const statusTrigger =
+        field.active && currentPlantIdentity ? (
+            <button
+                type="button"
+                className="border bg-card rounded-full shrink-0 size-[100px] aspect-square shadow flex flex-col gap-1 items-center justify-center pointer-events-auto transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700 focus-visible:ring-offset-2"
+                aria-label={
+                    canChangeStatus
+                        ? `Promijeni stanje biljke: ${localizedStatus.shortLabel}`
+                        : `Stanje biljke: ${localizedStatus.shortLabel}`
+                }
+            >
+                {statusContent}
+            </button>
+        ) : (
+            <Stack
+                alignItems="center"
+                className="border bg-card rounded-full shrink-0 size-[100px] aspect-square shadow flex items-center justify-center"
+            >
+                {statusContent}
+            </Stack>
+        );
+    const avatarTrigger = (
+        <button
+            type="button"
+            className="inline-flex size-8 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-white p-0.5 hover:bg-gray-100 shadow-lg ring-1 ring-black/10 transition-transform hover:scale-105 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700"
+            title={`Povijest biljke: ${plantSort.information.name}`}
+            aria-label={`Povijest biljke ${plantSort.information.name}`}
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => event.stopPropagation()}
+        >
+            <PlantOrSortImage
+                plantSort={plantSort}
+                width={26}
+                height={26}
+                className="size-full rounded-full object-cover"
+            />
+        </button>
+    );
+    const greenhouseSeedlingSegments = [
+        {
+            value: greenhouseSeedlingLifecycleData.germinationValue,
+            percentage: greenhouseSeedlingLifecycleData.germinationPercentage,
+            color: 'stroke-yellow-500',
+            trackColor: 'stroke-yellow-50 dark:stroke-yellow-50/80',
+            pulse: !field.plantGrowthDate,
+            borderColor: 'stroke-yellow-500',
+        },
+        {
+            value: greenhouseSeedlingLifecycleData.seedlingValue,
+            percentage: greenhouseSeedlingLifecycleData.seedlingPercentage,
+            color: 'stroke-emerald-500',
+            trackColor: 'stroke-emerald-50 dark:stroke-emerald-50/80',
+            pulse:
+                Boolean(field.plantGrowthDate) &&
+                greenhouseSeedlingLifecycleData.seedlingValue < 100,
+            borderColor: 'stroke-emerald-500',
+        },
+    ];
+    const fieldTrigger = (
+        <RaisedBedFieldItemButton
+            positionIndex={positionIndex}
+            disabled={interactionDisabled}
+            className={
+                interactionDisabled
+                    ? 'pointer-events-none'
+                    : 'pointer-events-auto'
+            }
+            aria-label={
+                selectedPlanting
+                    ? `Otvori detalje biljke ${plantSort.information.name} na polju ${positionIndex + 1}`
+                    : undefined
+            }
+            data-advanced-sowing-details-trigger={
+                selectedPlanting ? `advanced:${selectedPlanting.id}` : undefined
+            }
+            data-advanced-sowing-field-plant={
+                selectedPlanting ? `advanced:${selectedPlanting.id}` : undefined
+            }
+            data-advanced-sowing-field-segment={
+                selectedPlanting ? `advanced:${selectedPlanting.id}` : undefined
+            }
+        >
+            <SegmentedCircularProgress
+                size={70}
+                strokeWidth={4}
+                segments={
+                    isGreenhouseSeedling ? greenhouseSeedlingSegments : segments
+                }
+            >
+                {isGreenhouseSeedling ? (
+                    <GreenhouseSeedlingPlantVisual
+                        plantSort={plantSort}
+                        imageSize={52}
+                    />
+                ) : (
+                    <PlantOrSortImage
+                        plantSort={plantSort}
+                        className="absolute top-1/2 start-1/2 transform -translate-y-1/2 -translate-x-1/2"
+                        width={52}
+                        height={52}
+                    />
+                )}
+            </SegmentedCircularProgress>
+            {shouldShowScheduledSowingDate && scheduledSowingDate && (
+                <ScheduledSowingDateBadge date={scheduledSowingDate} />
+            )}
+        </RaisedBedFieldItemButton>
+    );
+    const indicatorStack = shouldShowIndicatorStack ? (
+        <RaisedBedFieldIconStack>
+            {shouldShowAllPlantHistory && (
+                <RaisedBedFieldPlantHistoryModal
+                    entries={plantHistory}
+                    raisedBedId={raisedBedId}
+                    trigger={
+                        <button
+                            type="button"
+                            className="inline-flex size-8 items-center justify-center rounded-full border-2 border-white bg-white p-0 shadow-lg ring-1 ring-black/10 transition-transform hover:scale-105 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700"
+                            title={`Povijest biljaka (${plantHistory.length})`}
+                            aria-label={`Prikaži povijest biljaka za polje ${positionIndex + 1}`}
+                            onPointerDown={(event) => event.stopPropagation()}
+                            onClick={(event) => event.stopPropagation()}
+                            onKeyDown={(event) => event.stopPropagation()}
+                        >
+                            <MoreHorizontal className="size-5" />
+                        </button>
+                    }
+                />
+            )}
+            {visiblePlantHistory.map((historyEntry) => (
+                <RaisedBedFieldItemPlanted
+                    key={
+                        historyEntry.plantPlaceEventId ??
+                        `${historyEntry.positionIndex}-${historyEntry.plantSortId}`
+                    }
+                    fieldOverride={historyEntry}
+                    isHistorical
+                    positionIndex={positionIndex}
+                    raisedBedId={raisedBedId}
+                    triggerVariant="avatar"
+                />
+            ))}
+            {fieldBadge && (
+                <button
+                    type="button"
+                    className={`inline-flex size-8 items-center justify-center p-1 ${fieldBadge.className} pointer-events-auto rounded-full border-2 border-white shadow-lg ring-1 ring-black/10 transition-transform hover:scale-105 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700`}
+                    title={modalTitle}
+                    aria-label={modalTitle}
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onKeyDown={(event) => event.stopPropagation()}
+                    onClick={(event) => {
+                        event.stopPropagation();
+                        openPlantDetails();
+                    }}
+                >
+                    {fieldBadge.icon}
+                </button>
+            )}
+        </RaisedBedFieldIconStack>
+    ) : null;
+    const defaultTrigger =
+        triggerVariant === 'avatar' ? avatarTrigger : fieldTrigger;
+    const trigger =
+        triggerOverride === undefined ? defaultTrigger : triggerOverride;
+    const wrapWithPlantTabs = (content: ReactElement) =>
+        plantTabs ? (
+            <Tabs
+                className="flex flex-col"
+                onValueChange={plantTabs.onValueChange}
+                value={plantTabs.value}
+            >
+                <RaisedBedPlantTabsList tabs={plantTabs.items} />
+                <TabsContent
+                    className="mt-4"
+                    forceMount
+                    value={plantTabs.value}
+                >
+                    {content}
+                </TabsContent>
+            </Tabs>
+        ) : (
+            content
+        );
 
-    return (
-        <Modal
+    const modal = (
+        <GameModal
             open={open}
             onOpenChange={(nextOpen) => {
                 if (nextOpen) {
                     track('game_planted_item_opened', {
                         active_tab: activeTab,
+                        is_historical: isHistorical,
                         plant_sort_id: plantSort.id,
                         position_index: positionIndex,
                         raised_bed_id: raisedBedId,
                     });
                 }
-                setOpen(nextOpen);
+                if (!isOpenControlled) {
+                    setInternalOpen(nextOpen);
+                }
+                onOpenChange?.(nextOpen);
             }}
-            title={`Biljka "${plantSort.information.name}"`}
-            modal={false}
-            className="md:border-tertiary md:border-b-4 max-w-xl"
-            trigger={
-                <RaisedBedFieldItemButton positionIndex={positionIndex}>
-                    <SegmentedCircularProgress
-                        size={70}
-                        strokeWidth={4}
-                        segments={segments}
-                    >
-                        <PlantOrSortImage
-                            plantSort={plantSort}
-                            className="absolute top-1/2 start-1/2 transform -translate-y-1/2 -translate-x-1/2"
-                            width={52}
-                            height={52}
-                        />
-                        {harvestValue && !isHarvested && (
-                            <div className="absolute -top-1 -end-1">
-                                <span className="inline-flex items-center justify-center p-1 bg-blue-600 rounded-full border-2 border-white shadow-lg">
-                                    <Sprout className="size-4 text-white" />
-                                </span>
-                            </div>
-                        )}
-                        {isHarvested && (
-                            <div className="absolute -top-1 -end-1">
-                                <span className="inline-flex items-center justify-center p-1 bg-green-600 rounded-full border-2 border-white shadow-lg">
-                                    <Check className="size-4 text-white" />
-                                </span>
-                            </div>
-                        )}
-                    </SegmentedCircularProgress>
-                </RaisedBedFieldItemButton>
-            }
+            title={modalTitle}
+            className="max-w-xl overflow-x-hidden"
+            trigger={trigger ?? undefined}
         >
-            <Stack spacing={2}>
-                <Row spacing={2}>
-                    <PlantOrSortImage
-                        plantSort={plantSort}
-                        width={60}
-                        height={60}
-                    />
-                    <Row
-                        spacing={2}
-                        alignItems="center"
-                        justifyContent="space-between"
-                        className="w-full"
-                    >
-                        <Typography
-                            level="h4"
-                            className="truncate line-clamp-2"
-                            title={plantSort.information.name}
-                        >
-                            {plantSort.information.name}
-                        </Typography>
-                        <Link
-                            href={plantDetailsUrl}
-                            target="_blank"
-                            aria-label="Detalji o biljci"
-                            className="inline-flex mb-1 items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-muted-foreground/60 shrink-0"
-                            onClick={() =>
-                                track('game_field_plant_details_opened', {
-                                    plant_sort_id: plantSort.id,
-                                    position_index: positionIndex,
-                                    raised_bed_id: raisedBedId,
-                                })
-                            }
-                        >
-                            <ExternalLink className="size-4" />
-                            <span className="hidden sm:inline">Detalji</span>
-                        </Link>
-                    </Row>
-                </Row>
-                <Tabs
-                    value={activeTab}
-                    onValueChange={(value: string) => {
-                        track('game_raised_bed_tab_opened', {
-                            plant_sort_id: plantSort.id,
-                            position_index: positionIndex,
-                            raised_bed_id: raisedBedId,
-                            tab: value,
-                        });
-                        setActiveTab(value as RaisedBedFieldTabValue);
-                    }}
-                    className="flex flex-col"
-                >
-                    <TabsList className="border w-fit self-center">
-                        <TabsTrigger value="lifecycle">
-                            <Row spacing={1}>
-                                <Sprout className="size-4 shrink-0" />
-                                <Typography>Biljka</Typography>
-                            </Row>
-                        </TabsTrigger>
-                        <TabsTrigger value="diary">
-                            <Row spacing={1}>
-                                <Book className="size-4 shrink-0" />
-                                <Typography>Dnevnik</Typography>
-                            </Row>
-                        </TabsTrigger>
-                        <TabsTrigger value="operations">
-                            <Row spacing={1}>
-                                <Hammer className="size-4 shrink-0" />
-                                <Typography>Radnje</Typography>
-                            </Row>
-                        </TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="operations">
-                        {garden && (
-                            <RaisedBedFieldOperationsTab
-                                gardenId={garden.id}
-                                raisedBedId={raisedBedId}
-                                positionIndex={positionIndex}
-                                plantSortId={field.plantSortId}
+            {wrapWithPlantTabs(
+                <Stack spacing={4} className="min-w-0 max-w-full">
+                    <Row spacing={4} className="items-start pr-8">
+                        {isGreenhouseSeedling ? (
+                            <GreenhouseSeedlingPlantVisual
+                                plantSort={plantSort}
+                                imageSize={60}
+                            />
+                        ) : (
+                            <PlantOrSortImage
+                                plantSort={plantSort}
+                                width={60}
+                                height={60}
                             />
                         )}
-                    </TabsContent>
-                    <TabsContent value="diary">
-                        {garden && (
-                            <Card>
-                                <CardOverflow className="overflow-auto max-h-96">
-                                    <RaisedBedFieldDiary
-                                        gardenId={garden.id}
-                                        raisedBedId={raisedBed.id}
-                                        positionIndex={positionIndex}
-                                    />
-                                </CardOverflow>
-                            </Card>
+                        <Stack spacing={1} className="min-w-0 flex-1">
+                            <Typography
+                                level="h4"
+                                component="h1"
+                                className="truncate line-clamp-2"
+                                title={plantSort.information.name}
+                            >
+                                {plantSort.information.name}
+                            </Typography>
+                            <Link
+                                href={plantDetailsUrl}
+                                target="_blank"
+                                aria-label="Detalji o biljci"
+                                className="inline-flex mb-1 items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-muted-foreground/60 shrink-0"
+                                onClick={() =>
+                                    track('game_field_plant_details_opened', {
+                                        plant_sort_id: plantSort.id,
+                                        position_index: positionIndex,
+                                        raised_bed_id: raisedBedId,
+                                    })
+                                }
+                            >
+                                <ExternalLink className="size-4" />
+                                <span>Detalji</span>
+                            </Link>
+                        </Stack>
+                        {garden && !isHistorical && (
+                            <SuncokretChatTrigger
+                                title="Pitaj Suncokreta o ovoj kartici biljke"
+                                target={{
+                                    conversationLabel:
+                                        suncokretContextConversationLabel({
+                                            plantName:
+                                                plantSort.information.name,
+                                            raisedBedName: raisedBed.name,
+                                            uiContext: chatUiContext,
+                                        }),
+                                    gardenId: garden.id,
+                                    positionIndex,
+                                    raisedBedId,
+                                    uiContext: chatUiContext,
+                                }}
+                            />
                         )}
-                    </TabsContent>
-                    <TabsContent value="lifecycle">
-                        <RaisedBedFieldLifecycleTab
-                            raisedBedId={raisedBedId}
-                            positionIndex={positionIndex}
-                            onShowOperations={() => setActiveTab('operations')}
+                        {garden && !isHistorical && (
+                            <RaisedBedPhotosModal
+                                gardenId={garden.id}
+                                raisedBedId={raisedBedId}
+                                subjectName={plantSort.information.name}
+                                positionIndex={positionIndex}
+                            />
+                        )}
+                    </Row>
+                    <Tabs
+                        value={activeTab}
+                        onValueChange={(value: string) => {
+                            track('game_raised_bed_tab_opened', {
+                                plant_sort_id: plantSort.id,
+                                position_index: positionIndex,
+                                raised_bed_id: raisedBedId,
+                                tab: value,
+                            });
+                            setActiveTab(value as RaisedBedFieldTabValue);
+                        }}
+                        className="flex flex-col"
+                    >
+                        <RaisedBedDetailsTabsList
+                            view="plant"
+                            showOperations={!isHistorical}
                         />
-                    </TabsContent>
-                </Tabs>
-            </Stack>
-        </Modal>
+                        {!isHistorical && (
+                            <TabsContent value="operations">
+                                {garden && selectedPlanting ? (
+                                    <SelectedPlantingOperations
+                                        gardenId={garden.id}
+                                        raisedBedId={raisedBedId}
+                                        planting={selectedPlanting}
+                                    />
+                                ) : garden ? (
+                                    <RaisedBedFieldOperationsTab
+                                        gardenId={garden.id}
+                                        raisedBedId={raisedBedId}
+                                        positionIndex={positionIndex}
+                                        plantSortId={field.plantSortId}
+                                    />
+                                ) : null}
+                            </TabsContent>
+                        )}
+                        <TabsContent value="diary">
+                            {garden && (
+                                <ScrollArea
+                                    className="-mx-4 md:-mx-6"
+                                    viewportClassName="max-h-96"
+                                    contentClassName="pl-4 pr-2 md:pl-6 md:pr-2"
+                                >
+                                    {selectedPlanting ? (
+                                        <SelectedPlantingDiary
+                                            gardenId={garden.id}
+                                            raisedBedId={raisedBedId}
+                                            plantingId={selectedPlanting.id}
+                                        />
+                                    ) : (
+                                        <RaisedBedOperationHistoryList
+                                            raisedBedId={raisedBed.id}
+                                            positionIndex={positionIndex}
+                                            disableActions={isHistorical}
+                                        />
+                                    )}
+                                </ScrollArea>
+                            )}
+                        </TabsContent>
+                        <TabsContent value="lifecycle">
+                            <Stack spacing={4}>
+                                {isGreenhouseSeedling ? (
+                                    <GreenhouseSeedlingProgress
+                                        field={field}
+                                        plantAttributes={plantAttributes}
+                                        lifecycleData={
+                                            greenhouseSeedlingLifecycleData
+                                        }
+                                        plantDetailsUrl={plantDetailsUrl}
+                                        statusTrigger={
+                                            field.active &&
+                                            currentPlantIdentity ? (
+                                                <RaisedBedFieldStatusChange
+                                                    expectedPlantCycleEventId={
+                                                        currentPlantIdentity.plantPlaceEventId
+                                                    }
+                                                    expectedPlantCycleVersionEventId={
+                                                        currentPlantIdentity.plantCycleVersionEventId
+                                                    }
+                                                    expectedPlantSortId={
+                                                        currentPlantIdentity.plantSortId
+                                                    }
+                                                    raisedBedId={raisedBedId}
+                                                    positionIndex={
+                                                        positionIndex
+                                                    }
+                                                    currentStatus={
+                                                        field.plantStatus ??
+                                                        undefined
+                                                    }
+                                                    trigger={statusTrigger}
+                                                />
+                                            ) : (
+                                                statusTrigger
+                                            )
+                                        }
+                                    />
+                                ) : (
+                                    <RaisedBedFieldLifecycleTab
+                                        raisedBedId={raisedBedId}
+                                        positionIndex={positionIndex}
+                                        fieldOverride={fieldOverride}
+                                        includeInactive={isHistorical}
+                                        disableFieldActions={Boolean(
+                                            selectedPlanting,
+                                        )}
+                                        onShowOperations={() =>
+                                            setActiveTab('operations')
+                                        }
+                                    />
+                                )}
+                                {isGreenhouseSeedling &&
+                                    garden &&
+                                    !selectedPlanting && (
+                                        <GreenhouseSeedlingTransplantAction
+                                            gardenId={garden.id}
+                                            raisedBedId={raisedBedId}
+                                            positionIndex={positionIndex}
+                                        />
+                                    )}
+                                {isGreenhouseSeedling &&
+                                    !selectedPlanting &&
+                                    garden &&
+                                    greenhouseRecommendationStatus &&
+                                    typeof field.plantSortId === 'number' && (
+                                        <RecommendationsCard
+                                            onShowOperations={() =>
+                                                setActiveTab('operations')
+                                            }
+                                            gardenId={garden.id}
+                                            raisedBedId={raisedBedId}
+                                            positionIndex={positionIndex}
+                                            plantStatus={
+                                                greenhouseRecommendationStatus
+                                            }
+                                            plantSortId={field.plantSortId}
+                                        />
+                                    )}
+                                {selectedPlanting && (
+                                    <RaisedBedAdvancedSowingPlantingDetails
+                                        planting={selectedPlanting}
+                                    />
+                                )}
+                            </Stack>
+                        </TabsContent>
+                    </Tabs>
+                    <button
+                        type="button"
+                        className="sm:hidden self-end rounded-md border px-3 py-1.5 text-sm font-medium"
+                        onClick={() => {
+                            if (!isOpenControlled) {
+                                setInternalOpen(false);
+                            }
+                            onOpenChange?.(false);
+                        }}
+                    >
+                        Zatvori
+                    </button>
+                </Stack>,
+            )}
+        </GameModal>
     );
+
+    if (triggerOverride === undefined && triggerVariant === 'field') {
+        return (
+            <div className="relative size-full">
+                {modal}
+                {!interactionDisabled && indicatorStack}
+            </div>
+        );
+    }
+
+    return modal;
 }

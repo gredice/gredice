@@ -1,0 +1,173 @@
+'use server';
+
+import {
+    createPlantStatusApprovalRequest,
+    createSelectedPlantStatusApprovalRequest,
+    getFarmUserRaisedBeds,
+} from '@gredice/storage';
+import { revalidatePath } from 'next/cache';
+import { auth } from '../../../lib/auth/auth';
+import { isFarmPlantFieldStatus } from './plantStatusOptions';
+
+export type PlantStateRequestActionState =
+    | {
+          success: true;
+          message: string;
+      }
+    | {
+          success: false;
+          message: string;
+      }
+    | null;
+
+function parseNumber(value: FormDataEntryValue | null) {
+    if (typeof value !== 'string' || value.trim().length === 0) {
+        return null;
+    }
+
+    const parsed = Number(value);
+    return Number.isSafeInteger(parsed) ? parsed : null;
+}
+
+export async function requestPlantStateChangeAction(
+    _previousState: PlantStateRequestActionState,
+    formData: FormData,
+): Promise<PlantStateRequestActionState> {
+    const {
+        userId,
+        user: { role },
+    } = await auth(['farmer', 'admin']);
+    const raisedBedId = parseNumber(formData.get('raisedBedId'));
+    const positionIndex = parseNumber(formData.get('positionIndex'));
+    const requestedStatusValue = formData.get('status');
+    const requestedStatus =
+        typeof requestedStatusValue === 'string'
+            ? requestedStatusValue.trim()
+            : null;
+
+    if (
+        raisedBedId === null ||
+        raisedBedId <= 0 ||
+        positionIndex === null ||
+        positionIndex < 0 ||
+        requestedStatus === null ||
+        !isFarmPlantFieldStatus(requestedStatus)
+    ) {
+        return {
+            success: false,
+            message: 'Odaberite valjano stanje biljke.',
+        };
+    }
+
+    if (formData.has('plantingId')) {
+        const plantingId = parseNumber(formData.get('plantingId'));
+        const expectedLifecycleVersionEventId = parseNumber(
+            formData.get('expectedLifecycleVersionEventId'),
+        );
+        const expectedPlantSortId = parseNumber(
+            formData.get('expectedPlantSortId'),
+        );
+        if (
+            plantingId === null ||
+            plantingId <= 0 ||
+            expectedLifecycleVersionEventId === null ||
+            expectedLifecycleVersionEventId <= 0 ||
+            expectedPlantSortId === null ||
+            expectedPlantSortId <= 0
+        ) {
+            return {
+                success: false,
+                message:
+                    'Podaci sadnje nisu valjani. Osvježi stranicu i pokušaj ponovno.',
+            };
+        }
+        try {
+            await createSelectedPlantStatusApprovalRequest({
+                kind: 'selected',
+                plantingId,
+                expectedLifecycleVersionEventId,
+                expectedPlantSortId,
+                raisedBedId,
+                requestedStatus,
+                actor: { userId, role: role === 'admin' ? 'admin' : 'farmer' },
+            });
+        } catch (error) {
+            return {
+                success: false,
+                message:
+                    error instanceof Error
+                        ? error.message
+                        : 'Zahtjev za promjenu stanja nije spremljen.',
+            };
+        }
+        revalidatePath(`/raised-beds/${raisedBedId.toString()}`);
+        revalidatePath('/raised-beds');
+        return {
+            success: true,
+            message: 'Zahtjev je poslan administratorima na odobrenje.',
+        };
+    }
+
+    const raisedBeds = await getFarmUserRaisedBeds(userId);
+    const raisedBed = raisedBeds.find((item) => item.id === raisedBedId);
+    const field = raisedBed?.fields.find(
+        (item) => item.positionIndex === positionIndex && item.active,
+    );
+
+    if (!raisedBed || !field?.plantStatus) {
+        return {
+            success: false,
+            message: 'Biljka nije pronađena ili nije dostupna za promjenu.',
+        };
+    }
+
+    const activePlantCycle = field.plantCycles.find(
+        (plantCycle) => plantCycle.active,
+    );
+    if (!activePlantCycle) {
+        return {
+            success: false,
+            message: 'Aktivni ciklus biljke više nije dostupan.',
+        };
+    }
+
+    if (requestedStatus === field.plantStatus) {
+        return {
+            success: false,
+            message: 'Biljka je već u odabranom stanju.',
+        };
+    }
+
+    try {
+        await createPlantStatusApprovalRequest({
+            raisedBedId,
+            positionIndex,
+            plantCycleEventId: activePlantCycle.plantPlaceEventId,
+            plantCycleVersionEventId: activePlantCycle.endedEventId,
+            raisedBedFieldId: field.id,
+            accountId: raisedBed.accountId,
+            gardenId: raisedBed.gardenId,
+            plantSortId: field.plantSortId,
+            currentStatus: field.plantStatus,
+            requestedStatus,
+            requestedBy: userId,
+            effectiveAt: new Date(),
+        });
+    } catch (error) {
+        return {
+            success: false,
+            message:
+                error instanceof Error
+                    ? error.message
+                    : 'Zahtjev za promjenu stanja nije spremljen.',
+        };
+    }
+
+    revalidatePath(`/raised-beds/${raisedBedId.toString()}`);
+    revalidatePath('/raised-beds');
+
+    return {
+        success: true,
+        message: 'Zahtjev je poslan administratorima na odobrenje.',
+    };
+}

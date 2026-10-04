@@ -1,11 +1,11 @@
 import type { OperationData } from '@gredice/client';
 import { OperationImage } from '@gredice/ui/OperationImage';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 import { useOperations } from '../../hooks/useOperations';
 import { ButtonGreen } from '../../shared-ui/ButtonGreen';
+import { GameModal } from '../../shared-ui/game-modal';
 import { OperationsList } from './shared/OperationsList';
 
 function greenhouseOperationsFilter(operation: OperationData) {
@@ -32,8 +32,7 @@ export function RaisedBedGreenhouseSuggestion({
     }
 
     return (
-        <Modal
-            className="border border-tertiary border-b-4"
+        <GameModal
             title="Zalijevanje"
             open={open}
             modal={false}
@@ -45,11 +44,11 @@ export function RaisedBedGreenhouseSuggestion({
                         operation={basicGreenhouseOperation}
                         className="size-10 md:size-14 md:mr-4"
                     />
-                    <span className="hidden md:block -ml-2">Plastenik</span>
+                    <span className="hidden md:block -ml-2">Staklenik</span>
                 </ButtonGreen>
             }
         >
-            <Stack spacing={2}>
+            <Stack spacing={4}>
                 <Typography level="h5">Radnje zalijevanja</Typography>
                 <Typography>
                     Odaberite radnju zalijevanja za ovu gredicu.
@@ -60,6 +59,6 @@ export function RaisedBedGreenhouseSuggestion({
                     filterFunc={greenhouseOperationsFilter}
                 />
             </Stack>
-        </Modal>
+        </GameModal>
     );
 }

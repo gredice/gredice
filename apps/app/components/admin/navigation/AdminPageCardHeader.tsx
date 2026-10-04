@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import { AdminPageBreadcrumbs } from './AdminPageBreadcrumbs';
 import { useAdminPageHeaderContext } from './AdminPageHeaderContext';
 import { adminBreadcrumbClassName } from './adminBreadcrumbStyles';
+import { isAdminChromeHiddenPath } from './adminChromeVisibility';
 import { DesktopNavToggle } from './DesktopNavToggle';
 import { MobileNav } from './MobileNav';
 
@@ -12,8 +13,12 @@ export function AdminPageCardHeader() {
     const { activeHeaderId, setSlotElement } = useAdminPageHeaderContext();
     const showHeaderContent = pathname.startsWith('/admin');
 
+    if (isAdminChromeHiddenPath(pathname)) {
+        return null;
+    }
+
     return (
-        <div className="mb-4 flex min-h-9 items-center gap-2">
+        <div className="mb-4 flex min-h-9 flex-wrap items-center gap-2">
             <MobileNav />
             <DesktopNavToggle />
             {showHeaderContent && (
@@ -23,7 +28,7 @@ export function AdminPageCardHeader() {
                         aria-hidden="true"
                     />
                     <div
-                        className="flex min-w-0 flex-1 items-center justify-between gap-2 overflow-hidden"
+                        className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-2"
                         ref={setSlotElement}
                     >
                         {!activeHeaderId && (

@@ -1,8 +1,8 @@
-import { Button } from '@signalco/ui-primitives/Button';
-import { Card, CardActions, CardContent } from '@signalco/ui-primitives/Card';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Card, CardActions, CardContent } from '@gredice/ui/Card';
+import { Input } from '@gredice/ui/Input';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { type FormEvent, useState } from 'react';
 
 import { useCurrentUser } from '../../hooks/useCurrentUser';
@@ -112,14 +112,16 @@ export function UserBirthdayCard() {
         <Card>
             <CardContent noHeader>
                 <form onSubmit={handleBirthdayUpdate}>
-                    <Stack spacing={2}>
-                        <div className="grid grid-cols-[1fr_1fr_2fr] gap-2">
+                    <Stack spacing={4}>
+                        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,2fr)] gap-3 sm:grid-cols-[minmax(5.5rem,1fr)_minmax(5.5rem,1fr)_minmax(10rem,2fr)]">
                             <Input
                                 name="birthdayDay"
-                                label="Dan"
+                                label="Dan *"
+                                fullWidth
                                 type="number"
                                 min={1}
                                 max={31}
+                                required
                                 placeholder="npr. 12"
                                 defaultValue={birthday?.day?.toString() ?? ''}
                                 disabled={
@@ -128,10 +130,12 @@ export function UserBirthdayCard() {
                             />
                             <Input
                                 name="birthdayMonth"
-                                label="Mjesec"
+                                label="Mjesec *"
+                                fullWidth
                                 type="number"
                                 min={1}
                                 max={12}
+                                required
                                 placeholder="npr. 7"
                                 defaultValue={birthday?.month?.toString() ?? ''}
                                 disabled={
@@ -140,7 +144,8 @@ export function UserBirthdayCard() {
                             />
                             <Input
                                 name="birthdayYear"
-                                label="Godina (nije obavezna)"
+                                label="Godina"
+                                fullWidth
                                 type="number"
                                 min={MIN_BIRTH_YEAR}
                                 max={currentYear}
@@ -155,7 +160,7 @@ export function UserBirthdayCard() {
                                 }
                             />
                         </div>
-                        <Stack spacing={1}>
+                        <Stack spacing={2}>
                             <Typography level="body3">
                                 {birthdayLocked && nextChangeDisplay
                                     ? `Rođendan možeš ponovno promijeniti ${nextChangeDisplay}.`

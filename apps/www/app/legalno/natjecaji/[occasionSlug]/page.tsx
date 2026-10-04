@@ -1,14 +1,15 @@
 import { slugify } from '@gredice/js/slug';
+import { Container } from '@gredice/ui/Container';
+import { Navigate, Timer } from '@gredice/ui/icons';
 import { Markdown } from '@gredice/ui/Markdown';
-import { Navigate, Timer } from '@signalco/ui-icons';
-import { Container } from '@signalco/ui-primitives/Container';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { PageHeader } from '@gredice/ui/PageHeader';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { PageHeader } from '../../../../components/shared/PageHeader';
 import { getOccasionsData } from '../../../../lib/occasions/getOccasionsData';
+import { createPublicMetadata } from '../../../../lib/seo/publicMetadata';
 
 type OccasionPageProps = {
     params: Promise<{ occasionSlug: string }>;
@@ -31,15 +32,15 @@ export async function generateMetadata({
     );
 
     if (!occasion) {
-        return {
-            title: 'Natječaj nije pronađen',
-        };
+        notFound();
     }
 
-    return {
+    return createPublicMetadata({
         title: `Pravila natječaja ${occasion.information.name}`,
         description: `Pročitaj službena pravila za sudjelovanje u natječaju ${occasion.information.name}.`,
-    };
+        path: `/legalno/natjecaji/${encodeURIComponent(occasionSlug)}`,
+        eyebrow: 'Pravila natječaja',
+    });
 }
 
 export default async function OccasionPage({ params }: OccasionPageProps) {
@@ -58,15 +59,27 @@ export default async function OccasionPage({ params }: OccasionPageProps) {
             day: 'numeric',
             month: 'long',
             year: 'numeric',
+            timeZone: 'Europe/Zagreb',
+        });
+
+    const formatDateTime = (dateString: string) =>
+        new Date(dateString).toLocaleString('hr-HR', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: 'Europe/Zagreb',
+            timeZoneName: 'short',
         });
 
     const rulesChangedDate = occasion.information.rulesChangedDate
         ? formatDate(occasion.information.rulesChangedDate)
         : null;
 
-    const startDate = formatDate(occasion.information.startDate);
+    const startDate = formatDateTime(occasion.information.startDate);
     const endDate = occasion.information.endDate
-        ? formatDate(occasion.information.endDate)
+        ? formatDateTime(occasion.information.endDate)
         : null;
 
     return (
@@ -77,14 +90,16 @@ export default async function OccasionPage({ params }: OccasionPageProps) {
                     header={`Pravila natječaja - ${occasion.information.name}`}
                     alternativeName={`Saznaj kako sudjelovati, osvojiti nagrade i koje su obveze organizatora natječaja - ${occasion.information.name}.`}
                     headerChildren={
-                        <Row spacing={1}>
+                        <Row spacing={2} className="flex-wrap">
                             <Timer className="size-5 shrink-0 opacity-60" />
-                            <Typography level="body2">{startDate}</Typography>
+                            <Typography level="body2">
+                                Početak: {startDate}
+                            </Typography>
                             {endDate && (
                                 <>
                                     <Navigate className="size-5 shrink-0 opacity-60" />
                                     <Typography level="body2">
-                                        {endDate}
+                                        Završetak: {endDate}
                                     </Typography>
                                 </>
                             )}

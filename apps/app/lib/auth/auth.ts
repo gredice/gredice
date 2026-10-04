@@ -7,12 +7,13 @@ import {
     clearCookie,
     createJwt,
     setCookie,
+    verifyAccessJwt,
     verifyJwt,
 } from './baseAuth';
 import { accountCookieName } from './sessionConfig';
 import { refreshSessionIfNeeded } from './sessionRefresh';
 
-export { clearCookie, createJwt, setCookie, verifyJwt };
+export { clearCookie, createJwt, setCookie, verifyAccessJwt, verifyJwt };
 
 type AuthUser = {
     id: string;
@@ -23,7 +24,6 @@ type AuthUser = {
 
 type TokenClaims = {
     sub?: unknown;
-    tokenUse?: unknown;
     gredice?: {
         userName?: unknown;
         accountIds?: unknown;
@@ -58,16 +58,44 @@ function resolveAccountId(
     return accountIds[0];
 }
 
+function isAuthError(error: unknown, message: string) {
+    return error instanceof Error && error.message === message;
+}
+
+function isUnauthenticatedError(error: unknown) {
+    return (
+        error instanceof Error &&
+        (error.name === 'UnauthorizedError' ||
+            error.message.startsWith('Unauthorized:') ||
+            error.message === 'User not found')
+    );
+}
+
+async function interruptExpectedAuthError(error: unknown): Promise<never> {
+    if (isAuthError(error, 'Unauthorized')) {
+        const { forbidden } = await import('next/navigation');
+        forbidden();
+    }
+
+    if (isAuthError(error, 'Account not found')) {
+        const { forbidden } = await import('next/navigation');
+        forbidden();
+    }
+
+    if (isUnauthenticatedError(error)) {
+        const { unauthorized } = await import('next/navigation');
+        unauthorized();
+    }
+
+    throw error;
+}
+
 async function authFromToken(token: string, roles: string[]) {
-    const { result, error } = await verifyJwt(token);
+    const { result, error } = await verifyAccessJwt(token);
     const payload = result?.payload as TokenClaims | undefined;
     const userId = payload?.sub;
-    const tokenUse = payload?.tokenUse;
     if (error || typeof userId !== 'string' || userId.length === 0) {
         throw new Error('Unauthorized: Invalid user ID');
-    }
-    if (typeof tokenUse === 'string' && tokenUse !== 'access') {
-        throw new Error('Unauthorized: Invalid token use');
     }
 
     const claims = payload?.gredice;
@@ -110,13 +138,20 @@ async function authFromToken(token: string, roles: string[]) {
 }
 
 export async function auth(...args: Parameters<typeof baseAuth>) {
-    const [roles] = args;
-    const accessToken = await refreshSessionIfNeeded();
-    if (accessToken) {
-        return await authFromToken(accessToken, roles);
-    }
+    try {
+        const [roles] = args;
+        const accessToken = await refreshSessionIfNeeded({
+            // auth() is used during Server Component rendering, where cookies are read-only.
+            persistCookies: false,
+        });
+        if (accessToken) {
+            return await authFromToken(accessToken, roles);
+        }
 
-    return await baseAuth(...args);
+        return await baseAuth(...args);
+    } catch (error) {
+        return await interruptExpectedAuthError(error);
+    }
 }
 
 export async function withAuth(...args: Parameters<typeof baseWithAuth>) {

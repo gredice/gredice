@@ -1,6 +1,6 @@
 'use client';
 
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
+import { SelectItems } from '@gredice/ui/SelectItems';
 import { getTimeZones } from '@vvo/tzdb';
 import { useMemo, useTransition } from 'react';
 import { updateAccountTimeZoneAction } from '../../../(actions)/accountTimeZoneActions';
@@ -35,6 +35,7 @@ export function AccountTimeZonePicker({
 
     return (
         <SelectItems
+            className="[&>label]:sr-only"
             label="Vremenska zona"
             value={currentTimeZone}
             onValueChange={handleTimeZoneChange}

@@ -1,6 +1,8 @@
 // Client-safe invoice utility functions
 export type InvoiceStatus = 'draft' | 'pending' | 'sent' | 'paid' | 'cancelled';
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 export function isValidStatusTransition(
     currentStatus: InvoiceStatus | string,
     newStatus: InvoiceStatus,
@@ -36,5 +38,8 @@ export function isOverdue(invoice: {
     if (invoice.status === 'paid' || invoice.paidDate) {
         return false;
     }
-    return invoice.status === 'sent' && new Date() > new Date(invoice.dueDate);
+    return (
+        invoice.status === 'sent' &&
+        Date.now() >= new Date(invoice.dueDate).getTime() + DAY_MS
+    );
 }

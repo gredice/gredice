@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import {
     defineConfig,
     devices,
@@ -9,6 +10,7 @@ import {
     getPlaywrightBaseUrl,
     shouldReusePlaywrightServer,
 } from '../../scripts/app-registry.ts';
+import { blobGuardLaunchArgs } from '../../scripts/blob-test-fixtures.mjs';
 
 const app = getAppByName('app');
 const reporter: PlaywrightTestConfig['reporter'] = [
@@ -26,9 +28,80 @@ export const config: PlaywrightTestConfig = {
     workers: process.env.CI ? 1 : undefined,
     reporter,
     use: {
+        launchOptions: { args: blobGuardLaunchArgs() },
         baseURL: getPlaywrightBaseUrl(app),
         trace: 'on-first-retry',
         ctPort: getComponentTestPort(app),
+        ctViteConfig: {
+            // Playwright CT 1.62 bundles Vite 8, whose CJS interop turns default imports
+            // of Next's CJS entry points (e.g. next/image) into module objects.
+            legacy: { inconsistentCjsInterop: true },
+            plugins: [
+                {
+                    name: 'selected-planting-status-actions',
+                    enforce: 'pre',
+                    resolveId(source, importer) {
+                        if (
+                            source.endsWith('/operationTaskAdminActions') &&
+                            importer?.endsWith(
+                                '/OperationTaskAdminEditModal.tsx',
+                            )
+                        ) {
+                            return fileURLToPath(
+                                new URL(
+                                    './playwright/operationTaskAdminActionsMock.ts',
+                                    import.meta.url,
+                                ),
+                            );
+                        }
+                        if (
+                            source.endsWith('/operationActions') &&
+                            importer?.endsWith(
+                                '/OperationCompletionEvidenceEditModal.tsx',
+                            )
+                        ) {
+                            return fileURLToPath(
+                                new URL(
+                                    './playwright/operationEvidenceActionsMock.ts',
+                                    import.meta.url,
+                                ),
+                            );
+                        }
+                        if (
+                            source.endsWith(
+                                '/raisedBedPlantCorrectionActions',
+                            ) &&
+                            importer?.endsWith(
+                                '/RaisedBedPlantSortCorrection.tsx',
+                            )
+                        ) {
+                            return fileURLToPath(
+                                new URL(
+                                    './playwright/plantSortCorrectionActionsMock.ts',
+                                    import.meta.url,
+                                ),
+                            );
+                        }
+                        if (
+                            source.endsWith(
+                                '/selectedRaisedBedPlantingActions',
+                            ) &&
+                            [
+                                '/SelectedPlantingStatusControl.tsx',
+                                '/SelectedPlantingOperationControl.tsx',
+                            ].some((name) => importer?.endsWith(name))
+                        ) {
+                            return fileURLToPath(
+                                new URL(
+                                    './playwright/selectedPlantingActionsMock.ts',
+                                    import.meta.url,
+                                ),
+                            );
+                        }
+                    },
+                },
+            ],
+        },
     },
     projects: [
         {
@@ -37,7 +110,9 @@ export const config: PlaywrightTestConfig = {
         },
     ],
     webServer: {
-        command: 'pnpm start',
+        command: 'node ../../scripts/run-app-command.mjs start',
+        env: { GREDICE_DETACH_CHILD_PROCESS: 'false' },
+        gracefulShutdown: { signal: 'SIGTERM', timeout: 5000 },
         url: getPlaywrightBaseUrl(app),
         reuseExistingServer: shouldReusePlaywrightServer(),
     },

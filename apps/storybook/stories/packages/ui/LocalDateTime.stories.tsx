@@ -1,6 +1,8 @@
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 
+const sampleDate = '2025-06-15T08:30:00.000Z';
+
 const meta = {
     title: 'packages/ui/Data Display/LocalDateTime',
     component: LocalDateTime,
@@ -14,10 +16,20 @@ const meta = {
         },
     },
     args: {
-        children: new Date('2025-06-15T10:30:00'),
+        children: sampleDate,
         date: true,
         time: true,
         locale: 'hr-HR',
+    },
+    argTypes: {
+        children: {
+            control: 'text',
+            table: {
+                type: {
+                    summary: 'Date | string | null | undefined',
+                },
+            },
+        },
     },
 } satisfies Meta<typeof LocalDateTime>;
 

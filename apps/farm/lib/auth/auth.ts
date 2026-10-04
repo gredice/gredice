@@ -1,19 +1,22 @@
 import 'server-only';
 
+import { createHash } from 'node:crypto';
 import { getUser as storageGetUser } from '@gredice/storage';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import {
     baseAuth,
     baseWithAuth,
     clearCookie,
     createJwt,
     setCookie,
+    verifyAccessJwt,
     verifyJwt,
 } from './baseAuth';
+import { getRefreshTokenCookie } from './refreshCookies';
 import { accountCookieName } from './sessionConfig';
 import { refreshSessionIfNeeded } from './sessionRefresh';
 
-export { clearCookie, createJwt, setCookie, verifyJwt };
+export { clearCookie, createJwt, setCookie, verifyAccessJwt, verifyJwt };
 
 type AuthUser = {
     id: string;
@@ -59,7 +62,7 @@ function resolveAccountId(
 }
 
 async function authFromToken(token: string, roles: string[]) {
-    const { result, error } = await verifyJwt(token);
+    const { result, error } = await verifyAccessJwt(token);
     const payload = result?.payload as TokenClaims | undefined;
     const userId = payload?.sub;
     if (error || typeof userId !== 'string' || userId.length === 0) {
@@ -102,21 +105,56 @@ async function authFromToken(token: string, roles: string[]) {
         userId,
         user: authUser,
         accountId,
+        sessionIncarnation: await getSessionIncarnation(token),
     };
+}
+
+async function getSessionIncarnation(accessToken: string) {
+    const refreshToken = await getRefreshTokenCookie();
+    return createFarmSessionIncarnation(refreshToken ?? accessToken);
+}
+
+export function createFarmSessionIncarnation(sessionToken: string) {
+    return createHash('sha256').update(sessionToken).digest('base64url');
+}
+
+async function getRequestToken() {
+    const cookieToken = (await cookies()).get('gredice_session')?.value;
+    if (cookieToken) {
+        return cookieToken;
+    }
+    const authorization = (await headers()).get('Authorization');
+    if (authorization?.toLowerCase().startsWith('bearer ')) {
+        return authorization.substring(7);
+    }
+    throw new Error('Unauthorized: Missing authenticated session token');
 }
 
 export async function auth(...args: Parameters<typeof baseAuth>) {
     const [roles] = args;
-    const accessToken = await refreshSessionIfNeeded();
+    const accessToken = await refreshSessionIfNeeded({
+        // auth() is used during Server Component rendering, where cookies are read-only.
+        persistCookies: false,
+    });
     if (accessToken) {
         return await authFromToken(accessToken, roles);
     }
 
-    return await baseAuth(...args);
+    const context = await baseAuth(...args);
+    return {
+        ...context,
+        sessionIncarnation: await getSessionIncarnation(
+            await getRequestToken(),
+        ),
+    };
 }
 
-export async function withAuth(...args: Parameters<typeof baseWithAuth>) {
-    const [roles, handler] = args;
+type FarmAuthContext = Awaited<ReturnType<typeof authFromToken>>;
+
+export async function withAuth(
+    roles: string[],
+    handler: (context: FarmAuthContext) => Promise<Response> | Response,
+) {
     const accessToken = await refreshSessionIfNeeded();
     if (accessToken) {
         try {
@@ -127,5 +165,12 @@ export async function withAuth(...args: Parameters<typeof baseWithAuth>) {
         }
     }
 
-    return await baseWithAuth(...args);
+    return await baseWithAuth(roles, async (context) => {
+        return await handler({
+            ...context,
+            sessionIncarnation: await getSessionIncarnation(
+                await getRequestToken(),
+            ),
+        });
+    });
 }

@@ -1,11 +1,10 @@
-import { config } from '@signalco/ui-themes-minimal/config';
 import tailwindcssTypography from '@tailwindcss/typography';
 import type { Config } from 'tailwindcss';
-import tailwindcssAnimate from 'tailwindcss-animate';
+import { grediceThemePreset } from './src/theme';
 
 const tailwindConfig: Config = {
     content: ['./src/**/*.{js,ts,jsx,tsx,mdx}'],
-    presets: [config],
-    plugins: [tailwindcssAnimate, tailwindcssTypography],
+    presets: [grediceThemePreset],
+    plugins: [tailwindcssTypography],
 };
 export default tailwindConfig;

@@ -3,6 +3,8 @@ import test from 'node:test';
 import {
     hasReservedFirstSegment,
     normalizeCmsRouteSlug,
+    parseCmsPageRenderMaxWidth,
+    parseCmsPageRenderMode,
     parseCmsSectionData,
 } from './cmsPageRouteUtils';
 
@@ -25,7 +27,18 @@ test('parseCmsSectionData returns empty array for invalid payloads', () => {
     assert.deepEqual(parseCmsSectionData({ component: 'Feature1' }), []);
 });
 
+test('CMS page render layout parsers normalize invalid API values', () => {
+    assert.equal(parseCmsPageRenderMode('fullWidth'), 'fullWidth');
+    assert.equal(parseCmsPageRenderMode('unexpected'), 'container');
+    assert.equal(parseCmsPageRenderMaxWidth('xl'), 'xl');
+    assert.equal(parseCmsPageRenderMaxWidth('wide'), 'lg');
+});
+
 test('hasReservedFirstSegment flags static route conflicts', () => {
     assert.equal(hasReservedFirstSegment('legalno/politika-privatnosti'), true);
+    assert.equal(hasReservedFirstSegment('novosti/sto-je-novo'), true);
+    assert.equal(hasReservedFirstSegment('bolesti/pepelnica'), true);
+    assert.equal(hasReservedFirstSegment('stetnici/lisna-us'), true);
+    assert.equal(hasReservedFirstSegment('mcp'), true);
     assert.equal(hasReservedFirstSegment('cms/about-us'), false);
 });

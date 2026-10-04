@@ -1,6 +1,6 @@
-import { Divider } from '@signalco/ui-primitives/Divider';
-import { Stack } from '@signalco/ui-primitives/Stack';
 import { Fragment, type ReactNode } from 'react';
+import { Divider } from '../Divider';
+import { Stack } from '../Stack';
 
 interface DailyScheduleProps {
     days?: number;
@@ -30,7 +30,7 @@ export function DailySchedule({
     });
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             {dates.map((date, index) => (
                 <Fragment key={date.toISOString()}>
                     {renderDay({

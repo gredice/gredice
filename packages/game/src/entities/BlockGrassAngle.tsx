@@ -1,10 +1,11 @@
-import { animated } from '@react-spring/three';
+import { animated } from '../scene/sceneSpring';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { BlockSurfaceDecorationSprites } from './groundDecorations/BlockSurfaceDecorationSprites';
+import { useGroundPatchMaterial } from './helpers/groundPatchMaterial';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
 export function BlockGrassAngle({
@@ -12,10 +13,14 @@ export function BlockGrassAngle({
     block,
     rotation,
 }: EntityInstanceProps) {
-    const { nodes, materials } = useGameGLTF();
+    const { nodes } = useGameGLTF('BlockGrassAngle');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
     const variantResolved = 1;
+    const grassMaterial = useGroundPatchMaterial(
+        nodes[`Block_Grass_Angle_${variantResolved}_2`].material,
+        'grass',
+    );
 
     return (
         <animated.group
@@ -28,7 +33,7 @@ export function BlockGrassAngle({
                 geometry={
                     nodes[`Block_Grass_Angle_${variantResolved}_2`].geometry
                 }
-                material={materials[`Material.Grass`]}
+                material={grassMaterial}
             />
             <SnowOverlay
                 geometry={

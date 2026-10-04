@@ -1,18 +1,8 @@
 'use client';
 
-import { Ghost } from '@signalco/ui-icons';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Ghost } from '@gredice/ui/icons';
 import { useRouter } from 'next/navigation';
-
-function getGardenUrl() {
-    if (
-        typeof window !== 'undefined' &&
-        window.location.hostname.includes('.test')
-    ) {
-        return 'https://vrt.gredice.test';
-    }
-    return 'https://vrt.gredice.com';
-}
 
 export function ButtonImpersonateUser({ userId }: { userId: string }) {
     const router = useRouter();
@@ -28,7 +18,7 @@ export function ButtonImpersonateUser({ userId }: { userId: string }) {
             console.error(`Failed to impersonate user ${userId}`);
             return;
         }
-        router.push(getGardenUrl());
+        router.push('/impersonation');
     };
 
     return (

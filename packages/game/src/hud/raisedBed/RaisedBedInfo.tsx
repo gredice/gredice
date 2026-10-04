@@ -1,21 +1,21 @@
-import { BlockImage } from '@gredice/ui/BlockImage';
-import { EditableInput } from '@signalco/ui/EditableInput';
-import { Book, Hammer, Info } from '@signalco/ui-icons';
-import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import {
-    Tabs,
-    TabsContent,
-    TabsList,
-    TabsTrigger,
-} from '@signalco/ui-primitives/Tabs';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { EditableInput } from '@gredice/ui/EditableInput';
+import { Row } from '@gredice/ui/Row';
+import { ScrollArea } from '@gredice/ui/ScrollArea';
+import { Stack } from '@gredice/ui/Stack';
+import { Tabs, TabsContent } from '@gredice/ui/Tabs';
+import { Typography } from '@gredice/ui/Typography';
+import { useState } from 'react';
 import type { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useUpdateRaisedBed } from '../../hooks/useUpdateRaisedBed';
-import { RaisedBedDiary } from './RaisedBedDiary';
+import { SuncokretChatTrigger } from '../SuncokretChatTrigger';
+import { suncokretContextConversationLabel } from '../suncokretChatContext';
+import { RaisedBedDetailsTabsList } from './RaisedBedDetailsTabsList';
 import { RaisedBedInfoTab } from './RaisedBedInfoTab';
+import { RaisedBedOperationHistoryList } from './RaisedBedOperationHistoryList';
 import { RaisedBedOperationsTab } from './RaisedBedOperationsTab';
+import { RaisedBedPhotosModal } from './RaisedBedPhotosModal';
+
+type RaisedBedTab = 'diary' | 'operations' | 'info';
 
 export function RaisedBedInfo({
     gardenId,
@@ -27,50 +27,60 @@ export function RaisedBedInfo({
     >['raisedBeds'][0];
 }) {
     const updateRaisedBed = useUpdateRaisedBed(gardenId, raisedBed.id);
+    const [activeTab, setActiveTab] = useState<RaisedBedTab>('diary');
+    const chatUiContext = {
+        surface: 'raised-bed-details' as const,
+        tab: activeTab,
+    };
 
     function handleNameChange(newName: string) {
         updateRaisedBed.mutate({ name: newName });
     }
 
     return (
-        <Stack spacing={2}>
-            <Row spacing={3}>
-                <BlockImage
-                    blockName="Raised_Bed"
-                    width={80}
-                    height={80}
-                    className="size-20"
-                />
-                <Stack>
-                    <Typography level="body2">Naziv gredice</Typography>
-                    <EditableInput
-                        value={raisedBed.name}
-                        onChange={handleNameChange}
-                        className="w-full"
+        <Stack spacing={4} className="min-w-0 max-w-full">
+            <div className="min-w-0 max-w-full pr-8">
+                <Row spacing={4} className="min-w-0 flex-1 items-start">
+                    <RaisedBedPhotosModal
+                        gardenId={gardenId}
+                        raisedBedId={raisedBed.id}
+                        subjectName={raisedBed.name}
+                        triggerPlacement="cover"
                     />
-                </Stack>
-            </Row>
-            <Tabs defaultValue="diary" className="flex flex-col">
-                <TabsList className="border w-fit self-center">
-                    <TabsTrigger value="diary">
-                        <Row spacing={1}>
-                            <Book className="size-4 shrink-0" />
-                            <Typography>Dnevnik</Typography>
-                        </Row>
-                    </TabsTrigger>
-                    <TabsTrigger value="operations">
-                        <Row spacing={1}>
-                            <Hammer className="size-4 shrink-0" />
-                            <Typography>Radnje</Typography>
-                        </Row>
-                    </TabsTrigger>
-                    <TabsTrigger value="info">
-                        <Row spacing={1}>
-                            <Info className="size-4 shrink-0" />
-                            <Typography>Informacije</Typography>
-                        </Row>
-                    </TabsTrigger>
-                </TabsList>
+                    <Stack className="min-w-0 flex-1">
+                        <Typography level="body2">Naziv gredice</Typography>
+                        <EditableInput
+                            value={raisedBed.name}
+                            onChange={handleNameChange}
+                            className="w-full"
+                        />
+                    </Stack>
+                    <SuncokretChatTrigger
+                        title="Pitaj Suncokreta o ovoj kartici gredice"
+                        target={{
+                            conversationLabel:
+                                suncokretContextConversationLabel({
+                                    raisedBedName: raisedBed.name,
+                                    uiContext: chatUiContext,
+                                }),
+                            gardenId,
+                            positionIndex: null,
+                            raisedBedId: raisedBed.id,
+                            uiContext: chatUiContext,
+                        }}
+                    />
+                </Row>
+            </div>
+            <Tabs
+                value={activeTab}
+                onValueChange={(value: string) =>
+                    setActiveTab(value as RaisedBedTab)
+                }
+                className="flex flex-col pt-2"
+            >
+                <div className="flex justify-center">
+                    <RaisedBedDetailsTabsList view="bed" />
+                </div>
                 <TabsContent value="info">
                     <RaisedBedInfoTab
                         gardenId={gardenId}
@@ -78,14 +88,15 @@ export function RaisedBedInfo({
                     />
                 </TabsContent>
                 <TabsContent value="diary">
-                    <Card>
-                        <CardOverflow className="overflow-auto max-h-96">
-                            <RaisedBedDiary
-                                gardenId={gardenId}
-                                raisedBedId={raisedBed.id}
-                            />
-                        </CardOverflow>
-                    </Card>
+                    <ScrollArea
+                        className="-mx-4 md:-mx-6"
+                        viewportClassName="max-h-96 md:max-h-[60dvh]"
+                        contentClassName="pl-4 pr-2 md:pl-6 md:pr-2"
+                    >
+                        <RaisedBedOperationHistoryList
+                            raisedBedId={raisedBed.id}
+                        />
+                    </ScrollArea>
                 </TabsContent>
                 <TabsContent value="operations">
                     <RaisedBedOperationsTab

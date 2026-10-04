@@ -8,7 +8,7 @@ export default async function CheckoutPage({
     const params = (await searchParams) || {};
     const success = params.status === 'success';
     if (success) {
-        redirect('https://vrt.gredice.com/?placanje=uspijesno');
+        redirect('https://vrt.gredice.com/?placanje=uspjesno');
     } else {
         redirect('https://vrt.gredice.com');
     }

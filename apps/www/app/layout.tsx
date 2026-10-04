@@ -1,29 +1,68 @@
+import { shouldInjectVercelAnalytics } from '@gredice/js/observability';
+import { ImpersonationBanner } from '@gredice/ui/ImpersonationBanner';
+import { UiApplicationRoot } from '@gredice/ui/PortalRoot';
 import { Analytics } from '@vercel/analytics/react';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import { PublicFooter, PublicHeader } from '@gredice/ui/PublicChrome';
+import { Stack } from '@gredice/ui/Stack';
 import { PostHogPageView, PostHogProvider } from '@posthog/next';
-import { PageNav } from '@signalco/ui/Nav';
-import { Stack } from '@signalco/ui-primitives/Stack';
 import { VercelToolbar } from '@vercel/toolbar/next';
+import { Montserrat } from 'next/font/google';
 import Head from 'next/head';
 import type { ReactNode } from 'react';
 import { PageViewTracker } from '../components/analytics/PageViewTracker';
-import { Logotype } from '../components/Logotype';
-import { NavUserButton } from '../components/NavUserButton';
 import { ClientAppProvider } from '../components/providers/ClientAppProvider';
-import { KnownPages } from '../src/KnownPages';
-import { Footer } from './Footer';
+import { createPublicMetadata } from '../lib/seo/publicMetadata';
 import { LayoutContainer } from './LayoutContainer';
 
+const montserrat = Montserrat({
+    subsets: ['latin'],
+    variable: '--font-montserrat',
+});
+
+const gardenModelPreloadUrls = [
+    'BlockGround',
+    'BlockGroundAngle',
+    'BlockGrass',
+    'BlockGrassAngle',
+    'BlockSand',
+    'BlockSandAngle',
+    'BlockTerrainCorner',
+    'BlockTerrainReverseCorner',
+    'BlockStone',
+    'BlockStoneAngle',
+    'BlockGravel',
+    'BlockGravelAngle',
+    'BlockStoneStairs',
+    'BlockStoneStairsCorner',
+    'BlockPolishedStone',
+    'BlockPolishedStoneAngle',
+    'BlockPolishedStoneStairs',
+    'BlockPolishedStoneStairsCorner',
+].map((assetName) => `https://vrt.gredice.com/assets/models/${assetName}.glb`);
+
+const homepageDescription =
+    'Tvoj digitalni vrt s pravim povrćem i besplatnom dostavom. Postavi gredice, zasadi svoje omiljeno povrće, održavaj vrt i uberi plodove, a mi ćemo se pobrinuti o brzoj i besplatnoj dostavi na tvoj kućni prag.';
+
 export function generateMetadata(): Metadata {
+    const publicMetadata = createPublicMetadata({
+        title: 'Gredice - vrt po tvom',
+        description: homepageDescription,
+        path: '/',
+        eyebrow: 'Tvoj digitalni vrt',
+        imageUrl: 'https://www.gredice.com/seo-fallback.png',
+        imageAlt: 'Digitalni vrt Gredice s podignutom gredicom',
+    });
+
     return {
+        ...publicMetadata,
         metadataBase: new URL('https://www.gredice.com'),
         title: {
             template: '%s | Gredice',
             default: 'Gredice - vrt po tvom',
         },
-        description:
-            'Tvoj digitalni vrt s pravim povrćem i besplatnom dostavom. Postavi gredice, zasadi svoje omiljeno povrće, održavaj vrt i uberi plodove, a mi ćemo se pobrinuti o brzoj i besplatnoj dostavi na tvoj kućni prag.',
+        description: homepageDescription,
         keywords: [
             'gredice',
             'gredica',
@@ -51,64 +90,45 @@ export function generateMetadata(): Metadata {
             'virtualni vrt',
             'virtualno',
         ],
-        openGraph: {
-            type: 'website',
-            title: 'Gredice - vrt po tvom',
-            url: 'https://www.gredice.com',
-            siteName: 'Gredice - vrt po tvom',
-        },
     };
 }
+
+export const viewport: Viewport = {
+    width: 'device-width',
+    initialScale: 1,
+    themeColor: '#2e6f40',
+    viewportFit: 'cover',
+};
 
 export default async function RootLayout({
     children,
 }: Readonly<{
     children: ReactNode;
 }>) {
+    const injectVercelAnalytics = shouldInjectVercelAnalytics(
+        process.env.VERCEL,
+    );
     const shouldInjectToolbar = process.env.NODE_ENV === 'development';
     const postHogApiKey =
-        process.env.NEXT_PUBLIC_POSTHOG_KEY ??
-        process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
+        process.env.NODE_ENV === 'development'
+            ? undefined
+            : (process.env.NEXT_PUBLIC_POSTHOG_KEY ??
+              process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN);
     const postHogApiHost = '/ingest';
     const postHogUiHost =
         process.env.NEXT_PUBLIC_POSTHOG_UI_HOST ??
         process.env.NEXT_PUBLIC_POSTHOG_HOST;
     const content = (
         <ClientAppProvider>
-            <Stack>
-                <div className="z-20">
-                    <PageNav
-                        logo={
-                            <Logotype
-                                className="w-[140px] h-[38px]"
-                                aria-label="Gredice"
-                            />
-                        }
-                        links={[
-                            {
-                                href: KnownPages.RaisedBeds,
-                                text: 'Podignuta gredica',
-                            },
-                            {
-                                href: KnownPages.Plants,
-                                text: 'Biljke',
-                            },
-                            {
-                                href: KnownPages.FAQ,
-                                text: 'Česta pitanja',
-                            },
-                        ]}
-                    >
-                        <div className="absolute bg-background/80 w-full inset-0 -z-10" />
-                        <NavUserButton href={KnownPages.GardenApp} />
-                    </PageNav>
-                </div>
-                <main className="mt-16 relative">
+            <ImpersonationBanner />
+            <Stack className="[padding-bottom:env(safe-area-inset-bottom,0px)] [padding-left:env(safe-area-inset-left,0px)] [padding-right:env(safe-area-inset-right,0px)]">
+                <PublicHeader />
+                <main className="relative mt-[calc(4rem+env(safe-area-inset-top,0px))]">
                     <LayoutContainer>{children}</LayoutContainer>
                 </main>
-                <Footer />
+                <PublicFooter />
             </Stack>
-            <Analytics />
+            {injectVercelAnalytics && <Analytics />}
             <PageViewTracker />
             {shouldInjectToolbar && <VercelToolbar />}
         </ClientAppProvider>
@@ -119,34 +139,41 @@ export default async function RootLayout({
             <Head>
                 <title>Gredice</title>
                 <meta name="apple-mobile-web-app-title" content="Gredice" />
-                <meta name="theme-color" content="#2e6f40" />
                 <link rel="preconnect" href="https://vrt.gredice.com" />
-                <link
-                    rel="preload"
-                    href="https://vrt.gredice.com/assets/models/GameAssets.glb"
-                    as="fetch"
-                    type="model/gltf-binary"
-                    crossOrigin="anonymous"
-                />
+                {gardenModelPreloadUrls.map((href) => (
+                    <link
+                        key={href}
+                        rel="preload"
+                        href={href}
+                        as="fetch"
+                        type="model/gltf-binary"
+                        crossOrigin="anonymous"
+                    />
+                ))}
             </Head>
-            <body className="antialiased">
-                {postHogApiKey ? (
-                    <PostHogProvider
-                        apiKey={postHogApiKey}
-                        clientOptions={{
-                            api_host: postHogApiHost,
-                            capture_exceptions: true,
-                            debug: process.env.NODE_ENV === 'development',
-                            defaults: '2026-01-30',
-                            ui_host: postHogUiHost ?? null,
-                        }}
-                    >
-                        <PostHogPageView />
-                        {content}
-                    </PostHogProvider>
-                ) : (
-                    content
-                )}
+            <body
+                className={`${montserrat.variable} antialiased`}
+                data-gredice-ui-portal-root=""
+            >
+                <UiApplicationRoot>
+                    {postHogApiKey ? (
+                        <PostHogProvider
+                            apiKey={postHogApiKey}
+                            clientOptions={{
+                                api_host: postHogApiHost,
+                                capture_exceptions: true,
+                                debug: process.env.NODE_ENV === 'development',
+                                defaults: '2026-01-30',
+                                ui_host: postHogUiHost ?? null,
+                            }}
+                        >
+                            <PostHogPageView />
+                            {content}
+                        </PostHogProvider>
+                    ) : (
+                        content
+                    )}
+                </UiApplicationRoot>
             </body>
         </html>
     );

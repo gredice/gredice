@@ -1,26 +1,39 @@
 import { clientPublic } from '@gredice/client';
+import { Container } from '@gredice/ui/Container';
 import { CountingNumber } from '@gredice/ui/CountingNumber';
-import type { SectionData } from '@signalco/cms-core/SectionData';
-import { SectionsView } from '@signalco/cms-core/SectionsView';
-import { NavigatingButton } from '@signalco/ui/NavigatingButton';
-import { Card, CardContent } from '@signalco/ui-primitives/Card';
-import { Container } from '@signalco/ui-primitives/Container';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import type { SectionData } from '@gredice/ui/cms';
+import { SectionsView } from '@gredice/ui/cms';
+import { NavigatingButton } from '@gredice/ui/NavigatingButton';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
+import type { Metadata } from 'next';
 import Image from 'next/image';
 import { Suspense } from 'react';
 import DeliveryTruck from '../assets/DeliveryTruck.webp';
 import RaisedBedMaintenance from '../assets/RaisedBedMaintenance.webp';
 import SeedsAndTransplants from '../assets/SeedsAndTransplants.webp';
+import { RelatedFaq } from '../components/faq/RelatedFaq';
+import { Card, CardContent } from '../components/shared/Card';
 import { sectionsComponentRegistry } from '../components/shared/sectionsComponentRegistry';
 import { FacebookCard } from '../components/social/FacebookCard';
 import { InstagramCard } from '../components/social/InstagramCard';
 import { WhatsAppCard } from '../components/social/WhatsAppCard';
 import { WinterModeToggle } from '../components/WinterModeToggle';
 import { KnownPages } from '../src/KnownPages';
-import { LandingGameScene } from './LandingGameScene';
+import { getLandingFeaturedGardens } from './getLandingFeaturedGardens';
+import { LandingFeaturedGardens } from './LandingFeaturedGardens';
+import { LandingGameScene, LandingGameSignupCta } from './LandingGameScene';
 import { NewsletterSignUp } from './NewsletterSignUp';
+import { OutletLandingSection } from './outlet/OutletLandingSection';
 import { PlantsShowcase } from './PlantsShowcase';
+
+export const dynamic = 'force-dynamic';
+
+export const metadata: Metadata = {
+    alternates: {
+        canonical: KnownPages.Landing,
+    },
+};
 
 const sectionsData: SectionData[] = [
     {
@@ -71,7 +84,7 @@ function PlantsStatisticsLoading() {
 async function PlantsStatistics() {
     try {
         const response = await clientPublic().api.data.statistics.plants.$get();
-        if (!response || response.status !== 200) {
+        if (response?.status !== 200) {
             return null;
         }
 
@@ -105,7 +118,7 @@ async function PlantsStatistics() {
 
 function StepsSection() {
     return (
-        <Stack spacing={4} className="mb-20">
+        <Stack spacing={8} className="mb-20">
             <div className="lg:flex lg:items-center lg:gap-8">
                 <Image
                     alt="Sjeme i presadnice"
@@ -116,8 +129,8 @@ function StepsSection() {
                 />
                 <Card className="border-tertiary border-b-4 lg:max-w-[40%]">
                     <CardContent noHeader>
-                        <Stack spacing={2}>
-                            <Stack spacing={2}>
+                        <Stack spacing={4}>
+                            <Stack spacing={4}>
                                 <Typography level="h4" component="h3">
                                     Zasadi
                                 </Typography>
@@ -150,8 +163,8 @@ function StepsSection() {
             <div className="flex flex-col-reverse lg:flex-row lg:justify-end lg:items-center lg:gap-8">
                 <Card className="border-tertiary border-b-4  lg:max-w-[40%]">
                     <CardContent noHeader>
-                        <Stack spacing={2}>
-                            <Stack spacing={2}>
+                        <Stack spacing={4}>
+                            <Stack spacing={4}>
                                 <Typography level="h4" component="h3">
                                     Održavaj
                                 </Typography>
@@ -200,7 +213,7 @@ function StepsSection() {
                 />
                 <Card className="border-tertiary border-b-4  lg:max-w-[40%]">
                     <CardContent noHeader>
-                        <Stack spacing={2}>
+                        <Stack spacing={4}>
                             <Typography level="h4" component="h3">
                                 Uberi i uživaj
                             </Typography>
@@ -224,9 +237,9 @@ function StepsSection() {
                             <NavigatingButton
                                 variant="link"
                                 className="w-fit"
-                                href={KnownPages.Delivery}
+                                href={KnownPages.DeliveryZagreb}
                             >
-                                Više o dostavi
+                                Dostava povrća u Zagrebu
                             </NavigatingButton>
                         </Stack>
                     </CardContent>
@@ -236,61 +249,66 @@ function StepsSection() {
     );
 }
 
-export default function Home() {
+export default async function Home() {
+    const featuredGardens = await getLandingFeaturedGardens();
+    const showFeaturedGardens = featuredGardens.length > 0;
+
     return (
         <Stack>
-            <div className="relative">
-                <div className="relative h-[100dvh] lg:h-[700px] -mt-16 w-full overflow-hidden">
-                    <Image
-                        alt="Tvoj novi vrt u Gredice aplikaciji"
-                        className="absolute inset-0 h-full w-full object-contain opacity-0 pointer-events-none"
-                        height={1080}
-                        src="/seo-fallback.png"
-                        width={1920}
-                    />
-                    <LandingGameScene />
+            <div className="relative pb-4">
+                <Container
+                    maxWidth="xl"
+                    className="relative px-2 sm:px-4 [--landing-card-radius:calc(var(--landing-frame-radius)*0.625)] [--landing-frame-radius:1.5rem] md:[--landing-frame-radius:2rem]"
+                >
                     <div
-                        className="pointer-events-none absolute inset-x-0 bottom-0 h-24"
-                        style={{
-                            background: `linear-gradient(
-                                to bottom,
-                                hsl(var(--background) / 0) 0%,
-                                hsl(var(--background) / 0.013) 8.1%,
-                                hsl(var(--background) / 0.049) 15.5%,
-                                hsl(var(--background) / 0.104) 22.5%,
-                                hsl(var(--background) / 0.175) 29%,
-                                hsl(var(--background) / 0.259) 35.3%,
-                                hsl(var(--background) / 0.352) 41.2%,
-                                hsl(var(--background) / 0.45) 47.1%,
-                                hsl(var(--background) / 0.55) 52.9%,
-                                hsl(var(--background) / 0.648) 58.8%,
-                                hsl(var(--background) / 0.741) 64.7%,
-                                hsl(var(--background) / 0.825) 71%,
-                                hsl(var(--background) / 0.896) 77.5%,
-                                hsl(var(--background) / 0.951) 84.5%,
-                                hsl(var(--background) / 0.987) 91.9%,
-                                hsl(var(--background)) 100%
-                            )`,
-                        }}
-                    />
-                </div>
-                <Container className="absolute top-0 left-0 right-0">
-                    <div className="flex flex-col items-end sm:flex-row sm:items-start sm:justify-between gap-4 mt-4">
-                        <Card className="w-fit border-tertiary border-b-4">
-                            <CardContent noHeader className="p-6 lg:pr-10">
-                                <Stack spacing={2}>
-                                    <Typography level="h2">
-                                        Vrt po tvom 🌱
-                                    </Typography>
-                                    <Typography level="body1">
-                                        Dobiješ povrće iz svojih gredica - nit
-                                        oro, nit kopo!
-                                    </Typography>
-                                </Stack>
-                            </CardContent>
-                        </Card>
-                        <WinterModeToggle />
+                        className="relative h-[min(540px,calc(100dvh-18rem))] min-h-[420px] w-full overflow-hidden rounded-[var(--landing-frame-radius)] border border-tertiary/70 bg-muted shadow-2xl shadow-foreground/10 md:h-[calc(100dvh-9rem)] md:max-h-[720px] lg:min-h-[560px]"
+                        data-testid="landing-game-frame"
+                    >
+                        <Image
+                            alt="Tvoj novi vrt u Gredice aplikaciji"
+                            className="absolute inset-0 h-full w-full object-contain opacity-0 pointer-events-none"
+                            height={1080}
+                            src="/seo-fallback.png"
+                            width={1920}
+                        />
+                        {showFeaturedGardens ? (
+                            <LandingFeaturedGardens
+                                featuredGardens={featuredGardens}
+                            />
+                        ) : (
+                            <LandingGameScene />
+                        )}
                     </div>
+                    <LandingGameSignupCta />
+                    {!showFeaturedGardens ? (
+                        <div className="pointer-events-none absolute left-8 right-8 top-8 z-10 sm:left-10 sm:right-10 md:top-10 lg:left-16 lg:right-16 lg:top-12">
+                            <div className="pointer-events-auto flex flex-col items-start sm:flex-row sm:items-start sm:justify-between gap-4">
+                                <Card
+                                    className="w-fit max-w-[19rem] rounded-[var(--landing-card-radius)] border-tertiary border-b-4 sm:max-w-none"
+                                    data-testid="landing-hero-card"
+                                >
+                                    <CardContent
+                                        noHeader
+                                        className="p-5 sm:p-6 lg:pr-10"
+                                    >
+                                        <Stack spacing={4}>
+                                            <Typography
+                                                level="h2"
+                                                component="h1"
+                                            >
+                                                Vrt po tvom 🌱
+                                            </Typography>
+                                            <Typography level="body1">
+                                                Dobiješ povrće iz svojih gredica
+                                                - nit oro, nit kopo!
+                                            </Typography>
+                                        </Stack>
+                                    </CardContent>
+                                </Card>
+                                <WinterModeToggle />
+                            </div>
+                        </div>
+                    ) : null}
                 </Container>
             </div>
             <Container>
@@ -299,8 +317,11 @@ export default function Home() {
                     componentsRegistry={sectionsComponentRegistry}
                 />
                 <StepsSection />
-                <Stack spacing={4}>
-                    <Stack spacing={1}>
+                <Suspense fallback={null}>
+                    <OutletLandingSection />
+                </Suspense>
+                <Stack spacing={8}>
+                    <Stack spacing={2}>
                         <Typography level="body1" semiBold tertiary>
                             Povrće iz tvog vrta
                         </Typography>
@@ -318,8 +339,9 @@ export default function Home() {
                     </Suspense>
                     <PlantsShowcase />
                 </Stack>
-                <Stack spacing={4} className="mt-20">
-                    <Stack spacing={1}>
+                <RelatedFaq placement="home" />
+                <Stack spacing={8} className="mt-20">
+                    <Stack spacing={2}>
                         <Typography level="body1" semiBold tertiary>
                             Zajednica za svakoga
                         </Typography>

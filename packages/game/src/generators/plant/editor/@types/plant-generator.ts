@@ -2,13 +2,13 @@
  * Type definitions for the plant generator system
  */
 
-import type { PlantDefinition, Rule } from '../../lib/plant-definitions';
+import type { PlantDefinition } from '../../lib/plant-definitions';
 
 /**
  * Main application state interface
  */
 export interface PlantGeneratorState {
-    /** Current L-system generation/iteration */
+    /** Current developmental generation */
     generation: number;
     /** Seed string for deterministic randomization */
     seed: string;
@@ -40,6 +40,11 @@ export interface VisibilityState {
     showProduce: boolean;
 }
 
+export interface PlantDefinitionChange {
+    path: string;
+    value: unknown;
+}
+
 /**
  * Props for plant parameter controls
  */
@@ -50,7 +55,7 @@ export interface PlantControlsProps {
     onPlantTypeChange: (plantType: string) => void;
     onVisibilityChange: (updates: Partial<VisibilityState>) => void;
     onDefinitionChange: (path: string, value: unknown) => void;
-    onRulesChange: (newRules: Record<string, Rule>) => void;
+    onDefinitionChanges: (changes: readonly PlantDefinitionChange[]) => void;
     onRandomizeSeed: () => void;
     onUndo: () => void;
     onRedo: () => void;
@@ -60,8 +65,8 @@ export interface PlantControlsProps {
     canResetDefinition: boolean;
     onCreateCustomPlant: (name: string) => void;
     onDeleteCustomPlant: (name: string) => void;
-    lSystemChain: string;
-    lSystemSymbolCount: number;
+    /** Number of organs currently present in the developmental graph */
+    organCount: number;
 }
 
 /**

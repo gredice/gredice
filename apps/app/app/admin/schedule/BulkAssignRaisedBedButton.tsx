@@ -4,13 +4,13 @@ import type {
     OperationAssignableFarmUser,
     RaisedBedFieldAssignableFarmUser,
 } from '@gredice/storage';
-import { User } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { IconButton } from '@gredice/ui/IconButton';
+import { User } from '@gredice/ui/icons';
+import { Modal } from '@gredice/ui/Modal';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useMemo, useState } from 'react';
 import {
     UserPickerField,
@@ -28,18 +28,25 @@ type AssignableUser = Pick<
 
 type FieldAssignmentTarget = {
     id: number;
+    expectedPlantCycleEventId: number;
+    expectedPlantCycleVersionEventId: number;
+    expectedPlantSortId: number;
     farmUsers: AssignableUser[];
 };
 
 type OperationAssignmentTarget = {
     id: number;
+    expectedEntityId: number;
+    expectedTaskVersionEventId: number;
     farmUsers: AssignableUser[];
 };
 
 interface BulkAssignRaisedBedButtonProps {
     physicalId: string;
+    targetLabel?: string;
     fields: FieldAssignmentTarget[];
     operations: OperationAssignmentTarget[];
+    onSubmit?: (assignedUserIds: string[]) => unknown | Promise<unknown>;
 }
 
 function getUserLabel(user: AssignableUser) {
@@ -50,8 +57,10 @@ function getUserLabel(user: AssignableUser) {
 
 export function BulkAssignRaisedBedButton({
     physicalId,
+    targetLabel,
     fields,
     operations,
+    onSubmit,
 }: BulkAssignRaisedBedButtonProps) {
     const [open, setOpen] = useState(false);
     const [selectedUserId, setSelectedUserId] = useState(unassignedValue);
@@ -60,6 +69,9 @@ export function BulkAssignRaisedBedButton({
 
     const totalItems = fields.length + operations.length;
     const disabled = totalItems === 0 || isSubmitting;
+    const targetText =
+        targetLabel ??
+        (physicalId === 'dan' ? 'za dan' : `za gredicu ${physicalId}`);
 
     const selectableUsers = useMemo(() => {
         const targetUsers = [...fields, ...operations].map(
@@ -114,30 +126,45 @@ export function BulkAssignRaisedBedButton({
             return;
         }
 
-        setIsSubmitting(true);
         setErrorMessage(null);
         const assignedUserIds =
             selectedUserId === unassignedValue ? [] : [selectedUserId];
 
-        try {
-            await Promise.all([
-                ...fields.map((field) =>
-                    assignRaisedBedFieldUserAction(field.id, assignedUserIds),
-                ),
-                ...operations.map((operation) =>
-                    assignOperationUserAction(operation.id, assignedUserIds),
-                ),
-            ]);
+        if (onSubmit) {
+            await onSubmit(assignedUserIds);
             setOpen(false);
-        } catch (error) {
-            console.error(
-                'Failed to assign users for all raised bed items:',
-                error,
-            );
-            setErrorMessage('Greška pri spremanju skupne dodjele korisnika.');
-        } finally {
-            setIsSubmitting(false);
+            return;
         }
+
+        setIsSubmitting(true);
+        setOpen(false);
+        void Promise.all([
+            ...fields.map((field) =>
+                assignRaisedBedFieldUserAction(
+                    field.id,
+                    field.expectedPlantCycleEventId,
+                    field.expectedPlantSortId,
+                    field.expectedPlantCycleVersionEventId,
+                    assignedUserIds,
+                ),
+            ),
+            ...operations.map((operation) =>
+                assignOperationUserAction(
+                    operation.id,
+                    operation.expectedEntityId,
+                    operation.expectedTaskVersionEventId,
+                    assignedUserIds,
+                ),
+            ),
+        ])
+            .catch((error: unknown) => {
+                console.error(
+                    'Failed to assign users for all raised bed items:',
+                    error,
+                );
+                alert('Skupna dodjela korisnika nije uspjela.');
+            })
+            .finally(() => setIsSubmitting(false));
     }
 
     return (
@@ -148,7 +175,8 @@ export function BulkAssignRaisedBedButton({
             trigger={
                 <IconButton
                     variant="plain"
-                    title="Dodijeli korisnika svim nepotvrđenim zadacima gredice"
+                    size="xs"
+                    title="Dodijeli korisnika svim zadacima"
                     disabled={disabled}
                     aria-disabled={disabled}
                     loading={isSubmitting}
@@ -157,11 +185,10 @@ export function BulkAssignRaisedBedButton({
                 </IconButton>
             }
         >
-            <Stack spacing={2}>
+            <Stack spacing={4}>
                 <Typography level="h5">Skupna dodjela korisnika</Typography>
                 <Typography>
-                    Odaberi korisnika za sve nepotvrđene zadatke ({totalItems})
-                    za gredicu <strong>{physicalId}</strong>.
+                    {`Odaberi korisnika za sve zadatke (${totalItems}) ${targetText}.`}
                 </Typography>
 
                 <UserPickerField
@@ -172,7 +199,6 @@ export function BulkAssignRaisedBedButton({
                         value: unassignedValue,
                         label: 'Bez dodjele',
                     }}
-                    resetKey={open}
                 />
 
                 {errorMessage && (
@@ -181,7 +207,7 @@ export function BulkAssignRaisedBedButton({
                     </Typography>
                 )}
 
-                <Row spacing={1} justifyContent="end">
+                <Row spacing={2} justifyContent="end">
                     <Button
                         variant="outlined"
                         onClick={() => handleOpenChange(false)}

@@ -4,10 +4,11 @@ import type {
     SelectAttributeDefinition,
     SelectAttributeValue,
 } from '@gredice/storage';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Add } from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { AttributeInput } from '../../../../../components/shared/attributes/AttributeInput';
 import { handleValueSave } from '../../../../(actions)/entityActions';
 import { useEntityDetailsSave } from './EntityDetailsSaveContext';
@@ -26,15 +27,22 @@ export function AttributeCategoryDefinitionItem({
     entity,
 }: AttributeCategoryDefinitionItemProps) {
     const { trackSave } = useEntityDetailsSave();
+    const attributeValues = entity.attributes.filter(
+        (attribute) =>
+            attribute.attributeDefinitionId === attributeDefinition.id,
+    );
 
     function handleAdd() {
-        void trackSave(() =>
-            handleValueSave(
+        void trackSave(async () => {
+            const result = await handleValueSave(
                 entity.entityTypeName,
                 entity.id,
                 attributeDefinition,
-            ),
-        ).catch((error) => {
+            );
+            if (!result.success) {
+                throw new Error(result.message);
+            }
+        }).catch((error) => {
             console.error(
                 'AttributeCategoryDefinitionItem handleAdd error',
                 error,
@@ -43,13 +51,13 @@ export function AttributeCategoryDefinitionItem({
     }
 
     return (
-        <Stack key={attributeDefinition.id} spacing={1}>
-            <Row justifyContent="space-between" alignItems="flex-start">
+        <Stack key={attributeDefinition.id} spacing={2}>
+            <Row justifyContent="space-between" alignItems="start">
                 <Stack>
                     <Typography level="body1" semiBold>
                         {attributeDefinition.label}
                         {attributeDefinition.required && (
-                            <span className="text-red-600/60 ml-1">*</span>
+                            <span className="ml-0.5 text-red-600/60">*</span>
                         )}
                     </Typography>
                     {Boolean(attributeDefinition.description?.length) && (
@@ -59,39 +67,57 @@ export function AttributeCategoryDefinitionItem({
                     )}
                 </Stack>
                 {attributeDefinition.multiple && (
-                    <Button onClick={handleAdd}>Dodaj</Button>
+                    <IconButton
+                        type="button"
+                        onClick={handleAdd}
+                        variant="plain"
+                        title="Dodaj"
+                    >
+                        <Add className="size-5" />
+                    </IconButton>
                 )}
             </Row>
-            <Stack spacing={1}>
-                {attributeDefinition.multiple ? (
-                    entity.attributes
-                        .filter(
-                            (a) =>
-                                a.attributeDefinitionId ===
-                                attributeDefinition.id,
-                        )
-                        .map((attributeValue) => (
-                            <AttributeInput
+            {attributeDefinition.multiple ? (
+                attributeValues.length > 0 && (
+                    <div className="overflow-hidden rounded-lg border border-border/70">
+                        {attributeValues.map((attributeValue) => (
+                            <div
                                 key={attributeValue.id}
-                                entityType={entity.entityTypeName}
-                                entityId={entity.id}
-                                attributeDefinition={attributeDefinition}
-                                attributeValue={attributeValue}
-                            />
-                        ))
-                ) : (
-                    <AttributeInput
-                        entityId={entity.id}
-                        entityType={entity.entityTypeName}
-                        attributeDefinition={attributeDefinition}
-                        attributeValue={entity.attributes.find(
-                            (a) =>
-                                a.attributeDefinitionId ===
-                                attributeDefinition.id,
-                        )}
-                    />
-                )}
-            </Stack>
+                                className="border-border/70 border-b p-4 first:rounded-t-lg last:rounded-b-lg last:border-b-0"
+                            >
+                                <AttributeInput
+                                    blockedValues={attributeValues
+                                        .filter(
+                                            (value) =>
+                                                value.id !== attributeValue.id,
+                                        )
+                                        .map((value) => value.value)
+                                        .filter(
+                                            (value): value is string =>
+                                                typeof value === 'string',
+                                        )}
+                                    entityType={entity.entityTypeName}
+                                    entityId={entity.id}
+                                    attributeDefinition={attributeDefinition}
+                                    attributeValue={attributeValue}
+                                    presentation="list-item"
+                                />
+                            </div>
+                        ))}
+                    </div>
+                )
+            ) : (
+                <AttributeInput
+                    entityId={entity.id}
+                    entityType={entity.entityTypeName}
+                    attributeDefinition={attributeDefinition}
+                    attributeValue={
+                        attributeValues.length > 0
+                            ? attributeValues[0]
+                            : undefined
+                    }
+                />
+            )}
         </Stack>
     );
 }

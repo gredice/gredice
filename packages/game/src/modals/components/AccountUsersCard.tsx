@@ -1,13 +1,13 @@
+import { Button } from '@gredice/ui/Button';
+import { Card, CardContent } from '@gredice/ui/Card';
+import { Add } from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
+import { Spinner } from '@gredice/ui/Spinner';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { UserAvatar } from '@gredice/ui/UserAvatar';
-import { Add } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Card, CardContent } from '@signalco/ui-primitives/Card';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Spinner } from '@signalco/ui-primitives/Spinner';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import { useCurrentAccountUsers } from '../../hooks/useCurrentAccountUsers';
+import { GameModal } from '../../shared-ui/game-modal';
 import { InviteUserForm } from './InviteUserForm';
 import { PendingInvitationsList } from './PendingInvitationsList';
 
@@ -17,13 +17,13 @@ export function AccountUsersCard() {
     return (
         <Card>
             <CardContent noHeader>
-                <Stack spacing={2}>
+                <Stack spacing={4}>
                     <Row
-                        spacing={1}
+                        spacing={2}
                         justifyContent="space-between"
                         alignItems="start"
                     >
-                        <Stack spacing={0.5}>
+                        <Stack spacing={1}>
                             <Typography level="body1" semiBold>
                                 Korisnici na računu
                             </Typography>
@@ -32,7 +32,7 @@ export function AccountUsersCard() {
                                 korisnike.
                             </Typography>
                         </Stack>
-                        <Modal
+                        <GameModal
                             trigger={
                                 <Button
                                     variant="solid"
@@ -44,7 +44,7 @@ export function AccountUsersCard() {
                             }
                             title="Pozovi korisnika"
                         >
-                            <Stack spacing={2}>
+                            <Stack spacing={4}>
                                 <Typography level="h5">
                                     Pozovi novog korisnika
                                 </Typography>
@@ -54,7 +54,7 @@ export function AccountUsersCard() {
                                 </Typography>
                                 <InviteUserForm />
                             </Stack>
-                        </Modal>
+                        </GameModal>
                     </Row>
                     {accountUsers.isLoading && (
                         <Spinner
@@ -77,14 +77,17 @@ export function AccountUsersCard() {
                     )}
                     {accountUsers.isSuccess &&
                         (accountUsers.data?.length ?? 0) > 0 && (
-                            <Stack spacing={1}>
+                            <Stack spacing={2}>
                                 {accountUsers.data?.map((user) => (
                                     <Row
                                         key={user.id}
-                                        spacing={2}
+                                        spacing={4}
                                         className="items-center"
                                     >
                                         <UserAvatar
+                                            achievementCount={
+                                                user.achievementCount
+                                            }
                                             avatarUrl={user.avatarUrl}
                                             displayName={user.displayName}
                                             className="size-8"

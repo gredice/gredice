@@ -1,9 +1,19 @@
 export const knownEventTypes = {
+    harvestTraceGroups: {
+        create: 'harvestTraceGroup.create',
+    },
+    checkout: {
+        operationCreated: 'checkout.operation.created',
+    },
     accounts: {
         create: 'account.create',
         assignUser: 'account.assignUser',
         earnSunflowers: 'account.earnSunflowers',
+        sunflowerDropSpawn: 'account.sunflowerDrop.spawn',
+        earnSunflowerDrop: 'account.earnSunflowerDrop',
+        referral: 'account.referral.v1',
         spendSunflowers: 'account.spendSunflowers',
+        aiRequest: 'account.aiRequest',
     },
     users: {
         create: 'user.create',
@@ -37,6 +47,7 @@ export const knownEventTypes = {
         delete: 'raisedBed.delete',
         abandon: 'raisedBed.abandon',
         aiAnalysis: 'raisedBed.aiAnalysis',
+        weedStateSet: 'raisedBed.weedState.set',
     },
     raisedBedFields: {
         create: 'raisedBedField.create',
@@ -44,16 +55,40 @@ export const knownEventTypes = {
         plantPlace: 'raisedBedField.plantPlace',
         plantSchedule: 'raisedBedField.plantSchedule',
         plantUpdate: 'raisedBedField.plantUpdate',
+        plantBlock: 'raisedBedField.plantBlock',
         plantReplaceSort: 'raisedBedField.plantReplaceSort',
         aiAnalysis: 'raisedBedField.aiAnalysis',
+        weedStateSet: 'raisedBedField.weedState.set',
+    },
+    raisedBedPlantings: {
+        sortCorrected: 'raisedBedPlanting.sort.corrected',
+        lifecycleStarted: 'raisedBedPlanting.lifecycle.started',
+        lifecycleStatusChanged: 'raisedBedPlanting.lifecycle.statusChanged',
+        transplanted: 'raisedBedPlanting.transplanted',
+        taskScheduled: 'raisedBedPlanting.task.scheduled',
+        taskAssigned: 'raisedBedPlanting.task.assigned',
+        taskBlocked: 'raisedBedPlanting.task.blocked',
+        taskCompleted: 'raisedBedPlanting.task.completed',
+        taskVerified: 'raisedBedPlanting.task.verified',
+        taskCancelled: 'raisedBedPlanting.task.cancelled',
     },
     operations: {
+        adminUpdate: 'operation.admin.update',
+        acceptance: 'operation.acceptance',
         assign: 'operation.assign',
+        entityChange: 'operation.entityChange',
         schedule: 'operation.schedule',
         complete: 'operation.complete',
+        block: 'operation.block',
+        completionEvidenceUpdate: 'operation.completionEvidence.update',
         verify: 'operation.verify',
         fail: 'operation.fail',
         cancel: 'operation.cancel',
+    },
+    approvalRequests: {
+        create: 'approvalRequest.create',
+        approve: 'approvalRequest.approve',
+        reject: 'approvalRequest.reject',
     },
     delivery: {
         requestCreated: 'delivery.request.created',
@@ -63,10 +98,21 @@ export const knownEventTypes = {
         requestPreparing: 'delivery.request.preparing',
         requestReady: 'delivery.request.ready',
         requestReadyEmailProcessed: 'delivery.request.ready.email_processed',
+        requestLifecycleNotificationProcessed:
+            'delivery.request.lifecycle_notification.processed',
+        requestLifecycleNotificationDecision:
+            'delivery.request.lifecycle_notification.decision',
         requestCancelled: 'delivery.request.cancelled',
         requestFulfilled: 'delivery.request.fulfilled',
+        requestRouteStarted: 'delivery.request.route_started',
+        requestRouteProgress: 'delivery.request.route_progress',
+        requestArrived: 'delivery.request.arrived',
+        requestExceptionRecorded: 'delivery.request.exception.recorded',
+        requestExceptionRecovered: 'delivery.request.exception.recovered',
         requestSurveySent: 'delivery.request.survey_sent',
         userCancelled: 'delivery.request.user_cancelled',
+        runReassigned: 'delivery.run.reassigned',
+        runAbandoned: 'delivery.run.abandoned',
     },
     occasions: {
         adventCalendarOpen: 'occasion.advent.calendar.open',
@@ -74,5 +120,14 @@ export const knownEventTypes = {
     inventory: {
         add: 'inventory.add',
         consume: 'inventory.consume',
+    },
+    payouts: {
+        requested: 'payout.requested',
+        approved: 'payout.approved',
+        rejected: 'payout.rejected',
+        paid: 'payout.paid',
+    },
+    tutorialChecklist: {
+        taskReady: 'tutorialChecklist.task.ready',
     },
 } as const;

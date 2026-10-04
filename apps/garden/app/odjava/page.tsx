@@ -1,28 +1,32 @@
 'use client';
 
-import { clientAuthenticated } from '@gredice/client';
-import { useTimeout } from '@signalco/hooks/useTimeout';
 import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Spinner } from '@signalco/ui-primitives/Spinner';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+    clientAuthenticated,
+    getBrowserGrediceAppOrigin,
+} from '@gredice/client';
+import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
+import { Row } from '@gredice/ui/Row';
+import { Spinner } from '@gredice/ui/Spinner';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
+import { useEffect } from 'react';
 
 export default function LogoutPage() {
     const queryClient = useQueryClient();
 
-    useTimeout(async () => {
-        await queryClient.invalidateQueries();
-        await clientAuthenticated().api.auth.logout.$post();
-        window.location.href = 'https://www.gredice.com';
-    }, 1300);
+    useEffect(() => {
+        const timeout = window.setTimeout(() => {
+            void (async () => {
+                await queryClient.invalidateQueries();
+                await clientAuthenticated().api.auth.logout.$post();
+                window.location.href = getBrowserGrediceAppOrigin('www');
+            })();
+        }, 1300);
+
+        return () => window.clearTimeout(timeout);
+    }, [queryClient]);
 
     return (
         <div className="flex items-center justify-center min-h-screen">
@@ -38,8 +42,8 @@ export default function LogoutPage() {
                     <CardTitle className="text-center">Odjava</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <Stack spacing={3}>
-                        <Row spacing={2} justifyContent="center">
+                    <Stack spacing={6}>
+                        <Row spacing={4} justifyContent="center">
                             <Spinner
                                 loading
                                 className="size-5"

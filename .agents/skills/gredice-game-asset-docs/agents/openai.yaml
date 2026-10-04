@@ -1,0 +1,4 @@
+interface:
+  display_name: "Gredice Game Asset Docs"
+  short_description: "Document garden game and asset pipelines"
+  default_prompt: "Use $gredice-game-asset-docs to document game scene behavior, generated assets, or profiling workflows."

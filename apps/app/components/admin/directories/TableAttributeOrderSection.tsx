@@ -18,17 +18,18 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { ExtendedAttributeDefinition } from '@gredice/storage';
-import { Tablet } from '@signalco/ui-icons';
-import { Card } from '@signalco/ui-primitives/Card';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Card } from '@gredice/ui/Card';
+import { Chip } from '@gredice/ui/Chip';
+import { Tablet } from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import type { CSSProperties, MouseEvent } from 'react';
 import { useEffect, useState } from 'react';
 import { reorderAttributeDefinition } from '../../../app/(actions)/definitionActions';
 import { KnownPages } from '../../../src/KnownPages';
+import { SortableDragHandle } from './SortableDragHandle';
 
 function SortableTableAttributeRow({
     attribute,
@@ -61,16 +62,30 @@ function SortableTableAttributeRow({
     };
 
     return (
-        <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+        <div
+            ref={setNodeRef}
+            style={style}
+            className="flex items-stretch gap-1"
+        >
+            <SortableDragHandle
+                {...attributes}
+                {...listeners}
+                aria-label="Promijeni poredak atributa u tablici"
+                title="Promijeni poredak atributa u tablici"
+                className={
+                    isDragging ? 'cursor-grabbing bg-muted text-foreground' : ''
+                }
+            />
             <Link
                 href={KnownPages.DirectoryEntityTypeAttributeDefinition(
                     attribute.entityTypeName,
                     attribute.id,
                 )}
                 onClick={handleClick}
+                className="min-w-0 flex-1"
             >
                 <Card>
-                    <Row spacing={1} justifyContent="space-between">
+                    <Row spacing={2} justifyContent="space-between">
                         <Typography level="body2">{attribute.label}</Typography>
                         {categoryLabel ? <Chip>{categoryLabel}</Chip> : null}
                     </Row>
@@ -147,8 +162,8 @@ export function TableAttributeOrderSection({
     }
 
     return (
-        <Stack spacing={1}>
-            <Row spacing={1}>
+        <Stack spacing={2}>
+            <Row spacing={2}>
                 <Tablet className="size-5 text-tertiary-foreground" />
                 <Typography level="body2">
                     Poredak atributa u tablici
@@ -168,7 +183,7 @@ export function TableAttributeOrderSection({
                     )}
                     strategy={verticalListSortingStrategy}
                 >
-                    <Stack spacing={1}>
+                    <Stack spacing={2}>
                         {displayAttributes.map((attribute) => (
                             <SortableTableAttributeRow
                                 key={attribute.id}

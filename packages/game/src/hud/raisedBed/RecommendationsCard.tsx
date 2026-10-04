@@ -1,24 +1,39 @@
-import type { OperationData } from '@gredice/client';
-import { Alert } from '@signalco/ui/Alert';
-import { Navigate } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
-import { List } from '@signalco/ui-primitives/List';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Skeleton } from '@signalco/ui-primitives/Skeleton';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
-import { useMemo } from 'react';
+import type { OperationData, PlantData } from '@gredice/client';
+import { isOperationApplicableToPlant } from '@gredice/js/operations';
+import { Alert } from '@gredice/ui/Alert';
+import { Button } from '@gredice/ui/Button';
+import { Card, CardOverflow } from '@gredice/ui/Card';
+import { GameHealthIcon, GameToolsIcon as Hammer } from '@gredice/ui/GameIcons';
+import { Navigate } from '@gredice/ui/icons';
+import { List } from '@gredice/ui/List';
+import { Skeleton } from '@gredice/ui/Skeleton';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
+import { sortFavoritesFirst, useFavoriteIds } from '../../hooks/useFavorites';
 import { useOperations } from '../../hooks/useOperations';
 import { usePlantSort } from '../../hooks/usePlantSorts';
+import { usePlants } from '../../hooks/usePlants';
 import {
     DEFAULT_FEATURED_OPERATION_LIMIT,
     FEATURED_OPERATIONS_BY_STAGE,
-    PLANT_STATUS_STAGE_SEQUENCE,
+    getPlantOperationRecommendationStages,
     type PlantFieldStatus,
     type PlantStageName,
+    shouldShowPlantOperationRecommendations,
 } from './featuredOperations';
+import { RecommendationSection } from './RecommendationSection';
 import { OperationsListItem } from './shared/OperationsListItem';
+import { isPlantTargetMetadataResolved } from './shared/plantTargetMetadata';
+import { useOperationContextIndicators } from './shared/useOperationContextIndicators';
+
+type PlantHealthIssueSummary = NonNullable<
+    NonNullable<PlantData['health']>['diseases']
+>[number];
+type PlantHealthOperationSummary = NonNullable<
+    NonNullable<PlantHealthIssueSummary['operations']>['prevention']
+>[number];
 
 export function RecommendationsCard({
     onShowOperations,
@@ -35,6 +50,10 @@ export function RecommendationsCard({
     plantStatus?: PlantFieldStatus;
     plantSortId?: number;
 }) {
+    const { track } = useGameAnalytics();
+    const [operationsOpen, setOperationsOpen] = useState(false);
+    const [healthOpen, setHealthOpen] = useState(false);
+    const favoriteOperationIds = useFavoriteIds('operation');
     // Fetch and prepare data for recommendations
     const {
         data: operations,
@@ -42,18 +61,33 @@ export function RecommendationsCard({
         isError: isOperationsError,
     } = useOperations();
     const { data: plantSort } = usePlantSort(plantSortId);
+    const isPlantMetadataResolved = isPlantTargetMetadataResolved(
+        plantSortId,
+        plantSort,
+    );
+    const { data: plants } = usePlants();
+    const { shoppingCartOperationIds, scheduledOperationIds } =
+        useOperationContextIndicators({
+            gardenId,
+            raisedBedId,
+            positionIndex,
+        });
+    const plant = plants?.find(
+        (candidate) => candidate.id === plantSort?.information.plant.id,
+    );
 
     const plantSortOperationNames = useMemo(() => {
         const operationNames =
             plantSort?.information.plant.information?.operations
                 ?.map((operation) => operation.information?.name)
                 .filter((name): name is string => Boolean(name)) ?? [];
-        return operationNames.length ? new Set(operationNames) : null;
+        return new Set(operationNames);
     }, [plantSort]);
 
-    const stageSequence: PlantStageName[] | undefined = plantStatus
-        ? PLANT_STATUS_STAGE_SEQUENCE[plantStatus as PlantFieldStatus]
-        : undefined;
+    const showPlantOperationRecommendations =
+        shouldShowPlantOperationRecommendations(plantStatus);
+    const stageSequence: PlantStageName[] | undefined =
+        getPlantOperationRecommendationStages(plantStatus);
 
     const { selectedStage, stageOperations } = useMemo<{
         selectedStage: PlantStageName | undefined;
@@ -66,32 +100,25 @@ export function RecommendationsCard({
             };
         }
 
-        if (!operations) {
+        if (!operations || !isPlantMetadataResolved) {
             return {
                 selectedStage: stageSequence[0],
                 stageOperations: [] as OperationData[],
             };
         }
 
-        const plantOperations = operations.filter(
-            (operation) => operation.attributes.application === 'plant',
-        );
-
         const filterByPlantSort = (ops: OperationData[]) => {
-            if (
-                !plantSortOperationNames ||
-                plantSortOperationNames.size === 0
-            ) {
-                return ops;
-            }
             return ops.filter((operation) =>
-                plantSortOperationNames.has(operation.information.name),
+                isOperationApplicableToPlant(
+                    operation,
+                    plantSortOperationNames,
+                ),
             );
         };
 
         for (const stage of stageSequence) {
             const stageOps = filterByPlantSort(
-                plantOperations.filter(
+                operations.filter(
                     (operation) =>
                         operation.attributes.stage.information?.name === stage,
                 ),
@@ -105,7 +132,7 @@ export function RecommendationsCard({
         const fallbackOperations =
             fallbackStage != null
                 ? filterByPlantSort(
-                      plantOperations.filter(
+                      operations.filter(
                           (operation) =>
                               operation.attributes.stage.information?.name ===
                               fallbackStage,
@@ -117,7 +144,12 @@ export function RecommendationsCard({
             selectedStage: fallbackStage,
             stageOperations: fallbackOperations,
         };
-    }, [operations, plantSortOperationNames, stageSequence]);
+    }, [
+        isPlantMetadataResolved,
+        operations,
+        plantSortOperationNames,
+        stageSequence,
+    ]);
 
     const featuredOperations = useMemo(() => {
         if (!selectedStage || stageOperations.length === 0) {
@@ -143,16 +175,138 @@ export function RecommendationsCard({
                 configuredSet.has(operation.information.name),
             );
             if (configuredOperations.length > 0) {
-                return configuredOperations;
+                return sortFavoritesFirst(
+                    configuredOperations,
+                    favoriteOperationIds,
+                );
             }
         }
 
-        return sorted.slice(0, DEFAULT_FEATURED_OPERATION_LIMIT);
-    }, [selectedStage, stageOperations]);
+        return sortFavoritesFirst(
+            sorted.slice(0, DEFAULT_FEATURED_OPERATION_LIMIT),
+            favoriteOperationIds,
+        );
+    }, [favoriteOperationIds, selectedStage, stageOperations]);
 
-    const hasMoreOperations =
-        stageOperations.length > featuredOperations.length;
-    const isLoadingFeaturedOperations = isLoadingOperations;
+    const plantHealthIssues = useMemo(() => {
+        if (!showPlantOperationRecommendations) {
+            return [];
+        }
+
+        const plantHealth = plant?.health;
+        return [
+            ...(plantHealth?.diseases ?? []),
+            ...(plantHealth?.pests ?? []),
+        ];
+    }, [plant, showPlantOperationRecommendations]);
+
+    const { healthOperationIds, healthOperationNames } = useMemo(() => {
+        const operationIds = new Set<number>();
+        const operationNames = new Set<string>();
+        for (const issue of plantHealthIssues) {
+            const issueOperationGroups: Array<
+                PlantHealthOperationSummary[] | undefined
+            > = [
+                issue.operations?.prevention,
+                issue.operations?.reduction,
+                issue.operations?.alleviation,
+            ];
+            for (const issueOperations of issueOperationGroups) {
+                for (const operation of issueOperations ?? []) {
+                    operationIds.add(operation.id);
+                    operationNames.add(operation.name);
+                }
+            }
+        }
+        return {
+            healthOperationIds: operationIds,
+            healthOperationNames: operationNames,
+        };
+    }, [plantHealthIssues]);
+
+    const healthRecommendedOperations = useMemo(() => {
+        if (!operations || healthOperationIds.size === 0) {
+            return [] as OperationData[];
+        }
+
+        return sortFavoritesFirst(
+            operations
+                .filter(
+                    (operation) =>
+                        healthOperationIds.has(operation.id) &&
+                        isOperationApplicableToPlant(
+                            operation,
+                            healthOperationNames,
+                        ),
+                )
+                .sort((left, right) =>
+                    left.information.label.localeCompare(
+                        right.information.label,
+                        'hr',
+                    ),
+                ),
+            favoriteOperationIds,
+        );
+    }, [
+        favoriteOperationIds,
+        healthOperationIds,
+        healthOperationNames,
+        operations,
+    ]);
+
+    const healthIssueLabels = useMemo(
+        () => plantHealthIssues.map((issue) => issue.name),
+        [plantHealthIssues],
+    );
+
+    const healthRecommendationViewKey = healthRecommendedOperations
+        .map((operation) => operation.id)
+        .join(',');
+    const lastTrackedHealthRecommendationViewKey = useRef<string | null>(null);
+
+    useEffect(() => {
+        if (
+            !healthOpen ||
+            !healthRecommendationViewKey ||
+            lastTrackedHealthRecommendationViewKey.current ===
+                healthRecommendationViewKey
+        ) {
+            return;
+        }
+
+        lastTrackedHealthRecommendationViewKey.current =
+            healthRecommendationViewKey;
+        track('game_plant_health_recommendations_viewed', {
+            garden_id: gardenId,
+            raised_bed_id: raisedBedId,
+            position_index: positionIndex,
+            plant_sort_id: plantSortId,
+            health_issue_count: plantHealthIssues.length,
+            operation_count: healthRecommendedOperations.length,
+        });
+    }, [
+        gardenId,
+        healthOpen,
+        healthRecommendationViewKey,
+        healthRecommendedOperations.length,
+        plantHealthIssues.length,
+        plantSortId,
+        positionIndex,
+        raisedBedId,
+        track,
+    ]);
+
+    const isLoadingFeaturedOperations =
+        isLoadingOperations || !isPlantMetadataResolved;
+    const hasStageRecommendations = Boolean(stageSequence?.length);
+    const hasHealthIssueRecommendations = plantHealthIssues.length > 0;
+    const isLoadingHealthOperations =
+        isLoadingOperations &&
+        hasHealthIssueRecommendations &&
+        healthRecommendedOperations.length === 0;
+    const showHealthSection =
+        hasHealthIssueRecommendations &&
+        (isLoadingHealthOperations || healthRecommendedOperations.length > 0);
     const skeletonKeys = useMemo(
         () =>
             Array.from(
@@ -162,81 +316,170 @@ export function RecommendationsCard({
         [],
     );
 
-    // Hide card if we can't determine stage for the current status
-    if (!stageSequence?.length) {
+    // Hide card if we can't determine stage and there are no plant health issues.
+    if (!hasStageRecommendations && !hasHealthIssueRecommendations) {
         return null;
     }
 
     return (
         <Stack spacing={1}>
-            <Row spacing={1} justifyContent="space-between">
-                <Typography level="body1">Preporučene radnje</Typography>
-                {onShowOperations && (
-                    <Button
-                        variant="link"
-                        size="sm"
-                        onClick={onShowOperations}
-                        endDecorator={<Navigate className="size-4 shrink-0" />}
-                    >
-                        Sve radnje
-                    </Button>
-                )}
-            </Row>
+            <Typography
+                level="body3"
+                className="leading-tight font-semibold uppercase"
+                component="h2"
+            >
+                Preporuke
+            </Typography>
             <Card>
-                <CardOverflow>
-                    <Stack>
+                <CardOverflow className="overflow-hidden">
+                    <Stack className="divide-y">
                         {isOperationsError && (
-                            <Alert color="danger">
+                            <Alert color="danger" className="m-2">
                                 Greška prilikom učitavanja radnji
                             </Alert>
                         )}
-                        {isLoadingFeaturedOperations ? (
-                            <Stack spacing={1}>
-                                {skeletonKeys.map((skeletonKey) => (
-                                    <Skeleton
-                                        key={skeletonKey}
-                                        className="h-16 w-full rounded-md"
-                                    />
-                                ))}
-                            </Stack>
-                        ) : featuredOperations.length ? (
-                            <List
-                                variant="outlined"
-                                className="border-b-0 border-l-0 border-r-0 rounded-none max-h-[25dvh] overflow-y-auto"
+                        {hasStageRecommendations ? (
+                            <RecommendationSection
+                                count={featuredOperations.length}
+                                icon={<Hammer className="size-4" />}
+                                kind="operations"
+                                onOpenChange={setOperationsOpen}
+                                open={operationsOpen}
+                                title="Radnje"
                             >
-                                {featuredOperations.map((operation) => (
-                                    <OperationsListItem
-                                        key={operation.id}
-                                        operation={operation}
-                                        gardenId={gardenId}
-                                        raisedBedId={raisedBedId}
-                                        positionIndex={positionIndex}
-                                    />
-                                ))}
-                            </List>
-                        ) : (
-                            <Typography
-                                level="body2"
-                                secondary
-                                className="p-4 border-t"
-                            >
-                                Trenutno nema dostupnih radnji za ovu fazu.
-                            </Typography>
-                        )}
-                        {hasMoreOperations &&
-                            onShowOperations &&
-                            !isLoadingFeaturedOperations && (
-                                <div className="border-t px-4 py-2">
-                                    <Button
-                                        variant="link"
-                                        size="sm"
-                                        className="self-start px-0"
-                                        onClick={onShowOperations}
+                                {isLoadingFeaturedOperations ? (
+                                    <Stack spacing={2}>
+                                        {skeletonKeys.map((skeletonKey) => (
+                                            <Skeleton
+                                                key={skeletonKey}
+                                                className="h-16 w-full rounded-md"
+                                            />
+                                        ))}
+                                    </Stack>
+                                ) : featuredOperations.length ? (
+                                    <List
+                                        variant="outlined"
+                                        data-recommended-operation-list
+                                        className="max-h-[25dvh] overflow-y-auto rounded-md"
                                     >
-                                        Prikaži sve radnje
-                                    </Button>
-                                </div>
-                            )}
+                                        {featuredOperations.map((operation) => (
+                                            <OperationsListItem
+                                                key={operation.id}
+                                                operation={operation}
+                                                gardenId={gardenId}
+                                                raisedBedId={raisedBedId}
+                                                positionIndex={positionIndex}
+                                                inShoppingCart={shoppingCartOperationIds.has(
+                                                    operation.id,
+                                                )}
+                                                isScheduled={scheduledOperationIds.has(
+                                                    operation.id,
+                                                )}
+                                            />
+                                        ))}
+                                        {onShowOperations && (
+                                            <ShowAllOperationsListItem
+                                                onShowOperations={
+                                                    onShowOperations
+                                                }
+                                            />
+                                        )}
+                                    </List>
+                                ) : (
+                                    <Typography level="body2" secondary>
+                                        Trenutno nema dostupnih radnji za ovu
+                                        fazu.
+                                    </Typography>
+                                )}
+                            </RecommendationSection>
+                        ) : null}
+                        {showHealthSection && (
+                            <RecommendationSection
+                                count={healthRecommendedOperations.length}
+                                icon={
+                                    <GameHealthIcon
+                                        className="size-5 shrink-0"
+                                        aria-hidden
+                                    />
+                                }
+                                kind="health"
+                                onOpenChange={setHealthOpen}
+                                open={healthOpen}
+                                title="Zdravlje biljke"
+                            >
+                                <Stack spacing={2}>
+                                    {healthIssueLabels.length > 0 && (
+                                        <Typography level="body3" secondary>
+                                            {healthIssueLabels
+                                                .slice(0, 3)
+                                                .join(', ')}
+                                            {healthIssueLabels.length > 3
+                                                ? ` +${healthIssueLabels.length - 3}`
+                                                : ''}
+                                        </Typography>
+                                    )}
+                                    {isLoadingHealthOperations ? (
+                                        <Stack spacing={2}>
+                                            {skeletonKeys.map((skeletonKey) => (
+                                                <Skeleton
+                                                    key={`health-${skeletonKey}`}
+                                                    className="h-16 w-full rounded-md"
+                                                />
+                                            ))}
+                                        </Stack>
+                                    ) : (
+                                        <List
+                                            variant="outlined"
+                                            data-plant-health-operation-list
+                                            className="max-h-[25dvh] overflow-y-auto rounded-md"
+                                        >
+                                            {healthRecommendedOperations.map(
+                                                (operation) => (
+                                                    <OperationsListItem
+                                                        key={operation.id}
+                                                        operation={operation}
+                                                        gardenId={gardenId}
+                                                        raisedBedId={
+                                                            raisedBedId
+                                                        }
+                                                        positionIndex={
+                                                            positionIndex
+                                                        }
+                                                        inShoppingCart={shoppingCartOperationIds.has(
+                                                            operation.id,
+                                                        )}
+                                                        isScheduled={scheduledOperationIds.has(
+                                                            operation.id,
+                                                        )}
+                                                        onOperationPicked={() => {
+                                                            track(
+                                                                'game_plant_health_recommendation_selected',
+                                                                {
+                                                                    garden_id:
+                                                                        gardenId,
+                                                                    raised_bed_id:
+                                                                        raisedBedId,
+                                                                    position_index:
+                                                                        positionIndex,
+                                                                    plant_sort_id:
+                                                                        plantSortId,
+                                                                    operation_id:
+                                                                        operation.id,
+                                                                    operation_name:
+                                                                        operation
+                                                                            .information
+                                                                            .name,
+                                                                },
+                                                            );
+                                                        }}
+                                                    />
+                                                ),
+                                            )}
+                                        </List>
+                                    )}
+                                </Stack>
+                            </RecommendationSection>
+                        )}
                     </Stack>
                 </CardOverflow>
             </Card>
@@ -245,3 +488,22 @@ export function RecommendationsCard({
 }
 
 export default RecommendationsCard;
+
+function ShowAllOperationsListItem({
+    onShowOperations,
+}: {
+    onShowOperations: () => void;
+}) {
+    return (
+        <Button
+            variant="plain"
+            className="w-full justify-between text-start p-0 h-auto py-3 gap-3 px-4 rounded-none font-normal border-t"
+            onClick={onShowOperations}
+            endDecorator={<Navigate className="size-4 shrink-0" />}
+        >
+            <Typography level="body1" semiBold>
+                Sve radnje...
+            </Typography>
+        </Button>
+    );
+}

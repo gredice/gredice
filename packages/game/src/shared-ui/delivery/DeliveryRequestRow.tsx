@@ -1,13 +1,22 @@
+import { Button } from '@gredice/ui/Button';
+import { GameRaisedBedIcon as RaisedBedIcon } from '@gredice/ui/GameIcons';
+import {
+    Close,
+    ExternalLink,
+    MapPin,
+    ShoppingCart,
+    Timer,
+    Truck,
+} from '@gredice/ui/icons';
 import { TimeRange } from '@gredice/ui/LocalDateTime';
 import { OperationImage } from '@gredice/ui/OperationImage';
+import { PaperNote } from '@gredice/ui/PaperNote';
 import { PlantOrSortImage } from '@gredice/ui/plants';
-import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
-import { Close, MapPin, ShoppingCart, Timer, Truck } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import type { DeliveryRequestData } from '../../hooks/useDeliveryRequests';
+import { KnownPages } from '../../knownPages';
 import {
     CANCEL_REASON_OPTIONS,
     DeliveryCancelRequestModal,
@@ -58,10 +67,10 @@ export function DeliveryRequestRow({
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-2 md:items-center md:justify-between">
-            <Stack spacing={1}>
+            <Stack spacing={2}>
                 {/* Operation/Plant details */}
                 {hasOperationDetails && (
-                    <Row spacing={1}>
+                    <Row spacing={2}>
                         {hasPlantSort ? (
                             <PlantOrSortImage
                                 plantSort={plantSort}
@@ -84,7 +93,7 @@ export function DeliveryRequestRow({
                                 {displayName}
                             </Typography>
                             {hasPlantSort && (
-                                <Row spacing={1}>
+                                <Row spacing={2}>
                                     <OperationImage
                                         size={32}
                                         operation={{
@@ -101,12 +110,12 @@ export function DeliveryRequestRow({
                             )}
                             {hasRaisedBedDetails && (
                                 <Row
-                                    spacing={1}
+                                    spacing={2}
                                     className="flex-wrap items-center gap-y-0.5"
                                 >
                                     {(raisedBedName || raisedBedPhysicalId) && (
                                         <Row
-                                            spacing={1}
+                                            spacing={2}
                                             className="items-center"
                                         >
                                             {raisedBedPhysicalId && (
@@ -144,21 +153,21 @@ export function DeliveryRequestRow({
                 {/* Delivery/Pickup mode indicator - only show if no operation details */}
                 {!hasOperationDetails &&
                     (request.mode === 'delivery' ? (
-                        <Row spacing={1}>
+                        <Row spacing={2}>
                             <Truck className="size-5 shrink-0" />
                             <Typography>Dostava</Typography>
                         </Row>
                     ) : (
-                        <Row spacing={1}>
+                        <Row spacing={2}>
                             <ShoppingCart className="size-5 shrink-0" />
                             <Typography>Preuzimanje</Typography>
                         </Row>
                     ))}
 
                 {showDestination && request.address && (
-                    <Row spacing={1} alignItems="start">
+                    <Row spacing={2} alignItems="start">
                         <MapPin className="size-4 mt-0.5 text-muted-foreground" />
-                        <Stack spacing={0.5}>
+                        <Stack spacing={1}>
                             <Typography level="body2">
                                 {request.address.label}
                             </Typography>
@@ -175,7 +184,7 @@ export function DeliveryRequestRow({
                 )}
 
                 {showDestination && request.location && (
-                    <Row spacing={1}>
+                    <Row spacing={2}>
                         <MapPin className="size-4 text-muted-foreground" />
                         <Typography level="body2">
                             {request.location.name}
@@ -184,7 +193,7 @@ export function DeliveryRequestRow({
                 )}
 
                 {request.slot && showSlot && (
-                    <Row spacing={1}>
+                    <Row spacing={2}>
                         <Timer className="size-4 text-muted-foreground" />
                         <Typography level="body2">
                             <TimeRange
@@ -196,18 +205,36 @@ export function DeliveryRequestRow({
                 )}
 
                 {request.requestNotes && (
-                    <Stack spacing={0.5}>
+                    <Stack spacing={1}>
                         <Typography level="body3" secondary>
                             Napomene:
                         </Typography>
-                        <Typography level="body2">
+                        <PaperNote
+                            noteKey={request.id}
+                            aria-label="Napomena dostave"
+                        >
                             {request.requestNotes}
-                        </Typography>
+                        </PaperNote>
                     </Stack>
                 )}
             </Stack>
             <Stack className="items-end">
-                <Row spacing={1}>
+                <Row spacing={2} className="flex-wrap justify-end">
+                    {request.trace && (
+                        <Button
+                            variant="outlined"
+                            color="neutral"
+                            size="sm"
+                            href={KnownPages.GrediceHarvestTrace(
+                                request.trace.publicPath,
+                            )}
+                            target="_blank"
+                            rel="noreferrer"
+                            startDecorator={<ExternalLink className="size-4" />}
+                        >
+                            Trag
+                        </Button>
+                    )}
                     <DeliveryStatusChip state={request.state} />
                     {canCancel && (
                         <DeliveryCancelRequestModal

@@ -1,15 +1,11 @@
 'use client';
 
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Spinner } from '@signalco/ui-primitives/Spinner';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { getBrowserGrediceAppOrigin } from '@gredice/client';
+import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
+import { Row } from '@gredice/ui/Row';
+import { Spinner } from '@gredice/ui/Spinner';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useEffect } from 'react';
 
 export default function FacebookLoginPage() {
@@ -18,7 +14,12 @@ export default function FacebookLoginPage() {
             setTimeout(() => {
                 const timeZone =
                     Intl.DateTimeFormat().resolvedOptions().timeZone;
-                window.location.href = `https://api.gredice.com/api/auth/facebook?timeZone=${encodeURIComponent(timeZone)}`;
+                const authUrl = new URL(
+                    '/api/auth/facebook',
+                    getBrowserGrediceAppOrigin('api'),
+                );
+                authUrl.searchParams.set('timeZone', timeZone);
+                window.location.href = authUrl.toString();
             }, 3000);
         };
 
@@ -43,8 +44,8 @@ export default function FacebookLoginPage() {
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <Stack spacing={3}>
-                        <Row spacing={2} justifyContent="center">
+                    <Stack spacing={6}>
+                        <Row spacing={4} justifyContent="center">
                             <Spinner
                                 loading
                                 className="size-5"

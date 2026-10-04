@@ -1,21 +1,39 @@
-import { NavigatingButton } from '@signalco/ui/NavigatingButton';
-import { Card, CardContent } from '@signalco/ui-primitives/Card';
-import { Container } from '@signalco/ui-primitives/Container';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Container } from '@gredice/ui/Container';
+import { CompanyGitHub } from '@gredice/ui/icons';
+import { NavigatingButton } from '@gredice/ui/NavigatingButton';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
+import { Card, CardContent } from '../../components/shared/Card';
+import { DeploymentStatsCard } from './DeploymentStatsCard';
+
+export const revalidate = 300;
 
 export const metadata: Metadata = {
     title: 'Razvojni centar',
     description:
-        'Središnje mjesto za razvojne alate, dijagnostiku, profiliranje, API i timsku suradnju Gredice timova.',
+        'Središnje mjesto za razvojne alate, dijagnostiku, API i timsku suradnju u Gredicama.',
+    robots: {
+        index: false,
+        follow: false,
+    },
 };
+
+type DevelopmentResourceIcon =
+    | string
+    | {
+          type: 'github';
+      }
+    | {
+          type: 'image';
+          src: string;
+      };
 
 type DevelopmentResource = {
     title: string;
     description: string;
     href: string;
-    icon: string;
+    icon: DevelopmentResourceIcon;
 };
 
 type DevelopmentSection = {
@@ -29,26 +47,28 @@ type EnvironmentHosts = {
     api: string;
     farm: string;
     garden: string;
+    news: string;
     status: string;
     storybook: string;
     www: string;
 };
 
 function getEnvironmentHosts(): EnvironmentHosts {
-    const domain =
-        process.env.NEXT_PUBLIC_VERCEL_ENV === 'production'
-            ? 'gredice.com'
-            : 'gredice.test';
-    const storybookDomain =
-        process.env.NEXT_PUBLIC_VERCEL_ENV === 'production'
-            ? 'dev.gredice.com'
-            : 'dev.gredice.test';
+    const vercelEnvironment = process.env.NEXT_PUBLIC_VERCEL_ENV;
+    const isProduction = vercelEnvironment === 'production';
+    const domain = isProduction ? 'gredice.com' : 'gredice.test';
+    const storybookDomain = isProduction
+        ? 'dev.gredice.com'
+        : 'dev.gredice.test';
 
     return {
         app: `https://app.${domain}`,
         api: `https://api.${domain}`,
         farm: `https://farma.${domain}`,
         garden: `https://vrt.${domain}`,
+        news: isProduction
+            ? `https://www.${domain}/novosti`
+            : `https://novosti.${domain}`,
         status: `https://status.${domain}`,
         storybook: `https://storybook.${storybookDomain}`,
         www: `https://www.${domain}`,
@@ -56,32 +76,118 @@ function getEnvironmentHosts(): EnvironmentHosts {
 }
 
 function getDevelopmentSections(hosts: EnvironmentHosts): DevelopmentSection[] {
+    const operationalDebugResources: DevelopmentResource[] = [
+        {
+            title: 'Farma debug indeks',
+            description:
+                'Pregled farm debug alata i operativnih provjera za trenutačno okruženje.',
+            href: `${hosts.farm}/debug`,
+            icon: '🛠️',
+        },
+        {
+            title: 'Etikete berbe',
+            description:
+                'Pregled generiranih harvest etiketa s reprezentativnim podacima.',
+            href: `${hosts.farm}/debug/labels`,
+            icon: '🏷️',
+        },
+        {
+            title: 'Aplikacija debug indeks',
+            description:
+                'Pregled internog debug alata za dijeljene admin i aplikacijske komponente.',
+            href: `${hosts.app}/debug`,
+            icon: '🧰',
+        },
+        {
+            title: 'SelectItems mobile debug',
+            description:
+                'Ručna mobilna provjera otvaranja i zatvaranja SelectItems kontrole.',
+            href: `${hosts.app}/debug/select-items`,
+            icon: '📱',
+        },
+        {
+            title: 'MCP dokumentacija',
+            description:
+                'Javni pregled povezivanja AI asistenata, dostupnih mogućnosti i sigurnosnih granica.',
+            href: `${hosts.www}/mcp`,
+            icon: '🧾',
+        },
+    ];
+
     return [
         {
-            title: 'Dijagnostika i performanse',
+            title: 'Vrt debug i učinkovitost',
             description:
-                'Brzi pristup vrtnim alatima za pregled entiteta i provjeru performansi renderiranja.',
+                'Brzi pristup vrtnim debug scenama, pregledima elemenata i provjerama učinkovitosti iscrtavanja.',
             resources: [
                 {
-                    title: 'Dijagnostika vrtnih entiteta',
+                    title: 'Vrt debug indeks',
                     description:
-                        'Mrežni prikaz za pregled vrtnih entiteta, blokova i prikazanih stanja.',
+                        'Početni pregled svih dostupnih debug scena i pomoćnih alata u Vrt aplikaciji.',
+                    href: `${hosts.garden}/debug`,
+                    icon: '🧪',
+                },
+                {
+                    title: 'Dijagnostika vrtnih elemenata',
+                    description:
+                        'Mrežni prikaz za pregled vrtnih elemenata, blokova i prikazanih stanja.',
                     href: `${hosts.garden}/debug/entities`,
                     icon: '🐞',
                 },
                 {
-                    title: 'Performanse prikaza biljaka',
+                    title: 'Jedan vrtni element',
                     description:
-                        'Gusti prikaz biljnih predložaka za uočavanje uskih grla u renderiranju i regresija performansi.',
+                        'Izolirani prikaz jednog elementa kroz standardnu sandbox scenu.',
+                    href: `${hosts.garden}/debug/entities/FireflyJar`,
+                    icon: '🔎',
+                },
+                {
+                    title: 'Učinkovitost prikaza biljaka',
+                    description:
+                        'Gusti prikaz biljnih predložaka za uočavanje zastoja pri iscrtavanju i pada učinkovitosti.',
                     href: `${hosts.garden}/debug/plants`,
                     icon: '📈',
+                },
+                {
+                    title: 'Lokalni sandbox igre',
+                    description:
+                        'Igriva scena s lokalnom pohranom za brzu provjeru stanja vrta.',
+                    href: `${hosts.garden}/debug/sandbox`,
+                    icon: '🎮',
+                },
+                {
+                    title: 'Ponašanje životinja',
+                    description:
+                        'Scena za provjeru ponašanja, postavljanja i kontrola životinja u vrtu.',
+                    href: `${hosts.garden}/debug/animals`,
+                    icon: '🐾',
+                },
+                {
+                    title: 'Profili igre',
+                    description:
+                        'Mock profili vrta za vrijeme, sezonu, kvalitetu prikaza i HUD provjere.',
+                    href: `${hosts.garden}/debug/profile/game`,
+                    icon: '🧬',
+                },
+                {
+                    title: 'Matrica nagrada radnji',
+                    description:
+                        'Before/after prikaz podignutih gredica za vizualne nagrade radnji.',
+                    href: `${hosts.garden}/debug/profile/game?profile=operation-rewards&details=1&quality=medium`,
+                    icon: '✨',
                 },
             ],
         },
         {
-            title: 'Produktna sučelja',
+            title: 'Operativni debug',
             description:
-                'Otvori glavna produktna okruženja koja se koriste tijekom razvoja i provjere kvalitete.',
+                'Interni debug alati za farmu, admin aplikaciju i provjeru platformnih integracija.',
+            resources: operationalDebugResources,
+        },
+        {
+            title: 'Sučelja proizvoda',
+            description:
+                'Otvori glavna sučelja Gredica koja se koriste tijekom razvoja i provjere kvalitete.',
             resources: [
                 {
                     title: 'WWW',
@@ -91,23 +197,30 @@ function getDevelopmentSections(hosts: EnvironmentHosts): DevelopmentSection[] {
                     icon: '🌐',
                 },
                 {
+                    title: 'Novosti',
+                    description:
+                        'Aplikacija za novosti, changelog i javne CMS objave.',
+                    href: hosts.news,
+                    icon: '📰',
+                },
+                {
                     title: 'Vrt',
                     description:
-                        'Glavna aplikacija za korisničke tokove i radnje upravljanja vrtom.',
+                        'Glavna aplikacija za korisničke tijekove i radnje upravljanja vrtom.',
                     href: hosts.garden,
                     icon: '🌱',
                 },
                 {
                     title: 'Farma',
                     description:
-                        'Operativno sučelje za partnere i radne tokove na strani farme.',
+                        'Operativno sučelje za partnere i radne tijekove farme.',
                     href: hosts.farm,
                     icon: '🚜',
                 },
                 {
                     title: 'Aplikacija',
                     description:
-                        'Interno aplikacijsko sučelje za autentificirane i dijeljene produktne značajke.',
+                        'Interno aplikacijsko sučelje za prijavu i dijeljene značajke proizvoda.',
                     href: hosts.app,
                     icon: '🧩',
                 },
@@ -116,7 +229,7 @@ function getDevelopmentSections(hosts: EnvironmentHosts): DevelopmentSection[] {
         {
             title: 'Platforma i API',
             description:
-                'Pozadinski sustav i platformske krajnje točke za rješavanje integracija i incidenata.',
+                'Pozadinski sustav i platformne krajnje točke za rješavanje integracija i incidenata.',
             resources: [
                 {
                     title: 'API',
@@ -137,7 +250,7 @@ function getDevelopmentSections(hosts: EnvironmentHosts): DevelopmentSection[] {
         {
             title: 'Dizajn, analitika i suradnja',
             description:
-                'Dijeljeni alati za razvoj komponenti, produktnu analitiku i timsku suradnju.',
+                'Dijeljeni alati za razvoj komponenti, analitiku proizvoda i timsku suradnju.',
             resources: [
                 {
                     title: 'Storybook',
@@ -149,20 +262,100 @@ function getDevelopmentSections(hosts: EnvironmentHosts): DevelopmentSection[] {
                 {
                     title: 'PostHog',
                     description:
-                        'Produktna analitika i uvidi u zastavice značajki na cijeloj platformi.',
+                        'Analitika proizvoda i uvidi u oznake značajki na cijeloj platformi.',
                     href: 'https://eu.posthog.com',
-                    icon: '📊',
+                    icon: {
+                        type: 'image',
+                        src: 'https://posthog.com/favicon-32x32.png',
+                    },
                 },
                 {
                     title: 'GitHub',
                     description:
-                        'Kontrola izvornog koda, pregledi promjena, praćenje zadataka i CI pregled.',
+                        'Kontrola izvornog koda, pregledi promjena, praćenje zadataka i CI provjere.',
                     href: 'https://github.com/gredice',
-                    icon: '🐙',
+                    icon: {
+                        type: 'github',
+                    },
                 },
             ],
         },
     ];
+}
+
+function ResourceIcon({
+    icon,
+    title,
+}: {
+    icon: DevelopmentResourceIcon;
+    title: string;
+}) {
+    const label = `${title} ikona`;
+
+    if (typeof icon === 'string') {
+        return (
+            <span
+                className="flex size-8 items-center justify-center text-3xl"
+                role="img"
+                aria-label={label}
+            >
+                {icon}
+            </span>
+        );
+    }
+
+    if (icon.type === 'github') {
+        return (
+            <span
+                className="flex size-8 items-center justify-center text-foreground"
+                role="img"
+                aria-label={label}
+            >
+                <CompanyGitHub
+                    aria-hidden="true"
+                    className="size-8"
+                    focusable="false"
+                />
+            </span>
+        );
+    }
+
+    return (
+        <span
+            className="flex size-8 items-center justify-center"
+            role="img"
+            aria-label={label}
+        >
+            {/** biome-ignore lint/performance/noImgElement: Third-party tool logo is a small favicon outside the Next image config. */}
+            <img
+                alt=""
+                className="size-7 rounded-xs object-contain"
+                height={28}
+                loading="lazy"
+                referrerPolicy="no-referrer"
+                src={icon.src}
+                width={28}
+            />
+        </span>
+    );
+}
+
+function DeploymentStatsSection() {
+    return (
+        <section>
+            <Stack spacing={4} className="mb-4">
+                <Typography level="h4" component="h2">
+                    Vercel deployment statistika
+                </Typography>
+                <Typography level="body2" secondary>
+                    Pregled produkcijskih deploymenta po danu i ukupnog broja
+                    buildova, uključujući preview deploymente.
+                </Typography>
+            </Stack>
+
+            <DeploymentStatsCard />
+        </section>
+    );
 }
 
 export default function DevelopmentPage() {
@@ -171,20 +364,22 @@ export default function DevelopmentPage() {
 
     return (
         <Container className="py-10">
-            <Stack spacing={3} className="mb-8">
+            <Stack spacing={6} className="mb-8">
                 <Typography level="h2" component="h1">
                     Razvojni centar
                 </Typography>
                 <Typography level="body1" secondary>
-                    Svi dijagnostički, razvojni i platformski resursi na jednom
+                    Svi dijagnostički, razvojni i platformni resursi na jednom
                     mjestu.
                 </Typography>
             </Stack>
 
-            <Stack spacing={8}>
+            <Stack spacing={16}>
+                <DeploymentStatsSection />
+
                 {developmentSections.map((section) => (
                     <section key={section.title}>
-                        <Stack spacing={2} className="mb-4">
+                        <Stack spacing={4} className="mb-4">
                             <Typography level="h4" component="h2">
                                 {section.title}
                             </Typography>
@@ -201,17 +396,14 @@ export default function DevelopmentPage() {
                                 >
                                     <CardContent noHeader>
                                         <Stack
-                                            spacing={2}
+                                            spacing={4}
                                             className="h-full justify-between"
                                         >
-                                            <Stack spacing={2}>
-                                                <span
-                                                    className="text-3xl"
-                                                    role="img"
-                                                    aria-label={`${resource.title} ikona`}
-                                                >
-                                                    {resource.icon}
-                                                </span>
+                                            <Stack spacing={4}>
+                                                <ResourceIcon
+                                                    icon={resource.icon}
+                                                    title={resource.title}
+                                                />
                                                 <Typography
                                                     level="h5"
                                                     component="h3"

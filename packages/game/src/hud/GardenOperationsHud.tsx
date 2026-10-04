@@ -1,37 +1,148 @@
-import { OperationImage } from '@gredice/ui/OperationImage';
+import { timeZoneDayKey } from '@gredice/js/dates';
+import { readSelectedPlantingOperationTarget } from '@gredice/js/plants';
+import { Button } from '@gredice/ui/Button';
+import { Divider } from '@gredice/ui/Divider';
+import { DotIndicator } from '@gredice/ui/DotIndicator';
+import {
+    GameHistoryIcon as History,
+    GameMailboxIcon as Inbox,
+    GameTasksIcon as ListTodo,
+    GameRaisedBedIcon as RaisedBedIcon,
+} from '@gredice/ui/GameIcons';
+import { ImageGallery } from '@gredice/ui/ImageGallery';
 import {
     Approved,
     Calendar,
-    Close,
     Error as ErrorIcon,
-    History,
     Hourglass,
-    Inbox,
-    ListTodo,
+    Info,
     MailCheck,
-} from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { cx } from '@signalco/ui-primitives/cx';
-import { Divider } from '@signalco/ui-primitives/Divider';
-import { DotIndicator } from '@signalco/ui-primitives/DotIndicator';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Popper } from '@signalco/ui-primitives/Popper';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
-import { type ComponentType, useCallback, useMemo, useRef } from 'react';
+    Navigate,
+    ShoppingCart,
+} from '@gredice/ui/icons';
+import { Markdown } from '@gredice/ui/Markdown';
+import { OperationImage } from '@gredice/ui/OperationImage';
+import { PaperNote } from '@gredice/ui/PaperNote';
+import { Popper } from '@gredice/ui/Popper';
+import { PlantOrSortImage } from '@gredice/ui/plants';
+import { Row } from '@gredice/ui/Row';
+import { ScrollArea } from '@gredice/ui/ScrollArea';
+import { Stack } from '@gredice/ui/Stack';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@gredice/ui/Tooltip';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
+import {
+    type ComponentType,
+    type ReactNode,
+    useCallback,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
-import { SegmentedProgress } from '../controls/components/SegmentedProgress';
+import {
+    getSowingGardenOperationStatus,
+    hasAssignedSowingUser,
+} from '../hooks/gardenOperationStatus';
+import {
+    getDiaryCancelDisabledReason,
+    isDiaryCancelTargetEligible,
+} from '../hooks/useCancelDiaryEntry';
+import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import {
     type GardenOperationItem,
     type GardenOperationStatus,
     useGardenOperations,
 } from '../hooks/useGardenOperations';
-import { useOperations } from '../hooks/useOperations';
+import { useLiveTime } from '../hooks/useLiveTime';
+import { useOperationDefinitions } from '../hooks/useOperations';
+import { useSorts } from '../hooks/usePlantSorts';
+import {
+    type DiaryRescheduleTarget,
+    getDiaryRescheduleDisabledReason,
+    isDiaryRescheduleTargetEligible,
+} from '../hooks/useRescheduleDiaryEntry';
+import {
+    type ShoppingCartItemData,
+    useShoppingCart,
+} from '../hooks/useShoppingCart';
+import { GameModal } from '../shared-ui/game-modal';
+import { useShoppingCartOpenParam } from '../useUrlState';
+import type { GardenOperationsBubbleItem } from './GardenOperationsDayBubbles';
+import { GardenOperationsDayGroup } from './GardenOperationsDayGroup';
+import { buildGardenOperationDiaryTarget } from './gardenOperationDiaryTargets';
+import { sortOperationTasksNewestFirst } from './gardenOperationOrdering';
+import {
+    gardenOperationsDayBubbles,
+    gardenOperationsDayCounts,
+    gardenOperationsTimeZone,
+    groupGardenOperationsByDay,
+} from './gardenOperationsDayGrouping';
+import { findAdvancedSowingGardenPlanting } from './raisedBed/advancedSowingGardenVisuals';
+import { RaisedBedDiaryCancelAction } from './raisedBed/RaisedBedDiaryCancelAction';
+import { RaisedBedDiaryRescheduleAction } from './raisedBed/RaisedBedDiaryRescheduleAction';
 
 type OperationData = NonNullable<
-    ReturnType<typeof useOperations>['data']
+    ReturnType<typeof useOperationDefinitions>['data']
 >[number];
+type PlantSortData = NonNullable<ReturnType<typeof useSorts>['data']>[number];
+type CurrentGardenData = NonNullable<
+    ReturnType<typeof useCurrentGarden>['data']
+>;
+type RaisedBedData = CurrentGardenData['raisedBeds'][number];
+type RaisedBedFieldData = RaisedBedData['fields'][number];
+type GardenOperationTargetGarden = {
+    raisedBeds: {
+        fields: {
+            id: number;
+            plantSortId?: number | null;
+            positionIndex: number;
+        }[];
+    }[];
+};
+type GardenOperationHudItem = GardenOperationItem;
+type OperationTargetDetails =
+    | {
+          type: 'raisedBed';
+          fieldLabel: string | null;
+          raisedBedName: string;
+          raisedBedPhysicalId: string | number | null;
+          fallbackLabel: string;
+      }
+    | {
+          type: 'text';
+          label: string;
+      };
+type SowingPlantLifecycleEntry = {
+    active?: boolean | null;
+    assignedAt?: string | Date | null;
+    assignedUserId?: string | null;
+    assignedUserIds?: string[] | null;
+    cancellationReason?: string | null;
+    cancelReason?: string | null;
+    blockedAt?: string | Date | null;
+    blockImageUrls?: string[] | null;
+    blockNote?: string | null;
+    blockReasonLabel?: string | null;
+    createdAt?: string | Date | null;
+    endedAt?: string | Date | null;
+    endedEventId?: number | null;
+    plantPlaceEventId?: number | null;
+    plantScheduledDate?: string | Date | null;
+    plantSowDate?: string | Date | null;
+    plantStatus?: string | null;
+    plantSortId?: number | null;
+    startedAt?: string | Date | null;
+    stoppedDate?: string | Date | null;
+    updatedAt?: string | Date | null;
+};
+
+function formatRaisedBedTargetLabel(
+    raisedBedName: string,
+    fieldLabel: string | null,
+) {
+    return fieldLabel ? `${raisedBedName} › ${fieldLabel}` : raisedBedName;
+}
 
 const uiPipeline: GardenOperationStatus[] = [
     'new',
@@ -42,21 +153,40 @@ const uiPipeline: GardenOperationStatus[] = [
 ];
 
 const terminalFailureStatuses = new Set<GardenOperationStatus>([
+    'blocked',
     'failed',
     'canceled',
 ]);
 
 const hiddenFromActive = new Set<GardenOperationStatus>([
     'completed',
+    'blocked',
     'failed',
     'canceled',
 ]);
-
+const nonEditableStatuses = new Set<GardenOperationStatus>([
+    'completed',
+    'blocked',
+    'canceled',
+]);
+const cartOperationEntityType = 'operation' as const;
+export const cartPlantSortEntityType = 'plantSort' as const;
+const plantingOperationLabel = 'Sadnja';
+const plantSortFallbackLabel = 'Sorta';
 type StatusConfig = {
     label: string;
     icon: ComponentType<{ className?: string }>;
     colorClass: string;
-    nextStep: string;
+};
+type OperationDisplayStatus = GardenOperationStatus | 'scheduled';
+type OperationStatusProgressStep = {
+    status: OperationDisplayStatus;
+    date: string | null;
+    reached: boolean;
+    current: boolean;
+    pending: boolean;
+    failed?: boolean;
+    skipped?: boolean;
 };
 
 const statusConfig: Record<GardenOperationStatus, StatusConfig> = {
@@ -64,78 +194,1121 @@ const statusConfig: Record<GardenOperationStatus, StatusConfig> = {
         label: 'Kreirano',
         icon: Inbox,
         colorClass: 'text-sky-600',
-        nextStep: 'Sljedeći korak: zakazivanje',
     },
     planned: {
         label: 'Planirano',
         icon: Calendar,
         colorClass: 'text-indigo-600',
-        nextStep: 'Sljedeći korak: dodjela',
     },
     assigned: {
         label: 'Dodijeljeno',
         icon: MailCheck,
         colorClass: 'text-violet-600',
-        nextStep: 'Sljedeći korak: potvrda',
     },
     confirmed: {
         label: 'Potvrđeno',
         icon: Hourglass,
         colorClass: 'text-amber-600',
-        nextStep: 'Sljedeći korak: verifikacija',
     },
     completed: {
         label: 'Završeno',
         icon: Approved,
         colorClass: 'text-green-600',
-        nextStep: 'Radnja završena',
+    },
+    blocked: {
+        label: 'Blokirano',
+        icon: ErrorIcon,
+        colorClass: 'text-amber-700',
     },
     failed: {
         label: 'Neuspjelo',
         icon: ErrorIcon,
         colorClass: 'text-red-600',
-        nextStep: 'Sljedeći korak: ponovni pokušaj',
     },
     canceled: {
         label: 'Otkazano',
-        icon: Close,
-        colorClass: 'text-neutral-500',
-        nextStep: 'Radnja je otkazana',
+        icon: ErrorIcon,
+        colorClass: 'text-red-600',
     },
 };
+const scheduledStatusConfig: StatusConfig = {
+    label: 'Zakazano',
+    icon: Calendar,
+    colorClass: 'text-indigo-600',
+};
+
+function getDisplayStatusConfig(status: OperationDisplayStatus) {
+    return status === 'scheduled'
+        ? scheduledStatusConfig
+        : statusConfig[status];
+}
 
 function formatDate(value?: string | null) {
     if (!value) return null;
-    return new Date(value).toLocaleDateString('hr-HR', {
+    const date = new Date(value);
+    return date.toLocaleDateString('hr-HR', {
         day: 'numeric',
         month: 'long',
-        year: 'numeric',
+        year:
+            date.getFullYear() === new Date().getFullYear()
+                ? undefined
+                : 'numeric',
     });
 }
 
-function formatDateTime(value?: string | null) {
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+}
+
+function parseScheduledDate(additionalData: string | null | undefined) {
+    if (!additionalData) return null;
+
+    try {
+        const parsed: unknown = JSON.parse(additionalData);
+        if (!isRecord(parsed) || typeof parsed.scheduledDate !== 'string') {
+            return null;
+        }
+
+        const date = new Date(parsed.scheduledDate);
+        return Number.isNaN(date.getTime()) ? null : date.toISOString();
+    } catch {
+        return null;
+    }
+}
+
+function getTomorrowDate() {
+    const today = new Date();
+    return new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+}
+
+function getCartItemScheduledDate(item: ShoppingCartItemData) {
+    const scheduledDate = parseScheduledDate(item.additionalData);
+    return scheduledDate ? new Date(scheduledDate) : getTomorrowDate();
+}
+
+function getTimestamp(value: string | Date | null | undefined) {
+    const timestamp = value ? new Date(value).getTime() : 0;
+    return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+function getStartOfNextLocalDay(referenceDate: Date) {
+    return new Date(
+        referenceDate.getFullYear(),
+        referenceDate.getMonth(),
+        referenceDate.getDate() + 1,
+    );
+}
+
+function isScheduledForLaterDate(
+    scheduledDate: string | null | undefined,
+    referenceDate: Date,
+) {
+    if (!scheduledDate) {
+        return false;
+    }
+
+    const scheduledTimestamp = new Date(scheduledDate).getTime();
+    if (!Number.isFinite(scheduledTimestamp)) {
+        return false;
+    }
+
+    return (
+        scheduledTimestamp >= getStartOfNextLocalDay(referenceDate).getTime()
+    );
+}
+
+function isScheduledUnassignedOperation(
+    operation: GardenOperationHudItem,
+    referenceDate: Date,
+) {
+    return (
+        operation.status === 'planned' &&
+        isScheduledForLaterDate(operation.scheduledDate, referenceDate)
+    );
+}
+
+function toIsoString(value: string | Date | null | undefined) {
     if (!value) return null;
-    return new Date(value).toLocaleString('hr-HR');
+
+    const date = value instanceof Date ? value : new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function getSowingEntryCreatedAt(
+    entry: SowingPlantLifecycleEntry,
+    field: RaisedBedFieldData,
+) {
+    return (
+        toIsoString(entry.startedAt) ??
+        toIsoString(entry.createdAt) ??
+        toIsoString(field.createdAt) ??
+        toIsoString(entry.plantScheduledDate) ??
+        toIsoString(field.updatedAt) ??
+        new Date(0).toISOString()
+    );
+}
+
+function getSowingEntryCompletedAt(entry: SowingPlantLifecycleEntry) {
+    return (
+        toIsoString(entry.plantSowDate) ??
+        toIsoString(entry.endedAt) ??
+        toIsoString(entry.updatedAt)
+    );
+}
+
+function getSowingEntryCancellationReason(entry: SowingPlantLifecycleEntry) {
+    return entry.cancellationReason ?? entry.cancelReason ?? null;
+}
+
+function buildSowingStatusHistory(
+    entry: SowingPlantLifecycleEntry,
+    field: RaisedBedFieldData,
+    status: GardenOperationStatus,
+): GardenOperationItem['statusHistory'] {
+    const createdAt = getSowingEntryCreatedAt(entry, field);
+    const plannedAt = toIsoString(entry.plantScheduledDate);
+    const assignedAt = toIsoString(entry.assignedAt);
+    const completedAt = getSowingEntryCompletedAt(entry);
+    const canceledAt =
+        status === 'canceled'
+            ? (toIsoString(entry.stoppedDate) ??
+              toIsoString(entry.updatedAt) ??
+              createdAt)
+            : null;
+    const history: GardenOperationItem['statusHistory'] = [
+        {
+            status: 'new',
+            changedAt: createdAt,
+        },
+    ];
+
+    if (
+        plannedAt ||
+        status === 'planned' ||
+        status === 'assigned' ||
+        status === 'confirmed' ||
+        status === 'completed'
+    ) {
+        history.push({
+            status: 'planned',
+            changedAt: plannedAt ?? createdAt,
+        });
+    }
+
+    if (
+        assignedAt ||
+        status === 'assigned' ||
+        (status === 'confirmed' && hasAssignedSowingUser(entry))
+    ) {
+        history.push({
+            status: 'assigned',
+            changedAt: assignedAt ?? plannedAt ?? createdAt,
+        });
+    }
+
+    if (status === 'confirmed') {
+        history.push({
+            status: 'confirmed',
+            changedAt: completedAt ?? assignedAt ?? plannedAt ?? createdAt,
+        });
+    }
+
+    if (status === 'completed') {
+        history.push({
+            status: 'completed',
+            changedAt: completedAt ?? plannedAt ?? createdAt,
+        });
+    }
+
+    if (status === 'canceled') {
+        history.push({
+            status: 'canceled',
+            changedAt: canceledAt ?? createdAt,
+        });
+    }
+
+    if (status === 'blocked') {
+        history.push({
+            status: 'blocked',
+            changedAt:
+                toIsoString(entry.blockedAt) ??
+                toIsoString(entry.updatedAt) ??
+                createdAt,
+        });
+    }
+
+    return history;
+}
+
+function getSowingEntries(
+    field: RaisedBedFieldData,
+): SowingPlantLifecycleEntry[] {
+    if (field.plantCycles && field.plantCycles.length > 0) {
+        return field.plantCycles.map((plantCycle) => plantCycle);
+    }
+
+    return [field];
+}
+
+export function buildSowingOperationItems(
+    garden: CurrentGardenData | null | undefined,
+): GardenOperationHudItem[] {
+    if (!garden) {
+        return [];
+    }
+
+    return garden.raisedBeds.flatMap((raisedBed) =>
+        raisedBed.fields.flatMap((field) =>
+            getSowingEntries(field).flatMap((entry) => {
+                if (typeof entry.plantSortId !== 'number') {
+                    return [];
+                }
+
+                const status = getSowingGardenOperationStatus(entry);
+                if (!status) {
+                    return [];
+                }
+
+                const createdAt = getSowingEntryCreatedAt(entry, field);
+                const completedAt = getSowingEntryCompletedAt(entry);
+                const scheduledDate = toIsoString(entry.plantScheduledDate);
+                const canceledAt =
+                    status === 'canceled'
+                        ? (toIsoString(entry.stoppedDate) ??
+                          toIsoString(entry.updatedAt))
+                        : null;
+                const sourceId =
+                    typeof entry.plantPlaceEventId === 'number'
+                        ? entry.plantPlaceEventId
+                        : field.id;
+
+                return [
+                    {
+                        id: -sourceId,
+                        entityId: entry.plantSortId,
+                        taskVersionEventId:
+                            typeof entry.endedEventId === 'number'
+                                ? entry.endedEventId
+                                : null,
+                        entityTypeName: cartPlantSortEntityType,
+                        raisedBedId: raisedBed.id,
+                        raisedBedFieldId: field.id,
+                        status,
+                        createdAt,
+                        scheduledDate,
+                        scheduledAt: scheduledDate,
+                        completedAt:
+                            status === 'completed' || status === 'confirmed'
+                                ? completedAt
+                                : null,
+                        verifiedAt: status === 'completed' ? completedAt : null,
+                        canceledAt,
+                        cancellationReason:
+                            status === 'canceled'
+                                ? getSowingEntryCancellationReason(entry)
+                                : null,
+                        blockedAt:
+                            status === 'blocked'
+                                ? (toIsoString(entry.blockedAt) ??
+                                  toIsoString(entry.updatedAt))
+                                : null,
+                        blockReasonLabel:
+                            status === 'blocked'
+                                ? (entry.blockReasonLabel ?? null)
+                                : null,
+                        blockNote:
+                            status === 'blocked'
+                                ? (entry.blockNote ?? null)
+                                : null,
+                        blockImageUrls:
+                            status === 'blocked'
+                                ? (entry.blockImageUrls ?? [])
+                                : [],
+                        imageUrls: [],
+                        completionNotes: null,
+                        targetLabel: formatRaisedBedTargetLabel(
+                            raisedBed.name,
+                            `Polje ${field.positionIndex + 1}`,
+                        ),
+                        statusHistory: buildSowingStatusHistory(
+                            entry,
+                            field,
+                            status,
+                        ),
+                    },
+                ];
+            }),
+        ),
+    );
+}
+
+function getRaisedBedFieldLabel(
+    raisedBed: RaisedBedData,
+    raisedBedFieldId: number | null,
+) {
+    if (raisedBedFieldId == null) {
+        return null;
+    }
+
+    const field = raisedBed.fields.find(
+        (raisedBedField) => raisedBedField.id === raisedBedFieldId,
+    );
+
+    return field ? `Polje ${field.positionIndex + 1}` : null;
+}
+
+function getOperationTargetDetails(
+    operation: GardenOperationHudItem,
+    garden: CurrentGardenData | null | undefined,
+): OperationTargetDetails {
+    const raisedBed = operation.raisedBedId
+        ? garden?.raisedBeds.find((bed) => bed.id === operation.raisedBedId)
+        : null;
+
+    if (!raisedBed) {
+        return {
+            type: 'text',
+            label: operation.targetLabel,
+        };
+    }
+
+    const planting = findAdvancedSowingGardenPlanting(
+        raisedBed,
+        operation.plantingId,
+    );
+    const labels = planting?.memberships
+        .map((membership) => membership.positionIndex + 1)
+        .sort((a, b) => a - b);
+    const fieldLabel = labels?.length
+        ? `${labels.length === 1 ? 'Polje' : 'Polja'} ${labels.join(', ')}`
+        : getRaisedBedFieldLabel(raisedBed, operation.raisedBedFieldId);
+
+    return {
+        type: 'raisedBed',
+        fieldLabel,
+        raisedBedName: raisedBed.name,
+        raisedBedPhysicalId: raisedBed.physicalId,
+        fallbackLabel: formatRaisedBedTargetLabel(raisedBed.name, fieldLabel),
+    };
+}
+
+function getOperationFieldPositionIndex(
+    operation: GardenOperationHudItem,
+    garden: GardenOperationTargetGarden | null | undefined,
+) {
+    if (operation.raisedBedFieldId == null) {
+        return undefined;
+    }
+
+    for (const raisedBed of garden?.raisedBeds ?? []) {
+        const field = raisedBed.fields.find(
+            (candidate) => candidate.id === operation.raisedBedFieldId,
+        );
+        if (field) {
+            return field.positionIndex;
+        }
+    }
+
+    return undefined;
+}
+
+function getOperationField(
+    operation: GardenOperationHudItem,
+    garden: GardenOperationTargetGarden | null | undefined,
+) {
+    if (operation.raisedBedFieldId == null) {
+        return null;
+    }
+
+    for (const raisedBed of garden?.raisedBeds ?? []) {
+        const field = raisedBed.fields.find(
+            (candidate) => candidate.id === operation.raisedBedFieldId,
+        );
+        if (field) {
+            return field;
+        }
+    }
+
+    return null;
+}
+
+function getOperationFieldPlantSortId(
+    operation: GardenOperationHudItem,
+    garden: GardenOperationTargetGarden | null | undefined,
+) {
+    return getOperationField(operation, garden)?.plantSortId ?? null;
+}
+
+export function getGardenOperationRescheduleTarget(
+    operation: GardenOperationHudItem,
+    garden: GardenOperationTargetGarden | null | undefined,
+): DiaryRescheduleTarget | null {
+    if (isFinishedOperation(operation)) {
+        return null;
+    }
+
+    const positionIndex = getOperationFieldPositionIndex(operation, garden);
+    return buildGardenOperationDiaryTarget(operation, positionIndex);
+}
+
+export function getGardenOperationCancelTarget(
+    operation: GardenOperationHudItem,
+    garden: GardenOperationTargetGarden | null | undefined,
+): DiaryRescheduleTarget | null {
+    if (isFinishedOperation(operation) || !operation.scheduledDate) {
+        return null;
+    }
+
+    const positionIndex = getOperationFieldPositionIndex(operation, garden);
+    return buildGardenOperationDiaryTarget(operation, positionIndex);
+}
+
+function getOperationDisplayStatus(
+    operation: GardenOperationHudItem,
+    referenceDate: Date,
+): OperationDisplayStatus {
+    return isScheduledUnassignedOperation(operation, referenceDate)
+        ? 'scheduled'
+        : operation.status;
+}
+
+function getLatestStatusHistoryDate(operation: GardenOperationHudItem) {
+    return operation.statusHistory.reduce<string | null>((latest, entry) => {
+        const entryTime = new Date(entry.changedAt).getTime();
+        if (!Number.isFinite(entryTime)) {
+            return latest;
+        }
+
+        if (!latest || entryTime > new Date(latest).getTime()) {
+            return entry.changedAt;
+        }
+
+        return latest;
+    }, null);
+}
+
+function getOperationDisplayStatusDate(
+    operation: GardenOperationHudItem,
+    displayStatus: OperationDisplayStatus,
+) {
+    if (displayStatus === 'scheduled') {
+        return operation.scheduledDate;
+    }
+
+    const matchingHistoryDate = [...operation.statusHistory]
+        .reverse()
+        .find((entry) => entry.status === operation.status)?.changedAt;
+
+    return (
+        matchingHistoryDate ??
+        operation.verifiedAt ??
+        operation.blockedAt ??
+        operation.completedAt ??
+        operation.canceledAt ??
+        operation.scheduledAt ??
+        getLatestStatusHistoryDate(operation)
+    );
+}
+
+export function canRescheduleGardenOperation(
+    operation: GardenOperationHudItem,
+    garden: CurrentGardenData | null | undefined,
+    referenceDate: Date,
+) {
+    const target = getGardenOperationRescheduleTarget(operation, garden);
+    return Boolean(
+        target && isDiaryRescheduleTargetEligible(target, referenceDate),
+    );
+}
+
+export function canCancelGardenOperation(
+    operation: GardenOperationHudItem,
+    garden: CurrentGardenData | null | undefined,
+    referenceDate: Date,
+) {
+    const target = getGardenOperationCancelTarget(operation, garden);
+    return Boolean(
+        target && isDiaryCancelTargetEligible(target, referenceDate),
+    );
+}
+
+export function GardenOperationRescheduleAction({
+    entryName,
+    garden,
+    operation,
+    referenceDate,
+    triggerLabel,
+}: {
+    entryName: string;
+    garden: CurrentGardenData | null | undefined;
+    operation: GardenOperationHudItem;
+    referenceDate: Date;
+    triggerLabel?: ReactNode;
+}) {
+    if (!garden) {
+        return null;
+    }
+
+    const target = getGardenOperationRescheduleTarget(operation, garden);
+    if (!target || !isDiaryRescheduleTargetEligible(target, referenceDate)) {
+        return null;
+    }
+
+    return (
+        <RaisedBedDiaryRescheduleAction
+            entryName={entryName}
+            gardenId={garden.id}
+            target={target}
+            triggerLabel={triggerLabel}
+        />
+    );
+}
+
+export function GardenOperationCancelAction({
+    entryName,
+    garden,
+    operation,
+    referenceDate,
+}: {
+    entryName: string;
+    garden: CurrentGardenData | null | undefined;
+    operation: GardenOperationHudItem;
+    referenceDate: Date;
+}) {
+    if (!garden) {
+        return null;
+    }
+
+    const target = getGardenOperationCancelTarget(operation, garden);
+    if (!target) {
+        return null;
+    }
+
+    return (
+        <RaisedBedDiaryCancelAction
+            disabledReason={getDiaryCancelDisabledReason(target, referenceDate)}
+            entryName={entryName}
+            gardenId={garden.id}
+            target={target}
+        />
+    );
+}
+
+function isFinishedOperation(operation: GardenOperationHudItem) {
+    return Boolean(
+        nonEditableStatuses.has(operation.status) ||
+            terminalFailureStatuses.has(operation.status) ||
+            operation.completedAt ||
+            operation.verifiedAt ||
+            operation.canceledAt,
+    );
+}
+
+function getOperationTaskDisplayDate(operation: GardenOperationHudItem) {
+    return operation.completedAt ?? operation.scheduledDate;
+}
+
+function OperationScheduleText({ label }: { label: string }) {
+    return (
+        <Row spacing={1} className="min-w-0 text-muted-foreground">
+            <Calendar className="size-3.5 shrink-0" />
+            <Typography level="body3" noWrap className="min-w-0">
+                {label}
+            </Typography>
+        </Row>
+    );
+}
+
+export function GardenOperationScheduleAction({
+    entryName,
+    garden,
+    operation,
+    referenceDate,
+}: {
+    entryName: string;
+    garden: CurrentGardenData | null | undefined;
+    operation: GardenOperationHudItem;
+    referenceDate: Date;
+}) {
+    const taskDateLabel = formatDate(getOperationTaskDisplayDate(operation));
+
+    if (isFinishedOperation(operation)) {
+        return taskDateLabel ? (
+            <OperationScheduleText label={taskDateLabel} />
+        ) : null;
+    }
+
+    if (!garden) {
+        return taskDateLabel ? (
+            <OperationScheduleText label={taskDateLabel} />
+        ) : null;
+    }
+
+    const target = getGardenOperationRescheduleTarget(operation, garden);
+    if (!target) {
+        return taskDateLabel ? (
+            <OperationScheduleText label={taskDateLabel} />
+        ) : null;
+    }
+
+    return (
+        <RaisedBedDiaryRescheduleAction
+            disabledReason={getDiaryRescheduleDisabledReason(
+                target,
+                referenceDate,
+            )}
+            entryName={entryName}
+            gardenId={garden.id}
+            target={target}
+            triggerLabel={taskDateLabel ?? 'Zakaži'}
+        />
+    );
+}
+
+function getCartOperationTargetDetails(
+    item: ShoppingCartItemData,
+    garden: CurrentGardenData,
+): OperationTargetDetails {
+    const raisedBed = item.raisedBedId
+        ? garden.raisedBeds.find((bed) => bed.id === item.raisedBedId)
+        : null;
+
+    if (!raisedBed) {
+        return {
+            type: 'text',
+            label: garden.name || 'Vrt',
+        };
+    }
+
+    let plantingTarget: ReturnType<typeof readSelectedPlantingOperationTarget>;
+    try {
+        plantingTarget = readSelectedPlantingOperationTarget(
+            item.additionalData,
+        );
+    } catch {
+        plantingTarget = null;
+    }
+    const planting = findAdvancedSowingGardenPlanting(
+        raisedBed,
+        plantingTarget?.plantingId,
+    );
+    const labels = planting?.memberships
+        .map((membership) => membership.positionIndex + 1)
+        .sort((a, b) => a - b);
+    const fieldLabel = labels?.length
+        ? `${labels.length === 1 ? 'Polje' : 'Polja'} ${labels.join(', ')}`
+        : typeof item.positionIndex === 'number'
+          ? `Polje ${item.positionIndex + 1}`
+          : null;
+
+    return {
+        type: 'raisedBed',
+        fieldLabel,
+        raisedBedName: raisedBed.name,
+        raisedBedPhysicalId: raisedBed.physicalId,
+        fallbackLabel: formatRaisedBedTargetLabel(raisedBed.name, fieldLabel),
+    };
+}
+
+function isCartOperationsPopupItem(item: ShoppingCartItemData) {
+    return (
+        item.entityTypeName === cartOperationEntityType ||
+        item.entityTypeName === cartPlantSortEntityType
+    );
 }
 
 function StatusBadge({
     status,
     size = 'sm',
+    className,
 }: {
-    status: GardenOperationStatus;
+    status: OperationDisplayStatus;
     size?: 'sm' | 'md';
+    className?: string;
 }) {
-    const config = statusConfig[status];
+    const config = getDisplayStatusConfig(status);
     const Icon = config.icon;
     const iconSize = size === 'md' ? 'size-4' : 'size-3.5';
     const textLevel = size === 'md' ? 'body2' : 'body3';
     return (
-        <Row spacing={0.5} className={config.colorClass}>
+        <span
+            className={cx(
+                'flex min-w-0 max-w-full flex-row items-center gap-1',
+                config.colorClass,
+                className,
+            )}
+        >
             <Icon className={cx(iconSize, 'shrink-0')} />
-            <Typography level={textLevel} semiBold>
+            <Typography
+                level={textLevel}
+                semiBold
+                noWrap
+                component="span"
+                className="hidden min-w-0 sm:inline"
+            >
                 {config.label}
             </Typography>
-        </Row>
+        </span>
+    );
+}
+
+function buildStatusProgressSteps(
+    operation: GardenOperationHudItem,
+    displayStatus: OperationDisplayStatus,
+): OperationStatusProgressStep[] {
+    if (displayStatus === 'scheduled') {
+        return [
+            {
+                status: 'scheduled',
+                date: operation.scheduledDate ?? null,
+                reached: true,
+                current: true,
+                pending: false,
+            },
+        ];
+    }
+
+    const historyByStatus = new Map(
+        operation.statusHistory.map((entry) => [entry.status, entry.changedAt]),
+    );
+    const isTerminalFailure = terminalFailureStatuses.has(operation.status);
+    const displayStatusDate =
+        getOperationDisplayStatusDate(operation, displayStatus) ?? null;
+
+    const hasReached = (status: GardenOperationStatus) => {
+        if (historyByStatus.has(status)) return true;
+        const idx = uiPipeline.indexOf(status);
+        if (idx === -1) return false;
+        return uiPipeline
+            .slice(idx + 1)
+            .some((later) => historyByStatus.has(later));
+    };
+
+    const currentIdx = uiPipeline.indexOf(operation.status);
+    const pipelineToShow = uiPipeline.filter((status, idx) => {
+        if (hasReached(status)) return true;
+        if (isTerminalFailure) return true;
+        if (currentIdx >= 0 && idx >= currentIdx) return true;
+        return false;
+    });
+    const firstPendingIdx = pipelineToShow.findIndex((s) => !hasReached(s));
+
+    const steps: OperationStatusProgressStep[] = pipelineToShow.map(
+        (status, idx) => {
+            const reached = hasReached(status);
+            const current = !isTerminalFailure && status === operation.status;
+
+            return {
+                status,
+                date:
+                    historyByStatus.get(status) ??
+                    (current ? displayStatusDate : null),
+                reached,
+                current,
+                pending:
+                    !isTerminalFailure && !reached && idx === firstPendingIdx,
+                skipped: isTerminalFailure && !reached,
+            };
+        },
+    );
+
+    if (isTerminalFailure) {
+        steps.push({
+            status: operation.status,
+            date:
+                historyByStatus.get(operation.status) ??
+                operation.blockedAt ??
+                operation.canceledAt ??
+                operation.completedAt ??
+                displayStatusDate,
+            reached: true,
+            current: true,
+            pending: false,
+            failed: true,
+        });
+    }
+
+    return steps;
+}
+
+function OperationStatusProgressIndicator({
+    steps,
+    label,
+}: {
+    steps: OperationStatusProgressStep[];
+    label?: string;
+}) {
+    const dots = steps.map((step) => (
+        <span
+            key={step.status}
+            className={cx(
+                'size-1.5 rounded-full border border-tertiary bg-background',
+                step.reached && !step.failed && 'border-green-600 bg-green-500',
+                step.pending &&
+                    'animate-pulse border-green-500 bg-green-500/20',
+                step.skipped && 'border-muted-foreground/30 bg-muted',
+                step.failed &&
+                    step.status === 'blocked' &&
+                    'border-amber-600 bg-amber-500/20',
+                step.failed &&
+                    step.status !== 'blocked' &&
+                    'border-red-500 bg-red-500/20',
+                step.current && 'size-2.5 border-2',
+            )}
+        />
+    ));
+
+    if (label) {
+        return (
+            <span
+                aria-label={label}
+                className="flex shrink-0 items-center gap-0.5"
+                data-operation-status-progress
+                role="img"
+            >
+                {dots}
+            </span>
+        );
+    }
+
+    return (
+        <span
+            aria-hidden
+            className="flex shrink-0 items-center gap-0.5"
+            data-operation-status-progress
+        >
+            {dots}
+        </span>
+    );
+}
+
+function OperationStatusTooltipContent({
+    steps,
+}: {
+    steps: OperationStatusProgressStep[];
+}) {
+    return (
+        <Stack spacing={1} className="min-w-52">
+            <Typography
+                level="body3"
+                semiBold
+                component="span"
+                className="text-popover-foreground"
+            >
+                Statusi radnje
+            </Typography>
+            <Stack spacing={0.75}>
+                {steps.map((step) => {
+                    const config = getDisplayStatusConfig(step.status);
+                    const Icon = config.icon;
+                    const dateLabel = formatDate(step.date);
+                    const fallbackLabel = step.current
+                        ? 'Trenutno'
+                        : step.skipped
+                          ? 'Preskočeno'
+                          : 'Čeka';
+
+                    return (
+                        <Row
+                            key={step.status}
+                            spacing={2}
+                            justifyContent="space-between"
+                            className="min-w-0"
+                        >
+                            <span
+                                className={cx(
+                                    'flex min-w-0 items-center gap-1',
+                                    config.colorClass,
+                                )}
+                            >
+                                <Icon className="size-3.5 shrink-0" />
+                                <Typography
+                                    level="body3"
+                                    component="span"
+                                    noWrap
+                                    className="min-w-0 text-popover-foreground"
+                                >
+                                    {config.label}
+                                </Typography>
+                            </span>
+                            <Typography
+                                level="body3"
+                                component="span"
+                                noWrap
+                                className="shrink-0 text-popover-foreground/75"
+                            >
+                                {dateLabel ?? fallbackLabel}
+                            </Typography>
+                        </Row>
+                    );
+                })}
+            </Stack>
+        </Stack>
+    );
+}
+
+function OperationTerminalReasonTooltipContent({
+    title,
+    reason,
+    note,
+    noteKey,
+}: {
+    title: string;
+    reason?: string | null;
+    note?: string;
+    noteKey: string | number;
+}) {
+    return (
+        <Stack spacing={0.75} className="max-w-64">
+            <Typography
+                level="body3"
+                semiBold
+                component="span"
+                className="text-popover-foreground"
+            >
+                {title}
+            </Typography>
+            <Typography
+                level="body3"
+                component="span"
+                className="whitespace-normal text-popover-foreground/80"
+            >
+                {reason}
+            </Typography>
+            {note ? <PaperNote noteKey={noteKey}>{note}</PaperNote> : null}
+        </Stack>
+    );
+}
+
+function OperationStatusSummary({
+    operation,
+    status,
+}: {
+    operation: GardenOperationHudItem;
+    status: OperationDisplayStatus;
+}) {
+    const config = getDisplayStatusConfig(status);
+    const steps = useMemo(
+        () => buildStatusProgressSteps(operation, status),
+        [operation, status],
+    );
+    const terminalReason =
+        status === 'canceled'
+            ? operation.cancellationReason?.trim()
+            : status === 'blocked'
+              ? operation.blockReasonLabel?.trim()
+              : undefined;
+    const terminalNote =
+        status === 'blocked' ? operation.blockNote?.trim() : undefined;
+    const terminalReasonTitle =
+        status === 'blocked' ? 'Razlog prepreke' : 'Razlog otkazivanja';
+    const hasTerminalReason = Boolean(terminalReason || terminalNote);
+    const isTerminalFailureStatus =
+        status !== 'scheduled' && terminalFailureStatuses.has(status);
+    const showProgressIndicator =
+        !hasTerminalReason &&
+        status !== 'confirmed' &&
+        status !== 'completed' &&
+        !isTerminalFailureStatus;
+    const progressLabel =
+        showProgressIndicator && status !== 'scheduled'
+            ? 'Tijek radnje'
+            : undefined;
+    const tooltipIntentRef = useRef(false);
+    const [tooltipOpen, setTooltipOpen] = useState(false);
+    const handleTooltipOpenChange = useCallback((nextOpen: boolean) => {
+        if (!nextOpen) {
+            setTooltipOpen(false);
+            return;
+        }
+
+        if (tooltipIntentRef.current) {
+            setTooltipOpen(true);
+        }
+    }, []);
+    const clearTooltipIntent = useCallback(() => {
+        tooltipIntentRef.current = false;
+        setTooltipOpen(false);
+    }, []);
+
+    return (
+        <Tooltip
+            delayDuration={100}
+            onOpenChange={handleTooltipOpenChange}
+            open={tooltipOpen}
+        >
+            <TooltipTrigger asChild>
+                <button
+                    type="button"
+                    aria-label={
+                        hasTerminalReason
+                            ? `Status radnje: ${config.label}. ${terminalReasonTitle}`
+                            : `Status radnje: ${config.label}`
+                    }
+                    className="flex max-w-full shrink-0 flex-col items-end rounded-md px-1 py-0.5 text-right transition hover:bg-muted/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    onBlur={clearTooltipIntent}
+                    onClick={(event) => {
+                        event.preventDefault();
+                        tooltipIntentRef.current = true;
+                        setTooltipOpen(true);
+                    }}
+                    onKeyDown={(event) => {
+                        if (event.key === 'Escape') {
+                            clearTooltipIntent();
+                            return;
+                        }
+
+                        if (event.key !== 'Enter' && event.key !== ' ') {
+                            return;
+                        }
+
+                        event.preventDefault();
+                        tooltipIntentRef.current = true;
+                        setTooltipOpen((currentOpen) => !currentOpen);
+                    }}
+                    onPointerDown={() => {
+                        tooltipIntentRef.current = true;
+                    }}
+                    onPointerEnter={() => {
+                        tooltipIntentRef.current = true;
+                    }}
+                    onPointerLeave={clearTooltipIntent}
+                >
+                    <span className="flex min-w-0 max-w-full items-center justify-end gap-1.5">
+                        <StatusBadge status={status} className="justify-end" />
+                        {hasTerminalReason ? (
+                            <Info
+                                aria-hidden
+                                className={cx(
+                                    'size-3.5 shrink-0',
+                                    status === 'blocked'
+                                        ? 'text-amber-700'
+                                        : 'text-red-600',
+                                )}
+                                data-operation-terminal-reason
+                            />
+                        ) : showProgressIndicator ? (
+                            <OperationStatusProgressIndicator
+                                label={progressLabel}
+                                steps={steps}
+                            />
+                        ) : null}
+                    </span>
+                </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" align="end" className="max-w-72 p-2">
+                {hasTerminalReason ? (
+                    <OperationTerminalReasonTooltipContent
+                        reason={terminalReason}
+                        title={terminalReasonTitle}
+                        note={terminalNote}
+                        noteKey={operation.id}
+                    />
+                ) : (
+                    <OperationStatusTooltipContent steps={steps} />
+                )}
+            </TooltipContent>
+        </Tooltip>
     );
 }
 
@@ -173,272 +1346,675 @@ function useInfiniteScroll(fetchNextPage: () => void, hasNextPage?: boolean) {
     );
 }
 
-function buildSegments(operation: GardenOperationItem) {
-    const historyByStatus = new Map(
-        operation.statusHistory.map((entry) => [entry.status, entry.changedAt]),
-    );
-    const isTerminalFailure = terminalFailureStatuses.has(operation.status);
+function OperationSchedule({
+    operation,
+    cancelAction,
+    scheduleAction,
+}: {
+    operation: GardenOperationItem;
+    cancelAction?: ReactNode;
+    scheduleAction?: ReactNode;
+}) {
+    const taskDate = formatDate(getOperationTaskDisplayDate(operation));
+    const scheduleContent = scheduleAction ? (
+        <div className="min-w-0 max-w-full overflow-hidden">
+            {scheduleAction}
+        </div>
+    ) : taskDate ? (
+        <Row
+            spacing={1}
+            className="min-w-0 max-w-full justify-end text-muted-foreground"
+        >
+            <Calendar aria-hidden className="size-3.5 shrink-0" />
+            <Typography level="body3" secondary noWrap className="min-w-0">
+                {taskDate}
+            </Typography>
+        </Row>
+    ) : null;
 
-    const hasReached = (status: GardenOperationStatus) => {
-        if (historyByStatus.has(status)) return true;
-        const idx = uiPipeline.indexOf(status);
-        if (idx === -1) return false;
-        return uiPipeline
-            .slice(idx + 1)
-            .some((later) => historyByStatus.has(later));
-    };
-
-    const currentIdx = uiPipeline.indexOf(operation.status);
-
-    const pipelineToShow = uiPipeline.filter((status, idx) => {
-        if (hasReached(status)) return true;
-        if (isTerminalFailure) return true;
-        if (currentIdx >= 0 && idx >= currentIdx) return true;
-        return false;
-    });
-
-    const firstPendingIdx = pipelineToShow.findIndex((s) => !hasReached(s));
-
-    const segments = pipelineToShow.map((status, idx) => {
-        const reached = hasReached(status);
-        const config = statusConfig[status];
-        const date = historyByStatus.get(status);
-        const tooltipParts = [config.label];
-        const dateStr = formatDateTime(date ?? null);
-        if (dateStr) tooltipParts.push(dateStr);
-        const title = tooltipParts.join(' — ');
-
-        if (reached) {
-            const StatusIcon = config.icon;
-            return {
-                value: 100,
-                label: config.label,
-                icon: (
-                    <StatusIcon
-                        className={cx('size-3.5 shrink-0', config.colorClass)}
-                    />
-                ),
-                title,
-            };
-        }
-
-        if (isTerminalFailure) {
-            const StatusIcon = config.icon;
-            return {
-                value: 0,
-                failed: true,
-                label: config.label,
-                icon: (
-                    <StatusIcon
-                        className={cx('size-3.5 shrink-0', config.colorClass)}
-                    />
-                ),
-                title: `${config.label} — preskočeno`,
-            };
-        }
-
-        const isNextPending = idx === firstPendingIdx;
-        const StatusIcon = config.icon;
-        return {
-            value: isNextPending ? 50 : 0,
-            indeterminate: isNextPending,
-            highlighted: isNextPending,
-            label: config.label,
-            icon: (
-                <StatusIcon
-                    className={cx('size-3.5 shrink-0', config.colorClass)}
-                />
-            ),
-            title,
-        };
-    });
-
-    if (isTerminalFailure) {
-        const terminalConfig = statusConfig[operation.status];
-        const StatusIcon = terminalConfig.icon;
-        segments.push({
-            value: 0,
-            failed: true,
-            label: terminalConfig.label,
-            icon: (
-                <StatusIcon
-                    className={cx(
-                        'size-3.5 shrink-0',
-                        terminalConfig.colorClass,
-                    )}
-                />
-            ),
-            title: `${terminalConfig.label} — ${
-                formatDateTime(
-                    operation.canceledAt ?? operation.completedAt ?? null,
-                ) ?? ''
-            }`.trim(),
-        });
+    if (!scheduleContent && !cancelAction) {
+        return null;
     }
 
-    return segments;
+    return (
+        <Row
+            spacing={0.5}
+            className="min-w-0 max-w-full flex-nowrap items-center justify-end overflow-hidden"
+        >
+            {scheduleContent}
+            {cancelAction && <div className="shrink-0">{cancelAction}</div>}
+        </Row>
+    );
 }
 
-function OperationProgress({ operation }: { operation: GardenOperationItem }) {
-    const segments = useMemo(() => buildSegments(operation), [operation]);
+function OperationEvidence({ operation }: { operation: GardenOperationItem }) {
+    const isBlocked = operation.status === 'blocked';
+    const imageUrls = isBlocked
+        ? operation.blockImageUrls
+        : operation.imageUrls;
+    const completionNotes = isBlocked
+        ? operation.blockNote?.trim()
+        : operation.completionNotes?.trim();
+
+    if (!imageUrls.length && !completionNotes) {
+        return null;
+    }
 
     return (
-        <Stack spacing={1}>
-            <SegmentedProgress className="pb-5 pr-4" segments={segments} />
-            <Row
-                justifyContent="space-between"
-                spacing={1}
-                className="flex-wrap"
-            >
-                <StatusBadge status={operation.status} />
-                <Typography level="body3" secondary>
-                    {statusConfig[operation.status].nextStep}
-                </Typography>
-            </Row>
+        <Stack spacing={1} className="min-w-0 max-w-full">
+            {imageUrls.length > 0 && (
+                <div
+                    className="min-w-0 max-w-full overflow-hidden"
+                    data-operation-images
+                >
+                    <ImageGallery
+                        images={imageUrls.map((url) => ({
+                            src: url,
+                            alt: operation.targetLabel,
+                        }))}
+                        previewWidth={72}
+                        previewHeight={72}
+                        previewAs="div"
+                        previewVariant="carousel"
+                    />
+                </div>
+            )}
+            {completionNotes && (
+                <PaperNote noteKey={operation.id} data-operation-notes>
+                    <Markdown className="min-w-0 whitespace-normal text-inherit leading-inherit prose-headings:my-1 prose-headings:text-sm prose-headings:text-inherit prose-a:text-inherit prose-strong:text-inherit! [&_li::marker]:text-[#927a4e] prose-li:my-0 prose-ol:my-1 prose-p:my-1 prose-p:whitespace-pre-line prose-ul:my-1">
+                        {completionNotes}
+                    </Markdown>
+                </PaperNote>
+            )}
         </Stack>
     );
 }
 
-function OperationDates({ operation }: { operation: GardenOperationItem }) {
-    const createdAt = formatDate(operation.createdAt);
-    const scheduledDate = formatDate(operation.scheduledDate);
+function OperationTargetLabel({
+    targetDetails,
+    className,
+    iconClassName,
+}: {
+    targetDetails: OperationTargetDetails;
+    className?: string;
+    iconClassName?: string;
+}) {
+    if (targetDetails.type === 'text') {
+        return (
+            <Typography level="body3" secondary className={className}>
+                {targetDetails.label}
+            </Typography>
+        );
+    }
 
     return (
-        <Row spacing={1} className="flex-wrap">
-            {createdAt && (
-                <Typography level="body3" secondary>
-                    Kreirano: {createdAt}
+        <Row
+            spacing={1}
+            className="min-w-0 max-w-full items-center flex-wrap gap-y-0.5"
+            aria-label={targetDetails.fallbackLabel}
+        >
+            <Row spacing={1} className="min-w-0 max-w-full items-center">
+                <RaisedBedIcon
+                    physicalId={targetDetails.raisedBedPhysicalId}
+                    containerClassName="h-6 w-6 min-w-6 overflow-visible"
+                    className={cx(
+                        'size-5 text-tertiary-foreground',
+                        iconClassName,
+                    )}
+                />
+                <Typography
+                    level="body3"
+                    secondary
+                    noWrap
+                    component="span"
+                    className={cx('min-w-0', className)}
+                    title={targetDetails.raisedBedName}
+                >
+                    {targetDetails.raisedBedName}
                 </Typography>
-            )}
-            {scheduledDate && (
-                <Typography level="body3" secondary>
-                    Zakazano: {scheduledDate}
-                </Typography>
+            </Row>
+            {targetDetails.fieldLabel && (
+                <>
+                    <Navigate
+                        aria-hidden
+                        className="size-3 shrink-0 text-tertiary-foreground"
+                    />
+                    <Typography
+                        level="body3"
+                        secondary
+                        noWrap
+                        component="span"
+                        className={cx('shrink-0', className)}
+                    >
+                        {targetDetails.fieldLabel}
+                    </Typography>
+                </>
             )}
         </Row>
     );
 }
 
-function OperationCard({
+function getActiveOperationName({
+    operation,
+    operationName,
+    plantSortName,
+}: {
+    operation: GardenOperationHudItem;
+    operationName?: string;
+    plantSortName?: string;
+}) {
+    if (operation.entityTypeName === cartPlantSortEntityType) {
+        return plantSortName
+            ? `${plantingOperationLabel}: ${plantSortName}`
+            : plantingOperationLabel;
+    }
+
+    if (operationName) {
+        return operationName;
+    }
+
+    if (operation.raisedBedFieldId != null) {
+        return plantingOperationLabel;
+    }
+
+    return `Radnja #${operation.id}`;
+}
+
+function OperationMedia({
+    operationData,
+    plantSortData,
+    targetPlantSortData,
+}: {
+    operationData?: OperationData;
+    plantSortData?: PlantSortData;
+    targetPlantSortData?: PlantSortData;
+}) {
+    const primaryPlantSort = plantSortData ?? targetPlantSortData;
+    const shouldShowOperationBadge = Boolean(
+        operationData && targetPlantSortData,
+    );
+
+    if (primaryPlantSort) {
+        return (
+            <div
+                className="relative size-12 shrink-0"
+                data-operation-media="plant"
+            >
+                <div className="flex size-12 items-center justify-center overflow-hidden rounded-lg bg-card">
+                    <PlantOrSortImage
+                        plantSort={primaryPlantSort}
+                        alt={primaryPlantSort.information.name}
+                        width={44}
+                        height={44}
+                    />
+                </div>
+                {shouldShowOperationBadge && operationData && (
+                    <span
+                        className="-right-1 -top-1 absolute flex size-6 items-center justify-center rounded-full border bg-background text-foreground shadow-xs"
+                        data-operation-media-badge
+                    >
+                        <OperationImage operation={operationData} size={18} />
+                    </span>
+                )}
+            </div>
+        );
+    }
+
+    if (operationData) {
+        return (
+            <div
+                className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-card"
+                data-operation-media="operation"
+            >
+                <OperationImage operation={operationData} size={40} />
+            </div>
+        );
+    }
+
+    return (
+        <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-card">
+            <Typography level="body3" secondary>
+                🌱
+            </Typography>
+        </div>
+    );
+}
+
+export function GardenOperationCard({
     operation,
     operationName,
     operationData,
+    plantSortData,
+    targetPlantSortData,
+    currentGarden,
+    referenceDate,
+    cancelAction,
+    scheduleAction,
+    action,
 }: {
-    operation: GardenOperationItem;
+    operation: GardenOperationHudItem;
     operationName?: string;
     operationData?: OperationData;
+    plantSortData?: PlantSortData;
+    targetPlantSortData?: PlantSortData;
+    currentGarden?: CurrentGardenData | null;
+    referenceDate: Date;
+    cancelAction?: ReactNode;
+    scheduleAction?: ReactNode;
+    action?: ReactNode;
 }) {
+    const resolvedOperationName = getActiveOperationName({
+        operation,
+        operationName,
+        plantSortName: plantSortData?.information.name,
+    });
+    const targetDetails = getOperationTargetDetails(operation, currentGarden);
+    const displayStatus = getOperationDisplayStatus(operation, referenceDate);
+
     return (
-        <div className="rounded-xl border p-3">
-            <Row spacing={1.5} alignItems="start">
-                <div className="size-12 rounded-lg bg-card flex items-center justify-center overflow-hidden shrink-0">
-                    {operationData ? (
-                        <OperationImage operation={operationData} size={40} />
-                    ) : (
-                        <Typography level="body3" secondary>
-                            🌱
-                        </Typography>
-                    )}
-                </div>
-                <Stack spacing={0.75} className="min-w-0 flex-1">
-                    <Stack spacing={0.25}>
-                        <Typography level="body2" semiBold noWrap>
-                            {operationName ?? `Radnja #${operation.id}`}
-                        </Typography>
-                        <Typography level="body3" secondary>
-                            {operation.targetLabel}
-                        </Typography>
+        <div
+            className="w-full max-w-full shrink-0 overflow-hidden rounded-xl border bg-card p-3 shadow-xs"
+            data-garden-operation-card
+        >
+            <Row
+                spacing={3}
+                alignItems="start"
+                className="w-full min-w-0 max-w-full"
+            >
+                <OperationMedia
+                    operationData={operationData}
+                    plantSortData={plantSortData}
+                    targetPlantSortData={targetPlantSortData}
+                />
+                <Stack
+                    spacing={1.5}
+                    className="min-w-0 max-w-full flex-1 overflow-hidden"
+                >
+                    <Stack spacing={0.5} className="min-w-0 max-w-full">
+                        <Row
+                            spacing={1}
+                            alignItems="start"
+                            className="min-w-0 max-w-full"
+                        >
+                            <Typography
+                                level="body2"
+                                semiBold
+                                noWrap
+                                className="min-w-0 flex-1"
+                            >
+                                {resolvedOperationName}
+                            </Typography>
+                            <div className="min-w-0 max-w-[45%] shrink-0 overflow-hidden">
+                                <OperationStatusSummary
+                                    operation={operation}
+                                    status={displayStatus}
+                                />
+                            </div>
+                        </Row>
+                        <Row
+                            spacing={1}
+                            alignItems="start"
+                            className="min-w-0 max-w-full gap-y-1"
+                        >
+                            <div className="min-w-0 flex-1">
+                                <OperationTargetLabel
+                                    targetDetails={targetDetails}
+                                />
+                            </div>
+                            <div className="min-w-0 max-w-[75%] shrink-0 overflow-hidden sm:max-w-[58%]">
+                                <OperationSchedule
+                                    operation={operation}
+                                    cancelAction={cancelAction}
+                                    scheduleAction={scheduleAction}
+                                />
+                            </div>
+                        </Row>
                     </Stack>
-                    <OperationDates operation={operation} />
-                    <OperationProgress operation={operation} />
+                    <OperationEvidence operation={operation} />
+                    {action && <div className="flex justify-end">{action}</div>}
                 </Stack>
             </Row>
         </div>
     );
 }
 
+function CartOperationCard({
+    item,
+    operationData,
+    targetDetails,
+}: {
+    item: ShoppingCartItemData;
+    operationData?: OperationData;
+    targetDetails: OperationTargetDetails;
+}) {
+    const scheduledDate = getCartItemScheduledDate(item);
+    const scheduledDateLabel = parseScheduledDate(item.additionalData)
+        ? formatDate(scheduledDate.toISOString())
+        : 'sutra';
+    const plantSort =
+        item.entityTypeName === cartPlantSortEntityType
+            ? item.entityData
+            : null;
+    const operationName =
+        item.entityTypeName === cartPlantSortEntityType
+            ? `${plantingOperationLabel}: ${item.shopData.name ?? `${plantSortFallbackLabel} #${item.entityId}`}`
+            : (operationData?.information.label ??
+              item.shopData.name ??
+              `Radnja #${item.entityId}`);
+
+    return (
+        <div className="shrink-0 rounded-xl border border-amber-200 bg-amber-50/50 p-3 dark:border-amber-400/60 dark:bg-amber-900/30">
+            <Row spacing={3} alignItems="start">
+                <div className="size-12 rounded-lg bg-card flex items-center justify-center overflow-hidden shrink-0">
+                    {plantSort ? (
+                        <PlantOrSortImage
+                            plantSort={plantSort}
+                            alt={item.shopData.name ?? plantingOperationLabel}
+                            width={40}
+                            height={40}
+                        />
+                    ) : operationData ? (
+                        <OperationImage operation={operationData} size={40} />
+                    ) : (
+                        <ShoppingCart className="size-5 text-amber-600 dark:text-amber-300" />
+                    )}
+                </div>
+                <Stack spacing={1.5} className="min-w-0 flex-1">
+                    <Stack spacing={0.5}>
+                        <Typography
+                            level="body2"
+                            semiBold
+                            noWrap
+                            className="dark:text-amber-50"
+                        >
+                            {operationName}
+                        </Typography>
+                        <OperationTargetLabel
+                            targetDetails={targetDetails}
+                            className="dark:text-amber-100/85"
+                            iconClassName="dark:text-amber-100/85"
+                        />
+                    </Stack>
+                    <Typography
+                        level="body3"
+                        secondary
+                        className="dark:text-amber-100/80"
+                    >
+                        Zakazano: {scheduledDateLabel}
+                    </Typography>
+                </Stack>
+            </Row>
+        </div>
+    );
+}
+
+type ResolvedGardenOperationView = {
+    operationData?: OperationData;
+    operationName?: string;
+    plantSortData?: PlantSortData;
+    targetPlantSortData?: PlantSortData;
+    entryName: string;
+};
+
+function resolveGardenOperationView({
+    currentGarden,
+    operation,
+    operationDataById,
+    plantSortById,
+}: {
+    currentGarden?: CurrentGardenData | null;
+    operation: GardenOperationHudItem;
+    operationDataById: Map<number, OperationData>;
+    plantSortById: Map<number, PlantSortData>;
+}): ResolvedGardenOperationView {
+    const operationData =
+        operation.entityTypeName === cartOperationEntityType
+            ? operationDataById.get(operation.entityId)
+            : undefined;
+    const plantSortData =
+        operation.entityTypeName === cartPlantSortEntityType
+            ? plantSortById.get(operation.entityId)
+            : undefined;
+    const operationName = operationData?.information.label;
+
+    return {
+        operationData,
+        operationName,
+        plantSortData,
+        targetPlantSortData:
+            operation.entityTypeName === cartOperationEntityType
+                ? (plantSortById.get(
+                      getOperationFieldPlantSortId(operation, currentGarden) ??
+                          0,
+                  ) ?? undefined)
+                : undefined,
+        entryName: getActiveOperationName({
+            operation,
+            operationName,
+            plantSortName: plantSortData?.information.name,
+        }),
+    };
+}
+
+type GardenOperationDayGroup = {
+    dayKey: string;
+    operations: GardenOperationHudItem[];
+    bubbleItems: GardenOperationsBubbleItem[];
+};
+
+/** Groups an operation list by garden day and summarises each day for its bubbles. */
+function useGardenOperationDayGroups({
+    currentGarden,
+    operationDataById,
+    operations,
+    plantSortById,
+}: {
+    currentGarden?: CurrentGardenData | null;
+    operationDataById: Map<number, OperationData>;
+    operations: GardenOperationHudItem[];
+    plantSortById: Map<number, PlantSortData>;
+}): GardenOperationDayGroup[] {
+    return useMemo(
+        () =>
+            groupGardenOperationsByDay(operations).map((group) => ({
+                ...group,
+                bubbleItems: group.operations.map((operation) => {
+                    const resolved = resolveGardenOperationView({
+                        currentGarden,
+                        operation,
+                        operationDataById,
+                        plantSortById,
+                    });
+
+                    return {
+                        kind:
+                            operation.entityTypeName === cartPlantSortEntityType
+                                ? 'planting'
+                                : 'operation',
+                        label: resolved.entryName,
+                        operationData: resolved.operationData,
+                        plantSortData:
+                            resolved.plantSortData ??
+                            resolved.targetPlantSortData,
+                    };
+                }),
+            })),
+        [currentGarden, operationDataById, operations, plantSortById],
+    );
+}
+
+/**
+ * Tracks which days the viewer opened or closed. Days they have not touched
+ * fall back to `isDefaultExpanded`.
+ */
+function useGardenOperationsDayExpansion(
+    isDefaultExpanded: (dayKey: string) => boolean,
+) {
+    const [overrides, setOverrides] = useState<Map<string, boolean>>(
+        () => new Map(),
+    );
+
+    function isDayExpanded(dayKey: string) {
+        return overrides.get(dayKey) ?? isDefaultExpanded(dayKey);
+    }
+
+    function toggleDay(dayKey: string) {
+        const nextExpanded = !isDayExpanded(dayKey);
+
+        setOverrides((previous) => new Map(previous).set(dayKey, nextExpanded));
+    }
+
+    return { isDayExpanded, toggleDay };
+}
+
 function HistoryModal({
     trigger,
     operations,
     operationDataById,
+    plantSortById,
+    currentGarden,
     listRef,
+    referenceDate,
 }: {
     trigger: React.ReactElement;
-    operations: GardenOperationItem[];
+    operations: GardenOperationHudItem[];
     operationDataById: Map<number, OperationData>;
+    plantSortById: Map<number, PlantSortData>;
+    currentGarden?: CurrentGardenData | null;
     listRef: (node: HTMLDivElement | null) => void;
+    referenceDate: Date;
 }) {
+    const todayKey = timeZoneDayKey(referenceDate, gardenOperationsTimeZone);
+    const dayGroups = useGardenOperationDayGroups({
+        currentGarden,
+        operationDataById,
+        operations,
+        plantSortById,
+    });
+    // Keep the history compact by default while leaving today's work visible.
+    const { isDayExpanded, toggleDay } = useGardenOperationsDayExpansion(
+        (dayKey) => dayKey === todayKey,
+    );
+
     return (
-        <Modal
+        <GameModal
             title="Povijest radnji"
             trigger={trigger}
             className="md:max-w-4xl"
         >
-            <Stack spacing={2}>
-                <Stack spacing={0.5}>
+            <Stack spacing={4}>
+                <Stack spacing={1}>
                     <Typography level="h5">Povijest radnji</Typography>
                     <Typography level="body2" secondary>
-                        Pregled svih radnji u tvom vrtu. Zadrži pokazivač iznad
-                        točke napretka za datum promjene statusa.
+                        Pregled svih radnji u tvom vrtu.
                     </Typography>
                 </Stack>
                 <Divider />
-                <Stack
-                    spacing={1.5}
-                    data-infinite-scroll-root
-                    className="max-h-[70vh] overflow-y-auto pr-1"
+                <ScrollArea
+                    className="-mx-6"
+                    viewportClassName="max-h-[70vh]"
+                    contentClassName="px-6 pr-4"
+                    viewportProps={{ 'data-infinite-scroll-root': 'true' }}
                 >
-                    {operations.length === 0 ? (
-                        <Typography level="body3" secondary>
-                            Nema radnji.
-                        </Typography>
-                    ) : (
-                        operations.map((operation) => (
-                            <OperationCard
-                                key={operation.id}
-                                operation={operation}
-                                operationName={
-                                    operationDataById.get(operation.entityId)
-                                        ?.information.label
-                                }
-                                operationData={operationDataById.get(
-                                    operation.entityId,
-                                )}
-                            />
-                        ))
-                    )}
-                    <div ref={listRef} className="h-1" />
-                </Stack>
+                    <Stack spacing={2}>
+                        {operations.length === 0 ? (
+                            <Typography level="body3" secondary>
+                                Nema radnji.
+                            </Typography>
+                        ) : (
+                            dayGroups.map((group) => (
+                                <GardenOperationsDayGroup
+                                    key={group.dayKey}
+                                    bubbles={gardenOperationsDayBubbles(
+                                        group.bubbleItems,
+                                    )}
+                                    counts={gardenOperationsDayCounts(
+                                        group.bubbleItems,
+                                    )}
+                                    dayKey={group.dayKey}
+                                    isExpanded={isDayExpanded(group.dayKey)}
+                                    onToggle={toggleDay}
+                                >
+                                    {group.operations.map((operation) => {
+                                        const resolved =
+                                            resolveGardenOperationView({
+                                                currentGarden,
+                                                operation,
+                                                operationDataById,
+                                                plantSortById,
+                                            });
+                                        const scheduleAction = (
+                                            <GardenOperationScheduleAction
+                                                entryName={resolved.entryName}
+                                                garden={currentGarden}
+                                                operation={operation}
+                                                referenceDate={referenceDate}
+                                            />
+                                        );
+                                        const cancelTarget =
+                                            getGardenOperationCancelTarget(
+                                                operation,
+                                                currentGarden,
+                                            );
+                                        const cancelAction = cancelTarget ? (
+                                            <GardenOperationCancelAction
+                                                entryName={resolved.entryName}
+                                                garden={currentGarden}
+                                                operation={operation}
+                                                referenceDate={referenceDate}
+                                            />
+                                        ) : undefined;
+
+                                        return (
+                                            <GardenOperationCard
+                                                key={`${operation.entityTypeName}-${operation.id}`}
+                                                operation={operation}
+                                                operationName={
+                                                    resolved.operationName
+                                                }
+                                                operationData={
+                                                    resolved.operationData
+                                                }
+                                                plantSortData={
+                                                    resolved.plantSortData
+                                                }
+                                                targetPlantSortData={
+                                                    resolved.targetPlantSortData
+                                                }
+                                                currentGarden={currentGarden}
+                                                referenceDate={referenceDate}
+                                                scheduleAction={scheduleAction}
+                                                cancelAction={cancelAction}
+                                            />
+                                        );
+                                    })}
+                                </GardenOperationsDayGroup>
+                            ))
+                        )}
+                        <div ref={listRef} className="h-1" />
+                    </Stack>
+                </ScrollArea>
             </Stack>
-        </Modal>
+        </GameModal>
     );
 }
 
-function sortNewestFirst(operations: GardenOperationItem[]) {
-    return [...operations].sort((a, b) => {
-        const aDate = new Date(
-            a.canceledAt ?? a.verifiedAt ?? a.completedAt ?? a.createdAt,
-        ).getTime();
-        const bDate = new Date(
-            b.canceledAt ?? b.verifiedAt ?? b.completedAt ?? b.createdAt,
-        ).getTime();
-        return bDate - aDate;
-    });
+export function sortNewestFirst(operations: GardenOperationHudItem[]) {
+    return sortOperationTasksNewestFirst(operations);
 }
 
-function sortScheduledSoonestFirst(operations: GardenOperationItem[]) {
-    return [...operations].sort((a, b) => {
-        const aDate = new Date(a.scheduledDate ?? a.createdAt).getTime();
-        const bDate = new Date(b.scheduledDate ?? b.createdAt).getTime();
-        const dateDiff = aDate - bDate;
-
-        return dateDiff !== 0 ? dateDiff : a.id - b.id;
-    });
-}
-
-export function GardenOperationsHud() {
+export function GardenOperationsHud({
+    /** Opens the panel on mount. Used by tests and Storybook. */
+    defaultOpen,
+}: {
+    defaultOpen?: boolean;
+} = {}) {
     const { track } = useGameAnalytics();
-    const { data: operationsData } = useOperations();
+    const referenceDate = useLiveTime();
+    const { data: currentGarden } = useCurrentGarden();
+    const { data: operationsData } = useOperationDefinitions();
+    const { data: cart } = useShoppingCart();
+    const [, setShoppingCartOpen] = useShoppingCartOpenParam();
     const pending = useGardenOperations({
         includeCompleted: false,
         pageSize: 10,
@@ -447,24 +2023,63 @@ export function GardenOperationsHud() {
         includeCompleted: true,
         pageSize: 20,
     });
+    const sowingOperations = useMemo(
+        () => buildSowingOperationItems(currentGarden),
+        [currentGarden],
+    );
+    const sowingPlantSortIds = useMemo(
+        () =>
+            Array.from(
+                new Set(
+                    sowingOperations.map((operation) => operation.entityId),
+                ),
+            ),
+        [sowingOperations],
+    );
+    const fieldPlantSortIds = useMemo(
+        () =>
+            Array.from(
+                new Set(
+                    (currentGarden?.raisedBeds ?? []).flatMap((raisedBed) =>
+                        raisedBed.fields.flatMap((field) =>
+                            typeof field.plantSortId === 'number'
+                                ? [field.plantSortId]
+                                : [],
+                        ),
+                    ),
+                ),
+            ),
+        [currentGarden],
+    );
+    const operationPlantSortIds = useMemo(
+        () =>
+            Array.from(new Set([...sowingPlantSortIds, ...fieldPlantSortIds])),
+        [fieldPlantSortIds, sowingPlantSortIds],
+    );
+    const { data: operationPlantSorts } = useSorts(
+        operationPlantSortIds.length > 0 ? operationPlantSortIds : undefined,
+    );
 
     const pendingOperations = useMemo(
         () =>
-            sortScheduledSoonestFirst(
-                (
-                    pending.data?.pages.flatMap((page) => page.items) ?? []
-                ).filter(
+            sortNewestFirst(
+                [
+                    ...(pending.data?.pages.flatMap((page) => page.items) ??
+                        []),
+                    ...sowingOperations,
+                ].filter(
                     (operation) => !hiddenFromActive.has(operation.status),
                 ),
             ),
-        [pending.data?.pages],
+        [pending.data?.pages, sowingOperations],
     );
     const historyOperations = useMemo(
         () =>
-            sortNewestFirst(
-                history.data?.pages.flatMap((page) => page.items) ?? [],
-            ),
-        [history.data?.pages],
+            sortNewestFirst([
+                ...(history.data?.pages.flatMap((page) => page.items) ?? []),
+                ...sowingOperations,
+            ]),
+        [history.data?.pages, sowingOperations],
     );
 
     const pendingRef = useInfiniteScroll(
@@ -486,9 +2101,72 @@ export function GardenOperationsHud() {
             ),
         [operationsData],
     );
+    const plantSortById = useMemo(
+        () =>
+            new Map(
+                (operationPlantSorts ?? []).map((plantSort) => [
+                    plantSort.id,
+                    plantSort,
+                ]),
+            ),
+        [operationPlantSorts],
+    );
+    const cartOperations = useMemo(() => {
+        if (!currentGarden) {
+            return [];
+        }
+
+        return (cart?.items ?? [])
+            .flatMap((item) => {
+                if (
+                    !isCartOperationsPopupItem(item) ||
+                    item.status !== 'new' ||
+                    (item.gardenId != null &&
+                        item.gardenId !== currentGarden.id)
+                ) {
+                    return [];
+                }
+
+                const operationId = Number(item.entityId);
+                const scheduledDate = getCartItemScheduledDate(item);
+                return [
+                    {
+                        item,
+                        scheduledDate,
+                        operationData: Number.isFinite(operationId)
+                            ? operationDataById.get(operationId)
+                            : undefined,
+                        targetDetails: getCartOperationTargetDetails(
+                            item,
+                            currentGarden,
+                        ),
+                    },
+                ];
+            })
+            .sort((a, b) => {
+                const dateDiff =
+                    getTimestamp(b.scheduledDate) -
+                    getTimestamp(a.scheduledDate);
+
+                return dateDiff !== 0 ? dateDiff : b.item.id - a.item.id;
+            });
+    }, [cart?.items, currentGarden, operationDataById]);
+    const todayKey = timeZoneDayKey(referenceDate, gardenOperationsTimeZone);
+    const pendingDayGroups = useGardenOperationDayGroups({
+        currentGarden,
+        operationDataById,
+        operations: pendingOperations,
+        plantSortById,
+    });
+    // Keep upcoming work compact by default while leaving today's work visible.
+    const { isDayExpanded: isPendingDayExpanded, toggleDay: togglePendingDay } =
+        useGardenOperationsDayExpansion((dayKey) => dayKey === todayKey);
+    const activeOperationCount =
+        pendingOperations.length + cartOperations.length;
 
     return (
         <Popper
+            defaultOpen={defaultOpen}
             side="bottom"
             sideOffset={12}
             className="w-[28rem] max-w-[90vw] overflow-hidden border-tertiary border-b-4"
@@ -503,12 +2181,12 @@ export function GardenOperationsHud() {
                         })
                     }
                 >
-                    {pendingOperations.length > 0 && (
+                    {activeOperationCount > 0 && (
                         <div className="absolute right-1 top-1">
                             <DotIndicator color={'success'} />
                         </div>
                     )}
-                    <ListTodo className="size-5" />
+                    <ListTodo className="size-8" />
                 </Button>
             }
         >
@@ -518,41 +2196,156 @@ export function GardenOperationsHud() {
                     justifyContent="space-between"
                 >
                     <Typography level="body2" bold>
-                        Aktivne radnje
+                        Planirane radnje
                     </Typography>
                 </Row>
                 <Divider />
-                <Stack
-                    spacing={1}
-                    data-infinite-scroll-root
-                    className="max-h-[50vh] overflow-y-auto p-3"
+                <ScrollArea
+                    viewportClassName="max-h-[50vh]"
+                    contentClassName="py-2 pl-3 pr-1"
+                    viewportProps={{ 'data-infinite-scroll-root': 'true' }}
                 >
-                    {pendingOperations.length === 0 ? (
-                        <Typography level="body3" secondary>
-                            Nema nedovršenih radnji.
-                        </Typography>
-                    ) : (
-                        pendingOperations.map((operation) => (
-                            <OperationCard
-                                key={operation.id}
-                                operation={operation}
-                                operationName={
-                                    operationDataById.get(operation.entityId)
-                                        ?.information.label
-                                }
-                                operationData={operationDataById.get(
-                                    operation.entityId,
+                    <Stack spacing={1.5}>
+                        {activeOperationCount === 0 ? (
+                            <Typography level="body3" secondary>
+                                Nema nedovršenih radnji.
+                            </Typography>
+                        ) : (
+                            <>
+                                {cartOperations.length > 0 && (
+                                    <Stack spacing={1.5}>
+                                        <Row
+                                            justifyContent="space-between"
+                                            alignItems="center"
+                                        >
+                                            <Typography level="body3" semiBold>
+                                                Radnje u košari
+                                            </Typography>
+                                            <Button
+                                                variant="link"
+                                                size="sm"
+                                                className="px-0"
+                                                onClick={() =>
+                                                    setShoppingCartOpen(true)
+                                                }
+                                            >
+                                                Otvori košaru
+                                            </Button>
+                                        </Row>
+                                        {cartOperations.map((cartOperation) => (
+                                            <CartOperationCard
+                                                key={cartOperation.item.id}
+                                                item={cartOperation.item}
+                                                operationData={
+                                                    cartOperation.operationData
+                                                }
+                                                targetDetails={
+                                                    cartOperation.targetDetails
+                                                }
+                                            />
+                                        ))}
+                                    </Stack>
                                 )}
-                            />
-                        ))
-                    )}
-                    <div ref={pendingRef} className="h-1" />
-                </Stack>
+                                {cartOperations.length > 0 &&
+                                    pendingOperations.length > 0 && <Divider />}
+                                {pendingDayGroups.map((group) => (
+                                    <GardenOperationsDayGroup
+                                        key={group.dayKey}
+                                        bubbles={gardenOperationsDayBubbles(
+                                            group.bubbleItems,
+                                        )}
+                                        counts={gardenOperationsDayCounts(
+                                            group.bubbleItems,
+                                        )}
+                                        dayKey={group.dayKey}
+                                        isExpanded={isPendingDayExpanded(
+                                            group.dayKey,
+                                        )}
+                                        onToggle={togglePendingDay}
+                                    >
+                                        {group.operations.map((operation) => {
+                                            const resolved =
+                                                resolveGardenOperationView({
+                                                    currentGarden,
+                                                    operation,
+                                                    operationDataById,
+                                                    plantSortById,
+                                                });
+                                            const scheduleAction = (
+                                                <GardenOperationScheduleAction
+                                                    entryName={
+                                                        resolved.entryName
+                                                    }
+                                                    garden={currentGarden}
+                                                    operation={operation}
+                                                    referenceDate={
+                                                        referenceDate
+                                                    }
+                                                />
+                                            );
+                                            const cancelTarget =
+                                                getGardenOperationCancelTarget(
+                                                    operation,
+                                                    currentGarden,
+                                                );
+                                            const cancelAction =
+                                                cancelTarget ? (
+                                                    <GardenOperationCancelAction
+                                                        entryName={
+                                                            resolved.entryName
+                                                        }
+                                                        garden={currentGarden}
+                                                        operation={operation}
+                                                        referenceDate={
+                                                            referenceDate
+                                                        }
+                                                    />
+                                                ) : undefined;
+
+                                            return (
+                                                <GardenOperationCard
+                                                    key={`${operation.entityTypeName}-${operation.id}`}
+                                                    operation={operation}
+                                                    operationName={
+                                                        resolved.operationName
+                                                    }
+                                                    operationData={
+                                                        resolved.operationData
+                                                    }
+                                                    plantSortData={
+                                                        resolved.plantSortData
+                                                    }
+                                                    targetPlantSortData={
+                                                        resolved.targetPlantSortData
+                                                    }
+                                                    currentGarden={
+                                                        currentGarden
+                                                    }
+                                                    referenceDate={
+                                                        referenceDate
+                                                    }
+                                                    scheduleAction={
+                                                        scheduleAction
+                                                    }
+                                                    cancelAction={cancelAction}
+                                                />
+                                            );
+                                        })}
+                                    </GardenOperationsDayGroup>
+                                ))}
+                            </>
+                        )}
+                        <div ref={pendingRef} className="h-1" />
+                    </Stack>
+                </ScrollArea>
                 <Divider />
                 <HistoryModal
                     operations={historyOperations}
                     operationDataById={operationDataById}
+                    plantSortById={plantSortById}
+                    currentGarden={currentGarden}
                     listRef={historyRef}
+                    referenceDate={referenceDate}
                     trigger={
                         <Button
                             variant="plain"

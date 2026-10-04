@@ -6,13 +6,21 @@ import {
     PlantGridIcon,
 } from '@gredice/ui/GridIcons';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
+import type { ComponentType } from 'react';
 
-const gridIcons = [
+function PlantGridIconPreview({ className }: { className?: string }) {
+    return <PlantGridIcon className={className} totalPlants={4} />;
+}
+
+const gridIcons: Array<{
+    Icon: ComponentType<{ className?: string }>;
+    label: string;
+}> = [
     { Icon: Grid1Icon, label: 'Grid1Icon' },
     { Icon: Grid4Icon, label: 'Grid4Icon' },
     { Icon: Grid9Icon, label: 'Grid9Icon' },
     { Icon: Grid16Icon, label: 'Grid16Icon' },
-    { Icon: PlantGridIcon, label: 'PlantGridIcon' },
+    { Icon: PlantGridIconPreview, label: 'PlantGridIcon' },
 ];
 
 function GridIconsShowcase() {
@@ -56,6 +64,28 @@ export const LargeSize: Story = {
         <div className="flex flex-wrap gap-6">
             {gridIcons.map(({ Icon, label }) => (
                 <Icon key={label} className="size-16 text-primary" />
+            ))}
+        </div>
+    ),
+};
+
+export const PlantDensities: Story = {
+    render: () => (
+        <div className="flex flex-wrap gap-6">
+            {[0, 1, 4, 9, 16, 25, 36, 49, 64, 100, 17].map((totalPlants) => (
+                <figure key={totalPlants} className="space-y-2">
+                    <div className="flex items-end gap-2">
+                        {[24, 32, 64].map((size) => (
+                            <PlantGridIcon
+                                key={size}
+                                totalPlants={totalPlants}
+                                width={size}
+                                height={size}
+                            />
+                        ))}
+                    </div>
+                    <figcaption>{totalPlants} · 24 / 32 / 64px</figcaption>
+                </figure>
             ))}
         </div>
     ),

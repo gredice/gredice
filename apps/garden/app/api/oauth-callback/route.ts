@@ -1,8 +1,8 @@
 import { cookies, headers } from 'next/headers';
+import { authCookieSettings } from '../../../lib/authCookieSecurity';
 
 const accessTokenExpiryMs = 15 * 60 * 1000;
 const refreshTokenExpiryMs = 30 * 24 * 60 * 60 * 1000;
-const cookieDomain = process.env.COOKIE_DOMAIN || undefined;
 
 export async function POST(request: Request) {
     // CSRF protection: validate Origin and Sec-Fetch-Site headers
@@ -73,21 +73,22 @@ export async function POST(request: Request) {
     }
 
     const cookieStore = await cookies();
+    const cookieSettings = await authCookieSettings();
 
     cookieStore.set('gredice_session', token, {
         httpOnly: true,
-        secure: true,
+        secure: cookieSettings.secure,
         sameSite: 'lax',
-        domain: cookieDomain,
+        domain: cookieSettings.domain,
         expires: new Date(Date.now() + accessTokenExpiryMs),
     });
 
     if (refreshToken) {
         cookieStore.set('gredice_refresh', refreshToken, {
             httpOnly: true,
-            secure: true,
+            secure: cookieSettings.secure,
             sameSite: 'lax',
-            domain: cookieDomain,
+            domain: cookieSettings.domain,
             expires: new Date(Date.now() + refreshTokenExpiryMs),
         });
     }

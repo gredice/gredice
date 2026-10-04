@@ -1,10 +1,9 @@
+import { Card, CardHeader, CardOverflow, CardTitle } from '@gredice/ui/Card';
 import {
-    Card,
-    CardHeader,
-    CardOverflow,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { TransactionsTable } from '../../transactions/TransactionsTable';
+    scrollableTableCardClassName,
+    scrollableTableCardOverflowClassName,
+} from '../../../../components/admin/cards/tableCardLayout';
+import { TransactionsTable } from '../../../../components/admin/tables';
 
 export async function AccountTransactionsCard({
     accountId,
@@ -12,11 +11,11 @@ export async function AccountTransactionsCard({
     accountId: string;
 }) {
     return (
-        <Card>
+        <Card className={scrollableTableCardClassName}>
             <CardHeader>
                 <CardTitle>Transakcije</CardTitle>
             </CardHeader>
-            <CardOverflow>
+            <CardOverflow className={scrollableTableCardOverflowClassName}>
                 <TransactionsTable accountId={accountId} />
             </CardOverflow>
         </Card>

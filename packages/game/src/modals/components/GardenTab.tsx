@@ -1,17 +1,31 @@
-import { Add } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Card, CardContent } from '@signalco/ui-primitives/Card';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Row } from '@signalco/ui-primitives/Row';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Accordion } from '@gredice/ui/Accordion';
+import { Button } from '@gredice/ui/Button';
+import { Card, CardContent } from '@gredice/ui/Card';
+import { GameGardenIcon } from '@gredice/ui/GameIcons';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Add, Warning } from '@gredice/ui/icons';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuTrigger,
+} from '@gredice/ui/Menu';
+import { Row } from '@gredice/ui/Row';
+import { Skeleton } from '@gredice/ui/Skeleton';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
+import { useCurrentGarden } from '../../hooks/useCurrentGarden';
+import { useGardenAccountGroups } from '../../hooks/useGardenAccountGroups';
 import { useGardens } from '../../hooks/useGardens';
+import { GardenAccountMenuItems } from '../../hud/GardenAccountMenuItems';
 import { useCurrentGardenIdParam } from '../../useUrlState';
 import { CreateGardenModal } from './CreateGardenModal';
+import { GardenDangerCard } from './GardenDangerCard';
+import { GardenHomeCameraCard } from './GardenHomeCameraCard';
 import { GardenNameCard } from './GardenNameCard';
+import { GardenVisibilityCard } from './GardenVisibilityCard';
+import { RaisedBedAbandonCard } from './RaisedBedAbandonCard';
 
 function NoGardensCard() {
     const [createGardenModalOpen, setCreateGardenModalOpen] = useState(false);
@@ -21,7 +35,7 @@ function NoGardensCard() {
         <>
             <Card>
                 <CardContent noHeader>
-                    <Stack spacing={2} alignItems="center">
+                    <Stack spacing={4} alignItems="center">
                         <Typography level="body2">
                             Trenutno nemaš svoj vrt.
                         </Typography>
@@ -50,49 +64,39 @@ function NoGardensCard() {
 
 function GardensSelector() {
     const { data: gardens } = useGardens();
+    const { data: currentGarden } = useCurrentGarden();
     const [createGardenModalOpen, setCreateGardenModalOpen] = useState(false);
-    const [selectedGardenId, setSelectedGardenId] = useCurrentGardenIdParam();
+    const [selectedGardenId] = useCurrentGardenIdParam();
     const { track } = useGameAnalytics();
     const selectedGarden =
-        gardens?.find((g) => g.id === selectedGardenId) ?? gardens?.[0];
+        gardens?.find((g) => g.id === selectedGardenId) ??
+        currentGarden ??
+        gardens?.find((garden) => !garden.isSandbox);
 
     return (
         <>
             <Row>
-                <div className="bg-card rounded grow">
-                    <SelectItems
-                        value={
-                            selectedGardenId?.toString() ??
-                            selectedGarden?.id.toString()
-                        }
-                        onValueChange={(value) => {
-                            const nextGardenId =
-                                Number.parseInt(value, 10) || 0;
-                            const nextGarden = gardens?.find(
-                                (garden) => garden.id === nextGardenId,
-                            );
-                            track('game_garden_switched', {
-                                from_garden_id: selectedGarden?.id,
-                                to_garden_id: nextGardenId,
-                                to_garden_name: nextGarden?.name,
-                            });
-                            setSelectedGardenId(nextGardenId);
-                        }}
-                        items={
-                            gardens?.map((g) => ({
-                                label: (
-                                    <>
-                                        <Row spacing={1}>
-                                            <span>🏡</span>
-                                            <Typography>{g.name}</Typography>
-                                        </Row>
-                                    </>
-                                ),
-                                value: g.id.toString(),
-                            })) ?? []
-                        }
-                    />
-                </div>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button
+                            className="bg-card rounded grow justify-start overflow-hidden"
+                            variant="plain"
+                        >
+                            <Row spacing={2} className="min-w-0">
+                                <GameGardenIcon
+                                    aria-hidden
+                                    className="size-6 shrink-0"
+                                />
+                                <Typography noWrap>
+                                    {selectedGarden?.name ?? 'Odaberi vrt'}
+                                </Typography>
+                            </Row>
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-80 p-2" align="start">
+                        <GardenAccountMenuItems />
+                    </DropdownMenuContent>
+                </DropdownMenu>
                 <IconButton
                     title="Kreiraj novi vrt"
                     variant="plain"
@@ -115,26 +119,89 @@ function GardensSelector() {
 }
 
 export function GardenTab() {
-    const { data: gardens } = useGardens();
-    const [selectedGardenId] = useCurrentGardenIdParam();
-    const selectedGarden =
-        gardens?.find((g) => g.id === selectedGardenId) ?? gardens?.[0];
+    const {
+        data: gardens,
+        isLoading: gardensLoading,
+        isError: gardensError,
+    } = useGardens();
+    const { data: accountGroups, isLoading: accountGroupsLoading } =
+        useGardenAccountGroups();
+    const { data: currentGarden } = useCurrentGarden();
+    const selectedGarden = gardens?.find(
+        (garden) => garden.id === currentGarden?.id,
+    );
+    const hasAnyGarden =
+        (gardens?.length ?? 0) > 0 ||
+        (accountGroups?.some((group) => group.gardens.length > 0) ?? false);
+    const isLoading = gardensLoading || accountGroupsLoading;
 
     return (
-        <Stack spacing={4}>
-            <Typography level="h4" className="hidden md:block">
-                🏡 Vrt
+        <Stack spacing={8}>
+            <Typography
+                level="h4"
+                className="hidden md:flex items-center gap-2"
+            >
+                <GameGardenIcon aria-hidden className="size-8 shrink-0" />
+                Vrt
             </Typography>
-            <Stack spacing={1}>
-                {gardens && gardens.length > 0 ? (
+            <Stack spacing={2}>
+                {isLoading && !hasAnyGarden ? (
+                    <Skeleton className="h-10 w-full" />
+                ) : hasAnyGarden || gardensError ? (
                     <>
                         <GardensSelector />
                         {selectedGarden && (
-                            <GardenNameCard
-                                gardenId={selectedGarden.id}
-                                gardenName={selectedGarden.name}
-                                gardenCreatedAt={selectedGarden.createdAt}
-                            />
+                            <>
+                                <GardenNameCard
+                                    gardenId={selectedGarden.id}
+                                    gardenName={selectedGarden.name}
+                                    gardenCreatedAt={selectedGarden.createdAt}
+                                />
+                                <GardenHomeCameraCard
+                                    gardenId={selectedGarden.id}
+                                    hasHomeCamera={Boolean(
+                                        selectedGarden.homeCamera,
+                                    )}
+                                />
+                                <GardenVisibilityCard
+                                    gardenId={selectedGarden.id}
+                                    gardenName={selectedGarden.name}
+                                    isPublic={selectedGarden.isPublic}
+                                />
+                                <Accordion
+                                    className="[&>div:first-child>button]:rounded-lg [&>div:first-child>button]:border [&>div:first-child>button]:border-red-200 [&>div:first-child>button]:bg-red-50/80 [&>div:first-child>button]:p-4 [&>div:first-child>button]:shadow-xs [&>div:first-child>button]:hover:bg-red-100/80 dark:[&>div:first-child>button]:border-red-900/60 dark:[&>div:first-child>button]:bg-red-950/80 dark:[&>div:first-child>button]:hover:bg-red-950"
+                                    unmountOnExit
+                                    variant="plain"
+                                >
+                                    <Row
+                                        alignItems="start"
+                                        className="min-w-0"
+                                        spacing={4}
+                                    >
+                                        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-700 ring-4 ring-red-200/70 dark:bg-red-900/70 dark:text-red-100 dark:ring-red-800/70">
+                                            <Warning className="size-5 shrink-0" />
+                                        </div>
+                                        <Stack className="min-w-0" spacing={1}>
+                                            <Typography level="body1" semiBold>
+                                                Zona opasnosti
+                                            </Typography>
+                                            <Typography level="body2">
+                                                Napuštanje gredice i brisanje
+                                                vrta
+                                            </Typography>
+                                        </Stack>
+                                    </Row>
+                                    <Stack spacing={2}>
+                                        <RaisedBedAbandonCard
+                                            gardenId={selectedGarden.id}
+                                        />
+                                        <GardenDangerCard
+                                            gardenId={selectedGarden.id}
+                                            gardenName={selectedGarden.name}
+                                        />
+                                    </Stack>
+                                </Accordion>
+                            </>
                         )}
                     </>
                 ) : (

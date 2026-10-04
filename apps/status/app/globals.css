@@ -1,6 +1,8 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@import "@gredice/ui/utilities.css";
+@config "../tailwind.config.ts";
+@source "../../www/components";
+@source "../../../packages/ui/src";
 
 @layer base {
     :root {
@@ -21,6 +23,7 @@
 
         --border: 28 31.8% 91.4%;
         --input: 28 31.8% 91.4%;
+        --field: 28 40% 96%;
 
         --primary: 28 47.4% 11.2%;
         --primary-foreground: 28 40% 98%;
@@ -69,6 +72,7 @@
 
         --border: var(--hue) 16% 25%;
         --input: var(--hue) 31% 9%;
+        --field: var(--hue) 16% 24%;
 
         --primary: var(--hue-primary) 16% 98%;
         --primary-foreground: var(--hue) 40% 20%;
@@ -118,6 +122,7 @@
 
             --border: var(--hue) 16% 25%;
             --input: var(--hue) 31% 9%;
+            --field: var(--hue) 16% 24%;
 
             --primary: var(--hue-primary) 16% 98%;
             --primary-foreground: var(--hue) 40% 20%;
@@ -147,11 +152,12 @@
     }
 
     * {
-        @apply border-border;
+        border-color: hsl(var(--border));
     }
 
     body {
-        @apply bg-background text-foreground;
+        background-color: hsl(var(--background));
+        color: hsl(var(--foreground));
         font-feature-settings:
             "rlig" 1,
             "calt" 1;
@@ -159,7 +165,7 @@
 
     button,
     [role="button"] {
-        @apply cursor-auto;
+        cursor: auto;
     }
 
     ::selection {
@@ -174,6 +180,12 @@ svg.lucide {
 
 @layer components {
     .status-card {
-        @apply rounded-lg border border-b-4 border-border border-b-tertiary bg-card text-card-foreground shadow-sm;
+        border: 1px solid hsl(var(--border));
+        border-bottom-color: hsl(var(--tertiary));
+        border-bottom-width: 4px;
+        border-radius: var(--radius);
+        background-color: hsl(var(--card));
+        color: hsl(var(--card-foreground));
+        box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
     }
 }

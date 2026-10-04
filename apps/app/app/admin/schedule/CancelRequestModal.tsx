@@ -1,17 +1,17 @@
 'use client';
 
-import { Close } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Close } from '@gredice/ui/icons';
+import { Modal } from '@gredice/ui/Modal';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 
 interface CancelRequestModalProps {
     label: string;
     trigger: React.ReactElement;
-    onSubmit: (formData: FormData) => Promise<void>;
+    onSubmit: (formData: FormData) => unknown | Promise<unknown>;
     hiddenFields: React.ReactNode;
     description?: string;
     confirmLabel?: string;
@@ -54,7 +54,7 @@ export function CancelRequestModal({
             onOpenChange={setOpen}
         >
             <form onSubmit={handleSubmit}>
-                <Stack spacing={2}>
+                <Stack spacing={4}>
                     <Typography level="h5">Otkazivanje zadatka</Typography>
                     <Typography>
                         {description ||
@@ -65,21 +65,21 @@ export function CancelRequestModal({
 
                     {additionalFields}
 
-                    <Stack spacing={1}>
+                    <Stack spacing={2}>
                         <Typography level="body2">
                             Razlog otkazivanja
                         </Typography>
                         <textarea
                             name="reason"
                             placeholder="Unesite razlog otkazivanja..."
-                            className="w-full bg-card border border-muted rounded p-2"
+                            className="w-full bg-field border border-muted rounded p-2"
                             disabled={isLoading}
                             required
                             rows={3}
                         />
                     </Stack>
 
-                    <Row spacing={1}>
+                    <Row spacing={2}>
                         <Button
                             variant="plain"
                             onClick={() => setOpen(false)}

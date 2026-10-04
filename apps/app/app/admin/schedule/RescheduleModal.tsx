@@ -1,13 +1,14 @@
 'use client';
 
-import { Calendar } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Input } from '@gredice/ui/Input';
+import { Calendar } from '@gredice/ui/icons';
+import { Modal } from '@gredice/ui/Modal';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
+import { getOperationScheduleActionFailureMessage } from './operationScheduleActionResult';
 
 function formatLocalDate(date: Date): string {
     const year = date.getFullYear();
@@ -20,7 +21,7 @@ interface RescheduleModalProps {
     label: string;
     scheduledDate?: Date;
     trigger: React.ReactElement;
-    onSubmit: (formData: FormData) => Promise<void>;
+    onSubmit: (formData: FormData) => unknown | Promise<unknown>;
     hiddenFields: React.ReactNode;
 }
 
@@ -33,6 +34,7 @@ export function RescheduleModal({
 }: RescheduleModalProps) {
     const [open, setOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string>();
 
     const isRescheduling = !!scheduledDate;
 
@@ -41,13 +43,28 @@ export function RescheduleModal({
         const formData = new FormData(event.currentTarget);
 
         setIsLoading(true);
+        setErrorMessage(undefined);
         try {
-            await onSubmit(formData);
+            const result = await onSubmit(formData);
+            const actionFailureMessage =
+                getOperationScheduleActionFailureMessage(result);
+            if (actionFailureMessage) {
+                setErrorMessage(actionFailureMessage);
+                return;
+            }
             setOpen(false);
         } catch (error) {
             console.error('Error rescheduling item:', error);
+            alert('Zakazivanje zadatka nije uspjelo. Pokušajte ponovno.');
         } finally {
             setIsLoading(false);
+        }
+    }
+
+    function handleOpenChange(nextOpen: boolean) {
+        setOpen(nextOpen);
+        if (nextOpen) {
+            setErrorMessage(undefined);
         }
     }
 
@@ -70,10 +87,10 @@ export function RescheduleModal({
             trigger={trigger}
             title={`${isRescheduling ? 'Prerasporedi' : 'Zakaži'}: ${label}`}
             open={open}
-            onOpenChange={setOpen}
+            onOpenChange={handleOpenChange}
         >
             <form onSubmit={handleSubmit}>
-                <Stack spacing={2}>
+                <Stack spacing={4}>
                     <Typography level="h5">
                         {isRescheduling
                             ? 'Preraspoređivanje zadatka'
@@ -84,6 +101,11 @@ export function RescheduleModal({
                         {isRescheduling ? 'preraspoređen' : 'zakazan'} na
                         odabrani datum.
                     </Typography>
+                    {errorMessage ? (
+                        <Typography level="body2" className="text-red-600">
+                            {errorMessage}
+                        </Typography>
+                    ) : null}
 
                     {hiddenFields}
 
@@ -99,7 +121,7 @@ export function RescheduleModal({
                         required
                     />
 
-                    <Row spacing={1}>
+                    <Row spacing={2}>
                         <Button
                             variant="plain"
                             onClick={() => setOpen(false)}

@@ -1,3 +1,15 @@
+export function getServerGrediceApiOrigin() {
+    const configuredApiHost = process.env.GREDICE_API_HOST?.trim();
+    if (configuredApiHost) {
+        return configuredApiHost.replace(/\/+$/, '');
+    }
+
+    const isDevelopment =
+        process.env.NODE_ENV === 'development' ||
+        process.env.VERCEL_ENV === 'development';
+    return isDevelopment ? 'http://localhost:3005' : 'https://api.gredice.com';
+}
+
 export function getAppUrl() {
     // Check if we're in a browser environment
     const isBrowser = typeof window !== 'undefined';
@@ -13,6 +25,11 @@ export function getAppUrl() {
         process.env.NODE_ENV === 'development' ||
         process.env.VERCEL_ENV === 'development'
     ) {
+        const configuredApiHost = process.env.GREDICE_API_HOST?.trim();
+        if (configuredApiHost) {
+            return configuredApiHost.replace(/\/+$/, '');
+        }
+
         return 'https://api.gredice.test';
     }
     return 'https://api.gredice.com';
@@ -23,13 +40,14 @@ export function getAppUrl() {
  * for self-signed certificates in development environments.
  */
 export function createDevSafeFetch(): typeof fetch {
+    const runtimeProcess = typeof process !== 'undefined' ? process : undefined;
     // In development, disable SSL verification to handle self-signed certificates
     const isDevEnvironment =
-        process.env.NODE_ENV === 'development' ||
-        process.env.VERCEL_ENV === 'development';
+        runtimeProcess?.env.NODE_ENV === 'development' ||
+        runtimeProcess?.env.VERCEL_ENV === 'development';
 
     // Check if we're running server-side (Node.js environment)
-    const isServerSide = typeof process?.versions?.node !== 'undefined';
+    const isServerSide = typeof runtimeProcess?.versions?.node !== 'undefined';
 
     if (isDevEnvironment && isServerSide) {
         // Server-side in development: create custom fetch that ignores SSL errors

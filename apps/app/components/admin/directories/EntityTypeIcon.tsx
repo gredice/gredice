@@ -5,7 +5,6 @@ import {
     Grid9Icon,
     Grid16Icon,
 } from '@gredice/ui/GridIcons';
-import { RaisedBedSimpleIcon } from '@gredice/ui/RaisedBedSimpleIcon';
 import {
     Add,
     AI,
@@ -103,6 +102,7 @@ import {
     Paperclip,
     Password,
     Pause,
+    PawPrint,
     People,
     Percent,
     Pin,
@@ -161,7 +161,8 @@ import {
     Wallet,
     Warning,
     Wind,
-} from '@signalco/ui-icons';
+} from '@gredice/ui/icons';
+import { RaisedBedSimpleIcon } from '@gredice/ui/RaisedBedSimpleIcon';
 import type { ComponentType, SVGProps } from 'react';
 
 const iconMap: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
@@ -266,6 +267,7 @@ const iconMap: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
     PanelRightClose,
     Paperclip,
     Password,
+    PawPrint,
     Pause,
     People,
     Percent,

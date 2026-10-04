@@ -1,17 +1,27 @@
-import { getAssignableFarmUsersByOperationIds } from '@gredice/storage';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
-import { BulkApproveRaisedBedButton } from './BulkApproveRaisedBedButton';
-import { BulkAssignRaisedBedButton } from './BulkAssignRaisedBedButton';
+import {
+    getAssignableFarmUsersByOperationIds,
+    getFarms,
+    RAISED_BED_PHOTO_OPERATION_NAME,
+} from '@gredice/storage';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
+import {
+    type BulkPhotoOperationTarget,
+    isRaisedBedPhotoOperationInformation,
+} from './bulkPhotoOperationImportModel';
+import { FarmOperationsScheduleSection } from './FarmOperationsScheduleSection';
 import { RaisedBedOperationsScheduleSection } from './RaisedBedOperationsScheduleSection';
+import { ScheduleDayOperationsBulkActions } from './ScheduleDayOperationsBulkActions';
 import {
     getScheduleDayData,
     getScheduleOperationsData,
     getSchedulePlantSorts,
 } from './scheduleData';
 import {
+    canAcceptOperationTask,
     groupRaisedBedsForSchedule,
+    isOperationBlocked,
     isOperationCancelled,
     isOperationCompleted,
     isOperationPendingVerification,
@@ -26,20 +36,25 @@ export async function ScheduleDayOperationsSection({
     isToday,
     date,
 }: ScheduleDayOperationsSectionProps) {
-    const [{ raisedBeds, scheduledOperations }, plantSorts, operationsData] =
-        await Promise.all([
-            getScheduleDayData(date.toISOString(), isToday),
-            getSchedulePlantSorts(),
-            getScheduleOperationsData(),
-        ]);
+    const [
+        { dateKey, raisedBeds, scheduledOperations, timeZone },
+        plantSorts,
+        operationsData,
+    ] = await Promise.all([
+        getScheduleDayData(date, isToday),
+        getSchedulePlantSorts(),
+        getScheduleOperationsData(),
+    ]);
     if (scheduledOperations.length === 0) {
         return null;
     }
 
-    const assignableFarmUsersByOperationId =
-        await getAssignableFarmUsersByOperationIds(
+    const [assignableFarmUsersByOperationId, farms] = await Promise.all([
+        getAssignableFarmUsersByOperationIds(
             scheduledOperations.map((operation) => operation.id),
-        );
+        ),
+        getFarms(),
+    ]);
 
     const affectedRaisedBedIds = [
         ...new Set(
@@ -52,52 +67,130 @@ export async function ScheduleDayOperationsSection({
         raisedBeds,
         affectedRaisedBedIds,
     );
+    const farmOperations = scheduledOperations.filter(
+        (operation) =>
+            typeof operation.farmId === 'number' &&
+            operation.raisedBedId === null,
+    );
+    const operationFarmIds = new Set(
+        farmOperations
+            .map((operation) => operation.farmId)
+            .filter((farmId): farmId is number => typeof farmId === 'number'),
+    );
+    const operationFarms = farms
+        .filter((farm) => operationFarmIds.has(farm.id))
+        .map((farm) => ({ id: farm.id, name: farm.name }));
+
+    const photoOperationEntityIds = new Set(
+        (operationsData ?? [])
+            .filter((operationData) =>
+                isRaisedBedPhotoOperationInformation(
+                    operationData.information,
+                    RAISED_BED_PHOTO_OPERATION_NAME,
+                ),
+            )
+            .map((operationData) => operationData.id),
+    );
+    const raisedBedPhysicalIdById = new Map<number, string>();
+    for (const raisedBed of raisedBeds) {
+        if (raisedBed.physicalId) {
+            raisedBedPhysicalIdById.set(raisedBed.id, raisedBed.physicalId);
+        }
+    }
+    const photoOperationTargets = scheduledOperations
+        .flatMap((operation): BulkPhotoOperationTarget[] => {
+            const physicalId = operation.raisedBedId
+                ? raisedBedPhysicalIdById.get(operation.raisedBedId)
+                : undefined;
+            if (
+                !physicalId ||
+                !photoOperationEntityIds.has(operation.entityId) ||
+                !operation.isAccepted ||
+                (operation.status !== 'new' && operation.status !== 'planned')
+            ) {
+                return [];
+            }
+
+            return [
+                {
+                    operationId: operation.id,
+                    expectedEntityId: operation.entityId,
+                    expectedTaskVersionEventId: operation.taskVersionEventId,
+                    physicalId,
+                },
+            ];
+        })
+        .sort((left, right) =>
+            left.physicalId.localeCompare(right.physicalId, undefined, {
+                numeric: true,
+            }),
+        );
 
     const dayOperationsToApprove = scheduledOperations
         .filter(
             (operation) =>
                 !operation.isAccepted &&
-                !isOperationCompleted(operation.status) &&
-                !isOperationCancelled(operation.status) &&
+                canAcceptOperationTask(operation.status) &&
                 !!operation.assignedUserId,
         )
         .map((operation) => ({
             id: operation.id,
-            label: operation.entityId,
+            entityId: operation.entityId,
+            taskVersionEventId: operation.taskVersionEventId,
+            label: operation.entityId.toString(),
         }));
 
     const dayOperationsToAssign = scheduledOperations
         .filter(
             (operation) =>
                 !operation.assignedUserId &&
+                !isOperationBlocked(operation.status) &&
                 !isOperationCompleted(operation.status) &&
-                !isOperationPendingVerification(operation.status) &&
                 !isOperationCancelled(operation.status),
         )
         .map((operation) => ({
             id: operation.id,
+            expectedEntityId: operation.entityId,
+            expectedTaskVersionEventId: operation.taskVersionEventId,
             farmUsers: assignableFarmUsersByOperationId[operation.id] ?? [],
+        }));
+    const dayOperationsToCancel = scheduledOperations
+        .filter(
+            (operation) =>
+                !isOperationBlocked(operation.status) &&
+                !isOperationCompleted(operation.status) &&
+                !isOperationPendingVerification(operation.status) &&
+                !isOperationCancelled(operation.status) &&
+                operation.status !== 'failed',
+        )
+        .map((operation) => ({
+            id: operation.id,
+            entityId: operation.entityId,
+            taskVersionEventId: operation.taskVersionEventId,
+            label: operation.entityId.toString(),
         }));
 
     return (
-        <Stack spacing={2}>
-            <Row spacing={1} alignItems="center">
-                <Typography level="h6">Radnje</Typography>
-                <BulkApproveRaisedBedButton
-                    physicalId="dan"
-                    fields={[]}
-                    operations={dayOperationsToApprove}
-                />
-                <BulkAssignRaisedBedButton
-                    physicalId="dan"
-                    fields={[]}
-                    operations={dayOperationsToAssign}
-                />
+        <Stack spacing={4}>
+            <Row spacing={2} alignItems="center" className="w-full">
+                <Typography level="h6" className="grow">
+                    Radnje
+                </Typography>
+                <Row spacing={1} className="ml-auto shrink-0">
+                    <ScheduleDayOperationsBulkActions
+                        photoOperationTargets={photoOperationTargets}
+                        operationsToApprove={dayOperationsToApprove}
+                        operationsToAssign={dayOperationsToAssign}
+                        operationsToCancel={dayOperationsToCancel}
+                    />
+                </Row>
             </Row>
             {raisedBedGroups.map(({ key, physicalId, raisedBeds: beds }) => {
                 return (
                     <RaisedBedOperationsScheduleSection
                         key={key}
+                        dateKey={dateKey}
+                        timeZone={timeZone}
                         physicalId={physicalId}
                         raisedBeds={beds}
                         scheduledOperations={scheduledOperations}
@@ -109,6 +202,19 @@ export async function ScheduleDayOperationsSection({
                     />
                 );
             })}
+            {operationFarms.map((farm) => (
+                <FarmOperationsScheduleSection
+                    key={farm.id}
+                    dateKey={dateKey}
+                    timeZone={timeZone}
+                    farm={farm}
+                    scheduledOperations={scheduledOperations}
+                    operationsData={operationsData}
+                    assignableFarmUsersByOperationId={
+                        assignableFarmUsersByOperationId
+                    }
+                />
+            ))}
         </Stack>
     );
 }

@@ -1,0 +1,55 @@
+import { safeUserDisplayName } from '@gredice/js/userDisplayName';
+import { getUser } from '@gredice/storage';
+import { AuthProtectedSection, SignedOut } from '@gredice/ui/auth/server';
+import { Typography } from '@gredice/ui/Typography';
+import LoginDialog from '../../components/auth/LoginDialog';
+import { auth } from '../../lib/auth/auth';
+import { FarmProfileSettings } from './_components/FarmProfileSettings';
+import { FarmSchedulePreferences } from './_components/FarmSchedulePreferences';
+import { NotificationSettings } from './_components/NotificationSettings';
+import { OperationCompletionSyncSettings } from './_components/OperationCompletionSyncSettings';
+
+export const dynamic = 'force-dynamic';
+
+async function FarmSettingsContent() {
+    const { userId } = await auth(['farmer', 'admin']);
+    const user = await getUser(userId);
+
+    return (
+        <main className="max-w-5xl mx-auto w-full p-4 space-y-4">
+            <Typography component="h1" level="h5" semiBold>
+                Postavke
+            </Typography>
+            {user && (
+                <FarmProfileSettings
+                    displayName={safeUserDisplayName(
+                        user.displayName ?? user.userName,
+                    )}
+                    avatarUrl={user.avatarUrl}
+                />
+            )}
+            <FarmSchedulePreferences
+                groupWateringOperations={
+                    user?.farmScheduleGroupedWateringEnabled ?? true
+                }
+            />
+            <OperationCompletionSyncSettings />
+            <NotificationSettings />
+        </main>
+    );
+}
+
+export default function FarmSettingsPage() {
+    const authFarmer = auth.bind(null, ['farmer', 'admin']);
+
+    return (
+        <div className="min-h-[100dvh] w-full bg-background">
+            <AuthProtectedSection auth={authFarmer}>
+                <FarmSettingsContent />
+            </AuthProtectedSection>
+            <SignedOut auth={authFarmer}>
+                <LoginDialog />
+            </SignedOut>
+        </div>
+    );
+}

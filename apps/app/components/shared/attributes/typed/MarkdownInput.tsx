@@ -1,4 +1,9 @@
 import {
+    markdownEditorClassNames,
+    markdownEditorContentEditableClassName,
+} from '@gredice/ui/MarkdownEditor';
+import { cx } from '@gredice/ui/utils';
+import {
     BlockTypeSelect,
     BoldItalicUnderlineToggles,
     CreateLink,
@@ -16,24 +21,20 @@ import {
     toolbarPlugin,
     UndoRedo,
 } from '@mdxeditor/editor';
-import { cx } from '@signalco/ui-primitives/cx';
-import { useTheme } from 'next-themes';
 import { useState } from 'react';
 import type { AttributeInputProps } from '../AttributeInputProps';
 import '@mdxeditor/editor/style.css';
 
 export function MarkdownInput({ value, onChange }: AttributeInputProps) {
-    const { resolvedTheme } = useTheme();
     const [inputValue, setInputValue] = useState<string>(value || '');
     return (
-        <div className="rounded-md border">
+        <div className="overflow-hidden rounded-md border border-input bg-field">
             <MDXEditor
                 placeholder="Nema informacija..."
-                className={cx(
-                    '[&_.mdxeditor-toolbar]:bg-transparent',
-                    resolvedTheme === 'dark' && 'dark-theme',
-                )}
-                contentEditableClassName="prose prose-p:my-2 prose-sm max-w-none"
+                className={cx(markdownEditorClassNames)}
+                contentEditableClassName={
+                    markdownEditorContentEditableClassName
+                }
                 plugins={[
                     headingsPlugin(),
                     listsPlugin(),

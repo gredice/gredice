@@ -1,39 +1,80 @@
 import type { OperationData } from '@gredice/client';
 import { OperationImage } from '@gredice/ui/OperationImage';
-import { Card, CardContent } from '@signalco/ui-primitives/Card';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
+import { Card, CardContent } from '../../components/shared/Card';
 import { KnownPages } from '../../src/KnownPages';
+import { getOperationImageViewTransitionName } from './operationViewTransition';
+
+type OperationCardData = Pick<
+    OperationData,
+    'attributes' | 'id' | 'image' | 'information' | 'prices'
+>;
 
 export function OperationCard({
     operation,
+    variant = 'default',
 }: {
-    operation: Omit<OperationData, 'entityType' | 'createdAt' | 'updatedAt'>;
+    operation: OperationCardData;
+    variant?: 'default' | 'compact';
 }) {
+    const compact = variant === 'compact';
+
     return (
-        <Card
+        <a
+            className="group/operation-card block h-full rounded-lg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
             href={KnownPages.Operation(operation.information.label)}
-            className="border-tertiary border-b-4"
         >
-            <CardContent noHeader>
-                <Row justifyContent="space-between" spacing={1}>
-                    <Row spacing={2}>
-                        <OperationImage operation={operation} size={72} />
-                        <Stack>
-                            <Typography semiBold>
-                                {operation.information.label}
-                            </Typography>
-                            <Typography level="body2" className="text-pretty">
-                                {operation.information.shortDescription}
-                            </Typography>
-                        </Stack>
+            <Card
+                className={cx(
+                    'h-full border-tertiary border-b-4 transition-colors group-hover/operation-card:bg-accent group-hover/operation-card:text-accent-foreground',
+                    compact && 'p-1',
+                )}
+            >
+                <CardContent noHeader className={cx(compact && 'px-2 py-1')}>
+                    <Row justifyContent="space-between" spacing={2}>
+                        <Row
+                            spacing={compact ? 3 : 4}
+                            className="min-w-0 flex-1"
+                        >
+                            <span
+                                className="public-content-card-view-transition inline-flex shrink-0"
+                                style={{
+                                    viewTransitionName:
+                                        getOperationImageViewTransitionName(
+                                            operation.id,
+                                        ),
+                                }}
+                            >
+                                <OperationImage
+                                    variant="game"
+                                    operation={operation}
+                                    size={compact ? 48 : 72}
+                                />
+                            </span>
+                            <Stack className="min-w-0">
+                                <Typography semiBold>
+                                    {operation.information.label}
+                                </Typography>
+                                <Typography
+                                    level="body2"
+                                    className={cx(
+                                        'text-pretty',
+                                        compact && 'leading-snug',
+                                    )}
+                                >
+                                    {operation.information.shortDescription}
+                                </Typography>
+                            </Stack>
+                        </Row>
+                        <Typography>
+                            {operation.prices.perOperation.toFixed(2)}€
+                        </Typography>
                     </Row>
-                    <Typography>
-                        {operation.prices.perOperation.toFixed(2)}€
-                    </Typography>
-                </Row>
-            </CardContent>
-        </Card>
+                </CardContent>
+            </Card>
+        </a>
     );
 }

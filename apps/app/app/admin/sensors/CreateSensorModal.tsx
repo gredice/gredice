@@ -1,10 +1,10 @@
 'use client';
 
-import { Button } from '@signalco/ui-primitives/Button';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Button } from '@gredice/ui/Button';
+import { Input } from '@gredice/ui/Input';
+import { Modal } from '@gredice/ui/Modal';
+import { SelectItems } from '@gredice/ui/SelectItems';
+import { Stack } from '@gredice/ui/Stack';
 import { useActionState, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { createSensorAction } from '../../(actions)/sensorActions';
@@ -33,7 +33,7 @@ export function CreateSensorModal({ raisedBeds }: { raisedBeds: RaisedBed[] }) {
             trigger={<Button variant="outlined">Dodaj</Button>}
         >
             <form action={formAction}>
-                <Stack spacing={2}>
+                <Stack spacing={4}>
                     <SelectItems
                         variant="outlined"
                         placeholder="Odaberi gredicu"

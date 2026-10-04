@@ -1,10 +1,10 @@
 'use client';
 
 import type { getAttributeDefinition } from '@gredice/storage';
-import { Checkbox } from '@signalco/ui-primitives/Checkbox';
-import { Input } from '@signalco/ui-primitives/Input';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Checkbox } from '@gredice/ui/Checkbox';
+import { Input } from '@gredice/ui/Input';
+import { SelectItems } from '@gredice/ui/SelectItems';
+import { Stack } from '@gredice/ui/Stack';
 import { type ChangeEvent, useState } from 'react';
 import { upsertAttributeDefinition } from '../../../../../(actions)/definitionActions';
 import {
@@ -111,7 +111,7 @@ export function FormDataTypeSelect({
           ];
 
     return (
-        <Stack spacing={1} className="grow">
+        <Stack spacing={2} className="grow">
             <SelectItems
                 label="Tip podatka"
                 value={selectedDataType}
@@ -120,7 +120,7 @@ export function FormDataTypeSelect({
                 placeholder={getAttributeDataTypeLabel(value)}
             />
             {isRangeDataType && (
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
                     <Input
                         type="number"
                         label="Minimalna vrijednost"
@@ -129,6 +129,7 @@ export function FormDataTypeSelect({
                             setRangeMinValue(event.target.value)
                         }
                         onBlur={handleRangeBlur}
+                        fullWidth
                     />
                     <Input
                         type="number"
@@ -138,6 +139,7 @@ export function FormDataTypeSelect({
                             setRangeMaxValue(event.target.value)
                         }
                         onBlur={handleRangeBlur}
+                        fullWidth
                     />
                 </div>
             )}

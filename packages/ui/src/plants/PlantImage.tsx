@@ -1,6 +1,6 @@
-import { Sprout } from '@signalco/ui-icons';
-import { cx } from '@signalco/ui-primitives/cx';
 import Image, { type ImageProps } from 'next/image';
+import { Sprout } from '../icons';
+import { cx } from '../utils';
 
 /**
  * Minimal image shape accepted by PlantOrSortImage.
@@ -28,7 +28,7 @@ type PlantLike =
 /**
  * Minimal type for plant sort data accepted by PlantOrSortImage.
  */
-type PlantSortLike =
+export type PlantSortLike =
     | {
           image?: ImageLike;
           images?: ImageLike;

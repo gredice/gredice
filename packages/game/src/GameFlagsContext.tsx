@@ -3,15 +3,16 @@
 import { createContext, useContext } from 'react';
 
 export interface GameFeatureFlags {
+    enableGardenAvatarFlag?: boolean;
     enableDebugHudFlag?: boolean;
-    enablePlantGeneratorFlag?: boolean;
     enableRaisedBedWateringFlag?: boolean;
     enableRaisedBedDiaryFlag?: boolean;
     enableRaisedBedOperationsFlag?: boolean;
     enableRaisedBedFieldOperationsFlag?: boolean;
     enableRaisedBedFieldWateringFlag?: boolean;
     enableRaisedBedFieldDiaryFlag?: boolean;
-    raisedBedImageAI?: boolean;
+    enableIntegratedWeatherSurfacesFlag?: boolean;
+    enableSuncokretDebugFlag?: boolean;
 }
 
 export const GameFlagsContext = createContext<GameFeatureFlags>({});

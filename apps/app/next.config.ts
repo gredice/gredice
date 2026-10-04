@@ -1,5 +1,8 @@
 import type { NextConfig } from 'next';
-import { getAppByName } from '../../scripts/app-registry.ts';
+import {
+    getAppAllowedDevOrigins,
+    getAppByName,
+} from '../../scripts/app-registry.ts';
 
 const app = getAppByName('app');
 const nextConfig: NextConfig = {
@@ -10,11 +13,11 @@ const nextConfig: NextConfig = {
         browserToTerminal: true,
     },
     experimental: {
+        authInterrupts: true,
         typedEnv: true,
-        turbopackFileSystemCacheForDev: true,
+        turbopackRustReactCompiler: true,
+        useTypeScriptCli: true,
         optimizePackageImports: [
-            '@signalco/ui-primitives',
-            '@signalco/ui-icons',
             'three',
             '@react-three/drei',
             '@react-three/fiber',
@@ -39,23 +42,13 @@ const nextConfig: NextConfig = {
                 protocol: 'https',
             },
             {
-                hostname: 'vrt.gredice.com',
                 protocol: 'https',
-            },
-            {
-                // Garden - Vercel Blob
-                protocol: 'https',
-                hostname: 'myegtvromcktt2y7.public.blob.vercel-storage.com',
-            },
-            {
-                // Public - Vercel Blob
-                protocol: 'https',
-                hostname: '7ql7fvz1vzzo6adz.public.blob.vercel-storage.com',
+                hostname: '*.public.blob.vercel-storage.com',
             },
         ],
     },
     productionBrowserSourceMaps: !process.env.CI,
-    allowedDevOrigins: [app.localDomain],
+    allowedDevOrigins: getAppAllowedDevOrigins(app),
 };
 
 export default nextConfig;

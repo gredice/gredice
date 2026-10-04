@@ -1,11 +1,11 @@
 'use client';
 
 import { clientPublic } from '@gredice/client';
-import { Alert } from '@signalco/ui/Alert';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Alert } from '@gredice/ui/Alert';
+import { Button } from '@gredice/ui/Button';
+import { Input } from '@gredice/ui/Input';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
@@ -50,7 +50,7 @@ export function ChangePasswordForm() {
 
     return (
         <form onSubmit={handleSubmit}>
-            <Stack spacing={3}>
+            <Stack spacing={6}>
                 {!token ? (
                     <>
                         <Alert color="danger">
@@ -67,7 +67,7 @@ export function ChangePasswordForm() {
                         <Typography level="body2">
                             Unesi svoju novu zaporku
                         </Typography>
-                        <Stack spacing={1}>
+                        <Stack spacing={2}>
                             <Input
                                 id="password"
                                 type="password"

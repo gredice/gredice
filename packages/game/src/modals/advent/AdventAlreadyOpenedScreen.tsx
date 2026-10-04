@@ -1,10 +1,11 @@
 'use client';
 
 import { BlockImage } from '@gredice/ui/BlockImage';
+import { Button } from '@gredice/ui/Button';
 import { PlantOrSortImage } from '@gredice/ui/plants';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Stack } from '@gredice/ui/Stack';
+import { sunflowerMascotArtwork } from '@gredice/ui/SunflowerVisuals';
+import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import { usePlantSort } from '../../hooks/usePlantSorts';
 
@@ -43,7 +44,7 @@ function SmallAwardImage({ award }: { award: AdventAward }) {
             return (
                 <div className="relative flex items-center gap-2">
                     <Image
-                        src="https://cdn.gredice.com/sunflower-large.svg"
+                        src={sunflowerMascotArtwork}
                         alt="Suncokret"
                         width={40}
                         height={40}
@@ -86,12 +87,12 @@ export function AdventAlreadyOpenedScreen({
     const isLastDay = day === 24;
 
     return (
-        <Stack spacing={4} className="items-center text-center p-8">
+        <Stack spacing={8} className="items-center text-center p-8">
             {/* Checkmark icon */}
             <div className="text-6xl">✅</div>
 
             {/* Message */}
-            <Stack spacing={2}>
+            <Stack spacing={4}>
                 <Typography level="h4" className="font-bold">
                     Dan {day}
                 </Typography>
@@ -102,7 +103,7 @@ export function AdventAlreadyOpenedScreen({
 
             {/* Awards list */}
             {awards.length > 0 && (
-                <Stack spacing={2} className="w-full">
+                <Stack spacing={4} className="w-full">
                     <Typography
                         level="body2"
                         className="text-muted-foreground font-semibold"

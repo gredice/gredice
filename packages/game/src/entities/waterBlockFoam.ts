@@ -1,0 +1,147 @@
+import type { BlockData } from '@gredice/client';
+import { Vector4 } from 'three';
+import type { Block } from '../types/Block';
+import type { Stack } from '../types/Stack';
+import {
+    getWaterBlockVerticalRange,
+    type WaterBlockVerticalRange,
+} from './waterBlockHeight';
+import { isWaterBlockName } from './waterBlockNames';
+
+const waterRangeOverlapEpsilon = 1e-6;
+
+function doWaterRangesOverlap(
+    left: WaterBlockVerticalRange | null,
+    right: WaterBlockVerticalRange | null,
+) {
+    return (
+        left !== null &&
+        right !== null &&
+        Math.min(left.max, right.max) - Math.max(left.min, right.min) >
+            waterRangeOverlapEpsilon
+    );
+}
+
+function hasOverlappingWater(
+    stacks: Stack[] | undefined,
+    x: number,
+    z: number,
+    range: WaterBlockVerticalRange | null,
+    blockData: BlockData[] | null | undefined,
+) {
+    return stacks?.some((candidate) => {
+        if (candidate.position.x !== x || candidate.position.z !== z) {
+            return false;
+        }
+
+        return candidate.blocks.some(
+            (block) =>
+                isWaterBlockName(block.name) &&
+                doWaterRangesOverlap(
+                    getWaterBlockVerticalRange({
+                        block,
+                        blockData,
+                        stack: candidate,
+                    }),
+                    range,
+                ),
+        );
+    });
+}
+
+export function resolveWaterFoamEdges({
+    block,
+    blockData,
+    stack,
+    stacks,
+}: {
+    block: Block;
+    blockData?: BlockData[] | null;
+    stack: Stack;
+    stacks: Stack[] | undefined;
+}) {
+    const allStacks = stacks ?? [stack];
+    if (stack.blocks.indexOf(block) < 0) {
+        return new Vector4(1, 1, 1, 1);
+    }
+
+    const { x, z } = stack.position;
+    const range = getWaterBlockVerticalRange({ block, blockData, stack });
+    return new Vector4(
+        hasOverlappingWater(allStacks, x - 1, z, range, blockData) ? 0 : 1,
+        hasOverlappingWater(allStacks, x + 1, z, range, blockData) ? 0 : 1,
+        hasOverlappingWater(allStacks, x, z - 1, range, blockData) ? 0 : 1,
+        hasOverlappingWater(allStacks, x, z + 1, range, blockData) ? 0 : 1,
+    );
+}
+
+export function resolveWaterFoamCorners({
+    block,
+    blockData,
+    stack,
+    stacks,
+}: {
+    block: Block;
+    blockData?: BlockData[] | null;
+    stack: Stack;
+    stacks: Stack[] | undefined;
+}) {
+    const allStacks = stacks ?? [stack];
+    if (stack.blocks.indexOf(block) < 0) {
+        return new Vector4(0, 0, 0, 0);
+    }
+
+    const { x, z } = stack.position;
+    const range = getWaterBlockVerticalRange({ block, blockData, stack });
+    const hasNegXWater = hasOverlappingWater(
+        allStacks,
+        x - 1,
+        z,
+        range,
+        blockData,
+    );
+    const hasPosXWater = hasOverlappingWater(
+        allStacks,
+        x + 1,
+        z,
+        range,
+        blockData,
+    );
+    const hasNegZWater = hasOverlappingWater(
+        allStacks,
+        x,
+        z - 1,
+        range,
+        blockData,
+    );
+    const hasPosZWater = hasOverlappingWater(
+        allStacks,
+        x,
+        z + 1,
+        range,
+        blockData,
+    );
+
+    return new Vector4(
+        !hasOverlappingWater(allStacks, x - 1, z - 1, range, blockData) &&
+            hasNegXWater &&
+            hasNegZWater
+            ? 1
+            : 0,
+        !hasOverlappingWater(allStacks, x + 1, z - 1, range, blockData) &&
+            hasPosXWater &&
+            hasNegZWater
+            ? 1
+            : 0,
+        !hasOverlappingWater(allStacks, x - 1, z + 1, range, blockData) &&
+            hasNegXWater &&
+            hasPosZWater
+            ? 1
+            : 0,
+        !hasOverlappingWater(allStacks, x + 1, z + 1, range, blockData) &&
+            hasPosXWater &&
+            hasPosZWater
+            ? 1
+            : 0,
+    );
+}

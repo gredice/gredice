@@ -1,68 +1,53 @@
-# Quality Score Guide
+# Quality Score
 
-Use this guide to decide whether a change is ready.
+Use this as the handoff bar.
 
-## Readiness score
+## Readiness
 
-Score the change from 0 to 5 before handing it off:
-
-- `0`: Does not run, has unresolved syntax/type errors, or leaves known broken behavior.
-- `1`: Runs only on the narrow happy path and has obvious missing validation or UI states.
-- `2`: Implements the request but leaves meaningful edge cases, stale data, or test gaps.
-- `3`: Solid targeted implementation with relevant lint/test/build checks passing.
+- `0`: Does not run or leaves known broken behavior.
+- `1`: Narrow happy path only.
+- `2`: Request is implemented with meaningful edge/test gaps.
+- `3`: Targeted implementation with relevant checks passing.
 - `4`: Handles edge cases, failure states, accessibility, and cross-app/package impact.
-- `5`: Production-ready for critical paths: verified behavior, migrations handled, observability considered, and no unexplained risk.
+- `5`: Production-ready for critical paths: verified behavior, migrations/observability considered, no unexplained risk.
 
-Aim for `3` on small low-risk changes and `4` or higher on shared, public, payment, inventory, delivery, auth, or database work.
+Aim for `3` on small low-risk changes and `4+` for shared, public, payment, inventory, delivery, auth, or database work.
 
-## Validation commands
+## Validation
 
-Use targeted commands first.
+Run commands from the repo root. Pick the smallest reliable filtered check:
 
 ```bash
 pnpm lint --filter <workspace>
-pnpm test --filter <workspace>
+pnpm typecheck --filter <workspace>
+pnpm run test --filter <workspace>
 pnpm build --filter <workspace>
 ```
 
-Examples:
+Shared package changes need checks for the package and relevant consumers. For ordinary `@gredice/game` updates, use package checks plus `garden` and `www` typechecks; reserve app builds and Playwright suites for routing, static assets, bundling, production behavior, visual changes, or user flows.
 
-```bash
-pnpm lint --filter @gredice/storage
-pnpm test --filter @gredice/storage
-pnpm build --filter www
-pnpm test --filter www
-```
+Docs-only changes: `git diff --check`.
 
-For docs-only changes, at minimum check formatting-sensitive diffs with:
+If a required check cannot run, report the command and concrete reason.
 
-```bash
-git diff --check
-```
+## Testing
 
-## Testing expectations
+- Unit-test pure domain logic, parsing, validation, and repositories.
+- Use Playwright for app flows, accessibility, and visible regressions.
+- Preserve `apps/www` sitemap-driven route, accessibility, and metadata tests for public page work.
+- Storage/API changes should cover validation, auth, success, failure, and relevant repository behavior.
+- Shared UI changes need Storybook coverage and a consuming-app check when behavior changes.
 
-- Unit-test pure domain logic, parsing, validation, and repository behavior.
-- Use Playwright for app flows, accessibility, and user-visible regressions.
-- For `apps/www`, preserve sitemap-driven tests and visual test workflows when public pages change.
-- For storage changes, run the relevant storage tests. Remember that storage tests manage their own test database scripts.
-- For API route changes, test validation, auth, success, and failure responses.
-- For shared UI, add or update Storybook stories and test the consuming app when behavior changes.
+## Review
 
-## Review checklist
-
-- The change is scoped to the requested behavior.
-- Existing user changes are preserved.
-- Types come from existing shared contracts where possible.
-- No avoidable `any`, non-null assertion, or `as` assertion was introduced.
-- Loading, empty, error, disabled, and success states are handled where relevant.
+- Scope matches the request and preserves existing user changes.
+- Types come from shared contracts where possible; no avoidable `any`, non-null assertion, or `as`.
+- Relevant loading, empty, error, disabled, and success states are handled.
 - Mutations invalidate or revalidate the right data.
 - Public pages preserve metadata, structured data, accessibility, and responsive layout.
-- Secrets and private data are not logged, rendered, or sent to the client.
+- Secrets/private data are not logged, rendered, or sent to the client.
 - New dependencies are justified and added to the right workspace.
 
-## Documentation expectations
+## Docs
 
-- Update docs when behavior, setup, scripts, architecture, or contributor expectations change.
-- Keep docs concrete to this repo. Prefer exact package names, app paths, and commands over generic guidance.
-- Remove stale instructions when replacing them.
+Update docs when behavior, setup, scripts, architecture, or contributor expectations change. Keep them repo-specific and remove stale guidance.

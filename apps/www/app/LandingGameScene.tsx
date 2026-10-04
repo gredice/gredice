@@ -2,17 +2,17 @@
 
 import { GameScene } from '@gredice/game';
 import { getGardenBaseUrl } from '@gredice/js/urls';
-import { NavigatingButton } from '@signalco/ui/NavigatingButton';
-import { Close, Navigate } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { cx } from '@signalco/ui-primitives/cx';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import type { CSSProperties } from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Button } from '@gredice/ui/Button';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Close, Navigate, SquareArrowRightEnter } from '@gredice/ui/icons';
+import { NavigatingButton } from '@gredice/ui/NavigatingButton';
 import {
     isChristmasHolidaySeason,
     useWinterMode,
-} from '../components/providers/WinterModeProvider';
+} from '@gredice/ui/PublicChrome';
+import { cx } from '@gredice/ui/utils';
+import type { CSSProperties } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 
 // Summer weather - warm and sunny
@@ -188,7 +188,7 @@ export function LandingGameScene() {
             <div
                 className={cx(
                     interactiveMounted
-                        ? 'pointer-events-auto fixed z-50 overflow-hidden bg-background transition-[top,left,width,height,border-radius,box-shadow] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[top,left,width,height,border-radius]'
+                        ? 'pointer-events-auto fixed z-50 overflow-hidden bg-background transition-[top,left,width,height,border-radius,box-shadow] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[top,left,width,height,border-radius] [--game-safe-area-top:env(safe-area-inset-top,0px)] [--game-safe-area-right:env(safe-area-inset-right,0px)] [--game-safe-area-bottom:env(safe-area-inset-bottom,0px)] [--game-safe-area-left:env(safe-area-inset-left,0px)]'
                         : 'absolute inset-0 overflow-hidden',
                     interactiveMounted &&
                         (interactiveVisible
@@ -202,43 +202,47 @@ export function LandingGameScene() {
                             : collapsedStyle
                         : undefined
                 }
+                data-testid="landing-game-scene"
             >
-                <GameScene
-                    key={isLoggedIn ? 'user-garden' : 'landing-mock'}
-                    appBaseUrl="https://vrt.gredice.com"
-                    spriteBaseUrl=""
-                    deferDetails
-                    zoom={
-                        interactiveMounted
-                            ? 'normal'
-                            : isMobile
-                              ? 'far'
-                              : 'normal'
-                    }
-                    hideHud={!interactiveVisible}
-                    noControls={!interactiveVisible}
-                    noSound={!interactiveVisible}
-                    mockGarden={!isLoggedIn}
-                    winterMode={winterMode}
-                    weather={
-                        isLoggedIn
-                            ? undefined
-                            : isWinter
-                              ? winterWeather
-                              : summerWeather
-                    }
-                    className="size-full"
-                />
+                <div className="absolute inset-0">
+                    <GameScene
+                        key={isLoggedIn ? 'user-garden' : 'landing-mock'}
+                        appBaseUrl="https://vrt.gredice.com"
+                        spriteBaseUrl=""
+                        deferDetails
+                        quality={interactiveMounted ? undefined : 'high'}
+                        zoom={
+                            interactiveMounted
+                                ? 'normal'
+                                : isMobile
+                                  ? 'far'
+                                  : 'normal'
+                        }
+                        hideHud={!interactiveVisible}
+                        noControls={!interactiveVisible}
+                        noSound={!interactiveVisible}
+                        mockGarden={!isLoggedIn}
+                        winterMode={winterMode}
+                        weather={
+                            isLoggedIn
+                                ? undefined
+                                : isWinter
+                                  ? winterWeather
+                                  : summerWeather
+                        }
+                        className="size-full"
+                    />
+                </div>
                 {interactiveMounted && (
                     <div
                         className={cx(
-                            'pointer-events-none absolute bottom-4 right-4 z-10 flex max-w-[calc(100%-2rem)] flex-col items-end gap-2 transition-[opacity,transform] duration-300 ease-out md:bottom-6 md:right-6 md:max-w-sm',
+                            'pointer-events-none absolute bottom-[calc(var(--game-safe-area-bottom,0px)+1rem)] right-[calc(var(--game-safe-area-right,0px)+1rem)] z-10 flex max-w-[calc(100%-var(--game-safe-area-left,0px)-var(--game-safe-area-right,0px)-2rem)] flex-col items-end gap-2 transition-[opacity,transform] duration-300 ease-out md:bottom-[calc(var(--game-safe-area-bottom,0px)+1.5rem)] md:right-[calc(var(--game-safe-area-right,0px)+1.5rem)] md:max-w-sm',
                             interactiveVisible
                                 ? 'translate-y-0 opacity-100 delay-200'
                                 : 'translate-y-3 opacity-0',
                         )}
                     >
-                        <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-tertiary border-b-4 bg-background/90 p-1 shadow-lg backdrop-blur-sm">
+                        <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-tertiary border-b-4 bg-background/90 p-1 shadow-lg backdrop-blur-xs">
                             <IconButton
                                 title="Zatvori prikaz"
                                 variant="plain"
@@ -278,13 +282,48 @@ export function LandingGameScene() {
                     </Button>
                     <NavigatingButton
                         href={gardenBaseUrl}
+                        color="neutral"
                         variant="outlined"
-                        className="rounded-full bg-background/90 shadow-lg backdrop-blur-sm"
+                        className="rounded-full bg-background text-primary shadow-lg"
                     >
                         Otvori aplikaciju
                     </NavigatingButton>
                 </div>
             )}
         </>
+    );
+}
+
+export function LandingGameSignupCta() {
+    const gardenBaseUrl = getGardenBaseUrl();
+    const { data: user, isLoading } = useCurrentUser();
+
+    if (isLoading || user) {
+        return null;
+    }
+
+    return (
+        <div
+            className="mt-4 flex flex-col items-center justify-center gap-2 px-3 sm:flex-row md:mt-5"
+            data-testid="landing-game-signup-cta"
+        >
+            <NavigatingButton
+                href={gardenBaseUrl}
+                className="rounded-full bg-green-800 hover:bg-green-700 dark:bg-green-700 dark:text-white dark:hover:bg-green-600"
+                endDecorator={
+                    <SquareArrowRightEnter aria-hidden className="size-4" />
+                }
+            >
+                Započni svoj vrt
+            </NavigatingButton>
+            <NavigatingButton
+                href={gardenBaseUrl}
+                color="neutral"
+                variant="outlined"
+                className="rounded-full bg-background text-primary shadow-sm"
+            >
+                Otvori aplikaciju
+            </NavigatingButton>
+        </div>
     );
 }

@@ -4,20 +4,28 @@ import {
     getRaisedBed,
     getShoppingCart,
 } from '@gredice/storage';
+import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
+import { Card, CardOverflow } from '@gredice/ui/Card';
+import { Chip } from '@gredice/ui/Chip';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
-import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Table } from '@signalco/ui-primitives/Table';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { SunflowerText } from '@gredice/ui/SunflowerVisuals';
+import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import {
+    EntityDetailsPanelCard,
+    EntityDetailsPropertiesLayout,
+    EntityDetailsPropertiesPanel,
+    EntityDetailsPropertiesProvider,
+    EntityDetailsPropertiesToggle,
+    EntityDetailsPropertyList,
+    type EntityDetailsPropertyListItem,
+} from '../../../../components/admin/details';
 import { AdminPageHeader } from '../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { AdminPageTitle } from '../../../../components/admin/navigation/AdminPageTitle';
-import { Field } from '../../../../components/shared/fields/Field';
-import { FieldSet } from '../../../../components/shared/fields/FieldSet';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
 import type { EntityStandardized } from '../../../../lib/@types/EntityStandardized';
 import { auth } from '../../../../lib/auth/auth';
@@ -137,10 +145,13 @@ export default async function ShoppingCartDetailsPage({
             return 'Ruksak';
         }
 
+        if (currency.toLowerCase() === 'sunflower') {
+            return <SunflowerText>{`${amount} 🌻`}</SunflowerText>;
+        }
+
         const currencyMap: Record<string, { symbol: string; code?: string }> = {
             eur: { symbol: '€', code: 'EUR' },
             usd: { symbol: '$', code: 'USD' },
-            sunflower: { symbol: '🌻' },
         };
 
         const currencyInfo = currencyMap[currency.toLowerCase()];
@@ -169,235 +180,288 @@ export default async function ShoppingCartDetailsPage({
     );
 
     const inventoryItems = enhancedItems.filter((item) => item.usesInventory);
+    const propertyItems: EntityDetailsPropertyListItem[] = [
+        {
+            id: 'status',
+            label: 'Status',
+            value: (
+                <Chip
+                    className="w-fit"
+                    color={cart.status === 'paid' ? 'success' : 'neutral'}
+                >
+                    {cart.status === 'paid'
+                        ? 'Plaćena'
+                        : cart.status === 'new'
+                          ? 'Nova'
+                          : cart.status}
+                </Chip>
+            ),
+        },
+        { id: 'account-id', label: 'Account ID', value: cart.accountId },
+        {
+            id: 'created-at',
+            label: 'Datum kreiranja',
+            value: cart.createdAt,
+        },
+        ...(Object.keys(currencyTotals).length > 0
+            ? [
+                  {
+                      id: 'items-count',
+                      label: 'Broj stavki',
+                      value: cart.items?.length || 0,
+                  },
+                  ...(inventoryItems.length > 0
+                      ? [
+                            {
+                                id: 'inventory-items-count',
+                                label: 'Stavke ruksaka',
+                                value: inventoryItems.length,
+                            },
+                        ]
+                      : []),
+                  ...Object.entries(currencyTotals).map(
+                      ([currency, total]) => ({
+                          id: `total-${currency}`,
+                          label:
+                              currency === 'eur'
+                                  ? 'Ukupno (€)'
+                                  : currency === 'sunflower'
+                                    ? 'Ukupno (suncokreti)'
+                                    : `Ukupno (${currency.toUpperCase()})`,
+                          value: formatCurrency(total, currency),
+                      }),
+                  ),
+              ]
+            : []),
+    ];
+    const propertiesPanel = (
+        <EntityDetailsPropertiesPanel>
+            <EntityDetailsPanelCard title="Detalji">
+                <EntityDetailsPropertyList items={propertyItems} />
+            </EntityDetailsPanelCard>
+        </EntityDetailsPropertiesPanel>
+    );
 
     return (
-        <Stack spacing={4}>
-            <AdminPageTitle title={`Košarica ${cartIdNumber}`} />
-            <AdminPageHeader
-                breadcrumbs={
-                    <Breadcrumbs
-                        items={[
-                            {
-                                label: <AdminBreadcrumbLevelSelector />,
-                                href: KnownPages.ShoppingCarts,
-                            },
-                            { label: `Košarica ${cartIdNumber}` },
-                        ]}
-                    />
-                }
-                heading="Detalji košarice"
-            />
-            <Stack spacing={2}>
-                <Typography level="h1" className="text-2xl" semiBold>
-                    Detalji košarice
-                </Typography>
-            </Stack>
-
-            {/* Cart Information */}
-            <FieldSet>
-                <Field
-                    name="Status"
-                    value={
-                        <Chip
-                            className="w-fit"
-                            color={
-                                cart.status === 'paid' ? 'success' : 'neutral'
-                            }
-                        >
-                            {cart.status === 'paid'
-                                ? 'Plaćena'
-                                : cart.status === 'new'
-                                  ? 'Nova'
-                                  : cart.status}
-                        </Chip>
-                    }
-                />
-                <Field name="Account ID" value={cart.accountId} />
-                <Field name="Datum kreiranja" value={cart.createdAt} />
-                {Object.keys(currencyTotals).length > 0 && (
-                    <>
-                        <Field
-                            name="Broj stavki"
-                            value={cart.items?.length || 0}
+        <EntityDetailsPropertiesProvider>
+            <Stack spacing={8}>
+                <AdminPageTitle title={`Košarica ${cartIdNumber}`} />
+                <AdminPageHeader
+                    breadcrumbs={
+                        <Breadcrumbs
+                            items={[
+                                {
+                                    label: <AdminBreadcrumbLevelSelector />,
+                                    href: KnownPages.ShoppingCarts,
+                                },
+                                { label: `Košarica ${cartIdNumber}` },
+                            ]}
                         />
-                        {inventoryItems.length > 0 && (
-                            <Field
-                                name="Stacke ruksaka"
-                                value={inventoryItems.length}
-                            />
-                        )}
-                        {Object.entries(currencyTotals).map(
-                            ([currency, total]) => (
-                                <Field
-                                    key={currency}
-                                    name={
-                                        currency === 'eur'
-                                            ? 'Ukupno (€)'
-                                            : currency === 'sunflower'
-                                              ? 'Ukupno (🌻)'
-                                              : `Ukupno (${currency.toUpperCase()})`
-                                    }
-                                    value={formatCurrency(total, currency)}
-                                />
-                            ),
-                        )}
-                    </>
-                )}
-            </FieldSet>
+                    }
+                    actions={
+                        <Row className="items-center" spacing={2}>
+                            <EntityDetailsPropertiesToggle />
+                        </Row>
+                    }
+                    heading="Detalji košarice"
+                />
 
-            {/* Cart Items */}
-            <Card>
-                <CardOverflow>
-                    <Table>
-                        <Table.Header>
-                            <Table.Row>
-                                <Table.Head>Entitet</Table.Head>
-                                <Table.Head>Količina</Table.Head>
-                                <Table.Head>Cijena/kom</Table.Head>
-                                <Table.Head>Ukupno</Table.Head>
-                                <Table.Head>Ruksak</Table.Head>
-                                <Table.Head>Status</Table.Head>
-                                <Table.Head>
-                                    Vrt | Gredica | Pozicija
-                                </Table.Head>
-                                <Table.Head>Stvoreno</Table.Head>
-                                <Table.Head>Ažurirano</Table.Head>
-                            </Table.Row>
-                        </Table.Header>
-                        <Table.Body>
-                            {enhancedItems.length === 0 && (
-                                <Table.Row>
-                                    <Table.Cell colSpan={9}>
-                                        <NoDataPlaceholder>
-                                            Nema stavki u košarici
-                                        </NoDataPlaceholder>
-                                    </Table.Cell>
-                                </Table.Row>
-                            )}
-                            {enhancedItems.map((item) => (
-                                <Table.Row key={item.id}>
-                                    <Table.Cell>
-                                        <span>{item.entityName}</span>
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        <span className="font-medium">
-                                            {item.amount}
-                                        </span>
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        {item.unitPrice > 0 ? (
-                                            <span className="font-medium">
-                                                {formatCurrency(
-                                                    item.unitPrice,
-                                                    item.currency,
-                                                )}
-                                            </span>
-                                        ) : (
-                                            <span className="text-gray-400">
-                                                N/A
-                                            </span>
-                                        )}
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        {item.totalPrice > 0 ? (
-                                            <span className="font-semibold">
-                                                {formatCurrency(
-                                                    item.totalPrice,
-                                                    item.currency,
-                                                )}
-                                            </span>
-                                        ) : (
-                                            <span className="text-gray-400">
-                                                N/A
-                                            </span>
-                                        )}
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        {item.usesInventory ? (
-                                            <Chip
-                                                className="w-fit"
-                                                color={
-                                                    item.inventoryAvailable >=
-                                                    item.amount
-                                                        ? 'success'
-                                                        : 'warning'
-                                                }
-                                            >
-                                                {`Ruksak (${item.inventoryAvailable}/${item.amount})`}
-                                            </Chip>
-                                        ) : (
-                                            <Typography
-                                                level="body2"
-                                                className="text-gray-500"
-                                            >
-                                                Nije
-                                            </Typography>
-                                        )}
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        <Chip
-                                            className="w-fit"
-                                            color={
-                                                item.status === 'paid'
-                                                    ? 'success'
-                                                    : 'warning'
-                                            }
+                {/* Cart Items */}
+                <EntityDetailsPropertiesLayout properties={propertiesPanel}>
+                    <Card>
+                        <CardOverflow>
+                            {enhancedItems.length === 0 ? (
+                                <div className="p-4">
+                                    <NoDataPlaceholder>
+                                        Nema stavki u košarici
+                                    </NoDataPlaceholder>
+                                </div>
+                            ) : (
+                                <ul className="divide-y">
+                                    {enhancedItems.map((item) => (
+                                        <li
+                                            key={item.id}
+                                            className="px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4"
                                         >
-                                            {item.status === 'paid'
-                                                ? 'Plaćena'
-                                                : 'Nova'}
-                                        </Chip>
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        {item.gardenId ? (
-                                            <Link
-                                                href={KnownPages.Garden(
-                                                    item.gardenId,
-                                                )}
-                                            >
-                                                Vrt {item.gardenId}
-                                            </Link>
-                                        ) : (
-                                            ''
-                                        )}
-                                        {item.raisedBedId ? (
-                                            <>
-                                                {' '}
-                                                |{' '}
-                                                <Link
-                                                    href={KnownPages.RaisedBed(
-                                                        item.raisedBedId,
-                                                    )}
+                                            <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                                <Stack
+                                                    spacing={1}
+                                                    className="min-w-0"
                                                 >
-                                                    Gr{' '}
-                                                    {raisedBedPhysicalIdLookup.get(
-                                                        item.raisedBedId,
-                                                    ) ?? item.raisedBedId}
-                                                </Link>
-                                            </>
-                                        ) : (
-                                            ''
-                                        )}
-                                        {typeof item.positionIndex === 'number'
-                                            ? ` | Pozicija ${item.positionIndex + 1}`
-                                            : ''}
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        <LocalDateTime time={false}>
-                                            {item.createdAt}
-                                        </LocalDateTime>
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        <LocalDateTime time={false}>
-                                            {item.updatedAt}
-                                        </LocalDateTime>
-                                    </Table.Cell>
-                                </Table.Row>
-                            ))}
-                        </Table.Body>
-                    </Table>
-                </CardOverflow>
-            </Card>
-        </Stack>
+                                                    <Typography
+                                                        level="body2"
+                                                        semiBold
+                                                        className="min-w-0 break-words"
+                                                    >
+                                                        {item.entityName}
+                                                    </Typography>
+                                                    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+                                                        {item.gardenId ? (
+                                                            <Link
+                                                                href={KnownPages.Garden(
+                                                                    item.gardenId,
+                                                                )}
+                                                                className="text-primary underline-offset-4 hover:underline"
+                                                            >
+                                                                Vrt{' '}
+                                                                {item.gardenId}
+                                                            </Link>
+                                                        ) : (
+                                                            ''
+                                                        )}
+                                                        {item.raisedBedId ? (
+                                                            <>
+                                                                <span>|</span>
+                                                                <Link
+                                                                    href={KnownPages.RaisedBed(
+                                                                        item.raisedBedId,
+                                                                    )}
+                                                                    className="text-primary underline-offset-4 hover:underline"
+                                                                >
+                                                                    Gr{' '}
+                                                                    {raisedBedPhysicalIdLookup.get(
+                                                                        item.raisedBedId,
+                                                                    ) ??
+                                                                        item.raisedBedId}
+                                                                </Link>
+                                                            </>
+                                                        ) : (
+                                                            ''
+                                                        )}
+                                                        {typeof item.positionIndex ===
+                                                        'number' ? (
+                                                            <>
+                                                                <span>|</span>
+                                                                <span>
+                                                                    Pozicija{' '}
+                                                                    {item.positionIndex +
+                                                                        1}
+                                                                </span>
+                                                            </>
+                                                        ) : (
+                                                            ''
+                                                        )}
+                                                    </div>
+                                                </Stack>
+                                                <div className="flex min-w-0 flex-col gap-3 lg:items-end">
+                                                    <div className="flex min-w-0 flex-wrap items-center gap-2 lg:justify-end">
+                                                        {item.usesInventory ? (
+                                                            <Chip
+                                                                className="w-fit"
+                                                                color={
+                                                                    item.inventoryAvailable >=
+                                                                    item.amount
+                                                                        ? 'success'
+                                                                        : 'warning'
+                                                                }
+                                                            >
+                                                                {`Ruksak (${item.inventoryAvailable}/${item.amount})`}
+                                                            </Chip>
+                                                        ) : (
+                                                            <Typography
+                                                                level="body2"
+                                                                className="text-gray-500"
+                                                            >
+                                                                Nije
+                                                            </Typography>
+                                                        )}
+                                                        <Chip
+                                                            className="w-fit"
+                                                            color={
+                                                                item.status ===
+                                                                'paid'
+                                                                    ? 'success'
+                                                                    : 'warning'
+                                                            }
+                                                        >
+                                                            {item.status ===
+                                                            'paid'
+                                                                ? 'Plaćena'
+                                                                : 'Nova'}
+                                                        </Chip>
+                                                    </div>
+                                                    <dl className="grid min-w-0 gap-x-4 gap-y-2 text-sm sm:grid-cols-3 lg:text-right">
+                                                        <div className="min-w-0">
+                                                            <dt className="text-xs font-medium uppercase text-muted-foreground">
+                                                                Količina
+                                                            </dt>
+                                                            <dd className="mt-1 font-medium">
+                                                                {item.amount}
+                                                            </dd>
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <dt className="text-xs font-medium uppercase text-muted-foreground">
+                                                                Cijena/kom
+                                                            </dt>
+                                                            <dd className="mt-1 font-medium">
+                                                                {item.unitPrice >
+                                                                0 ? (
+                                                                    formatCurrency(
+                                                                        item.unitPrice,
+                                                                        item.currency,
+                                                                    )
+                                                                ) : (
+                                                                    <span className="text-gray-400">
+                                                                        N/A
+                                                                    </span>
+                                                                )}
+                                                            </dd>
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <dt className="text-xs font-medium uppercase text-muted-foreground">
+                                                                Ukupno
+                                                            </dt>
+                                                            <dd className="mt-1 font-semibold">
+                                                                {item.totalPrice >
+                                                                0 ? (
+                                                                    formatCurrency(
+                                                                        item.totalPrice,
+                                                                        item.currency,
+                                                                    )
+                                                                ) : (
+                                                                    <span className="text-gray-400">
+                                                                        N/A
+                                                                    </span>
+                                                                )}
+                                                            </dd>
+                                                        </div>
+                                                    </dl>
+                                                    <div className="flex min-w-0 flex-wrap gap-x-3 gap-y-1 text-left lg:justify-end lg:text-right">
+                                                        <Typography
+                                                            component="div"
+                                                            level="body3"
+                                                            className="whitespace-nowrap text-muted-foreground"
+                                                        >
+                                                            Stvoreno:{' '}
+                                                            <LocalDateTime
+                                                                time={false}
+                                                            >
+                                                                {item.createdAt}
+                                                            </LocalDateTime>
+                                                        </Typography>
+                                                        <Typography
+                                                            component="div"
+                                                            level="body3"
+                                                            className="whitespace-nowrap text-muted-foreground"
+                                                        >
+                                                            Ažurirano:{' '}
+                                                            <LocalDateTime
+                                                                time={false}
+                                                            >
+                                                                {item.updatedAt}
+                                                            </LocalDateTime>
+                                                        </Typography>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </CardOverflow>
+                    </Card>
+                </EntityDetailsPropertiesLayout>
+            </Stack>
+        </EntityDetailsPropertiesProvider>
     );
 }

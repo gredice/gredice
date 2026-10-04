@@ -1,15 +1,16 @@
 import { getRaisedBedCloseupUrl } from '@gredice/js/urls';
+import { Alert } from '@gredice/ui/Alert';
+import { GameRaisedBedIcon as RaisedBedIcon } from '@gredice/ui/GameIcons';
 import { ImageViewer } from '@gredice/ui/ImageViewer';
+import { Check } from '@gredice/ui/icons';
+import { List } from '@gredice/ui/List';
+import { ListItem } from '@gredice/ui/ListItem';
 import { Markdown } from '@gredice/ui/Markdown';
-import { Alert } from '@signalco/ui/Alert';
-import { Check } from '@signalco/ui-icons';
-import { cx } from '@signalco/ui-primitives/cx';
-import { List } from '@signalco/ui-primitives/List';
-import { ListItem } from '@signalco/ui-primitives/ListItem';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Skeleton } from '@signalco/ui-primitives/Skeleton';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Skeleton } from '@gredice/ui/Skeleton';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import type { Route } from 'next';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -20,10 +21,13 @@ import { useCurrentUser } from '../hooks/useCurrentUser';
 import { useNotifications } from '../hooks/useNotifications';
 import { useSetNotificationRead } from '../hooks/useSetNotificationRead';
 import { NoNotificationsPlaceholder } from '../shared-ui/NoNotificationsPlaceholder';
+import { navigateNotificationLink } from './notificationNavigation';
 
 interface NotificationProps {
     read?: boolean;
     short?: boolean;
+    unreadOnly?: boolean;
+    onNotificationSelected?: () => void;
 }
 
 type NotificationListItemProps = {
@@ -38,15 +42,26 @@ type NotificationListItemProps = {
         timestamp: Date;
         raisedBedId: number | null;
     };
+    onNotificationSelected?: () => void;
 };
 
-function NotificationListItem({ notification }: NotificationListItemProps) {
+function NotificationListItem({
+    notification,
+    onNotificationSelected,
+}: NotificationListItemProps) {
     const router = useRouter();
     const { id, header, content, linkUrl, readAt, timestamp, raisedBedId } =
         notification;
     const { track } = useGameAnalytics();
     const setNotificationRead = useSetNotificationRead();
     const { data: currentGarden } = useCurrentGarden();
+
+    const raisedBed = useMemo(() => {
+        if (!raisedBedId || !currentGarden) {
+            return undefined;
+        }
+        return currentGarden.raisedBeds.find((bed) => bed.id === raisedBedId);
+    }, [raisedBedId, currentGarden]);
 
     // TODO: Remove this backward compatibility code after December 9, 2026
     // This generates the raised bed closeup URL from raisedBedId if linkUrl is not present
@@ -57,19 +72,17 @@ function NotificationListItem({ notification }: NotificationListItemProps) {
         }
 
         // Backward compatibility: generate URL from raisedBedId if linkUrl is missing
-        if (raisedBedId && currentGarden) {
-            const raisedBed = currentGarden.raisedBeds.find(
-                (bed) => bed.id === raisedBedId,
-            );
-            if (raisedBed?.name) {
-                return getRaisedBedCloseupUrl(raisedBed.name);
-            }
+        if (raisedBed?.name) {
+            return getRaisedBedCloseupUrl(raisedBed.name);
         }
 
         return '#';
-    }, [linkUrl, raisedBedId, currentGarden]);
+    }, [linkUrl, raisedBed]);
 
     const isRead = Boolean(readAt);
+    const readToggleLabel = isRead
+        ? 'Označi kao nepročitano'
+        : 'Označi kao pročitano';
 
     function handleSetNotificationRead() {
         track('game_notification_read_toggled', {
@@ -102,8 +115,15 @@ function NotificationListItem({ notification }: NotificationListItemProps) {
         }
 
         if (computedLinkUrl !== '#') {
-            router.push(computedLinkUrl as Route);
+            navigateNotificationLink({
+                assign: (url) => window.location.assign(url),
+                currentOrigin: window.location.origin,
+                href: computedLinkUrl,
+                push: (url) => router.push(url as Route),
+            });
         }
+
+        onNotificationSelected?.();
     }
 
     return (
@@ -113,7 +133,7 @@ function NotificationListItem({ notification }: NotificationListItemProps) {
                 onSelected={handleNotificationSelected}
                 className="rounded-none p-4"
                 label={
-                    <Row spacing={2}>
+                    <Row spacing={4}>
                         {notification.iconUrl ? (
                             <Image
                                 src={notification.iconUrl}
@@ -153,24 +173,39 @@ function NotificationListItem({ notification }: NotificationListItemProps) {
             />
             <button
                 type="button"
-                title={
-                    isRead ? 'Označi kao nepročitano' : 'Označi kao pročitano'
-                }
+                aria-label={readToggleLabel}
+                title={readToggleLabel}
                 className={cx(
-                    'size-4 rounded-full hover:outline outline-offset-2 outline-2 absolute top-2.5 right-2 group',
+                    "absolute top-2.5 right-2 size-4 rounded-full outline-2 outline-offset-2 hover:outline focus-visible:outline group before:absolute before:-inset-3 before:rounded-full before:content-['']",
                     isRead ? 'border' : 'bg-green-600',
                 )}
                 onClick={handleSetNotificationRead}
             >
                 {!isRead && (
-                    <Check className="size-4 shrink-0 hidden group-hover:block" />
+                    <Check className="size-4 shrink-0 hidden group-hover:block text-white" />
                 )}
             </button>
+            {raisedBed?.physicalId && (
+                <div
+                    className="pointer-events-none absolute bottom-2 right-2 text-muted-foreground"
+                    title={`Gredica ${raisedBed.physicalId}`}
+                >
+                    <RaisedBedIcon
+                        physicalId={raisedBed.physicalId}
+                        className="size-5"
+                    />
+                </div>
+            )}
         </div>
     );
 }
 
-export function NotificationList({ read, short }: NotificationProps) {
+export function NotificationList({
+    onNotificationSelected,
+    read,
+    short,
+    unreadOnly,
+}: NotificationProps) {
     const { data: currentUser } = useCurrentUser();
     const { data: notifications, error } = useNotifications(
         currentUser?.id,
@@ -181,10 +216,10 @@ export function NotificationList({ read, short }: NotificationProps) {
     const isLoading = false;
     if (isLoading) {
         return (
-            <Stack spacing={1}>
+            <Stack spacing={2}>
                 {[...Array(3)].map((_, i) => (
                     // biome-ignore lint/suspicious/noArrayIndexKey: Allowed, skeleton
-                    <Stack key={i} spacing={1} className="p-4">
+                    <Stack key={i} spacing={2} className="p-4">
                         <Skeleton className="h-5 w-2/3" />
                         <Skeleton className="h-12 w-full" />
                         <Skeleton className="h-5 w-20" />
@@ -204,16 +239,21 @@ export function NotificationList({ read, short }: NotificationProps) {
         );
     }
 
-    if (!notifications?.length) {
+    const visibleNotifications = unreadOnly
+        ? notifications?.filter((notification) => !notification.readAt)
+        : notifications;
+
+    if (!visibleNotifications?.length) {
         return <NoNotificationsPlaceholder />;
     }
 
     return (
         <List variant="outlined" className="border-none">
-            {notifications.map((notification) => (
+            {visibleNotifications.map((notification) => (
                 <NotificationListItem
                     key={notification.id}
                     notification={notification}
+                    onNotificationSelected={onNotificationSelected}
                 />
             ))}
         </List>

@@ -1,13 +1,15 @@
 'use client';
 
-import { Close } from '@signalco/ui-icons';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Close } from '@gredice/ui/icons';
 import { CancelOperationModal } from '../../app/admin/schedule/CancelOperationModal';
+import { canCancelOperationTask } from '../../app/admin/schedule/scheduleShared';
 
 interface OperationCancelButtonProps {
     operation: {
         id: number;
         entityId: number;
+        taskVersionEventId: number;
         scheduledDate?: Date;
         status: string;
     };
@@ -18,13 +20,7 @@ export function OperationCancelButton({
     operation,
     operationLabel,
 }: OperationCancelButtonProps) {
-    // Only show cancel button for new and planned operations
-    if (
-        operation.status === 'completed' ||
-        operation.status === 'pendingVerification' ||
-        operation.status === 'failed' ||
-        operation.status === 'canceled'
-    ) {
+    if (!canCancelOperationTask(operation.status)) {
         return null;
     }
 

@@ -1,0 +1,52 @@
+{
+    "generatedWith": "built-in image_gen",
+    "styleReferences": [
+        "packages/ui/src/GameIcons/assets/backpack.webp",
+        "packages/ui/src/GameIcons/assets/basket.webp"
+    ],
+    "mascotReference": "packages/ui/src/GameIcons/assets/sunflower.svg (rendered unchanged to PNG for the reference)",
+    "assets": [
+        {
+            "file": "mascot-3d.webp",
+            "prompt": "Use case: stylized-concept. Create a 3D rendered reinterpretation of the FIRST image: the Gredice sunflower mascot. Preserve its identity very closely: a broad round warm medium-brown face, two large glossy black round eyes with one white upper-left highlight each, tiny friendly black U-shaped smile, no nose, a generous double ring of rounded yellow sunflower petals, short green stem and exactly two broad green leaves at its base. Front-facing and symmetrical enough to read at 24px, with subtle three-quarter depth in the petals and clear side facets. No arms, legs, pot, hat, seed pattern, eyelashes or accessories. The other references are STYLE ONLY: chunky faceted low-poly 3D game artwork, matte surfaces, soft upper-left lighting and dimensional bevels. Real 3D volume, not an outlined flat emoji and not photoreal. Keep brown facial center and sunny yellow petals; do not turn the character into gold metal. Isolated single complete mascot, centered fills 88 percent of square image, true transparent alpha background, no floor or shadow outside the object, no text or watermark."
+        },
+        {
+            "file": "package-small.webp",
+            "prompt": "Use case: stylized-concept. One compact game currency package illustration for a small sunflower balance top-up. Subject: a small rounded TEAL cloth drawstring pouch tied with simple cream cord, opening reveals three real yellow sunflower flower heads with rich brown centers and one green leaf. A small simple sunflower emblem on the front, no face. Not coins, no money symbols. Chunky faceted low-poly 3D, genuine depth and softly beveled form, tactile matte materials, upper-left lighting, same rendering style as the reference backpack and basket. View from front and slightly above, complete object centered fills 86 percent of square. Natural yellow only on flower petals, teal dominant. True transparent alpha, no background or floor, no external shadow, no text, no numbers, no watermark."
+        },
+        {
+            "file": "package-basket.webp",
+            "prompt": "Use case: stylized-concept. One medium game sunflower currency bundle: a small sturdy garden basket with green-painted wooden slats, warm terracotta handle grip and a dark curved green handle, filled with a cheerful bunch of seven yellow sunflower flower heads with rich brown centers, short stems and a few broad green leaves. No mascot faces. The flower cluster is visibly fuller than a small pouch. No coins, gold bars, jewels or money symbols. Match the attached backpack and basket STYLE: chunky faceted low-poly 3D, matte surfaces, soft upper-left light, clear depth, clean silhouette. Three-quarter front view slightly from above. One complete object centered filling 86 percent of square. True transparent alpha, no background, floor or external shadow, no text, no numbers, no watermark."
+        },
+        {
+            "file": "package-season.webp",
+            "prompt": "Use case: stylized-concept. One generous game sunflower currency bundle for a full gardening season: a broad deep CORNFLOWER BLUE painted wooden produce crate with visible faceted planks and warm natural-wood corner edges, filled with a lush mound of twelve yellow sunflowers with warm brown centers and crisp green leaves. Flower heads face forward/up with no mascot faces. A simple small sunflower stamp/emblem on the front plank, no text. Visibly more plentiful than a handheld basket. No gold coins, bars, jewels or money symbols. Same chunky faceted low-poly 3D rendering as reference backpack and basket, matte tactile materials, soft upper-left lighting, substantial volume and beveled edges. Three-quarter front view slightly from above. Entire object isolated centered fills 86 percent of square. True transparent alpha, no backdrop, floor or external shadow, no text, watermark or numbers."
+        },
+        {
+            "file": "package-starter.webp",
+            "prompt": "Use case: stylized-concept. One welcoming starter game sunflower currency bundle, called a full raised bed: a small shallow rectangular TERRACOTTA and natural-wood garden planting tray with green corner braces, holding a tidy abundant group of yellow sunflower heads with brown centers and fresh green leaves, with one small seedling at the front corner. Sunflowers are ordinary flowers, no faces. The container has a low raised-bed silhouette and strong rectangular outline, clearly different from a pouch or basket. No coins, treasure, money symbols, label text or numbers. Match backpack and basket reference STYLE: chunky faceted low-poly 3D, matte tactile surfaces, real depth, soft upper-left illumination. Front three-quarter view slightly from above. Entire object centered fills 86 percent of square. True transparent alpha, no floor/background/external shadow, no watermark."
+        },
+        {
+            "file": "package-master.webp",
+            "prompt": "Use case: stylized-concept. One largest game sunflower currency bundle for a master gardener: a compact PLUM PURPLE garden wheelbarrow with a deep faceted tub, natural wooden handles with teal grips, exactly one dark charcoal wheel at the front, two connected support legs beneath the handles. Overflowing with a generous heap of yellow sunflower flower heads with brown centers and green leaves. Flowers have no faces. Clear readable wheelbarrow geometry, all parts connected properly, side three-quarter view, handles toward upper right, wheel lower left. Largest and most abundant of the sunflower packages. No coins, treasure, gold metal, jewels, money symbols or text. Match reference backpack/basket chunky low-poly 3D style, matte material, upper-left soft light, real volume. Complete object isolated centered fills 86 percent of square. True transparent alpha; no background, floor or external shadow; no watermark."
+        },
+        {
+            "file": "refund.webp",
+            "prompt": "Use case: stylized-concept. One clear game UI REFUND icon: a single thick three-dimensional TURQUOISE return arrow, shaft curling in a clean U-turn and pointing LEFT with one broad triangular arrowhead. Readable returning-motion silhouette. Chunky faceted low-poly 3D with rounded bevels, pale mint upper-facing facets and darker teal side faces, matte material, upper-left lighting. Match reference game backpack and basket style, but no other objects. No circular loop, no second arrow, no coin, no clock, no text. Entire object centered fills 84 percent of square, true transparent alpha background, no external shadow, no watermark."
+        },
+        {
+            "file": "birthday.webp",
+            "prompt": "Use case: stylized-concept. One friendly game UI birthday reward icon: a small round berry-pink cake with thick ivory icing on top, a teal platter, and ONE short striped lavender candle with a tiny warm orange flame centered on top. Two or three simple berry decorations. Chunky faceted low-poly 3D, clearly modeled volume, matte tactile surface, softly beveled sides, upper-left light, same rendering style as reference backpack and basket. Three-quarter front view from slightly above. No gold trim, no text, no numbers, no confetti, no faces. Complete isolated cake centered fills 84 percent of square, true transparent alpha, no background or floor or outside shadow, no watermark."
+        }
+    ],
+    "processing": "Resize and encode WebP only, preserving original transparent margins and alpha. Package illustrations: 512px, mascot preview: 768px, event icons: 384px. Quality 90, alphaQuality 100.",
+    "scope": "Five package visuals and activity icons are integrated. The approved 3D mascot is shared by currency icons and simple app mascot visuals.",
+    "edits": [
+        {
+            "file": "package-master.webp",
+            "prompt": "Use case: precise-object-edit. Edit this existing Gredice game package illustration. Change only the PURPLE wheelbarrow tray/body to a rich GOLDEN YELLOW metal finish with warm amber side facets and pale gold upper edges, matching the chunky low-poly 3D game style. Keep all sunflower flowers, their brown centers, green leaves, teal handle grips, natural wood frame, charcoal wheel, geometry, camera angle, composition, proportions, lighting and transparent alpha background unchanged. Golden cart should be distinct from the natural yellow petals through amber shaded sides; no jewels, coins or added objects, no text, no extra shine/glitter. One complete wheelbarrow, no floor or external shadow. Preserve true transparent background.",
+            "reference": "Previously generated purple package-master.webp",
+            "generatedWith": "built-in image_gen"
+        }
+    ]
+}

@@ -1,8 +1,8 @@
 'use client';
 
-import { Button } from '@signalco/ui-primitives/Button';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Button } from '@gredice/ui/Button';
+import { Input } from '@gredice/ui/Input';
+import { Stack } from '@gredice/ui/Stack';
 import { useActionState, useEffect, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { updateFarmSnowAccumulationAction } from '../../../(actions)/farmActions';
@@ -41,7 +41,7 @@ export function FarmSnowAccumulationForm({
 
     return (
         <form action={formAction} className="space-y-2">
-            <Stack spacing={1}>
+            <Stack spacing={2}>
                 <Input
                     name="snowAccumulation"
                     label="Snijeg (cm)"

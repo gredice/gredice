@@ -11,6 +11,9 @@ import {
     getPlaywrightBaseUrl,
     shouldReusePlaywrightServer,
 } from '../../scripts/app-registry.ts';
+import { blobGuardLaunchArgs } from '../../scripts/blob-test-fixtures.mjs';
+import { faunaPoseOraclePlugin } from './playwright/faunaPoseOraclePlugin.mjs';
+import { gardenTestFlagsSecret } from './playwright/gardenFlagTestSupport';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = getAppByName('garden');
@@ -18,6 +21,11 @@ const reporter: PlaywrightTestConfig['reporter'] = [
     ['list'],
     ['html', { open: 'never' }],
 ];
+const webglComponentTestPattern =
+    /(cold-weather|rain-ripples|autumn-season|actor-speech-bubble|cursor-anchored-zoom|detailed-inspection-farmer|fauna-runtime|fauna-trajectory|garden-palette-packets|garden-preview-capture|hover-outline|instanced-mesh-material-swap|ladybug-suspense-visibility|precipitation-camera-follow|public-garden-switch|r3f-root-isolation|raised-bed-notification-bubble|scene-query-data|scene-root-isolation|solar-eclipse|spatial-interaction|stars-depth)\.spec\.tsx/;
+const morningMistComponentTestPattern = /morning-mist\.spec\.tsx/;
+const leafStepsComponentTestPattern = /leaf-steps\.spec\.tsx/;
+const outletGardenRouteTestPattern = /outlet-garden-route\.spec\.ts/;
 
 // Plugin to intercept next/font/google before Vite's resolver
 function nextFontMockPlugin() {
@@ -37,6 +45,8 @@ function nextFontMockPlugin() {
     };
 }
 
+const squirrelCachingComponentTestPattern = /squirrel-caching\.spec\.tsx/;
+
 export const config: PlaywrightTestConfig = {
     testDir: './',
     snapshotDir: './__snapshots__',
@@ -47,24 +57,88 @@ export const config: PlaywrightTestConfig = {
     workers: process.env.CI ? 1 : undefined,
     reporter,
     use: {
+        launchOptions: { args: blobGuardLaunchArgs() },
         baseURL: getPlaywrightBaseUrl(app),
         trace: 'on-first-retry',
         ctPort: getComponentTestPort(app),
         ctViteConfig: {
-            plugins: [nextFontMockPlugin()],
+            // Playwright CT 1.62 bundles Vite 8, whose CJS interop turns default imports
+            // of Next's CJS entry points (e.g. next/image) into module objects.
+            legacy: { inconsistentCjsInterop: true },
+            plugins: [nextFontMockPlugin(), faunaPoseOraclePlugin()],
             optimizeDeps: {
                 exclude: ['next/font/google'],
+            },
+            resolve: {
+                // Keep router contexts shared when workspace Next versions differ.
+                dedupe: ['next', 'nuqs', 'react', 'react-dom'],
             },
         },
     },
     projects: [
         {
             name: 'chromium',
+            testIgnore: [
+                squirrelCachingComponentTestPattern,
+                webglComponentTestPattern,
+                leafStepsComponentTestPattern,
+                morningMistComponentTestPattern,
+                outletGardenRouteTestPattern,
+            ],
             use: { ...devices['Desktop Chrome'] },
+        },
+        {
+            name: 'chromium-webgl',
+            testMatch: [
+                squirrelCachingComponentTestPattern,
+                webglComponentTestPattern,
+                leafStepsComponentTestPattern,
+                morningMistComponentTestPattern,
+            ],
+            snapshotPathTemplate:
+                '{snapshotDir}/{testFilePath}-snapshots/{arg}{ext}',
+            use: {
+                ...devices['Desktop Chrome'],
+                launchOptions: {
+                    // GPU-less CI runners must explicitly opt in to Chromium's
+                    // software WebGL fallback. Keep the lower-security switch
+                    // isolated to our trusted 3D capture fixture.
+                    args: [
+                        ...blobGuardLaunchArgs(),
+                        '--use-gl=angle',
+                        '--use-angle=swiftshader',
+                        '--enable-unsafe-swiftshader',
+                    ],
+                },
+            },
+        },
+        {
+            name: 'chromium-webgl-outlet',
+            testMatch: outletGardenRouteTestPattern,
+            timeout: 30_000,
+            expect: { timeout: 30_000 },
+            use: {
+                ...devices['Desktop Chrome'],
+                actionTimeout: 60_000,
+                launchOptions: {
+                    args: [
+                        ...blobGuardLaunchArgs(),
+                        '--use-gl=angle',
+                        '--use-angle=swiftshader',
+                        '--enable-unsafe-swiftshader',
+                    ],
+                },
+            },
         },
     ],
     webServer: {
-        command: 'pnpm start',
+        command: 'node ../../scripts/run-app-command.mjs start',
+        env: {
+            FLAGS_SECRET: process.env.FLAGS_SECRET ?? gardenTestFlagsSecret,
+            GREDICE_DETACH_CHILD_PROCESS: 'false',
+            VERCEL_ENV: 'preview',
+        },
+        gracefulShutdown: { signal: 'SIGTERM', timeout: 5000 },
         url: getPlaywrightBaseUrl(app),
         reuseExistingServer: shouldReusePlaywrightServer(),
     },

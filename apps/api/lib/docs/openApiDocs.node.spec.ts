@@ -107,6 +107,120 @@ test('buildAttributeDefinitionProperties maps CMS data types to formatted entity
     assert.equal(schemaObject(stageItem.properties?.id).type, 'number');
 });
 
+test('buildAttributeDefinitionProperties maps plant relationships to shallow non-recursive schema', async () => {
+    const result = await buildAttributeDefinitionProperties(
+        [
+            attributeDefinition({
+                category: 'relationships',
+                dataType: 'ref:plant',
+                entityTypeName: 'plant',
+                multiple: true,
+                name: 'companions',
+            }),
+            attributeDefinition({
+                category: 'relationships',
+                dataType: 'ref:plant',
+                entityTypeName: 'plant',
+                multiple: true,
+                name: 'antagonists',
+            }),
+        ],
+        async () => {
+            throw new Error('Plant relationships must not recurse.');
+        },
+    );
+
+    const relationships = schemaObject(result.properties.relationships);
+    const companions = schemaObject(relationships.properties?.companions);
+    const antagonists = schemaObject(relationships.properties?.antagonists);
+
+    assert.equal(companions.type, 'array');
+    assert.deepEqual(companions.items, {
+        $ref: '#/components/schemas/plant-relationship',
+    });
+    assert.equal(antagonists.type, 'array');
+    assert.deepEqual(antagonists.items, {
+        $ref: '#/components/schemas/plant-relationship',
+    });
+});
+
+test('buildAttributeDefinitionProperties maps plant sort relationships to shallow plant schema', async () => {
+    const result = await buildAttributeDefinitionProperties(
+        [
+            attributeDefinition({
+                category: 'relationships',
+                dataType: 'ref:plant',
+                entityTypeName: 'plantSort',
+                multiple: true,
+                name: 'companions',
+            }),
+        ],
+        async () => {
+            throw new Error('Plant sort relationships must not recurse.');
+        },
+    );
+
+    const relationships = schemaObject(result.properties.relationships);
+    const companions = schemaObject(relationships.properties?.companions);
+
+    assert.equal(companions.type, 'array');
+    assert.deepEqual(companions.items, {
+        $ref: '#/components/schemas/plant-relationship',
+    });
+});
+
+test('buildAttributeDefinitionProperties maps plant health refs to shallow schemas', async () => {
+    const result = await buildAttributeDefinitionProperties(
+        [
+            attributeDefinition({
+                category: 'relationships',
+                dataType: 'ref:plant',
+                entityTypeName: 'plantDisease',
+                multiple: true,
+                name: 'affectedPlants',
+            }),
+            attributeDefinition({
+                category: 'operations',
+                dataType: 'ref:operation',
+                entityTypeName: 'plantDisease',
+                multiple: true,
+                name: 'prevention',
+            }),
+            attributeDefinition({
+                category: 'operations',
+                dataType: 'ref:operation',
+                entityTypeName: 'plantPest',
+                multiple: true,
+                name: 'alleviation',
+            }),
+        ],
+        async () => {
+            throw new Error('Plant health relationships must not recurse.');
+        },
+    );
+
+    const relationships = schemaObject(result.properties.relationships);
+    const affectedPlants = schemaObject(
+        relationships.properties?.affectedPlants,
+    );
+    const operations = schemaObject(result.properties.operations);
+    const prevention = schemaObject(operations.properties?.prevention);
+    const alleviation = schemaObject(operations.properties?.alleviation);
+
+    assert.equal(affectedPlants.type, 'array');
+    assert.deepEqual(affectedPlants.items, {
+        $ref: '#/components/schemas/plant-health-affected-plant',
+    });
+    assert.equal(prevention.type, 'array');
+    assert.deepEqual(prevention.items, {
+        $ref: '#/components/schemas/plant-health-operation',
+    });
+    assert.equal(alleviation.type, 'array');
+    assert.deepEqual(alleviation.items, {
+        $ref: '#/components/schemas/plant-health-operation',
+    });
+});
+
 test('buildAttributeDefinitionProperties fails clearly for unsupported CMS data types', async () => {
     await assert.rejects(
         () =>

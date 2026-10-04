@@ -1,11 +1,11 @@
 'use client';
 
-import { Delete, Reset } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Row } from '@signalco/ui-primitives/Row';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
+import { Button } from '@gredice/ui/Button';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Input } from '@gredice/ui/Input';
+import { Delete, Reset } from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
+import { SelectItems } from '@gredice/ui/SelectItems';
 import {
     MAX_PLANT_GENERATION,
     type PlantDefinition,
@@ -45,7 +45,7 @@ export function SettingsTab({
     return (
         <div className="space-y-4">
             {/* Plant Type Selection */}
-            <Row spacing={1} alignItems="end">
+            <Row spacing={2} alignItems="end">
                 <SelectItems
                     items={allPlantNames.map((name) => ({
                         value: name,
@@ -74,7 +74,7 @@ export function SettingsTab({
                 existingNames={allPlantNames.map((name) => name.toLowerCase())}
                 onCreatePlant={onCreateCustomPlant}
             />
-            <Row spacing={1} alignItems="center">
+            <Row spacing={2} alignItems="center">
                 <Button
                     variant="outlined"
                     onClick={onResetDefinition}
@@ -89,7 +89,7 @@ export function SettingsTab({
                     title="Reset na zadani preset"
                 >
                     <p>
-                        Vraća L-system pravila, boje i ostale parametre na
+                        Vraća razvojni program, boje i ostale parametre na
                         originalni ugrađeni preset trenutne biljke.
                     </p>
                     <p>
@@ -108,7 +108,7 @@ export function SettingsTab({
                     placeholder="Enter plant name..."
                 />
             )}
-            <Row spacing={1} alignItems="end">
+            <Row spacing={2} alignItems="end">
                 <Input
                     label="Sjeme"
                     value={state.seed}
@@ -125,20 +125,12 @@ export function SettingsTab({
             </Row>
 
             <PlantSlider
-                label={`Generacija: ${generationLabel} (oko ${generationLabel}. tjedan)`}
+                label={`Faza rasta: ${generationLabel}`}
                 min={0}
                 max={MAX_PLANT_GENERATION}
                 step={0.1}
                 value={[state.generation]}
                 onValueChange={(v) => onStateChange({ generation: v[0] })}
-            />
-            <PlantSlider
-                label={`Kut: ${state.definition.angle}°`}
-                value={[state.definition.angle]}
-                onValueChange={(v) => onDefinitionChange('angle', v[0])}
-                min={0}
-                max={90}
-                step={1}
             />
             <PlantSlider
                 label={`Visina: ${state.definition.height.toFixed(2)}`}
@@ -147,24 +139,6 @@ export function SettingsTab({
                 min={0.1}
                 max={2}
                 step={0.05}
-            />
-            <PlantSlider
-                label={`Grananje: ${state.definition.branching.toFixed(2)}`}
-                value={[state.definition.branching]}
-                onValueChange={(v) => onDefinitionChange('branching', v[0])}
-                min={0.1}
-                max={2}
-                step={0.05}
-            />
-            <PlantSlider
-                label={`Nestabilnost: ${state.definition.directionVariability.toFixed(2)}`}
-                value={[state.definition.directionVariability]}
-                onValueChange={(v) =>
-                    onDefinitionChange('directionVariability', v[0])
-                }
-                min={0}
-                max={1}
-                step={0.01}
             />
             <VisibilityControls
                 visibility={visibility}

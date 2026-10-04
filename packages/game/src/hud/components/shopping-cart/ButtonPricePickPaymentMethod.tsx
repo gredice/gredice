@@ -1,7 +1,11 @@
-import { Row } from '@signalco/ui-primitives/Row';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { SunflowerText } from '@gredice/ui/SunflowerVisuals';
+import { Typography } from '@gredice/ui/Typography';
+import { useRef } from 'react';
+import { useSunflowerTransferAnimation } from '../../../indicators/SunflowerTransfer/useSunflowerTransferAnimation';
 import {
     calculateSunflowerAmountFromPrices,
+    formatSunflowers,
     getEffectiveEurPrice,
 } from '../../../utils/sunflowerPricing';
 
@@ -20,10 +24,8 @@ export function ButtonPricePickPaymentMethod({
     discountPrice?: number | null;
     disabled?: boolean;
 }) {
-    function handleToggle() {
-        if (isToggleDisabled) return;
-        onChange?.(!isSunflower);
-    }
+    const paymentTargetRef = useRef<HTMLButtonElement>(null);
+    const runSunflowerTransfer = useSunflowerTransferAnimation();
 
     if (price == null || price === undefined) {
         return <Typography level="body1">Nevaljan iznos</Typography>;
@@ -35,24 +37,41 @@ export function ButtonPricePickPaymentMethod({
         discountPrice,
     });
     const displayPrice = isSunflower ? requiredSunflowers : effectivePrice;
+    const formattedDisplayPrice = isSunflower
+        ? formatSunflowers(displayPrice)
+        : displayPrice.toFixed(2);
     const canAffordSunflowers =
         availableSunflowers !== undefined
             ? availableSunflowers >= requiredSunflowers
             : true;
     const isToggleDisabled = disabled || (!isSunflower && !canAffordSunflowers);
+    const nextIsSunflower = !isSunflower;
+
+    function handleToggle() {
+        if (isToggleDisabled) return;
+
+        runSunflowerTransfer({
+            paymentElement: paymentTargetRef.current,
+            direction: nextIsSunflower ? 'hud-to-payment' : 'payment-to-hud',
+            amount: requiredSunflowers,
+        });
+        onChange?.(nextIsSunflower);
+    }
 
     return (
-        <Row spacing={1}>
+        <Row spacing={2}>
             {/* Price Display */}
             <Typography level="body1" semiBold>
-                {displayPrice.toFixed(2)}
+                {formattedDisplayPrice}
             </Typography>
 
             {/* Custom Switch */}
             <button
+                ref={paymentTargetRef}
                 type="button"
                 onClick={handleToggle}
                 disabled={isToggleDisabled}
+                data-sunflower-payment-target
                 className={`relative inline-flex h-6 w-10 items-center rounded-full transition-colors focus:outline-1 focus:outline-[#2f6e40] focus:outline-offset-2 ${
                     isToggleDisabled
                         ? 'bg-gray-200 dark:bg-gray-700 cursor-not-allowed opacity-50'
@@ -62,6 +81,11 @@ export function ButtonPricePickPaymentMethod({
                 }`}
                 role="switch"
                 aria-checked={isSunflower}
+                aria-label={
+                    isSunflower
+                        ? `Plaćanje suncokretima, ${formatSunflowers(requiredSunflowers)} suncokreta`
+                        : `Plaćanje eurima, prebaci na ${formatSunflowers(requiredSunflowers)} suncokreta`
+                }
                 title={
                     isToggleDisabled && !isSunflower
                         ? 'Nedovoljno suncokreta'
@@ -73,7 +97,7 @@ export function ButtonPricePickPaymentMethod({
                         isSunflower ? 'translate-x-5' : 'translate-x-0.5'
                     } ${isToggleDisabled ? 'opacity-60' : ''}`}
                 >
-                    {isSunflower ? '🌻' : '€'}
+                    <SunflowerText>{isSunflower ? '🌻' : '€'}</SunflowerText>
                 </span>
             </button>
         </Row>

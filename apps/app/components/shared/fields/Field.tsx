@@ -1,6 +1,6 @@
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import type { ReactNode } from 'react';
 
 export function Field({

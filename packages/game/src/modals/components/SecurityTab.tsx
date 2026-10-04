@@ -1,11 +1,12 @@
 import { clientPublic } from '@gredice/client';
-import { CompanyFacebook, Security } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Card, CardContent } from '@signalco/ui-primitives/Card';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Spinner } from '@signalco/ui-primitives/Spinner';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Card, CardContent } from '@gredice/ui/Card';
+import { GameLockIcon } from '@gredice/ui/GameIcons';
+import { CompanyFacebook, Security } from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
+import { Spinner } from '@gredice/ui/Spinner';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useCallback, useState } from 'react';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { useUserLogins } from '../../hooks/useUserLogins';
@@ -47,11 +48,15 @@ export function SecurityTab() {
     }, [currentUser.data?.userName]);
 
     return (
-        <Stack spacing={4}>
-            <Typography level="h4" className="hidden md:block">
-                🔒 Sigurnost
+        <Stack spacing={8}>
+            <Typography
+                level="h4"
+                className="hidden md:flex items-center gap-2"
+            >
+                <GameLockIcon aria-hidden className="size-8 shrink-0" />
+                Sigurnost
             </Typography>
-            <Stack spacing={2}>
+            <Stack spacing={4}>
                 <Card>
                     <CardContent noHeader>
                         <Typography level="body2">
@@ -62,13 +67,13 @@ export function SecurityTab() {
                 </Card>
                 <Card>
                     <CardContent noHeader>
-                        <Stack spacing={2}>
-                            <Stack spacing={2}>
+                        <Stack spacing={4}>
+                            <Stack spacing={4}>
                                 <Typography level="body2">
                                     Prijava putem emaila i zaporke.
                                 </Typography>
                                 {passwordLoginConnected && (
-                                    <Row spacing={2}>
+                                    <Row spacing={4}>
                                         <Security className="size-8" />
                                         <Typography level="body1">
                                             Tvoj račun ima postavljenu zaporku.
@@ -81,7 +86,7 @@ export function SecurityTab() {
                                     </Typography>
                                 )}
                             </Stack>
-                            <Stack spacing={1}>
+                            <Stack spacing={2}>
                                 {changePasswordSent ? (
                                     <Typography level="body2">
                                         Link za promjenu zaporke je poslan na
@@ -113,14 +118,14 @@ export function SecurityTab() {
                             />
                         )}
                         {!userLoginsLoading && (
-                            <Stack spacing={3}>
-                                <Stack spacing={3}>
+                            <Stack spacing={6}>
+                                <Stack spacing={6}>
                                     <Typography level="body2">
                                         Poveži svoj račun društvene mrežame za
                                         bržu i sigurniju prijavu.
                                     </Typography>
                                     {facebookConnected && (
-                                        <Row spacing={2}>
+                                        <Row spacing={4}>
                                             <CompanyFacebook className="size-8" />
                                             <Typography level="body1">
                                                 Tvoj Facebook račun je povezan.
@@ -128,7 +133,7 @@ export function SecurityTab() {
                                         </Row>
                                     )}
                                     {googleConnected && (
-                                        <Row spacing={2}>
+                                        <Row spacing={4}>
                                             <CompanyGoogle className="size-8" />
                                             <Typography level="body1">
                                                 Tvoj Google račun je povezan.
@@ -141,7 +146,7 @@ export function SecurityTab() {
                                         </Typography>
                                     )}
                                 </Stack>
-                                <Stack spacing={1}>
+                                <Stack spacing={2}>
                                     {!facebookConnected && (
                                         <FacebookLoginButton
                                             href={`https://api.gredice.com/api/auth/facebook?timeZone=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}`}

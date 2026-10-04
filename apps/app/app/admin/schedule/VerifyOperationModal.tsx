@@ -1,12 +1,10 @@
 'use client';
 
-import { Check } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Modal } from '@gredice/ui/Modal';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { Fragment, useState } from 'react';
 import { verifyOperationAction } from '../../(actions)/operationActions';
 
@@ -18,7 +16,9 @@ interface VerifyOperationModalTriggerProps {
 
 interface VerifyOperationModalBaseProps {
     operationId: number;
+    expectedTaskVersionEventId: number;
     label: string;
+    onConfirm?: () => unknown | Promise<unknown>;
 }
 
 type VerifyOperationModalProps = VerifyOperationModalBaseProps &
@@ -37,31 +37,44 @@ type VerifyOperationModalProps = VerifyOperationModalBaseProps &
 
 export function VerifyOperationModal({
     operationId,
+    expectedTaskVersionEventId,
     label,
+    onConfirm,
     trigger,
     renderTrigger,
 }: VerifyOperationModalProps) {
     const [open, setOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const openModal = () => setOpen(true);
-    const defaultTrigger = (
-        <IconButton
-            variant="plain"
+    const renderDefaultTrigger = (onClick?: () => void) => (
+        <Button
+            variant="solid"
+            color="success"
+            size="xs"
             title="Verificiraj radnju"
             loading={isSubmitting}
-            onClick={openModal}
+            onClick={onClick}
         >
-            <Check className="size-4 shrink-0" />
-        </IconButton>
+            Potvrdi
+        </Button>
     );
+    const defaultTrigger = renderDefaultTrigger();
 
     const handleConfirm = async () => {
         try {
             setIsSubmitting(true);
-            await verifyOperationAction(operationId);
+            if (onConfirm) {
+                await onConfirm();
+            } else {
+                await verifyOperationAction(
+                    operationId,
+                    expectedTaskVersionEventId,
+                );
+            }
             setOpen(false);
         } catch (error) {
             console.error('Error verifying operation:', error);
+            alert('Verifikacija radnje nije uspjela. Pokušajte ponovno.');
         } finally {
             setIsSubmitting(false);
         }
@@ -72,7 +85,7 @@ export function VerifyOperationModal({
             {renderTrigger?.({
                 isSubmitting,
                 openModal,
-                defaultTrigger,
+                defaultTrigger: renderDefaultTrigger(openModal),
             })}
             <Modal
                 title="Verifikacija radnje"
@@ -82,13 +95,13 @@ export function VerifyOperationModal({
                     renderTrigger ? undefined : (trigger ?? defaultTrigger)
                 }
             >
-                <Stack spacing={2}>
+                <Stack spacing={4}>
                     <Typography level="h5">Verifikacija radnje</Typography>
                     <Typography>
                         Jeste li sigurni da želite verificirati radnju:{' '}
                         <strong>{label}</strong>?
                     </Typography>
-                    <Row spacing={1} justifyContent="end">
+                    <Row spacing={2} justifyContent="end">
                         <Button
                             variant="outlined"
                             onClick={() => setOpen(false)}

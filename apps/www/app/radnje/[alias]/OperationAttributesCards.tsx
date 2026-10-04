@@ -1,13 +1,12 @@
 import type { OperationData } from '@gredice/client';
 import {
-    Hourglass,
-    Leaf,
-    Ruler,
-    Sprout,
-    Sun,
-    Tally3,
-    Timer,
-} from '@signalco/ui-icons';
+    GameGardenIcon,
+    GameHistoryIcon,
+    GameRaisedBedSimpleIcon,
+    GameSeedlingIcon,
+    GameTimerIcon,
+    GameToolsIcon,
+} from '@gredice/ui/GameIcons';
 import type { JSX } from 'react';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
 import { operationFrequencyLabel } from '../../biljke/[alias]/PlantOperations';
@@ -19,18 +18,35 @@ export function OperationAttributesCards({
 }) {
     const applicationMap: Record<string, { label: string; icon: JSX.Element }> =
         {
-            garden: { label: 'Vrt', icon: <Sun className="size-5 shrink-0" /> },
+            garden: {
+                label: 'Vrt',
+                icon: (
+                    <GameGardenIcon aria-hidden className="size-6 shrink-0" />
+                ),
+            },
             raisedBedFull: {
                 label: 'Cijela gredica',
-                icon: <Tally3 className="size-5 shrink-0 rotate-90 mt-1" />,
+                icon: (
+                    <GameRaisedBedSimpleIcon
+                        aria-hidden
+                        className="size-6 shrink-0"
+                    />
+                ),
             },
             raisedBed1m: {
                 label: 'Gredica 1m²',
-                icon: <Tally3 className="size-5 shrink-0 rotate-90 mt-1" />,
+                icon: (
+                    <GameRaisedBedSimpleIcon
+                        aria-hidden
+                        className="size-6 shrink-0"
+                    />
+                ),
             },
             plant: {
                 label: 'Biljka',
-                icon: <Leaf className="size-5 shrink-0" />,
+                icon: (
+                    <GameSeedlingIcon aria-hidden className="size-6 shrink-0" />
+                ),
             },
         };
 
@@ -40,7 +56,7 @@ export function OperationAttributesCards({
                 <AttributeCard
                     icon={
                         applicationMap[attributes.application]?.icon ?? (
-                            <Ruler />
+                            <GameToolsIcon aria-hidden />
                         )
                     }
                     header="Primjena"
@@ -51,13 +67,13 @@ export function OperationAttributesCards({
                 />
             )}
             <AttributeCard
-                icon={<Hourglass />}
+                icon={<GameHistoryIcon aria-hidden />}
                 header="Učestalost"
                 subheader="Savjet o učestalosti izvođenja radnje"
                 value={operationFrequencyLabel(attributes?.frequency)}
             />
             <AttributeCard
-                icon={<Timer />}
+                icon={<GameTimerIcon aria-hidden />}
                 header="Trajanje"
                 subheader="Prosječno vrijeme izvođenja radnje u minutama"
                 value={
@@ -67,7 +83,7 @@ export function OperationAttributesCards({
                 }
             />
             <AttributeCard
-                icon={<Sprout />}
+                icon={<GameSeedlingIcon aria-hidden />}
                 header="Stadij"
                 subheader="Preporučeni stadij biljke za izvođenje radnje"
                 value={attributes?.stage?.information?.label ?? '-'}

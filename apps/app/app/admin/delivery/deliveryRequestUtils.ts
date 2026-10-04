@@ -1,4 +1,4 @@
-import type { ChipProps } from '@signalco/ui-primitives/Chip';
+import type { ChipProps } from '@gredice/ui/Chip';
 
 export function getDeliveryRequestStatusColor(
     status: string,

@@ -1,7 +1,11 @@
 'use client';
 
-import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useState } from 'react';
+import {
+    useSceneFixedTimeSeconds,
+    useSceneTimeInvalidation,
+    useSceneTimeUniform,
+} from '../../../scene/SceneTime';
 import { useGameState } from '../../../useGameState';
 import { SeededRNG } from '../lib/rng';
 
@@ -65,23 +69,29 @@ export const plantSwayVertexShader = /* glsl */ `
     uniform float uWindStrength;
     uniform vec2 uWindDirection;
 
+    #ifdef USE_INSTANCING
+        attribute float instanceSwayPhase;
+    #endif
+
     void main() {
         vec4 localPosition = vec4(position, 1.0);
         vec4 swayReferencePosition = localPosition;
+        float swayPhase = uSwayPhase;
 
         #ifdef USE_INSTANCING
             swayReferencePosition = instanceMatrix * localPosition;
+            swayPhase += instanceSwayPhase;
         #endif
 
         float heightFactor = smoothstep(0.0, 1.5, max(swayReferencePosition.y, 0.0));
         float primaryWave = sin(
             uTime * uSwaySpeed +
-            uSwayPhase +
+            swayPhase +
             swayReferencePosition.y * 2.15
         );
         float secondaryWave = cos(
             uTime * (uSwaySpeed * 1.31) +
-            uSwayPhase * 1.7 +
+            swayPhase * 1.7 +
             swayReferencePosition.x * 1.35 +
             swayReferencePosition.z * 0.85
         );
@@ -91,7 +101,7 @@ export const plantSwayVertexShader = /* glsl */ `
         float windBias = sin(
             dot(swayReferencePosition.xz, windDirection) * 0.85 +
             uTime * (uSwaySpeed * 0.72) +
-            uSwayPhase * 0.4
+            swayPhase * 0.4
         );
         float amplitude = uSwayAmplitude * (1.0 + uWindStrength * 0.75);
         float sway = (
@@ -110,12 +120,18 @@ export const plantSwayVertexShader = /* glsl */ `
 
 export function usePlantSway(seed: string, options: PlantSwayOptions) {
     const weather = useGameState((state) => state.weather);
+    const fixedTimeSeconds = useSceneFixedTimeSeconds();
+    const timeUniform = useSceneTimeUniform();
     const prefersReducedMotion = usePrefersReducedMotion();
     const swayDisabled = options.enabled === false || prefersReducedMotion;
+    useSceneTimeInvalidation(
+        'plant-sway',
+        !swayDisabled && fixedTimeSeconds === undefined,
+    );
     const uniforms = useMemo(() => {
         const rng = new SeededRNG(seed);
         return {
-            uTime: { value: 0 },
+            uTime: timeUniform,
             uSwayAmplitude: {
                 value: swayDisabled ? 0 : options.amplitude,
             },
@@ -124,11 +140,10 @@ export function usePlantSway(seed: string, options: PlantSwayOptions) {
             uWindStrength: { value: 0 },
             uWindDirection: { value: defaultWindDirection() },
         };
-    }, [options.amplitude, options.speed, seed, swayDisabled]);
+    }, [options.amplitude, options.speed, seed, swayDisabled, timeUniform]);
 
-    useFrame(({ clock }) => {
+    useEffect(() => {
         if (swayDisabled) {
-            uniforms.uTime.value = 0;
             uniforms.uSwayAmplitude.value = 0;
             uniforms.uSwaySpeed.value = 0;
             uniforms.uWindStrength.value = 0;
@@ -136,7 +151,6 @@ export function usePlantSway(seed: string, options: PlantSwayOptions) {
             return;
         }
 
-        uniforms.uTime.value = clock.getElapsedTime();
         const windStrength = Math.max(
             0,
             Math.min(1, (weather?.windSpeed ?? 0) / 25),
@@ -152,7 +166,14 @@ export function usePlantSway(seed: string, options: PlantSwayOptions) {
             Math.sin(windDirectionRadians),
             -Math.cos(windDirectionRadians),
         ];
-    });
+    }, [
+        options.amplitude,
+        options.speed,
+        swayDisabled,
+        uniforms,
+        weather?.windDirection,
+        weather?.windSpeed,
+    ]);
 
     return uniforms;
 }

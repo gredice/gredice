@@ -1,10 +1,12 @@
 import { type PropsWithChildren, useRef } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import type { Block } from '../types/Block';
+import { useGameState } from '../useGameState';
 import {
     useRemoveRaisedBedCloseupParam,
     useSetRaisedBedCloseupParam,
 } from '../useRaisedBedCloseup';
+import { useDeferredSingleClick } from './useDeferredSingleClick';
 import { useHoveredBlockStore } from './useHoveredBlockStore';
 
 export function RaisedBedSelectableGroup({
@@ -15,15 +17,23 @@ export function RaisedBedSelectableGroup({
     const groupRef = useRef(null);
     const { track } = useGameAnalytics();
     const hovered = useHoveredBlockStore();
+    const hasActiveDragPreview = useGameState((state) =>
+        Boolean(state.activeDragPreview),
+    );
     const { mutate: setRaisedBedCloseupParam } = useSetRaisedBedCloseupParam();
     const { mutate: removeRaisedBedCloseupParam } =
         useRemoveRaisedBedCloseupParam();
+    const handleClick = useDeferredSingleClick(handleSelected);
 
     function handleSelected() {
         handleOpenChange(true);
     }
 
     function handleOpenChange(open: boolean) {
+        if (open && hasActiveDragPreview) {
+            return;
+        }
+
         if (open) {
             track('game_raised_bed_opened', {
                 block_id: block.id,
@@ -41,6 +51,10 @@ export function RaisedBedSelectableGroup({
         <group
             ref={groupRef}
             onPointerEnter={(event) => {
+                if (hasActiveDragPreview) {
+                    return;
+                }
+
                 event.stopPropagation();
                 hovered.setHoveredBlock(block);
             }}
@@ -50,7 +64,7 @@ export function RaisedBedSelectableGroup({
                     hovered.setHoveredBlock(null);
                 }
             }}
-            onClick={handleSelected}
+            onClick={handleClick}
         >
             {children}
         </group>

@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, type ButtonButtonProps } from '@signalco/ui-primitives/Button';
+import { Button, type ButtonButtonProps } from '@gredice/ui/Button';
 import { useState } from 'react';
 
 export type ServerActionButtonProps = Omit<ButtonButtonProps, 'onClick'> & {

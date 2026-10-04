@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
                 daysLate: daysSinceBirthday,
             });
         } else {
-            skipped.push({ userId: user.id, reason: 'no_account' });
+            skipped.push({ userId: user.id, reason: result.reason });
         }
     }
 

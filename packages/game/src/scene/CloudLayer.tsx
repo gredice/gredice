@@ -1,7 +1,14 @@
 'use client';
 
-import { useFrame } from '@react-three/fiber';
-import { useEffect, useMemo, useRef } from 'react';
+import { useFrame, useThree } from '@react-three/fiber';
+import {
+    useCallback,
+    useEffect,
+    useLayoutEffect,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
 import {
     CanvasTexture,
     ClampToEdgeWrapping,
@@ -11,9 +18,27 @@ import {
     type Mesh,
     type MeshBasicMaterial,
     type OrthographicCamera,
+    type Vector3,
 } from 'three';
-import type { Stack } from '../types/Stack';
+import type { GardenStack } from '../types/Stack';
 import { useGameState } from '../useGameState';
+import { CloudShadowAttenuation } from './CloudShadowAttenuationLayer';
+import {
+    resolveDeterministicCloudSpawn,
+    seededCloudRandom,
+} from './cloudDeterministicLayout';
+import {
+    type CloudShadowSample,
+    resolveCloudShadowAttenuationConfig,
+    resolveCloudShadowProjection,
+} from './cloudShadowAttenuation';
+import { updateGameProfileMetadata } from './gameProfileMetadata';
+import type { GameQualityProfile } from './gameQuality';
+import {
+    useSceneFixedTimeSeconds,
+    useSceneTimeInvalidation,
+} from './SceneTime';
+import { getVisualDaylightAmount, smoothstep } from './visualDayNight';
 
 const MAX_CLOUDS = 8;
 const CLOUD_ALPHA_TEST = 0.025;
@@ -32,23 +57,20 @@ const CLOUD_MIN_COVERAGE_SCALE = 0.62;
 const CLOUD_MAX_COVERAGE_SCALE = 1.14;
 const CLOUD_BASE_DRIFT_SPEED = 0.35;
 const CLOUD_WIND_DRIFT_SPEED = 0.5;
-
-function smoothstep(edge0: number, edge1: number, value: number) {
-    const t = Math.min(1, Math.max(0, (value - edge0) / (edge1 - edge0)));
-    return t * t * (3 - 2 * t);
-}
-
-function seededRandom(seed: number) {
-    const value = Math.sin(seed * 12.9898) * 43758.5453;
-    return value - Math.floor(value);
-}
+const CLOUD_RENDER_ORDER = 30;
+const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
 
 function wrapValue(value: number, min: number, max: number) {
     const range = max - min;
     return MathUtils.euclideanModulo(value - min, range) + min;
 }
 
-function createCloudAlphaTexture() {
+type CloudAlphaAsset = {
+    canvas: HTMLCanvasElement;
+    texture: CanvasTexture;
+};
+
+function createCloudAlphaAsset(): CloudAlphaAsset | null {
     const canvas = document.createElement('canvas');
     canvas.width = 256;
     canvas.height = 256;
@@ -63,9 +85,9 @@ function createCloudAlphaTexture() {
 
     for (let index = 0; index < 8; index += 1) {
         const seed = 11.7 + index * 23.1;
-        const x = MathUtils.lerp(54, 202, seededRandom(seed));
-        const y = MathUtils.lerp(72, 184, seededRandom(seed + 1));
-        const radius = MathUtils.lerp(34, 72, seededRandom(seed + 2));
+        const x = MathUtils.lerp(54, 202, seededCloudRandom(seed));
+        const y = MathUtils.lerp(72, 184, seededCloudRandom(seed + 1));
+        const radius = MathUtils.lerp(34, 72, seededCloudRandom(seed + 2));
         const gradient = context.createRadialGradient(
             x,
             y,
@@ -93,10 +115,10 @@ function createCloudAlphaTexture() {
     texture.wrapS = ClampToEdgeWrapping;
     texture.wrapT = ClampToEdgeWrapping;
     texture.needsUpdate = true;
-    return texture;
+    return { canvas, texture };
 }
 
-function getCloudBounds(stacks: Stack[] | undefined) {
+function getCloudBounds(stacks: GardenStack[] | undefined) {
     if (!stacks?.length) {
         return {
             centerX: 0,
@@ -132,8 +154,11 @@ function getCloudBounds(stacks: Stack[] | undefined) {
 type CloudLayerProps = {
     cloudy: number;
     foggy: number;
+    quality: GameQualityProfile;
+    shadowUpdateMs?: number;
     shadowStrength: number;
-    stacks: Stack[] | undefined;
+    stacks: GardenStack[] | undefined;
+    sunPosition: Vector3;
     timeOfDay: number;
     windDirection: number;
     windSpeed: number;
@@ -147,6 +172,7 @@ type CloudDefinition = {
     laneZ: number;
     opacityScale: number;
     phase: number;
+    seed: number;
     sizeScale: number;
     tint: string;
     wanderScale: number;
@@ -163,6 +189,15 @@ type CloudSlot = {
     visibility: number;
 };
 
+type CloudCameraFrame = {
+    despawnHalfX: number;
+    despawnHalfZ: number;
+    focusX: number;
+    focusZ: number;
+    spawnHalfX: number;
+    spawnHalfZ: number;
+};
+
 function createCloudSlot(index: number): CloudSlot {
     return {
         active: false,
@@ -172,6 +207,49 @@ function createCloudSlot(index: number): CloudSlot {
         targetVisibility: 0,
         visibility: 0,
     };
+}
+
+function createCloudShadowSample(): CloudShadowSample {
+    return {
+        altitude: 0,
+        height: 0,
+        opacity: 0,
+        rotation: 0,
+        width: 0,
+        x: 0,
+        z: 0,
+    };
+}
+
+function getPrefersReducedMotion() {
+    return (
+        typeof window !== 'undefined' &&
+        typeof window.matchMedia === 'function' &&
+        window.matchMedia(REDUCED_MOTION_QUERY).matches
+    );
+}
+
+function usePrefersReducedMotion() {
+    const [prefersReducedMotion, setPrefersReducedMotion] = useState(
+        getPrefersReducedMotion,
+    );
+
+    useEffect(() => {
+        if (
+            typeof window === 'undefined' ||
+            typeof window.matchMedia !== 'function'
+        ) {
+            return;
+        }
+
+        const mediaQuery = window.matchMedia(REDUCED_MOTION_QUERY);
+        const handleChange = () => setPrefersReducedMotion(mediaQuery.matches);
+        handleChange();
+        mediaQuery.addEventListener('change', handleChange);
+        return () => mediaQuery.removeEventListener('change', handleChange);
+    }, []);
+
+    return prefersReducedMotion;
 }
 
 function spawnCloud(
@@ -210,8 +288,11 @@ function spawnCloud(
 export function CloudLayer({
     cloudy,
     foggy,
+    quality,
+    shadowUpdateMs,
     shadowStrength,
     stacks,
+    sunPosition,
     timeOfDay,
     windDirection,
     windSpeed,
@@ -219,25 +300,54 @@ export function CloudLayer({
     const cloudRefs = useRef<Array<Mesh | null>>([]);
     const materialRefs = useRef<Array<MeshBasicMaterial | null>>([]);
     const cloudSlotsRef = useRef<Array<CloudSlot>>([]);
-    const orbitControls = useGameState((state) => state.orbitControls);
-    const cloudAlphaTexture = useMemo(
+    const cloudShadowSamplesRef = useRef<Array<CloudShadowSample>>(
+        Array.from({ length: MAX_CLOUDS }, createCloudShadowSample),
+    );
+    const cloudSlotsActiveRef = useRef(false);
+    const [hasActiveCloudSlots, setHasActiveCloudSlots] = useState(false);
+    const camera = useThree((state) => state.camera);
+    const { width: viewportWidth, height: viewportHeight } = useThree(
+        (state) => state.size,
+    );
+    const gameCamera = useGameState((state) => state.gameCamera);
+    const cloudAlphaAsset = useMemo(
         () =>
-            typeof document === 'undefined' ? null : createCloudAlphaTexture(),
+            typeof document === 'undefined' ? null : createCloudAlphaAsset(),
         [],
+    );
+    const prefersReducedMotion = usePrefersReducedMotion();
+    const fixedTimeSeconds = useSceneFixedTimeSeconds();
+    const attenuationConfig = useMemo(
+        () =>
+            resolveCloudShadowAttenuationConfig({
+                minimumUpdateMs: shadowUpdateMs,
+                prefersReducedMotion,
+                quality,
+            }),
+        [prefersReducedMotion, quality, shadowUpdateMs],
+    );
+    const shadowProjection = useMemo(
+        () => resolveCloudShadowProjection(sunPosition),
+        [sunPosition],
     );
 
     useEffect(() => {
         return () => {
-            cloudAlphaTexture?.dispose();
+            cloudAlphaAsset?.texture.dispose();
         };
-    }, [cloudAlphaTexture]);
+    }, [cloudAlphaAsset]);
 
     const bounds = useMemo(() => getCloudBounds(stacks), [stacks]);
+    const cameraFrameRef = useRef<CloudCameraFrame>({
+        despawnHalfX: 10 * CLOUD_DESPAWN_MULTIPLIER,
+        despawnHalfZ: 8 * CLOUD_DESPAWN_MULTIPLIER,
+        focusX: bounds.centerX,
+        focusZ: bounds.centerZ,
+        spawnHalfX: 10,
+        spawnHalfZ: 8,
+    });
     const effectiveCloudiness = Math.min(1, cloudy + foggy * 0.35);
-    const daylightVisibility = Math.min(
-        smoothstep(0.18, 0.28, timeOfDay),
-        1 - smoothstep(0.72, 0.82, timeOfDay),
-    );
+    const daylightVisibility = getVisualDaylightAmount(timeOfDay);
     const visibleCloudiness = daylightVisibility * effectiveCloudiness;
 
     const visibleCloudCount =
@@ -259,13 +369,37 @@ export function CloudLayer({
         CLOUD_MAX_COVERAGE_SCALE,
         smoothstep(0.08, 0.78, visibleCloudiness),
     );
-    const shadowCasterCount = Math.min(
-        visibleCloudCount,
-        Math.round(visibleCloudCount * Math.max(0, shadowStrength)),
-    );
     const visibleOpacity =
         daylightVisibility * (0.2 + effectiveCloudiness * 0.26 + foggy * 0.035);
     const windStrength = Math.min(1.4, Math.max(0, windSpeed / 12));
+    const shouldAnimateCloudSlots =
+        visibleCloudCount > 0 || hasActiveCloudSlots;
+    useSceneTimeInvalidation(
+        'cloud-layer',
+        fixedTimeSeconds === undefined && shouldAnimateCloudSlots,
+    );
+
+    useEffect(() => {
+        updateGameProfileMetadata({
+            cloudProjectedShadowCount:
+                attenuationConfig.enabled && shadowStrength > 0
+                    ? visibleCloudCount
+                    : 0,
+            cloudRealShadowCasterCount: 0,
+            cloudVisualCount: visibleCloudCount,
+        });
+    }, [attenuationConfig.enabled, shadowStrength, visibleCloudCount]);
+
+    useEffect(
+        () => () => {
+            updateGameProfileMetadata({
+                cloudProjectedShadowCount: 0,
+                cloudRealShadowCasterCount: 0,
+                cloudVisualCount: 0,
+            });
+        },
+        [],
+    );
 
     const cloudDefinitions = useMemo<Array<CloudDefinition>>(
         () =>
@@ -274,18 +408,31 @@ export function CloudLayer({
                 return {
                     altitude:
                         CLOUD_WORLD_ALTITUDE +
-                        (seededRandom(seed) - 0.5) * CLOUD_ALTITUDE_VARIATION,
-                    driftScale: 0.55 + seededRandom(seed + 1) * 0.45,
+                        (seededCloudRandom(seed) - 0.5) *
+                            CLOUD_ALTITUDE_VARIATION,
+                    driftScale: 0.55 + seededCloudRandom(seed + 1) * 0.45,
                     id: `cloud-slot-${index}-${seed.toFixed(3)}`,
-                    laneX: MathUtils.lerp(-0.72, 0.72, seededRandom(seed + 2)),
-                    laneZ: MathUtils.lerp(-0.68, 0.68, seededRandom(seed + 3)),
-                    opacityScale: 1.05 + seededRandom(seed + 4) * 0.4,
-                    phase: seededRandom(seed + 5) * Math.PI * 2,
-                    sizeScale: 0.78 + seededRandom(seed + 5.5) * 0.34,
-                    tint: seededRandom(seed + 6) > 0.5 ? '#edf2f7' : '#c9d5e0',
-                    wanderScale: 0.55 + seededRandom(seed + 7) * 0.7,
-                    width: 11 + seededRandom(seed + 8) * 9,
-                    height: 6.2 + seededRandom(seed + 9) * 4,
+                    laneX: MathUtils.lerp(
+                        -0.72,
+                        0.72,
+                        seededCloudRandom(seed + 2),
+                    ),
+                    laneZ: MathUtils.lerp(
+                        -0.68,
+                        0.68,
+                        seededCloudRandom(seed + 3),
+                    ),
+                    opacityScale: 1.05 + seededCloudRandom(seed + 4) * 0.4,
+                    phase: seededCloudRandom(seed + 5) * Math.PI * 2,
+                    seed,
+                    sizeScale: 0.78 + seededCloudRandom(seed + 5.5) * 0.34,
+                    tint:
+                        seededCloudRandom(seed + 6) > 0.5
+                            ? '#edf2f7'
+                            : '#c9d5e0',
+                    wanderScale: 0.55 + seededCloudRandom(seed + 7) * 0.7,
+                    width: 11 + seededCloudRandom(seed + 8) * 9,
+                    height: 6.2 + seededCloudRandom(seed + 9) * 4,
                 };
             }),
         [stacks],
@@ -299,29 +446,76 @@ export function CloudLayer({
         );
     }
 
-    useFrame(({ camera, clock }, delta) => {
+    const updateCloudCameraFrame = useCallback(
+        (target?: [x: number, y: number, z: number]) => {
+            const orthographic = camera as OrthographicCamera;
+            if (!orthographic.isOrthographicCamera) {
+                return;
+            }
+
+            const focusX = target?.[0] ?? bounds.centerX;
+            const focusZ = target?.[2] ?? bounds.centerZ;
+            const viewportWorldWidth =
+                (orthographic.right - orthographic.left) / orthographic.zoom ||
+                viewportWidth;
+            const viewportWorldHeight =
+                (orthographic.top - orthographic.bottom) / orthographic.zoom ||
+                viewportHeight;
+            const spawnHalfX = Math.max(
+                10,
+                viewportWorldWidth * CLOUD_SPAWN_HALF_WIDTH_FACTOR,
+            );
+            const spawnHalfZ = Math.max(
+                8,
+                viewportWorldHeight * CLOUD_SPAWN_HALF_HEIGHT_FACTOR,
+            );
+
+            cameraFrameRef.current = {
+                despawnHalfX: spawnHalfX * CLOUD_DESPAWN_MULTIPLIER,
+                despawnHalfZ: spawnHalfZ * CLOUD_DESPAWN_MULTIPLIER,
+                focusX,
+                focusZ,
+                spawnHalfX,
+                spawnHalfZ,
+            };
+
+            for (const mesh of cloudRefs.current) {
+                mesh?.quaternion.copy(camera.quaternion);
+            }
+        },
+        [bounds.centerX, bounds.centerZ, camera, viewportHeight, viewportWidth],
+    );
+
+    useLayoutEffect(() => {
+        if (!gameCamera) {
+            updateCloudCameraFrame();
+            return;
+        }
+
+        return gameCamera.subscribe((snapshot) =>
+            updateCloudCameraFrame(snapshot.target),
+        );
+    }, [gameCamera, updateCloudCameraFrame]);
+
+    useFrame(({ clock }, delta) => {
+        if (visibleCloudCount === 0 && !cloudSlotsActiveRef.current) {
+            return;
+        }
+
         const orthographic = camera as OrthographicCamera;
         if (!orthographic.isOrthographicCamera) {
             return;
         }
 
-        const elapsed = clock.elapsedTime;
-        const focusX = orbitControls?.target.x ?? bounds.centerX;
-        const focusZ = orbitControls?.target.z ?? bounds.centerZ;
-        const viewportWidth =
-            (orthographic.right - orthographic.left) / orthographic.zoom;
-        const viewportHeight =
-            (orthographic.top - orthographic.bottom) / orthographic.zoom;
-        const spawnHalfX = Math.max(
-            10,
-            viewportWidth * CLOUD_SPAWN_HALF_WIDTH_FACTOR,
-        );
-        const spawnHalfZ = Math.max(
-            8,
-            viewportHeight * CLOUD_SPAWN_HALF_HEIGHT_FACTOR,
-        );
-        const despawnHalfX = spawnHalfX * CLOUD_DESPAWN_MULTIPLIER;
-        const despawnHalfZ = spawnHalfZ * CLOUD_DESPAWN_MULTIPLIER;
+        const elapsed = fixedTimeSeconds ?? clock.elapsedTime;
+        const {
+            despawnHalfX,
+            despawnHalfZ,
+            focusX,
+            focusZ,
+            spawnHalfX,
+            spawnHalfZ,
+        } = cameraFrameRef.current;
 
         const windDirectionRadians = (windDirection * Math.PI) / 180;
         const windX = Math.sin(windDirectionRadians);
@@ -348,24 +542,55 @@ export function CloudLayer({
             const material = materialRefs.current[index];
             const cloud = cloudDefinitions[index];
             const slot = cloudSlotsRef.current[index];
+            const shadowSample = cloudShadowSamplesRef.current[index];
             const shouldBeVisible = index < visibleCloudCount;
-            if (
-                shouldBeVisible &&
-                !slot.active &&
-                elapsed >= slot.cooldownUntil
-            ) {
-                spawnCloud(slot, cloud, focusX, focusZ, spawnHalfX, spawnHalfZ);
-            }
+            if (fixedTimeSeconds !== undefined) {
+                if (shouldBeVisible) {
+                    const placement = resolveDeterministicCloudSpawn({
+                        focusX,
+                        focusZ,
+                        laneX: cloud.laneX,
+                        laneZ: cloud.laneZ,
+                        seed: cloud.seed,
+                        spawnHalfX,
+                        spawnHalfZ,
+                    });
+                    slot.active = true;
+                    slot.baseX = placement.x;
+                    slot.baseZ = placement.z;
+                    slot.targetVisibility = 1;
+                    slot.visibility = 1;
+                } else {
+                    slot.active = false;
+                    slot.targetVisibility = 0;
+                    slot.visibility = 0;
+                }
+            } else {
+                if (
+                    shouldBeVisible &&
+                    !slot.active &&
+                    elapsed >= slot.cooldownUntil
+                ) {
+                    spawnCloud(
+                        slot,
+                        cloud,
+                        focusX,
+                        focusZ,
+                        spawnHalfX,
+                        spawnHalfZ,
+                    );
+                }
 
-            if (
-                slot.active &&
-                shouldBeVisible &&
-                (Math.abs(slot.baseX - focusX) > despawnHalfX ||
-                    Math.abs(slot.baseZ - focusZ) > despawnHalfZ)
-            ) {
-                slot.targetVisibility = 0;
-            } else if (slot.active) {
-                slot.targetVisibility = shouldBeVisible ? 1 : 0;
+                if (
+                    slot.active &&
+                    shouldBeVisible &&
+                    (Math.abs(slot.baseX - focusX) > despawnHalfX ||
+                        Math.abs(slot.baseZ - focusZ) > despawnHalfZ)
+                ) {
+                    slot.targetVisibility = 0;
+                } else if (slot.active) {
+                    slot.targetVisibility = shouldBeVisible ? 1 : 0;
+                }
             }
 
             if (!slot.active) {
@@ -375,55 +600,67 @@ export function CloudLayer({
                 if (material) {
                     material.opacity = 0;
                 }
+                shadowSample.opacity = 0;
                 continue;
             }
 
-            const fadeDuration =
-                slot.targetVisibility > slot.visibility
-                    ? CLOUD_FADE_IN_DURATION
-                    : CLOUD_FADE_OUT_DURATION;
-            const fadeStep = fadeDuration > 0 ? 1 / fadeDuration : 1;
-            if (slot.targetVisibility > slot.visibility) {
-                slot.visibility = Math.min(
-                    1,
-                    slot.visibility + delta * fadeStep,
-                );
-            } else if (slot.targetVisibility < slot.visibility) {
-                slot.visibility = Math.max(
-                    0,
-                    slot.visibility - delta * fadeStep,
-                );
+            if (fixedTimeSeconds === undefined) {
+                const fadeDuration =
+                    slot.targetVisibility > slot.visibility
+                        ? CLOUD_FADE_IN_DURATION
+                        : CLOUD_FADE_OUT_DURATION;
+                const fadeStep = fadeDuration > 0 ? 1 / fadeDuration : 1;
+                if (slot.targetVisibility > slot.visibility) {
+                    slot.visibility = Math.min(
+                        1,
+                        slot.visibility + delta * fadeStep,
+                    );
+                } else if (slot.targetVisibility < slot.visibility) {
+                    slot.visibility = Math.max(
+                        0,
+                        slot.visibility - delta * fadeStep,
+                    );
+                }
+
+                if (slot.targetVisibility <= 0 && slot.visibility <= 0.001) {
+                    slot.active = false;
+                    slot.cooldownUntil = elapsed + 0.3 + Math.random() * 0.6;
+                    if (mesh) {
+                        mesh.visible = false;
+                    }
+                    if (material) {
+                        material.opacity = 0;
+                    }
+                    shadowSample.opacity = 0;
+                    continue;
+                }
             }
 
-            if (slot.targetVisibility <= 0 && slot.visibility <= 0.001) {
-                slot.active = false;
-                slot.cooldownUntil = elapsed + 0.3 + Math.random() * 0.6;
-                if (mesh) {
-                    mesh.visible = false;
-                }
-                if (material) {
-                    material.opacity = 0;
-                }
-                continue;
-            }
-
-            slot.baseX = wrapValue(
-                slot.baseX + windX * driftSpeed * cloud.driftScale * delta,
+            const driftSeconds =
+                fixedTimeSeconds === undefined ? delta : fixedTimeSeconds;
+            const driftBaseX = wrapValue(
+                slot.baseX +
+                    windX * driftSpeed * cloud.driftScale * driftSeconds,
                 wrapMinX,
                 wrapMaxX,
             );
-            slot.baseZ = wrapValue(
-                slot.baseZ + windZ * driftSpeed * cloud.driftScale * delta,
+            const driftBaseZ = wrapValue(
+                slot.baseZ +
+                    windZ * driftSpeed * cloud.driftScale * driftSeconds,
                 wrapMinZ,
                 wrapMaxZ,
             );
+            if (fixedTimeSeconds === undefined) {
+                slot.baseX = driftBaseX;
+                slot.baseZ = driftBaseZ;
+            }
             const wander =
                 Math.sin(elapsed * (0.06 + windStrength * 0.08) + cloud.phase) *
                 cloud.wanderScale *
                 (0.12 + windStrength * 0.22);
 
             const x = wrapValue(
-                slot.baseX +
+                driftBaseX +
                     crossX * wander +
                     Math.sin(elapsed * 0.035 + cloud.phase) *
                         cloud.wanderScale *
@@ -432,7 +669,7 @@ export function CloudLayer({
                 wrapMaxX,
             );
             const z = wrapValue(
-                slot.baseZ +
+                driftBaseZ +
                     crossZ * wander +
                     Math.cos(elapsed * 0.032 + cloud.phase) *
                         cloud.wanderScale *
@@ -448,7 +685,6 @@ export function CloudLayer({
             if (mesh) {
                 mesh.visible = true;
                 mesh.position.set(x, y, z);
-                mesh.quaternion.copy(camera.quaternion);
                 const scale =
                     (CLOUD_BASE_SCALE + slot.visibility * CLOUD_SCALE_RANGE) *
                     cloud.sizeScale *
@@ -459,42 +695,77 @@ export function CloudLayer({
                 material.opacity =
                     visibleOpacity * cloud.opacityScale * slot.visibility;
             }
+            const shadowScale =
+                (CLOUD_BASE_SCALE + slot.visibility * CLOUD_SCALE_RANGE) *
+                cloud.sizeScale *
+                coverageScale;
+            shadowSample.altitude = y;
+            shadowSample.height = cloud.height * shadowScale * 1.05;
+            shadowSample.opacity = slot.visibility;
+            shadowSample.rotation = cloud.phase * 0.08;
+            shadowSample.width = cloud.width * shadowScale * 1.12;
+            shadowSample.x = x;
+            shadowSample.z = z;
+        }
+
+        const hasActiveSlots = cloudSlotsRef.current.some(
+            (slot) => slot.active,
+        );
+        if (hasActiveSlots !== cloudSlotsActiveRef.current) {
+            cloudSlotsActiveRef.current = hasActiveSlots;
+            setHasActiveCloudSlots(hasActiveSlots);
         }
     });
 
-    if (!cloudAlphaTexture || visibleOpacity <= 0.005) {
+    if (!cloudAlphaAsset) {
         return null;
     }
 
     return (
         <>
-            {cloudDefinitions.map((cloud, index) => (
-                <mesh
-                    key={cloud.id}
-                    castShadow={index < shadowCasterCount}
-                    frustumCulled={false}
-                    ref={(mesh) => {
-                        cloudRefs.current[index] = mesh;
-                    }}
-                >
-                    <planeGeometry args={[cloud.width, cloud.height]} />
-                    <meshDepthMaterial attach="customDepthMaterial" alphaHash />
-                    <meshBasicMaterial
-                        alphaMap={cloudAlphaTexture}
-                        alphaTest={CLOUD_ALPHA_TEST}
-                        color={cloud.tint}
-                        depthWrite={false}
-                        fog={false}
-                        opacity={0}
-                        ref={(material) => {
-                            materialRefs.current[index] = material;
-                        }}
-                        side={DoubleSide}
-                        toneMapped={false}
-                        transparent
-                    />
-                </mesh>
-            ))}
+            <CloudShadowAttenuation
+                bounds={bounds}
+                cloudAlphaCanvas={cloudAlphaAsset.canvas}
+                config={attenuationConfig}
+                mode={quality.cloudShadowMode}
+                projection={shadowProjection}
+                samplesRef={cloudShadowSamplesRef}
+                strength={shadowStrength}
+            />
+            {shouldAnimateCloudSlots &&
+                cloudDefinitions.map((cloud, index) => (
+                    <group
+                        key={cloud.id}
+                        name={`Environment:CloudSlot:${index}`}
+                    >
+                        <mesh
+                            castShadow={false}
+                            frustumCulled={false}
+                            name={`Environment:CloudBillboard:${index}`}
+                            renderOrder={CLOUD_RENDER_ORDER}
+                            ref={(mesh) => {
+                                cloudRefs.current[index] = mesh;
+                                mesh?.quaternion.copy(camera.quaternion);
+                            }}
+                        >
+                            <planeGeometry args={[cloud.width, cloud.height]} />
+                            <meshBasicMaterial
+                                alphaMap={cloudAlphaAsset.texture}
+                                alphaTest={CLOUD_ALPHA_TEST}
+                                color={cloud.tint}
+                                depthWrite={false}
+                                fog={false}
+                                opacity={0}
+                                ref={(material) => {
+                                    materialRefs.current[index] = material;
+                                }}
+                                side={DoubleSide}
+                                toneMapped={false}
+                                transparent
+                            />
+                        </mesh>
+                    </group>
+                ))}
         </>
     );
 }

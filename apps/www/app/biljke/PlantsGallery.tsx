@@ -1,39 +1,62 @@
 'use client';
 
-import type { PlantData } from '@gredice/client';
-import { useSearchParam } from '@signalco/hooks/useSearchParam';
-import { orderBy } from '@signalco/js';
-import { Gallery } from '@signalco/ui/Gallery';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { orderBy } from '@gredice/js/arrays';
+import { Gallery } from '@gredice/ui/Gallery';
+import { GameSeedlingIcon } from '@gredice/ui/GameIcons';
+import { PublicEmptyState } from '../../components/shared/placeholders/PublicEmptyState';
+import { useClientSearchParam } from '../../hooks/useClientSearchParam';
+import { matchingPlantAlternativeName } from '../../lib/plants/plantSearch';
+import { normalizeSearchText } from '../../lib/search/normalizeSearchText';
 import { PlantsGalleryItem } from './PlantsGalleryItem';
+import {
+    cataloguePlantMatchesSearch,
+    matchingCatalogueSortName,
+    type PlantCatalogueItem,
+} from './plantCatalogue';
 
 export function PlantsGallery({
+    initialSearch = '',
+    initialSeedTimeFilter = '',
     plants,
 }: {
-    plants: (PlantData & { isRecommended?: boolean })[] | undefined;
+    initialSearch?: string;
+    initialSeedTimeFilter?: string;
+    plants: PlantCatalogueItem[];
 }) {
-    const [search] = useSearchParam('pretraga');
-    const [seedTimeFilter] = useSearchParam('vrijemeZaSijanje');
+    const [search] = useClientSearchParam('pretraga', initialSearch);
+    const [seedTimeFilter] = useClientSearchParam(
+        'vrijemeZaSijanje',
+        initialSeedTimeFilter,
+    );
+    const normalizedSearch = normalizeSearchText(search);
     const onlySeedTimePlants = seedTimeFilter === '1';
     const filteredPlants = orderBy(plants ?? [], (a, b) =>
         a.information.name.localeCompare(b.information.name),
     )
         .filter((plant) => !onlySeedTimePlants || plant.isRecommended)
-        .filter(
-            (plant) =>
-                !search ||
-                plant.information.name
-                    .toLowerCase()
-                    .includes(search.toLowerCase()),
-        )
-        .map((plant) => ({ ...plant, id: plant.id.toString() }));
+        .filter((plant) => cataloguePlantMatchesSearch(plant, normalizedSearch))
+        .map((plant) => {
+            const matchingSortName = matchingCatalogueSortName(
+                plant,
+                normalizedSearch,
+            );
+            return {
+                ...plant,
+                id: plant.id.toString(),
+                matchingAlternativeName: matchingPlantAlternativeName(
+                    plant,
+                    normalizedSearch,
+                ),
+                matchingSortName,
+            };
+        });
 
     return (
         <>
             {filteredPlants.length === 0 && (
-                <Typography level="body2" className="py-8 text-center">
+                <PublicEmptyState icon={GameSeedlingIcon}>
                     Nema rezultata pretrage.
-                </Typography>
+                </PublicEmptyState>
             )}
             <Gallery
                 gridHeader=""

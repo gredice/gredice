@@ -1,5 +1,6 @@
 {
     "$schema": "https://openapi.vercel.sh/vercel.json",
+    "installCommand": "pnpm install --frozen-lockfile",
     "crons": [
         {
             "path": "/api/stripe/cron",
@@ -7,6 +8,10 @@
         },
         {
             "path": "/api/internal/cron/notifications-digest",
+            "schedule": "0 * * * *"
+        },
+        {
+            "path": "/api/internal/cron/web-push",
             "schedule": "0 * * * *"
         },
         {
@@ -19,7 +24,15 @@
         },
         {
             "path": "/api/internal/cron/delivery-ready-emails",
-            "schedule": "*/5 * * * *"
+            "schedule": "0 * * * *"
+        },
+        {
+            "path": "/api/internal/cron/delivery-notification-health",
+            "schedule": "0 * * * *"
+        },
+        {
+            "path": "/api/internal/cron/delivery-tracking-retention",
+            "schedule": "0 * * * *"
         },
         {
             "path": "/api/internal/cron/update-farm-weather",
@@ -28,6 +41,42 @@
         {
             "path": "/api/internal/cron/achievements",
             "schedule": "0 * * * *"
+        },
+        {
+            "path": "/api/internal/cron/work-dispatch",
+            "schedule": "* * * * *"
+        },
+        {
+            "path": "/api/internal/cron/garden-preview-blobs",
+            "schedule": "23 3 * * *"
+        },
+        {
+            "path": "/api/internal/cron/garden-preview-blob-deletions",
+            "schedule": "0 3 * * *"
+        },
+        {
+            "path": "/api/internal/cron/wallpaper-blobs",
+            "schedule": "17 * * * *"
+        },
+        {
+            "path": "/api/internal/cron/outlet-lifecycle",
+            "schedule": "0 * * * *"
+        },
+        {
+            "path": "/api/internal/cron/stripe-checkout-orphan-recovery",
+            "schedule": "*/5 * * * *"
+        },
+        {
+            "path": "/api/internal/cron/social-publishing",
+            "schedule": "0 * * * *"
+        },
+        {
+            "path": "/api/internal/cron/temp-accounts",
+            "schedule": "0 * * * *"
+        },
+        {
+            "path": "/api/internal/cron/publish-price-list",
+            "schedule": "0 5 * * *"
         }
     ]
 }

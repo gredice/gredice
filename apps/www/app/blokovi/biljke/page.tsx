@@ -1,17 +1,21 @@
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { PageHeader } from '@gredice/ui/PageHeader';
+import { Stack } from '@gredice/ui/Stack';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { PageFilterInputNoSSR } from '../../../components/shared/PageFilterInputNoSSR';
-import { PageHeader } from '../../../components/shared/PageHeader';
 import { getPlantsData } from '../../../lib/plants/getPlantsData';
+import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
+import { KnownPages } from '../../../src/KnownPages';
 import { PlantBlockGallery } from '../PlantBlockGallery';
 
-export const revalidate = 3600;
+export const revalidate = 43200; // 12 hours
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createPublicMetadata({
     title: 'Biljke - 3D prikaz',
     description: 'Pregledaj kako biljke rastu u 3D prikazu.',
-};
+    path: KnownPages.BlockPlants,
+    category: '3D prikaz biljaka',
+});
 
 export default async function BlockPlantsPage() {
     const plants = await getPlantsData();

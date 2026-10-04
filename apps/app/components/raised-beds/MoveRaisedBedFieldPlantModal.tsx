@@ -1,13 +1,17 @@
 'use client';
 
-import { Button } from '@signalco/ui-primitives/Button';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Row } from '@signalco/ui-primitives/Row';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Replace } from '@gredice/ui/icons';
+import { Modal } from '@gredice/ui/Modal';
+import { Row } from '@gredice/ui/Row';
+import { SelectItems } from '@gredice/ui/SelectItems';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import { useEffect, useState, useTransition } from 'react';
 import { moveRaisedBedFieldPlantAction } from '../../app/(actions)/raisedBedFieldsActions';
+import { raisedBedFieldCardButtonClassName } from './RaisedBedFieldCard';
 
 type MoveRaisedBedFieldPlantOption = {
     value: string;
@@ -20,6 +24,7 @@ type MoveRaisedBedFieldPlantModalProps = {
     sourcePlantPlaceEventId: number;
     sourcePlantLabel: string;
     targetOptions: MoveRaisedBedFieldPlantOption[];
+    triggerVariant?: 'button' | 'icon' | 'fieldIndex';
 };
 
 export function MoveRaisedBedFieldPlantModal({
@@ -28,6 +33,7 @@ export function MoveRaisedBedFieldPlantModal({
     sourcePlantPlaceEventId,
     sourcePlantLabel,
     targetOptions,
+    triggerVariant = 'button',
 }: MoveRaisedBedFieldPlantModalProps) {
     const [open, setOpen] = useState(false);
     const [selectedTarget, setSelectedTarget] = useState(
@@ -70,18 +76,41 @@ export function MoveRaisedBedFieldPlantModal({
         <Modal
             title={`Premjesti biljku: ${sourcePlantLabel}`}
             trigger={
-                <Button
-                    variant="outlined"
-                    size="sm"
-                    disabled={targetOptions.length === 0}
-                >
-                    Premjesti
-                </Button>
+                triggerVariant === 'fieldIndex' ? (
+                    <button
+                        type="button"
+                        title="Premjesti biljku"
+                        disabled={targetOptions.length === 0}
+                        className={cx(
+                            'inline-flex min-w-0 shrink-0 items-center rounded-full px-2 py-1 text-xs font-semibold transition-opacity hover:opacity-80 disabled:pointer-events-none disabled:opacity-50',
+                            raisedBedFieldCardButtonClassName,
+                        )}
+                    >
+                        {sourcePositionIndex + 1}
+                    </button>
+                ) : triggerVariant === 'icon' ? (
+                    <IconButton
+                        variant="outlined"
+                        size="sm"
+                        title="Premjesti biljku"
+                        disabled={targetOptions.length === 0}
+                    >
+                        <Replace className="size-4 shrink-0" />
+                    </IconButton>
+                ) : (
+                    <Button
+                        variant="outlined"
+                        size="sm"
+                        disabled={targetOptions.length === 0}
+                    >
+                        Premjesti
+                    </Button>
+                )
             }
             open={open}
             onOpenChange={setOpen}
         >
-            <Stack spacing={2}>
+            <Stack spacing={4}>
                 <Typography level="body2">
                     Premještanje čuva postojeće datume događaja i prenosi samo
                     odabranu povijest biljke. Ako na ciljnom polju postoji
@@ -98,7 +127,7 @@ export function MoveRaisedBedFieldPlantModal({
                     disabled={isPending || targetOptions.length === 0}
                 />
 
-                <Row spacing={1}>
+                <Row spacing={2}>
                     <Button
                         variant="plain"
                         onClick={() => setOpen(false)}

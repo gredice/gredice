@@ -1,34 +1,46 @@
 'use client';
 
-import { Check } from '@signalco/ui-icons';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { useState } from 'react';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Check } from '@gredice/ui/icons';
 import { acceptRaisedBedFieldAction } from '../../(actions)/raisedBedFieldsActions';
 import { AcceptRequestModal } from './AcceptRequestModal';
 
 interface AcceptRaisedBedFieldModalProps {
     raisedBedId: number;
     positionIndex: number;
+    expectedPlantCycleEventId: number;
+    expectedPlantCycleVersionEventId: number;
+    expectedPlantSortId: number;
     label: string;
+    raisedBedPhysicalId?: string;
     disabled?: boolean;
+    onConfirm?: () => unknown | Promise<unknown>;
 }
 
 export function AcceptRaisedBedFieldModal({
     raisedBedId,
     positionIndex,
+    expectedPlantCycleEventId,
+    expectedPlantCycleVersionEventId,
+    expectedPlantSortId,
     label,
+    raisedBedPhysicalId,
     disabled = false,
+    onConfirm,
 }: AcceptRaisedBedFieldModalProps) {
-    const [loading, setLoading] = useState(false);
     const handleConfirm = async () => {
-        try {
-            setLoading(true);
-            await acceptRaisedBedFieldAction(raisedBedId, positionIndex);
-        } catch (error) {
-            console.error('Error accepting field request:', error);
-        } finally {
-            setLoading(false);
+        if (onConfirm) {
+            await onConfirm();
+            return;
         }
+
+        await acceptRaisedBedFieldAction(
+            raisedBedId,
+            positionIndex,
+            expectedPlantCycleEventId,
+            expectedPlantSortId,
+            expectedPlantCycleVersionEventId,
+        );
     };
 
     return (
@@ -38,8 +50,8 @@ export function AcceptRaisedBedFieldModal({
             trigger={
                 <IconButton
                     variant="plain"
+                    size="xs"
                     title="Potvrdi sijanje"
-                    loading={loading}
                     disabled={disabled}
                 >
                     <Check className="size-4 shrink-0" />
@@ -47,6 +59,7 @@ export function AcceptRaisedBedFieldModal({
             }
             title="Potvrda sijanja"
             header="Potvrda sijanja"
+            raisedBedPhysicalId={raisedBedPhysicalId}
         />
     );
 }

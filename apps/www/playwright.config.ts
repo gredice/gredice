@@ -9,6 +9,7 @@ import {
     getPlaywrightBaseUrl,
     shouldReusePlaywrightServer,
 } from '../../scripts/app-registry.ts';
+import { blobGuardLaunchArgs } from '../../scripts/blob-test-fixtures.mjs';
 
 const app = getAppByName('www');
 const reporter: PlaywrightTestConfig['reporter'] = [
@@ -17,7 +18,18 @@ const reporter: PlaywrightTestConfig['reporter'] = [
 ];
 
 export const config: PlaywrightTestConfig = {
-    testDir: './',
+    testDir: './tests',
+    testIgnore: [
+        'related-faq.spec.tsx',
+        'pricing-display.spec.tsx',
+        'public-profile.spec.tsx',
+        'avatar-profile-links.spec.tsx',
+        'public-garden-members.spec.tsx',
+        'user-leaderboard.spec.tsx',
+        'achievement-catalog.spec.tsx',
+        'experience-guide.spec.tsx',
+        'harvest-trace-group.spec.tsx',
+    ],
     snapshotDir: './__snapshots__',
     timeout: 10 * 1000,
     fullyParallel: true,
@@ -26,29 +38,32 @@ export const config: PlaywrightTestConfig = {
     workers: process.env.CI ? 4 : undefined,
     reporter,
     use: {
+        launchOptions: { args: blobGuardLaunchArgs() },
         baseURL: getPlaywrightBaseUrl(app),
         trace: 'on-first-retry',
         ctPort: getComponentTestPort(app),
+        ctViteConfig: {
+            // Playwright CT 1.62 bundles Vite 8, whose CJS interop turns default imports
+            // of Next's CJS entry points (e.g. next/image) into module objects.
+            legacy: { inconsistentCjsInterop: true },
+            resolve: {
+                dedupe: ['nuqs', 'react', 'react-dom'],
+            },
+        },
     },
     projects: [
         {
             name: 'chromium',
-            testIgnore: /visual\.spec\.ts$/,
             use: { ...devices['Desktop Chrome'] },
-        },
-        {
-            name: 'visual',
-            testMatch: /visual\.spec\.ts$/,
-            workers: 4,
-            retries: 3,
-            use: {
-                ...devices['Desktop Chrome'],
-                viewport: { width: 1280, height: 720 },
-            },
         },
     ],
     webServer: {
-        command: 'pnpm start',
+        command: 'node ../../scripts/run-app-command.mjs start',
+        env: {
+            GREDICE_DETACH_CHILD_PROCESS: 'false',
+            GREDICE_PLAYWRIGHT_FEATURED_GARDENS_FIXTURE: 'true',
+        },
+        gracefulShutdown: { signal: 'SIGTERM', timeout: 5000 },
         url: getPlaywrightBaseUrl(app),
         reuseExistingServer: shouldReusePlaywrightServer(),
     },

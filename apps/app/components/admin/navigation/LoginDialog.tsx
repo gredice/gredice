@@ -1,26 +1,27 @@
 'use client';
 
+import { getBrowserGrediceAppOrigin } from '@gredice/client';
+import { Alert } from '@gredice/ui/Alert';
 import {
+    authCurrentUserQueryKeys,
     FacebookLoginButton,
     GoogleLoginButton,
     useLastLoginProvider,
 } from '@gredice/ui/auth';
+import { Button } from '@gredice/ui/Button';
+import { Input } from '@gredice/ui/Input';
+import { Mail, Warning } from '@gredice/ui/icons';
+import { Modal } from '@gredice/ui/Modal';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { usePostHog } from '@posthog/next';
-import { authCurrentUserQueryKeys } from '@signalco/auth-client';
-import { Alert } from '@signalco/ui/Alert';
-import { Warning } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Divider } from '@signalco/ui-primitives/Divider';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
-import { useActionState, useCallback } from 'react';
+import { useActionState, useCallback, useState } from 'react';
 import { invalidatePage } from '../../../app/(actions)/sharedActions';
 import { queryClient } from '../../providers/ClientAppProvider';
 
 export function LoginDialog() {
     const posthog = usePostHog();
+    const [emailExpanded, setEmailExpanded] = useState(false);
     const fetchLastLogin = useCallback(
         () => fetch('/api/gredice/api/auth/last-login'),
         [],
@@ -82,12 +83,7 @@ export function LoginDialog() {
                 ? '/prijava/google-prijava/povratak'
                 : '/prijava/facebook-prijava/povratak';
         const redirectUrl = `${window.location.origin}${callbackPath}`;
-        const apiBaseUrl =
-            window.location.hostname.endsWith('.test') ||
-            window.location.hostname === 'localhost' ||
-            window.location.hostname === '127.0.0.1'
-                ? 'https://api.gredice.test'
-                : 'https://api.gredice.com';
+        const apiBaseUrl = getBrowserGrediceAppOrigin('api');
         const authUrl = new URL(`/api/auth/${provider}`, apiBaseUrl);
         authUrl.searchParams.set('redirect', redirectUrl);
         authUrl.searchParams.set(
@@ -105,66 +101,77 @@ export function LoginDialog() {
                 title="Prijava"
                 className="md:max-w-md"
             >
-                <Stack spacing={4}>
+                <Stack spacing={8}>
                     <Typography level="h4" component="p">
                         Prijava
                     </Typography>
-                    <form action={submitAction}>
-                        <Stack spacing={4}>
-                            <Stack spacing={1}>
-                                <Input
-                                    name="email"
-                                    label="Email"
-                                    placeholder="email@email.com"
-                                    type="email"
-                                    autoComplete="email"
-                                />
-                                <Input
-                                    name="password"
-                                    label="Zaporka"
-                                    type="password"
-                                    autoComplete="current-password"
-                                />
-                            </Stack>
-                            <Button
-                                type="submit"
-                                loading={isPending}
-                                variant="solid"
-                            >
-                                Prijavi se
-                            </Button>
-                            {error && (
-                                <Alert
-                                    color="danger"
-                                    startDecorator={<Warning />}
-                                >
-                                    Greška prilikom prijave. Pokušajte ponovo.
-                                </Alert>
-                            )}
-                        </Stack>
-                    </form>
-                    <Stack spacing={2}>
-                        <div className="relative">
-                            <div className="absolute inset-0 flex items-center">
-                                <Divider />
-                            </div>
-                            <div className="relative flex justify-center">
-                                <span className="bg-background px-2 text-xs rounded-sm">
-                                    ili nastavi sa
-                                </span>
-                            </div>
-                        </div>
-                        <Stack spacing={1}>
-                            <FacebookLoginButton
-                                onClick={() => handleOAuthLogin('facebook')}
-                                lastUsed={lastLoginProvider === 'facebook'}
-                            />
+                    {!emailExpanded ? (
+                        <Stack spacing={2}>
                             <GoogleLoginButton
                                 onClick={() => handleOAuthLogin('google')}
                                 lastUsed={lastLoginProvider === 'google'}
-                            />
+                            >
+                                Nastavi sa Google
+                            </GoogleLoginButton>
+                            <FacebookLoginButton
+                                onClick={() => handleOAuthLogin('facebook')}
+                                lastUsed={lastLoginProvider === 'facebook'}
+                            >
+                                Nastavi sa Facebook
+                            </FacebookLoginButton>
+                            <Button
+                                type="button"
+                                variant="outlined"
+                                color="neutral"
+                                fullWidth
+                                startDecorator={
+                                    <Mail className="h-4 w-4 shrink-0" />
+                                }
+                                onClick={() => setEmailExpanded(true)}
+                            >
+                                Nastavi s emailom
+                            </Button>
                         </Stack>
-                    </Stack>
+                    ) : (
+                        <form action={submitAction} className="w-full">
+                            <Stack spacing={8}>
+                                <Stack spacing={2}>
+                                    <Input
+                                        name="email"
+                                        label="Email"
+                                        placeholder="email@email.com"
+                                        type="email"
+                                        autoComplete="email"
+                                        fullWidth
+                                    />
+                                    <Input
+                                        name="password"
+                                        label="Zaporka"
+                                        type="password"
+                                        autoComplete="current-password"
+                                        fullWidth
+                                    />
+                                </Stack>
+                                <Button
+                                    type="submit"
+                                    loading={isPending}
+                                    variant="solid"
+                                    fullWidth
+                                >
+                                    Prijavi se
+                                </Button>
+                                {error && (
+                                    <Alert
+                                        color="danger"
+                                        startDecorator={<Warning />}
+                                    >
+                                        Greška prilikom prijave. Pokušajte
+                                        ponovo.
+                                    </Alert>
+                                )}
+                            </Stack>
+                        </form>
+                    )}
                 </Stack>
             </Modal>
         </div>

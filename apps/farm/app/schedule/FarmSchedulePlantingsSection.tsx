@@ -1,33 +1,50 @@
-import { calculatePlantsPerField } from '@gredice/js/plants';
 import type {
     EntityStandardized,
     RaisedBedFieldAssignableFarmUser,
 } from '@gredice/storage';
-import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
-import { UserAvatar } from '@gredice/ui/UserAvatar';
-import { Checkbox } from '@signalco/ui-primitives/Checkbox';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Suspense } from 'react';
 import { CompletePlantingModal } from './CompletePlantingModal';
-import type { FarmScheduleDayData } from './scheduleData';
+import { FarmSchedulePlantingTaskCard } from './FarmSchedulePlantingTaskCard';
+import { FarmScheduleSelectedPlantingTaskCard } from './FarmScheduleSelectedPlantingTaskCard';
+import { RaisedBedScheduleGroupHeader } from './RaisedBedScheduleGroupHeader';
+import { RaisedBedScheduleGroupHeaderWithPhotos } from './RaisedBedScheduleGroupHeaderWithPhotos';
+import { ScheduleSectionHeader } from './ScheduleSectionHeader';
+import { ScheduleSectionSummaryBadges } from './ScheduleSectionSummaryBadges';
+import type {
+    FarmScheduleDayData,
+    FarmScheduleRaisedBedPhotoPreview,
+} from './scheduleData';
 import {
-    formatMinutes,
+    buildFarmSchedulePlantingLabel,
+    buildFarmScheduleSelectedPlantingLabel,
+    getRecommendedPlantCountPerField,
+} from './schedulePlantingPresentation';
+import {
+    compareScheduleDates,
+    getFieldPhysicalPositionIndex,
     groupRaisedBedsForSchedule,
-    isFieldApproved,
-    isFieldCompleted,
     PLANTING_TASK_DURATION_MINUTES,
 } from './scheduleShared';
+import { getSchedulePlantingTaskIdentity } from './scheduleTaskIdentity';
+import type { FarmScheduleSelectedPlanting } from './selectedPlantingSchedule';
 
 type FarmRaisedBedField = FarmScheduleDayData['scheduledFields'][number];
 
 interface FarmSchedulePlantingsSectionProps {
     raisedBeds: FarmScheduleDayData['raisedBeds'];
     scheduledFields: FarmScheduleDayData['scheduledFields'];
+    scheduledSelectedPlantings: FarmScheduleSelectedPlanting[];
     plantSorts: EntityStandardized[] | null | undefined;
     userId: string;
-    assignedUserByFieldId: Map<number, RaisedBedFieldAssignableFarmUser>;
+    assignedUserByFieldIdPromise: Promise<
+        Map<number, RaisedBedFieldAssignableFarmUser>
+    >;
+    raisedBedPhotoPreviewByIdPromise: Promise<
+        Map<number, FarmScheduleRaisedBedPhotoPreview>
+    >;
+    selectedDateKey: string;
 }
 
 function buildFieldLabel(
@@ -37,26 +54,28 @@ function buildFieldLabel(
     const sort = field.plantSortId
         ? plantSortById.get(field.plantSortId)
         : null;
-    if (!field.plantSortId || !sort) {
-        return `${field.positionIndex + 1} - sijanje: ? Nepoznato`;
-    }
 
-    const seedingDistance =
-        sort.information?.plant?.attributes?.seedingDistance;
-    const totalPlants = seedingDistance
-        ? calculatePlantsPerField(seedingDistance).totalPlants
-        : null;
-    return `${field.positionIndex + 1} - sijanje: ${totalPlants ?? '?'} ${sort.information?.name ?? 'Nepoznato'}`;
+    return buildFarmSchedulePlantingLabel({
+        plantName: sort?.information?.name,
+        recommendedPlantCount: getRecommendedPlantCountPerField(sort),
+        sowingLocation: field.sowingLocation,
+    });
 }
 
 export function FarmSchedulePlantingsSection({
     raisedBeds,
     scheduledFields,
+    scheduledSelectedPlantings,
     plantSorts,
     userId,
-    assignedUserByFieldId,
+    assignedUserByFieldIdPromise,
+    raisedBedPhotoPreviewByIdPromise,
+    selectedDateKey,
 }: FarmSchedulePlantingsSectionProps) {
-    if (scheduledFields.length === 0) {
+    if (
+        scheduledFields.length === 0 &&
+        scheduledSelectedPlantings.length === 0
+    ) {
         return null;
     }
 
@@ -68,7 +87,14 @@ export function FarmSchedulePlantingsSection({
     }
 
     const affectedRaisedBedIds = [
-        ...new Set(scheduledFields.map((field) => field.raisedBedId)),
+        ...new Set([
+            ...scheduledFields.map((field) => field.raisedBedId),
+            ...scheduledSelectedPlantings.flatMap(({ planting }) =>
+                planting.memberships.map(
+                    (membership) => membership.raisedBedField.raisedBedId,
+                ),
+            ),
+        ]),
     ];
     const raisedBedGroups = groupRaisedBedsForSchedule(
         raisedBeds,
@@ -76,7 +102,8 @@ export function FarmSchedulePlantingsSection({
     );
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={6}>
+            <ScheduleSectionHeader section="sowing" />
             {raisedBedGroups.map(
                 ({ key, physicalId, raisedBeds: groupedRaisedBeds }) => {
                     const dayFields = scheduledFields
@@ -86,185 +113,193 @@ export function FarmSchedulePlantingsSection({
                                     raisedBed.id === field.raisedBedId,
                             ),
                         )
-                        .sort(
-                            (left, right) =>
-                                left.positionIndex - right.positionIndex,
-                        )
-                        .map((field) => ({
-                            ...field,
-                            label: buildFieldLabel(field, plantSortById),
-                        }));
+                        .map((field) => {
+                            const plantingIdentity =
+                                getSchedulePlantingTaskIdentity(field);
+                            // Keep every legacy field task at its existing
+                            // mutation boundary. Selected planting tasks are
+                            // rendered separately and never synthesized here.
+                            const physicalPositionIndex =
+                                getFieldPhysicalPositionIndex(
+                                    field,
+                                    groupedRaisedBeds,
+                                );
 
+                            return {
+                                ...field,
+                                plantingIdentity,
+                                physicalPositionIndex,
+                                label: buildFieldLabel(field, plantSortById),
+                            };
+                        })
+                        .sort((left, right) => {
+                            const dateComparison = compareScheduleDates(
+                                left.plantScheduledDate,
+                                right.plantScheduledDate,
+                            );
+                            if (dateComparison !== 0) {
+                                return dateComparison;
+                            }
+
+                            return (
+                                left.physicalPositionIndex -
+                                right.physicalPositionIndex
+                            );
+                        });
+                    const daySelectedPlantings = scheduledSelectedPlantings
+                        .filter((entry) =>
+                            groupedRaisedBeds.some(
+                                (raisedBed) =>
+                                    raisedBed.id === entry.raisedBedId,
+                            ),
+                        )
+                        .map((entry) => {
+                            const task = entry.planting.selectedTask;
+                            const plantSort = plantSortById.get(
+                                entry.planting.plantSortId,
+                            );
+                            return {
+                                ...entry,
+                                label: buildFarmScheduleSelectedPlantingLabel({
+                                    plantCount: entry.planting.plantCount,
+                                    plantName: plantSort?.information?.name,
+                                    plantsPerAxis: entry.planting.plantsPerAxis,
+                                    selectedSeedingDistanceCm:
+                                        entry.planting
+                                            .selectedSeedingDistanceCm,
+                                    sowingLocation: task?.sowingLocation,
+                                    spanColumns: entry.planting.spanColumns,
+                                    spanRows: entry.planting.spanRows,
+                                }),
+                                physicalPositionNumbers:
+                                    entry.planting.memberships.map(
+                                        (membership) =>
+                                            getFieldPhysicalPositionIndex(
+                                                {
+                                                    positionIndex:
+                                                        membership
+                                                            .raisedBedField
+                                                            .positionIndex,
+                                                    raisedBedId:
+                                                        membership
+                                                            .raisedBedField
+                                                            .raisedBedId,
+                                                },
+                                                groupedRaisedBeds,
+                                            ),
+                                    ),
+                                plantSort,
+                            };
+                        })
+                        .sort((left, right) => {
+                            const dateComparison = compareScheduleDates(
+                                left.planting.selectedTask?.scheduledDate,
+                                right.planting.selectedTask?.scheduledDate,
+                            );
+                            return (
+                                dateComparison ||
+                                left.planting.id - right.planting.id
+                            );
+                        });
                     const totalDuration =
-                        dayFields.length * PLANTING_TASK_DURATION_MINUTES;
+                        (dayFields.length + daySelectedPlantings.length) *
+                        PLANTING_TASK_DURATION_MINUTES;
 
                     return (
-                        <Stack key={key} spacing={1}>
-                            <Row
-                                spacing={1}
-                                className="items-center flex-wrap gap-y-1"
-                            >
-                                {physicalId ? (
-                                    <RaisedBedLabel physicalId={physicalId} />
-                                ) : (
-                                    <Typography semiBold>
-                                        Gredica bez fizičkog ID-a
-                                    </Typography>
-                                )}
-                                <Typography
-                                    level="body2"
-                                    className="text-muted-foreground"
-                                >
-                                    {dayFields.length} sijanja
-                                </Typography>
-                                {totalDuration > 0 && (
-                                    <Typography
-                                        level="body2"
-                                        className="text-muted-foreground"
+                        <Stack key={key} spacing={2}>
+                            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+                                <div className="min-w-0">
+                                    <Suspense
+                                        fallback={
+                                            <RaisedBedScheduleGroupHeader
+                                                physicalId={physicalId}
+                                            />
+                                        }
                                     >
-                                        Vrijeme: {formatMinutes(totalDuration)}
-                                    </Typography>
-                                )}
-                            </Row>
-                            <Stack spacing={1}>
+                                        <RaisedBedScheduleGroupHeaderWithPhotos
+                                            physicalId={physicalId}
+                                            raisedBeds={groupedRaisedBeds}
+                                            raisedBedPhotoPreviewByIdPromise={
+                                                raisedBedPhotoPreviewByIdPromise
+                                            }
+                                        />
+                                    </Suspense>
+                                </div>
+                                <Row
+                                    spacing={2}
+                                    className="justify-end text-right"
+                                >
+                                    <ScheduleSectionSummaryBadges
+                                        count={
+                                            dayFields.length +
+                                            daySelectedPlantings.length
+                                        }
+                                        countLabel="sijanja"
+                                        durationMinutes={totalDuration}
+                                    />
+                                </Row>
+                            </div>
+                            <Stack spacing={2}>
                                 {dayFields.map((field) => {
-                                    const completed = isFieldCompleted(
-                                        field.plantStatus,
-                                    );
-                                    const approved = isFieldApproved(
-                                        field.plantStatus,
-                                    );
-                                    const lockedByAssignment =
-                                        !completed &&
-                                        !!field.assignedUserId &&
-                                        field.assignedUserId !== userId;
-                                    const canComplete =
-                                        !completed && !lockedByAssignment;
-                                    const assignedUser =
-                                        assignedUserByFieldId.get(field.id);
+                                    const plantSort = field.plantSortId
+                                        ? plantSortById.get(field.plantSortId)
+                                        : undefined;
+                                    const { plantingIdentity } = field;
 
                                     return (
-                                        <div
+                                        <FarmSchedulePlantingTaskCard
                                             key={field.id}
-                                            className={`rounded-lg border bg-white px-3 py-2 ${lockedByAssignment ? 'opacity-70' : ''}`}
-                                        >
-                                            <Row
-                                                spacing={1}
-                                                className="items-start justify-between gap-3"
-                                            >
-                                                <Row
-                                                    spacing={1}
-                                                    className="min-w-0 grow items-start"
-                                                >
-                                                    {completed ? (
-                                                        <Checkbox
-                                                            className="size-5"
-                                                            checked
-                                                            disabled
-                                                        />
-                                                    ) : canComplete ? (
-                                                        <CompletePlantingModal
-                                                            label={field.label}
-                                                            raisedBedId={
-                                                                field.raisedBedId
-                                                            }
-                                                            positionIndex={
-                                                                field.positionIndex
-                                                            }
-                                                        />
-                                                    ) : (
-                                                        <div title="Sijanje je dodijeljeno drugom korisniku.">
-                                                            <Checkbox
-                                                                className="size-5"
-                                                                disabled
-                                                            />
-                                                        </div>
-                                                    )}
-                                                    <Stack
-                                                        spacing={0.5}
-                                                        className="min-w-0 grow"
-                                                    >
-                                                        <Typography
-                                                            className={
-                                                                completed
-                                                                    ? 'line-through text-muted-foreground'
-                                                                    : undefined
-                                                            }
-                                                        >
-                                                            {field.label}
-                                                        </Typography>
-                                                        <Row
-                                                            spacing={1}
-                                                            className="items-center flex-wrap gap-y-1"
-                                                        >
-                                                            <Typography
-                                                                level="body2"
-                                                                className={
-                                                                    completed ||
-                                                                    approved
-                                                                        ? 'text-green-600'
-                                                                        : 'text-muted-foreground'
-                                                                }
-                                                            >
-                                                                {completed
-                                                                    ? 'Završeno'
-                                                                    : approved
-                                                                      ? 'Potvrđeno'
-                                                                      : 'Nije potvrđeno'}
-                                                            </Typography>
-                                                            <Typography
-                                                                level="body2"
-                                                                className="text-muted-foreground"
-                                                            >
-                                                                {formatMinutes(
-                                                                    PLANTING_TASK_DURATION_MINUTES,
-                                                                )}
-                                                            </Typography>
-                                                            <Typography
-                                                                level="body2"
-                                                                className="text-muted-foreground"
-                                                            >
-                                                                {field.plantScheduledDate ? (
-                                                                    <>
-                                                                        Planirano:{' '}
-                                                                        <LocalDateTime
-                                                                            time={
-                                                                                false
-                                                                            }
-                                                                        >
-                                                                            {
-                                                                                field.plantScheduledDate
-                                                                            }
-                                                                        </LocalDateTime>
-                                                                    </>
-                                                                ) : (
-                                                                    'Danas'
-                                                                )}
-                                                            </Typography>
-                                                        </Row>
-                                                    </Stack>
-                                                </Row>
-                                                {assignedUser && (
-                                                    <div
-                                                        className="shrink-0"
-                                                        title={`Dodijeljeno: ${assignedUser.displayName ?? assignedUser.userName}`}
-                                                    >
-                                                        <UserAvatar
-                                                            avatarUrl={
-                                                                assignedUser.avatarUrl
-                                                            }
-                                                            displayName={
-                                                                assignedUser.displayName ??
-                                                                assignedUser.userName
-                                                            }
-                                                            className="size-7 rounded-full"
-                                                        />
-                                                    </div>
-                                                )}
-                                            </Row>
-                                        </div>
+                                            completionAction={
+                                                plantingIdentity ? (
+                                                    <CompletePlantingModal
+                                                        {...plantingIdentity}
+                                                        label={field.label}
+                                                        raisedBedId={
+                                                            field.raisedBedId
+                                                        }
+                                                        positionIndex={
+                                                            field.positionIndex
+                                                        }
+                                                    />
+                                                ) : undefined
+                                            }
+                                            field={field}
+                                            label={field.label}
+                                            plantingIdentity={plantingIdentity}
+                                            plantSort={plantSort}
+                                            positionNumber={
+                                                field.physicalPositionIndex
+                                            }
+                                            raisedBedLabel={
+                                                physicalId
+                                                    ? `Gr ${physicalId}`
+                                                    : `Gredica ${field.raisedBedId}`
+                                            }
+                                            selectedDateKey={selectedDateKey}
+                                            userId={userId}
+                                            assignedUserByFieldIdPromise={
+                                                assignedUserByFieldIdPromise
+                                            }
+                                        />
                                     );
                                 })}
+                                {daySelectedPlantings.map((entry) => (
+                                    <FarmScheduleSelectedPlantingTaskCard
+                                        key={`selected-${entry.planting.id.toString()}`}
+                                        label={entry.label}
+                                        physicalPositionNumbers={
+                                            entry.physicalPositionNumbers
+                                        }
+                                        planting={entry.planting}
+                                        plantSort={entry.plantSort}
+                                        raisedBedLabel={
+                                            physicalId
+                                                ? `Gr ${physicalId}`
+                                                : `Gredica ${entry.raisedBedId.toString()}`
+                                        }
+                                        userId={userId}
+                                    />
+                                ))}
                             </Stack>
                         </Stack>
                     );

@@ -6,26 +6,26 @@ import {
     HARVEST_LABEL_PRINT_TASK_TYPE,
     type HarvestLabelData,
 } from '@gredice/label-printer';
-import { Button } from '@signalco/ui-primitives/Button';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 import { HomeButton } from '../../../components/HomeButton';
 import { HarvestLabelPreviewCanvas } from '../../../components/labels/HarvestLabelPreviewCanvas';
 import { DebugFieldLabel } from './DebugFieldLabel';
 import { DebugTextInput } from './DebugTextInput';
 
+const DEMO_TRACE_URL = 'https://www.gredice.com/trag/demo-berba-2026';
+
 const DEFAULT_LABEL_DATA: HarvestLabelData = {
     raisedBedPhysicalId: '12B',
     fieldIndex: 4,
+    operationLabel: 'Berba',
     plantSortName: 'Salata Batavia',
+    dateLabel: '02.06.2026.',
+    traceUrl: DEMO_TRACE_URL,
 };
 
 const LABEL_SAMPLES: Array<{
@@ -33,23 +33,29 @@ const LABEL_SAMPLES: Array<{
     data: HarvestLabelData;
 }> = [
     {
-        label: 'Salata',
+        label: 'Salata s QR',
         data: DEFAULT_LABEL_DATA,
     },
     {
-        label: 'Špinat',
+        label: 'Bez QR traga',
         data: {
             raisedBedPhysicalId: '3A',
             fieldIndex: 2,
+            operationLabel: 'Berba',
             plantSortName: 'Mladi špinat',
+            dateLabel: '02.06.2026.',
         },
     },
     {
-        label: 'Rajčica',
+        label: 'Dugi nazivi',
         data: {
             raisedBedPhysicalId: '18',
             fieldIndex: 7,
-            plantSortName: 'Cherry rajčica',
+            operationLabel: 'Branje 25% najzrelijih plodova',
+            plantSortName: 'Grah mahunar Meraviglia di Veneya a grano nero',
+            dateLabel: '02.06.2026.',
+            traceUrl:
+                'https://www.gredice.com/trag/demo-berba-cherry-rajcica-polje-18-7-2026',
         },
     },
 ];
@@ -73,21 +79,11 @@ export function HarvestLabelDebugPage() {
     const scaledHeight = Math.round((canvasSize.height * zoom) / 100);
 
     return (
-        <div className="min-h-[100dvh] w-full bg-muted">
+        <div className="min-h-[100dvh] w-full bg-background">
             <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4">
-                <Row spacing={2} justifyContent="space-between">
-                    <Row spacing={1} className="items-start">
+                <Row spacing={4} justifyContent="space-between">
+                    <Row spacing={2} className="items-start">
                         <HomeButton />
-                        <Stack spacing={0.5}>
-                            <Typography level="h4" component="h1">
-                                Debug etiketa
-                            </Typography>
-                            <Typography className="text-muted-foreground">
-                                Pregled koristi isti canvas renderer i isti
-                                fiksni profil ispisa kao etiketa u rasporedu
-                                berbe.
-                            </Typography>
-                        </Stack>
                     </Row>
                     <Button variant="outlined" href="/schedule">
                         Otvori raspored
@@ -95,10 +91,10 @@ export function HarvestLabelDebugPage() {
                 </Row>
 
                 <div className="grid gap-4 xl:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
-                    <Stack spacing={4}>
+                    <Stack spacing={8}>
                         <Card>
                             <CardHeader>
-                                <Stack spacing={1}>
+                                <Stack spacing={2}>
                                     <CardTitle>Sadržaj etikete</CardTitle>
                                     <Typography className="text-sm text-muted-foreground">
                                         Mijenjaj podatke operacije i odmah vidi
@@ -135,6 +131,16 @@ export function HarvestLabelDebugPage() {
                                     />
                                 </div>
                                 <DebugTextInput
+                                    label="Naziv radnje"
+                                    value={labelData.operationLabel ?? ''}
+                                    onChange={(value) =>
+                                        setLabelData((current) => ({
+                                            ...current,
+                                            operationLabel: value,
+                                        }))
+                                    }
+                                />
+                                <DebugTextInput
                                     label="Sorta biljke"
                                     value={labelData.plantSortName}
                                     onChange={(value) =>
@@ -144,8 +150,56 @@ export function HarvestLabelDebugPage() {
                                         }))
                                     }
                                 />
+                                <DebugTextInput
+                                    label="Datum"
+                                    value={labelData.dateLabel ?? ''}
+                                    onChange={(value) =>
+                                        setLabelData((current) => ({
+                                            ...current,
+                                            dateLabel: value,
+                                        }))
+                                    }
+                                />
+                                <DebugTextInput
+                                    label="QR trag URL"
+                                    value={labelData.traceUrl ?? ''}
+                                    onChange={(value) =>
+                                        setLabelData((current) => ({
+                                            ...current,
+                                            traceUrl: value.trim()
+                                                ? value
+                                                : undefined,
+                                        }))
+                                    }
+                                />
+                                <div className="flex flex-wrap gap-2">
+                                    <Button
+                                        variant="outlined"
+                                        type="button"
+                                        onClick={() =>
+                                            setLabelData((current) => ({
+                                                ...current,
+                                                traceUrl: DEMO_TRACE_URL,
+                                            }))
+                                        }
+                                    >
+                                        Uključi QR
+                                    </Button>
+                                    <Button
+                                        variant="outlined"
+                                        type="button"
+                                        onClick={() =>
+                                            setLabelData((current) => ({
+                                                ...current,
+                                                traceUrl: undefined,
+                                            }))
+                                        }
+                                    >
+                                        Ukloni QR
+                                    </Button>
+                                </div>
 
-                                <Stack spacing={1.5}>
+                                <Stack spacing={3}>
                                     <DebugFieldLabel title="Brzi primjeri" />
                                     <div className="flex flex-wrap gap-2">
                                         {LABEL_SAMPLES.map((sample) => (
@@ -167,7 +221,7 @@ export function HarvestLabelDebugPage() {
 
                         <Card>
                             <CardHeader>
-                                <Stack spacing={1}>
+                                <Stack spacing={2}>
                                     <CardTitle>Fiksni profil ispisa</CardTitle>
                                     <Typography className="text-sm text-muted-foreground">
                                         Farma koristi samo profil{' '}
@@ -224,10 +278,10 @@ export function HarvestLabelDebugPage() {
                         </Card>
                     </Stack>
 
-                    <Stack spacing={4}>
+                    <Stack spacing={8}>
                         <Card>
                             <CardHeader>
-                                <Stack spacing={1}>
+                                <Stack spacing={2}>
                                     <CardTitle>Pregled etikete</CardTitle>
                                     <Typography className="text-sm text-muted-foreground">
                                         Trenutni canvas: {canvasSize.width} ×{' '}
@@ -289,7 +343,7 @@ export function HarvestLabelDebugPage() {
                                 </div>
 
                                 <div className="rounded-lg border bg-background p-4">
-                                    <Stack spacing={1.5}>
+                                    <Stack spacing={3}>
                                         <DebugFieldLabel
                                             title="Stvarna veličina"
                                             description="Ovaj pregled koristi fizičke dimenzije canvasa bez dodatnog povećanja za provjeru omjera i gustoće sadržaja."
@@ -300,7 +354,7 @@ export function HarvestLabelDebugPage() {
                                                 preset={
                                                     DEFAULT_HARVEST_LABEL_PRESET
                                                 }
-                                                className="rounded border border-black bg-white shadow-sm"
+                                                className="rounded border border-black bg-white shadow-xs"
                                             />
                                         </div>
                                     </Stack>

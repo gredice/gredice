@@ -1,30 +1,39 @@
 'use client';
 
-import { Calendar } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Input } from '@gredice/ui/Input';
+import { Calendar } from '@gredice/ui/icons';
+import { Modal } from '@gredice/ui/Modal';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 import { rescheduleOperationAction } from '../../(actions)/operationActions';
 import { rescheduleRaisedBedFieldAction } from '../../(actions)/raisedBedFieldsActions';
+import { getOperationScheduleActionFailureMessage } from './operationScheduleActionResult';
 
 type FieldRescheduleTarget = {
+    id?: number;
     raisedBedId: number;
     positionIndex: number;
+    expectedPlantCycleEventId: number;
+    expectedPlantCycleVersionEventId: number;
+    expectedPlantSortId: number;
 };
 
 type OperationRescheduleTarget = {
     id: number;
+    entityId: number;
+    taskVersionEventId: number;
 };
 
 interface BulkRescheduleRaisedBedButtonProps {
     physicalId: string;
+    targetLabel?: string;
     fields: FieldRescheduleTarget[];
     operations: OperationRescheduleTarget[];
+    onSubmit?: (scheduledDate: string) => unknown | Promise<unknown>;
 }
 
 function formatLocalDate(date: Date): string {
@@ -36,14 +45,20 @@ function formatLocalDate(date: Date): string {
 
 export function BulkRescheduleRaisedBedButton({
     physicalId,
+    targetLabel,
     fields,
     operations,
+    onSubmit,
 }: BulkRescheduleRaisedBedButtonProps) {
     const [open, setOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string>();
 
     const totalItems = fields.length + operations.length;
     const disabled = totalItems === 0 || isSubmitting;
+    const targetText =
+        targetLabel ??
+        (physicalId === 'dan' ? 'za dan' : `za gredicu ${physicalId}`);
 
     const today = new Date();
     const threeMonthsFromToday = new Date(
@@ -69,34 +84,81 @@ export function BulkRescheduleRaisedBedButton({
             return;
         }
 
-        setIsSubmitting(true);
-        try {
-            await Promise.all([
-                ...fields.map((field) => {
-                    const targetFormData = new FormData();
-                    targetFormData.set(
-                        'raisedBedId',
-                        field.raisedBedId.toString(),
-                    );
-                    targetFormData.set(
-                        'positionIndex',
-                        field.positionIndex.toString(),
-                    );
-                    targetFormData.set('scheduledDate', scheduledDate);
-                    return rescheduleRaisedBedFieldAction(targetFormData);
-                }),
-                ...operations.map((operation) => {
-                    const targetFormData = new FormData();
-                    targetFormData.set('operationId', operation.id.toString());
-                    targetFormData.set('scheduledDate', scheduledDate);
-                    return rescheduleOperationAction(targetFormData);
-                }),
-            ]);
+        setErrorMessage(undefined);
+        if (onSubmit) {
+            const result = await onSubmit(scheduledDate);
+            const actionFailureMessage =
+                getOperationScheduleActionFailureMessage(result);
+            if (actionFailureMessage) {
+                setErrorMessage(actionFailureMessage);
+                return;
+            }
             setOpen(false);
-        } catch (error) {
-            console.error('Failed to reschedule all raised bed items:', error);
-        } finally {
-            setIsSubmitting(false);
+            return;
+        }
+
+        setIsSubmitting(true);
+        void Promise.all([
+            ...fields.map((field) => {
+                const targetFormData = new FormData();
+                targetFormData.set('raisedBedId', field.raisedBedId.toString());
+                targetFormData.set(
+                    'positionIndex',
+                    field.positionIndex.toString(),
+                );
+                targetFormData.set(
+                    'expectedPlantCycleEventId',
+                    field.expectedPlantCycleEventId.toString(),
+                );
+                targetFormData.set(
+                    'expectedPlantCycleVersionEventId',
+                    field.expectedPlantCycleVersionEventId.toString(),
+                );
+                targetFormData.set(
+                    'expectedPlantSortId',
+                    field.expectedPlantSortId.toString(),
+                );
+                targetFormData.set('scheduledDate', scheduledDate);
+                return rescheduleRaisedBedFieldAction(targetFormData);
+            }),
+            ...operations.map((operation) => {
+                const targetFormData = new FormData();
+                targetFormData.set('operationId', operation.id.toString());
+                targetFormData.set(
+                    'expectedEntityId',
+                    operation.entityId.toString(),
+                );
+                targetFormData.set(
+                    'expectedTaskVersionEventId',
+                    operation.taskVersionEventId.toString(),
+                );
+                targetFormData.set('scheduledDate', scheduledDate);
+                return rescheduleOperationAction(targetFormData);
+            }),
+        ])
+            .then((result) => {
+                const actionFailureMessage =
+                    getOperationScheduleActionFailureMessage(result);
+                if (actionFailureMessage) {
+                    setErrorMessage(actionFailureMessage);
+                    return;
+                }
+                setOpen(false);
+            })
+            .catch((error: unknown) => {
+                console.error(
+                    'Failed to reschedule all raised bed items:',
+                    error,
+                );
+                alert('Skupno zakazivanje zadataka nije uspjelo.');
+            })
+            .finally(() => setIsSubmitting(false));
+    }
+
+    function handleOpenChange(nextOpen: boolean) {
+        setOpen(nextOpen);
+        if (nextOpen) {
+            setErrorMessage(undefined);
         }
     }
 
@@ -104,11 +166,12 @@ export function BulkRescheduleRaisedBedButton({
         <Modal
             title="Skupno zakazivanje zadataka"
             open={open}
-            onOpenChange={setOpen}
+            onOpenChange={handleOpenChange}
             trigger={
                 <IconButton
                     variant="plain"
-                    title="Zakaži sve nepotvrđene zadatke gredice"
+                    size="xs"
+                    title="Zakaži sve nepotvrđene zadatke"
                     disabled={disabled}
                     aria-disabled={disabled}
                     loading={isSubmitting}
@@ -118,12 +181,17 @@ export function BulkRescheduleRaisedBedButton({
             }
         >
             <form onSubmit={handleSubmit}>
-                <Stack spacing={2}>
+                <Stack spacing={4}>
                     <Typography level="h5">Skupno zakazivanje</Typography>
                     <Typography>
                         Odaberite datum za sve nepotvrđene zadatke ({totalItems}
-                        ) za gredicu <strong>{physicalId}</strong>.
+                        ) {targetText}.
                     </Typography>
+                    {errorMessage ? (
+                        <Typography level="body2" className="text-red-600">
+                            {errorMessage}
+                        </Typography>
+                    ) : null}
 
                     <Input
                         type="date"
@@ -137,7 +205,7 @@ export function BulkRescheduleRaisedBedButton({
                         disabled={isSubmitting}
                     />
 
-                    <Row spacing={1} justifyContent="end">
+                    <Row spacing={2} justifyContent="end">
                         <Button
                             variant="outlined"
                             onClick={() => setOpen(false)}

@@ -1,10 +1,10 @@
 'use client';
 
-import { Info } from '@signalco/ui-icons';
-import { cx } from '@signalco/ui-primitives/cx';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Popper } from '@signalco/ui-primitives/Popper';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Info } from '@gredice/ui/icons';
+import { Popper } from '@gredice/ui/Popper';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import type { ReactNode } from 'react';
 
 interface InfoHintProps {

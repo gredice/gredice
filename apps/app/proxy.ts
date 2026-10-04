@@ -1,3 +1,4 @@
+import { shouldLogPostHogProxyRequest } from '@gredice/js/observability';
 import { SeverityNumber } from '@opentelemetry/api-logs';
 import { postHogMiddleware } from '@posthog/next';
 import {
@@ -14,8 +15,10 @@ import {
 } from './lib/posthog-server';
 
 const postHogApiKey =
-    process.env.NEXT_PUBLIC_POSTHOG_KEY ??
-    process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
+    process.env.NODE_ENV === 'development'
+        ? undefined
+        : (process.env.NEXT_PUBLIC_POSTHOG_KEY ??
+          process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN);
 const postHogProxyHost =
     process.env.POSTHOG_PROXY_HOST ??
     process.env.NEXT_PUBLIC_POSTHOG_HOST?.replace(
@@ -65,15 +68,22 @@ const proxyHandler: NextProxy = async (
 ) => {
     const response =
         (await baseProxyHandler(request, event)) ?? NextResponse.next();
+    const proxyAttributes = getProxyAttributes(response);
 
-    if (isPostHogLoggingEnabled()) {
+    if (
+        isPostHogLoggingEnabled() &&
+        shouldLogPostHogProxyRequest({
+            pathname: request.nextUrl.pathname,
+            proxyResult: proxyAttributes['next.proxy_result'],
+        })
+    ) {
         requestLogger.emit({
             attributes: {
                 'http.method': request.method,
                 'posthog.log_type': 'request',
                 'server.address': request.nextUrl.hostname,
                 'url.path': request.nextUrl.pathname,
-                ...getProxyAttributes(response),
+                ...proxyAttributes,
                 ...(request.headers.get('referer')
                     ? {
                           'http.request.header.referer':
@@ -101,5 +111,5 @@ const proxyHandler: NextProxy = async (
 export default proxyHandler;
 
 export const config = {
-    matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+    matcher: ['/((?!_next/static|_next/image|_vercel|favicon.ico).*)'],
 };

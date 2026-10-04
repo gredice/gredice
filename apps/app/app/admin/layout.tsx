@@ -1,25 +1,23 @@
 import {
     getEntityTypesOrganizedByCategories,
-    getPendingAchievementsCount,
-    getSetting,
-    SettingsKeys,
+    getPendingCommunityEditRequestsCount,
 } from '@gredice/storage';
-import { SignedOut } from '@signalco/auth-client/components';
-import { AuthProtectedSection } from '@signalco/auth-server/components';
-import { cookies, headers } from 'next/headers';
-import { redirect } from 'next/navigation';
 import { type PropsWithChildren, Suspense } from 'react';
 import {
+    AdminDesktopFrame,
     AdminPageCardHeader,
     AdminPageHeaderProvider,
-    DesktopNav,
     DesktopNavProvider,
-    LoginDialog,
 } from '../../components/admin/navigation';
 import { AdminClientProvider } from '../../components/admin/providers';
 import { AuthAppProvider } from '../../components/providers/AuthAppProvider';
 import { auth } from '../../lib/auth/auth';
-import { impersonationRefreshCookieName } from '../../lib/auth/sessionConfig';
+import {
+    getAdminCmsReviewCount,
+    getAdminDashboardQuickActionsSetting,
+    getAdminPendingAchievementsCount,
+} from '../../src/adminNavigationData';
+import { getPendingAdminApprovalTaskCount } from '../../src/approvalTasks';
 import {
     buildDashboardQuickActionOptions,
     getDashboardQuickActionsFromConfig,
@@ -29,31 +27,23 @@ import {
 export const dynamic = 'force-dynamic';
 
 export default async function AdminLayout({ children }: PropsWithChildren) {
-    const requestHeaders = await headers();
-    const requestHost = requestHeaders.get('host') ?? '';
-    const landingUrl = requestHost.includes('.test')
-        ? 'https://www.gredice.test'
-        : 'https://www.gredice.com';
-
     const authAdmin = auth.bind(null, ['admin']);
-    const isAdmin = await auth(['admin']).then(
-        () => true,
-        () => false,
-    );
-    const isImpersonating =
-        (await cookies()).get(impersonationRefreshCookieName) !== undefined;
+    await authAdmin();
 
-    if (!isAdmin && !isImpersonating) {
-        redirect(landingUrl);
-    }
     const [
         { categorizedTypes, uncategorizedTypes, shadowTypes },
+        pendingCmsPagesReviewCount,
         pendingAchievementsCount,
+        pendingApprovalTasksCount,
+        pendingCommunityEditRequestsCount,
         dashboardQuickActionsSetting,
     ] = await Promise.all([
         getEntityTypesOrganizedByCategories(),
-        isAdmin ? getPendingAchievementsCount() : Promise.resolve(0),
-        getSetting(SettingsKeys.DashboardQuickActions),
+        getAdminCmsReviewCount(),
+        getAdminPendingAchievementsCount(),
+        getPendingAdminApprovalTaskCount(),
+        getPendingCommunityEditRequestsCount(),
+        getAdminDashboardQuickActionsSetting(),
     ]);
 
     const quickActionEntityTypes = [
@@ -83,33 +73,31 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
                 categorizedTypes={categorizedTypes}
                 uncategorizedTypes={uncategorizedTypes}
                 shadowTypes={shadowTypes}
+                pendingCmsPagesReviewCount={pendingCmsPagesReviewCount}
                 pendingAchievementsCount={pendingAchievementsCount}
+                pendingApprovalTasksCount={pendingApprovalTasksCount}
+                pendingCommunityEditRequestsCount={
+                    pendingCommunityEditRequestsCount
+                }
                 quickActions={quickActions}
             >
-                <div className="grow bg-secondary/40">
+                <div className="grow bg-secondary/40" data-gredice-admin-shell>
                     <main className="relative h-full min-h-screen">
                         <DesktopNavProvider>
-                            <div className="flex min-h-full flex-row gap-3 md:gap-4 md:p-4">
-                                {/* Desktop Navigation */}
-                                <DesktopNav />
-                                {/* Main Content */}
-                                <div className="min-h-full grow">
-                                    <div className="min-h-full border bg-background p-3 md:rounded-2xl md:p-4">
-                                        <AuthProtectedSection auth={authAdmin}>
-                                            <Suspense>
-                                                <AdminPageHeaderProvider>
-                                                    <AdminPageCardHeader />
-                                                    {children}
-                                                </AdminPageHeaderProvider>
-                                            </Suspense>
-                                        </AuthProtectedSection>
-                                    </div>
+                            <AdminDesktopFrame>
+                                <div
+                                    className="min-h-full border bg-[var(--admin-page-content-background)] p-3 md:rounded-2xl md:p-4"
+                                    data-gredice-admin-content-panel
+                                >
+                                    <Suspense>
+                                        <AdminPageHeaderProvider>
+                                            <AdminPageCardHeader />
+                                            {children}
+                                        </AdminPageHeaderProvider>
+                                    </Suspense>
                                 </div>
-                            </div>
+                            </AdminDesktopFrame>
                         </DesktopNavProvider>
-                        <SignedOut>
-                            <LoginDialog />
-                        </SignedOut>
                     </main>
                 </div>
             </AdminClientProvider>

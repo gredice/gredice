@@ -1,19 +1,26 @@
-'use client';
+import { Button } from '@gredice/ui/Button';
+import { ArrowLeft } from '@gredice/ui/icons';
 
-import { ArrowLeft } from '@signalco/ui-icons';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { useRouter } from 'next/navigation';
+interface HomeButtonProps {
+    className?: string;
+    href?: string;
+    title?: string;
+}
 
-export function HomeButton() {
-    const router = useRouter();
-
+export function HomeButton({
+    className,
+    href = '/',
+    title = 'Povratak na početnu',
+}: HomeButtonProps) {
     return (
-        <IconButton
-            title="Povratak na početnu"
+        <Button
+            aria-label={title}
+            className={`aspect-square min-h-11 min-w-11 px-0 ${className ?? ''}`}
+            href={href}
+            title={title}
             variant="plain"
-            onClick={() => router.push('/')}
         >
             <ArrowLeft className="size-4 shrink-0" />
-        </IconButton>
+        </Button>
     );
 }

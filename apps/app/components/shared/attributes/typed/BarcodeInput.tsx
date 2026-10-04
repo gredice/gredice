@@ -1,7 +1,8 @@
-import { Input } from '@signalco/ui-primitives/Input';
-import { Row } from '@signalco/ui-primitives/Row';
+import { Input } from '@gredice/ui/Input';
+import { Row } from '@gredice/ui/Row';
 import { useState } from 'react';
 import type { AttributeInputProps } from '../AttributeInputProps';
+import { attributeUnitDecorator } from './AttributeUnitDecorator';
 import { BarcodeScanButton } from './BarcodeScanButton';
 
 export function BarcodeInput({
@@ -21,14 +22,14 @@ export function BarcodeInput({
         onChange(value || null);
     }
     return (
-        <Row spacing={1}>
+        <Row spacing={2}>
             <Input
                 placeholder={'Nema informacija...'}
                 value={inputValue}
                 onChange={(e) => handleOnChange(e.target.value)}
                 onBlur={handleOnBlur}
                 fullWidth
-                endDecorator={attributeDefinition?.unit}
+                endDecorator={attributeUnitDecorator(attributeDefinition?.unit)}
             />
             <BarcodeScanButton onScan={handleScan} />
         </Row>

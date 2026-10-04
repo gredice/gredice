@@ -1,16 +1,13 @@
+import { vercelAdapter } from '@flags-sdk/vercel';
+import { booleanFlagOptions } from '@gredice/js/featureFlags';
 import { flag } from 'flags/next';
-
-const booleanOptions = [
-    { label: 'Off', value: false },
-    { label: 'On', value: true },
-];
 
 export const deliveryChargeAtCheckoutFlag = flag<boolean>({
     key: 'deliveryChargeAtCheckout',
     description:
         'Whether to enable charging the delivery while doing checkout.',
     decide: () => false,
-    options: booleanOptions,
+    options: booleanFlagOptions,
 });
 
 export const addressDistanceVerificationFlag = flag<boolean>({
@@ -18,31 +15,35 @@ export const addressDistanceVerificationFlag = flag<boolean>({
     description:
         'Enable address verification and indicator that the address is outside of delivery location.',
     decide: () => false,
-    options: booleanOptions,
-});
-
-export const raisedBedImageAIFlag = flag<boolean>({
-    key: 'raisedBedImageAI',
-    description: 'Enable AI analysis of raised-bed images.',
-    decide: () => false,
-    options: booleanOptions,
-});
-
-export const lsystemPlantsFlag = flag<boolean>({
-    key: 'lsystemPlants',
-    description: 'Display L-System plants instead of only seeds.',
-    decide: () => true,
-    options: booleanOptions,
+    options: booleanFlagOptions,
 });
 
 export const enableDebugCloseupFlag = flag<boolean>({
     key: 'enableDebugCloseup',
     decide: () => false,
-    options: booleanOptions,
+    options: booleanFlagOptions,
 });
 
 export const enableDebugHudFlag = flag<boolean>({
     key: 'enableDebugHud',
     decide: () => false,
-    options: booleanOptions,
+    options: booleanFlagOptions,
+});
+
+export const enableSuncokretDebugFlag = flag<boolean>({
+    key: 'enableSuncokretDebug',
+    description: 'Show Suncokret AI debug metadata in chat conversations.',
+    decide: () => false,
+    options: booleanFlagOptions,
+});
+
+export const enableGardenAvatarFlag = flag<boolean>({
+    key: 'enableGardenAvatar',
+    description:
+        'Enable the experimental walkable gardener with POV and third-person cameras.',
+    ...(process.env.FLAGS
+        ? { adapter: vercelAdapter }
+        : { decide: () => false }),
+    defaultValue: false,
+    options: booleanFlagOptions,
 });

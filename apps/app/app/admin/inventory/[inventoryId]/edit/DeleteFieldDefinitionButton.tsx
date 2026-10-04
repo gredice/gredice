@@ -1,7 +1,7 @@
 'use client';
 
-import { Delete } from '@signalco/ui-icons';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Delete } from '@gredice/ui/icons';
 import { useTransition } from 'react';
 
 export function DeleteFieldDefinitionButton({

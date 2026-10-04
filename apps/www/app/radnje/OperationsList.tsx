@@ -1,0 +1,142 @@
+'use client';
+
+import type { OperationData } from '@gredice/client';
+import type { PlantStageName } from '@gredice/game';
+import { slug } from '@gredice/js/slug';
+import { Accordion } from '@gredice/ui/Accordion';
+import { GameMarketStallIcon } from '@gredice/ui/GameIcons';
+import { OperationCategoryIcon } from '@gredice/ui/OperationImage';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
+import { useMemo } from 'react';
+import { NoDataPlaceholder } from '../../components/shared/placeholders/NoDataPlaceholder';
+import { useClientSearchParam } from '../../hooks/useClientSearchParam';
+import { OperationCard } from './OperationCard';
+import {
+    compareOperationsByStageAndLabel,
+    getAvailableOperationStages,
+    operationMatchesSearch,
+} from './operationFilters';
+
+export function OperationsList({
+    operationsData,
+    initialSearch,
+}: {
+    operationsData: OperationData[];
+    initialSearch: string;
+}) {
+    const [search] = useClientSearchParam('pretraga', initialSearch);
+    const {
+        availableStages,
+        internalOperations,
+        publicOperations,
+        stageOperations,
+    } = useMemo(() => {
+        const filteredOperations = operationsData.filter((operation) =>
+            operationMatchesSearch(operation, search),
+        );
+        const publicOperations = filteredOperations.filter(
+            (operation) => operation.attributes.internal !== true,
+        );
+        const internalOperations = filteredOperations
+            .filter((operation) => operation.attributes.internal === true)
+            .sort(compareOperationsByStageAndLabel);
+        const availableStages = getAvailableOperationStages(publicOperations);
+        const stageOperations = new Map<
+            PlantStageName,
+            typeof publicOperations
+        >();
+
+        for (const stage of availableStages) {
+            stageOperations.set(
+                stage.name,
+                publicOperations
+                    .filter(
+                        (operation) =>
+                            operation.attributes.stage?.information?.name ===
+                            stage.name,
+                    )
+                    .sort((left, right) =>
+                        left.information.label.localeCompare(
+                            right.information.label,
+                        ),
+                    ),
+            );
+        }
+
+        return {
+            availableStages,
+            internalOperations,
+            publicOperations,
+            stageOperations,
+        };
+    }, [operationsData, search]);
+
+    return (
+        <Stack spacing={12}>
+            {!publicOperations.length && !internalOperations.length && (
+                <div className="border rounded py-4">
+                    <NoDataPlaceholder>
+                        Nema dostupnih radnji.
+                    </NoDataPlaceholder>
+                </div>
+            )}
+            {availableStages.map((stage) => {
+                const operationsForStage =
+                    stageOperations.get(stage.name) ?? [];
+                return (
+                    <Stack
+                        key={stage.name}
+                        spacing={4}
+                        id={slug(stage.label)}
+                        className="scroll-mt-24"
+                    >
+                        <Row spacing={4}>
+                            <OperationCategoryIcon
+                                aria-hidden
+                                variant="game"
+                                categoryName={stage.name}
+                                className="size-6 shrink-0"
+                            />
+                            <Typography level="h5" component="h2">
+                                {stage.label}
+                            </Typography>
+                        </Row>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                            {operationsForStage.map((operation) => (
+                                <OperationCard
+                                    key={operation.id}
+                                    operation={operation}
+                                />
+                            ))}
+                        </div>
+                    </Stack>
+                );
+            })}
+            {internalOperations.length > 0 && (
+                <Accordion className="h-min border-tertiary border-b-4">
+                    <Row spacing={4} className="px-3">
+                        <GameMarketStallIcon
+                            aria-hidden
+                            className="size-6 shrink-0"
+                        />
+                        <Typography level="h5" component="h2">
+                            Za OPG partnere
+                        </Typography>
+                    </Row>
+                    <div className="px-3 pb-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                            {internalOperations.map((operation) => (
+                                <OperationCard
+                                    key={operation.id}
+                                    operation={operation}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                </Accordion>
+            )}
+        </Stack>
+    );
+}

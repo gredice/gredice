@@ -1,27 +1,34 @@
 'use client';
 
-import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import {
     AI,
     Bank,
+    Book,
     Calendar,
+    Cloud,
+    Discount,
     Euro,
     Fence,
     File,
+    Graph,
     Hammer,
     Home,
     Inbox,
+    Lightning,
+    Link,
     Mail,
     Map as MapIcon,
     Megaphone,
     Settings,
     ShoppingCart,
     SmileHappy,
+    Sprout,
     Success,
     Tally3,
     Truck,
     User,
-} from '@signalco/ui-icons';
+    Warning,
+} from '@gredice/ui/icons';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -29,9 +36,11 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
-} from '@signalco/ui-primitives/Menu';
+} from '@gredice/ui/Menu';
+import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
+import { AdminBreadcrumbSelectorLink } from './AdminBreadcrumbSelectorLink';
 import { AdminBreadcrumbSelectorTrigger } from './AdminBreadcrumbSelectorTrigger';
 import { adminBreadcrumbPages, adminPages } from './adminPages';
 
@@ -80,6 +89,10 @@ const breadcrumbSections: {
                 ...adminPages.Directories,
                 icon: <File className="size-4" />,
             },
+            {
+                ...adminPages.DirectoriesActivity,
+                icon: <File className="size-4" />,
+            },
         ],
     },
     {
@@ -95,10 +108,16 @@ const breadcrumbSections: {
         title: 'Administracija',
         pages: [
             { ...adminPages.Accounts, icon: <Bank className="size-4" /> },
+            { ...adminPages.Users, icon: <User className="size-4" /> },
             {
                 ...adminPages.Achievements,
                 icon: <Success className="size-4" />,
             },
+        ],
+    },
+    {
+        title: 'Financije',
+        pages: [
             {
                 ...adminPages.ShoppingCarts,
                 icon: <ShoppingCart className="size-4" />,
@@ -109,20 +128,50 @@ const breadcrumbSections: {
                 icon: <Euro className="size-4" />,
             },
             { ...adminPages.Sunflowers, icon: <Success className="size-4" /> },
+            {
+                ...adminPages.BillingReconciliation,
+                icon: <Warning className="size-4" />,
+            },
             { ...adminPages.Receipts, icon: <File className="size-4" /> },
-            { ...adminPages.Users, icon: <User className="size-4" /> },
+            { ...adminPages.Outlet, icon: <Discount className="size-4" /> },
+        ],
+    },
+    {
+        title: 'Farme',
+        pages: [
             { ...adminPages.Farms, icon: <MapIcon className="size-4" /> },
+            { ...adminPages.Operations, icon: <Hammer className="size-4" /> },
+            {
+                ...adminPages.FarmerPrices,
+                icon: <Euro className="size-4" />,
+            },
+            {
+                ...adminPages.FarmerPayouts,
+                icon: <Euro className="size-4" />,
+            },
+            {
+                ...adminPages.FarmerDocumentation,
+                icon: <Book className="size-4" />,
+            },
+            { ...adminPages.HarvestTraces, icon: <Link className="size-4" /> },
+        ],
+    },
+    {
+        title: 'Vrtovi',
+        pages: [
+            { ...adminPages.Weather, icon: <Cloud className="size-4" /> },
             { ...adminPages.Gardens, icon: <Fence className="size-4" /> },
             {
                 ...adminPages.RaisedBeds,
                 icon: <RaisedBedIcon className="size-4" physicalId={null} />,
             },
-            { ...adminPages.Operations, icon: <Hammer className="size-4" /> },
+            { ...adminPages.Greenhouse, icon: <Sprout className="size-4" /> },
         ],
     },
     {
         title: 'Upravljanje',
         pages: [
+            { ...adminPages.Approvals, icon: <Inbox className="size-4" /> },
             { ...adminPages.Inventory, icon: <Tally3 className="size-4" /> },
             { ...adminPages.Occasions, icon: <Calendar className="size-4" /> },
             { ...adminPages.Schedule, icon: <Calendar className="size-4" /> },
@@ -130,6 +179,43 @@ const breadcrumbSections: {
             {
                 ...adminPages.DeliveryRequests,
                 icon: <Truck className="size-4" />,
+            },
+            {
+                ...adminPages.DeliveryOperations,
+                icon: <Graph className="size-4" />,
+            },
+            {
+                ...adminPages.DeliveryNotifications,
+                icon: <Graph className="size-4" />,
+            },
+        ],
+    },
+    {
+        title: 'Izvještaji',
+        pages: [
+            {
+                ...adminPages.SowingStatistics,
+                icon: <Tally3 className="size-4" />,
+            },
+            {
+                ...adminPages.DeliveryRequestStatistics,
+                icon: <Graph className="size-4" />,
+            },
+            {
+                ...adminPages.UsersStatistics,
+                icon: <User className="size-4" />,
+            },
+            {
+                ...adminPages.OperationsStatistics,
+                icon: <Hammer className="size-4" />,
+            },
+            {
+                ...adminPages.RecordsStatistics,
+                icon: <File className="size-4" />,
+            },
+            {
+                ...adminPages.SunflowersStatistics,
+                icon: <Success className="size-4" />,
             },
         ],
     },
@@ -152,21 +238,26 @@ const breadcrumbSections: {
                 ...adminPages.Notifications,
                 icon: <Megaphone className="size-4" />,
             },
+            { ...adminPages.Surveys, icon: <Tally3 className="size-4" /> },
             { ...adminPages.Feedback, icon: <SmileHappy className="size-4" /> },
+        ],
+    },
+    {
+        title: 'Sustavi',
+        pages: [
+            {
+                ...adminPages.Automations,
+                icon: <Lightning className="size-4" />,
+            },
+            { ...adminPages.Sensors, icon: <File className="size-4" /> },
+            { ...adminPages.Cache, icon: <File className="size-4" /> },
+            { ...adminPages.AiAnalytics, icon: <AI className="size-4" /> },
         ],
     },
     {
         title: 'Postavke',
         pages: [
             { ...adminPages.Settings, icon: <Settings className="size-4" /> },
-        ],
-    },
-    {
-        title: 'Sustavi',
-        pages: [
-            { ...adminPages.Sensors, icon: <File className="size-4" /> },
-            { ...adminPages.Cache, icon: <File className="size-4" /> },
-            { ...adminPages.AiAnalytics, icon: <AI className="size-4" /> },
         ],
     },
 ];
@@ -177,32 +268,40 @@ export function AdminBreadcrumbLevelSelector() {
         resolveCurrentTopLevel(pathname) ?? adminBreadcrumbPages[0];
 
     return (
-        <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <AdminBreadcrumbSelectorTrigger>
-                    {currentTopLevel.label}
-                </AdminBreadcrumbSelectorTrigger>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-                {breadcrumbSections.map((section, index) => (
-                    <div key={section.title}>
-                        <DropdownMenuLabel className="text-muted-foreground text-xs">
-                            {section.title}
-                        </DropdownMenuLabel>
-                        {section.pages.map((page) => (
-                            <DropdownMenuItem key={page.href} href={page.href}>
-                                <div className="flex items-center gap-2">
-                                    {page.icon}
-                                    <span>{page.label}</span>
-                                </div>
-                            </DropdownMenuItem>
-                        ))}
-                        {index < breadcrumbSections.length - 1 && (
-                            <DropdownMenuSeparator />
-                        )}
-                    </div>
-                ))}
-            </DropdownMenuContent>
-        </DropdownMenu>
+        <span className="inline-flex min-w-0 items-center gap-0.5">
+            <AdminBreadcrumbSelectorLink href={currentTopLevel.href}>
+                {currentTopLevel.label}
+            </AdminBreadcrumbSelectorLink>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <AdminBreadcrumbSelectorTrigger
+                        aria-label={`Prikaži podizbornik za ${currentTopLevel.label}`}
+                    />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                    {breadcrumbSections.map((section, index) => (
+                        <div key={section.title}>
+                            <DropdownMenuLabel className="text-muted-foreground text-xs">
+                                {section.title}
+                            </DropdownMenuLabel>
+                            {section.pages.map((page) => (
+                                <DropdownMenuItem
+                                    key={page.href}
+                                    href={page.href}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        {page.icon}
+                                        <span>{page.label}</span>
+                                    </div>
+                                </DropdownMenuItem>
+                            ))}
+                            {index < breadcrumbSections.length - 1 && (
+                                <DropdownMenuSeparator />
+                            )}
+                        </div>
+                    ))}
+                </DropdownMenuContent>
+            </DropdownMenu>
+        </span>
     );
 }

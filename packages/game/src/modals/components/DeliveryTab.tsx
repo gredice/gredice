@@ -1,22 +1,27 @@
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { GameDeliveryIcon } from '@gredice/ui/GameIcons';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { DeliveryAddressesSection } from '../../shared-ui/delivery/DeliveryAddressesSection';
 import { DeliveryRequestsSection } from '../../shared-ui/delivery/DeliveryRequestsSection';
 
 export function DeliveryTab() {
     return (
-        <Stack spacing={4}>
-            <Typography level="h4" className="hidden md:block">
-                🚚 Dostava
+        <Stack spacing={8}>
+            <Typography
+                level="h4"
+                className="hidden md:flex items-center gap-2"
+            >
+                <GameDeliveryIcon aria-hidden className="size-8 shrink-0" />
+                Dostava
             </Typography>
             <Stack
-                spacing={2}
+                spacing={4}
                 className="overflow-y-auto max-h-[calc(100dvh-200px)]"
             >
-                <Stack spacing={2}>
+                <Stack spacing={4}>
                     <DeliveryAddressesSection />
                 </Stack>
-                <Stack spacing={2}>
+                <Stack spacing={4}>
                     <DeliveryRequestsSection />
                 </Stack>
             </Stack>

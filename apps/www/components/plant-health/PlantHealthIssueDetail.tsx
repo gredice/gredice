@@ -1,0 +1,190 @@
+import type { PlantDiseaseData, PlantPestData } from '@gredice/client';
+import { Chip } from '@gredice/ui/Chip';
+import { GamePlantDiseaseIcon, GamePlantPestIcon } from '@gredice/ui/GameIcons';
+import { Markdown } from '@gredice/ui/Markdown';
+import { PageHeader } from '@gredice/ui/PageHeader';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
+import { CommunityEditButton } from '../community-edits/CommunityEditButton';
+import { FeedbackModal } from '../shared/feedback/FeedbackModal';
+import { PublicBreadcrumbs } from '../shared/seo/PublicBreadcrumbs';
+import { PlantHealthAffectedPlants } from './PlantHealthAffectedPlants';
+import { PlantHealthIssueOperations } from './PlantHealthIssueOperations';
+import {
+    type PlantHealthIssueKind,
+    plantHealthIssueIndexPath,
+    plantHealthIssueKindLabel,
+    plantHealthIssueListLabel,
+    plantHealthIssueShortDescription,
+    plantHealthIssueTitle,
+} from './plantHealthIssueContent';
+
+type PlantHealthIssueData = PlantDiseaseData | PlantPestData;
+
+export function PlantHealthIssueDetail({
+    issue,
+    kind,
+    path,
+}: {
+    issue: PlantHealthIssueData;
+    kind: PlantHealthIssueKind;
+    path: string;
+}) {
+    const Illustration =
+        kind === 'disease' ? GamePlantDiseaseIcon : GamePlantPestIcon;
+    const title = plantHealthIssueTitle(issue);
+    const affectedPlants = issue.relationships?.affectedPlants ?? [];
+    const sources = issue.review?.sources ?? [];
+    const entityTypeName = kind === 'disease' ? 'plantDisease' : 'plantPest';
+
+    return (
+        <Stack spacing={8} className="py-8">
+            <PublicBreadcrumbs
+                items={[
+                    {
+                        label: plantHealthIssueListLabel(kind),
+                        href: plantHealthIssueIndexPath(kind),
+                    },
+                    { label: title },
+                ]}
+            />
+            <PageHeader
+                visual={<Illustration aria-hidden className="size-48" />}
+                header={title}
+                subHeader={plantHealthIssueShortDescription(issue)}
+                headerChildren={
+                    <CommunityEditButton
+                        entityId={issue.id}
+                        entityTypeName={entityTypeName}
+                        publicPath={path}
+                        sectionKey="overview"
+                    />
+                }
+            />
+            {issue.information.description && (
+                <div className="max-w-2xl">
+                    <Markdown>{issue.information.description}</Markdown>
+                </div>
+            )}
+            <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)]">
+                <Stack spacing={6}>
+                    {issue.symptoms?.symptoms && (
+                        <Stack spacing={2}>
+                            <Row
+                                alignItems="center"
+                                justifyContent="between"
+                                spacing={3}
+                                className="flex-wrap"
+                            >
+                                <Typography level="h2" className="text-2xl">
+                                    Simptomi
+                                </Typography>
+                                <CommunityEditButton
+                                    entityId={issue.id}
+                                    entityTypeName={entityTypeName}
+                                    publicPath={path}
+                                    sectionKey="symptoms"
+                                />
+                            </Row>
+                            <div className="max-w-2xl">
+                                <Markdown>{issue.symptoms.symptoms}</Markdown>
+                            </div>
+                        </Stack>
+                    )}
+                    {issue.conditions?.favorableConditions && (
+                        <Stack spacing={2}>
+                            <Row
+                                alignItems="center"
+                                justifyContent="between"
+                                spacing={3}
+                                className="flex-wrap"
+                            >
+                                <Typography level="h2" className="text-2xl">
+                                    Uvjeti
+                                </Typography>
+                                <CommunityEditButton
+                                    entityId={issue.id}
+                                    entityTypeName={entityTypeName}
+                                    publicPath={path}
+                                    sectionKey="conditions"
+                                />
+                            </Row>
+                            <div className="max-w-2xl">
+                                <Markdown>
+                                    {issue.conditions.favorableConditions}
+                                </Markdown>
+                            </div>
+                            {issue.conditions.severity && (
+                                <Typography level="body2" secondary>
+                                    Ozbiljnost: {issue.conditions.severity}
+                                </Typography>
+                            )}
+                        </Stack>
+                    )}
+                    <Stack spacing={3}>
+                        <Row
+                            alignItems="center"
+                            justifyContent="between"
+                            spacing={3}
+                            className="flex-wrap"
+                        >
+                            <Typography level="h2" className="text-2xl">
+                                Preporučene radnje
+                            </Typography>
+                            <CommunityEditButton
+                                entityId={issue.id}
+                                entityTypeName={entityTypeName}
+                                publicPath={path}
+                                sectionKey="operations"
+                            />
+                        </Row>
+                        <PlantHealthIssueOperations
+                            operations={issue.operations}
+                        />
+                    </Stack>
+                </Stack>
+                <Stack spacing={6}>
+                    <PlantHealthAffectedPlants
+                        plants={affectedPlants}
+                        entityId={issue.id}
+                        entityTypeName={entityTypeName}
+                        publicPath={path}
+                    />
+                    {sources.length > 0 && (
+                        <Stack spacing={2}>
+                            <Typography level="h2" className="text-2xl">
+                                Izvori
+                            </Typography>
+                            <Row spacing={2} className="flex-wrap">
+                                {sources.map((source) => (
+                                    <Chip
+                                        key={`${source.label}-${source.url}`}
+                                        color="neutral"
+                                        href={source.url}
+                                    >
+                                        {source.label}
+                                    </Chip>
+                                ))}
+                            </Row>
+                        </Stack>
+                    )}
+                </Stack>
+            </div>
+            <Row spacing={4}>
+                <Typography level="body1">
+                    Jesu li ti informacije o ovoj temi korisne?
+                </Typography>
+                <FeedbackModal
+                    topic={`www/plant-health/${kind}`}
+                    data={{
+                        issueId: issue.id,
+                        issueAlias: title,
+                        issuePath: path,
+                        issueKind: plantHealthIssueKindLabel(kind),
+                    }}
+                />
+            </Row>
+        </Stack>
+    );
+}

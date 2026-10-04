@@ -1,13 +1,15 @@
-import { cx } from '@signalco/ui-primitives/cx';
-import { Spinner } from '@signalco/ui-primitives/Spinner';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Spinner } from '@gredice/ui/Spinner';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import { ButtonGreen } from '../../shared-ui/ButtonGreen';
 
-type RaisedBedFieldItemButtonProps =
-    React.ButtonHTMLAttributes<HTMLButtonElement> & {
-        isLoading?: boolean;
-        positionIndex: number;
-    };
+type RaisedBedFieldItemButtonProps = Omit<
+    React.ButtonHTMLAttributes<HTMLButtonElement>,
+    'color'
+> & {
+    isLoading?: boolean;
+    positionIndex: number;
+};
 
 export function RaisedBedFieldItemButton({
     isLoading,
@@ -19,13 +21,19 @@ export function RaisedBedFieldItemButton({
     return (
         <ButtonGreen
             className={cx(
-                'p-0 relative size-full flex items-center justify-center rounded-sm',
+                'relative flex size-full items-center justify-center rounded-xs p-0 dark:ring-1 dark:ring-lime-100/10',
                 className,
             )}
             {...rest}
         >
-            <div className="absolute left-0.5 top-0">
-                <Typography level="body3" className="text-lime-700">
+            <div
+                className="absolute left-0.5 top-0"
+                data-raised-bed-field-position-label
+            >
+                <Typography
+                    level="body3"
+                    className="text-lime-700 dark:text-lime-200"
+                >
                     {positionIndex + 1}
                 </Typography>
             </div>

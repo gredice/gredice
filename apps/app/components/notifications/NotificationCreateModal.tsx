@@ -1,14 +1,14 @@
 'use client';
 
-import { Add } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Checkbox } from '@signalco/ui-primitives/Checkbox';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Checkbox } from '@gredice/ui/Checkbox';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Input } from '@gredice/ui/Input';
+import { Add } from '@gredice/ui/icons';
+import { Modal } from '@gredice/ui/Modal';
+import { SelectItems } from '@gredice/ui/SelectItems';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useActionState, useEffect, useMemo, useRef, useState } from 'react';
 import { getAccountData } from '../../app/(actions)/accountDataActions';
 import { createNotificationAction } from '../../app/(actions)/notificationActions';
@@ -193,10 +193,10 @@ export function NotificationCreateModal({
             }
             title={'Nova obavijest'}
         >
-            <Stack spacing={4}>
+            <Stack spacing={8}>
                 <Typography level="h5">Nova obavijest</Typography>
                 <form ref={formRef} action={formAction} className="space-y-4">
-                    <Stack spacing={2}>
+                    <Stack spacing={4}>
                         <SelectItems
                             label="Predložak"
                             value={selectedTemplate}
@@ -317,31 +317,36 @@ export function NotificationCreateModal({
                             </>
                         )}
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <Input
-                                name="header"
-                                label="Naslov"
-                                required
-                                disabled={pending}
-                                className="col-span-2"
-                                value={header}
-                                onChange={(e) => setHeader(e.target.value)}
-                            />
-                            <Input
-                                name="content"
-                                label="Sadržaj"
-                                required
-                                disabled={pending}
-                                className="col-span-2"
-                                value={content}
-                                onChange={(e) => setContent(e.target.value)}
-                            />
+                        <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
+                            <div className="sm:col-span-2">
+                                <Input
+                                    name="header"
+                                    label="Naslov"
+                                    required
+                                    disabled={pending}
+                                    value={header}
+                                    onChange={(e) => setHeader(e.target.value)}
+                                    fullWidth
+                                />
+                            </div>
+                            <div className="sm:col-span-2">
+                                <Input
+                                    name="content"
+                                    label="Sadržaj"
+                                    required
+                                    disabled={pending}
+                                    value={content}
+                                    onChange={(e) => setContent(e.target.value)}
+                                    fullWidth
+                                />
+                            </div>
                             <Input
                                 name="iconUrl"
                                 label="URL ikone (opcionalno)"
                                 disabled={pending}
                                 value={iconUrl}
                                 onChange={(e) => setIconUrl(e.target.value)}
+                                fullWidth
                             />
                             <Input
                                 name="imageUrl"
@@ -349,6 +354,7 @@ export function NotificationCreateModal({
                                 disabled={pending}
                                 value={imageUrl}
                                 onChange={(e) => setImageUrl(e.target.value)}
+                                fullWidth
                             />
                             <Input
                                 name="linkUrl"
@@ -356,20 +362,25 @@ export function NotificationCreateModal({
                                 disabled={pending}
                                 value={linkUrl}
                                 onChange={(e) => setLinkUrl(e.target.value)}
+                                fullWidth
                             />
-                            <Input
-                                name="timestamp"
-                                type="datetime-local"
-                                label="Datum obavijesti (opcionalno)"
-                                disabled={pending}
-                                value={timestamp}
-                                onChange={(e) => setTimestamp(e.target.value)}
-                                className="col-span-2"
-                            />
+                            <div className="sm:col-span-2">
+                                <Input
+                                    name="timestamp"
+                                    type="datetime-local"
+                                    label="Datum obavijesti (opcionalno)"
+                                    disabled={pending}
+                                    value={timestamp}
+                                    onChange={(e) =>
+                                        setTimestamp(e.target.value)
+                                    }
+                                    fullWidth
+                                />
+                            </div>
                         </div>
 
                         {target === 'selected' && (
-                            <Stack spacing={1}>
+                            <Stack spacing={2}>
                                 <Typography level="h5" semiBold>
                                     Odaberite račune
                                 </Typography>

@@ -2,8 +2,8 @@ import {
     getAttributeDefinitionCategories,
     getEntityTypeByName,
 } from '@gredice/storage';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
 import { notFound } from 'next/navigation';
 import {
     AdminDirectoryBreadcrumbs,
@@ -33,7 +33,7 @@ export default async function AttributeDefinitionCategoryDetailsPage({
     const { name, label } = category;
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             <AdminPageHeader
                 breadcrumbs={
                     <AdminDirectoryBreadcrumbs
@@ -54,7 +54,7 @@ export default async function AttributeDefinitionCategoryDetailsPage({
                 heading={label}
             />
             <form>
-                <Row spacing={2}>
+                <Row spacing={4}>
                     <FormInput
                         category={category}
                         name="label"

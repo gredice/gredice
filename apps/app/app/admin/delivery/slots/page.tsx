@@ -1,9 +1,10 @@
 import { getAllTimeSlots, getPickupLocations } from '@gredice/storage';
-import { Add, Calendar } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Button } from '@gredice/ui/Button';
+import { Card, CardOverflow } from '@gredice/ui/Card';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Add, Calendar } from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
 import { AdminPageHeader } from '../../../../components/admin/navigation';
 import { auth } from '../../../../lib/auth/auth';
 import { ArchiveClosedSlotsButton } from './ArchiveClosedSlotsButton';
@@ -38,21 +39,22 @@ export default async function AdminTimeSlotsPage({
     const status = statusParam === 'all' ? 'all' : 'active';
 
     return (
-        <Stack spacing={4}>
+        <Stack spacing={8}>
             <AdminPageHeader
                 actions={
-                    <Row spacing={2}>
+                    <Row spacing={4}>
                         <ArchiveClosedSlotsButton
                             slotIds={archivableClosedSlotIds}
                         />
                         <CreateTimeSlotModal
                             trigger={
-                                <Button
+                                <IconButton
+                                    aria-label="Kreiraj slot"
+                                    title="Kreiraj slot"
                                     variant="solid"
-                                    startDecorator={<Add className="size-4" />}
                                 >
-                                    Kreiraj slot
-                                </Button>
+                                    <Add className="size-5" />
+                                </IconButton>
                             }
                             locations={pickupLocations}
                         />

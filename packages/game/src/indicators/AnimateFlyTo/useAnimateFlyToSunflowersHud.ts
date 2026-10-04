@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
+import { observeDocumentVisibility } from '../../hooks/documentVisibilityObserver';
+import { useGameSceneRuntimeActive } from '../../scene/sceneRuntimeActivity';
 import { type AnimationOptions, useAnimateFlyTo } from './useAnimateFlyTo';
+import { VisibilityAwareMutationLocator } from './visibilityAwareMutationLocator';
 
 type Target = { x: number; y: number };
 
@@ -44,13 +47,12 @@ function measureTarget(): MeasureResult {
 
 export function useAnimateFlyToSunflowersHud(options: AnimationOptions = {}) {
     const [target, setTarget] = useState<Target>(() => getFallbackTarget());
+    const runtimeActive = useGameSceneRuntimeActive();
 
     useEffect(() => {
         if (typeof window === 'undefined') {
             return;
         }
-
-        let intervalId: number | undefined;
 
         const applyTarget = () => {
             const { target: nextTarget, hasElement } = measureTarget();
@@ -60,32 +62,37 @@ export function useAnimateFlyToSunflowersHud(options: AnimationOptions = {}) {
                 }
                 return nextTarget;
             });
-
-            if (hasElement && intervalId !== undefined) {
-                window.clearInterval(intervalId);
-                intervalId = undefined;
-            }
+            return hasElement;
         };
-
-        intervalId = window.setInterval(applyTarget, 500);
-
-        applyTarget();
+        const locator = new VisibilityAwareMutationLocator<Node>({
+            createObserver: (onMutation) =>
+                new MutationObserver(() => onMutation()),
+            documentVisible: !document.hidden,
+            locate: applyTarget,
+            observeTarget: document.documentElement,
+            runtimeActive,
+        });
+        const stopVisibilityTracking = observeDocumentVisibility({
+            documentTarget: document,
+            onVisibilityChange: (visible) =>
+                locator.setDocumentVisible(visible),
+            windowTarget: window,
+        });
 
         const handleWindowChange = () => {
-            applyTarget();
+            locator.refresh();
         };
 
         window.addEventListener('resize', handleWindowChange);
         window.addEventListener('scroll', handleWindowChange, true);
 
         return () => {
-            if (intervalId !== undefined) {
-                window.clearInterval(intervalId);
-            }
+            stopVisibilityTracking();
+            locator.dispose();
             window.removeEventListener('resize', handleWindowChange);
             window.removeEventListener('scroll', handleWindowChange, true);
         };
-    }, []);
+    }, [runtimeActive]);
 
     return useAnimateFlyTo(target.x, target.y, options);
 }

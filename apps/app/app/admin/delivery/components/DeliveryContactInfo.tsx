@@ -1,5 +1,5 @@
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import type { DeliveryAddressData } from './DeliveryAddress';
 import { DeliveryAddress } from './DeliveryAddress';
 import { PhoneLink } from './PhoneLink';
@@ -20,7 +20,7 @@ export function DeliveryContactInfo({
     const isDelivery = mode === 'delivery';
 
     return (
-        <Stack spacing={0.25}>
+        <Stack spacing={0.5}>
             {isDelivery ? (
                 <>
                     <Typography level="body2">

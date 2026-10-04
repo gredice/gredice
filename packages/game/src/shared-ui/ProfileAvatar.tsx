@@ -1,6 +1,6 @@
+import type { AvatarProps } from '@gredice/ui/Avatar';
 import { UserAvatar } from '@gredice/ui/UserAvatar';
-import type { AvatarProps } from '@signalco/ui-primitives/Avatar';
-import { cx } from '@signalco/ui-primitives/cx';
+import { cx } from '@gredice/ui/utils';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 
 export function ProfileAvatar({
@@ -16,6 +16,7 @@ export function ProfileAvatar({
     return (
         <UserAvatar
             avatarUrl={currentUser.data?.avatarUrl}
+            achievementCount={currentUser.data?.achievementCount}
             displayName={currentUser.data?.displayName ?? ''}
             className={cx(
                 variant === 'transparentOnMobile' &&

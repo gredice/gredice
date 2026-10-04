@@ -1,3 +1,58 @@
 packages:
   - 'apps/*'
   - 'packages/*'
+allowBuilds:
+  '@ffmpeg-installer/darwin-arm64': true
+  '@ffmpeg-installer/linux-x64': true
+  '@parcel/watcher': true
+  core-js: true
+  electron-winstaller: true
+  esbuild: true
+  protobufjs: true
+  sharp: true
+  vue-demi: true
+packageExtensions:
+  '@joshwooding/vite-plugin-react-docgen-typescript@0.7.0':
+    dependencies:
+      '@typescript/typescript6': '6.0.2'
+  'openapi-typescript@7.13.0':
+    dependencies:
+      '@typescript/typescript6': '6.0.2'
+  'react-docgen-typescript@2.4.0':
+    dependencies:
+      '@typescript/typescript6': '6.0.2'
+  'tsconfck@3.1.6':
+    dependencies:
+      '@typescript/typescript6': '6.0.2'
+overrides:
+  # The accessibility suites use the legacy CT runner; align Axe's broad core peer with it.
+  '@axe-core/playwright>playwright-core': '1.62.1'
+  '@types/react': 19.2.18
+  '@types/react-dom': 19.2.7
+  '@hono/node-server': '1.19.17'
+  '@joshwooding/vite-plugin-react-docgen-typescript@0.7.0>typescript': '-'
+  # Next's unused experimental test-mode peer splits nominal NextRequest types when test runners differ.
+  'next>@playwright/test': '-'
+  '@xmldom/xmldom': '0.9.12'
+  'fast-uri': '3.1.8'
+  'ip-address': '10.7.2'
+  'minimatch@10>brace-expansion': '5.0.12'
+  'openapi-typescript@7.13.0>typescript': '-'
+  'postcss': '8.5.28'
+  'qs': '6.16.0'
+  # @react-three/fiber 9.x peers on react/react-dom <19.3; keep one React version workspace-wide until it supports 19.3.
+  'react': '19.2.8'
+  'react-dom': '19.2.8'
+  'react-docgen-typescript@2.4.0>typescript': '-'
+  'tsconfck@3.1.6>typescript': '-'
+patchedDependencies:
+  '@joshwooding/vite-plugin-react-docgen-typescript@0.7.0': patches/@joshwooding__vite-plugin-react-docgen-typescript@0.7.0.patch
+  openapi-typescript@7.13.0: patches/openapi-typescript@7.13.0.patch
+  react-docgen-typescript@2.4.0: patches/react-docgen-typescript@2.4.0.patch
+  tsconfck@3.1.6: patches/tsconfck@3.1.6.patch
+  # Backport https://github.com/web-push-libs/web-push/pull/948 until a release includes it.
+  'web-push@3.6.7': patches/web-push@3.6.7.patch
+  # xml-crypto 6.3.2 still uses xmldom's old parser API; remove after upstream supports 0.9.
+  xml-crypto@6.3.2: patches/xml-crypto@6.3.2.patch
+  # Electron's plist 3.x parser also omits the MIME type required by xmldom 0.9.
+  plist@3.1.0: patches/plist@3.1.0.patch

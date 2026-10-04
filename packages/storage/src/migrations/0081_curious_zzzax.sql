@@ -1,0 +1,1 @@
+ALTER TABLE "garden_blocks" ADD COLUMN "message" text;

@@ -4,11 +4,13 @@ import type {
     SelectAttributeDefinition,
     SelectAttributeValue,
 } from '@gredice/storage';
-import { Delete } from '@signalco/ui-icons';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Skeleton } from '@signalco/ui-primitives/Skeleton';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Delete, Remove } from '@gredice/ui/icons';
+import { ModalConfirm } from '@gredice/ui/ModalConfirm';
+import { Skeleton } from '@gredice/ui/Skeleton';
 import dynamic from 'next/dynamic';
 import type { ComponentType } from 'react';
+import { useState } from 'react';
 import {
     handleValueDelete,
     handleValueSave,
@@ -36,17 +38,22 @@ const MarkdownInput = dynamic(
 );
 
 export function AttributeInput({
+    blockedValues,
     entityType,
     entityId,
     attributeDefinition,
     attributeValue,
+    presentation = 'default',
 }: {
+    blockedValues?: string[];
     entityType: string;
     entityId: number;
     attributeDefinition: SelectAttributeDefinition;
     attributeValue: SelectAttributeValue | undefined | null;
+    presentation?: 'default' | 'list-item';
 }) {
     const { trackSave } = useEntityDetailsSave();
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     const handleChange = async (value: string | null) => {
         console.debug(
@@ -66,18 +73,26 @@ export function AttributeInput({
         }
 
         try {
-            await trackSave(() =>
-                handleValueSave(
+            await trackSave(async () => {
+                const result = await handleValueSave(
                     entityType,
                     entityId,
                     attributeDefinition,
                     attributeValue?.id,
                     value,
-                ),
-            );
+                );
+                if (!result.success) {
+                    throw new Error(result.message);
+                }
+            });
+            setErrorMessage(null);
         } catch (error) {
             console.error('AttributeInput handleChange error', error);
-            // TODO: Display error notification
+            setErrorMessage(
+                error instanceof Error
+                    ? error.message
+                    : 'Vrijednost nije spremljena.',
+            );
         }
     };
 
@@ -88,15 +103,26 @@ export function AttributeInput({
 
         try {
             await trackSave(() => handleValueDelete(attributeValue));
+            setErrorMessage(null);
         } catch (error) {
             console.error('AttributeInput handleDelete error', error);
-            // TODO: Display error notification
+            setErrorMessage(
+                error instanceof Error
+                    ? error.message
+                    : 'Vrijednost nije obrisana.',
+            );
         }
     };
 
     let AttributeInputComponent: ComponentType<AttributeInputProps> = TextInput;
     let schema: string | null = null;
-    if (attributeDefinition.dataType.startsWith('ref:')) {
+    const isReferenceInput = attributeDefinition.dataType.startsWith('ref:');
+    const isTextInput = attributeDefinition.dataType === 'text';
+    const isComplexValueInput =
+        attributeDefinition.dataType === 'markdown' ||
+        attributeDefinition.dataType === 'image' ||
+        attributeDefinition.dataType.startsWith('json');
+    if (isReferenceInput) {
         AttributeInputComponent = SelectEntity;
     } else if (attributeDefinition.dataType === 'boolean') {
         AttributeInputComponent = BooleanInput;
@@ -119,23 +145,93 @@ export function AttributeInput({
         schema = attributeDefinition.dataType.substring(5);
     }
 
+    const canDelete = Boolean(attributeValue && attributeDefinition.multiple);
+    const shouldConfirmDelete = canDelete && isComplexValueInput;
+
+    if (canDelete && isReferenceInput) {
+        return (
+            <div className="w-full max-w-xl">
+                <div className="grid grid-cols-[minmax(0,1fr),auto] items-center gap-1">
+                    <AttributeInputComponent
+                        attributeDefinition={attributeDefinition}
+                        blockedValues={blockedValues}
+                        entityId={entityId}
+                        value={attributeValue?.value}
+                        onChange={handleChange}
+                        schema={schema}
+                        presentation={presentation}
+                    />
+                    <IconButton
+                        className="shrink-0"
+                        onClick={handleDelete}
+                        variant="plain"
+                        title="Ukloni"
+                        type="button"
+                        size="xs"
+                    >
+                        <Remove className="size-3.5" />
+                    </IconButton>
+                </div>
+                {errorMessage ? (
+                    <p className="mt-1 text-sm text-red-600" role="alert">
+                        {errorMessage}
+                    </p>
+                ) : null}
+            </div>
+        );
+    }
+
     return (
-        <div className="grid grid-cols-[1fr,auto] gap-1 items-center">
-            <AttributeInputComponent
-                attributeDefinition={attributeDefinition}
-                value={attributeValue?.value}
-                onChange={handleChange}
-                schema={schema}
-            />
-            {attributeValue && attributeDefinition.multiple && (
-                <IconButton
-                    onClick={handleDelete}
-                    variant="plain"
-                    title="Obriši"
-                >
-                    <Delete className="size-4" />
-                </IconButton>
-            )}
+        <div className={isTextInput ? 'w-full max-w-xl' : undefined}>
+            <div className="relative">
+                <AttributeInputComponent
+                    attributeDefinition={attributeDefinition}
+                    blockedValues={blockedValues}
+                    entityId={entityId}
+                    value={attributeValue?.value}
+                    onChange={handleChange}
+                    schema={schema}
+                    presentation={presentation}
+                />
+                {canDelete &&
+                    (shouldConfirmDelete ? (
+                        <ModalConfirm
+                            title="Potvrdi brisanje"
+                            header="Obrisati vrijednost atributa?"
+                            onConfirm={handleDelete}
+                            trigger={
+                                <IconButton
+                                    className="absolute right-0 top-0 z-10"
+                                    variant="plain"
+                                    title="Obriši"
+                                    type="button"
+                                    size="xs"
+                                >
+                                    <Delete className="size-3.5" />
+                                </IconButton>
+                            }
+                        >
+                            Ova vrijednost sadrži više podataka. Brisanje se ne
+                            može poništiti.
+                        </ModalConfirm>
+                    ) : (
+                        <IconButton
+                            className="absolute right-0 top-0 z-10"
+                            onClick={handleDelete}
+                            variant="plain"
+                            title="Obriši"
+                            type="button"
+                            size="xs"
+                        >
+                            <Delete className="size-3.5" />
+                        </IconButton>
+                    ))}
+            </div>
+            {errorMessage ? (
+                <p className="mt-1 text-sm text-red-600" role="alert">
+                    {errorMessage}
+                </p>
+            ) : null}
         </div>
     );
 }

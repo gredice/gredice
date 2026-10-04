@@ -1,0 +1,37 @@
+{
+  "generatedWith": "built-in image_gen",
+  "references": [
+    "packages/ui/src/GameIcons/assets/harvest-crate.webp",
+    "apps/www/assets/RaisedBedMaintenance.webp"
+  ],
+  "processing": "Trim transparent margins, contain within 480px, pad to 512px, WebP quality 90 and alphaQuality 100. Preserve source transparency.",
+  "assets": [
+    {
+      "file": "using-beds.webp",
+      "prompt": "Use case: stylized-concept. Asset type: reusable FAQ category artwork for Gredice, a friendly gardening game. Generate ONE original compact 3D low-poly illustrated icon. The attached harvest crate and raised-bed care scene are STYLE REFERENCES ONLY. Match their chunky beveled geometry, clearly visible three-dimensional top/front/side faces, matte faceted toy materials, soft upper-left lighting and rich natural colors. Elevated three-quarter camera, centered complete silhouette, roughly square compact composition, 8 percent clear margin. Real transparent alpha background, no floor or background, no external drop shadow. Must be clear at 64px and attractive at 192px. No text, letters, numerals, logos, watermark, medal, gold trim or surrounding badge. Subject: one small square cedar wooden raised garden bed filled with dark brown soil and three thriving green vegetable seedlings. Arrange seedlings with clear space between them. Chunky warm terracotta-brown timber boards with simple silver-gray corner fasteners, rich lime and forest-green leaves. The raised bed and plants alone; no watering can, tools, fence or extra props.",
+      "sourceSha256": "11ee14f9aa2cc307c755d630de2e006af4daf51614d94bb5b4f78f2720e2fdbe"
+    },
+    {
+      "file": "harvest-safety.webp",
+      "prompt": "Use case: stylized-concept. Asset type: reusable FAQ category artwork for Gredice, a friendly gardening game. Generate ONE original compact 3D low-poly illustrated icon. The attached harvest crate and raised-bed care scene are STYLE REFERENCES ONLY. Match their chunky beveled geometry, clearly visible three-dimensional top/front/side faces, matte faceted toy materials, soft upper-left lighting and rich natural colors. Elevated three-quarter camera, centered complete silhouette, roughly square compact composition, 8 percent clear margin. Real transparent alpha background, no floor or background, no external drop shadow. Must be clear at 64px and attractive at 192px. No text, letters, numerals, logos, watermark, medal, gold trim or surrounding badge. Subject: one protective thick rounded TEAL BLUE shield standing behind a compact cluster of fresh vegetables: a rich red tomato with green stem, a vivid orange carrot with green leaves, and a small leafy cabbage. Shield face is plain teal with a simple large raised green leaf, not a certification seal or checkmark. Shield is mostly visible above vegetables, all objects coherent and lightly overlapping. Dark blue shaded side of shield, clear bevels. No pedestal, ribbons, wings or stars.",
+      "sourceSha256": "18e7aa64b8f9286b96ac0b8aaccdaa61b49c1180ee57427d1226acae7baad932"
+    },
+    {
+      "file": "service.webp",
+      "prompt": "Use case: stylized-concept. Asset type: reusable FAQ category artwork for Gredice, a friendly gardening game. Generate ONE original compact 3D low-poly illustrated icon. The attached harvest crate and raised-bed care scene are STYLE REFERENCES ONLY. Match their chunky beveled geometry, clearly visible three-dimensional top/front/side faces, matte faceted toy materials, soft upper-left lighting and rich natural colors. Elevated three-quarter camera, centered complete silhouette, roughly square compact composition, 8 percent clear margin. Real transparent alpha background, no floor or background, no external drop shadow. Must be clear at 64px and attractive at 192px. No text, letters, numerals, logos, watermark, medal, gold trim or surrounding badge. Subject: one small friendly farm shed with a deep teal pitched roof, warm ivory walls, a terracotta wooden open door, and a wooden vegetable crate at its front. Crate holds a bright red tomato and two green leafy vegetables. One small green seedling beside shed completes this tiny farming service scene. Clear shed silhouette and thick roof edges; compact cozy original game prop. No clock, phone, text, delivery van, people, coins or extra buildings.",
+      "sourceSha256": "a8d9f9cebb33259fbe8e915419ffb49037fab390fbc009073e773a4459c804f2"
+    }
+  ],
+  "reused": [
+    {
+      "file": "harvest.webp",
+      "source": "packages/ui/src/GameIcons/assets/harvest-crate.webp",
+      "sourceSha256": "9465e87b8fc77844d1bfa8a09b8f08ffa87ba62dde31e32d996e1ca5b2b72198"
+    },
+    {
+      "file": "maintenance.webp",
+      "source": "apps/www/assets/RaisedBedMaintenance.webp",
+      "sourceSha256": "45b49c1909e4aecec74359f1a4361010687969b9d6e13ac0530404f7024d035b"
+    }
+  ]
+}

@@ -1,32 +1,146 @@
-import { and, asc, count, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
+import { normalizeOperationRequestNote } from '@gredice/js/operations';
+import type { SelectedPlantingOperationTarget } from '@gredice/js/plants';
+import {
+    and,
+    asc,
+    between,
+    count,
+    desc,
+    eq,
+    exists,
+    gte,
+    inArray,
+    isNotNull,
+    isNull,
+    lte,
+    or,
+    sql,
+} from 'drizzle-orm';
 import {
     bustScheduleCache,
     cacheScheduleRead,
     scheduleCacheKeys,
     scheduleCacheTtls,
 } from '../cache/scheduleCache';
+import { withTransientDatabaseReadRetry } from '../databaseReadRetry';
+import { operationTaskAdminEventSchema } from '../operationTaskAdministration';
 import {
+    attributeDefinitions,
+    attributeValues,
+    entities,
     events,
+    farms,
     farmUsers,
     gardens,
     type InsertOperation,
     operations,
+    raisedBedFields,
+    raisedBedPlantingFields,
+    raisedBedPlantings,
     raisedBeds,
     type SelectOperation,
     users,
 } from '../schema';
 import { storage } from '../storage';
-import { getEvents, knownEventTypes } from './events';
+import { enqueueCheckoutOperationScheduledNotification } from './checkoutNotificationOutboxRepo';
+import {
+    createEvent,
+    getAllEvents,
+    getEvents,
+    knownEvents,
+    knownEventTypes,
+} from './events';
 import { normalizeAssignedUserIds } from './events/normalizeAssignedUserIds';
-import type { OperationEventsAnyPayload } from './events/types';
+import { scheduleTaskBlockDetailsFromEvent } from './events/scheduleTaskBlock';
+import type {
+    CheckoutOperationCreatedPayload,
+    OperationEventsAnyPayload,
+} from './events/types';
+import { getRaisedBedPlanting } from './raisedBedPlantingsRepo';
+import { assertSelectedPlantingOperationPurchase } from './selectedPlantingOperationPurchase';
+import {
+    userAchievementCount,
+    userAchievementExtras,
+} from './userAchievementProgress';
 
 export type OperationStatus =
     | 'new'
     | 'planned'
     | 'pendingVerification'
     | 'completed'
+    | 'blocked'
     | 'failed'
     | 'canceled';
+
+type StorageClient = ReturnType<typeof storage>;
+type TransactionClient = Parameters<
+    Parameters<StorageClient['transaction']>[0]
+>[0];
+type DatabaseClient = StorageClient | TransactionClient;
+
+const checkoutOperationLockTails = new Map<string, Promise<void>>();
+// checkout.operation.created was introduced at this source cutover. When an
+// environment has mappings, its earliest actual event is the stronger boundary.
+const CHECKOUT_OPERATION_PROVENANCE_INTRODUCED_AT_MS = Date.parse(
+    '2026-08-03T16:16:01.000Z',
+);
+
+export class CheckoutOperationConflictError extends Error {
+    override name = 'CheckoutOperationConflictError';
+}
+
+export const SELECTED_PLANTING_PLANT_OPERATION_CONFLICT_MESSAGE =
+    'Radnju za pojedinu biljku nije moguće planirati na polju s naprednom sjetvom. Odaberi radnju za cijelo polje ili gredicu.';
+
+export type OperationTargetConflictErrorCode =
+    | 'selected_planting_conflict'
+    | 'incompatible_scope';
+
+export type OperationTargetGuardOptions = {
+    allowSelectedPlantingFieldOperations?: boolean;
+    requireMatchingTargetScope?: boolean;
+};
+
+export class OperationTargetConflictError extends Error {
+    override readonly name = 'OperationTargetConflictError';
+
+    constructor(
+        readonly code: OperationTargetConflictErrorCode,
+        message = SELECTED_PLANTING_PLANT_OPERATION_CONFLICT_MESSAGE,
+    ) {
+        super(message);
+    }
+}
+
+async function withCheckoutOperationInProcessLock<T>(
+    key: string,
+    callback: () => Promise<T>,
+) {
+    const previous = checkoutOperationLockTails.get(key) ?? Promise.resolve();
+    let release = () => {};
+    const current = new Promise<void>((resolve) => {
+        release = resolve;
+    });
+    const tail = previous.then(() => current);
+    checkoutOperationLockTails.set(key, tail);
+
+    await previous;
+    try {
+        return await callback();
+    } finally {
+        release();
+        if (checkoutOperationLockTails.get(key) === tail) {
+            checkoutOperationLockTails.delete(key);
+        }
+    }
+}
+
+function isPgliteTestDatabase() {
+    return (
+        process.env.TEST_ENV === '1' &&
+        process.env.GREDICE_TEST_DB_PROVIDER === 'pglite'
+    );
+}
 
 type OperationsFilter = {
     from?: Date;
@@ -41,6 +155,7 @@ export type OperationAssignedUser = {
     userName: string;
     displayName: string | null;
     avatarUrl: string | null;
+    achievementCount?: number;
 };
 
 export type OperationAssignableFarmUser = OperationAssignedUser & {
@@ -48,11 +163,56 @@ export type OperationAssignableFarmUser = OperationAssignedUser & {
 };
 
 type GetOperationsInput = {
+    plantingId?: number;
     accountId: string;
     gardenId?: number;
     raisedBedId?: number;
     raisedBedFieldIds?: number[];
 };
+
+function operationGardenIdExpression() {
+    return sql<number>`coalesce(${operations.gardenId}, ${raisedBeds.gardenId})`;
+}
+
+function operationFarmIdExpression() {
+    return sql<number>`coalesce(${operations.farmId}, ${gardens.farmId})`;
+}
+
+function operationLocationIntegrityWhere() {
+    return and(
+        or(
+            isNull(operations.raisedBedId),
+            and(
+                eq(raisedBeds.isDeleted, false),
+                or(
+                    isNull(operations.gardenId),
+                    eq(operations.gardenId, raisedBeds.gardenId),
+                ),
+            ),
+        ),
+        or(
+            and(isNull(operations.gardenId), isNull(operations.raisedBedId)),
+            and(
+                eq(gardens.isDeleted, false),
+                or(
+                    isNull(operations.farmId),
+                    eq(operations.farmId, gardens.farmId),
+                ),
+            ),
+        ),
+        exists(
+            storage()
+                .select({ id: farms.id })
+                .from(farms)
+                .where(
+                    and(
+                        eq(farms.id, operationFarmIdExpression()),
+                        eq(farms.isDeleted, false),
+                    ),
+                ),
+        ),
+    );
+}
 
 function parseOperationEventData(value: unknown): OperationEventsAnyPayload {
     if (!value || typeof value !== 'object') {
@@ -85,6 +245,12 @@ function parseOperationEventData(value: unknown): OperationEventsAnyPayload {
             (value): value is string => typeof value === 'string',
         );
     }
+    if (typeof record.requestNote === 'string') {
+        data.requestNote = record.requestNote;
+    }
+    if (typeof record.notes === 'string') {
+        data.notes = record.notes;
+    }
     if (typeof record.error === 'string') {
         data.error = record.error;
     }
@@ -107,25 +273,86 @@ function parseOperationEventData(value: unknown): OperationEventsAnyPayload {
     return data;
 }
 
-async function fillOperationAggregates(operations: SelectOperation[]) {
+async function fillOperationAggregates(
+    operations: SelectOperation[],
+    db: DatabaseClient = storage(),
+    readRecoveryContext?: { gardenId: number; sceneOnly?: boolean },
+) {
     if (operations.length === 0) {
         return [];
     }
 
     const aggregateIds = operations.map((op) => op.id.toString());
-    const aggregatesEvents = await getEvents(
-        [
-            knownEventTypes.operations.assign,
-            knownEventTypes.operations.schedule,
-            knownEventTypes.operations.complete,
-            knownEventTypes.operations.verify,
-            knownEventTypes.operations.fail,
-            knownEventTypes.operations.cancel,
-        ],
-        aggregateIds,
-        0,
-        10000,
-    );
+    const aggregateEventTypes = readRecoveryContext?.sceneOnly
+        ? operationTimelineStatusTypes
+        : [
+              knownEventTypes.operations.adminUpdate,
+              knownEventTypes.operations.acceptance,
+              knownEventTypes.operations.assign,
+              knownEventTypes.operations.entityChange,
+              knownEventTypes.operations.schedule,
+              knownEventTypes.operations.complete,
+              knownEventTypes.operations.block,
+              knownEventTypes.operations.completionEvidenceUpdate,
+              knownEventTypes.operations.verify,
+              knownEventTypes.operations.fail,
+              knownEventTypes.operations.cancel,
+          ];
+    const aggregatesEvents: Awaited<ReturnType<typeof getEvents>> = [];
+    const eventPageSize = 10000;
+    for (let offset = 0; ; offset += eventPageSize) {
+        const readEventPage = () =>
+            readRecoveryContext?.sceneOnly
+                ? db
+                      .select({
+                          id: events.id,
+                          type: events.type,
+                          version: events.version,
+                          aggregateId: events.aggregateId,
+                          createdAt: events.createdAt,
+                          // Keep complete correction payloads for canonical schema
+                          // validation. Ordinary scene events only need the date.
+                          data: sql<unknown>`case
+                              when ${events.type} = ${knownEventTypes.operations.adminUpdate} then ${events.data}
+                              when ${events.type} = ${knownEventTypes.operations.schedule} then jsonb_build_object('scheduledDate', ${events.data} -> 'scheduledDate')
+                              else '{}'::jsonb end`,
+                      })
+                      .from(events)
+                      .where(
+                          and(
+                              inArray(events.type, aggregateEventTypes),
+                              inArray(events.aggregateId, aggregateIds),
+                          ),
+                      )
+                      .orderBy(asc(events.createdAt), asc(events.id))
+                      .offset(offset)
+                      .limit(eventPageSize)
+                : getEvents(
+                      aggregateEventTypes,
+                      aggregateIds,
+                      offset,
+                      eventPageSize,
+                      db,
+                  );
+        const eventPage = readRecoveryContext
+            ? await withTransientDatabaseReadRetry(readEventPage, {
+                  operation: readRecoveryContext.sceneOnly
+                      ? 'hydrate-garden-operation-scene-events'
+                      : 'hydrate-garden-operation-events',
+                  context: {
+                      gardenId: readRecoveryContext.gardenId,
+                      aggregateCount: aggregateIds.length,
+                      eventTypeCount: aggregateEventTypes.length,
+                      offset,
+                      limit: eventPageSize,
+                  },
+              })
+            : await readEventPage();
+        aggregatesEvents.push(...eventPage);
+        if (eventPage.length < eventPageSize) {
+            break;
+        }
+    }
 
     const eventsByAggregateId = new Map<string, typeof aggregatesEvents>();
     for (const event of aggregatesEvents) {
@@ -147,20 +374,84 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
         let scheduledAt: Date | undefined;
         let completedAt: Date | undefined;
         let completedBy: string | undefined;
+        let completionEventId: number | undefined;
         let verifiedAt: Date | undefined;
         let verifiedBy: string | undefined;
+        let verificationEventId: number | undefined;
         let error: string | undefined;
         let errorCode: string | undefined;
         let canceledBy: string | undefined;
         let canceledAt: Date | undefined;
         let cancelReason: string | undefined;
         let imageUrls: string[] | undefined;
+        let requestNote: string | undefined;
+        let completionNotes: string | undefined;
+        let completionNotesEdited = false;
+        let blockedAt: Date | undefined;
+        let blockedBy: string | undefined;
+        let blockedEventId: number | undefined;
+        let blockReasonCode: string | undefined;
+        let blockReasonLabel: string | undefined;
+        let blockNote: string | undefined;
+        let blockImageUrls: string[] | undefined;
+        let taskVersionEventId = 0;
 
         // helpers to safely extract typed values from unknown event.data
         const asString = (v: unknown): string | undefined =>
             typeof v === 'string' ? v : undefined;
 
         for (const event of operationEvents) {
+            taskVersionEventId = event.id;
+            if (event.type === knownEventTypes.operations.adminUpdate) {
+                const parsed = operationTaskAdminEventSchema.safeParse(
+                    event.data,
+                );
+                if (!parsed.success) continue;
+                const correction = parsed.data;
+                const task = correction.task;
+                const date = (value: string | null) =>
+                    value ? new Date(value) : undefined;
+                status = task.status;
+                assignedUserIds = task.assignedUserIds;
+                assignedUserId = assignedUserIds[0] ?? null;
+                assignedBy = correction.assignedBy ?? undefined;
+                assignedAt = date(task.assignedAt);
+                scheduledDate = date(task.scheduledDate);
+                scheduledAt = date(task.scheduledAt);
+                completedAt = date(task.completedAt);
+                completedBy = completedAt
+                    ? (correction.completedBy ?? undefined)
+                    : undefined;
+                completionEventId = completedAt
+                    ? (correction.completionEventId ?? event.id)
+                    : undefined;
+                verifiedAt = date(task.verifiedAt);
+                verifiedBy = verifiedAt
+                    ? (correction.verifiedBy ?? undefined)
+                    : undefined;
+                verificationEventId = verifiedAt
+                    ? (correction.verificationEventId ?? event.id)
+                    : undefined;
+                blockedAt = date(task.blockedAt);
+                blockedBy = blockedAt
+                    ? (correction.blockedBy ?? undefined)
+                    : undefined;
+                blockedEventId = blockedAt
+                    ? (correction.blockedEventId ?? event.id)
+                    : undefined;
+                canceledAt = date(task.canceledAt);
+                canceledBy = canceledAt
+                    ? (correction.canceledBy ?? undefined)
+                    : undefined;
+                requestNote = task.requestNote || undefined;
+                blockReasonCode = task.blockReasonCode || undefined;
+                blockReasonLabel = task.blockReasonLabel || undefined;
+                blockNote = task.blockNote || undefined;
+                error = task.error || undefined;
+                errorCode = task.errorCode || undefined;
+                cancelReason = task.cancelReason || undefined;
+                continue;
+            }
             const data = parseOperationEventData(event.data);
             if (event.type === knownEventTypes.operations.assign) {
                 if ('assignedUserId' in data) {
@@ -179,15 +470,41 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
                 status = 'pendingVerification';
                 completedBy = asString(data?.completedBy) ?? completedBy;
                 completedAt = completedAt ?? event.createdAt;
+                completionEventId = completionEventId ?? event.id;
                 if (Array.isArray(data?.images)) {
-                    imageUrls = (data.images as unknown[]).filter(
+                    imageUrls = data.images.filter(
                         (url): url is string => typeof url === 'string',
                     );
                 }
+                completionNotes = asString(data?.notes) ?? completionNotes;
+            } else if (event.type === knownEventTypes.operations.block) {
+                const details = scheduleTaskBlockDetailsFromEvent(event);
+                status = 'blocked';
+                blockedAt = details?.blockedAt ?? event.createdAt;
+                blockedBy = details?.blockedBy;
+                blockedEventId = event.id;
+                blockReasonCode = details?.reasonCode;
+                blockReasonLabel = details?.reasonLabel;
+                blockNote = details?.note;
+                blockImageUrls = details?.images;
+            } else if (
+                event.type ===
+                knownEventTypes.operations.completionEvidenceUpdate
+            ) {
+                if (Array.isArray(data?.images)) {
+                    imageUrls = data.images.filter(
+                        (url): url is string => typeof url === 'string',
+                    );
+                }
+                const updatedNotes = asString(data?.notes) ?? '';
+                completionNotesEdited ||=
+                    updatedNotes !== (completionNotes ?? '');
+                completionNotes = updatedNotes;
             } else if (event.type === knownEventTypes.operations.verify) {
                 status = 'completed';
                 verifiedBy = asString(data?.verifiedBy) ?? verifiedBy;
                 verifiedAt = event.createdAt;
+                verificationEventId = event.id;
             } else if (event.type === knownEventTypes.operations.fail) {
                 status = 'failed';
                 error = asString(data?.error);
@@ -198,11 +515,33 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
                 cancelReason = asString(data?.reason);
                 canceledAt = event.createdAt;
             } else if (event.type === knownEventTypes.operations.schedule) {
+                requestNote = requestNote ?? asString(data.requestNote);
                 status = 'planned';
                 scheduledDate = data?.scheduledDate
                     ? new Date(String(data.scheduledDate))
                     : undefined;
                 scheduledAt = event.createdAt;
+                completedAt = undefined;
+                completedBy = undefined;
+                completionEventId = undefined;
+                verifiedAt = undefined;
+                verifiedBy = undefined;
+                verificationEventId = undefined;
+                error = undefined;
+                errorCode = undefined;
+                canceledBy = undefined;
+                canceledAt = undefined;
+                cancelReason = undefined;
+                imageUrls = undefined;
+                completionNotes = undefined;
+                completionNotesEdited = false;
+                blockedAt = undefined;
+                blockedBy = undefined;
+                blockedEventId = undefined;
+                blockReasonCode = undefined;
+                blockReasonLabel = undefined;
+                blockNote = undefined;
+                blockImageUrls = undefined;
             }
         }
 
@@ -218,8 +557,10 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
             assignedAt,
             completedAt,
             completedBy,
+            completionEventId,
             verifiedAt,
             verifiedBy,
+            verificationEventId,
             error,
             errorCode,
             scheduledDate,
@@ -228,6 +569,17 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
             canceledAt,
             cancelReason,
             imageUrls,
+            requestNote,
+            completionNotes,
+            ...(completionNotesEdited ? { completionNotesEdited: true } : {}),
+            blockedAt,
+            blockedBy,
+            blockedEventId,
+            blockReasonCode,
+            blockReasonLabel,
+            blockNote,
+            blockImageUrls,
+            taskVersionEventId,
         };
     });
 
@@ -240,8 +592,9 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
     );
 
     const assignedUsers =
-        assignedUserIds.length > 0
-            ? await storage().query.users.findMany({
+        !readRecoveryContext?.sceneOnly && assignedUserIds.length > 0
+            ? await db.query.users.findMany({
+                  extras: userAchievementExtras,
                   columns: {
                       id: true,
                       userName: true,
@@ -274,6 +627,9 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
 function getOperationsWhere(input: GetOperationsInput) {
     return and(
         eq(operations.accountId, input.accountId),
+        input.plantingId
+            ? eq(operations.plantingId, input.plantingId)
+            : undefined,
         eq(operations.isDeleted, false),
         input.gardenId ? eq(operations.gardenId, input.gardenId) : undefined,
         input.raisedBedId
@@ -285,28 +641,700 @@ function getOperationsWhere(input: GetOperationsInput) {
     );
 }
 
-async function getOperationRows(input: GetOperationsInput) {
-    return storage().query.operations.findMany({
+async function getOperationRows(
+    input: GetOperationsInput,
+    db: DatabaseClient = storage(),
+) {
+    return db.query.operations.findMany({
         where: getOperationsWhere(input),
         orderBy: desc(operations.timestamp),
     });
 }
 
 const operationTimelineStatusTypes = [
+    knownEventTypes.operations.adminUpdate,
     knownEventTypes.operations.schedule,
     knownEventTypes.operations.complete,
+    knownEventTypes.operations.block,
     knownEventTypes.operations.verify,
     knownEventTypes.operations.fail,
     knownEventTypes.operations.cancel,
 ];
 
-function getLatestOperationStatusTypeExpression() {
-    return sql<string | null>`(
-        select ${events.type}
+const operationHistoryStatusTypes = [
+    knownEventTypes.operations.assign,
+    ...operationTimelineStatusTypes,
+];
+
+function getOperationScheduledDateExpression() {
+    return sql<Date | null>`(
+        select nullif((case when ${events.type} = ${knownEventTypes.operations.adminUpdate}
+            then ${events.data} -> 'task' ->> 'scheduledDate'
+            else ${events.data} ->> 'scheduledDate' end), '')::timestamp
+        from ${events}
+        where ${events.aggregateId} = CAST(${operations.id} as text)
+          and ${events.type} in (${knownEventTypes.operations.schedule}, ${knownEventTypes.operations.adminUpdate})
+        order by ${events.createdAt} desc, ${events.id} desc limit 1
+    )`;
+}
+
+function getOperationCompletedDateExpression() {
+    // An admin correction establishes a new date boundary without altering history.
+    return sql<Date | null>`(
+        select case when ${events.type} = ${knownEventTypes.operations.adminUpdate}
+            then (${events.data} -> 'task' ->> 'completedAt')::timestamp
+            else ${events.createdAt} end
+        from ${events}
+        where ${events.aggregateId} = CAST(${operations.id} as text)
+          and ${events.type} in (${knownEventTypes.operations.complete}, ${knownEventTypes.operations.adminUpdate})
+          and (${events.type} <> ${knownEventTypes.operations.adminUpdate} or ${events.data} -> 'task' ->> 'completedAt' is not null)
+          and (${events.createdAt}, ${events.id}) >= coalesce((
+              select (${events.createdAt}, ${events.id}) from ${events}
+              where ${events.aggregateId} = CAST(${operations.id} as text)
+                and ${events.type} in (${knownEventTypes.operations.schedule}, ${knownEventTypes.operations.adminUpdate})
+              order by ${events.createdAt} desc, ${events.id} desc limit 1
+          ), row(timestamp '1970-01-01', 0))
+        order by ${events.createdAt} asc, ${events.id} asc limit 1
+    )`;
+}
+
+async function getCompletionEventCandidateIds({
+    from,
+    to,
+}: {
+    from: Date;
+    to: Date;
+}) {
+    const candidates = await storage()
+        .selectDistinct({ aggregateId: events.aggregateId })
+        .from(events)
+        .where(
+            or(
+                and(
+                    eq(events.type, knownEventTypes.operations.complete),
+                    between(events.createdAt, from, to),
+                ),
+                and(
+                    eq(events.type, knownEventTypes.operations.adminUpdate),
+                    between(
+                        sql<Date>`nullif(${events.data} -> 'task' ->> 'completedAt', '')::timestamp`,
+                        from,
+                        to,
+                    ),
+                ),
+            ),
+        );
+    return candidates
+        .map((candidate) => Number(candidate.aggregateId))
+        .filter(Number.isSafeInteger);
+}
+
+function getOperationStatusExpression() {
+    return sql<OperationStatus>`coalesce((
+        select case ${events.type}
+            when ${knownEventTypes.operations.adminUpdate} then ${events.data} -> 'task' ->> 'status'
+            when ${knownEventTypes.operations.schedule} then 'planned'
+            when ${knownEventTypes.operations.complete} then 'pendingVerification'
+            when ${knownEventTypes.operations.block} then 'blocked'
+            when ${knownEventTypes.operations.verify} then 'completed'
+            when ${knownEventTypes.operations.fail} then 'failed'
+            when ${knownEventTypes.operations.cancel} then 'canceled'
+        end
         from ${events}
         where ${events.aggregateId} = CAST(${operations.id} as text)
           and ${events.type} in (${sql.join(
               operationTimelineStatusTypes.map((value) => sql`${value}`),
+              sql`, `,
+          )})
+        order by ${events.createdAt} desc, ${events.id} desc limit 1
+    ), 'new')`;
+}
+
+function getOperationStatusWhere(
+    status: OperationStatus | OperationStatus[] | undefined,
+) {
+    if (!status) {
+        return undefined;
+    }
+
+    const statusValues = Array.isArray(status) ? status : [status];
+    if (statusValues.length === 0) {
+        return undefined;
+    }
+
+    return sql`${getOperationStatusExpression()} in (${sql.join(
+        statusValues.map((value) => sql`${value}`),
+        sql`, `,
+    )})`;
+}
+
+const appliedRaisedBedOperationStatuses: OperationStatus[] = [
+    // Keep in sync with isAppliedRaisedBedOperationStatus in the garden route.
+    'completed',
+    'pendingVerification',
+];
+const terminalOperationStatuses: OperationStatus[] = [
+    'completed',
+    'blocked',
+    'failed',
+    'canceled',
+];
+
+export const selectedPlantingBlockingOperationStatuses = [
+    'new',
+    'planned',
+    'pendingVerification',
+] as const satisfies readonly OperationStatus[];
+
+type SelectedPlantingBlockingOperationStatus =
+    (typeof selectedPlantingBlockingOperationStatuses)[number];
+
+function isSelectedPlantingBlockingOperationStatus(
+    status: OperationStatus,
+): status is SelectedPlantingBlockingOperationStatus {
+    return selectedPlantingBlockingOperationStatuses.some(
+        (candidate) => candidate === status,
+    );
+}
+
+type OperationTarget = Pick<
+    InsertOperation,
+    | 'entityId'
+    | 'entityTypeName'
+    | 'raisedBedFieldId'
+    | 'plantingId'
+    | 'raisedBedId'
+    | 'gardenId'
+    | 'accountId'
+>;
+
+export type BlockingPlantOperation = {
+    operationId: number;
+    raisedBedFieldId: number;
+    positionIndex: number;
+    status: SelectedPlantingBlockingOperationStatus;
+};
+
+function operationDefinitionMutationLockKey(entityId: number) {
+    return `operation-definition-application:${entityId.toString()}`;
+}
+
+async function getOperationEntityLineage(db: DatabaseClient, entityId: number) {
+    const lineage: number[] = [];
+    const visited = new Set<number>();
+    let currentEntityId: number | null = entityId;
+    while (currentEntityId !== null) {
+        if (visited.has(currentEntityId)) {
+            throw new Error('Cycle detected in operation entity hierarchy');
+        }
+        visited.add(currentEntityId);
+        const [entity] = await db
+            .select({ id: entities.id, parentId: entities.parentId })
+            .from(entities)
+            .where(
+                and(
+                    eq(entities.id, currentEntityId),
+                    eq(entities.entityTypeName, 'operation'),
+                    eq(entities.isDeleted, false),
+                ),
+            )
+            .limit(1);
+        if (!entity) {
+            break;
+        }
+        lineage.push(entity.id);
+        currentEntityId = entity.parentId;
+    }
+    return lineage;
+}
+
+async function lockOperationDefinitionApplications(
+    db: DatabaseClient,
+    entityIds: readonly number[],
+) {
+    if (!isPgliteTestDatabase()) {
+        for (const entityId of Array.from(new Set(entityIds)).sort(
+            (left, right) => left - right,
+        )) {
+            await db.execute(
+                sql`select pg_advisory_xact_lock(hashtext(${operationDefinitionMutationLockKey(entityId)}));`,
+            );
+        }
+    }
+}
+
+type ProspectiveOperationApplicationMutation =
+    | { entityId: number; value: string | null }
+    | { deletedAttributeValueId: number; entityId: number };
+
+async function getEffectiveOperationApplication(
+    db: DatabaseClient,
+    entityId: number,
+    entityTypeName: string,
+    prospectiveMutation?: ProspectiveOperationApplicationMutation,
+) {
+    if (entityTypeName !== 'operation') {
+        return null;
+    }
+
+    const [applicationDefinition] = await db
+        .select({
+            id: attributeDefinitions.id,
+            defaultValue: attributeDefinitions.defaultValue,
+        })
+        .from(attributeDefinitions)
+        .where(
+            and(
+                eq(attributeDefinitions.entityTypeName, 'operation'),
+                eq(attributeDefinitions.category, 'attributes'),
+                eq(attributeDefinitions.name, 'application'),
+                eq(attributeDefinitions.isDeleted, false),
+            ),
+        )
+        .orderBy(asc(attributeDefinitions.id))
+        .limit(1);
+    if (!applicationDefinition) {
+        return null;
+    }
+
+    const visitedEntityIds = new Set<number>();
+    let currentEntityId: number | null = entityId;
+    while (currentEntityId !== null) {
+        if (visitedEntityIds.has(currentEntityId)) {
+            return null;
+        }
+        visitedEntityIds.add(currentEntityId);
+
+        const [entity] = await db
+            .select({
+                id: entities.id,
+                entityTypeName: entities.entityTypeName,
+                parentId: entities.parentId,
+            })
+            .from(entities)
+            .where(
+                and(
+                    eq(entities.id, currentEntityId),
+                    eq(entities.isDeleted, false),
+                ),
+            )
+            .limit(1);
+        if (entity?.entityTypeName !== 'operation') {
+            return null;
+        }
+
+        if (
+            prospectiveMutation &&
+            currentEntityId === prospectiveMutation.entityId &&
+            'value' in prospectiveMutation
+        ) {
+            return prospectiveMutation.value;
+        }
+
+        const applicationValues = await db
+            .select({ id: attributeValues.id, value: attributeValues.value })
+            .from(attributeValues)
+            .where(
+                and(
+                    eq(attributeValues.entityId, entity.id),
+                    eq(
+                        attributeValues.attributeDefinitionId,
+                        applicationDefinition.id,
+                    ),
+                    eq(attributeValues.entityTypeName, 'operation'),
+                    eq(attributeValues.isDeleted, false),
+                ),
+            )
+            .orderBy(asc(attributeValues.id));
+        const applicationValue = applicationValues.find(
+            (value) =>
+                !prospectiveMutation ||
+                !('deletedAttributeValueId' in prospectiveMutation) ||
+                currentEntityId !== prospectiveMutation.entityId ||
+                value.id !== prospectiveMutation.deletedAttributeValueId,
+        );
+        if (applicationValue) {
+            return applicationValue.value;
+        }
+
+        currentEntityId = entity.parentId;
+    }
+
+    return applicationDefinition.defaultValue;
+}
+
+async function getBlockingPlantOperationsForFieldIds(
+    fieldIds: readonly number[],
+    db: DatabaseClient,
+): Promise<BlockingPlantOperation[]> {
+    const uniqueFieldIds = Array.from(new Set(fieldIds)).sort(
+        (left, right) => left - right,
+    );
+    if (uniqueFieldIds.length === 0) {
+        return [];
+    }
+
+    const candidateRows = await db
+        .select({
+            operationId: operations.id,
+            entityId: operations.entityId,
+            entityTypeName: operations.entityTypeName,
+            raisedBedFieldId: raisedBedFields.id,
+            positionIndex: raisedBedFields.positionIndex,
+            status: getOperationStatusExpression(),
+        })
+        .from(operations)
+        .innerJoin(
+            raisedBedFields,
+            eq(operations.raisedBedFieldId, raisedBedFields.id),
+        )
+        .where(
+            and(
+                inArray(raisedBedFields.id, uniqueFieldIds),
+                eq(raisedBedFields.isDeleted, false),
+                eq(operations.isDeleted, false),
+                getOperationStatusWhere([
+                    ...selectedPlantingBlockingOperationStatuses,
+                ]),
+            ),
+        )
+        .orderBy(asc(raisedBedFields.id), asc(operations.id));
+
+    const applicationByEntityId = new Map<number, string | null>();
+    const conflicts: BlockingPlantOperation[] = [];
+    for (const candidate of candidateRows) {
+        if (candidate.entityTypeName !== 'operation') {
+            continue;
+        }
+        let application = applicationByEntityId.get(candidate.entityId);
+        if (application === undefined) {
+            application = await getEffectiveOperationApplication(
+                db,
+                candidate.entityId,
+                candidate.entityTypeName,
+            );
+            applicationByEntityId.set(candidate.entityId, application);
+        }
+        if (application !== 'plant') {
+            continue;
+        }
+        if (!isSelectedPlantingBlockingOperationStatus(candidate.status)) {
+            continue;
+        }
+
+        conflicts.push({
+            operationId: candidate.operationId,
+            raisedBedFieldId: candidate.raisedBedFieldId,
+            positionIndex: candidate.positionIndex,
+            status: candidate.status,
+        });
+    }
+    return conflicts;
+}
+
+export async function getBlockingPlantOperationsForRaisedBedFootprint(
+    input: {
+        raisedBedId: number;
+        positionIndices: readonly number[];
+    },
+    db: DatabaseClient = storage(),
+): Promise<BlockingPlantOperation[]> {
+    if (
+        !Number.isSafeInteger(input.raisedBedId) ||
+        input.raisedBedId <= 0 ||
+        input.positionIndices.some(
+            (positionIndex) =>
+                !Number.isSafeInteger(positionIndex) || positionIndex < 0,
+        )
+    ) {
+        throw new RangeError('Raised-bed operation footprint is invalid.');
+    }
+
+    const positionIndices = Array.from(new Set(input.positionIndices)).sort(
+        (left, right) => left - right,
+    );
+    if (positionIndices.length === 0) {
+        return [];
+    }
+    const fields = await db
+        .select({ id: raisedBedFields.id })
+        .from(raisedBedFields)
+        .where(
+            and(
+                eq(raisedBedFields.raisedBedId, input.raisedBedId),
+                inArray(raisedBedFields.positionIndex, positionIndices),
+                eq(raisedBedFields.isDeleted, false),
+            ),
+        )
+        .orderBy(asc(raisedBedFields.id));
+
+    return getBlockingPlantOperationsForFieldIds(
+        fields.map((field) => field.id),
+        db,
+    );
+}
+
+async function hasActiveSelectedPlantingMembership(
+    db: DatabaseClient,
+    raisedBedFieldIds: readonly number[],
+) {
+    if (raisedBedFieldIds.length === 0) {
+        return false;
+    }
+
+    const [membership] = await db
+        .select({ id: raisedBedPlantingFields.id })
+        .from(raisedBedPlantingFields)
+        .innerJoin(
+            raisedBedPlantings,
+            eq(raisedBedPlantingFields.plantingId, raisedBedPlantings.id),
+        )
+        .where(
+            and(
+                inArray(
+                    raisedBedPlantingFields.raisedBedFieldId,
+                    Array.from(new Set(raisedBedFieldIds)),
+                ),
+                eq(raisedBedPlantingFields.isDeleted, false),
+                eq(raisedBedPlantings.configurationSource, 'selected'),
+                eq(raisedBedPlantings.isActive, true),
+                eq(raisedBedPlantings.isDeleted, false),
+            ),
+        )
+        .limit(1);
+    return Boolean(membership);
+}
+
+async function lockRaisedBedFieldsForOperationGuard(
+    db: DatabaseClient,
+    raisedBedFieldIds: readonly number[],
+) {
+    const uniqueFieldIds = Array.from(new Set(raisedBedFieldIds)).sort(
+        (left, right) => left - right,
+    );
+    if (uniqueFieldIds.length === 0) {
+        return [];
+    }
+
+    return db
+        .select({ id: raisedBedFields.id })
+        .from(raisedBedFields)
+        .where(inArray(raisedBedFields.id, uniqueFieldIds))
+        .orderBy(asc(raisedBedFields.id))
+        .for('update');
+}
+
+export async function assertOperationTargetAllowsDefinition(
+    operation: OperationTarget,
+    db: DatabaseClient,
+    options: OperationTargetGuardOptions = {},
+) {
+    if (operation.plantingId != null) {
+        if (
+            !Number.isSafeInteger(operation.plantingId) ||
+            operation.plantingId <= 0 ||
+            operation.raisedBedFieldId != null ||
+            operation.entityTypeName !== 'operation'
+        ) {
+            throw new OperationTargetConflictError(
+                'selected_planting_conflict',
+                'Radnja mora imati jednu točno određenu sadnju.',
+            );
+        }
+        await db
+            .select({ id: raisedBedPlantings.id })
+            .from(raisedBedPlantings)
+            .where(eq(raisedBedPlantings.id, operation.plantingId))
+            .for('update');
+        const planting = await getRaisedBedPlanting(operation.plantingId, db);
+        const bed = planting
+            ? await db.query.raisedBeds.findFirst({
+                  where: eq(raisedBeds.id, planting.raisedBedId),
+              })
+            : null;
+        const garden = bed?.gardenId
+            ? await db.query.gardens.findFirst({
+                  where: eq(gardens.id, bed.gardenId),
+              })
+            : null;
+        await lockOperationDefinitionApplications(
+            db,
+            await getOperationEntityLineage(db, operation.entityId),
+        );
+        const application = await getEffectiveOperationApplication(
+            db,
+            operation.entityId,
+            operation.entityTypeName,
+        );
+        if (
+            planting?.configurationSource !== 'selected' ||
+            !planting.isActive ||
+            planting.isDeleted ||
+            planting.selectedTask?.status !== 'completed' ||
+            (planting.lifecycleStoppedAt && operation.entityId !== 346) ||
+            (operation.entityId === 346 &&
+                !['died', 'notSprouted', 'harvested'].includes(
+                    planting.lifecycleStatus ?? '',
+                )) ||
+            !bed ||
+            bed.isDeleted ||
+            bed.status === 'abandoned' ||
+            !garden ||
+            garden.isDeleted ||
+            garden.isSandbox ||
+            bed.id !== operation.raisedBedId ||
+            bed.gardenId !== operation.gardenId ||
+            bed.accountId !== operation.accountId ||
+            application !== 'plant' ||
+            !planting.memberships.some(
+                (membership) =>
+                    !membership.isDeleted &&
+                    !membership.raisedBedField.isDeleted,
+            )
+        ) {
+            throw new OperationTargetConflictError(
+                'selected_planting_conflict',
+                'Sadnja više nije dostupna za ovu radnju.',
+            );
+        }
+        return;
+    }
+    if (
+        operation.entityTypeName !== 'operation' ||
+        !operation.raisedBedFieldId
+    ) {
+        return;
+    }
+
+    await lockOperationDefinitionApplications(
+        db,
+        await getOperationEntityLineage(db, operation.entityId),
+    );
+    const application = await getEffectiveOperationApplication(
+        db,
+        operation.entityId,
+        operation.entityTypeName,
+    );
+    if (
+        application !== 'plant' ||
+        options.allowSelectedPlantingFieldOperations
+    ) {
+        return;
+    }
+
+    const lockedFields = await lockRaisedBedFieldsForOperationGuard(db, [
+        operation.raisedBedFieldId,
+    ]);
+    if (
+        await hasActiveSelectedPlantingMembership(
+            db,
+            lockedFields.map((field) => field.id),
+        )
+    ) {
+        throw new OperationTargetConflictError('selected_planting_conflict');
+    }
+}
+
+/**
+ * Guards a directory application change that would turn existing field tasks
+ * into plant-scoped operations. Call this inside the attribute mutation
+ * transaction before persisting `application = plant`.
+ */
+export async function assertOperationDefinitionCanBecomePlantScoped(
+    entityId: number,
+    db: DatabaseClient,
+    prospectiveMutation: ProspectiveOperationApplicationMutation = {
+        entityId,
+        value: 'plant',
+    },
+) {
+    await lockOperationDefinitionApplications(
+        db,
+        await getOperationEntityLineage(db, entityId),
+    );
+    const operationRows = await db
+        .select({
+            entityId: operations.entityId,
+            entityTypeName: operations.entityTypeName,
+            raisedBedFieldId: operations.raisedBedFieldId,
+        })
+        .from(operations)
+        .where(
+            and(
+                eq(operations.entityTypeName, 'operation'),
+                eq(operations.isDeleted, false),
+                isNotNull(operations.raisedBedFieldId),
+                getOperationStatusWhere([
+                    ...selectedPlantingBlockingOperationStatuses,
+                ]),
+            ),
+        )
+        .orderBy(asc(operations.raisedBedFieldId));
+    const currentApplicationByEntityId = new Map<number, string | null>();
+    const prospectiveApplicationByEntityId = new Map<number, string | null>();
+    const plantScopedOperationRows: typeof operationRows = [];
+    for (const operation of operationRows) {
+        let currentApplication = currentApplicationByEntityId.get(
+            operation.entityId,
+        );
+        if (currentApplication === undefined) {
+            currentApplication = await getEffectiveOperationApplication(
+                db,
+                operation.entityId,
+                operation.entityTypeName,
+            );
+            currentApplicationByEntityId.set(
+                operation.entityId,
+                currentApplication,
+            );
+        }
+        let prospectiveApplication = prospectiveApplicationByEntityId.get(
+            operation.entityId,
+        );
+        if (prospectiveApplication === undefined) {
+            prospectiveApplication = await getEffectiveOperationApplication(
+                db,
+                operation.entityId,
+                operation.entityTypeName,
+                prospectiveMutation,
+            );
+            prospectiveApplicationByEntityId.set(
+                operation.entityId,
+                prospectiveApplication,
+            );
+        }
+        if (
+            currentApplication !== 'plant' &&
+            prospectiveApplication === 'plant'
+        ) {
+            plantScopedOperationRows.push(operation);
+        }
+    }
+    const lockedFields = await lockRaisedBedFieldsForOperationGuard(
+        db,
+        plantScopedOperationRows.flatMap((operation) =>
+            operation.raisedBedFieldId === null
+                ? []
+                : [operation.raisedBedFieldId],
+        ),
+    );
+    if (
+        await hasActiveSelectedPlantingMembership(
+            db,
+            lockedFields.map((field) => field.id),
+        )
+    ) {
+        throw new OperationTargetConflictError('selected_planting_conflict');
+    }
+}
+
+function getOperationLatestStatusChangeDateExpression() {
+    return sql<Date | null>`(
+        select ${events.createdAt}
+        from ${events}
+        where ${events.aggregateId} = CAST(${operations.id} as text)
+          and ${events.type} in (${sql.join(
+              operationHistoryStatusTypes.map((value) => sql`${value}`),
               sql`, `,
           )})
         order by ${events.createdAt} desc, ${events.id} desc
@@ -314,36 +1342,23 @@ function getLatestOperationStatusTypeExpression() {
     )`;
 }
 
-function getOperationScheduledDateExpression() {
-    return sql<Date | null>`(
-        select nullif((${events.data} ->> 'scheduledDate'), '')::timestamp
-        from ${events}
-        where ${events.aggregateId} = CAST(${operations.id} as text)
-          and ${events.type} = ${knownEventTypes.operations.schedule}
-        order by ${events.createdAt} desc, ${events.id} desc
-        limit 1
-    )`;
-}
-
-function getOperationStatusExpression() {
-    const latestStatusTypeExpression = getLatestOperationStatusTypeExpression();
-
-    return sql<OperationStatus>`(
-        case ${latestStatusTypeExpression}
-            when ${knownEventTypes.operations.schedule} then 'planned'
-            when ${knownEventTypes.operations.complete} then 'pendingVerification'
-            when ${knownEventTypes.operations.verify} then 'completed'
-            when ${knownEventTypes.operations.fail} then 'failed'
-            when ${knownEventTypes.operations.cancel} then 'canceled'
-            else 'new'
-        end
-    )`;
-}
-
-function getOperationTimelineSortExpression() {
+function getOperationTaskSortExpression() {
+    const statusExpression = getOperationStatusExpression();
+    const completedDateExpression = getOperationCompletedDateExpression();
     const scheduledDateExpression = getOperationScheduledDateExpression();
+    const latestStatusChangeDateExpression =
+        getOperationLatestStatusChangeDateExpression();
 
-    return sql<Date>`coalesce(${scheduledDateExpression}, ${operations.createdAt})`;
+    return sql<Date>`case
+        when ${statusExpression} = 'blocked'
+            then coalesce(${latestStatusChangeDateExpression}, ${scheduledDateExpression}, ${operations.createdAt})
+        when ${statusExpression} in (${sql.join(
+            appliedRaisedBedOperationStatuses.map((value) => sql`${value}`),
+            sql`, `,
+        )})
+            then coalesce(${completedDateExpression}, ${scheduledDateExpression}, ${latestStatusChangeDateExpression}, ${operations.createdAt})
+        else coalesce(${scheduledDateExpression}, ${latestStatusChangeDateExpression}, ${operations.createdAt})
+    end`;
 }
 
 export async function getOperations(
@@ -351,15 +1366,19 @@ export async function getOperations(
     gardenId?: number,
     raisedBedId?: number,
     raisedBedFieldIds?: number[],
+    db: DatabaseClient = storage(),
 ) {
-    const query = await getOperationRows({
-        accountId,
-        gardenId,
-        raisedBedId,
-        raisedBedFieldIds,
-    });
+    const query = await getOperationRows(
+        {
+            accountId,
+            gardenId,
+            raisedBedId,
+            raisedBedFieldIds,
+        },
+        db,
+    );
 
-    return await fillOperationAggregates(query);
+    return await fillOperationAggregates(query, db);
 }
 
 export async function getOperationsPage(
@@ -372,10 +1391,14 @@ export async function getOperationsPage(
     const offset = input.cursor ?? 0;
     const pageSize = input.limit ?? 20;
     const statusExpression = getOperationStatusExpression();
-    const timelineSortExpression = getOperationTimelineSortExpression();
+    const taskSortExpression = getOperationTaskSortExpression();
     const includeCompletedWhere = input.includeCompleted
         ? undefined
-        : sql`${statusExpression} != 'completed'`;
+        : sql`${statusExpression} not in (${sql.join(
+              terminalOperationStatuses.map((value) => sql`${value}`),
+              sql`, `,
+          )})`;
+    const sortOrder = [desc(taskSortExpression), desc(operations.id)];
 
     const [pageRows, totalResult] = await Promise.all([
         storage()
@@ -384,7 +1407,7 @@ export async function getOperationsPage(
             })
             .from(operations)
             .where(and(getOperationsWhere(input), includeCompletedWhere))
-            .orderBy(asc(timelineSortExpression), asc(operations.id))
+            .orderBy(...sortOrder)
             .offset(offset)
             .limit(pageSize + 1),
         storage()
@@ -408,6 +1431,262 @@ export async function getOperationsPage(
         nextCursor: pageRows.length > pageSize ? offset + pageSize : null,
         total: totalResult[0]?.count ?? 0,
     };
+}
+
+export type RaisedBedPhotoPreview = {
+    raisedBedId: number;
+    imageUrls: string[];
+    photoCount: number;
+};
+
+function getCompletionEventImageUrls(data: unknown) {
+    if (!data || typeof data !== 'object') {
+        return [];
+    }
+
+    const images = Reflect.get(data, 'images');
+    if (!Array.isArray(images)) {
+        return [];
+    }
+
+    return images.filter(
+        (url): url is string =>
+            typeof url === 'string' && url.trim().length > 0,
+    );
+}
+
+export async function getRaisedBedPhotoPreviews(
+    raisedBedIds: number[],
+    imageLimit = 3,
+): Promise<RaisedBedPhotoPreview[]> {
+    const uniqueRaisedBedIds = Array.from(new Set(raisedBedIds)).sort(
+        (left, right) => left - right,
+    );
+
+    if (uniqueRaisedBedIds.length === 0) {
+        return [];
+    }
+
+    const rows = await storage()
+        .select({
+            operationId: operations.id,
+            raisedBedId: operations.raisedBedId,
+            eventId: events.id,
+            type: events.type,
+            data: events.data,
+            createdAt: events.createdAt,
+        })
+        .from(operations)
+        .innerJoin(events, eq(events.aggregateId, sql`${operations.id}::text`))
+        .where(
+            and(
+                eq(operations.isDeleted, false),
+                inArray(operations.raisedBedId, uniqueRaisedBedIds),
+                inArray(events.type, [
+                    knownEventTypes.operations.complete,
+                    knownEventTypes.operations.completionEvidenceUpdate,
+                    knownEventTypes.operations.adminUpdate,
+                    knownEventTypes.operations.schedule,
+                ]),
+            ),
+        )
+        .orderBy(asc(events.createdAt), asc(events.id));
+
+    // Project each operation's current completion evidence the same way the
+    // operation aggregate does: evidence updates replace the completion
+    // images and rescheduling clears them.
+    const evidenceByOperationId = new Map<
+        number,
+        {
+            raisedBedId: number;
+            imageUrls: string[];
+            completedAt?: Date;
+            completionEventId?: number;
+        }
+    >();
+    for (const row of rows) {
+        if (row.raisedBedId === null) {
+            continue;
+        }
+
+        let evidence = evidenceByOperationId.get(row.operationId);
+        if (!evidence) {
+            evidence = { raisedBedId: row.raisedBedId, imageUrls: [] };
+            evidenceByOperationId.set(row.operationId, evidence);
+        }
+
+        if (row.type === knownEventTypes.operations.schedule) {
+            evidence.imageUrls = [];
+            evidence.completedAt = undefined;
+            evidence.completionEventId = undefined;
+            continue;
+        }
+
+        if (row.type === knownEventTypes.operations.adminUpdate) {
+            const parsed = operationTaskAdminEventSchema.safeParse(row.data);
+            if (parsed.success) {
+                evidence.completedAt = parsed.data.task.completedAt
+                    ? new Date(parsed.data.task.completedAt)
+                    : undefined;
+                evidence.completionEventId = evidence.completedAt
+                    ? (parsed.data.completionEventId ?? row.eventId)
+                    : undefined;
+            }
+            continue;
+        }
+
+        if (row.type === knownEventTypes.operations.complete) {
+            evidence.completedAt ??= row.createdAt;
+            evidence.completionEventId ??= row.eventId;
+        }
+
+        const images =
+            row.data && typeof row.data === 'object'
+                ? Reflect.get(row.data, 'images')
+                : undefined;
+        if (Array.isArray(images)) {
+            evidence.imageUrls = getCompletionEventImageUrls(row.data);
+        }
+    }
+
+    const currentEvidence = [...evidenceByOperationId.values()]
+        .filter(
+            (evidence) =>
+                evidence.completedAt !== undefined &&
+                evidence.imageUrls.length > 0,
+        )
+        .sort(
+            (left, right) =>
+                (right.completedAt?.getTime() ?? 0) -
+                    (left.completedAt?.getTime() ?? 0) ||
+                (right.completionEventId ?? 0) - (left.completionEventId ?? 0),
+        );
+
+    const previewByRaisedBedId = new Map<number, RaisedBedPhotoPreview>(
+        uniqueRaisedBedIds.map((raisedBedId) => [
+            raisedBedId,
+            {
+                raisedBedId,
+                imageUrls: [],
+                photoCount: 0,
+            },
+        ]),
+    );
+    const seenImageUrlsByRaisedBedId = new Map<number, Set<string>>();
+    const safeImageLimit = Math.max(1, imageLimit);
+
+    for (const evidence of currentEvidence) {
+        const preview = previewByRaisedBedId.get(evidence.raisedBedId);
+        if (!preview) {
+            continue;
+        }
+
+        preview.photoCount += evidence.imageUrls.length;
+
+        let seenImageUrls = seenImageUrlsByRaisedBedId.get(
+            evidence.raisedBedId,
+        );
+        if (!seenImageUrls) {
+            seenImageUrls = new Set();
+            seenImageUrlsByRaisedBedId.set(evidence.raisedBedId, seenImageUrls);
+        }
+
+        for (const imageUrl of evidence.imageUrls) {
+            if (seenImageUrls.has(imageUrl)) {
+                continue;
+            }
+
+            seenImageUrls.add(imageUrl);
+            if (preview.imageUrls.length < safeImageLimit) {
+                preview.imageUrls.push(imageUrl);
+            }
+        }
+    }
+
+    return [...previewByRaisedBedId.values()];
+}
+
+/** Caller must authorize access to this raised bed before reading its operations. */
+export async function getAppliedRaisedBedOperations(
+    accountId: string,
+    raisedBedId: number,
+) {
+    const rows = await storage()
+        .select()
+        .from(operations)
+        .where(
+            and(
+                getOperationsWhere({ accountId, raisedBedId }),
+                eq(operations.isDeleted, false),
+                getOperationStatusWhere(appliedRaisedBedOperationStatuses),
+            ),
+        );
+    return fillOperationAggregates(rows);
+}
+
+export async function getAppliedRaisedBedOperationsForGarden(
+    accountId: string,
+    gardenId: number,
+) {
+    return readAppliedRaisedBedOperationsForGarden(accountId, gardenId);
+}
+
+/** Scene-only read: replay the canonical status/date events without evidence or users. */
+export async function getAppliedRaisedBedOperationSummariesForGarden(
+    accountId: string,
+    gardenId: number,
+) {
+    const rows = await readAppliedRaisedBedOperationsForGarden(
+        accountId,
+        gardenId,
+        true,
+    );
+    return rows.map(
+        ({
+            id,
+            entityId,
+            raisedBedId,
+            raisedBedFieldId,
+            status,
+            createdAt,
+            scheduledDate,
+            completedAt,
+        }) => ({
+            id,
+            entityId,
+            raisedBedId,
+            raisedBedFieldId,
+            status,
+            createdAt,
+            scheduledDate,
+            completedAt,
+        }),
+    );
+}
+
+async function readAppliedRaisedBedOperationsForGarden(
+    accountId: string,
+    gardenId: number,
+    sceneOnly = false,
+) {
+    // Select matching operation rows directly. Re-hydrating an intermediate
+    // ID list creates an unbounded IN query for long-lived gardens.
+    const db = storage();
+    const rows = await db
+        .select()
+        .from(operations)
+        .where(
+            and(
+                getOperationsWhere({ accountId, gardenId }),
+                getOperationStatusWhere(appliedRaisedBedOperationStatuses),
+                isNotNull(operations.raisedBedId),
+            ),
+        )
+        .orderBy(desc(operations.timestamp));
+
+    // This repository path is read-only. Retry only a failed event page so a
+    // transport disconnect cannot discard otherwise complete public history.
+    return fillOperationAggregates(rows, db, { gardenId, sceneOnly });
 }
 
 export async function getAllOperations(filter?: {
@@ -445,16 +1724,22 @@ async function getAllOperationsUncached(filter?: {
         );
     } else {
         // Otherwise, use the original timestamp-based filtering
-        const operationsList = await storage().query.operations.findMany({
-            where: and(
-                eq(operations.isDeleted, false),
-                filter?.from
-                    ? gte(operations.timestamp, filter.from)
-                    : undefined,
-                filter?.to ? lte(operations.timestamp, filter.to) : undefined,
-            ),
-            orderBy: desc(operations.timestamp),
-        });
+        const operationsList = await storage()
+            .select()
+            .from(operations)
+            .where(
+                and(
+                    eq(operations.isDeleted, false),
+                    getOperationStatusWhere(filter?.status),
+                    filter?.from
+                        ? gte(operations.timestamp, filter.from)
+                        : undefined,
+                    filter?.to
+                        ? lte(operations.timestamp, filter.to)
+                        : undefined,
+                ),
+            )
+            .orderBy(desc(operations.timestamp));
         operationsWithAggregates =
             await fillOperationAggregates(operationsList);
     }
@@ -475,26 +1760,26 @@ async function getAllOperationsUncached(filter?: {
 async function getFarmUserAcceptedOperationsByIds(
     userId: string,
     ids: number[],
+    db: DatabaseClient = storage(),
 ) {
     const uniqueIds = Array.from(new Set(ids));
     if (uniqueIds.length === 0) {
         return [];
     }
 
-    const rows = await storage()
+    const rows = await db
         .select({ operation: operations })
         .from(operations)
-        .innerJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
-        .innerJoin(gardens, eq(raisedBeds.gardenId, gardens.id))
-        .innerJoin(farmUsers, eq(gardens.farmId, farmUsers.farmId))
+        .leftJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
+        .leftJoin(gardens, eq(gardens.id, operationGardenIdExpression()))
+        .innerJoin(farmUsers, eq(farmUsers.farmId, operationFarmIdExpression()))
         .where(
             and(
                 inArray(operations.id, uniqueIds),
                 eq(farmUsers.userId, userId),
                 eq(operations.isAccepted, true),
                 eq(operations.isDeleted, false),
-                eq(raisedBeds.isDeleted, false),
-                eq(gardens.isDeleted, false),
+                operationLocationIntegrityWhere(),
             ),
         )
         .orderBy(desc(operations.timestamp));
@@ -509,24 +1794,30 @@ async function getCompletedFarmUserAcceptedOperationsByCompletionDate(
         to: Date;
     },
 ) {
-    const completionEvents = await storage().query.events.findMany({
-        where: and(
-            eq(events.type, knownEventTypes.operations.complete),
-            gte(events.createdAt, filter.from),
-            lte(events.createdAt, filter.to),
-        ),
-        orderBy: [asc(events.createdAt)],
-    });
-
-    if (completionEvents.length === 0) {
-        return [];
-    }
-
-    const operationIds = completionEvents
-        .map((event) => Number.parseInt(event.aggregateId, 10))
-        .filter((id) => Number.isFinite(id));
-
-    return getFarmUserAcceptedOperationsByIds(userId, operationIds);
+    const candidateIds = await getCompletionEventCandidateIds(filter);
+    if (candidateIds.length === 0) return [];
+    const rows = await storage()
+        .select({ operation: operations })
+        .from(operations)
+        .leftJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
+        .leftJoin(gardens, eq(gardens.id, operationGardenIdExpression()))
+        .innerJoin(farmUsers, eq(farmUsers.farmId, operationFarmIdExpression()))
+        .where(
+            and(
+                inArray(operations.id, candidateIds),
+                eq(farmUsers.userId, userId),
+                eq(operations.isAccepted, true),
+                eq(operations.isDeleted, false),
+                operationLocationIntegrityWhere(),
+                between(
+                    getOperationCompletedDateExpression(),
+                    filter.from,
+                    filter.to,
+                ),
+            ),
+        )
+        .orderBy(desc(operations.timestamp));
+    return rows.map((row) => row.operation);
 }
 
 export async function getFarmUserAcceptedOperations(
@@ -538,6 +1829,127 @@ export async function getFarmUserAcceptedOperations(
         () => getFarmUserAcceptedOperationsUncached(userId, filter),
         scheduleCacheTtls.operations,
     );
+}
+
+export async function getFarmUserPendingVerificationOperations(userId: string) {
+    const filter = { status: 'pendingVerification' } satisfies OperationsFilter;
+
+    return cacheScheduleRead(
+        scheduleCacheKeys.farmUserOperations(userId, filter),
+        async () => {
+            const rows = await storage()
+                .select({ operation: operations })
+                .from(operations)
+                .leftJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
+                .leftJoin(
+                    gardens,
+                    eq(gardens.id, operationGardenIdExpression()),
+                )
+                .innerJoin(
+                    farmUsers,
+                    eq(farmUsers.farmId, operationFarmIdExpression()),
+                )
+                .where(
+                    and(
+                        eq(farmUsers.userId, userId),
+                        eq(operations.isAccepted, true),
+                        eq(operations.isDeleted, false),
+                        operationLocationIntegrityWhere(),
+                        getOperationStatusWhere(filter.status),
+                    ),
+                )
+                .orderBy(desc(operations.timestamp));
+
+            return fillOperationAggregates(rows.map((row) => row.operation));
+        },
+        scheduleCacheTtls.operations,
+    );
+}
+
+export async function getFarmUserBlockedOperations(
+    userId: string,
+    filter: {
+        from?: Date;
+        to?: Date;
+    } = {},
+) {
+    const blockEvents = await storage().query.events.findMany({
+        columns: { aggregateId: true },
+        where: and(
+            eq(events.type, knownEventTypes.operations.block),
+            filter.from ? gte(events.createdAt, filter.from) : undefined,
+            filter.to ? lte(events.createdAt, filter.to) : undefined,
+        ),
+        orderBy: [desc(events.createdAt), desc(events.id)],
+    });
+    const operationIds = Array.from(
+        new Set(
+            blockEvents
+                .map((event) => Number(event.aggregateId))
+                .filter((id) => Number.isSafeInteger(id) && id > 0),
+        ),
+    );
+    if (operationIds.length === 0) {
+        return [];
+    }
+
+    const operationsList = await getFarmUserAcceptedOperationsByIds(
+        userId,
+        operationIds,
+    );
+    const hydrated = await fillOperationAggregates(operationsList);
+
+    return hydrated
+        .filter(
+            (operation) =>
+                operation.status === 'blocked' &&
+                operation.blockedAt &&
+                (!filter.from || operation.blockedAt >= filter.from) &&
+                (!filter.to || operation.blockedAt <= filter.to),
+        )
+        .sort(
+            (left, right) =>
+                (right.blockedAt?.getTime() ?? 0) -
+                (left.blockedAt?.getTime() ?? 0),
+        );
+}
+
+export async function getBlockedOperations(
+    filter: { from?: Date; to?: Date } = {},
+) {
+    const blockEvents = await storage().query.events.findMany({
+        columns: { aggregateId: true },
+        where: and(
+            eq(events.type, knownEventTypes.operations.block),
+            filter.from ? gte(events.createdAt, filter.from) : undefined,
+            filter.to ? lte(events.createdAt, filter.to) : undefined,
+        ),
+        orderBy: [desc(events.createdAt), desc(events.id)],
+    });
+    const operationIds = Array.from(
+        new Set(
+            blockEvents
+                .map((event) => Number(event.aggregateId))
+                .filter((id) => Number.isSafeInteger(id) && id > 0),
+        ),
+    );
+    if (operationIds.length === 0) {
+        return [];
+    }
+
+    return (await getOperationsByIds(operationIds))
+        .filter(
+            (operation) =>
+                operation.status === 'blocked' &&
+                operation.blockedAt &&
+                (!filter.from || operation.blockedAt >= filter.from) &&
+                (!filter.to || operation.blockedAt <= filter.to),
+        )
+        .sort(
+            (left, right) =>
+                (right.blockedAt?.getTime() ?? 0) -
+                (left.blockedAt?.getTime() ?? 0),
+        );
 }
 
 async function getFarmUserAcceptedOperationsUncached(
@@ -564,16 +1976,18 @@ async function getFarmUserAcceptedOperationsUncached(
         const rows = await storage()
             .select({ operation: operations })
             .from(operations)
-            .innerJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
-            .innerJoin(gardens, eq(raisedBeds.gardenId, gardens.id))
-            .innerJoin(farmUsers, eq(gardens.farmId, farmUsers.farmId))
+            .leftJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
+            .leftJoin(gardens, eq(gardens.id, operationGardenIdExpression()))
+            .innerJoin(
+                farmUsers,
+                eq(farmUsers.farmId, operationFarmIdExpression()),
+            )
             .where(
                 and(
                     eq(farmUsers.userId, userId),
                     eq(operations.isAccepted, true),
                     eq(operations.isDeleted, false),
-                    eq(raisedBeds.isDeleted, false),
-                    eq(gardens.isDeleted, false),
+                    operationLocationIntegrityWhere(),
                     filter?.from
                         ? gte(operations.timestamp, filter.from)
                         : undefined,
@@ -603,17 +2017,204 @@ async function getFarmUserAcceptedOperationsUncached(
     return operationsWithAggregates;
 }
 
+export async function getFarmAcceptedOperations(
+    farmId: number,
+    filter?: OperationsFilter,
+) {
+    const rows = await storage()
+        .select({ operation: operations })
+        .from(operations)
+        .leftJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
+        .leftJoin(gardens, eq(gardens.id, operationGardenIdExpression()))
+        .where(
+            and(
+                eq(operationFarmIdExpression(), farmId),
+                eq(operations.isAccepted, true),
+                eq(operations.isDeleted, false),
+                operationLocationIntegrityWhere(),
+                filter?.from
+                    ? gte(operations.timestamp, filter.from)
+                    : undefined,
+                filter?.to ? lte(operations.timestamp, filter.to) : undefined,
+            ),
+        )
+        .orderBy(desc(operations.timestamp));
+
+    let operationsWithAggregates = await fillOperationAggregates(
+        rows.map((row) => row.operation),
+    );
+
+    if (filter?.completedFrom || filter?.completedTo) {
+        operationsWithAggregates = operationsWithAggregates.filter(
+            (operation) => {
+                if (!operation.completedAt) {
+                    return false;
+                }
+
+                if (
+                    filter.completedFrom &&
+                    operation.completedAt < filter.completedFrom
+                ) {
+                    return false;
+                }
+
+                if (
+                    filter.completedTo &&
+                    operation.completedAt > filter.completedTo
+                ) {
+                    return false;
+                }
+
+                return true;
+            },
+        );
+    }
+
+    if (filter?.status) {
+        const statusArray = Array.isArray(filter.status)
+            ? filter.status
+            : [filter.status];
+        operationsWithAggregates = operationsWithAggregates.filter(
+            (operation) =>
+                operation &&
+                statusArray.includes(operation.status as OperationStatus),
+        );
+    }
+
+    return operationsWithAggregates;
+}
+
+export async function getFarmAcceptedOperationsByScheduleRange({
+    farmId,
+    from,
+    to,
+}: {
+    farmId: number;
+    from: Date;
+    to: Date;
+}) {
+    const scheduledDateExpression = sql<Date>`coalesce(${getOperationScheduledDateExpression()}, ${operations.timestamp})`;
+    const scheduledRows = await storage()
+        .selectDistinct({ id: operations.id })
+        .from(operations)
+        .leftJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
+        .leftJoin(gardens, eq(gardens.id, operationGardenIdExpression()))
+        .where(
+            and(
+                eq(operationFarmIdExpression(), farmId),
+                eq(operations.isAccepted, true),
+                eq(operations.isDeleted, false),
+                operationLocationIntegrityWhere(),
+                gte(scheduledDateExpression, from),
+                lte(scheduledDateExpression, to),
+            ),
+        );
+    const operationIds = scheduledRows.map((row) => row.id);
+
+    return getOperationsByIds(operationIds);
+}
+
+export async function getRaisedBedOperationsByScheduleRange({
+    raisedBedIds,
+    from,
+    to,
+}: {
+    raisedBedIds: number[];
+    from: Date;
+    to: Date;
+}) {
+    const uniqueRaisedBedIds = Array.from(new Set(raisedBedIds));
+    if (uniqueRaisedBedIds.length === 0) {
+        return [];
+    }
+
+    const scheduledDateExpression = sql<Date>`coalesce(${getOperationScheduledDateExpression()}, ${operations.timestamp})`;
+    const scheduledRows = await storage()
+        .selectDistinct({ id: operations.id })
+        .from(operations)
+        .leftJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
+        .leftJoin(gardens, eq(gardens.id, operationGardenIdExpression()))
+        .where(
+            and(
+                inArray(operations.raisedBedId, uniqueRaisedBedIds),
+                eq(operations.isDeleted, false),
+                operationLocationIntegrityWhere(),
+                gte(scheduledDateExpression, from),
+                lte(scheduledDateExpression, to),
+            ),
+        );
+    const operationIds = scheduledRows.map((row) => row.id);
+
+    return getOperationsByIds(operationIds);
+}
+
 export async function getFarmUserAcceptedOperationById(
     userId: string,
     id: number,
+    db: DatabaseClient = storage(),
 ) {
-    const operations = await getFarmUserAcceptedOperationsByIds(userId, [id]);
-    const [operationWithAggregates] = await fillOperationAggregates(operations);
+    const operations = await getFarmUserAcceptedOperationsByIds(
+        userId,
+        [id],
+        db,
+    );
+    const [operationWithAggregates] = await fillOperationAggregates(
+        operations,
+        db,
+    );
     return operationWithAggregates ?? null;
+}
+
+export async function getFarmUserAcceptedOperationsByScheduleRange({
+    userId,
+    from,
+    to,
+}: {
+    userId: string;
+    from: Date;
+    to: Date;
+}) {
+    return cacheScheduleRead(
+        scheduleCacheKeys.farmUserScheduledOperations(userId, from, to),
+        async () => {
+            const scheduledDateExpression = sql<Date>`coalesce(${getOperationScheduledDateExpression()}, ${operations.timestamp})`;
+            const scheduledRows = await storage()
+                .selectDistinct({ id: operations.id })
+                .from(operations)
+                .leftJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
+                .leftJoin(
+                    gardens,
+                    eq(gardens.id, operationGardenIdExpression()),
+                )
+                .innerJoin(
+                    farmUsers,
+                    eq(farmUsers.farmId, operationFarmIdExpression()),
+                )
+                .where(
+                    and(
+                        eq(farmUsers.userId, userId),
+                        eq(operations.isAccepted, true),
+                        eq(operations.isDeleted, false),
+                        operationLocationIntegrityWhere(),
+                        gte(scheduledDateExpression, from),
+                        lte(scheduledDateExpression, to),
+                    ),
+                );
+
+            const acceptedOperations = await getFarmUserAcceptedOperationsByIds(
+                userId,
+                scheduledRows.map((row) => row.id),
+            );
+
+            return fillOperationAggregates(acceptedOperations);
+        },
+        scheduleCacheTtls.operations,
+    );
 }
 
 export async function getAssignableFarmUsersByOperationIds(
     operationIds: number[],
+    db: DatabaseClient = storage(),
 ) {
     const uniqueOperationIds = Array.from(new Set(operationIds));
     if (uniqueOperationIds.length === 0) {
@@ -625,7 +2226,7 @@ export async function getAssignableFarmUsersByOperationIds(
         return emptyAssignableFarmUsersByOperationId;
     }
 
-    const rows = await storage()
+    const rows = await db
         .select({
             operationId: operations.id,
             farmId: farmUsers.farmId,
@@ -633,18 +2234,18 @@ export async function getAssignableFarmUsersByOperationIds(
             userName: users.userName,
             displayName: users.displayName,
             avatarUrl: users.avatarUrl,
+            achievementCount: userAchievementCount(users.id),
         })
         .from(operations)
-        .innerJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
-        .innerJoin(gardens, eq(raisedBeds.gardenId, gardens.id))
-        .innerJoin(farmUsers, eq(gardens.farmId, farmUsers.farmId))
+        .leftJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
+        .leftJoin(gardens, eq(gardens.id, operationGardenIdExpression()))
+        .innerJoin(farmUsers, eq(farmUsers.farmId, operationFarmIdExpression()))
         .innerJoin(users, eq(farmUsers.userId, users.id))
         .where(
             and(
                 inArray(operations.id, uniqueOperationIds),
                 eq(operations.isDeleted, false),
-                eq(raisedBeds.isDeleted, false),
-                eq(gardens.isDeleted, false),
+                operationLocationIntegrityWhere(),
             ),
         )
         .orderBy(asc(operations.id), asc(users.userName));
@@ -666,6 +2267,7 @@ export async function getAssignableFarmUsersByOperationIds(
             userName: row.userName,
             displayName: row.displayName,
             avatarUrl: row.avatarUrl,
+            achievementCount: row.achievementCount,
             farmId: row.farmId,
         });
         assignableFarmUsersByOperationId[row.operationId] = existingUsers;
@@ -674,13 +2276,46 @@ export async function getAssignableFarmUsersByOperationIds(
     return assignableFarmUsersByOperationId;
 }
 
-export async function getOperationsByIds(ids: number[]) {
+export async function lockOperationFarmUserMemberships(
+    operationId: number,
+    userIds: readonly string[],
+    db: DatabaseClient,
+) {
+    const uniqueUserIds = Array.from(new Set(userIds));
+    if (uniqueUserIds.length === 0) {
+        return [];
+    }
+
+    const rows = await db
+        .select({ userId: farmUsers.userId })
+        .from(operations)
+        .leftJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
+        .leftJoin(gardens, eq(gardens.id, operationGardenIdExpression()))
+        .innerJoin(farmUsers, eq(farmUsers.farmId, operationFarmIdExpression()))
+        .innerJoin(users, eq(farmUsers.userId, users.id))
+        .where(
+            and(
+                eq(operations.id, operationId),
+                inArray(farmUsers.userId, uniqueUserIds),
+                eq(operations.isDeleted, false),
+                operationLocationIntegrityWhere(),
+            ),
+        )
+        .for('key share', { of: farmUsers });
+
+    return Array.from(new Set(rows.map((row) => row.userId)));
+}
+
+export async function getOperationsByIds(
+    ids: number[],
+    db: DatabaseClient = storage(),
+) {
     const uniqueIds = Array.from(new Set(ids));
     if (uniqueIds.length === 0) {
         return [];
     }
 
-    const operationsList = await storage().query.operations.findMany({
+    const operationsList = await db.query.operations.findMany({
         where: and(
             inArray(operations.id, uniqueIds),
             eq(operations.isDeleted, false),
@@ -688,50 +2323,723 @@ export async function getOperationsByIds(ids: number[]) {
         orderBy: desc(operations.timestamp),
     });
 
-    return fillOperationAggregates(operationsList);
+    return fillOperationAggregates(operationsList, db);
 }
 
-export async function getOperationById(id: number) {
-    const operation = await storage().query.operations.findFirst({
+export async function getOperationById(
+    id: number,
+    db: DatabaseClient = storage(),
+) {
+    const operation = await db.query.operations.findFirst({
         where: and(eq(operations.id, id), eq(operations.isDeleted, false)),
     });
     if (!operation) {
         throw new Error(`Operation with id ${id} not found`);
     }
-    return (await fillOperationAggregates([operation]))[0];
+    return (await fillOperationAggregates([operation], db))[0];
 }
 
-export async function createOperation({
-    entityId,
-    entityTypeName,
-    accountId,
-    gardenId,
-    raisedBedId,
-    raisedBedFieldId,
-    timestamp,
-}: InsertOperation) {
-    const [result] = await storage()
-        .insert(operations)
-        .values({
-            entityId,
-            entityTypeName,
-            accountId,
-            gardenId,
-            raisedBedId,
-            raisedBedFieldId,
-            timestamp: timestamp ?? new Date(),
-        })
-        .returning({ id: operations.id });
+export async function createOperation(
+    {
+        entityId,
+        entityTypeName,
+        accountId,
+        farmId,
+        gardenId,
+        raisedBedId,
+        raisedBedFieldId,
+        plantingId,
+        timestamp,
+        allowSelectedPlantingFieldOperations,
+    }: InsertOperation & OperationTargetGuardOptions,
+    db?: DatabaseClient,
+) {
+    const operation: InsertOperation = {
+        entityId,
+        entityTypeName,
+        accountId,
+        farmId,
+        gardenId,
+        raisedBedId,
+        raisedBedFieldId,
+        plantingId,
+        timestamp: timestamp ?? new Date(),
+    };
+    const insertOperation = async (client: DatabaseClient) => {
+        await assertOperationTargetAllowsDefinition(operation, client, {
+            allowSelectedPlantingFieldOperations,
+        });
+        const [result] = await client
+            .insert(operations)
+            .values(operation)
+            .returning({ id: operations.id });
+        return result.id;
+    };
+
+    if (db) {
+        return insertOperation(db);
+    }
+
+    const id = await storage().transaction(insertOperation);
     await bustScheduleCache();
-    return result.id;
+    return id;
 }
 
-export async function acceptOperation(id: number) {
-    await storage()
-        .update(operations)
-        .set({ isAccepted: true })
-        .where(eq(operations.id, id));
+export async function createScheduledOperation(
+    operation: InsertOperation,
+    {
+        accept = false,
+        scheduledDate,
+    }: {
+        accept?: boolean;
+        scheduledDate: Date;
+    },
+) {
+    const operationId = await storage().transaction(async (transaction) => {
+        const id = await createOperation(operation, transaction);
+        await createEvent(
+            knownEvents.operations.scheduledV1(id.toString(), {
+                scheduledDate: scheduledDate.toISOString(),
+            }),
+            transaction,
+        );
+        if (accept) {
+            await acceptOperation(id, transaction);
+        }
+        return id;
+    });
     await bustScheduleCache();
+    return operationId;
+}
+
+type CheckoutOperationOptions = {
+    requestNote?: string;
+    plantingTarget?: SelectedPlantingOperationTarget;
+    accept?: boolean;
+    delivery: CheckoutOperationCreatedPayload['delivery'];
+    paymentCurrency: CheckoutOperationCreatedPayload['paymentCurrency'];
+    scheduledDate: Date;
+};
+
+function checkoutOperationAggregateId(cartItemId: number) {
+    if (!Number.isSafeInteger(cartItemId) || cartItemId <= 0) {
+        throw new CheckoutOperationConflictError(
+            'Checkout cart item id must be a positive safe integer.',
+        );
+    }
+    return `shoppingCartItem:${cartItemId.toString()}`;
+}
+
+function checkoutOperationFingerprint(
+    operation: InsertOperation,
+    options: CheckoutOperationOptions,
+): Omit<CheckoutOperationCreatedPayload, 'operationId'> {
+    const scheduledDate = options.scheduledDate.toISOString();
+    const operationTimestamp = operation.timestamp?.toISOString() ?? null;
+    const requestNote = normalizeOperationRequestNote(options.requestNote);
+
+    return {
+        accountId: operation.accountId ?? null,
+        entityId: operation.entityId,
+        entityTypeName: operation.entityTypeName,
+        farmId: operation.farmId ?? null,
+        gardenId: operation.gardenId ?? null,
+        raisedBedId: operation.raisedBedId ?? null,
+        raisedBedFieldId: operation.raisedBedFieldId ?? null,
+        ...(operation.plantingId != null
+            ? { plantingId: operation.plantingId }
+            : {}),
+        operationTimestamp,
+        ...(requestNote ? { requestNote } : {}),
+        paymentCurrency: options.paymentCurrency,
+        delivery: options.delivery,
+        scheduledDate,
+        accepted: options.accept ?? false,
+    };
+}
+
+function parseCheckoutOperationCreatedPayload(
+    value: unknown,
+): CheckoutOperationCreatedPayload | null {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        return null;
+    }
+    const data = value as Record<string, unknown>;
+    const nullableString = (candidate: unknown): candidate is string | null =>
+        typeof candidate === 'string' || candidate === null;
+    const nullableNumber = (candidate: unknown): candidate is number | null =>
+        (typeof candidate === 'number' && Number.isSafeInteger(candidate)) ||
+        candidate === null;
+    const paymentCurrency = (
+        candidate: unknown,
+    ): candidate is CheckoutOperationCreatedPayload['paymentCurrency'] =>
+        candidate === 'eur' ||
+        candidate === 'inventory' ||
+        candidate === 'sunflower';
+    const delivery = (
+        candidate: unknown,
+    ): CheckoutOperationCreatedPayload['delivery'] | undefined => {
+        if (candidate === null) {
+            return null;
+        }
+        if (
+            !candidate ||
+            typeof candidate !== 'object' ||
+            Array.isArray(candidate)
+        ) {
+            return undefined;
+        }
+        const value = candidate as Record<string, unknown>;
+        if (
+            typeof value.slotId !== 'number' ||
+            !Number.isSafeInteger(value.slotId) ||
+            (value.mode !== 'delivery' && value.mode !== 'pickup') ||
+            !nullableNumber(value.addressId) ||
+            !nullableNumber(value.locationId) ||
+            !nullableString(value.notes)
+        ) {
+            return undefined;
+        }
+        return {
+            addressId: value.addressId,
+            locationId: value.locationId,
+            mode: value.mode,
+            notes: value.notes,
+            slotId: value.slotId,
+        };
+    };
+    const isoDateString = (candidate: unknown): candidate is string => {
+        if (typeof candidate !== 'string') {
+            return false;
+        }
+        const parsed = new Date(candidate);
+        return (
+            !Number.isNaN(parsed.getTime()) &&
+            parsed.toISOString() === candidate
+        );
+    };
+
+    if (
+        data.plantingId !== undefined &&
+        data.plantingId !== null &&
+        (typeof data.plantingId !== 'number' ||
+            !Number.isSafeInteger(data.plantingId) ||
+            data.plantingId <= 0 ||
+            data.raisedBedFieldId != null)
+    )
+        return null;
+    const parsedDelivery = delivery(data.delivery);
+    if (
+        typeof data.operationId !== 'number' ||
+        !Number.isSafeInteger(data.operationId) ||
+        data.operationId <= 0 ||
+        !nullableString(data.accountId) ||
+        typeof data.entityId !== 'number' ||
+        !Number.isSafeInteger(data.entityId) ||
+        typeof data.entityTypeName !== 'string' ||
+        !nullableNumber(data.farmId) ||
+        !nullableNumber(data.gardenId) ||
+        !nullableNumber(data.raisedBedId) ||
+        !nullableNumber(data.raisedBedFieldId) ||
+        !nullableString(data.operationTimestamp) ||
+        (data.operationTimestamp !== null &&
+            !isoDateString(data.operationTimestamp)) ||
+        !paymentCurrency(data.paymentCurrency) ||
+        parsedDelivery === undefined ||
+        !isoDateString(data.scheduledDate) ||
+        (data.requestNote !== undefined &&
+            typeof data.requestNote !== 'string') ||
+        typeof data.accepted !== 'boolean'
+    ) {
+        return null;
+    }
+
+    return {
+        operationId: data.operationId,
+        ...(typeof data.plantingId === 'number'
+            ? { plantingId: data.plantingId }
+            : {}),
+        accountId: data.accountId,
+        entityId: data.entityId,
+        entityTypeName: data.entityTypeName,
+        farmId: data.farmId,
+        gardenId: data.gardenId,
+        raisedBedId: data.raisedBedId,
+        raisedBedFieldId: data.raisedBedFieldId,
+        operationTimestamp: data.operationTimestamp,
+        paymentCurrency: data.paymentCurrency,
+        delivery: parsedDelivery,
+        scheduledDate: data.scheduledDate,
+        ...(typeof data.requestNote === 'string'
+            ? { requestNote: data.requestNote }
+            : {}),
+        accepted: data.accepted,
+    };
+}
+
+export async function getCheckoutOperationMappings(
+    cartItemIds: number[],
+    db: DatabaseClient = storage(),
+): Promise<ReadonlyMap<number, CheckoutOperationCreatedPayload>> {
+    const uniqueCartItemIds = Array.from(new Set(cartItemIds));
+    if (uniqueCartItemIds.length === 0) {
+        return new Map();
+    }
+
+    const cartItemIdsByAggregateId = new Map(
+        uniqueCartItemIds.map((cartItemId) => [
+            checkoutOperationAggregateId(cartItemId),
+            cartItemId,
+        ]),
+    );
+    const mappingEvents = await getAllEvents(
+        knownEventTypes.checkout.operationCreated,
+        Array.from(cartItemIdsByAggregateId.keys()),
+        { db },
+    );
+    const mappings = new Map<number, CheckoutOperationCreatedPayload>();
+
+    for (const mappingEvent of mappingEvents) {
+        const cartItemId = cartItemIdsByAggregateId.get(
+            mappingEvent.aggregateId,
+        );
+        if (cartItemId === undefined) {
+            throw new CheckoutOperationConflictError(
+                'Checkout operation mapping has an unexpected aggregate.',
+            );
+        }
+        if (mappings.has(cartItemId)) {
+            throw new CheckoutOperationConflictError(
+                'Checkout cart item has multiple operation mappings.',
+            );
+        }
+        if (mappingEvent.version !== 1) {
+            throw new CheckoutOperationConflictError(
+                'Checkout operation mapping has an unsupported version.',
+            );
+        }
+        const mapping = parseCheckoutOperationCreatedPayload(mappingEvent.data);
+        if (!mapping) {
+            throw new CheckoutOperationConflictError(
+                'Checkout operation mapping is malformed.',
+            );
+        }
+        mappings.set(cartItemId, mapping);
+    }
+
+    return mappings;
+}
+
+export async function getCheckoutOperationProvenance(
+    operationIds: number[],
+    db: DatabaseClient = storage(),
+): Promise<{
+    recordedFrom: Date;
+    requestedOperationIds: ReadonlySet<number>;
+}> {
+    const uniqueOperationIds = Array.from(new Set(operationIds));
+    if (uniqueOperationIds.length === 0) {
+        return {
+            recordedFrom: new Date(
+                CHECKOUT_OPERATION_PROVENANCE_INTRODUCED_AT_MS,
+            ),
+            requestedOperationIds: new Set(),
+        };
+    }
+
+    const operationIdExpression = sql<string>`${events.data}->>'operationId'`;
+    const [mappingEvents, [recordingPeriod]] = await Promise.all([
+        db
+            .select({ operationId: operationIdExpression })
+            .from(events)
+            .where(
+                and(
+                    eq(events.type, knownEventTypes.checkout.operationCreated),
+                    inArray(
+                        operationIdExpression,
+                        uniqueOperationIds.map((operationId) =>
+                            operationId.toString(),
+                        ),
+                    ),
+                ),
+            ),
+        db
+            .select({
+                recordedFrom:
+                    sql<Date | null>`min(${events.createdAt})`.mapWith(
+                        events.createdAt,
+                    ),
+            })
+            .from(events)
+            .where(eq(events.type, knownEventTypes.checkout.operationCreated)),
+    ]);
+
+    return {
+        recordedFrom:
+            recordingPeriod?.recordedFrom ??
+            new Date(CHECKOUT_OPERATION_PROVENANCE_INTRODUCED_AT_MS),
+        requestedOperationIds: new Set(
+            mappingEvents.map((event) =>
+                Number.parseInt(event.operationId, 10),
+            ),
+        ),
+    };
+}
+
+export async function getCheckoutOperationMapping(
+    cartItemId: number,
+    db: DatabaseClient = storage(),
+) {
+    return (
+        (await getCheckoutOperationMappings([cartItemId], db)).get(
+            cartItemId,
+        ) ?? null
+    );
+}
+
+function assertCheckoutOperationFingerprint(
+    stored: CheckoutOperationCreatedPayload,
+    expected: Omit<CheckoutOperationCreatedPayload, 'operationId'>,
+) {
+    if ((stored.plantingId ?? null) !== (expected.plantingId ?? null))
+        throw new CheckoutOperationConflictError(
+            'Checkout planting target changed.',
+        );
+    const fingerprintFields = [
+        'accountId',
+        'entityId',
+        'entityTypeName',
+        'farmId',
+        'gardenId',
+        'raisedBedId',
+        'raisedBedFieldId',
+        'operationTimestamp',
+        'paymentCurrency',
+        'scheduledDate',
+        'accepted',
+        'requestNote',
+    ] as const;
+    const mismatch = fingerprintFields.find(
+        (field) => stored[field] !== expected[field],
+    );
+    if (mismatch) {
+        throw new CheckoutOperationConflictError(
+            `Checkout operation fingerprint conflicts on ${mismatch}.`,
+        );
+    }
+    const storedDelivery = stored.delivery;
+    const expectedDelivery = expected.delivery;
+    const deliveryMismatch =
+        (storedDelivery === null) !== (expectedDelivery === null) ||
+        (storedDelivery !== null &&
+            expectedDelivery !== null &&
+            (storedDelivery.addressId !== expectedDelivery.addressId ||
+                storedDelivery.locationId !== expectedDelivery.locationId ||
+                storedDelivery.mode !== expectedDelivery.mode ||
+                storedDelivery.notes !== expectedDelivery.notes ||
+                storedDelivery.slotId !== expectedDelivery.slotId));
+    if (deliveryMismatch) {
+        throw new CheckoutOperationConflictError(
+            'Checkout operation fingerprint conflicts on delivery.',
+        );
+    }
+}
+
+async function ensureCheckoutOperation(
+    cartItemId: number,
+    operation: InsertOperation,
+    options: CheckoutOperationOptions,
+    db: DatabaseClient,
+) {
+    const fingerprint = checkoutOperationFingerprint(operation, options);
+    const stored = await getCheckoutOperationMapping(cartItemId, db);
+    if (stored) {
+        assertCheckoutOperationFingerprint(stored, fingerprint);
+
+        const mappedOperation = await db.query.operations.findFirst({
+            columns: {
+                id: true,
+                accountId: true,
+                entityId: true,
+                entityTypeName: true,
+                farmId: true,
+                gardenId: true,
+                raisedBedId: true,
+                raisedBedFieldId: true,
+                plantingId: true,
+                timestamp: true,
+            },
+            where: and(
+                eq(operations.id, stored.operationId),
+                eq(operations.isDeleted, false),
+            ),
+        });
+        if (!mappedOperation) {
+            throw new CheckoutOperationConflictError(
+                'Checkout operation mapping points to a missing or deleted operation.',
+            );
+        }
+        const operationMismatch = (
+            [
+                'accountId',
+                'entityId',
+                'entityTypeName',
+                'farmId',
+                'gardenId',
+                'raisedBedId',
+                'raisedBedFieldId',
+            ] as const
+        ).find((field) => mappedOperation[field] !== fingerprint[field]);
+        if (
+            operationMismatch ||
+            (mappedOperation.plantingId ?? null) !==
+                (fingerprint.plantingId ?? null) ||
+            (fingerprint.operationTimestamp !== null &&
+                mappedOperation.timestamp.toISOString() !==
+                    fingerprint.operationTimestamp)
+        ) {
+            throw new CheckoutOperationConflictError(
+                'Checkout operation mapping conflicts with the stored operation.',
+            );
+        }
+        return { operationId: stored.operationId, created: false } as const;
+    }
+
+    if (operation.plantingId != null) {
+        if (
+            !options.plantingTarget ||
+            options.plantingTarget.plantingId !== operation.plantingId ||
+            !operation.accountId ||
+            !operation.gardenId ||
+            !operation.raisedBedId
+        )
+            throw new CheckoutOperationConflictError(
+                'Selected planting purchase target is missing.',
+            );
+        await assertSelectedPlantingOperationPurchase(
+            {
+                target: options.plantingTarget,
+                accountId: operation.accountId,
+                gardenId: operation.gardenId,
+                raisedBedId: operation.raisedBedId,
+                entityId: operation.entityId,
+            },
+            db,
+        );
+    }
+    const operationId = await createOperation(operation, db);
+    await createEvent(
+        knownEvents.operations.scheduledV1(operationId.toString(), {
+            scheduledDate: fingerprint.scheduledDate,
+            ...(fingerprint.requestNote
+                ? { requestNote: fingerprint.requestNote }
+                : {}),
+        }),
+        db,
+    );
+    if (fingerprint.accepted) {
+        await acceptOperation(operationId, db);
+    }
+    await createEvent(
+        knownEvents.checkout.operationCreatedV1(
+            checkoutOperationAggregateId(cartItemId),
+            {
+                operationId,
+                ...fingerprint,
+            },
+        ),
+        db,
+    );
+    await enqueueCheckoutOperationScheduledNotification(
+        {
+            operationId,
+            scheduledDate: new Date(fingerprint.scheduledDate),
+        },
+        db,
+    );
+
+    return { operationId, created: true } as const;
+}
+
+export async function getOrCreateCheckoutOperation(
+    cartItemId: number,
+    operation: InsertOperation,
+    options: CheckoutOperationOptions,
+    db?: DatabaseClient,
+): Promise<{ operationId: number; created: boolean }> {
+    if (db) {
+        return ensureCheckoutOperation(cartItemId, operation, options, db);
+    }
+
+    const aggregateId = checkoutOperationAggregateId(cartItemId);
+    const runInTransaction = () =>
+        storage().transaction(async (transaction) => {
+            if (!isPgliteTestDatabase()) {
+                await transaction.execute(
+                    sql`select pg_advisory_xact_lock(hashtext(${`checkout-operation:${aggregateId}`}));`,
+                );
+            }
+            return ensureCheckoutOperation(
+                cartItemId,
+                operation,
+                options,
+                transaction,
+            );
+        });
+
+    const result = isPgliteTestDatabase()
+        ? await withCheckoutOperationInProcessLock(
+              aggregateId,
+              runInTransaction,
+          )
+        : await runInTransaction();
+    // A direct debit may have created the selected operation in its own transaction.
+    // Invalidate on the fulfillment replay too, after that transaction has committed.
+    if (result.created || operation.plantingId) {
+        await bustScheduleCache();
+    }
+    return result;
+}
+
+export async function switchOperationEntity(
+    id: number,
+    entity: Pick<InsertOperation, 'entityId' | 'entityTypeName'>,
+    db?: DatabaseClient,
+    options: OperationTargetGuardOptions = {},
+) {
+    const updateEntity = async (client: DatabaseClient) => {
+        const [currentOperation] = await client
+            .select({
+                id: operations.id,
+                raisedBedFieldId: operations.raisedBedFieldId,
+                plantingId: operations.plantingId,
+                raisedBedId: operations.raisedBedId,
+                gardenId: operations.gardenId,
+                farmId: operations.farmId,
+                accountId: operations.accountId,
+            })
+            .from(operations)
+            .where(and(eq(operations.id, id), eq(operations.isDeleted, false)))
+            .limit(1)
+            .for('update');
+
+        if (!currentOperation) {
+            throw new Error(`Operation with id ${id} not found`);
+        }
+
+        if (options.requireMatchingTargetScope) {
+            await lockOperationDefinitionApplications(
+                client,
+                await getOperationEntityLineage(client, entity.entityId),
+            );
+            const application = await getEffectiveOperationApplication(
+                client,
+                entity.entityId,
+                entity.entityTypeName,
+            );
+            const targetScope =
+                currentOperation.plantingId || currentOperation.raisedBedFieldId
+                    ? 'plant'
+                    : currentOperation.raisedBedId
+                      ? 'raisedBed'
+                      : currentOperation.gardenId
+                        ? 'garden'
+                        : currentOperation.farmId
+                          ? 'farm'
+                          : undefined;
+            const applicationScope = ['farm', 'garden', 'plant'].includes(
+                application ?? '',
+            )
+                ? application
+                : application
+                  ? 'raisedBed'
+                  : undefined;
+            if (targetScope && applicationScope !== targetScope) {
+                throw new OperationTargetConflictError(
+                    'incompatible_scope',
+                    'Odabrana radnja nije kompatibilna s lokacijom zadatka.',
+                );
+            }
+        }
+
+        await assertOperationTargetAllowsDefinition(
+            {
+                ...currentOperation,
+                ...entity,
+            },
+            client,
+            options,
+        );
+        await client
+            .update(operations)
+            .set({
+                entityId: entity.entityId,
+                entityTypeName: entity.entityTypeName,
+            })
+            .where(eq(operations.id, currentOperation.id));
+
+        await createEvent(
+            knownEvents.operations.entityChangedV1(id.toString(), {
+                entityId: entity.entityId,
+                entityTypeName: entity.entityTypeName,
+            }),
+            client,
+        );
+    };
+
+    if (db) {
+        await updateEntity(db);
+    } else {
+        await storage().transaction(updateEntity);
+        await bustScheduleCache();
+    }
+}
+
+async function setOperationAcceptance(
+    id: number,
+    accepted: boolean,
+    db?: DatabaseClient,
+) {
+    const updateAcceptance = async (client: DatabaseClient) => {
+        const [updatedOperation] = await client
+            .update(operations)
+            .set({ isAccepted: accepted })
+            .where(
+                and(
+                    eq(operations.id, id),
+                    eq(operations.isDeleted, false),
+                    eq(operations.isAccepted, !accepted),
+                ),
+            )
+            .returning({ id: operations.id });
+
+        if (!updatedOperation) {
+            return false;
+        }
+
+        await createEvent(
+            knownEvents.operations.acceptanceChangedV1(id.toString(), {
+                accepted,
+            }),
+            client,
+        );
+        return true;
+    };
+
+    const changed = db
+        ? await updateAcceptance(db)
+        : await storage().transaction(updateAcceptance);
+    if (!db && changed) {
+        await bustScheduleCache();
+    }
+}
+
+export async function acceptOperation(id: number, db?: DatabaseClient) {
+    await setOperationAcceptance(id, true, db);
+}
+
+export async function unacceptOperation(id: number, db?: DatabaseClient) {
+    await setOperationAcceptance(id, false, db);
 }
 
 export async function deleteOperation(id: number) {
@@ -746,34 +3054,22 @@ async function getCompletedOperationsByCompletionDate(filter: {
     from: Date;
     to: Date;
 }) {
-    // First, get completion events within the date range
-    const completionEvents = await storage().query.events.findMany({
-        where: and(
-            eq(events.type, knownEventTypes.operations.complete),
-            gte(events.createdAt, filter.from),
-            lte(events.createdAt, filter.to),
-        ),
-        orderBy: [asc(events.createdAt)],
-    });
-
-    if (completionEvents.length === 0) {
-        return [];
-    }
-
-    // Extract operation IDs from the completion events
-    const operationIds = completionEvents.map((event) =>
-        parseInt(event.aggregateId, 10),
-    );
-
-    // Get the operations that were completed
-    const completedOperations = await storage().query.operations.findMany({
-        where: and(
-            inArray(operations.id, operationIds),
-            eq(operations.isDeleted, false),
-        ),
-        orderBy: desc(operations.timestamp),
-    });
-
-    // Fill aggregates for these specific operations
-    return await fillOperationAggregates(completedOperations);
+    const candidateIds = await getCompletionEventCandidateIds(filter);
+    if (candidateIds.length === 0) return [];
+    const rows = await storage()
+        .select({ operation: operations })
+        .from(operations)
+        .where(
+            and(
+                inArray(operations.id, candidateIds),
+                eq(operations.isDeleted, false),
+                between(
+                    getOperationCompletedDateExpression(),
+                    filter.from,
+                    filter.to,
+                ),
+            ),
+        )
+        .orderBy(desc(operations.timestamp));
+    return fillOperationAggregates(rows.map((row) => row.operation));
 }

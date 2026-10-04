@@ -1,0 +1,189 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+
+name: "Release - Desktop (app)"
+
+on:
+  push:
+    tags:
+      - "desktop-app-v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (e.g. 1.2.3). Defaults to the tag suffix when triggered by a tag."
+        required: false
+        type: string
+      prerelease:
+        description: "Mark the GitHub release as a pre-release."
+        required: false
+        type: boolean
+        default: false
+      draft:
+        description: "Create the GitHub release as a draft."
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  resolve_version:
+    name: "Resolve release version"
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - name: 🏷️ Resolve release version
+        id: version
+        shell: bash
+        env:
+          DISPATCH_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${DISPATCH_VERSION}" ]; then
+            VERSION="${DISPATCH_VERSION}"
+          elif [[ "${GITHUB_REF}" == refs/tags/desktop-app-v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/desktop-app-v}"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # Single timestamp shared across all downstream jobs so the DMG
+            # filenames, package version, tag, and release name agree.
+            VERSION="0.0.0-$(date -u +%Y%m%d%H%M%S)"
+          else
+            echo "::error::Unable to resolve release version. Trigger this workflow with a desktop-app-v* tag or provide a workflow_dispatch version input." >&2
+            exit 1
+          fi
+          TAG="desktop-app-v${VERSION}"
+          echo "Resolved version: ${VERSION}"
+          echo "Resolved tag: ${TAG}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: "Build macOS arm64 DMG"
+    needs: resolve_version
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 1
+
+      - uses: pnpm/action-setup@v6.1.0
+        name: ✨ Install pnpm
+
+      - name: ✨ Setup Node
+        uses: actions/setup-node@v7.0.0
+        with:
+          node-version: "24.21.0"
+
+      - name: ✨ Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - uses: actions/cache@v6.1.0
+        name: ✨ Setup pnpm cache
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - uses: actions/cache@v6.1.0
+        name: ✨ Setup electron-builder cache
+        with:
+          path: |
+            ~/Library/Caches/electron
+            ~/Library/Caches/electron-builder
+          key: ${{ runner.os }}-electron-${{ hashFiles('apps/desktop/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-electron-
+
+      - name: 📦️ Install dependencies
+        run: pnpm install --frozen-lockfile --filter desktop... --filter .
+
+      - name: 🔐 Prepare macOS signing and notarization
+        env:
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY_CONTENT: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_KEYCHAIN: ${{ secrets.APPLE_KEYCHAIN }}
+          APPLE_KEYCHAIN_PROFILE: ${{ secrets.APPLE_KEYCHAIN_PROFILE }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+        working-directory: apps/desktop
+        run: node scripts/prepare-macos-signing-env.mjs
+
+      - name: 🛠️ Build Gredice Admin desktop DMG (arm64)
+        env:
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_KEYCHAIN: ${{ secrets.APPLE_KEYCHAIN }}
+          APPLE_KEYCHAIN_PROFILE: ${{ secrets.APPLE_KEYCHAIN_PROFILE }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          GREDICE_DESKTOP_VERSION: ${{ needs.resolve_version.outputs.version }}
+        working-directory: apps/desktop
+        run: pnpm dist:app --mac --arm64
+
+      - name: 📤 Upload DMG artifact
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: gredice-admin-desktop-arm64
+          path: |
+            apps/desktop/dist/app/*.dmg
+            apps/desktop/dist/app/*.dmg.blockmap
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: "Publish GitHub Release"
+    needs: [resolve_version, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 📥 Download DMG artifacts
+        uses: actions/download-artifact@v8.0.1
+        with:
+          path: release-artifacts
+          pattern: gredice-admin-desktop-*
+          merge-multiple: true
+
+      - name: 📜 List artifacts
+        shell: bash
+        run: ls -lR release-artifacts
+
+      - name: 🚀 Create or update GitHub release
+        uses: softprops/action-gh-release@v3.0.3
+        with:
+          name: "Gredice Admin Desktop ${{ needs.resolve_version.outputs.version }}"
+          tag_name: ${{ needs.resolve_version.outputs.tag }}
+          draft: ${{ github.event_name == 'workflow_dispatch' && inputs.draft || false }}
+          prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease || false }}
+          # Generated notes can exceed GitHub's 125k release body limit for the
+          # first desktop tag because the comparison spans too much repo history.
+          generate_release_notes: false
+          body: |
+            Gredice Admin Desktop ${{ needs.resolve_version.outputs.version }}.
+
+            Install the DMG for your Mac architecture:
+            - `arm64` for Apple Silicon Macs.
+            - `x64` for Intel Macs.
+
+            The DMG and blockmap files are attached below.
+          fail_on_unmatched_files: true
+          files: |
+            release-artifacts/*.dmg
+            release-artifacts/*.dmg.blockmap

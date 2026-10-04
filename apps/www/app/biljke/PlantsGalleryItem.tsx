@@ -1,25 +1,35 @@
-import type { PlantData } from '@gredice/client';
 import {
     PlantOrSortImage,
     PlantYieldTooltip,
     SeedTimeInformationBadge,
 } from '@gredice/ui/plants';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { ItemCard } from '../../components/shared/ItemCard';
 import { KnownPages } from '../../src/KnownPages';
+import type { toPlantCard } from './plantCatalogue';
+import { getPlantImageViewTransitionName } from './plantViewTransition';
 
-export type PlantsGalleryItemProps = Pick<
-    PlantData,
-    'information' | 'attributes' | 'image'
-> &
-    Partial<Pick<PlantData, 'prices'>> & {
-        isRecommended?: boolean;
-    };
+export type PlantsGalleryItemProps = Omit<
+    ReturnType<typeof toPlantCard>,
+    'id'
+> & {
+    id: string;
+    matchingAlternativeName?: string;
+    matchingSortName?: string;
+};
 
 export function PlantsGalleryItem(props: PlantsGalleryItemProps) {
-    const { information, prices, attributes, isRecommended } = props;
+    const {
+        id,
+        information,
+        prices,
+        attributes,
+        isRecommended,
+        matchingAlternativeName,
+        matchingSortName,
+    } = props;
     return (
         <ItemCard
             label={
@@ -40,15 +50,25 @@ export function PlantsGalleryItem(props: PlantsGalleryItemProps) {
                     <Typography level="body2" className="self-end">
                         {prices?.perPlant?.toFixed(2) ?? 'Nepoznato'}€
                     </Typography>
+                    {matchingSortName && (
+                        <Typography level="body3" secondary>
+                            Sorta: {matchingSortName}
+                        </Typography>
+                    )}
+                    {matchingAlternativeName && (
+                        <Typography level="body3" secondary>
+                            Poznato i kao: {matchingAlternativeName}
+                        </Typography>
+                    )}
                 </Stack>
             }
             href={KnownPages.Plant(information.name)}
+            mediaViewTransitionName={getPlantImageViewTransitionName(id)}
         >
             <PlantOrSortImage
                 plant={props}
                 fill
-                preload
-                sizes="(max-width: 768px) 50vw, (min-width: 768px) 33vw, (min-width: 1200px) 9vw"
+                sizes="(min-width: 1280px) 16vw, (min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
             />
             {isRecommended && (
                 <div className="absolute top-1 right-1">

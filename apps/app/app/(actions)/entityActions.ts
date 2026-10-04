@@ -7,13 +7,22 @@ import { slugify } from '@gredice/js/slug';
 import {
     deleteAttributeValue,
     deleteEntity,
+    getAttributeDefinition,
+    getEntitiesRaw,
     getEntityIncomingLinks,
+    getEntityRaw,
     type IncomingEntityLinkGroup,
+    isPlantHealthAffectedPlantAttributeDefinition,
+    isPlantHealthIssueEntityTypeName,
+    isPlantRelationshipAttributeDefinition,
+    parsePlantRelationshipTargetId,
+    plantHealthOperationIntentForAttributeDefinition,
     type SelectAttributeDefinition,
     type SelectAttributeValue,
     createEntity as storageCreateEntity,
     duplicateEntity as storageDuplicateEntity,
     updateEntity as storageUpdateEntity,
+    sunflowerPackageEntityTypeName,
     type UpdateEntity,
     upsertAttributeValue,
     upsertEntityType,
@@ -21,6 +30,12 @@ import {
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { auth } from '../../lib/auth/auth';
+import { revalidatePublicDirectoryPagesForEntityType } from '../../lib/revalidation/publicDirectoryPages';
+import {
+    normalizeSunflowerPackageAttributeValue,
+    sunflowerPackageActivePricingError,
+    sunflowerPackageAttributeValueError,
+} from '../../src/entities/sunflowerPackageAdmin';
 import { KnownPages } from '../../src/KnownPages';
 
 const imageContentTypeExtensions: Record<string, string> = {
@@ -84,6 +99,7 @@ export async function createEntityType(
     categoryId?: number,
     isRoot = true,
     icon?: string,
+    inventorySourceAttributeDefinitionId?: number | null,
 ) {
     await auth(['admin']);
 
@@ -93,6 +109,8 @@ export async function createEntityType(
         icon: icon || null,
         categoryId,
         isRoot,
+        inventorySourceAttributeDefinitionId:
+            inventorySourceAttributeDefinitionId ?? null,
     });
     revalidatePath(KnownPages.Directories);
     redirect(
@@ -107,6 +125,7 @@ export async function updateEntityType(
     categoryId?: number,
     isRoot = true,
     icon?: string,
+    inventorySourceAttributeDefinitionId?: number | null,
 ) {
     await auth(['admin']);
 
@@ -117,9 +136,31 @@ export async function updateEntityType(
         icon: icon || null,
         categoryId,
         isRoot,
+        inventorySourceAttributeDefinitionId:
+            inventorySourceAttributeDefinitionId ?? null,
     });
     revalidatePath(KnownPages.Directories);
     revalidatePath(KnownPages.DirectoryEntityType(entityTypeName));
+}
+
+async function assertInventorySourceAttributeDefinition(
+    attributeDefinitionId: number | null,
+    entityTypeName: string,
+) {
+    if (attributeDefinitionId === null) {
+        return;
+    }
+
+    const attributeDefinition = await getAttributeDefinition(
+        attributeDefinitionId,
+    );
+    if (
+        !attributeDefinition ||
+        attributeDefinition.dataType !== `ref:${entityTypeName}` ||
+        attributeDefinition.entityTypeName === entityTypeName
+    ) {
+        throw new Error('Odabrani izvor zalihe nije valjan.');
+    }
 }
 
 export async function deleteEntityType(id: number) {
@@ -147,6 +188,24 @@ export async function updateEntityTypeFromEditPage(formData: FormData) {
             : (formData.get('categoryId') as string);
     const originalName = formData.get('originalName') as string;
     const isRoot = (formData.get('isRoot') as string) !== 'false';
+    const inventorySourceAttributeDefinitionIdRaw = formData.get(
+        'inventorySourceAttributeDefinitionId',
+    ) as string | null;
+    const inventorySourceAttributeDefinitionId =
+        inventorySourceAttributeDefinitionIdRaw &&
+        inventorySourceAttributeDefinitionIdRaw !== 'none'
+            ? Number.parseInt(inventorySourceAttributeDefinitionIdRaw, 10)
+            : null;
+    if (
+        inventorySourceAttributeDefinitionId !== null &&
+        !Number.isFinite(inventorySourceAttributeDefinitionId)
+    ) {
+        throw new Error('Odabrani izvor zalihe nije valjan.');
+    }
+    await assertInventorySourceAttributeDefinition(
+        inventorySourceAttributeDefinitionId,
+        name,
+    );
 
     await updateEntityType(
         id,
@@ -155,6 +214,7 @@ export async function updateEntityTypeFromEditPage(formData: FormData) {
         categoryId ? parseInt(categoryId, 10) : undefined,
         isRoot,
         resolvedIcon,
+        inventorySourceAttributeDefinitionId,
     );
 
     revalidatePath(KnownPages.Directories);
@@ -182,7 +242,21 @@ export async function createEntity(entityTypeName: string) {
     revalidatePath(KnownPages.Directories);
     revalidatePath(KnownPages.DirectoryEntityType(entityTypeName));
     revalidatePath(KnownPages.DirectoryEntity(entityTypeName, entityId));
+    await revalidatePublicDirectoryPagesForEntityType(
+        entityTypeName,
+        'entity.create',
+    );
     redirect(KnownPages.DirectoryEntity(entityTypeName, entityId));
+}
+
+async function revalidatePublicDirectoryPagesForEntity(
+    entity: UpdateEntity,
+    reason: string,
+) {
+    const entityTypeName =
+        entity.entityTypeName ??
+        (await getEntityRaw(entity.id))?.entityTypeName;
+    await revalidatePublicDirectoryPagesForEntityType(entityTypeName, reason);
 }
 
 export async function updateEntity(entity: UpdateEntity) {
@@ -199,6 +273,166 @@ export async function updateEntity(entity: UpdateEntity) {
     revalidatePath(KnownPages.DirectoryEntityTypePath, 'layout');
     revalidatePath(KnownPages.DirectoryEntityPath, 'page');
     revalidatePath(KnownPages.DirectoryEntityPath, 'layout');
+    await revalidatePublicDirectoryPagesForEntity(entity, 'entity.update');
+}
+
+function entityActionErrorMessage(error: unknown) {
+    if (error instanceof Error) {
+        return error.message;
+    }
+    return 'Promjena statusa nije uspjela.';
+}
+
+async function assertPlantRelationshipValueCanSave({
+    attributeDefinition,
+    attributeValueId,
+    entityId,
+    newValue,
+}: {
+    attributeDefinition: SelectAttributeDefinition;
+    attributeValueId?: number;
+    entityId: number;
+    newValue?: string | null;
+}) {
+    if (!isPlantRelationshipAttributeDefinition(attributeDefinition)) {
+        return;
+    }
+
+    const targetId = parsePlantRelationshipTargetId(newValue);
+    if (!targetId) {
+        return;
+    }
+    if (targetId === entityId) {
+        throw new Error('Biljka ne može biti povezana sama sa sobom.');
+    }
+
+    const [entity, target] = await Promise.all([
+        getEntityRaw(entityId),
+        getEntityRaw(targetId),
+    ]);
+    if (target?.entityTypeName !== 'plant') {
+        throw new Error('Odabrana povezana biljka nije pronađena.');
+    }
+
+    const duplicateValue = entity?.attributes.find(
+        (attribute) =>
+            attribute.attributeDefinitionId === attributeDefinition.id &&
+            attribute.id !== attributeValueId &&
+            attribute.value === String(targetId),
+    );
+    if (duplicateValue) {
+        throw new Error('Ova povezana biljka već je dodana.');
+    }
+}
+
+function referenceEntityTypeName(
+    attributeDefinition: SelectAttributeDefinition,
+) {
+    return attributeDefinition.dataType.startsWith('ref:')
+        ? attributeDefinition.dataType.substring(4)
+        : null;
+}
+
+function parseReferenceTargetId(value: string | null | undefined) {
+    if (!value) {
+        return null;
+    }
+
+    const parsed = Number.parseInt(value, 10);
+    return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+async function assertReferenceValueCanSave({
+    attributeDefinition,
+    attributeValueId,
+    entityId,
+    newValue,
+}: {
+    attributeDefinition: SelectAttributeDefinition;
+    attributeValueId?: number;
+    entityId: number;
+    newValue?: string | null;
+}) {
+    const refTypeName = referenceEntityTypeName(attributeDefinition);
+    if (!refTypeName) {
+        return;
+    }
+
+    const targetId = parseReferenceTargetId(newValue);
+    if (!targetId) {
+        return;
+    }
+    if (
+        refTypeName === attributeDefinition.entityTypeName &&
+        targetId === entityId
+    ) {
+        throw new Error('Zapis ne može biti povezan sam sa sobom.');
+    }
+
+    const [entity, target] = await Promise.all([
+        getEntityRaw(entityId),
+        getEntityRaw(targetId),
+    ]);
+    if (target?.entityTypeName !== refTypeName) {
+        throw new Error('Odabrani povezani zapis nije pronađen.');
+    }
+
+    if (attributeDefinition.multiple) {
+        const duplicateValue = entity?.attributes.find(
+            (attribute) =>
+                attribute.attributeDefinitionId === attributeDefinition.id &&
+                attribute.id !== attributeValueId &&
+                attribute.value === String(targetId),
+        );
+        if (duplicateValue) {
+            throw new Error('Ovaj povezani zapis već je dodan.');
+        }
+    }
+
+    const isPlantHealthReference =
+        isPlantHealthIssueEntityTypeName(attributeDefinition.entityTypeName) &&
+        (isPlantHealthAffectedPlantAttributeDefinition(attributeDefinition) ||
+            plantHealthOperationIntentForAttributeDefinition(
+                attributeDefinition,
+            ));
+    if (isPlantHealthReference && target.state !== 'published') {
+        throw new Error(
+            'Povezane biljke i radnje na bolestima i štetnicima moraju biti objavljene.',
+        );
+    }
+}
+
+export async function updateEntityStateAction(entity: UpdateEntity) {
+    await auth(['admin']);
+
+    const authData = await auth(['admin']);
+
+    try {
+        await storageUpdateEntity(entity, {
+            id: authData.userId,
+            name: authData.user.userName,
+        });
+    } catch (error) {
+        return {
+            success: false,
+            message: entityActionErrorMessage(error),
+        };
+    }
+
+    revalidatePath(KnownPages.Directories);
+    revalidatePath(KnownPages.DirectoryEntityTypePath, 'page');
+    revalidatePath(KnownPages.DirectoryEntityTypePath, 'layout');
+    revalidatePath(KnownPages.DirectoryEntityPath, 'page');
+    revalidatePath(KnownPages.DirectoryEntityPath, 'layout');
+    await revalidatePublicDirectoryPagesForEntity(
+        entity,
+        'entity.state.update',
+    );
+
+    return {
+        success: true,
+        message: null,
+    };
 }
 
 export async function duplicateEntity(
@@ -210,6 +444,10 @@ export async function duplicateEntity(
     const newEntityId = await storageDuplicateEntity(entityId);
     revalidatePath(KnownPages.Directories);
     revalidatePath(KnownPages.DirectoryEntityType(entityTypeName));
+    await revalidatePublicDirectoryPagesForEntityType(
+        entityTypeName,
+        'entity.duplicate',
+    );
     redirect(KnownPages.DirectoryEntity(entityTypeName, newEntityId));
 }
 
@@ -222,9 +460,95 @@ export async function handleValueSave(
 ) {
     await auth(['admin']);
 
+    const normalizedValue = normalizeSunflowerPackageAttributeValue(
+        attributeDefinition,
+        newValue,
+    );
     const newAttributeValueValue =
-        (newValue?.length ?? 0) <= 0 ? null : newValue;
+        normalizedValue && normalizedValue.length > 0 ? normalizedValue : null;
+    const packageValidationError = sunflowerPackageAttributeValueError(
+        attributeDefinition,
+        newAttributeValueValue,
+    );
+    if (packageValidationError) {
+        return { success: false, message: packageValidationError } as const;
+    }
+
+    if (attributeDefinition.entityTypeName === sunflowerPackageEntityTypeName) {
+        const entity = await getEntityRaw(entityId);
+        if (entity) {
+            const activePricingError = sunflowerPackageActivePricingError(
+                attributeDefinition,
+                newAttributeValueValue,
+                entity,
+            );
+            if (activePricingError) {
+                return {
+                    success: false,
+                    message: activePricingError,
+                } as const;
+            }
+        }
+
+        if (
+            attributeDefinition.category === 'presentation' &&
+            attributeDefinition.name === 'code' &&
+            newAttributeValueValue
+        ) {
+            const packageEntities = await getEntitiesRaw(
+                sunflowerPackageEntityTypeName,
+            );
+            const currentCode = entity?.attributes
+                .find(
+                    (attribute) =>
+                        attribute.attributeDefinitionId ===
+                        attributeDefinition.id,
+                )
+                ?.value?.trim();
+            if (
+                entity?.state === 'published' &&
+                currentCode &&
+                currentCode !== newAttributeValueValue
+            ) {
+                return {
+                    success: false,
+                    message:
+                        'Kod objavljenog paketa je stabilan jer povezuje checkout i evidenciju kupnje. Za promjenu koda prvo izradite novi paket.',
+                } as const;
+            }
+
+            const duplicateCode = packageEntities.some(
+                (packageEntity) =>
+                    packageEntity.id !== entityId &&
+                    packageEntity.attributes.some(
+                        (attribute) =>
+                            attribute.attributeDefinitionId ===
+                                attributeDefinition.id &&
+                            attribute.value?.trim() === newAttributeValueValue,
+                    ),
+            );
+            if (duplicateCode) {
+                return {
+                    success: false,
+                    message: `Kod paketa „${newAttributeValueValue}” već postoji.`,
+                } as const;
+            }
+        }
+    }
+
     const authData = await auth(['admin']);
+    await assertPlantRelationshipValueCanSave({
+        attributeDefinition,
+        attributeValueId,
+        entityId,
+        newValue: newAttributeValueValue,
+    });
+    await assertReferenceValueCanSave({
+        attributeDefinition,
+        attributeValueId,
+        entityId,
+        newValue: newAttributeValueValue,
+    });
 
     await upsertAttributeValue(
         {
@@ -240,6 +564,11 @@ export async function handleValueSave(
         },
     );
     revalidatePath(KnownPages.DirectoryEntity(entityTypeName, entityId));
+    await revalidatePublicDirectoryPagesForEntityType(
+        entityTypeName,
+        'entity.attribute.update',
+    );
+    return { success: true, message: null } as const;
 }
 
 export async function handleValueDelete(attributeValue: SelectAttributeValue) {
@@ -253,6 +582,10 @@ export async function handleValueDelete(attributeValue: SelectAttributeValue) {
     });
     revalidatePath(
         `/admin/directories/${attributeValue.entityTypeName}/${attributeValue.entityId}`,
+    );
+    await revalidatePublicDirectoryPagesForEntityType(
+        attributeValue.entityTypeName,
+        'entity.attribute.delete',
     );
 }
 
@@ -317,6 +650,10 @@ export async function handleEntityDelete(
         name: authData.user.userName,
     });
     revalidatePath(KnownPages.Directories);
+    await revalidatePublicDirectoryPagesForEntityType(
+        entityTypeName,
+        'entity.delete',
+    );
     redirect(KnownPages.DirectoryEntityType(entityTypeName));
 }
 

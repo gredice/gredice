@@ -8,6 +8,7 @@ export const queryKeys = {
 export function useRaisedBedDiaryEntries(
     gardenId: number,
     raisedBedId: number,
+    options: { enabled?: boolean } = {},
 ) {
     return useQuery({
         queryKey: queryKeys.byId(raisedBedId),
@@ -40,6 +41,9 @@ export function useRaisedBedDiaryEntries(
             }));
         },
         staleTime: 5 * 60 * 1000, // 5 minutes
-        enabled: Boolean(gardenId) && Boolean(raisedBedId),
+        enabled:
+            (options.enabled ?? true) &&
+            Boolean(gardenId) &&
+            Boolean(raisedBedId),
     });
 }

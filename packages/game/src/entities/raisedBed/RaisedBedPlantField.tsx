@@ -1,14 +1,19 @@
 import { calculatePlantsPerField } from '@gredice/js/plants';
-import { animated, useSpring } from '@react-spring/three';
-import { useMemo } from 'react';
-import { useGameFlags } from '../../GameFlagsContext';
+import { useMemo, useRef } from 'react';
+import type { Group } from 'three';
+import { usePlantLodState } from '../../generators/plant/hooks/usePlantLod';
 import {
     calculateInGamePlantGeneration,
-    getPlantLifecycleWindowDays,
+    getInGamePlantDefinition,
+    getInGamePlantInstanceScale,
+    getPlantMaturityWindowDays,
     resolveInGamePlantPreset,
 } from '../../generators/plant/lib/inGamePlantPresets';
+import { getApproximatePlantHeight } from '../../generators/plant/lib/plantRenderData';
+import { useIsSandboxGarden } from '../../hooks/useCurrentGarden';
 import { usePlantSort } from '../../hooks/usePlantSorts';
 import { useSnapshotTime } from '../../hooks/useSnapshotTime';
+import { animated, useSpring } from '../../scene/sceneSpring';
 import { useGameState } from '../../useGameState';
 import {
     getGridPositionFromIndex,
@@ -16,6 +21,21 @@ import {
 } from '../../utils/raisedBedOrientation';
 import { useGameGLTF } from '../../utils/useGameGLTF';
 import { RaisedBedGeneratedPlantBatch } from './RaisedBedGeneratedPlantBatch';
+import {
+    resolveRaisedBedPlantVisualStage,
+    shouldRenderRaisedBedPlant,
+} from './raisedBedPlantVisualStatus';
+
+export const mockPlantPresetLabelsBySortId: Record<number, string> = {
+    219: 'pepper',
+    226: 'cucumber',
+    230: 'carrot',
+    284: 'spinach',
+    337: 'tomato',
+    353: 'broccoli',
+    357: 'lettuce',
+    373: 'onion',
+};
 
 export function RaisedBedPlantField({
     field,
@@ -23,18 +43,27 @@ export function RaisedBedPlantField({
     blockIndex,
 }: {
     field: {
+        harvestedVisual?: boolean | null;
         positionIndex: number;
         plantSortId: number | null | undefined;
         plantStatus?: string | null;
         plantSowDate?: string | null;
+        supportedVisual?: boolean;
     };
     orientation: RaisedBedOrientation;
     blockIndex: number;
 }) {
-    const { positionIndex, plantSortId, plantSowDate } = field;
+    const {
+        harvestedVisual,
+        positionIndex,
+        plantSortId,
+        plantSowDate,
+        supportedVisual,
+    } = field;
+    const fieldGroupRef = useRef<Group | null>(null);
     const { data: sortData } = usePlantSort(plantSortId);
-    const flags = useGameFlags();
     const isMock = useGameState((state) => state.isMock);
+    const isSandbox = useIsSandboxGarden();
     const currentTime = useSnapshotTime();
     const offsetX =
         orientation === 'vertical' ? 0.31 - blockIndex * 0.05 : 0.27;
@@ -45,6 +74,9 @@ export function RaisedBedPlantField({
 
     const { plantsPerRow, totalPlants } = calculatePlantsPerField(
         sortData?.information?.plant.attributes?.seedingDistance,
+        sortData?.information.name ??
+            mockPlantPresetLabelsBySortId[plantSortId ?? 0] ??
+            `Plant sort #${plantSortId?.toString() ?? 'unknown'}`,
     );
     const safePlantsPerRow = Math.max(plantsPerRow, 1);
     const seedsCount = totalPlants;
@@ -77,47 +109,75 @@ export function RaisedBedPlantField({
             sortData?.information.name,
             sortData?.information.plant.information?.name,
             sortData?.information.plant.information?.latinName,
+            isMock || isSandbox
+                ? mockPlantPresetLabelsBySortId[plantSortId ?? 0]
+                : undefined,
         ]);
     }, [
+        isMock,
+        isSandbox,
+        plantSortId,
         sortData?.information.name,
         sortData?.information.plant.information?.latinName,
         sortData?.information.plant.information?.name,
     ]);
-    const lifecycleWindowDays = getPlantLifecycleWindowDays({
+    const maturityWindowDays = getPlantMaturityWindowDays({
         germinationWindowMax:
             sortData?.information.plant.attributes?.germinationWindowMax,
         growthWindowMax:
             sortData?.information.plant.attributes?.growthWindowMax,
-        harvestWindowMax:
-            sortData?.information.plant.attributes?.harvestWindowMax,
     });
     const plantGeneration =
         plantSowDate && resolvedPlantPreset
             ? calculateInGamePlantGeneration({
                   currentTime,
                   sowDate: plantSowDate,
-                  lifecycleWindowDays,
+                  lifecycleWindowDays: maturityWindowDays,
                   growthMultiplier: resolvedPlantPreset.growthMultiplier,
+                  plantStatus: field.plantStatus,
               })
             : 0;
     const shouldRenderGeneratedPlants =
-        Boolean(flags.enablePlantGeneratorFlag || isMock) &&
         Boolean(resolvedPlantPreset) &&
-        Boolean(plantSowDate) &&
-        (field.plantStatus === 'sprouted' ||
-            field.plantStatus === 'ready' ||
-            field.plantStatus === 'harvested');
+        shouldRenderRaisedBedPlant({
+            plantSowDate,
+            plantStatus: field.plantStatus,
+        });
     const plantInstanceScale = resolvedPlantPreset
-        ? resolvedPlantPreset.instanceScale *
-          Math.max(0.72, 1 - Math.max(0, safePlantsPerRow - 2) * 0.12)
+        ? getInGamePlantInstanceScale(resolvedPlantPreset, safePlantsPerRow)
         : 0;
+    const plantDefinition = resolvedPlantPreset
+        ? getInGamePlantDefinition(
+              resolvedPlantPreset,
+              supportedVisual === true,
+          )
+        : null;
+    const plantVisualStage = plantDefinition
+        ? resolveRaisedBedPlantVisualStage({
+              generation: plantGeneration,
+              harvestedVisual,
+              plantDefinition,
+              plantStatus: field.plantStatus,
+          })
+        : null;
+    const approximateFieldPlantHeight = plantDefinition
+        ? getApproximatePlantHeight(plantDefinition) * plantInstanceScale
+        : 0.25;
+    const fieldLod = usePlantLodState(
+        fieldGroupRef,
+        approximateFieldPlantHeight,
+        {
+            cullOffscreen: true,
+            visibilityMargin: 0.24,
+        },
+    );
     const generatedPlantInstances = useMemo(() => {
         if (!resolvedPlantPreset) {
             return [];
         }
 
         return fieldSlots.map((position, index) => ({
-            generation: plantGeneration,
+            generation: plantVisualStage?.generation ?? plantGeneration,
             position: [position[0], 0.02, position[2]] as const,
             scale: plantInstanceScale,
             seed: `${plantSortId ?? 'sort'}:${positionIndex}:${blockIndex}:${index}`,
@@ -125,14 +185,15 @@ export function RaisedBedPlantField({
     }, [
         blockIndex,
         fieldSlots,
-        plantGeneration,
         plantInstanceScale,
         plantSortId,
         positionIndex,
+        plantGeneration,
+        plantVisualStage?.generation,
         resolvedPlantPreset,
     ]);
 
-    const seedColor = plantSowDate ? 'black' : '#6495ED';
+    const seedColor = plantSowDate ? '#4b3223' : '#6495ED';
     const seedOpacityToMax = useSpring({
         from: { opacity: 1 },
         to: [{ opacity: 0.5 }, { opacity: 1 }],
@@ -140,9 +201,10 @@ export function RaisedBedPlantField({
         loop: true,
         cancel: Boolean(plantSowDate),
     });
+    const seedOpacity = plantSowDate ? 0.72 : seedOpacityToMax.opacity;
 
     // TODO: Move to seed block/part
-    const { nodes } = useGameGLTF();
+    const { nodes } = useGameGLTF('Seed');
     const { row, col } = getGridPositionFromIndex(positionIndex, orientation);
     const fieldPosition = [
         col * multiplierX - offsetX,
@@ -156,34 +218,44 @@ export function RaisedBedPlantField({
     }
 
     return (
-        <group position={fieldPosition}>
-            {shouldRenderGeneratedPlants && resolvedPlantPreset ? (
-                <RaisedBedGeneratedPlantBatch
-                    definition={resolvedPlantPreset.definition}
-                    instances={generatedPlantInstances}
-                />
-            ) : (
-                fieldSlots.map((position) => {
-                    const slotKey = `${plantSortId ?? 'sort'}:${positionIndex}:${position[0].toFixed(3)}:${position[2].toFixed(3)}`;
+        <group ref={fieldGroupRef} position={fieldPosition}>
+            {fieldLod.visible ? (
+                shouldRenderGeneratedPlants && resolvedPlantPreset ? (
+                    <RaisedBedGeneratedPlantBatch
+                        definition={
+                            plantDefinition ?? resolvedPlantPreset.definition
+                        }
+                        flowerGrowth={plantVisualStage?.flowerGrowth}
+                        fruitGrowth={plantVisualStage?.fruitGrowth}
+                        instances={generatedPlantInstances}
+                        lodLevel={fieldLod.level}
+                        showFlowers={plantVisualStage?.showFlowers}
+                        showProduce={plantVisualStage?.showProduce}
+                    />
+                ) : (
+                    fieldSlots.map((position) => {
+                        const slotKey = `${plantSortId ?? 'sort'}:${positionIndex}:${position[0].toFixed(3)}:${position[2].toFixed(3)}`;
 
-                    return (
-                        <mesh
-                            key={slotKey}
-                            castShadow
-                            receiveShadow
-                            position={position}
-                            scale={seedLayout.scale}
-                            geometry={nodes.Seed.geometry}
-                        >
-                            <animated.meshStandardMaterial
-                                color={seedColor}
-                                transparent
-                                {...seedOpacityToMax}
-                            />
-                        </mesh>
-                    );
-                })
-            )}
+                        return (
+                            <mesh
+                                key={slotKey}
+                                castShadow
+                                receiveShadow
+                                position={position}
+                                scale={seedLayout.scale}
+                                geometry={nodes.Seed.geometry}
+                            >
+                                <animated.meshStandardMaterial
+                                    color={seedColor}
+                                    opacity={seedOpacity}
+                                    roughness={0.95}
+                                    transparent
+                                />
+                            </mesh>
+                        );
+                    })
+                )
+            ) : null}
         </group>
     );
 }

@@ -1,11 +1,11 @@
 'use client';
 
-import { OrbitControls, useGLTF } from '@react-three/drei';
-import { useMemo, useRef } from 'react';
-import { Vector3 } from 'three';
-import { models } from '../data/models';
+import { OrbitControls } from '@react-three/drei';
+import { useThree } from '@react-three/fiber';
+import { useLayoutEffect, useRef } from 'react';
+import { Vector3, type WebGLRendererParameters } from 'three';
+import { groundGameAssetNames } from '../data/models';
 import { BlockGround } from '../entities/BlockGround';
-import { useGeneratedLSystemSymbols } from '../generators/plant/hooks/useGeneratedLSystem';
 import { plantTypes } from '../generators/plant/lib/plant-presets';
 import { PlantGenerator } from '../generators/plant/PlantGenerator';
 import { Environment } from '../scene/Environment';
@@ -14,7 +14,9 @@ import {
     createGameState,
     GameStateContext,
     type GameStateStore,
+    useDisposeGameStateStore,
 } from '../useGameState';
+import { preloadGameAssetModels } from '../utils/useGameGLTF';
 
 const APP_BASE_URL = 'https://vrt.gredice.com';
 
@@ -25,7 +27,9 @@ export interface PlantViewerProps {
     className?: string;
     animate?: boolean;
     includeEnvironment?: boolean;
+    includeGround?: boolean;
     lightingPreset?: 'default' | 'snapshot';
+    preserveDrawingBuffer?: boolean;
     zoom?: number;
     cameraPosition?: [x: number, y: number, z: number];
     orbitTarget?: [x: number, y: number, z: number];
@@ -36,6 +40,25 @@ const defaultCameraPosition: [x: number, y: number, z: number] = [
     -100, 100, -100,
 ];
 const defaultOrbitTarget: [x: number, y: number, z: number] = [0, 0.9, 0];
+
+const catalogRendererOptions: WebGLRendererParameters = {
+    alpha: true,
+    antialias: true,
+};
+const snapshotRendererOptions: WebGLRendererParameters = {
+    ...catalogRendererOptions,
+    preserveDrawingBuffer: true,
+};
+
+function TransparentCanvasClear() {
+    const gl = useThree((state) => state.gl);
+
+    useLayoutEffect(() => {
+        gl.setClearColor(0x000000, 0);
+    }, [gl]);
+
+    return null;
+}
 
 const lightingPresets = {
     default: {
@@ -64,7 +87,9 @@ export function PlantViewer({
     className,
     animate = true,
     includeEnvironment = true,
+    includeGround = true,
     lightingPreset = 'default',
+    preserveDrawingBuffer = false,
     zoom = defaultZoom,
     cameraPosition = defaultCameraPosition,
     orbitTarget = defaultOrbitTarget,
@@ -73,23 +98,9 @@ export function PlantViewer({
     const lighting = lightingPresets[lightingPreset];
     const snapshotLighting = lightingPresets.snapshot;
 
-    const lSystemTask = useMemo(
-        () => ({
-            axiom: definition.axiom,
-            iterations: Math.ceil(generation),
-            rules: definition.rules,
-            seed,
-        }),
-        [definition.axiom, definition.rules, generation, seed],
-    );
-    const { symbols: lSystemSymbols } = useGeneratedLSystemSymbols(
-        lSystemTask,
-        {
-            syncInitialResult: true,
-        },
-    );
-
-    useGLTF.preload(APP_BASE_URL + models.GameAssets.url);
+    if (includeGround) {
+        preloadGameAssetModels(APP_BASE_URL, groundGameAssetNames);
+    }
 
     const storeRef = useRef<GameStateStore>(null);
     if (!storeRef.current) {
@@ -100,10 +111,21 @@ export function PlantViewer({
             winterMode: 'summer',
         });
     }
+    useDisposeGameStateStore(storeRef.current);
 
     return (
         <GameStateContext.Provider value={storeRef.current}>
-            <Scene position={cameraPosition} zoom={zoom} className={className}>
+            <Scene
+                position={cameraPosition}
+                zoom={zoom}
+                className={className}
+                rendererOptions={
+                    preserveDrawingBuffer
+                        ? snapshotRendererOptions
+                        : catalogRendererOptions
+                }
+            >
+                <TransparentCanvasClear />
                 <ambientLight intensity={lighting.ambientIntensity} />
                 {lightingPreset === 'snapshot' && (
                     <hemisphereLight
@@ -137,7 +159,6 @@ export function PlantViewer({
                         <PlantGenerator
                             key={`${plantType}-${seed}`}
                             plantDefinition={definition}
-                            lSystemSymbols={lSystemSymbols ?? []}
                             generation={generation}
                             seed={seed}
                             flowerGrowth={1}
@@ -148,19 +169,21 @@ export function PlantViewer({
                             showProduce
                         />
                     </group>
-                    <BlockGround
-                        stack={{
-                            position: new Vector3(0, 0, 0),
-                            blocks: [],
-                        }}
-                        block={{
-                            id: '',
-                            name: '',
-                            rotation: 0,
-                            variant: undefined,
-                        }}
-                        rotation={0}
-                    />
+                    {includeGround ? (
+                        <BlockGround
+                            stack={{
+                                position: new Vector3(0, 0, 0),
+                                blocks: [],
+                            }}
+                            block={{
+                                id: '',
+                                name: '',
+                                rotation: 0,
+                                variant: undefined,
+                            }}
+                            rotation={0}
+                        />
+                    ) : null}
                 </group>
                 <OrbitControls
                     minDistance={1}

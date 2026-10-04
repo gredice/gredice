@@ -11,8 +11,21 @@ export type EntityStandardized = {
     };
     attributes?: {
         seedingDistance?: number; // in cm
+        seedingDistanceMin?: number; // in cm
+        seedingDistanceMax?: number; // in cm
         duration?: number | string;
-        application?: string; // garden, raisedBedFull, raisedBed1m, plant
+        application?: string; // farm, garden, raisedBedFull, raisedBed1m, plant
+        visualReward?: string;
+        category?: {
+            information?: {
+                name?: string | null;
+            } | null;
+        } | null;
+        stage?: {
+            information?: {
+                name?: string | null;
+            } | null;
+        } | null;
     };
     images?: {
         cover?: { url?: string };
@@ -20,12 +33,30 @@ export type EntityStandardized = {
     image?: {
         cover?: { url?: string };
     };
+    relationships?: {
+        companions?: EntityRelationshipSummary[];
+        antagonists?: EntityRelationshipSummary[];
+    };
     prices?: {
         perPlant?: number;
         perOperation?: number;
+        materialCost?: number;
     };
     conditions?: {
         completionAttachImages?: boolean;
         completionAttachImagesRequired?: boolean;
+        completionAttachNotes?: boolean;
+        completionAttachNotesRequired?: boolean;
     };
+};
+
+export type EntityRelationshipSummary = {
+    id: number;
+    slug: string;
+    name: string;
+    latinName?: string;
+    image?: {
+        cover?: { url?: string };
+    };
+    relationship: 'companion' | 'antagonist';
 };

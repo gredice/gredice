@@ -12,6 +12,20 @@ const ApiReferenceReact = dynamic(
     { ssr: false },
 );
 
+const scalarBrandCss = `
+.light-mode {
+  --scalar-color-accent: #111111;
+  --scalar-background-accent: rgb(17 17 17 / 8%);
+  --scalar-color-purple: #111111;
+}
+
+.dark-mode {
+  --scalar-color-accent: #f5f5f5;
+  --scalar-background-accent: rgb(245 245 245 / 12%);
+  --scalar-color-purple: #f5f5f5;
+}
+`;
+
 function usePrefersDarkMode() {
     const [prefersDarkMode, setPrefersDarkMode] = useState(false);
 
@@ -38,6 +52,7 @@ export function ApiReference({ specUrl }: { specUrl: string }) {
             configuration={{
                 url: specUrl,
                 darkMode: prefersDarkMode,
+                customCss: scalarBrandCss,
             }}
         />
     );

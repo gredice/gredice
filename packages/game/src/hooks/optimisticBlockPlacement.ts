@@ -1,0 +1,231 @@
+import {
+    type GardenBlockDataLike,
+    type GardenBlockStack,
+    resolveGardenBlockPlacement,
+} from '@gredice/js/gardenBlocks';
+import { createGardenPosition, type GardenStack } from '../types/Stack';
+
+export type PlacementBlockData = GardenBlockDataLike & {
+    information?: {
+        name?: string | null;
+    } | null;
+};
+
+type GardenWithStacks = {
+    stacks: GardenStack[];
+};
+
+export type BlockPlacementPosition = {
+    x: number;
+    y: number;
+};
+
+type CameraSnapshotLike = {
+    target: [x: number, y: number, z: number];
+};
+
+export function getPreferredBlockPlacementPosition(
+    snapshot: CameraSnapshotLike | null | undefined,
+): BlockPlacementPosition | undefined {
+    if (!snapshot) {
+        return undefined;
+    }
+
+    const [x, , z] = snapshot.target;
+    if (!Number.isFinite(x) || !Number.isFinite(z)) {
+        return undefined;
+    }
+
+    return { x, y: z };
+}
+
+function createBlockDataByName(blockData: PlacementBlockData[]) {
+    const blockDataByName = new Map<string, GardenBlockDataLike>();
+    for (const block of blockData) {
+        const name = block.information?.name;
+        if (name) {
+            blockDataByName.set(name, block);
+        }
+    }
+    return blockDataByName;
+}
+
+function createBlockNameById(stacks: GardenStack[]) {
+    const blockNameById = new Map<string, string>();
+    for (const stack of stacks) {
+        for (const block of stack.blocks) {
+            blockNameById.set(block.id, block.name);
+        }
+    }
+    return blockNameById;
+}
+
+function createBlockRotationById(stacks: GardenStack[]) {
+    const blockRotationById = new Map<string, number>();
+    for (const stack of stacks) {
+        for (const block of stack.blocks) {
+            blockRotationById.set(block.id, block.rotation);
+        }
+    }
+    return blockRotationById;
+}
+
+function createPlacementStacks(stacks: GardenStack[]): GardenBlockStack[] {
+    return stacks.map((stack) => ({
+        positionX: stack.position.x,
+        positionY: stack.position.z,
+        blocks: stack.blocks.map((block) => block.id),
+    }));
+}
+
+export function resolveBlockPlacement<TGarden extends GardenWithStacks>(
+    garden: TGarden,
+    blockData: PlacementBlockData[] | null | undefined,
+    blockName: string,
+    options: {
+        preferredPosition?: BlockPlacementPosition | null;
+        requestedPosition?: BlockPlacementPosition | null;
+    } = {},
+) {
+    if (!blockData) {
+        return null;
+    }
+
+    return resolveGardenBlockPlacement({
+        blockName,
+        stacks: createPlacementStacks(garden.stacks),
+        blockNameById: createBlockNameById(garden.stacks),
+        blockRotationById: createBlockRotationById(garden.stacks),
+        blockDataByName: createBlockDataByName(blockData),
+        preferredPosition: options.preferredPosition ?? undefined,
+        requestedPosition: options.requestedPosition ?? undefined,
+    });
+}
+
+export function createOptimisticBlockPlacement<
+    TGarden extends GardenWithStacks,
+>(
+    garden: TGarden,
+    blockData: PlacementBlockData[] | null | undefined,
+    blockName: string,
+    blockId: string,
+    options: {
+        preferredPosition?: BlockPlacementPosition | null;
+        requestedPosition?: BlockPlacementPosition | null;
+        variant?: number;
+    } = {},
+) {
+    const placement = resolveBlockPlacement(garden, blockData, blockName, {
+        preferredPosition: options.preferredPosition,
+        requestedPosition: options.requestedPosition,
+    });
+    if (!placement?.valid) {
+        return null;
+    }
+
+    const { existingBlocks, x, y } = placement.placement;
+    let hasTargetStack = false;
+    const optimisticBlock = {
+        id: blockId,
+        name: blockName,
+        rotation: 0,
+        ...(options.variant === undefined ? {} : { variant: options.variant }),
+    };
+    const stacks = garden.stacks.map((stack) => {
+        if (stack.position.x !== x || stack.position.z !== y) {
+            return stack;
+        }
+
+        hasTargetStack = true;
+        return {
+            ...stack,
+            blocks: [...stack.blocks, optimisticBlock],
+        };
+    });
+
+    if (!hasTargetStack) {
+        stacks.push({
+            position: createGardenPosition(x, 0, y),
+            blocks: [optimisticBlock],
+        });
+    }
+
+    return {
+        blockId,
+        existingBlocks,
+        position: createGardenPosition(x, 0, y),
+        stacks,
+    };
+}
+
+export function replaceOptimisticBlockId<TGarden extends GardenWithStacks>(
+    garden: TGarden,
+    optimisticBlockId: string,
+    blockId: string,
+    variant?: number | null,
+): TGarden {
+    let changed = false;
+    const stacks = garden.stacks.map((stack) => {
+        let stackChanged = false;
+        const blocks = stack.blocks.map((block) => {
+            if (block.id !== optimisticBlockId) {
+                return block;
+            }
+
+            stackChanged = true;
+            return {
+                ...block,
+                id: blockId,
+                ...(variant === undefined ? {} : { variant }),
+            };
+        });
+
+        if (!stackChanged) {
+            return stack;
+        }
+
+        changed = true;
+        return {
+            ...stack,
+            blocks,
+        };
+    });
+
+    if (!changed) {
+        return garden;
+    }
+
+    return {
+        ...garden,
+        stacks,
+    };
+}
+
+export function removeOptimisticBlockId<TGarden extends GardenWithStacks>(
+    garden: TGarden,
+    optimisticBlockId: string,
+): TGarden {
+    return {
+        ...garden,
+        stacks: garden.stacks.flatMap((stack) => {
+            const blocks = stack.blocks.filter(
+                (block) => block.id !== optimisticBlockId,
+            );
+
+            if (blocks.length === stack.blocks.length) {
+                return [stack];
+            }
+
+            if (blocks.length === 0) {
+                return [];
+            }
+
+            return [
+                {
+                    ...stack,
+                    blocks,
+                },
+            ];
+        }),
+    };
+}

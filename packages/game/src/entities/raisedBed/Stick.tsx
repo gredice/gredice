@@ -1,13 +1,14 @@
-import { animated } from '@react-spring/three';
+import { animated } from '../../scene/sceneSpring';
 import { SnowOverlay } from '../../snow/SnowOverlay';
 import { snowPresets } from '../../snow/snowPresets';
 import type { EntityInstanceProps } from '../../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../../utils/getStackHeight';
 import { useGameGLTF } from '../../utils/useGameGLTF';
 import { useAnimatedEntityRotation } from '../helpers/useAnimatedEntityRotation';
+import { RAISED_BED_SUPPORT_SCALE } from './raisedBedDimensions';
 
 export function Stick({ stack, block, rotation }: EntityInstanceProps) {
-    const { nodes } = useGameGLTF();
+    const { nodes } = useGameGLTF('Stick');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
 
@@ -15,6 +16,7 @@ export function Stick({ stack, block, rotation }: EntityInstanceProps) {
         <animated.group
             position={stack.position.clone().setY(currentStackHeight)}
             rotation={animatedRotation as unknown as [number, number, number]}
+            scale={RAISED_BED_SUPPORT_SCALE}
         >
             <mesh
                 castShadow

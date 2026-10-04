@@ -1,5 +1,16 @@
+import { shouldForwardPostHogConsoleMethod } from '@gredice/js/observability';
+import {
+    createPostHogLogFlushScheduler,
+    FetchOTLPLogExporter,
+    POSTHOG_LOG_BATCH_DELAY_MS,
+    POSTHOG_LOG_EXPORT_TIMEOUT_MS,
+    POSTHOG_LOG_FALLBACK_DELAY_MS,
+    POSTHOG_LOG_FLUSH_TIMEOUT_MS,
+    POSTHOG_LOG_INITIAL_FAILURE_BACKOFF_MS,
+    POSTHOG_LOG_MAX_FAILURE_BACKOFF_MS,
+    POSTHOG_LOG_PROCESSOR_TIMEOUT_MS,
+} from '@gredice/js/posthog-logs';
 import { type Logger, logs, SeverityNumber } from '@opentelemetry/api-logs';
-import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import {
     BatchLogRecordProcessor,
@@ -21,8 +32,10 @@ const postHogConsoleForwardingKey = Symbol.for(
 );
 
 const postHogApiKey =
-    process.env.NEXT_PUBLIC_POSTHOG_KEY ??
-    process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
+    process.env.NODE_ENV === 'development'
+        ? undefined
+        : (process.env.NEXT_PUBLIC_POSTHOG_KEY ??
+          process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN);
 const postHogServerHost =
     process.env.POSTHOG_SERVER_HOST ??
     process.env.NEXT_PUBLIC_POSTHOG_UI_HOST ??
@@ -44,20 +57,25 @@ const originalConsole = {
     warn: console.warn.bind(console),
 };
 
-let pendingLogFlush: Promise<void> | null = null;
-
-const postHogLogsProcessor =
+const postHogLogsExporter =
     postHogApiKey && postHogLogsUrl
-        ? new BatchLogRecordProcessor(
-              new OTLPLogExporter({
-                  headers: {
-                      Authorization: `Bearer ${postHogApiKey}`,
-                      'Content-Type': 'application/json',
-                  },
-                  url: postHogLogsUrl,
-              }),
-          )
+        ? new FetchOTLPLogExporter({
+              headers: {
+                  Authorization: `Bearer ${postHogApiKey}`,
+                  'Content-Type': 'application/json',
+              },
+              timeoutMillis: POSTHOG_LOG_EXPORT_TIMEOUT_MS,
+              url: postHogLogsUrl,
+          })
         : null;
+
+const postHogLogsProcessor = postHogLogsExporter
+    ? new BatchLogRecordProcessor({
+          exportTimeoutMillis: POSTHOG_LOG_PROCESSOR_TIMEOUT_MS,
+          exporter: postHogLogsExporter,
+          scheduledDelayMillis: POSTHOG_LOG_FALLBACK_DELAY_MS,
+      })
+    : null;
 
 export const loggerProvider = new LoggerProvider({
     processors: postHogLogsProcessor ? [postHogLogsProcessor] : [],
@@ -66,6 +84,12 @@ export const loggerProvider = new LoggerProvider({
         'service.namespace': 'gredice',
     }),
 });
+
+function flushLoggerProvider() {
+    return loggerProvider.forceFlush({
+        timeoutMillis: POSTHOG_LOG_FLUSH_TIMEOUT_MS,
+    });
+}
 
 export function registerPostHogLoggerProvider() {
     if (process.env.NEXT_RUNTIME === 'nodejs') {
@@ -108,19 +132,21 @@ function stringifyConsoleArgument(value: unknown): string {
     }
 }
 
-function schedulePostHogLogFlush(): void {
-    if (!isPostHogLoggingEnabled() || pendingLogFlush) {
-        return;
-    }
-
-    pendingLogFlush = loggerProvider.forceFlush().catch((error) => {
-        originalConsole.warn('PostHog log flush failed', error);
-    });
-
-    void pendingLogFlush.finally(() => {
-        pendingLogFlush = null;
-    });
-}
+const schedulePostHogLogFlush = createPostHogLogFlushScheduler({
+    batchDelayMs: POSTHOG_LOG_BATCH_DELAY_MS,
+    flush: () =>
+        postHogLogsExporter?.forceFlushWithErrorPropagation(
+            flushLoggerProvider,
+        ) ?? flushLoggerProvider(),
+    initialFailureBackoffMs: POSTHOG_LOG_INITIAL_FAILURE_BACKOFF_MS,
+    maxFailureBackoffMs: POSTHOG_LOG_MAX_FAILURE_BACKOFF_MS,
+    onPersistentError: (error, context) => {
+        originalConsole.warn('PostHog log flush repeatedly failed', {
+            ...context,
+            error,
+        });
+    },
+});
 
 export function registerPostHogConsoleForwarding(): void {
     if (!isPostHogLoggingEnabled()) {
@@ -142,6 +168,10 @@ export function registerPostHogConsoleForwarding(): void {
         severityNumber: SeverityNumber,
         severityText: string,
     ) => {
+        if (!shouldForwardPostHogConsoleMethod(method)) {
+            return;
+        }
+
         const originalMethod = originalConsole[method];
 
         console[method] = (...args: unknown[]) => {
@@ -161,7 +191,7 @@ export function registerPostHogConsoleForwarding(): void {
                 severityText,
             });
 
-            schedulePostHogLogFlush();
+            void schedulePostHogLogFlush();
         };
     };
 
@@ -179,11 +209,7 @@ export async function flushPostHogLogs(): Promise<void> {
         return;
     }
 
-    try {
-        await loggerProvider.forceFlush();
-    } catch (error) {
-        originalConsole.warn('PostHog log flush failed', error);
-    }
+    await schedulePostHogLogFlush();
 }
 
 export async function getPostHogClient(): Promise<PostHogCaptureClient> {
@@ -191,10 +217,11 @@ export async function getPostHogClient(): Promise<PostHogCaptureClient> {
         return noopPostHogClient;
     }
 
-    const { getPostHog } = await import('@posthog/next');
+    const { createPostHog } = await import('@posthog/next');
+    const { getPostHog } = createPostHog({
+        apiKey: postHogApiKey,
+        options: postHogServerHost ? { host: postHogServerHost } : undefined,
+    });
 
-    return getPostHog(
-        postHogApiKey,
-        postHogServerHost ? { host: postHogServerHost } : undefined,
-    );
+    return getPostHog();
 }

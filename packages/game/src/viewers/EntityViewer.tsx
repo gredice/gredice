@@ -1,26 +1,42 @@
 'use client';
 
+import { OrbitControls } from '@react-three/drei';
+import { useThree } from '@react-three/fiber';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { type HTMLAttributes, useRef } from 'react';
-import { Vector3 } from 'three';
+import { type HTMLAttributes, useEffect, useRef } from 'react';
+import { MOUSE, Vector3 } from 'three';
 import { v4 as uuidv4 } from 'uuid';
 import { EntityFactory } from '../entities/EntityFactory';
-import { EntityInstances } from '../entities/EntityInstances';
-import { Environment } from '../scene/Environment';
+import { GameFlagsContext } from '../GameFlagsContext';
+import { GameSceneDetailContext } from '../GameSceneDetailContext';
+import { DebugHud } from '../hud/DebugHud';
+import { ParticleSystemProvider } from '../particles/ParticleSystem';
+import { Environment, StaticEnvironment } from '../scene/Environment';
+import type { GameQualityProfile } from '../scene/gameQuality';
 import { Scene } from '../scene/Scene';
 import type { Block } from '../types/Block';
 import {
     createGameState,
     GameStateContext,
     type GameStateStore,
+    useDisposeGameStateStore,
 } from '../useGameState';
 
 const position = new Vector3(0.5, 0, 0.5);
 
 export type EntityViewerProps = HTMLAttributes<HTMLDivElement> & {
     entityName: string;
+    /** Optional durable appearance value for entities with placement variants. */
+    appearanceVariant?: number;
+    /** Optional per-placement message used by editable sign previews. */
+    message?: string | null;
     appBaseUrl?: string;
     className?: string;
+    noControl?: boolean;
+    staticEnvironment?: boolean;
+    debugHud?: boolean;
+    renderDetails?: boolean;
+    showBackground?: boolean;
     /**
      * Zoom level of the camera
      * @default 90
@@ -32,59 +48,173 @@ export type EntityViewerProps = HTMLAttributes<HTMLDivElement> & {
      * @default 0
      */
     rotation?: number;
+    /** Optional persisted appearance variant for deterministic previews. */
+    variant?: number;
+    /**
+     * Optional render quality override. When omitted the scene auto-detects the
+     * quality profile. Used by snapshot generation to render at a higher dpr.
+     */
+    quality?: GameQualityProfile;
+    /**
+     * Optional camera position for generated previews that need a specific
+     * viewing angle instead of the default game snapshot angle.
+     */
+    cameraPosition?: [number, number, number];
+    cameraTarget?: [number, number, number];
+    /** Sets a stable screen-up direction for vertical and near-vertical views. */
+    cameraUp?: [number, number, number];
+    /** Optional deterministic scene time for visual verification captures. */
+    freezeTime?: Date;
 };
+
+const defaultEntityViewerFreezeTime = new Date(2024, 5, 21, 12, 0, 0);
+
+function CameraLookAt({
+    target,
+    up,
+}: {
+    target: [number, number, number];
+    up?: [number, number, number];
+}) {
+    const camera = useThree((state) => state.camera);
+
+    useEffect(() => {
+        const resolvedUp = up ?? [0, 1, 0];
+        camera.up.set(resolvedUp[0], resolvedUp[1], resolvedUp[2]);
+        camera.lookAt(target[0], target[1], target[2]);
+        camera.updateProjectionMatrix();
+    }, [camera, target, up]);
+
+    return null;
+}
 
 export function EntityViewer({
     appBaseUrl,
     entityName,
+    appearanceVariant,
+    message,
+    variant: configuredVariant,
     zoom,
     itemPosition,
     className,
+    noControl,
+    staticEnvironment,
+    debugHud,
+    renderDetails = true,
+    showBackground,
     rotation = 0,
+    quality,
+    cameraPosition,
+    cameraTarget,
+    cameraUp,
+    freezeTime = defaultEntityViewerFreezeTime,
+    ...rest
 }: EntityViewerProps) {
     const storeRef = useRef<GameStateStore>(null);
     if (!storeRef.current) {
         storeRef.current = createGameState({
             appBaseUrl: appBaseUrl || '',
-            freezeTime: new Date(2024, 5, 21, 12, 0, 0),
+            dayNightCycleDisabled: false,
+            freezeTime,
             isMock: true,
             winterMode: 'summer',
         });
     }
+    useDisposeGameStateStore(storeRef.current);
+
+    useEffect(() => {
+        storeRef.current?.getState().setFreezeTime(freezeTime);
+    }, [freezeTime]);
 
     const client = new QueryClient();
+    const normalizedRotation = ((rotation % 4) + 4) % 4;
+    const selectedAppearanceVariant = configuredVariant ?? appearanceVariant;
+    const resolvedVariant =
+        entityName === 'PineAdvent'
+            ? 100
+            : entityName === 'Cow'
+              ? (selectedAppearanceVariant ?? 0)
+              : entityName === 'Horse'
+                ? (selectedAppearanceVariant ?? 0)
+                : selectedAppearanceVariant;
+    const block: Block = {
+        id: uuidv4(),
+        name: entityName,
+        message,
+        rotation: normalizedRotation,
+        variant: resolvedVariant,
+    };
     const stack = {
         position: itemPosition
             ? new Vector3(itemPosition[0], itemPosition[1], itemPosition[2])
             : position,
-        blocks: [],
+        blocks: [block],
     };
-    const normalizedRotation = ((rotation % 4) + 4) % 4;
-    let variant: number | undefined;
-    if (entityName === 'PineAdvent') {
-        variant = 100;
-    }
-    const block: Block = {
-        id: uuidv4(),
-        name: entityName,
-        rotation: normalizedRotation,
-        variant: variant,
-    };
+    const orbitTarget: [number, number, number] = itemPosition ?? [0.5, 0, 0.5];
+    const sceneChildren = (
+        <>
+            {staticEnvironment ? (
+                <StaticEnvironment noBackground={!showBackground} />
+            ) : (
+                <Environment noBackground={!showBackground} noSound noWeather />
+            )}
+            {cameraTarget && (
+                <CameraLookAt target={cameraTarget} up={cameraUp} />
+            )}
+            <EntityFactory
+                name={entityName}
+                stack={stack}
+                block={block}
+                noControl={noControl}
+                rotation={normalizedRotation}
+                variant={resolvedVariant}
+            />
+            {!noControl && (
+                <OrbitControls
+                    enableDamping
+                    screenSpacePanning={false}
+                    minZoom={20}
+                    maxZoom={220}
+                    target={orbitTarget}
+                    mouseButtons={{
+                        LEFT: MOUSE.PAN,
+                        MIDDLE: MOUSE.DOLLY,
+                        RIGHT: MOUSE.ROTATE,
+                    }}
+                />
+            )}
+        </>
+    );
 
     return (
         <QueryClientProvider client={client}>
             <GameStateContext.Provider value={storeRef.current}>
-                <Scene position={100} zoom={zoom ?? 90} className={className}>
-                    <Environment noBackground noSound noWeather />
-                    <EntityFactory
-                        name={entityName}
-                        stack={stack}
-                        block={block}
-                        rotation={normalizedRotation}
-                        variant={variant}
-                    />
-                    <EntityInstances stacks={[stack]} />
-                </Scene>
+                <GameFlagsContext.Provider
+                    value={{
+                        enableDebugHudFlag: debugHud,
+                    }}
+                >
+                    <GameSceneDetailContext.Provider
+                        value={{
+                            includePendingCartPlants: false,
+                            renderDetails,
+                        }}
+                    >
+                        <Scene
+                            debugStats={debugHud}
+                            position={cameraPosition ?? 100}
+                            zoom={zoom ?? 90}
+                            quality={quality}
+                            className={className}
+                            {...rest}
+                        >
+                            <ParticleSystemProvider>
+                                {sceneChildren}
+                            </ParticleSystemProvider>
+                        </Scene>
+                    </GameSceneDetailContext.Provider>
+                    {debugHud && <DebugHud />}
+                </GameFlagsContext.Provider>
             </GameStateContext.Provider>
         </QueryClientProvider>
     );

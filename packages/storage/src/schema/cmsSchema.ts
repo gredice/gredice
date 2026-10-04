@@ -2,6 +2,7 @@ import { relations, sql } from 'drizzle-orm';
 import {
     type AnyPgColumn,
     boolean,
+    customType,
     index,
     integer,
     pgTable,
@@ -10,6 +11,12 @@ import {
     timestamp,
     uniqueIndex,
 } from 'drizzle-orm/pg-core';
+
+const tsvector = customType<{ data: string }>({
+    dataType() {
+        return 'tsvector';
+    },
+});
 
 export const attributeDefinitionCategories = pgTable(
     'attribute_definition_categories',
@@ -224,6 +231,9 @@ export const entityTypes = pgTable(
         ),
         hierarchyOrder: integer('hierarchy_order').notNull().default(0),
         isRoot: boolean('is_root').notNull().default(true),
+        inventorySourceAttributeDefinitionId: integer(
+            'inventory_source_attribute_definition_id',
+        ).references(() => attributeDefinitions.id),
         createdAt: timestamp('created_at').notNull().defaultNow(),
         updatedAt: timestamp('updated_at')
             .notNull()
@@ -237,6 +247,9 @@ export const entityTypes = pgTable(
         index('cms_et_hierarchy_order_idx').on(table.hierarchyOrder),
         index('cms_et_is_deleted_idx').on(table.isDeleted),
         index('cms_et_is_root_idx').on(table.isRoot),
+        index('cms_et_inventory_source_attr_def_idx').on(
+            table.inventorySourceAttributeDefinitionId,
+        ),
     ],
 );
 
@@ -253,6 +266,11 @@ export const entityTypesRelation = relations(entityTypes, ({ one, many }) => ({
         fields: [entityTypes.parentId],
         references: [entityTypes.id],
         relationName: 'entityTypeHierarchy',
+    }),
+    inventorySourceAttributeDefinition: one(attributeDefinitions, {
+        fields: [entityTypes.inventorySourceAttributeDefinitionId],
+        references: [attributeDefinitions.id],
+        relationName: 'inventorySourceAttributeDefinition',
     }),
     children: many(entityTypes, {
         relationName: 'entityTypeHierarchy',
@@ -322,6 +340,40 @@ export type UpdateEntity = Partial<
     Pick<typeof entities.$inferSelect, 'id'>;
 export type SelectEntity = typeof entities.$inferSelect;
 
+export const entitySearchDocuments = pgTable(
+    'entity_search_documents',
+    {
+        entityId: integer('entity_id')
+            .primaryKey()
+            .references(() => entities.id),
+        entityTypeName: text('entity_type').notNull(),
+        publicCategory: text('public_category').notNull(),
+        publicCategoryLabel: text('public_category_label').notNull(),
+        title: text('title').notNull(),
+        summary: text('summary'),
+        imageUrl: text('image_url'),
+        imageAlt: text('image_alt'),
+        searchableText: text('searchable_text').notNull(),
+        state: text('state').notNull(),
+        publishedAt: timestamp('published_at'),
+        updatedAt: timestamp('updated_at').notNull(),
+        indexedAt: timestamp('indexed_at').notNull().defaultNow(),
+        searchVector: tsvector('search_vector').notNull(),
+    },
+    (table) => [
+        index('cms_esd_entity_type_idx').on(table.entityTypeName),
+        index('cms_esd_public_category_idx').on(table.publicCategory),
+        index('cms_esd_state_idx').on(table.state),
+        index('cms_esd_published_at_idx').on(table.publishedAt),
+        index('cms_esd_search_vector_idx').using('gin', table.searchVector),
+    ],
+);
+
+export type InsertEntitySearchDocument =
+    typeof entitySearchDocuments.$inferInsert;
+export type SelectEntitySearchDocument =
+    typeof entitySearchDocuments.$inferSelect;
+
 export const cmsPages = pgTable(
     'cms_pages',
     {
@@ -329,11 +381,17 @@ export const cmsPages = pgTable(
         slug: text('slug').notNull(),
         title: text('title').notNull(),
         content: text('content'),
+        contentKind: text('content_kind').notNull().default('page'),
+        category: text('category'),
+        tags: text('tags').array().notNull().default(sql`'{}'::text[]`),
         state: text('state').notNull().default('draft'),
         publishedAt: timestamp('published_at'),
         metaTitle: text('meta_title'),
         metaDescription: text('meta_description'),
         metaImageUrl: text('meta_image_url'),
+        metaImagePoiX: integer('meta_image_poi_x'),
+        metaImagePoiY: integer('meta_image_poi_y'),
+        seoImageUrl: text('seo_image_url'),
         canonicalPath: text('canonical_path'),
         noIndex: boolean('no_index').notNull().default(false),
         createdAt: timestamp('created_at').notNull().defaultNow(),
@@ -347,6 +405,8 @@ export const cmsPages = pgTable(
             .on(table.slug)
             .where(sql`${table.isDeleted} = false`),
         index('cms_pages_state_idx').on(table.state),
+        index('cms_pages_content_kind_idx').on(table.contentKind),
+        index('cms_pages_category_idx').on(table.category),
         index('cms_pages_published_at_idx').on(table.publishedAt),
         index('cms_pages_is_deleted_idx').on(table.isDeleted),
     ],
@@ -378,6 +438,12 @@ export const cmsPageRevisions = pgTable(
         nextTitle: text('next_title'),
         previousContent: text('previous_content'),
         nextContent: text('next_content'),
+        previousContentKind: text('previous_content_kind'),
+        nextContentKind: text('next_content_kind'),
+        previousCategory: text('previous_category'),
+        nextCategory: text('next_category'),
+        previousTags: text('previous_tags').array(),
+        nextTags: text('next_tags').array(),
         previousState: text('previous_state'),
         nextState: text('next_state'),
         previousMetaTitle: text('previous_meta_title'),
@@ -386,6 +452,12 @@ export const cmsPageRevisions = pgTable(
         nextMetaDescription: text('next_meta_description'),
         previousMetaImageUrl: text('previous_meta_image_url'),
         nextMetaImageUrl: text('next_meta_image_url'),
+        previousMetaImagePoiX: integer('previous_meta_image_poi_x'),
+        nextMetaImagePoiX: integer('next_meta_image_poi_x'),
+        previousMetaImagePoiY: integer('previous_meta_image_poi_y'),
+        nextMetaImagePoiY: integer('next_meta_image_poi_y'),
+        previousSeoImageUrl: text('previous_seo_image_url'),
+        nextSeoImageUrl: text('next_seo_image_url'),
         previousCanonicalPath: text('previous_canonical_path'),
         nextCanonicalPath: text('next_canonical_path'),
         previousNoIndex: boolean('previous_no_index'),

@@ -1,5 +1,8 @@
 import type { NextConfig } from 'next';
-import { getAppByName } from '../../scripts/app-registry.ts';
+import {
+    getAppAllowedDevOrigins,
+    getAppByName,
+} from '../../scripts/app-registry.ts';
 
 const app = getAppByName('status');
 const nextConfig: NextConfig = {
@@ -10,11 +13,12 @@ const nextConfig: NextConfig = {
         browserToTerminal: true,
     },
     experimental: {
-        turbopackFileSystemCacheForDev: true,
+        turbopackRustReactCompiler: true,
         typedEnv: true,
+        useTypeScriptCli: true,
     },
     productionBrowserSourceMaps: !process.env.CI,
-    allowedDevOrigins: [app.localDomain],
+    allowedDevOrigins: getAppAllowedDevOrigins(app),
 };
 
 export default nextConfig;

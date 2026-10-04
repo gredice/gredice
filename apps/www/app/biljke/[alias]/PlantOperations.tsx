@@ -1,5 +1,5 @@
 import type { PlantData } from '@gredice/client';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Stack } from '@gredice/ui/Stack';
 import { OperationCard } from '../../radnje/OperationCard';
 
 export function operationFrequencyLabel(frequency: string | undefined) {
@@ -46,7 +46,7 @@ export function PlantOperations({
                     key={operation.information?.name ?? operationIndex}
                     className="grid grid-cols-1 gap-2"
                 >
-                    <OperationCard operation={operation} />
+                    <OperationCard operation={operation} variant="compact" />
                 </div>
             ))}
         </Stack>

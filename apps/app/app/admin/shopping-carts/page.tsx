@@ -1,5 +1,5 @@
-import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Card, CardOverflow } from '@gredice/ui/Card';
+import { Stack } from '@gredice/ui/Stack';
 import { auth } from '../../../lib/auth/auth';
 import { ShoppingCartsTable } from './ShoppingCartsTable';
 
@@ -9,7 +9,7 @@ export default async function ShoppingCartsPage() {
     await auth(['admin']);
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             <Card>
                 <CardOverflow>
                     <ShoppingCartsTable />

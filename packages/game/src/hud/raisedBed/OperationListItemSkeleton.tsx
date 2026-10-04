@@ -1,4 +1,4 @@
-import { Skeleton } from '@signalco/ui-primitives/Skeleton';
+import { Skeleton } from '@gredice/ui/Skeleton';
 
 export function OperationListItemSkeleton() {
     return (

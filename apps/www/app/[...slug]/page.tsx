@@ -1,14 +1,23 @@
-import { clientPublic } from '@gredice/client';
-import { SectionsView } from '@signalco/cms-core/SectionsView';
-import { draftMode } from 'next/headers';
+import { resolveFaqSections, SectionsView } from '@gredice/ui/cms';
 import type { Metadata } from 'next';
+import { draftMode } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { sectionsComponentRegistry } from '../../components/shared/sectionsComponentRegistry';
+import { getFaqData } from '../../lib/plants/getFaqData';
+import { createCmsPageMetadata } from '../../lib/seo/cmsPageMetadata';
+import {
+    type CmsRoutePage,
+    cmsPagePreviewSecret,
+    fetchCmsDirectoryPage,
+} from './cmsPageData';
 import {
     hasReservedFirstSegment,
     normalizeCmsRouteSlug,
+    parseCmsPageRenderMaxWidth,
+    parseCmsPageRenderMode,
     parseCmsSectionData,
 } from './cmsPageRouteUtils';
+import { getSourceCmsPageBySlug } from './sourceCmsPages';
 
 export default async function CmsPublishedPageRoute({
     params,
@@ -23,33 +32,39 @@ export default async function CmsPublishedPageRoute({
     }
 
     const { isEnabled } = await draftMode();
-    const previewSecret = process.env.CMS_PAGES_PREVIEW_SECRET;
+    const previewSecret = isEnabled ? await cmsPagePreviewSecret() : null;
+    const sourcePage = getSourceCmsPageBySlug(normalizedSlug);
 
-    const response = await clientPublic().api.directories.pages[
-        ':slug{.+}'
-    ].$get({
-        param: { slug: normalizedSlug },
-        query: isEnabled ? { draft: '1' } : {},
-        ...(isEnabled && previewSecret
-            ? {
-                  header: {
-                      'x-preview-secret': previewSecret,
-                  },
-              }
-            : {}),
+    const response = await fetchCmsDirectoryPage({
+        normalizedSlug,
+        previewSecret: isEnabled ? previewSecret : null,
+        suppressFetchError: Boolean(sourcePage),
     });
 
-    if (response.status !== 200) {
+    let page: CmsRoutePage;
+    if (response?.status === 200) {
+        page = await response.json();
+    } else if (sourcePage) {
+        page = sourcePage;
+    } else {
         notFound();
     }
 
-    const page = await response.json();
+    const sections = parseCmsSectionData(page.content);
+    const resolvedSections = sections.some(
+        (section) =>
+            typeof section.faqSlugs === 'string' && section.faqSlugs.trim(),
+    )
+        ? resolveFaqSections(sections, await getFaqData())
+        : sections;
 
     return (
         <main>
             <SectionsView
-                sectionsData={parseCmsSectionData(page.content)}
+                sectionsData={resolvedSections}
                 componentsRegistry={sectionsComponentRegistry}
+                renderMode={parseCmsPageRenderMode(page.renderMode)}
+                renderMaxWidth={parseCmsPageRenderMaxWidth(page.renderMaxWidth)}
             />
         </main>
     );
@@ -66,30 +81,22 @@ export async function generateMetadata({
         return {};
     }
 
-    const response = await clientPublic().api.directories.pages[':slug{.+}'].$get({
-        param: { slug: normalizedSlug },
-        query: {},
+    const sourcePage = getSourceCmsPageBySlug(normalizedSlug);
+    const { isEnabled } = await draftMode();
+    const previewSecret = isEnabled ? await cmsPagePreviewSecret() : null;
+    const response = await fetchCmsDirectoryPage({
+        normalizedSlug,
+        previewSecret,
+        suppressFetchError: Boolean(sourcePage),
     });
 
-    if (response.status !== 200) {
+    let page: CmsRoutePage;
+    if (response?.status === 200) {
+        page = await response.json();
+    } else if (sourcePage) {
+        page = sourcePage;
+    } else {
         return {};
     }
-
-    const page = await response.json();
-    const canonicalPath = page.canonicalPath || `/${page.slug}`;
-    return {
-        title: page.metaTitle || page.title,
-        description: page.metaDescription || undefined,
-        alternates: {
-            canonical: canonicalPath,
-        },
-        robots: {
-            index: !page.noIndex,
-        },
-        openGraph: {
-            title: page.metaTitle || page.title,
-            description: page.metaDescription || undefined,
-            images: page.metaImageUrl ? [page.metaImageUrl] : undefined,
-        },
-    };
+    return createCmsPageMetadata(page);
 }

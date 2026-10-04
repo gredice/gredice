@@ -1,13 +1,17 @@
 import { AvatarSelectionMenu } from '@gredice/ui/AvatarSelectionMenu';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Card, CardActions, CardContent } from '@signalco/ui-primitives/Card';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Card, CardActions, CardContent } from '@gredice/ui/Card';
+import { Input } from '@gredice/ui/Input';
+import { Edit } from '@gredice/ui/icons';
+import { Link } from '@gredice/ui/Link';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
+import { UserAchievementProgress } from '@gredice/ui/UserAvatar';
 import type { FormEvent } from 'react';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { useUpdateUser } from '../../hooks/useUpdateUser';
+import { KnownPages } from '../../knownPages';
 import { ProfileAvatar } from '../../shared-ui/ProfileAvatar';
 
 export function UserProfileCard() {
@@ -38,26 +42,34 @@ export function UserProfileCard() {
     return (
         <Card>
             <CardContent noHeader>
-                <Stack spacing={4}>
+                <Stack spacing={8}>
                     <form onSubmit={handleProfileUpdate}>
-                        <Stack spacing={2}>
-                            <Row spacing={2}>
+                        <Stack spacing={4}>
+                            <Row spacing={4}>
                                 <AvatarSelectionMenu
                                     displayName={currentUser.data?.displayName}
+                                    avatarUrl={currentUser.data?.avatarUrl}
                                     onChange={handleAvatarChange}
                                 >
                                     <button
                                         type="button"
-                                        className="cursor-pointer rounded-full disabled:cursor-not-allowed disabled:opacity-60"
+                                        aria-label="Promijeni avatar"
+                                        className="relative cursor-pointer rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-60"
                                         disabled={updateUser.isPending}
                                     >
                                         <ProfileAvatar
                                             size="lg"
                                             className="[&_img]:size-auto hover:outline min-w-20 min-h-20 shrink-0"
                                         />
+                                        <span className="pointer-events-none absolute right-0 top-0 flex size-6 items-center justify-center rounded-full border bg-primary text-primary-foreground shadow-sm">
+                                            <Edit
+                                                aria-hidden
+                                                className="size-3.5"
+                                            />
+                                        </span>
                                     </button>
                                 </AvatarSelectionMenu>
-                                <Stack spacing={1}>
+                                <Stack spacing={2}>
                                     <Input
                                         name="displayName"
                                         label="Prikazano ime"
@@ -74,6 +86,21 @@ export function UserProfileCard() {
                                     </Typography>
                                 </Stack>
                             </Row>
+                            {currentUser.data && (
+                                <UserAchievementProgress
+                                    achievementCount={
+                                        currentUser.data.achievementCount
+                                    }
+                                />
+                            )}
+                            <Link
+                                href={KnownPages.GrediceExperience}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm underline underline-offset-4"
+                            >
+                                Kako funkcioniraju XP i razine? (nova kartica)
+                            </Link>
                             <CardActions className="justify-between">
                                 <Typography level="body2">
                                     Član od: {memberSinceDisplay}

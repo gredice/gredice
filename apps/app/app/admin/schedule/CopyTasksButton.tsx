@@ -1,8 +1,7 @@
 'use client';
 
-import { Duplicate } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Row } from '@signalco/ui-primitives/Row';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Duplicate } from '@gredice/ui/icons';
 import { useState } from 'react';
 
 type TaskItem = {
@@ -52,19 +51,20 @@ export function CopyTasksButton({ physicalId, tasks }: CopyTasksButtonProps) {
     };
 
     return (
-        <Row spacing={1}>
-            <Button
-                title="Kopiraj zadatke u međuspremnik"
+        <>
+            <IconButton
+                title={copied ? 'Zadaci kopirani' : 'Kopiraj zadatke'}
                 onClick={handleCopy}
                 variant="plain"
+                size="xs"
+                color={copied ? 'success' : 'neutral'}
                 disabled={approvedTasks.length === 0}
-                startDecorator={<Duplicate className="size-4 shrink-0" />}
             >
-                Kopiraj zadatke
-            </Button>
-            {copied && (
-                <span className="text-sm text-green-500">Kopirano!</span>
-            )}
-        </Row>
+                <Duplicate className="size-4 shrink-0" />
+            </IconButton>
+            <span className="sr-only" aria-live="polite">
+                {copied ? 'Kopirano!' : ''}
+            </span>
+        </>
     );
 }

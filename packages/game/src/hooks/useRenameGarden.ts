@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useGameState } from '../useGameState';
 import { currentGardenKeys } from './useCurrentGarden';
 import { useGardensKeys } from './useGardens';
+import { tutorialChecklistKeys } from './useTutorialChecklist';
 
 type RenameGardenVariables = {
     name: string;
@@ -32,6 +33,7 @@ export function useRenameGarden(gardenId?: number) {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: gardenQueryKey });
             queryClient.invalidateQueries({ queryKey: useGardensKeys });
+            queryClient.invalidateQueries({ queryKey: tutorialChecklistKeys });
         },
         onError: (error) => {
             console.error('Failed to rename garden:', error);

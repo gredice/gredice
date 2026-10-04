@@ -1,21 +1,16 @@
 'use client';
-
-import { Edit, Leaf, Redo, Settings, Sprout, Undo } from '@signalco/ui-icons';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import {
-    Tabs,
-    TabsContent,
-    TabsList,
-    TabsTrigger,
-} from '@signalco/ui-primitives/Tabs';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { GameSeedlingIcon as Sprout } from '@gredice/ui/GameIcons';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Edit, Leaf, Redo, Settings, Undo } from '@gredice/ui/icons';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
+import { Typography } from '@gredice/ui/Typography';
 import type { PlantControlsProps } from '../@types/plant-generator';
+import { DevelopmentTab } from './DevelopmentTab';
 import { ExportDialog } from './ExportDialog';
 import { FlowerTab } from './FlowersTab';
 import { FruitTab } from './FruitTab';
 import { InfoHint } from './InfoHint';
 import { LeafTab } from './LeafTab';
-import { LSystemTab } from './LSystemTab';
 import { SettingsTab } from './SettingsTab';
 import { StemTab } from './StemTab';
 
@@ -72,7 +67,7 @@ export function PlantControls(props: PlantControlsProps) {
                         <Settings className="h-4 w-4" />
                     </TabsTrigger>
                     <TabsTrigger
-                        value="lsystem"
+                        value="development"
                         className="flex flex-col items-center p-2"
                     >
                         <Edit className="h-4 w-4" />
@@ -111,10 +106,10 @@ export function PlantControls(props: PlantControlsProps) {
                 </TabsContent>
 
                 <TabsContent
-                    value="lsystem"
+                    value="development"
                     className="mt-0 min-h-0 flex-1 overflow-y-auto pt-4 pr-2"
                 >
-                    <LSystemTab {...props} />
+                    <DevelopmentTab {...props} />
                 </TabsContent>
 
                 <TabsContent

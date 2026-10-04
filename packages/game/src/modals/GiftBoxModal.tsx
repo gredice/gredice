@@ -1,14 +1,14 @@
 'use client';
 
 import { BlockImage } from '@gredice/ui/BlockImage';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useEffect, useMemo, useState } from 'react';
 import Confetti from 'react-confetti-boom';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useOpenGiftBox } from '../hooks/useOpenGiftBox';
+import { GameModal } from '../shared-ui/game-modal';
 import { useGiftBoxParam } from '../useUrlState';
 import { GiftBoxRewardScreen } from './GiftBoxRewardScreen';
 
@@ -62,7 +62,7 @@ export function GiftBoxModal() {
     };
 
     return (
-        <Modal
+        <GameModal
             open={isOpen}
             onOpenChange={(open) => !open && handleClose()}
             title="Poklon kutija"
@@ -70,7 +70,7 @@ export function GiftBoxModal() {
             {reward ? (
                 <GiftBoxRewardScreen reward={reward} onClose={handleClose} />
             ) : (
-                <Stack spacing={3} className="relative">
+                <Stack spacing={6} className="relative">
                     {giftOpened && <Confetti mode="fall" particleCount={40} />}
                     <div className="flex justify-center">
                         {!giftBoxParam || isLoading ? (
@@ -87,7 +87,7 @@ export function GiftBoxModal() {
                         )}
                     </div>
 
-                    <Stack spacing={1}>
+                    <Stack spacing={2}>
                         <Typography level="body1" semiBold>
                             Sretan Božić! 🎄
                         </Typography>
@@ -136,6 +136,6 @@ export function GiftBoxModal() {
                     )}
                 </Stack>
             )}
-        </Modal>
+        </GameModal>
     );
 }

@@ -1,6 +1,8 @@
 import type { PropsWithChildren } from 'react';
 import type { Block } from '../types/Block';
+import { useGameState } from '../useGameState';
 import { useGiftBoxParam } from '../useUrlState';
+import { useDeferredSingleClick } from './useDeferredSingleClick';
 import { useHoveredBlockStore } from './useHoveredBlockStore';
 
 export function GiftBoxSelectableGroup({
@@ -8,9 +10,17 @@ export function GiftBoxSelectableGroup({
     block,
 }: PropsWithChildren<{ block: Block }>) {
     const hovered = useHoveredBlockStore();
+    const hasActiveDragPreview = useGameState((state) =>
+        Boolean(state.activeDragPreview),
+    );
     const [, setGiftBoxParam] = useGiftBoxParam();
+    const handleClick = useDeferredSingleClick(handleSelected);
 
     function handleSelected() {
+        if (hasActiveDragPreview) {
+            return;
+        }
+
         setGiftBoxParam(block.id);
     }
 
@@ -18,6 +28,10 @@ export function GiftBoxSelectableGroup({
         // biome-ignore lint/a11y/noStaticElementInteractions: Three.js element is interactive
         <group
             onPointerEnter={(event) => {
+                if (hasActiveDragPreview) {
+                    return;
+                }
+
                 event.stopPropagation();
                 hovered.setHoveredBlock(block);
             }}
@@ -27,10 +41,7 @@ export function GiftBoxSelectableGroup({
                     hovered.setHoveredBlock(null);
                 }
             }}
-            onClick={(event) => {
-                event.stopPropagation();
-                handleSelected();
-            }}
+            onClick={handleClick}
         >
             {children}
         </group>

@@ -1,30 +1,37 @@
 import {
-    getAttributeDefinitions,
     getEntitiesRaw,
     getEntityTypeByName,
-    getInventoryConfigByEntityTypeName,
-    getInventoryItemsByConfig,
+    sunflowerPackageEntityTypeName,
+    sunflowerPackageSeedSpecs,
 } from '@gredice/storage';
-import { Add } from '@signalco/ui-icons';
-import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Alert } from '@gredice/ui/Alert';
+import { Card, CardOverflow } from '@gredice/ui/Card';
+import { Add, Warning } from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
 import Link from 'next/link';
 import { EntityTypeMenu } from '../../../../components/admin/directories';
+import { EntitiesList } from '../../../../components/admin/lists';
 import {
     AdminDirectoryBreadcrumbs,
     AdminPageHeader,
 } from '../../../../components/admin/navigation';
 import { FilterProvider } from '../../../../components/admin/providers';
 import { SearchInput } from '../../../../components/admin/SearchInput';
-import { EntitiesTable } from '../../../../components/admin/tables';
 import { ServerActionIconButton } from '../../../../components/shared/ServerActionIconButton';
 import { auth } from '../../../../lib/auth/auth';
+import { sunflowerPackageCatalogWarnings } from '../../../../src/entities/sunflowerPackageAdmin';
 import { KnownPages } from '../../../../src/KnownPages';
 import {
     createEntity,
     duplicateEntity,
 } from '../../../(actions)/entityActions';
+import { defaultDirectoryEntityListSort } from './directoryEntityListConfig';
+import {
+    getDirectoryEntityListContext,
+    listDirectoryEntitiesPageFromContext,
+    parseDirectoryEntityOperationIds,
+} from './directoryEntityListData';
 import { EntitiesFilters } from './EntitiesFilters';
 
 export const dynamic = 'force-dynamic';
@@ -43,23 +50,34 @@ export default async function EntitiesPage({
         typeof urlParams.completion === 'string' ? urlParams.completion : '';
     const stateFilter =
         typeof urlParams.state === 'string' ? urlParams.state : '';
+    const operationIds = parseDirectoryEntityOperationIds(
+        typeof urlParams.operations === 'string'
+            ? urlParams.operations
+            : undefined,
+    );
     const entityType = await getEntityTypeByName(entityTypeName);
     const createEntityBound = createEntity.bind(null, entityTypeName);
     const duplicateEntityBound = duplicateEntity.bind(null, entityTypeName);
-    const [entities, attributeDefinitions, inventoryConfig] = await Promise.all(
-        [
-            getEntitiesRaw(entityTypeName),
-            getAttributeDefinitions(entityTypeName),
-            getInventoryConfigByEntityTypeName(entityTypeName),
-        ],
-    );
-    const inventoryItems = inventoryConfig
-        ? await getInventoryItemsByConfig(inventoryConfig.id)
-        : [];
+    const listContext = await getDirectoryEntityListContext(entityTypeName);
+    const initialPage = await listDirectoryEntitiesPageFromContext({
+        completion: completionFilter,
+        context: listContext,
+        entityTypeName,
+        operationIds,
+        sort: defaultDirectoryEntityListSort,
+        state: stateFilter,
+    });
+    const packageCatalogWarnings =
+        entityTypeName === sunflowerPackageEntityTypeName
+            ? sunflowerPackageCatalogWarnings(
+                  await getEntitiesRaw(sunflowerPackageEntityTypeName),
+                  sunflowerPackageSeedSpecs.map((spec) => spec.code),
+              )
+            : [];
 
     return (
         <FilterProvider>
-            <Stack spacing={2}>
+            <Stack spacing={4}>
                 <AdminPageHeader
                     breadcrumbs={
                         <AdminDirectoryBreadcrumbs
@@ -68,15 +86,15 @@ export default async function EntitiesPage({
                         />
                     }
                     actions={
-                        <Row spacing={1}>
-                            {inventoryConfig && (
+                        <Row spacing={2}>
+                            {listContext.inventoryLinkConfig && (
                                 <Link
                                     href={KnownPages.InventoryConfig(
-                                        inventoryConfig.id,
+                                        listContext.inventoryLinkConfig.id,
                                     )}
                                 >
                                     <Row
-                                        spacing={1}
+                                        spacing={2}
                                         className="text-sm font-medium px-3 py-2 rounded-md border hover:bg-accent transition-colors"
                                     >
                                         <span>Zaliha</span>
@@ -101,20 +119,43 @@ export default async function EntitiesPage({
                 <h1 className="sr-only">
                     {entityType?.label ?? entityTypeName}
                 </h1>
-                <EntitiesFilters />
+                <EntitiesFilters
+                    operationOptions={listContext.operationFilterOptions}
+                    selectedOperationIds={operationIds}
+                />
+                {packageCatalogWarnings.length > 0 ? (
+                    <Alert
+                        color="warning"
+                        startDecorator={<Warning className="size-4" />}
+                    >
+                        <ul className="list-disc space-y-1 pl-5">
+                            {packageCatalogWarnings.map((warning) => (
+                                <li key={warning}>{warning}</li>
+                            ))}
+                        </ul>
+                    </Alert>
+                ) : null}
                 <Card>
                     <CardOverflow>
-                        <EntitiesTable
+                        <EntitiesList
                             entityTypeName={entityTypeName}
-                            entities={entities}
-                            attributeDefinitions={attributeDefinitions}
-                            inventoryItems={inventoryItems}
+                            attributeDefinitions={
+                                listContext.attributeDefinitions
+                            }
+                            initialPage={initialPage}
+                            showInventoryColumn={
+                                listContext.showInventoryColumn
+                            }
                             inventoryLowCountThreshold={
-                                inventoryConfig?.lowCountThreshold
+                                listContext.inventoryLowCountThreshold
                             }
                             completionFilter={completionFilter}
                             stateFilter={stateFilter}
+                            operationIds={operationIds}
                             onDuplicate={duplicateEntityBound}
+                            refLabelsByDefinitionId={
+                                listContext.refLabelsByDefinitionId
+                            }
                         />
                     </CardOverflow>
                 </Card>

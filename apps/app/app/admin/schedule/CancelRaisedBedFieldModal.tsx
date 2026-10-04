@@ -7,21 +7,26 @@ interface CancelRaisedBedFieldModalProps {
     field: {
         raisedBedId: number;
         positionIndex: number;
+        expectedPlantCycleEventId: number;
+        expectedPlantCycleVersionEventId: number;
+        expectedPlantSortId: number;
     };
     fieldLabel: string;
     trigger: React.ReactElement;
+    onSubmit?: (formData: FormData) => unknown | Promise<unknown>;
 }
 
 export function CancelRaisedBedFieldModal({
     field,
     fieldLabel,
     trigger,
+    onSubmit,
 }: CancelRaisedBedFieldModalProps) {
     return (
         <CancelRequestModal
             label={fieldLabel}
             trigger={trigger}
-            onSubmit={cancelRaisedBedFieldAction}
+            onSubmit={onSubmit ?? cancelRaisedBedFieldAction}
             hiddenFields={
                 <>
                     <input
@@ -33,6 +38,21 @@ export function CancelRaisedBedFieldModal({
                         type="hidden"
                         name="positionIndex"
                         value={field.positionIndex}
+                    />
+                    <input
+                        type="hidden"
+                        name="expectedPlantCycleEventId"
+                        value={field.expectedPlantCycleEventId}
+                    />
+                    <input
+                        type="hidden"
+                        name="expectedPlantCycleVersionEventId"
+                        value={field.expectedPlantCycleVersionEventId}
+                    />
+                    <input
+                        type="hidden"
+                        name="expectedPlantSortId"
+                        value={field.expectedPlantSortId}
                     />
                 </>
             }

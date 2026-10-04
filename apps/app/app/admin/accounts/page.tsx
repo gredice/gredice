@@ -1,5 +1,5 @@
-import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Card, CardOverflow } from '@gredice/ui/Card';
+import { Stack } from '@gredice/ui/Stack';
 import { auth } from '../../../lib/auth/auth';
 import { getDateFromTimeFilter } from '../../../lib/utils/timeFilters';
 import { AccountsFilters } from './AccountsFilters';
@@ -15,7 +15,7 @@ export default async function AccountsPage({
     const fromDate = getDateFromTimeFilter(fromFilter);
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             <AccountsFilters />
 
             <Card>

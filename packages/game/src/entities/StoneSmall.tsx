@@ -1,4 +1,5 @@
-import { animated } from '@react-spring/three';
+import { RainWetOverlay } from '../rain/RainWetOverlay';
+import { animated } from '../scene/sceneSpring';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
@@ -7,7 +8,7 @@ import { useGameGLTF } from '../utils/useGameGLTF';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
 export function StoneSmall({ stack, block, rotation }: EntityInstanceProps) {
-    const { nodes, materials } = useGameGLTF();
+    const { nodes, materials } = useGameGLTF('StoneSmall');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
 
@@ -27,6 +28,7 @@ export function StoneSmall({ stack, block, rotation }: EntityInstanceProps) {
                     geometry={nodes.Stone_Small.geometry}
                     {...snowPresets.stone}
                 />
+                <RainWetOverlay geometry={nodes.Stone_Small.geometry} />
             </mesh>
         </animated.group>
     );

@@ -1,16 +1,19 @@
+import { Container } from '@gredice/ui/Container';
+import { PageHeader } from '@gredice/ui/PageHeader';
+import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
-import { Container } from '@signalco/ui-primitives/Container';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
-import type { Metadata } from 'next';
-import { PageHeader } from '../../../components/shared/PageHeader';
+import { Typography } from '@gredice/ui/Typography';
+import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
+import { KnownPages } from '../../../src/KnownPages';
 
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
     title: 'Tvrtka',
     description: 'Službeni podaci o društvu Gredice d.o.o.',
-};
+    path: KnownPages.LegalCompany,
+    eyebrow: 'Pravni dokument',
+});
 
-export default function UvjetiKoristenjaPage() {
+export default function CompanyPage() {
     return (
         <Container maxWidth="sm">
             <Stack>
@@ -33,7 +36,7 @@ export default function UvjetiKoristenjaPage() {
                         <br />
                         Ulica Julija Knifera 3,
                         <br />
-                        Zagreb (Grad Zagreb)
+                        10000 Zagreb, Hrvatska
                     </p>
 
                     <h3>Nadležni sud</h3>
@@ -61,21 +64,37 @@ export default function UvjetiKoristenjaPage() {
                         IBAN: <span>HR5223400091111312385</span>
                         <br />
                         <small>
-                            Molimo vas da ne uplaćujete na gore navedeni račun
-                            bez prethodne najave i dogovora s našim prodajnim
-                            timom. Ovaj podatak je ovdje isključivo u zakonske
-                            svrhe.
+                            Molimo te da ne uplaćuješ na gore navedeni račun bez
+                            prethodne najave i dogovora s našim prodajnim timom.
+                            Ovaj podatak je ovdje isključivo u zakonske svrhe.
                         </small>
                     </p>
 
                     <h3>Članovi uprave</h3>
                     <p>Toplek, Aleksandar</p>
 
-                    <h3>Adresa elektroničke pošte</h3>
+                    <h3>Kontakt i pisani prigovori</h3>
                     <p>
                         <a href="mailto:kontakt@gredice.com">
                             kontakt@gredice.com
                         </a>
+                        <br />
+                        Telefon:{' '}
+                        <a href="tel:+385993447418">+385 99 344 7418</a>
+                    </p>
+                    <p>
+                        Pisani prigovor možeš poslati na navedenu adresu e-pošte
+                        ili poštansku adresu društva te ga predati u poslovnim
+                        prostorijama. Primitak potvrđujemo bez odgađanja, a
+                        pisani odgovor dostavljamo u roku od 15 dana od
+                        primitka. Pojedinosti su na stranici{' '}
+                        <a href={KnownPages.Contact}>Kontakt</a>.
+                    </p>
+                    <p>
+                        Pravila naručivanja i prava potrošača opisana su na
+                        stranicama{' '}
+                        <a href={KnownPages.LegalTerms}>Uvjeti korištenja</a> i{' '}
+                        <a href={KnownPages.Refunds}>Povrat novca</a>.
                     </p>
 
                     <p>
@@ -86,7 +105,7 @@ export default function UvjetiKoristenjaPage() {
                     </p>
                 </StyledHtml>
                 <Typography level="body2" secondary className="mt-8">
-                    Zadnja izmjena: 28. Veljača 2025.
+                    Zadnja izmjena: 22. rujna 2026.
                 </Typography>
             </Stack>
         </Container>

@@ -1,13 +1,10 @@
 import 'server-only';
 import { createHmac } from 'node:crypto';
+import { initAuth, initRbac } from '@gredice/auth';
 import { getUser as storageGetUser } from '@gredice/storage';
-import { initAuth, initRbac } from '@signalco/auth-server';
 import { cookies } from 'next/headers';
-import {
-    accessTokenExpiryMs,
-    cookieDomain,
-    sessionCookieName,
-} from './sessionConfig';
+import { authCookieSettings } from './cookieSecurity';
+import { accessTokenExpiryMs, sessionCookieName } from './sessionConfig';
 
 function jwtSecretFactory() {
     const signSecret = process.env.GREDICE_JWT_SIGN_SECRET;
@@ -61,7 +58,12 @@ const rbac = initRbac(
     }),
 );
 
-export const { withAuth: baseWithAuth, auth: baseAuth, verifyJwt } = rbac;
+export const {
+    withAuth: baseWithAuth,
+    auth: baseAuth,
+    verifyJwt,
+    verifyAccessJwt,
+} = rbac;
 
 type CreateJwtExpiration = Parameters<typeof rbac.createJwt>[1];
 type CreateJwtOverride = Parameters<typeof rbac.createJwt>[2];
@@ -120,6 +122,7 @@ async function createAccountBoundJwt(
             iat: issuedAt,
             iss: 'urn:gredice:issuer:api',
             sub: payload.sub,
+            tokenUse: 'account_delete',
         }),
     ].join('.');
     const signature = createHmac('sha256', await jwtSecretFactory())
@@ -155,30 +158,32 @@ export function createJwt(
 
 /**
  * Set the session cookie with domain scoping for cross-subdomain SSO.
- * Overrides @signalco/auth-server's built-in setCookie which doesn't support domain.
+ * Overrides the shared auth setCookie helper, which does not support domain scoping.
  */
 export async function setCookie(value: Promise<string> | string) {
     const cookieStore = await cookies();
+    const cookieSettings = await authCookieSettings();
     cookieStore.set(sessionCookieName, await value, {
-        secure: true,
+        secure: cookieSettings.secure,
         httpOnly: true,
         sameSite: 'lax',
-        domain: cookieDomain,
+        domain: cookieSettings.domain,
         expires: new Date(Date.now() + accessTokenExpiryMs),
     });
 }
 
 /**
  * Clear the session cookie (including domain-scoped cookie for SSO).
- * Overrides @signalco/auth-server's built-in clearCookie which doesn't support domain.
+ * Overrides the shared auth clearCookie helper, which does not support domain scoping.
  */
 export async function clearCookie() {
     const cookieStore = await cookies();
+    const cookieSettings = await authCookieSettings();
     cookieStore.set(sessionCookieName, '', {
-        secure: true,
+        secure: cookieSettings.secure,
         httpOnly: true,
         sameSite: 'lax',
-        domain: cookieDomain,
+        domain: cookieSettings.domain,
         maxAge: 0,
     });
 }

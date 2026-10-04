@@ -1,33 +1,55 @@
 'use client';
 
 import type { getAnalyticsTotals } from '@gredice/storage';
+import { Button } from '@gredice/ui/Button';
+import { Chip } from '@gredice/ui/Chip';
+import { Input } from '@gredice/ui/Input';
+import {
+    AI,
+    Bank,
+    Calendar,
+    Cloud,
+    Euro,
+    Fence,
+    File,
+    Graph,
+    Hammer,
+    Inbox,
+    Lightning,
+    Mail,
+    Map as MapIcon,
+    Megaphone,
+    Settings,
+    ShoppingCart,
+    SmileHappy,
+    Sprout,
+    Success,
+    Tally3,
+    Truck,
+    User,
+} from '@gredice/ui/icons';
 import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
-import { Calendar, Euro, File, Hammer, Truck } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Row } from '@signalco/ui-primitives/Row';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { SelectItems } from '@gredice/ui/SelectItems';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState, useTransition } from 'react';
-import type { DashboardQuickActionOption } from '../../../src/dashboardQuickActions';
+import { formatAiCostEur } from '../../../src/ai/aiAnalyticsCost';
+import {
+    type DashboardQuickActionBadgeCounts,
+    type DashboardQuickActionOption,
+    getDashboardQuickActionBadge,
+} from '../../../src/dashboardQuickActions';
 import { KnownPages } from '../../../src/KnownPages';
 import { FactCard } from '../cards/FactCard';
 import { EntityTypeIcon } from '../directories/EntityTypeIcon';
 import { DashboardDivider } from './DashboardDivider';
-import {
-    OperationsDurationCard,
-    type OperationsDurationData,
-} from './OperationsDurationCard';
-import {
-    SunflowersDailyCard,
-    type SunflowersDailyData,
-} from './SunflowersDailyCard';
-import {
-    UsersRegistrationWeekdayCard,
-    type WeekdayRegistrationData,
-} from './UsersRegistrationWeekdayCard';
+import type { OperationsDurationData } from './OperationsDurationCard';
+import { formatOperationsDuration } from './operationsDuration';
+import { StatisticsOverviewCard } from './StatisticsOverviewCard';
+import type { SunflowersDailyData } from './SunflowersDailyCard';
+import type { WeekdayRegistrationData } from './UsersRegistrationWeekdayCard';
 
 type EntityData = {
     entityTypeName: string;
@@ -48,6 +70,7 @@ function getTodayDateValue() {
 type AiData = {
     count: number;
     totalTokens: number;
+    totalCostEur: number;
 };
 
 function quickActionIcon(quickAction: { href: string; icon?: string | null }) {
@@ -56,16 +79,58 @@ function quickActionIcon(quickAction: { href: string; icon?: string | null }) {
     }
 
     switch (quickAction.href) {
+        case KnownPages.Accounts:
+            return <Bank className="size-4" />;
+        case KnownPages.Achievements:
+        case KnownPages.Sunflowers:
+            return <Success className="size-4" />;
+        case KnownPages.AiAnalytics:
+            return <AI className="size-4" />;
+        case KnownPages.Approvals:
+        case KnownPages.CommunicationInbox:
+            return <Inbox className="size-4" />;
+        case KnownPages.Automations:
+            return <Lightning className="size-4" />;
+        case KnownPages.CommunicationEmails:
+            return <Mail className="size-4" />;
+        case KnownPages.DeliveryRequests:
+        case KnownPages.DeliverySlots:
+            return <Truck className="size-4" />;
+        case KnownPages.FarmerPayouts:
+        case KnownPages.FarmerPrices:
+        case KnownPages.Transactions:
+            return <Euro className="size-4" />;
+        case KnownPages.Farms:
+            return <MapIcon className="size-4" />;
+        case KnownPages.Gardens:
+            return <Fence className="size-4" />;
+        case KnownPages.Inventory:
+        case KnownPages.SowingStatistics:
+            return <Tally3 className="size-4" />;
+        case KnownPages.DeliveryRequestStatistics:
+            return <Graph className="size-4" />;
+        case KnownPages.Notifications:
+        case KnownPages.SocialPublishing:
+            return <Megaphone className="size-4" />;
+        case KnownPages.Occasions:
         case KnownPages.Schedule:
             return <Calendar className="size-4" />;
         case KnownPages.RaisedBeds:
-            return <RaisedBedIcon className="size-4" />;
+            return <RaisedBedIcon className="size-4" physicalId={null} />;
+        case KnownPages.Greenhouse:
+            return <Sprout className="size-4" />;
         case KnownPages.Operations:
             return <Hammer className="size-4" />;
-        case KnownPages.DeliveryRequests:
-            return <Truck className="size-4" />;
-        case KnownPages.Transactions:
-            return <Euro className="size-4" />;
+        case KnownPages.Settings:
+            return <Settings className="size-4" />;
+        case KnownPages.ShoppingCarts:
+            return <ShoppingCart className="size-4" />;
+        case KnownPages.Users:
+            return <User className="size-4" />;
+        case KnownPages.Weather:
+            return <Cloud className="size-4" />;
+        case KnownPages.Feedback:
+            return <SmileHappy className="size-4" />;
         default:
             return <File className="size-4" />;
     }
@@ -75,6 +140,7 @@ export function AdminDashboardClient({
     initialAnalyticsData,
     initialEntitiesData,
     initialQuickActions,
+    initialQuickActionBadgeCounts,
     initialPeriod = '7',
     initialOperationsDurationData,
     initialWeekdayRegistrations,
@@ -85,6 +151,7 @@ export function AdminDashboardClient({
 }: {
     initialAnalyticsData: Awaited<ReturnType<typeof getAnalyticsTotals>>;
     initialQuickActions: DashboardQuickActionOption[];
+    initialQuickActionBadgeCounts: DashboardQuickActionBadgeCounts;
     initialEntitiesData: EntityData[];
     initialPeriod?: string;
     initialOperationsDurationData: OperationsDurationData;
@@ -193,26 +260,57 @@ export function AdminDashboardClient({
         deliveryRequestsBefore: deliveryRequestsBeforeCount,
         activeUsers,
     } = initialAnalyticsData;
+    const weeklyRegistrations = initialWeekdayRegistrations.reduce(
+        (total, item) => total + item.count,
+        0,
+    );
+    const weeklyActiveRegistrationDays = initialWeekdayRegistrations.filter(
+        (item) => item.count > 0,
+    ).length;
+    const totalRecords = initialEntitiesData.reduce(
+        (total, item) => total + item.count,
+        0,
+    );
+    const incompleteRecords = initialEntitiesData.reduce(
+        (total, item) =>
+            total + item.incompleteDraftCount + item.incompletePublishedCount,
+        0,
+    );
+    const weeklySunflowersSpent = initialSunflowersData.reduce(
+        (total, item) => total + item.spent,
+        0,
+    );
+    const weeklySunflowersEarned = initialSunflowersData.reduce(
+        (total, item) => total + item.earned,
+        0,
+    );
 
     return (
-        <Stack spacing={2}>
-            <Row spacing={1} className="flex-wrap">
-                {initialQuickActions.map((quickAction) => (
-                    <Button
-                        key={quickAction.id}
-                        variant="outlined"
-                        className="rounded-full"
-                        size="sm"
-                        href={quickAction.href}
-                    >
-                        <Row spacing={0.5} className="items-center">
-                            {quickActionIcon(quickAction)}
-                            <span>{quickAction.label}</span>
-                        </Row>
-                    </Button>
-                ))}
+        <Stack spacing={4}>
+            <Row spacing={2} className="flex-wrap">
+                {initialQuickActions.map((quickAction) => {
+                    const badge = getDashboardQuickActionBadge(
+                        quickAction,
+                        initialQuickActionBadgeCounts,
+                    );
+
+                    return (
+                        <Chip
+                            key={quickAction.id}
+                            href={quickAction.href}
+                            startDecorator={quickActionIcon(quickAction)}
+                        >
+                            {quickAction.label}
+                            {badge != null && badge > 0 ? (
+                                <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground">
+                                    {badge}
+                                </span>
+                            ) : null}
+                        </Chip>
+                    );
+                })}
             </Row>
-            <Stack spacing={1}>
+            <Stack spacing={2}>
                 <Row justifyContent="space-between">
                     <DashboardDivider>Računi i korisnici</DashboardDivider>
                     <SelectItems
@@ -227,8 +325,8 @@ export function AdminDashboardClient({
                     />
                 </Row>
                 {selectedPeriod === 'custom' ? (
-                    <Stack spacing={0.5}>
-                        <Row spacing={1} className="items-end">
+                    <Stack spacing={1}>
+                        <Row spacing={2} className="items-end">
                             <Input
                                 type="date"
                                 value={customFrom}
@@ -336,7 +434,7 @@ export function AdminDashboardClient({
                     />
                 </div>
             </Stack>
-            <Stack spacing={1}>
+            <Stack spacing={2}>
                 <DashboardDivider>AI</DashboardDivider>
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
                     <FactCard
@@ -351,68 +449,45 @@ export function AdminDashboardClient({
                         )}
                         href={KnownPages.AiAnalytics}
                     />
-                </div>
-            </Stack>
-            <Stack spacing={1}>
-                <DashboardDivider>Registracije</DashboardDivider>
-                <div className="w-full lg:max-w-2xl">
-                    <UsersRegistrationWeekdayCard
-                        data={initialWeekdayRegistrations}
+                    <FactCard
+                        header="Trošak"
+                        value={formatAiCostEur(initialAiData.totalCostEur)}
+                        href={KnownPages.AiAnalytics}
                     />
                 </div>
             </Stack>
-            <Stack spacing={1}>
-                <DashboardDivider>Radnje</DashboardDivider>
-                <OperationsDurationCard data={initialOperationsDurationData} />
-            </Stack>
-            <Stack spacing={1}>
-                <DashboardDivider>Zapisi</DashboardDivider>
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                    {initialEntitiesData.map(
-                        ({
-                            label,
-                            count,
-                            entityTypeName,
-                            incompleteDraftCount,
-                            incompletePublishedCount,
-                        }) => (
-                            <FactCard
-                                key={entityTypeName}
-                                header={label}
-                                value={
-                                    <Stack spacing={0.5}>
-                                        <Typography>{count}</Typography>
-                                        <Button
-                                            variant="plain"
-                                            size="sm"
-                                            className="justify-start px-0 h-auto min-h-0"
-                                            href={`${KnownPages.DirectoryEntityType(entityTypeName)}?completion=incomplete&state=draft`}
-                                        >
-                                            Draft nepotpuni:{' '}
-                                            {incompleteDraftCount}
-                                        </Button>
-                                        <Button
-                                            variant="plain"
-                                            size="sm"
-                                            className="justify-start px-0 h-auto min-h-0"
-                                            href={`${KnownPages.DirectoryEntityType(entityTypeName)}?completion=incomplete&state=published`}
-                                        >
-                                            Objavljeno nepotpuni:{' '}
-                                            {incompletePublishedCount}
-                                        </Button>
-                                    </Stack>
-                                }
-                                href={KnownPages.DirectoryEntityType(
-                                    entityTypeName,
-                                )}
-                            />
-                        ),
-                    )}
+            <Stack spacing={2}>
+                <DashboardDivider>Statistika</DashboardDivider>
+                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                    <StatisticsOverviewCard
+                        title="Registracije"
+                        value={weeklyRegistrations.toLocaleString('hr-HR')}
+                        detail={`Ovaj tjedan · ${weeklyActiveRegistrationDays} aktivnih dana`}
+                        href={KnownPages.UsersStatistics}
+                    />
+                    <StatisticsOverviewCard
+                        title="Radnje"
+                        value={formatOperationsDuration(
+                            initialOperationsDurationData.totalMinutes,
+                        )}
+                        detail="Ukupno trajanje ovaj tjedan"
+                        href={KnownPages.OperationsStatistics}
+                    />
+                    <StatisticsOverviewCard
+                        title="Zapisi"
+                        value={totalRecords.toLocaleString('hr-HR')}
+                        detail={`${incompleteRecords} nepotpunih zapisa`}
+                        href={KnownPages.RecordsStatistics}
+                    />
+                    <StatisticsOverviewCard
+                        title="Suncokreti"
+                        value={(
+                            weeklySunflowersEarned - weeklySunflowersSpent
+                        ).toLocaleString('hr-HR')}
+                        detail={`Ovaj tjedan · +${weeklySunflowersEarned.toLocaleString('hr-HR')} / −${weeklySunflowersSpent.toLocaleString('hr-HR')}`}
+                        href={KnownPages.SunflowersStatistics}
+                    />
                 </div>
-            </Stack>
-            <Stack spacing={1}>
-                <DashboardDivider>Suncokreti</DashboardDivider>
-                <SunflowersDailyCard data={initialSunflowersData} />
             </Stack>
         </Stack>
     );

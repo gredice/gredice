@@ -13,7 +13,7 @@ Use this guide for visual and interaction design decisions.
 ## Visual standards
 
 - Follow the app's existing Tailwind, typography, spacing, and component patterns before introducing new visual language.
-- Reuse `@gredice/ui` and `@signalco/ui` primitives first.
+- Reuse `@gredice/ui`, established `@gredice/*` primitives, and app-owned components first.
 - Avoid decorative layouts that reduce task clarity in admin and farm tools.
 - Use cards for repeated items, modals, and genuinely framed tools. Do not nest cards inside cards.
 - Keep repeated operational views compact and aligned. Avoid oversized hero-style typography inside panels, tables, cards, and sidebars.
@@ -23,6 +23,7 @@ Use this guide for visual and interaction design decisions.
 ## Interaction standards
 
 - Use icons for common tool actions when an established icon exists.
+- Within a tab group, keep icon treatment consistent. If one tab uses illustrated game artwork, use matching artwork for every icon-bearing tab in that group.
 - Use segmented controls for modes, toggles or checkboxes for binary settings, sliders or numeric inputs for numbers, menus for option sets, and tabs for sibling views.
 - Text in controls must fit at mobile and desktop widths.
 - Layout dimensions should be stable for boards, grids, toolbars, counters, and tiles so hover states and dynamic labels do not shift the interface.
@@ -40,3 +41,4 @@ Use this guide for visual and interaction design decisions.
 - New reusable UI components need stories under `apps/storybook/stories`.
 - Stories should cover the meaningful states: default, loading, empty, disabled, error, long content, and any important variants.
 - Keep stories close to real product usage rather than synthetic decoration.
+- New `@gredice/ui` components and meaningful variants should also be added to the most relevant Storybook showcase page, such as dashboard, public content, garden workspace, or account/state demos.

@@ -1,6 +1,6 @@
 'use client';
 
-import { AuthProvider } from '@signalco/auth-client/components';
+import { AuthProvider } from '@gredice/ui/auth';
 import type { PropsWithChildren } from 'react';
 
 export type User = {

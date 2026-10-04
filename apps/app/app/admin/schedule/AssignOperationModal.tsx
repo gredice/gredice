@@ -4,29 +4,32 @@ import type {
     OperationAssignableFarmUser,
     OperationAssignedUser,
 } from '@gredice/storage';
+import { Button } from '@gredice/ui/Button';
+import { Checkbox } from '@gredice/ui/Checkbox';
+import { IconButton } from '@gredice/ui/IconButton';
+import { User } from '@gredice/ui/icons';
+import { Modal } from '@gredice/ui/Modal';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { UserAvatar } from '@gredice/ui/UserAvatar';
-import { User } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Checkbox } from '@signalco/ui-primitives/Checkbox';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import { useEffect, useMemo, useState } from 'react';
 import { assignOperationUserAction } from '../../(actions)/operationActions';
 
 type AssignableUser = Pick<
     OperationAssignableFarmUser,
-    'id' | 'userName' | 'displayName' | 'avatarUrl'
+    'id' | 'userName' | 'displayName' | 'avatarUrl' | 'achievementCount'
 >;
 
 interface AssignOperationModalProps {
     operationId: number;
+    expectedEntityId: number;
+    expectedTaskVersionEventId: number;
     label: string;
     farmUsers: AssignableUser[];
     assignedUsers?: OperationAssignedUser[];
     disabled?: boolean;
+    onSubmit?: (selectedUserIds: string[]) => unknown | Promise<unknown>;
 }
 
 function getUserLabel(user: AssignableUser | OperationAssignedUser) {
@@ -37,10 +40,13 @@ function getUserLabel(user: AssignableUser | OperationAssignedUser) {
 
 export function AssignOperationModal({
     operationId,
+    expectedEntityId,
+    expectedTaskVersionEventId,
     label,
     farmUsers,
     assignedUsers,
     disabled = false,
+    onSubmit,
 }: AssignOperationModalProps) {
     const [open, setOpen] = useState(false);
     const initialAssignedUserIds = useMemo(
@@ -100,7 +106,16 @@ export function AssignOperationModal({
         setErrorMessage(null);
 
         try {
-            await assignOperationUserAction(operationId, selectedUserIds);
+            if (onSubmit) {
+                await onSubmit(selectedUserIds);
+            } else {
+                await assignOperationUserAction(
+                    operationId,
+                    expectedEntityId,
+                    expectedTaskVersionEventId,
+                    selectedUserIds,
+                );
+            }
             setOpen(false);
         } catch (error) {
             console.error('Error assigning operation user:', error);
@@ -114,21 +129,22 @@ export function AssignOperationModal({
         (assignedUsers?.length ?? 0) > 0 ? (
             <button
                 type="button"
-                className="rounded-full transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex h-7 min-w-7 items-center justify-center rounded-full transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
                 title={`Dodijeljeno korisnika: ${assignedUsers?.length ?? 0}`}
                 aria-label={`Dodijeljeno korisnika: ${assignedUsers?.length ?? 0}`}
                 disabled={!canOpen}
             >
-                <Row spacing={-1}>
+                <Row spacing={-2}>
                     {(assignedUsers ?? []).slice(0, 2).map((assignedUser) => (
                         <UserAvatar
+                            achievementCount={assignedUser.achievementCount}
                             key={assignedUser.id}
                             avatarUrl={assignedUser.avatarUrl}
                             displayName={
                                 assignedUser.displayName ??
                                 assignedUser.userName
                             }
-                            className="size-7 ring-2 ring-background"
+                            className="size-6 ring-1 ring-background"
                         />
                     ))}
                     {(assignedUsers?.length ?? 0) > 2 && (
@@ -140,7 +156,9 @@ export function AssignOperationModal({
             </button>
         ) : (
             <IconButton
-                variant="plain"
+                variant="soft"
+                color="warning"
+                size="xs"
                 title={
                     canOpen
                         ? 'Dodijeli korisnika'
@@ -159,7 +177,7 @@ export function AssignOperationModal({
             open={open}
             onOpenChange={setOpen}
         >
-            <Stack spacing={2}>
+            <Stack spacing={4}>
                 <Typography level="h5">Dodjela radnje</Typography>
                 <Typography>
                     Odaberi korisnike kojima želiš dodijeliti zadatak{' '}
@@ -167,7 +185,7 @@ export function AssignOperationModal({
                 </Typography>
 
                 {selectableUsers.length > 0 ? (
-                    <Stack spacing={1}>
+                    <Stack spacing={2}>
                         <Button
                             variant="plain"
                             className="justify-start px-0"
@@ -181,7 +199,7 @@ export function AssignOperationModal({
                                 key={user.id}
                                 label={getUserLabel(user)}
                                 checked={selectedUserIds.includes(user.id)}
-                                onCheckedChange={(checked) =>
+                                onCheckedChange={(checked: boolean) =>
                                     toggleSelectedUser(
                                         user.id,
                                         Boolean(checked),
@@ -202,7 +220,7 @@ export function AssignOperationModal({
                     </Typography>
                 )}
 
-                <Row spacing={1} justifyContent="end">
+                <Row spacing={2} justifyContent="end">
                     <Button
                         variant="outlined"
                         onClick={() => setOpen(false)}

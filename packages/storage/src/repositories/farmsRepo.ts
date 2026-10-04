@@ -1,18 +1,54 @@
+import {
+    userAchievementCount,
+    userAchievementExtras,
+} from './userAchievementProgress';
 import 'server-only';
 
-import { and, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import {
     farms,
     farmUsers,
     type InsertFarm,
     storage,
     type UpdateFarm,
+    users,
 } from '..';
 
-export async function getFarms() {
-    return storage().query.farms.findMany({
+export type FarmAssignableFarmUser = {
+    id: string;
+    userName: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+    achievementCount?: number;
+    farmId: number;
+};
+
+export type UniqueFarmAssignableFarmUser = Omit<
+    FarmAssignableFarmUser,
+    'farmId'
+>;
+
+type StorageClient = ReturnType<typeof storage>;
+type TransactionClient = Parameters<
+    Parameters<StorageClient['transaction']>[0]
+>[0];
+type DatabaseClient = StorageClient | TransactionClient;
+
+export async function getFarms(db: DatabaseClient = storage()) {
+    return db.query.farms.findMany({
         orderBy: desc(farms.createdAt),
     });
+}
+
+export async function getFarmsForUser(userId: string) {
+    const rows = await storage()
+        .select({ farm: farms })
+        .from(farmUsers)
+        .innerJoin(farms, eq(farmUsers.farmId, farms.id))
+        .where(and(eq(farmUsers.userId, userId), eq(farms.isDeleted, false)))
+        .orderBy(desc(farms.createdAt));
+
+    return rows.map((row) => row.farm);
 }
 
 export async function getFarm(farmId: number) {
@@ -27,10 +63,77 @@ export async function getFarmUsers(farmId: number) {
     return storage().query.farmUsers.findMany({
         where: eq(farmUsers.farmId, farmId),
         with: {
-            user: true,
+            user: { extras: userAchievementExtras },
         },
         orderBy: desc(farmUsers.createdAt),
     });
+}
+
+export async function getAssignableFarmUsersByFarmIds(farmIds: number[]) {
+    const uniqueFarmIds = Array.from(new Set(farmIds));
+    if (uniqueFarmIds.length === 0) {
+        const emptyAssignableFarmUsersByFarmId: Record<
+            number,
+            FarmAssignableFarmUser[]
+        > = {};
+
+        return emptyAssignableFarmUsersByFarmId;
+    }
+
+    const farmUserRows = await storage()
+        .selectDistinct({
+            farmId: farmUsers.farmId,
+            userId: users.id,
+            userName: users.userName,
+            displayName: users.displayName,
+            avatarUrl: users.avatarUrl,
+            achievementCount: userAchievementCount(users.id),
+        })
+        .from(farmUsers)
+        .innerJoin(users, eq(farmUsers.userId, users.id))
+        .where(inArray(farmUsers.farmId, uniqueFarmIds))
+        .orderBy(asc(farmUsers.farmId), asc(users.userName));
+
+    const assignableFarmUsersByFarmId: Record<
+        number,
+        FarmAssignableFarmUser[]
+    > = {};
+    for (const row of farmUserRows) {
+        const existingUsers = assignableFarmUsersByFarmId[row.farmId] ?? [];
+        existingUsers.push({
+            id: row.userId,
+            userName: row.userName,
+            displayName: row.displayName,
+            avatarUrl: row.avatarUrl,
+            achievementCount: row.achievementCount,
+            farmId: row.farmId,
+        });
+        assignableFarmUsersByFarmId[row.farmId] = existingUsers;
+    }
+
+    return assignableFarmUsersByFarmId;
+}
+
+export async function getUniqueAssignableFarmUsersByFarmIds(farmIds: number[]) {
+    const assignableFarmUsersByFarmId =
+        await getAssignableFarmUsersByFarmIds(farmIds);
+
+    return Array.from(
+        new Map(
+            Object.values(assignableFarmUsersByFarmId)
+                .flat()
+                .map((row) => [
+                    row.id,
+                    {
+                        id: row.id,
+                        userName: row.userName,
+                        displayName: row.displayName,
+                        avatarUrl: row.avatarUrl,
+                        achievementCount: row.achievementCount,
+                    },
+                ]),
+        ).values(),
+    ) satisfies UniqueFarmAssignableFarmUser[];
 }
 
 export async function assignUserToFarm(farmId: number, userId: string) {

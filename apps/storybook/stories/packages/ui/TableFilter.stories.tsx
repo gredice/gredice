@@ -1,9 +1,9 @@
+import { Filter, User } from '@gredice/ui/icons';
 import {
     type FilterOption,
     TableFilter,
     TIME_FILTER_OPTIONS,
 } from '@gredice/ui/TableFilter';
-import { Filter, User } from '@signalco/ui-icons';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { useMemo, useState } from 'react';
 
@@ -66,6 +66,7 @@ export const MultipleFilters: Story = {
             {
                 key: 'status',
                 label: 'Status',
+                activeLabel: null,
                 icon: <Filter className="size-4" />,
                 options: [
                     { value: '', label: 'Svi statusi' },

@@ -1,0 +1,45 @@
+{
+    "name": "news",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "clean": "rimraf .next .turbo dist build out coverage .vercel",
+        "lint": "biome check --write",
+        "lint:migrate": "biome migrate --write",
+        "typecheck": "next typegen && tsc --noEmit --pretty false",
+        "dev": "node ../../scripts/run-app-command.mjs dev",
+        "build": "next build",
+        "start": "node ../../scripts/run-app-command.mjs start",
+        "test": "pnpm run test:static-data && pnpm run typecheck && pnpm run test:unit && pnpm run test:production-metadata",
+        "test:static-data": "node --experimental-strip-types --test ./tests/staticGenerationData.node.spec.ts",
+        "test:unit": "node --test lib/*.node.spec.ts",
+        "test:production-metadata": "pnpm run build && node --test tests/newsArchives.production.node.spec.mjs",
+        "test:revalidation": "node --test tests/newsRevalidation.redis.ts"
+    },
+    "dependencies": {
+        "@gredice/js": "workspace:*",
+        "@posthog/next": "0.9.0",
+        "@vercel/analytics": "2.0.1",
+        "@vercel/toolbar": "0.2.7",
+        "flags": "4.3.1",
+        "next": "16.3.8",
+        "react": "19.2.8",
+        "react-dom": "19.2.8",
+        "server-only": "0.0.1"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "2.5.14",
+        "@gredice/storage": "workspace:*",
+        "@gredice/ui": "workspace:*",
+        "@tailwindcss/postcss": "4.3.3",
+        "@tailwindcss/typography": "0.5.20",
+        "@types/node": "24.19.0",
+        "@types/react": "19.2.18",
+        "@types/react-dom": "19.2.4",
+        "postcss": "8.5.28",
+        "tailwindcss": "4.3.3",
+        "tailwindcss-animate": "1.0.7",
+        "typescript": "7.0.2"
+    }
+}

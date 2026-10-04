@@ -1,34 +1,33 @@
-import { orderBy } from '@signalco/js';
-import { Calendar, LayoutGrid } from '@signalco/ui-icons';
-import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import {
-    Tabs,
-    TabsContent,
-    TabsList,
-    TabsTrigger,
-} from '@signalco/ui-primitives/Tabs';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { orderBy } from '@gredice/js/arrays';
+import { PageHeader } from '@gredice/ui/PageHeader';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Tabs } from '@gredice/ui/Tabs';
+import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { PageFilterInputNoSSR } from '../../components/shared/PageFilterInputNoSSR';
-import { PageHeader } from '../../components/shared/PageHeader';
 import { StructuredDataScript } from '../../components/shared/seo/StructuredDataScript';
+import { getPlantSortsData } from '../../lib/plants/getPlantSortsData';
 import { getPlantsData } from '../../lib/plants/getPlantsData';
+import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
-import { merchantReturnPolicy } from '../../src/merchantReturnPolicy';
-import { PlantsCalendar } from './PlantsCalendar';
-import { PlantsGallery } from './PlantsGallery';
+import { publicHtmlGrowthFixture } from '../../tests/publicHtmlGrowthFixture';
+import { CalendarInfoChip } from './CalendarInfoChip';
+import { PlantsCatalogue } from './PlantsCatalogue';
 import { PlantsSeedTimeFilterToggle } from './PlantsSeedTimeFilterToggle';
+import { PlantsViewTabs } from './PlantsViewTabs';
+import { toPlantCatalogue } from './plantCatalogue';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createPublicMetadata({
     title: 'Biljke',
     description:
         'Za tebe smo pripremili opširnu listu biljaka koje možeš pronaći u našem asortimanu.',
-};
+    path: KnownPages.Plants,
+    category: 'Katalog biljaka',
+});
 
 export default async function PlantsPage({
     searchParams,
@@ -36,14 +35,25 @@ export default async function PlantsPage({
     const params = await searchParams;
     const viewParam = params.pregled;
     const view = Array.isArray(viewParam) ? viewParam[0] : viewParam;
-    const search = params.pretraga;
+    const search = Array.isArray(params.pretraga)
+        ? (params.pretraga[0] ?? '')
+        : (params.pretraga ?? '');
     const seedTimeFilter = params.vrijemeZaSijanje;
-    const isSeedTimeFilterEnabled =
-        (Array.isArray(seedTimeFilter) ? seedTimeFilter[0] : seedTimeFilter) ===
-        '1';
-    const entities = await getPlantsData();
+    const seedTimeFilterValue = Array.isArray(seedTimeFilter)
+        ? (seedTimeFilter[0] ?? '')
+        : (seedTimeFilter ?? '');
+    const isSeedTimeFilterEnabled = seedTimeFilterValue === '1';
+    const [entities, sorts] = await Promise.all([
+        getPlantsData(),
+        getPlantSortsData(),
+    ]);
     const isCanonicalView = !search && !isSeedTimeFilterEnabled;
-    const sortedEntities = orderBy(entities ?? [], (a, b) =>
+    const catalogue = toPlantCatalogue(entities, sorts);
+    const plants =
+        process.env.GREDICE_PLAYWRIGHT_CATALOGUE_GROWTH_FIXTURE === 'true'
+            ? publicHtmlGrowthFixture(catalogue)
+            : catalogue;
+    const sortedEntities = orderBy(plants, (a, b) =>
         a.information.name.localeCompare(b.information.name),
     );
     return (
@@ -58,22 +68,11 @@ export default async function PlantsPage({
                             '@type': 'ListItem',
                             position: index + 1,
                             item: {
-                                '@type': 'Product',
+                                '@type': 'Thing',
+                                '@id': `https://www.gredice.com${KnownPages.Plant(plant.information.name)}`,
                                 name: plant.information.name,
                                 url: `https://www.gredice.com${KnownPages.Plant(plant.information.name)}`,
                                 image: plant.image?.cover?.url,
-                                offers:
-                                    typeof plant.prices?.perPlant === 'number'
-                                        ? {
-                                              '@type': 'Offer',
-                                              price: plant.prices.perPlant.toFixed(
-                                                  2,
-                                              ),
-                                              priceCurrency: 'EUR',
-                                              hasMerchantReturnPolicy:
-                                                  merchantReturnPolicy,
-                                          }
-                                        : undefined,
                             },
                         })),
                     }}
@@ -88,57 +87,53 @@ export default async function PlantsPage({
                     <PageFilterInputNoSSR
                         searchParamName="pretraga"
                         fieldName="plant-search"
+                        initialValue={search}
                         className="lg:flex items-start justify-end"
                     />
                 </Suspense>
             </PageHeader>
-            <Suspense>
-                <Tabs value={view} defaultValue="popis" className="w-full">
-                    <div className="mt-2 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                        <TabsList className="grid grid-cols-2 w-fit border">
-                            <Link
-                                href={`?pregled=popis${search ? `&pretraga=${search}` : ''}${isSeedTimeFilterEnabled ? '&vrijemeZaSijanje=1' : ''}`}
-                                prefetch
-                            >
-                                <TabsTrigger value="popis" className="w-full">
-                                    <Row spacing={1} className="cursor-default">
-                                        <LayoutGrid className="size-5" />
-                                        <span>Popis</span>
-                                    </Row>
-                                </TabsTrigger>
-                            </Link>
-                            <Link
-                                href={`?pregled=kalendar${search ? `&pretraga=${search}` : ''}${isSeedTimeFilterEnabled ? '&vrijemeZaSijanje=1' : ''}`}
-                                prefetch
-                            >
-                                <TabsTrigger
-                                    value="kalendar"
-                                    className="w-full"
-                                >
-                                    <Row spacing={1} className="cursor-default">
-                                        <Calendar className="size-5" />
-                                        <span>Kalendar</span>
-                                    </Row>
-                                </TabsTrigger>
-                            </Link>
-                        </TabsList>
+            <Tabs value={view} defaultValue="popis" className="w-full">
+                <div className="mt-2 flex flex-col gap-2 md:flex-row md:items-center">
+                    <PlantsViewTabs
+                        search={search}
+                        seedTimeOnly={isSeedTimeFilterEnabled}
+                    />
+                    {view === 'kalendar' && <CalendarInfoChip />}
+                    <div className="flex flex-col gap-2 md:ml-auto md:flex-row md:items-center">
                         <Suspense>
-                            <PlantsSeedTimeFilterToggle />
+                            <PlantsSeedTimeFilterToggle
+                                initialValue={seedTimeFilterValue}
+                            />
                         </Suspense>
                     </div>
-                    <TabsContent value="popis" className="mt-2">
-                        <PlantsGallery plants={entities} />
-                    </TabsContent>
-                    <TabsContent value="kalendar" className="mt-2">
-                        <Card>
-                            <CardOverflow>
-                                <PlantsCalendar plants={entities} />
-                            </CardOverflow>
-                        </Card>
-                    </TabsContent>
-                </Tabs>
-            </Suspense>
-            <Row spacing={2} className="mt-12">
+                </div>
+                <PlantsCatalogue
+                    plants={plants}
+                    initialSearch={search}
+                    initialSeedTimeFilter={seedTimeFilterValue}
+                />
+            </Tabs>
+            <Typography level="body1" className="mt-6">
+                Za objašnjenja radnji i regionalnih termina otvori{' '}
+                <Link
+                    href={KnownPages.SowingCalendar}
+                    className="font-medium text-primary underline"
+                >
+                    kalendar sjetve i sadnje za kontinentalnu Hrvatsku
+                </Link>
+                .
+            </Typography>
+            <Typography level="body1" className="mt-8">
+                Odaberi što želiš uzgajati, a zatim provjeri kako funkcionira{' '}
+                <Link
+                    className="font-medium text-primary underline"
+                    href={KnownPages.DeliveryZagreb}
+                >
+                    dostava povrća u Zagrebu iz tvoje gredice
+                </Link>
+                .
+            </Typography>
+            <Row spacing={4} className="mt-12">
                 <Typography level="body1">
                     Sviđa ti se odabir ili nema biljke koja te zanima?
                 </Typography>

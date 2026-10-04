@@ -1,8 +1,7 @@
 'use client';
 
-import { Duplicate } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Row } from '@signalco/ui-primitives/Row';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Duplicate } from '@gredice/ui/icons';
 import type { MouseEvent } from 'react';
 import { useState } from 'react';
 
@@ -35,20 +34,21 @@ export function CopySummaryButton({
     };
 
     return (
-        <Row spacing={1}>
-            <Button
-                title="Kopiraj sažetak u međuspremnik"
+        <>
+            <IconButton
+                title={copied ? 'Sažetak kopiran' : 'Kopiraj sažetak'}
                 onClick={handleCopy}
-                variant="link"
-                startDecorator={<Duplicate className="size-4 shrink-0" />}
+                variant="plain"
+                size="xs"
+                color={copied ? 'success' : 'neutral'}
                 disabled={disabled}
             >
-                Kopiraj sažetak
-            </Button>
-            {copied && (
-                <span className="text-sm text-green-500">Kopirano!</span>
-            )}
-        </Row>
+                <Duplicate className="size-4 shrink-0" />
+            </IconButton>
+            <span className="sr-only" aria-live="polite">
+                {copied ? 'Kopirano!' : ''}
+            </span>
+        </>
     );
 }
 

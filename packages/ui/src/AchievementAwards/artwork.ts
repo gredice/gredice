@@ -1,0 +1,145 @@
+/// <reference types="next/image-types/global" />
+import type { AchievementArtworkKey } from '@gredice/js/achievements';
+import type { StaticImageData } from 'next/image';
+import award28 from './assets/community-edit-1.webp';
+import award29 from './assets/community-edit-5.webp';
+import award30 from './assets/community-edit-10.webp';
+import award31 from './assets/community-edit-25.webp';
+import award32 from './assets/community-edit-50.webp';
+import award33 from './assets/community-edit-100.webp';
+import advancedCommunityEdit150 from './assets/community-edit-150.webp';
+import advancedCommunityEdit200 from './assets/community-edit-200.webp';
+import advancedCommunityEdit300 from './assets/community-edit-300.webp';
+import advancedCommunityEdit500 from './assets/community-edit-500.webp';
+import advancedCommunityEdit750 from './assets/community-edit-750.webp';
+import advancedCommunityEdit1000 from './assets/community-edit-1000.webp';
+import advancedCommunityEdit1500 from './assets/community-edit-1500.webp';
+import diversity3 from './assets/garden-diversity-3.webp';
+import diversity5 from './assets/garden-diversity-5.webp';
+import diversity10 from './assets/garden-diversity-10.webp';
+import diversity15 from './assets/garden-diversity-15.webp';
+import diversity20 from './assets/garden-diversity-20.webp';
+import advancedGardenDiversity25 from './assets/garden-diversity-25.webp';
+import advancedGardenDiversity30 from './assets/garden-diversity-30.webp';
+import advancedGardenDiversity35 from './assets/garden-diversity-35.webp';
+import advancedGardenDiversity40 from './assets/garden-diversity-40.webp';
+import advancedGardenDiversity45 from './assets/garden-diversity-45.webp';
+import award19 from './assets/harvest-1.webp';
+import award20 from './assets/harvest-10.webp';
+import award21 from './assets/harvest-20.webp';
+import award22 from './assets/harvest-50.webp';
+import award23 from './assets/harvest-100.webp';
+import award24 from './assets/harvest-150.webp';
+import award25 from './assets/harvest-200.webp';
+import award26 from './assets/harvest-300.webp';
+import award27 from './assets/harvest-500.webp';
+import award1 from './assets/planting-1.webp';
+import award2 from './assets/planting-10.webp';
+import award3 from './assets/planting-20.webp';
+import award4 from './assets/planting-50.webp';
+import award5 from './assets/planting-100.webp';
+import award6 from './assets/planting-150.webp';
+import award7 from './assets/planting-200.webp';
+import award8 from './assets/planting-300.webp';
+import award9 from './assets/planting-500.webp';
+import award0 from './assets/registration.webp';
+import autumn2026 from './assets/season-2026-autumn.webp';
+import spring2026 from './assets/season-2026-spring.webp';
+import summer2026 from './assets/season-2026-summer.webp';
+import seedToTable1 from './assets/seed-to-table-1.webp';
+import seedToTable5 from './assets/seed-to-table-5.webp';
+import seedToTable10 from './assets/seed-to-table-10.webp';
+import seedToTable25 from './assets/seed-to-table-25.webp';
+import seedToTable50 from './assets/seed-to-table-50.webp';
+import advancedSeedToTable75 from './assets/seed-to-table-75.webp';
+import advancedSeedToTable100 from './assets/seed-to-table-100.webp';
+import advancedSeedToTable150 from './assets/seed-to-table-150.webp';
+import advancedSeedToTable200 from './assets/seed-to-table-200.webp';
+import advancedSeedToTable300 from './assets/seed-to-table-300.webp';
+import award10 from './assets/watering-1.webp';
+import award11 from './assets/watering-10.webp';
+import award12 from './assets/watering-20.webp';
+import award13 from './assets/watering-50.webp';
+import award14 from './assets/watering-100.webp';
+import award15 from './assets/watering-150.webp';
+import award16 from './assets/watering-200.webp';
+import award17 from './assets/watering-300.webp';
+import award18 from './assets/watering-500.webp';
+import advancedWatering750 from './assets/watering-750.webp';
+import advancedWatering1000 from './assets/watering-1000.webp';
+import advancedWatering1500 from './assets/watering-1500.webp';
+import advancedWatering2000 from './assets/watering-2000.webp';
+
+export const achievementArtwork: Record<
+    AchievementArtworkKey,
+    string | StaticImageData
+> = {
+    registration: award0,
+    watering_750: advancedWatering750,
+    watering_1000: advancedWatering1000,
+    watering_1500: advancedWatering1500,
+    watering_2000: advancedWatering2000,
+    community_edit_150: advancedCommunityEdit150,
+    community_edit_200: advancedCommunityEdit200,
+    community_edit_300: advancedCommunityEdit300,
+    community_edit_500: advancedCommunityEdit500,
+    community_edit_750: advancedCommunityEdit750,
+    community_edit_1000: advancedCommunityEdit1000,
+    community_edit_1500: advancedCommunityEdit1500,
+    garden_diversity_25: advancedGardenDiversity25,
+    garden_diversity_30: advancedGardenDiversity30,
+    garden_diversity_35: advancedGardenDiversity35,
+    garden_diversity_40: advancedGardenDiversity40,
+    garden_diversity_45: advancedGardenDiversity45,
+    seed_to_table_75: advancedSeedToTable75,
+    seed_to_table_100: advancedSeedToTable100,
+    seed_to_table_150: advancedSeedToTable150,
+    seed_to_table_200: advancedSeedToTable200,
+    seed_to_table_300: advancedSeedToTable300,
+    planting_1: award1,
+    planting_10: award2,
+    planting_20: award3,
+    planting_50: award4,
+    planting_100: award5,
+    planting_150: award6,
+    planting_200: award7,
+    planting_300: award8,
+    planting_500: award9,
+    watering_1: award10,
+    watering_10: award11,
+    watering_20: award12,
+    watering_50: award13,
+    watering_100: award14,
+    watering_150: award15,
+    watering_200: award16,
+    watering_300: award17,
+    watering_500: award18,
+    harvest_1: award19,
+    harvest_10: award20,
+    harvest_20: award21,
+    harvest_50: award22,
+    harvest_100: award23,
+    harvest_150: award24,
+    harvest_200: award25,
+    harvest_300: award26,
+    harvest_500: award27,
+    community_edit_1: award28,
+    community_edit_5: award29,
+    community_edit_10: award30,
+    community_edit_25: award31,
+    community_edit_50: award32,
+    community_edit_100: award33,
+    garden_diversity_3: diversity3,
+    garden_diversity_5: diversity5,
+    garden_diversity_10: diversity10,
+    garden_diversity_15: diversity15,
+    garden_diversity_20: diversity20,
+    seed_to_table_1: seedToTable1,
+    seed_to_table_5: seedToTable5,
+    seed_to_table_10: seedToTable10,
+    seed_to_table_25: seedToTable25,
+    seed_to_table_50: seedToTable50,
+    season_2026_spring: spring2026,
+    season_2026_summer: summer2026,
+    season_2026_autumn: autumn2026,
+};

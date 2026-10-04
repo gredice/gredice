@@ -6,29 +6,9 @@ import {
     getNotificationsByAccount,
     getNotificationsByUser,
 } from '@gredice/storage';
-import { ImageViewer } from '@gredice/ui/ImageViewer';
-import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Markdown } from '@gredice/ui/Markdown';
-import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
-import { Delete } from '@signalco/ui-icons';
-import {
-    Card,
-    CardHeader,
-    CardOverflow,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { cx } from '@signalco/ui-primitives/cx';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Table } from '@signalco/ui-primitives/Table';
-import { Typography } from '@signalco/ui-primitives/Typography';
-import Link from 'next/link';
-import { KnownPages } from '../../src/KnownPages';
-import { NoDataPlaceholder } from '../shared/placeholders/NoDataPlaceholder';
-import { ServerActionIconButton } from '../shared/ServerActionIconButton';
-import { deleteNotification } from './(actions)/notificationActions';
-import { NotificationCreateModal } from './NotificationCreateModal';
+import { deleteNotifications } from './(actions)/notificationActions';
+import type { NotificationTableRow } from './NotificationsTable';
+import { NotificationsTableCardClient } from './NotificationsTableCardClient';
 
 type NotificationTableCardProps = {
     accountId?: string;
@@ -37,6 +17,7 @@ type NotificationTableCardProps = {
     raisedBedId?: number;
     showCard?: boolean;
     showAccountLabels?: boolean;
+    showAccountColumn?: boolean;
     limit?: number;
     page?: number;
     scroll?: boolean;
@@ -49,6 +30,7 @@ export async function NotificationsTableCard({
     raisedBedId,
     showCard = true,
     showAccountLabels = false,
+    showAccountColumn = true,
     limit = 10000,
     page = 0,
     scroll = false,
@@ -103,213 +85,56 @@ export async function NotificationsTableCard({
         },
     );
 
-    const tableContent = (
-        <Table>
-            <Table.Header>
-                <Table.Row>
-                    <Table.Head>Sadržaj</Table.Head>
-                    <Table.Head>Link</Table.Head>
-                    <Table.Head>Mjesto</Table.Head>
-                    <Table.Head>Račun</Table.Head>
-                    <Table.Head>Korisnik</Table.Head>
-                    <Table.Head>Pročitano</Table.Head>
-                    <Table.Head>Datum</Table.Head>
-                    <Table.Head>Akcije</Table.Head>
-                </Table.Row>
-            </Table.Header>
-            <Table.Body>
-                {filteredNotifications.length === 0 && (
-                    <Table.Row>
-                        <Table.Cell colSpan={8}>
-                            <NoDataPlaceholder>
-                                Nema obavjesti
-                            </NoDataPlaceholder>
-                        </Table.Cell>
-                    </Table.Row>
-                )}
-                {filteredNotifications.map((notification) => {
-                    const notificationRaisedBed = notification.raisedBedId
-                        ? raisedBeds.find(
-                              (rb) => rb.id === notification.raisedBedId,
-                          )
-                        : null;
-
-                    return (
-                        <Table.Row key={notification.id}>
-                            <Table.Cell className="max-w-xs whitespace-pre-wrap">
-                                <Row spacing={2}>
-                                    {notification.imageUrl && (
-                                        <div className="shrink-0 aspect-square">
-                                            <ImageViewer
-                                                src={notification.imageUrl}
-                                                alt={notification.header}
-                                                previewWidth={80}
-                                                previewHeight={80}
-                                            />
-                                        </div>
-                                    )}
-                                    <Stack>
-                                        <Typography level="body2" bold>
-                                            {notification.header}
-                                        </Typography>
-                                        <Markdown>
-                                            {notification.content}
-                                        </Markdown>
-                                    </Stack>
-                                </Row>
-                            </Table.Cell>
-                            <Table.Cell>
-                                {notification.linkUrl ? (
-                                    <a
-                                        href={notification.linkUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-primary underline"
-                                    >
-                                        Otvori
-                                    </a>
-                                ) : (
-                                    '-'
-                                )}
-                            </Table.Cell>
-                            <Table.Cell>
-                                <Stack>
-                                    {notification.gardenId && (
-                                        <Link
-                                            href={KnownPages.Garden(
-                                                notification.gardenId,
-                                            )}
-                                            className="text-primary underline"
-                                        >
-                                            {gardens.find(
-                                                (garden) =>
-                                                    garden.id ===
-                                                    notification.gardenId,
-                                            )?.name ?? 'N/A'}
-                                        </Link>
-                                    )}
-                                    {notification.raisedBedId && (
-                                        <RaisedBedLabel
-                                            physicalId={
-                                                notificationRaisedBed?.physicalId ??
-                                                null
-                                            }
-                                        />
-                                    )}
-                                    {notification.blockId && (
-                                        <span>
-                                            Blok: {notification.blockId}
-                                        </span>
-                                    )}
-                                </Stack>
-                            </Table.Cell>
-                            <Table.Cell>
-                                {notification.accountId ? (
-                                    <Link
-                                        href={KnownPages.Account(
-                                            notification.accountId,
-                                        )}
-                                        className="text-primary underline"
-                                    >
-                                        {accountLabels[
-                                            notification.accountId
-                                        ] || notification.accountId}
-                                    </Link>
-                                ) : (
-                                    '-'
-                                )}
-                            </Table.Cell>
-                            <Table.Cell>
-                                {notification.userId ? (
-                                    <Link
-                                        href={KnownPages.User(
-                                            notification.userId,
-                                        )}
-                                        className="text-primary underline"
-                                    >
-                                        {notification.userId}
-                                    </Link>
-                                ) : (
-                                    '-'
-                                )}
-                            </Table.Cell>
-                            <Table.Cell>
-                                <Chip
-                                    color={
-                                        notification.readAt
-                                            ? 'success'
-                                            : 'neutral'
-                                    }
-                                    size="sm"
-                                    className="w-fit"
-                                >
-                                    {notification.readAt
-                                        ? 'Pročitano'
-                                        : 'Nepročitano'}
-                                </Chip>
-                            </Table.Cell>
-                            <Table.Cell>
-                                <Typography level="body3">
-                                    <LocalDateTime>
-                                        {notification.createdAt}
-                                    </LocalDateTime>
-                                </Typography>
-                                {Math.abs(
-                                    new Date(notification.createdAt).getTime() -
-                                        new Date(
-                                            notification.timestamp,
-                                        ).getTime(),
-                                ) > 1000 && (
-                                    <Typography level="body3">
-                                        <LocalDateTime>
-                                            {notification.timestamp}
-                                        </LocalDateTime>
-                                    </Typography>
-                                )}
-                            </Table.Cell>
-                            <Table.Cell>
-                                {accountId && (
-                                    <ServerActionIconButton
-                                        title="Obriši obavijest"
-                                        onClick={deleteNotification.bind(
-                                            null,
-                                            accountId,
-                                            null,
-                                            notification.id,
-                                        )}
-                                    >
-                                        <Delete className="size-5" />
-                                    </ServerActionIconButton>
-                                )}
-                            </Table.Cell>
-                        </Table.Row>
-                    );
-                })}
-            </Table.Body>
-        </Table>
+    const gardenNames = new Map(
+        gardens.map((garden) => [garden.id, garden.name]),
+    );
+    const raisedBedPhysicalIds = new Map(
+        raisedBeds.map((raisedBed) => [raisedBed.id, raisedBed.physicalId]),
+    );
+    const tableRows: NotificationTableRow[] = filteredNotifications.map(
+        (notification) => ({
+            id: notification.id,
+            accountId: notification.accountId,
+            accountLabel: notification.accountId
+                ? accountLabels[notification.accountId] ||
+                  notification.accountId
+                : null,
+            blockId: notification.blockId,
+            category: notification.category,
+            content: notification.content,
+            createdAt: notification.createdAt.toISOString(),
+            gardenId: notification.gardenId,
+            gardenName: notification.gardenId
+                ? (gardenNames.get(notification.gardenId) ?? null)
+                : null,
+            header: notification.header,
+            imageUrl: notification.imageUrl,
+            linkUrl: notification.linkUrl,
+            raisedBedId: notification.raisedBedId,
+            raisedBedPhysicalId: notification.raisedBedId
+                ? (raisedBedPhysicalIds.get(notification.raisedBedId) ?? null)
+                : null,
+            readAt: notification.readAt?.toISOString() ?? null,
+            timestamp: notification.timestamp.toISOString(),
+            type: notification.type,
+            primaryChannel: notification.primaryChannel,
+            userId: notification.userId,
+        }),
     );
 
-    if (!showCard) {
-        return tableContent;
-    }
-
     return (
-        <Card>
-            <CardHeader>
-                <Row justifyContent="space-between">
-                    <CardTitle>Obavijesti</CardTitle>
-                    <NotificationCreateModal
-                        accountId={accountId}
-                        accounts={accounts.map((account) => ({
-                            id: account.id,
-                            label: accountLabels[account.id] || account.id,
-                        }))}
-                    />
-                </Row>
-            </CardHeader>
-            <CardOverflow className={cx(scroll && 'max-h-96 overflow-auto')}>
-                {tableContent}
-            </CardOverflow>
-        </Card>
+        <NotificationsTableCardClient
+            accountId={accountId}
+            accounts={accounts.map((account) => ({
+                id: account.id,
+                label: accountLabels[account.id] || account.id,
+            }))}
+            deleteContext={{ accountId, userId, gardenId, raisedBedId }}
+            deleteNotificationsAction={deleteNotifications}
+            notifications={tableRows}
+            scroll={scroll}
+            showAccountColumn={showAccountColumn}
+            showCard={showCard}
+        />
     );
 }

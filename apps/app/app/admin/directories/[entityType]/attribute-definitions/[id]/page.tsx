@@ -1,7 +1,7 @@
 import { getAttributeDefinition, getEntityTypeByName } from '@gredice/storage';
-import { Delete } from '@signalco/ui-icons';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Delete } from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
 import { notFound } from 'next/navigation';
 import {
     AdminDirectoryBreadcrumbs,
@@ -50,7 +50,7 @@ export default async function AttributeDefinitionPage({
     );
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             <AdminPageHeader
                 breadcrumbs={
                     <AdminDirectoryBreadcrumbs
@@ -79,14 +79,14 @@ export default async function AttributeDefinitionPage({
                 heading={label}
             />
             <form>
-                <Stack spacing={3}>
+                <Stack spacing={6}>
                     <FormInput
                         definition={definition}
                         name="category"
                         label="Kategorija"
                         value={category}
                     />
-                    <Row spacing={2}>
+                    <Row spacing={4}>
                         <FormInput
                             definition={definition}
                             name="label"
@@ -107,8 +107,8 @@ export default async function AttributeDefinitionPage({
                         value={definition.description || ''}
                         placeholder="-"
                     />
-                    <Stack spacing={2}>
-                        <Row spacing={2}>
+                    <Stack spacing={4}>
+                        <Row spacing={4}>
                             <FormDataTypeSelect
                                 definition={definition}
                                 value={dataType}

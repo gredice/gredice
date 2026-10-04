@@ -1,0 +1,1693 @@
+.page {
+    --cream: #f5f0e6;
+    --leaf: #a9e378;
+    --water: #79c9d8;
+    --sun: #edc36b;
+    --clay: #e9906c;
+    --sky: #86a7e4;
+    --lilac: #c9a8e8;
+    --platform: #8ebcff;
+    --code: #e0a7ff;
+    position: relative;
+    isolation: isolate;
+    display: grid;
+    width: 100%;
+    height: 100dvh;
+    min-height: 0;
+    grid-template-rows: auto 1fr auto;
+    overflow: hidden;
+    padding: clamp(1.2rem, 2.6vw, 2.5rem);
+    color: var(--cream);
+    background:
+        radial-gradient(
+            circle at 55% 47%,
+            rgb(81 135 68 / 0.24),
+            transparent 30rem
+        ),
+        radial-gradient(
+            circle at 8% 9%,
+            rgb(218 173 86 / 0.07),
+            transparent 24rem
+        ),
+        radial-gradient(
+            circle at 93% 90%,
+            rgb(83 141 156 / 0.09),
+            transparent 23rem
+        ),
+        #0e150f;
+}
+
+.page::before,
+.page::after {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    content: "";
+}
+
+.page::before {
+    background-image:
+        linear-gradient(rgb(255 255 255 / 0.024) 1px, transparent 1px),
+        linear-gradient(90deg, rgb(255 255 255 / 0.024) 1px, transparent 1px);
+    background-size: 4.5rem 4.5rem;
+    mask-image: linear-gradient(to bottom, #000, transparent 92%);
+}
+
+.page::after {
+    opacity: 0.18;
+    background-image: radial-gradient(
+        rgb(255 255 255 / 0.45) 0.5px,
+        transparent 0.5px
+    );
+    background-size: 7px 7px;
+    mask-image: radial-gradient(circle at center, #000, transparent 72%);
+}
+
+.header,
+.footer {
+    position: relative;
+    z-index: 20;
+    display: flex;
+    width: 100%;
+    max-width: 96rem;
+    align-items: center;
+    justify-content: space-between;
+    margin-inline: auto;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.logo {
+    width: auto;
+    opacity: 0.93;
+    filter: brightness(0) invert(1);
+}
+
+.brandLine {
+    width: 1px;
+    height: 1.6rem;
+    background: rgb(245 240 230 / 0.18);
+}
+
+.brandNote,
+.liveMark,
+.footer,
+.activityMeta,
+.nodeLabel,
+.networkLabel,
+.sourceNote,
+.sources,
+.viewControls,
+.soilLabel {
+    font-size: 0.67rem;
+    font-weight: 650;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+}
+
+.brandNote {
+    color: rgb(245 240 230 / 0.42);
+}
+
+.liveMark {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    color: rgb(245 240 230 / 0.57);
+}
+
+.liveDot {
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 999px;
+    background: var(--leaf);
+    box-shadow: 0 0 1.2rem var(--leaf);
+    animation: breathe 2.4s ease-in-out infinite;
+}
+
+.experience {
+    position: relative;
+    display: grid;
+    width: 100%;
+    max-width: 96rem;
+    min-height: 0;
+    grid-template-columns: minmax(20rem, 0.72fr) minmax(34rem, 1.28fr);
+    align-items: center;
+    margin-inline: auto;
+}
+
+.hero {
+    position: relative;
+    z-index: 12;
+    max-width: 38rem;
+    padding-left: clamp(0rem, 3vw, 3rem);
+}
+
+.eyebrow {
+    margin: 0 0 1.4rem;
+    color: var(--sun);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+}
+
+.hero h1 {
+    margin: 0;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(4.2rem, 6.4vw, 7.8rem);
+    font-weight: 400;
+    letter-spacing: -0.07em;
+    line-height: 0.86;
+}
+
+.hero h1 span {
+    display: block;
+    color: rgb(245 240 230 / 0.45);
+    font-style: italic;
+}
+
+.intro {
+    max-width: 28rem;
+    margin: 2rem 0 0;
+    color: rgb(245 240 230 / 0.48);
+    font-size: clamp(0.93rem, 1.15vw, 1.08rem);
+    line-height: 1.75;
+}
+
+.visualization {
+    position: relative;
+    height: 100%;
+    min-height: 0;
+}
+
+.visualization [data-category="garden"] {
+    color: var(--leaf);
+}
+
+.visualization [data-category="care"] {
+    color: var(--clay);
+}
+
+.visualization [data-category="journey"] {
+    color: var(--sun);
+}
+
+.visualization [data-category="community"] {
+    color: var(--lilac);
+}
+
+.visualization [data-category="exchange"] {
+    color: var(--water);
+}
+
+.visualization [data-category="platform"] {
+    color: var(--platform);
+}
+
+.visualization [data-category="code"] {
+    color: var(--code);
+}
+
+.visualization [data-source="vercel"] {
+    color: var(--platform);
+}
+
+.visualization [data-source="github"] {
+    color: var(--code);
+}
+
+.atmosphere {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.glowOne,
+.glowTwo,
+.glowThree {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(3.2rem);
+    animation: atmosphericDrift 14s ease-in-out infinite alternate;
+}
+
+.glowOne {
+    top: 17%;
+    left: 23%;
+    width: 14rem;
+    height: 14rem;
+    background: rgb(169 227 120 / 0.22);
+}
+
+.glowTwo {
+    right: 12%;
+    bottom: 18%;
+    width: 11rem;
+    height: 11rem;
+    background: rgb(121 201 216 / 0.19);
+    animation-delay: -4s;
+}
+
+.glowThree {
+    top: 26%;
+    right: 17%;
+    width: 8rem;
+    height: 8rem;
+    background: rgb(237 195 107 / 0.17);
+    animation-delay: -9s;
+}
+
+.sceneFrame {
+    position: absolute;
+    top: 48%;
+    left: 50%;
+    width: min(56vw, 50rem);
+    aspect-ratio: 1;
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+    animation: sceneReveal 1.35s cubic-bezier(0.2, 0.75, 0.2, 1) both;
+}
+
+.sceneFrame::before,
+.sceneFrame::after {
+    position: absolute;
+    inset: 7%;
+    z-index: -1;
+    border-radius: 50%;
+    pointer-events: none;
+    content: "";
+}
+
+.sceneFrame::before {
+    border: 1px solid rgb(245 240 230 / 0.065);
+    background: radial-gradient(
+        circle,
+        rgb(169 227 120 / 0.075),
+        transparent 67%
+    );
+}
+
+.sceneFrame::after {
+    inset: 16%;
+    box-shadow: 0 0 8rem rgb(169 227 120 / 0.1);
+}
+
+.orbitScene,
+.rainScene,
+.soilScene,
+.networkScene {
+    position: absolute;
+    inset: 0;
+    transition: opacity 1.8s ease;
+}
+
+/* Orbit view */
+
+.ringOuter,
+.ringMiddle,
+.ringInner {
+    position: absolute;
+    border-radius: 50%;
+    transform-origin: center;
+}
+
+.ringOuter {
+    inset: 2%;
+    border: 1px solid rgb(245 240 230 / 0.12);
+    border-left-color: rgb(169 227 120 / 0.4);
+    animation: rotate 38s linear infinite;
+}
+
+.ringMiddle {
+    inset: 17%;
+    border: 1px dashed rgb(245 240 230 / 0.16);
+    animation: rotateReverse 46s linear infinite;
+}
+
+.ringInner {
+    inset: 35%;
+    border: 1px solid rgb(169 227 120 / 0.28);
+    box-shadow:
+        0 0 0 2.6rem rgb(169 227 120 / 0.035),
+        0 0 0 5.2rem rgb(169 227 120 / 0.022);
+    animation: ringBreath 5.6s ease-in-out infinite;
+}
+
+.dataOrbit {
+    position: absolute;
+    border: 1px solid currentColor;
+    border-radius: 50%;
+    opacity: 0.15;
+}
+
+.dataOrbit:nth-child(3n) {
+    border-style: dashed;
+}
+
+.orbitComet {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: clamp(2.8rem, 8vw, 5.4rem);
+    height: 1px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, transparent, currentColor 82%, #fff);
+    filter: drop-shadow(0 0 0.48rem currentColor)
+        drop-shadow(0 0 1.1rem currentColor);
+    offset-anchor: 100% 50%;
+    offset-path: ellipse(50% 50% at 50% 50%);
+    offset-rotate: auto;
+    animation: streamOrbit 8.4s linear infinite;
+}
+
+.orbitComet::after {
+    position: absolute;
+    top: 50%;
+    right: -0.2rem;
+    width: 0.28rem;
+    height: 0.28rem;
+    border: 1px solid #fff;
+    border-radius: 50%;
+    background: currentColor;
+    box-shadow:
+        0 0 1.2rem currentColor,
+        0 0 2.8rem currentColor;
+    content: "";
+    transform: translateY(-50%);
+}
+
+.route {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 36%;
+    height: 1px;
+    overflow: hidden;
+    transform-origin: left center;
+    background: linear-gradient(90deg, rgb(255 255 255 / 0.34), transparent);
+}
+
+.route::after {
+    position: absolute;
+    top: 0;
+    left: -22%;
+    width: 22%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, currentColor, transparent);
+    box-shadow: 0 0 0.9rem currentColor;
+    content: "";
+    animation: travel 3.5s ease-in-out infinite;
+}
+
+.routeWater {
+    color: var(--water);
+    transform: rotate(-29deg);
+}
+
+.routeSun {
+    color: var(--sun);
+    transform: rotate(35deg);
+}
+
+.routeSun::after {
+    animation-delay: -1.2s;
+}
+
+.routeClay {
+    color: var(--clay);
+    transform: rotate(149deg);
+}
+
+.routeClay::after {
+    animation-delay: -2.1s;
+}
+
+.routeLeaf {
+    color: var(--leaf);
+    transform: rotate(213deg);
+}
+
+.routeLeaf::after {
+    animation-delay: -2.7s;
+}
+
+.core,
+.coreHalo {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.coreHalo {
+    width: 11rem;
+    height: 11rem;
+    border: 1px solid rgb(169 227 120 / 0.22);
+    background: rgb(169 227 120 / 0.06);
+    box-shadow: 0 0 5rem rgb(169 227 120 / 0.2);
+    animation: corePulse 3.8s ease-in-out infinite;
+}
+
+.core {
+    display: grid;
+    width: 6.7rem;
+    height: 6.7rem;
+    place-items: center;
+    border: 1px solid rgb(245 240 230 / 0.25);
+    background:
+        radial-gradient(circle at 46% 42%, currentColor, transparent 13%),
+        radial-gradient(circle at 50% 50%, currentColor, transparent 52%),
+        rgb(10 19 11 / 0.84);
+    box-shadow:
+        0 0 2.6rem currentColor,
+        0 0 5rem rgb(169 227 120 / 0.14),
+        0 1.6rem 5rem rgb(0 0 0 / 0.5),
+        inset 0 0 2rem rgb(245 240 230 / 0.08);
+    backdrop-filter: blur(1rem);
+}
+
+.core::before,
+.core::after {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    border-radius: 50%;
+    content: "";
+    transform: translate(-50%, -50%);
+}
+
+.core::before {
+    width: 2.8rem;
+    height: 2.8rem;
+    border: 1px solid currentColor;
+    opacity: 0.45;
+    box-shadow: 0 0 1.4rem currentColor;
+    animation: coreSignal 4.2s ease-in-out infinite;
+}
+
+.core::after {
+    width: 0.95rem;
+    height: 0.95rem;
+    background: radial-gradient(circle at 36% 32%, #fff, currentColor 54%);
+    box-shadow:
+        0 0 1.8rem currentColor,
+        0 0 4.5rem currentColor;
+}
+
+.coreLight {
+    position: absolute;
+    top: 21%;
+    left: 25%;
+    width: 0.38rem;
+    height: 0.38rem;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 0 2rem currentColor;
+    animation: satelliteDrift 5.4s ease-in-out infinite;
+}
+
+.node {
+    position: absolute;
+    width: 0.64rem;
+    height: 0.64rem;
+    border: 1px solid currentColor;
+    border-radius: 50%;
+    color: var(--leaf);
+    background: radial-gradient(
+        circle,
+        #fff 0 16%,
+        currentColor 20% 34%,
+        #0e150f 38%
+    );
+    box-shadow:
+        0 0 1.4rem currentColor,
+        0 0 2.6rem currentColor;
+}
+
+.nodePulse {
+    position: absolute;
+    inset: -0.52rem;
+    border: 1px solid currentColor;
+    border-radius: inherit;
+    opacity: 0;
+    animation: nodePulse 3.4s ease-out infinite;
+}
+
+.nodeLabel {
+    position: absolute;
+    top: 50%;
+    left: calc(100% + 0.85rem);
+    width: max-content;
+    color: rgb(245 240 230 / 0.36);
+    transform: translateY(-50%);
+}
+
+.nodeSeed {
+    top: 18%;
+    left: 22%;
+    color: var(--leaf);
+}
+
+.nodeRain {
+    top: 23%;
+    right: 16%;
+    color: var(--sun);
+}
+
+.nodeHands {
+    right: 12%;
+    bottom: 24%;
+    color: var(--clay);
+}
+
+.nodeRoad {
+    bottom: 12%;
+    left: 28%;
+    color: var(--water);
+}
+
+.nodeSky {
+    top: 48%;
+    left: 3%;
+    color: var(--lilac);
+}
+
+.nodePlatform {
+    top: 7%;
+    left: 49%;
+    color: var(--platform);
+}
+
+.nodeCode {
+    top: 48%;
+    left: 1%;
+    color: var(--code);
+}
+
+/* Rain view */
+
+.rainScene {
+    overflow: hidden;
+    border-radius: 50%;
+    mask-image: radial-gradient(circle, #000 0 64%, transparent 73%);
+}
+
+.rainCanopy {
+    position: absolute;
+    top: 8%;
+    left: 50%;
+    width: 72%;
+    height: 25%;
+    border-top: 1px solid rgb(245 240 230 / 0.13);
+    border-radius: 50%;
+    background: radial-gradient(
+        ellipse at top,
+        rgb(121 201 216 / 0.12),
+        transparent 62%
+    );
+    transform: translateX(-50%);
+}
+
+.rainColumns {
+    position: absolute;
+    inset: 7% 10% 13%;
+}
+
+.rainColumn {
+    position: absolute;
+    top: -32%;
+    width: 1px;
+    min-height: 5rem;
+    background: linear-gradient(transparent, currentColor 65%, #fff);
+    box-shadow:
+        0 0 1.5rem currentColor,
+        0 0 2.8rem currentColor;
+    animation: rainFall linear infinite;
+}
+
+.rainColumn::before {
+    position: absolute;
+    top: -1.5rem;
+    left: 0;
+    width: 1px;
+    height: 1rem;
+    background: currentColor;
+    content: "";
+    opacity: 0.3;
+}
+
+.rainPacket {
+    position: absolute;
+    right: -0.2rem;
+    bottom: -0.1rem;
+    width: 0.36rem;
+    height: 0.36rem;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow:
+        0 0 1.1rem currentColor,
+        0 0 2.5rem currentColor;
+}
+
+.rainHorizon {
+    position: absolute;
+    right: 13%;
+    bottom: 20%;
+    left: 13%;
+    height: 1px;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgb(245 240 230 / 0.22),
+        transparent
+    );
+}
+
+.rainHorizon::after {
+    position: absolute;
+    top: -1px;
+    left: -15%;
+    width: 15%;
+    height: 2px;
+    background: #fff;
+    box-shadow: 0 0 1rem var(--water);
+    content: "";
+    animation: horizonSweep 5s ease-in-out infinite;
+}
+
+.rainBloom {
+    position: absolute;
+    bottom: 12%;
+    left: 50%;
+    width: 1.1rem;
+    height: 1.1rem;
+    border: 1px solid currentColor;
+    border-radius: 50%;
+    box-shadow:
+        0 0 1.2rem currentColor,
+        0 0 4rem currentColor;
+    transform: translateX(-50%);
+    animation: rainBloom 4.6s ease-out infinite;
+}
+
+/* Soil view */
+
+.soilScene {
+    overflow: hidden;
+    mask-image: linear-gradient(90deg, transparent, #000 12% 88%, transparent);
+}
+
+.soilLayers {
+    position: absolute;
+    inset: 20% 7% 22%;
+    display: grid;
+    align-content: center;
+    gap: clamp(1.2rem, 3vw, 2.2rem);
+}
+
+.soilLayer {
+    position: relative;
+    height: 2.4rem;
+    color: var(--leaf);
+    transition:
+        opacity 800ms ease,
+        filter 800ms ease;
+}
+
+.soilLayer[data-active="false"] {
+    opacity: 0.54;
+}
+
+.soilLayer[data-active="true"] {
+    filter: drop-shadow(0 0 1.25rem currentColor);
+}
+
+.soilTrack {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    left: 0;
+    height: 1px;
+    overflow: hidden;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        currentColor 14% 86%,
+        transparent
+    );
+    opacity: 0.32;
+}
+
+.soilTrack::before,
+.soilTrack::after {
+    position: absolute;
+    right: 0;
+    left: 0;
+    height: 1px;
+    background: currentColor;
+    content: "";
+    opacity: 0.4;
+}
+
+.soilTrack::before {
+    top: -0.55rem;
+    mask-image: repeating-linear-gradient(
+        90deg,
+        #000 0 0.15rem,
+        transparent 0.15rem 1.2rem
+    );
+}
+
+.soilTrack::after {
+    top: 0.55rem;
+    mask-image: repeating-linear-gradient(
+        90deg,
+        transparent 0 0.8rem,
+        #000 0.8rem 1rem
+    );
+}
+
+.soilLabel {
+    position: absolute;
+    top: 50%;
+    right: calc(100% + 1rem);
+    color: rgb(245 240 230 / 0.25);
+    transform: translateY(-50%);
+}
+
+.soilPulse {
+    position: absolute;
+    top: calc(50% - 1px);
+    height: 2px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, transparent, currentColor 72%, #fff);
+    box-shadow:
+        0 0 1.2rem currentColor,
+        0 0 2.4rem currentColor;
+    animation: soilTravel linear infinite;
+}
+
+.soilContourOne,
+.soilContourTwo {
+    position: absolute;
+    border: 1px solid rgb(245 240 230 / 0.06);
+    border-radius: 50%;
+}
+
+.soilContourOne {
+    inset: 8% 3% 62%;
+    transform: rotate(-7deg);
+}
+
+.soilContourTwo {
+    inset: 67% 8% 6%;
+    transform: rotate(9deg);
+}
+
+.soilSeed {
+    position: absolute;
+    bottom: 10%;
+    left: 50%;
+    width: 1rem;
+    height: 1.3rem;
+    border: 1px solid var(--leaf);
+    border-radius: 70% 30% 68% 32%;
+    background: rgb(169 227 120 / 0.1);
+    box-shadow: 0 0 1.5rem rgb(169 227 120 / 0.45);
+    transform: translateX(-50%) rotate(34deg);
+    animation: seedBreath 3.8s ease-in-out infinite;
+}
+
+.soilRoot {
+    position: absolute;
+    bottom: 2%;
+    left: 50%;
+    width: 1px;
+    height: 8%;
+    background: linear-gradient(var(--leaf), transparent);
+    transform-origin: top;
+    animation: rootSway 4s ease-in-out infinite;
+}
+
+.soilRoot::before,
+.soilRoot::after {
+    position: absolute;
+    top: 36%;
+    width: 2.5rem;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--leaf));
+    content: "";
+    opacity: 0.28;
+}
+
+.soilRoot::before {
+    right: 0;
+    transform: rotate(24deg);
+    transform-origin: right;
+}
+
+.soilRoot::after {
+    left: 0;
+    transform: rotate(-26deg) scaleX(-1);
+    transform-origin: left;
+}
+
+/* Network view */
+
+.networkScene {
+    border-radius: 50%;
+    background: radial-gradient(
+        circle at center,
+        rgb(169 227 120 / 0.06),
+        transparent 52%
+    );
+}
+
+.networkPaths {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+.networkPath,
+.networkSignal {
+    fill: none;
+    stroke: currentColor;
+    vector-effect: non-scaling-stroke;
+}
+
+.networkPath {
+    stroke-width: 1;
+    opacity: 0.2;
+    transition:
+        opacity 800ms ease,
+        filter 800ms ease;
+}
+
+.networkPath[data-active="true"] {
+    opacity: 0.78;
+    filter: drop-shadow(0 0 0.8rem currentColor);
+}
+
+.networkSignal {
+    stroke-width: 2;
+    stroke-dasharray: 0.075 0.925;
+    stroke-linecap: round;
+    animation: networkTravel linear infinite;
+    filter: drop-shadow(0 0 0.55rem currentColor);
+}
+
+.networkNode {
+    position: absolute;
+    width: 0.82rem;
+    height: 0.82rem;
+    border: 1px solid currentColor;
+    border-radius: 50%;
+    background: #0e150f;
+    box-shadow:
+        0 0 1.5rem currentColor,
+        0 0 2.8rem currentColor;
+    transform: translate(-50%, -50%);
+    transition:
+        scale 700ms ease,
+        filter 700ms ease;
+}
+
+.networkNode[data-active="true"] {
+    filter: brightness(1.6);
+    scale: 1.45;
+}
+
+.networkPulse {
+    position: absolute;
+    inset: -0.75rem;
+    border: 1px solid currentColor;
+    border-radius: 50%;
+    opacity: 0;
+    animation: nodePulse 3.8s ease-out infinite;
+}
+
+.networkLabel {
+    position: absolute;
+    top: calc(100% + 0.9rem);
+    left: 50%;
+    width: max-content;
+    color: rgb(245 240 230 / 0.32);
+    transform: translateX(-50%);
+}
+
+.networkCore,
+.networkCoreHalo {
+    position: absolute;
+    top: 49%;
+    left: 50%;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.networkCoreHalo {
+    width: 10rem;
+    height: 10rem;
+    border: 1px solid rgb(245 240 230 / 0.14);
+    box-shadow: 0 0 4rem rgb(169 227 120 / 0.14);
+    animation: corePulse 4.6s ease-in-out infinite;
+}
+
+.networkCore {
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid currentColor;
+    background: radial-gradient(
+        circle,
+        #fff,
+        currentColor 35%,
+        transparent 72%
+    );
+    box-shadow:
+        0 0 1.8rem currentColor,
+        0 0 5.5rem currentColor;
+    animation: coreSignal 4.2s ease-in-out infinite;
+}
+
+/* Live caption and controls */
+
+.sources {
+    position: absolute;
+    top: 7%;
+    left: 2%;
+    z-index: 9;
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    color: rgb(245 240 230 / 0.38);
+}
+
+.sourceSignal {
+    display: flex;
+    align-items: center;
+    gap: 0.38rem;
+    transition:
+        color 500ms ease,
+        opacity 500ms ease,
+        filter 500ms ease;
+}
+
+.sourceSignal[data-source="gredice"] {
+    color: var(--leaf);
+}
+
+.sourceSignal[data-connected="false"] {
+    opacity: 0.2;
+}
+
+.sourceSignal[data-active="true"] {
+    color: currentColor;
+    filter: brightness(1.35);
+}
+
+.sourceSpark {
+    width: 0.32rem;
+    height: 0.32rem;
+    border: 1px solid currentColor;
+    border-radius: 50%;
+    background: transparent;
+}
+
+.sourceSignal[data-active="true"] .sourceSpark {
+    background: currentColor;
+    box-shadow:
+        0 0 0.8rem currentColor,
+        0 0 1.8rem currentColor;
+    animation: breathe 2.4s ease-in-out infinite;
+}
+
+.sourceNote {
+    position: absolute;
+    top: 7%;
+    right: 2%;
+    z-index: 8;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    color: rgb(245 240 230 / 0.37);
+    line-height: 1.5;
+}
+
+.sourceNote small {
+    display: block;
+    color: rgb(245 240 230 / 0.2);
+    font-size: inherit;
+}
+
+.sourceLine {
+    width: 2.8rem;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--sky));
+    box-shadow: 0 0 0.8rem var(--sky);
+}
+
+.activityCard {
+    position: absolute;
+    right: 3%;
+    bottom: 13%;
+    z-index: 9;
+    width: min(28rem, 74%);
+    padding: 1.15rem 0 0 1.25rem;
+    border-top: 1px solid rgb(245 240 230 / 0.13);
+    border-left: 1px solid rgb(245 240 230 / 0.13);
+    animation: activityArrive 0.9s cubic-bezier(0.2, 0.75, 0.2, 1) both;
+}
+
+.activityCard::before {
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    width: 3.5rem;
+    height: 1px;
+    background: currentColor;
+    box-shadow:
+        0 0 1.2rem currentColor,
+        0 0 2.4rem currentColor;
+    content: "";
+}
+
+.activityCard[data-state="quiet"] {
+    color: rgb(245 240 230 / 0.24);
+}
+
+.activityMeta {
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    align-items: center;
+    gap: 0.65rem;
+    color: currentColor;
+}
+
+.activitySpark {
+    width: 0.44rem;
+    height: 0.44rem;
+    border-radius: 50%;
+    background: currentColor;
+    box-shadow: 0 0 0.9rem currentColor;
+}
+
+.activityTrail {
+    position: relative;
+    height: 1px;
+    overflow: hidden;
+    background: linear-gradient(90deg, currentColor, transparent);
+    opacity: 0.28;
+}
+
+.activityTrail::after {
+    position: absolute;
+    inset: 0 auto 0 -18%;
+    width: 18%;
+    background: currentColor;
+    content: "";
+    animation: travel 2.8s ease-in-out infinite;
+}
+
+.activityTitle {
+    margin: 1.1rem 0 0;
+    color: var(--cream);
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(1.25rem, 2vw, 1.72rem);
+    letter-spacing: -0.02em;
+    line-height: 1.16;
+}
+
+.activityDetail {
+    margin: 0.72rem 0 0;
+    color: rgb(245 240 230 / 0.38);
+    font-size: 0.78rem;
+    line-height: 1.55;
+}
+
+.viewControls {
+    position: absolute;
+    bottom: 2.5%;
+    left: 3%;
+    z-index: 15;
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    color: rgb(245 240 230 / 0.24);
+}
+
+.viewState {
+    white-space: nowrap;
+}
+
+.viewButtons {
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.24rem;
+    border: 1px solid rgb(245 240 230 / 0.09);
+    border-radius: 999px;
+    background: rgb(7 13 8 / 0.48);
+    backdrop-filter: blur(1rem);
+}
+
+.visuallyHidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.viewButton {
+    min-height: 1.8rem;
+    padding: 0.25rem 0.65rem;
+    border: 0;
+    border-radius: 999px;
+    color: rgb(245 240 230 / 0.35);
+    background: transparent;
+    cursor: pointer;
+    font: inherit;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    transition:
+        color 220ms ease,
+        background 220ms ease,
+        box-shadow 220ms ease;
+}
+
+.viewButton:hover,
+.viewButton:focus-visible {
+    color: rgb(245 240 230 / 0.78);
+    outline: none;
+    background: rgb(245 240 230 / 0.07);
+}
+
+.viewButton:focus-visible {
+    box-shadow: 0 0 0 2px var(--leaf);
+}
+
+.viewButton[aria-pressed="true"] {
+    color: #0e150f;
+    background: var(--cream);
+}
+
+.viewButton[data-current="true"][aria-pressed="false"] {
+    color: var(--leaf);
+}
+
+.footer {
+    color: rgb(245 240 230 / 0.25);
+    line-height: 1.5;
+}
+
+.footer p {
+    margin: 0;
+}
+
+.footerWhisper {
+    color: rgb(169 227 120 / 0.4);
+}
+
+.visualization[data-activity-state="quiet"] .orbitScene,
+.visualization[data-activity-state="quiet"] .rainScene,
+.visualization[data-activity-state="quiet"] .soilScene,
+.visualization[data-activity-state="quiet"] .networkScene {
+    opacity: 0.3;
+}
+
+.visualization[data-activity-state="quiet"] .orbitComet,
+.visualization[data-activity-state="quiet"] .route::after,
+.visualization[data-activity-state="quiet"] .nodePulse,
+.visualization[data-activity-state="quiet"] .core::before,
+.visualization[data-activity-state="quiet"] .coreLight,
+.visualization[data-activity-state="quiet"] .rainColumn,
+.visualization[data-activity-state="quiet"] .rainHorizon::after,
+.visualization[data-activity-state="quiet"] .rainBloom,
+.visualization[data-activity-state="quiet"] .soilPulse,
+.visualization[data-activity-state="quiet"] .networkSignal,
+.visualization[data-activity-state="quiet"] .networkPulse,
+.activityCard[data-state="quiet"] .activityTrail::after {
+    animation-play-state: paused;
+}
+
+@keyframes breathe {
+    0%,
+    100% {
+        opacity: 0.5;
+        transform: scale(0.82);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.12);
+    }
+}
+
+@keyframes atmosphericDrift {
+    from {
+        opacity: 0.45;
+        transform: translate3d(-1rem, -0.7rem, 0) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translate3d(1rem, 0.7rem, 0) scale(1.15);
+    }
+}
+
+@keyframes sceneReveal {
+    0% {
+        opacity: 0;
+        filter: blur(1.2rem);
+        clip-path: inset(47% 0 47% 0);
+        scale: 0.96;
+    }
+    55% {
+        opacity: 0.75;
+        clip-path: inset(18% 0 18% 0);
+    }
+    100% {
+        opacity: 1;
+        filter: blur(0);
+        clip-path: inset(0);
+        scale: 1;
+    }
+}
+
+@keyframes rotate {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes rotateReverse {
+    to {
+        transform: rotate(-360deg);
+    }
+}
+
+@keyframes ringBreath {
+    0%,
+    100% {
+        opacity: 0.38;
+        transform: scale(0.96);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.04);
+    }
+}
+
+@keyframes corePulse {
+    0%,
+    100% {
+        opacity: 0.28;
+        transform: translate(-50%, -50%) scale(0.84);
+    }
+    50% {
+        opacity: 0.75;
+        transform: translate(-50%, -50%) scale(1.08);
+    }
+}
+
+@keyframes coreSignal {
+    0%,
+    100% {
+        opacity: 0.24;
+        transform: translate(-50%, -50%) scale(0.72);
+    }
+    50% {
+        opacity: 0.9;
+        transform: translate(-50%, -50%) scale(1.16);
+    }
+}
+
+@keyframes satelliteDrift {
+    0%,
+    100% {
+        opacity: 0.35;
+        transform: translate3d(-0.2rem, 0.15rem, 0) scale(0.7);
+    }
+    50% {
+        opacity: 1;
+        transform: translate3d(0.35rem, -0.25rem, 0) scale(1.1);
+    }
+}
+
+@keyframes nodePulse {
+    0% {
+        opacity: 0.7;
+        transform: scale(0.35);
+    }
+    75%,
+    100% {
+        opacity: 0;
+        transform: scale(1.8);
+    }
+}
+
+@keyframes travel {
+    0% {
+        left: -22%;
+    }
+    100% {
+        left: 105%;
+    }
+}
+
+@keyframes streamOrbit {
+    0% {
+        opacity: 0;
+        offset-distance: 0%;
+    }
+    7% {
+        opacity: 0.95;
+    }
+    72% {
+        opacity: 0.95;
+    }
+    88%,
+    100% {
+        opacity: 0;
+        offset-distance: 100%;
+    }
+}
+
+@keyframes rainFall {
+    0% {
+        filter: blur(0.04rem);
+        transform: translateY(-70%);
+    }
+    78% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+        filter: blur(0);
+        transform: translateY(320%);
+    }
+}
+
+@keyframes horizonSweep {
+    0% {
+        left: -15%;
+        opacity: 0;
+    }
+    12%,
+    78% {
+        opacity: 1;
+    }
+    100% {
+        left: 100%;
+        opacity: 0;
+    }
+}
+
+@keyframes rainBloom {
+    0%,
+    100% {
+        opacity: 0;
+        transform: translateX(-50%) scale(0.2);
+    }
+    18% {
+        opacity: 0.9;
+    }
+    72% {
+        opacity: 0;
+        transform: translateX(-50%) scale(7);
+    }
+}
+
+@keyframes soilTravel {
+    0% {
+        opacity: 0;
+        transform: translateX(-140%);
+    }
+    15%,
+    72% {
+        opacity: 0.9;
+    }
+    100% {
+        opacity: 0;
+        transform: translateX(430%);
+    }
+}
+
+@keyframes seedBreath {
+    0%,
+    100% {
+        opacity: 0.5;
+        scale: 0.88;
+    }
+    50% {
+        opacity: 1;
+        scale: 1.08;
+    }
+}
+
+@keyframes rootSway {
+    0%,
+    100% {
+        opacity: 0.35;
+        transform: rotate(-3deg);
+    }
+    50% {
+        opacity: 0.8;
+        transform: rotate(4deg);
+    }
+}
+
+@keyframes networkTravel {
+    from {
+        stroke-dashoffset: 1;
+    }
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+@keyframes activityArrive {
+    from {
+        opacity: 0;
+        filter: blur(0.4rem);
+        transform: translate3d(1.5rem, 0.8rem, 0);
+    }
+    to {
+        opacity: 1;
+        filter: blur(0);
+        transform: translate3d(0, 0, 0);
+    }
+}
+
+@media (max-width: 1100px) {
+    .experience {
+        grid-template-columns: minmax(18rem, 0.7fr) minmax(30rem, 1.3fr);
+    }
+
+    .hero h1 {
+        font-size: clamp(3.6rem, 6.5vw, 5.8rem);
+    }
+
+    .sceneFrame {
+        width: min(64vw, 43rem);
+    }
+
+    .viewState {
+        display: none;
+    }
+}
+
+@media (max-width: 820px) {
+    .page {
+        height: auto;
+        min-height: 100dvh;
+        overflow-y: auto;
+    }
+
+    .experience {
+        min-height: auto;
+        grid-template-columns: 1fr;
+        align-items: start;
+        padding-top: 4.5rem;
+    }
+
+    .hero {
+        max-width: 34rem;
+        padding-left: 0;
+    }
+
+    .hero h1 {
+        font-size: clamp(3.7rem, 13vw, 6rem);
+    }
+
+    .visualization {
+        min-height: 47rem;
+        margin-top: -1rem;
+    }
+
+    .sceneFrame {
+        top: 43%;
+        width: min(94vw, 42rem);
+    }
+
+    .activityCard {
+        right: 0;
+        bottom: 12%;
+        width: min(29rem, 88%);
+    }
+
+    .sourceNote {
+        top: 8%;
+        right: 0;
+    }
+
+    .sources {
+        top: 8%;
+        left: 0;
+    }
+
+    .viewControls {
+        right: 0;
+        bottom: 2%;
+        left: auto;
+    }
+
+    .footer {
+        padding-top: 1rem;
+        padding-bottom: 0.5rem;
+    }
+}
+
+@media (max-width: 520px) {
+    .page {
+        padding: 1.15rem;
+    }
+
+    .brandLine,
+    .brandNote {
+        display: none;
+    }
+
+    .liveMark {
+        font-size: 0.6rem;
+        letter-spacing: 0.12em;
+    }
+
+    .experience {
+        padding-top: 3.5rem;
+    }
+
+    .eyebrow {
+        margin-bottom: 1rem;
+    }
+
+    .hero h1 {
+        font-size: clamp(3.5rem, 18vw, 5rem);
+    }
+
+    .intro {
+        max-width: 22rem;
+        margin-top: 1.4rem;
+        font-size: 0.9rem;
+    }
+
+    .visualization {
+        min-height: 42rem;
+        margin-top: 0;
+    }
+
+    .sceneFrame {
+        top: 39%;
+        width: 112vw;
+    }
+
+    .coreHalo,
+    .networkCoreHalo {
+        width: 8rem;
+        height: 8rem;
+    }
+
+    .core {
+        width: 5.5rem;
+        height: 5.5rem;
+    }
+
+    .nodeLabel,
+    .networkLabel,
+    .soilLabel {
+        display: none;
+    }
+
+    .sourceNote {
+        display: none;
+    }
+
+    .sources {
+        top: 1%;
+        left: 0;
+        gap: 0.65rem;
+        font-size: 0.56rem;
+    }
+
+    .activityCard {
+        bottom: 5.2rem;
+        width: 94%;
+        padding-left: 1rem;
+    }
+
+    .activityTitle {
+        font-size: 1.32rem;
+    }
+
+    .activityDetail {
+        max-width: 20rem;
+    }
+
+    .viewControls {
+        right: auto;
+        bottom: 1.2rem;
+        left: 0;
+        width: 100%;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+    .viewButtons {
+        min-width: max-content;
+    }
+
+    .viewButton {
+        min-height: 2rem;
+        padding-inline: 0.58rem;
+        font-size: 0.56rem;
+    }
+
+    .footer {
+        align-items: flex-end;
+        gap: 1rem;
+        font-size: 0.56rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .page *,
+    .page *::before,
+    .page *::after {
+        scroll-behavior: auto;
+        animation-duration: 0.001ms;
+        animation-iteration-count: 1;
+    }
+}

@@ -1,8 +1,19 @@
+import { bustScheduleCache } from '../cache/scheduleCache';
+import { storage } from '../storage';
 import { knownEvents } from './events/knownEvents';
 import { createEvent } from './eventsRepo';
 import { createOperation, getOperations } from './operationsRepo';
+import { acquireScheduleTaskAdvisoryLock } from './scheduleTaskTransactionsRepo';
 
 export const FREE_WATERING_OPERATION_ID = 274;
+export const RAISED_BED_WATERING_50L_OPERATION_ID = 167;
+
+const wateringOperationLitersById = new Map([
+    [FREE_WATERING_OPERATION_ID, 20],
+    [RAISED_BED_WATERING_50L_OPERATION_ID, 50],
+]);
+const postTransplantWateringDays = 2;
+const postTransplantWateringMinExistingLiters = 50;
 
 type SeasonalSowingOffer = {
     freeWaterings: number;
@@ -36,33 +47,56 @@ function getSeasonalSowingOffer(date: Date): SeasonalSowingOffer | null {
     return null;
 }
 
+function toUtcDayKey(date: Date) {
+    return date.toISOString().slice(0, 10);
+}
+
+function getScheduledWateringDayKeys(
+    operations: Awaited<ReturnType<typeof getOperations>>,
+) {
+    return new Set(
+        operations.flatMap((operation) => {
+            if (
+                operation.entityId !== FREE_WATERING_OPERATION_ID ||
+                operation.status === 'canceled' ||
+                operation.status === 'failed' ||
+                !operation.scheduledDate
+            ) {
+                return [];
+            }
+
+            return [toUtcDayKey(operation.scheduledDate)];
+        }),
+    );
+}
+
+function getScheduledWateringLitersByDayKey(
+    operations: Awaited<ReturnType<typeof getOperations>>,
+) {
+    const litersByDayKey = new Map<string, number>();
+
+    for (const operation of operations) {
+        const liters = wateringOperationLitersById.get(operation.entityId);
+        if (
+            !liters ||
+            operation.status === 'canceled' ||
+            operation.status === 'failed' ||
+            !operation.scheduledDate
+        ) {
+            continue;
+        }
+
+        const dayKey = toUtcDayKey(operation.scheduledDate);
+        litersByDayKey.set(dayKey, (litersByDayKey.get(dayKey) ?? 0) + liters);
+    }
+
+    return litersByDayKey;
+}
+
 function addDays(date: Date, days: number) {
     const nextDate = new Date(date);
     nextDate.setUTCDate(nextDate.getUTCDate() + days);
     return nextDate;
-}
-
-function getLatestScheduledFreeWateringDate(
-    operations: Awaited<ReturnType<typeof getOperations>>,
-    now: Date,
-) {
-    const scheduledDates = operations.flatMap((operation) => {
-        if (
-            operation.entityId !== FREE_WATERING_OPERATION_ID ||
-            operation.status === 'canceled' ||
-            operation.status === 'failed' ||
-            !operation.scheduledDate ||
-            operation.scheduledDate < now
-        ) {
-            return [];
-        }
-
-        return [operation.scheduledDate];
-    });
-
-    return scheduledDates.sort(
-        (left, right) => right.getTime() - left.getTime(),
-    )[0];
 }
 
 export async function queueSeasonalSowingOfferOperations({
@@ -81,31 +115,99 @@ export async function queueSeasonalSowingOfferOperations({
         return [];
     }
 
+    const result = await storage().transaction(async (tx) => {
+        await acquireScheduleTaskAdvisoryLock(
+            tx,
+            `seasonal-sowing-watering:${raisedBedId}`,
+        );
+        const existingOperations = await getOperations(
+            accountId,
+            gardenId,
+            raisedBedId,
+            undefined,
+            tx,
+        );
+
+        const scheduledWateringDayKeys =
+            getScheduledWateringDayKeys(existingOperations);
+
+        const createdOperationIds: number[] = [];
+        for (let index = 0; index < offer.freeWaterings; index += 1) {
+            const scheduledDate = addDays(
+                referenceDate,
+                index * offer.dayInterval,
+            );
+            const scheduledDayKey = toUtcDayKey(scheduledDate);
+            if (scheduledWateringDayKeys.has(scheduledDayKey)) {
+                continue;
+            }
+
+            const operationId = await createOperation(
+                {
+                    accountId,
+                    entityId: FREE_WATERING_OPERATION_ID,
+                    entityTypeName: 'operation',
+                    gardenId,
+                    raisedBedId,
+                },
+                tx,
+            );
+
+            await createEvent(
+                knownEvents.operations.scheduledV1(operationId.toString(), {
+                    scheduledDate: scheduledDate.toISOString(),
+                }),
+                tx,
+            );
+
+            scheduledWateringDayKeys.add(scheduledDayKey);
+            createdOperationIds.push(operationId);
+        }
+
+        return createdOperationIds;
+    });
+    await bustScheduleCache();
+    return result;
+}
+
+export async function queuePostTransplantWateringOperations({
+    accountId,
+    gardenId,
+    raisedBedId,
+    referenceDate = new Date(),
+}: {
+    accountId: string;
+    gardenId?: number;
+    raisedBedId: number;
+    referenceDate?: Date;
+}) {
     const existingOperations = await getOperations(
         accountId,
         gardenId,
         raisedBedId,
     );
 
-    const latestScheduledDate = getLatestScheduledFreeWateringDate(
-        existingOperations,
-        referenceDate,
-    );
-
-    const firstScheduleDate = latestScheduledDate
-        ? addDays(latestScheduledDate, offer.dayInterval)
-        : new Date(referenceDate);
+    const scheduledWateringLitersByDayKey =
+        getScheduledWateringLitersByDayKey(existingOperations);
 
     const createdOperationIds: number[] = [];
-    for (let index = 0; index < offer.freeWaterings; index += 1) {
-        const scheduledDate = addDays(
-            firstScheduleDate,
-            index * offer.dayInterval,
-        );
+    for (
+        let dayOffset = 1;
+        dayOffset <= postTransplantWateringDays;
+        dayOffset += 1
+    ) {
+        const scheduledDate = addDays(referenceDate, dayOffset);
+        const scheduledDayKey = toUtcDayKey(scheduledDate);
+        if (
+            (scheduledWateringLitersByDayKey.get(scheduledDayKey) ?? 0) >=
+            postTransplantWateringMinExistingLiters
+        ) {
+            continue;
+        }
 
         const operationId = await createOperation({
             accountId,
-            entityId: FREE_WATERING_OPERATION_ID,
+            entityId: RAISED_BED_WATERING_50L_OPERATION_ID,
             entityTypeName: 'operation',
             gardenId,
             raisedBedId,
@@ -117,6 +219,10 @@ export async function queueSeasonalSowingOfferOperations({
             }),
         );
 
+        scheduledWateringLitersByDayKey.set(
+            scheduledDayKey,
+            (scheduledWateringLitersByDayKey.get(scheduledDayKey) ?? 0) + 50,
+        );
         createdOperationIds.push(operationId);
     }
 

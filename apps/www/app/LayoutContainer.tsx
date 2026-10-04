@@ -1,6 +1,6 @@
 'use client';
 
-import { Container } from '@signalco/ui-primitives/Container';
+import { Container } from '@gredice/ui/Container';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 

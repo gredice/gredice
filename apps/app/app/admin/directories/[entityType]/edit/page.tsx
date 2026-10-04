@@ -1,8 +1,9 @@
 import {
+    getAttributeDefinitions,
     getEntityTypeByNameWithCategory,
     getEntityTypeCategories,
 } from '@gredice/storage';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Stack } from '@gredice/ui/Stack';
 import { notFound } from 'next/navigation';
 import {
     AdminDirectoryBreadcrumbs,
@@ -24,10 +25,25 @@ export default async function EditEntityTypePage({
         notFound();
     }
 
-    const categories = await getEntityTypeCategories();
+    const [categories, attributeDefinitions] = await Promise.all([
+        getEntityTypeCategories(),
+        getAttributeDefinitions(),
+    ]);
+    const inventorySourceAttributeOptions = attributeDefinitions
+        .filter(
+            (definition) =>
+                definition.dataType === `ref:${entityTypeName}` &&
+                definition.entityTypeName !== entityTypeName,
+        )
+        .map((definition) => ({
+            value: definition.id.toString(),
+            label: `${definition.entityType.label} / ${
+                definition.categoryDefinition?.label ?? definition.category
+            } / ${definition.label}`,
+        }));
 
     return (
-        <Stack spacing={4}>
+        <Stack spacing={8}>
             <AdminPageHeader
                 breadcrumbs={
                     <AdminDirectoryBreadcrumbs
@@ -41,6 +57,9 @@ export default async function EditEntityTypePage({
             <EntityTypeEditForm
                 entityType={entityType}
                 categories={categories}
+                inventorySourceAttributeOptions={
+                    inventorySourceAttributeOptions
+                }
             />
         </Stack>
     );

@@ -1,100 +1,92 @@
-import type { PlantStageName } from '@gredice/game';
-import { PLANT_STAGES } from '@gredice/game';
-import { ShovelIcon } from '@gredice/ui/ShovelIcon';
-import { slug } from '@signalco/js';
-import {
-    Droplet,
-    Leaf,
-    Sprout,
-    Store,
-    Tally3,
-    Upload,
-} from '@signalco/ui-icons';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { PLANT_STAGES } from '@gredice/js/plants';
+import { PageHeader } from '@gredice/ui/PageHeader';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
+import { CommunityEntitySuggestionButton } from '../../components/community-edits/CommunityEntitySuggestionButton';
+import { RelatedFaq } from '../../components/faq/RelatedFaq';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { PageFilterInput } from '../../components/shared/PageFilterInput';
-import { PageHeader } from '../../components/shared/PageHeader';
-import { NoDataPlaceholder } from '../../components/shared/placeholders/NoDataPlaceholder';
 import { StructuredDataScript } from '../../components/shared/seo/StructuredDataScript';
+import { getOperationPriceAvailability } from '../../lib/operationPricing';
 import { getOperationsData } from '../../lib/plants/getOperationsData';
+import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
 import { merchantReturnPolicy } from '../../src/merchantReturnPolicy';
-import { OperationCard } from './OperationCard';
-
-const stageIcons: Record<
-    PlantStageName,
-    React.ComponentType<{ className?: string }>
-> = {
-    soilPreparation: () => <Tally3 className="size-4 rotate-90 mt-1" />,
-    sowing: Sprout,
-    planting: ShovelIcon,
-    growth: Leaf,
-    maintenance: Leaf,
-    watering: Droplet,
-    flowering: Leaf,
-    harvest: Upload,
-    storage: Store,
-};
+import { OperationStagesNav } from './OperationStagesNav';
+import { OperationsList } from './OperationsList';
+import {
+    getAvailableOperationStages,
+    operationMatchesSearch,
+} from './operationFilters';
 
 const pageDescription = `Sve što trebaš znati o radnjama koje možeš obavljati u svojim gredicama.`;
-export const revalidate = 3600; // 1 hour
-export const metadata: Metadata = {
+export const revalidate = 43200; // 12 hours
+export const metadata: Metadata = createPublicMetadata({
     title: 'Radnje',
     description: pageDescription,
-};
+    path: KnownPages.Operations,
+    category: 'Vrtlarske radnje',
+});
 
 export default async function OperationsPage({
     searchParams,
 }: PageProps<'/radnje'>) {
     const params = await searchParams;
     const search = Array.isArray(params.pretraga)
-        ? params.pretraga[0]?.toLowerCase()
-        : params.pretraga?.toLowerCase();
+        ? (params.pretraga[0] ?? '')
+        : (params.pretraga ?? '');
     const operationsData = await getOperationsData();
-    const filteredOperations = operationsData?.filter((op) =>
-        op.information.label.toLowerCase().includes(search || ''),
+    const filteredOperations = operationsData.filter((operation) =>
+        operationMatchesSearch(operation, search),
     );
-
-    // Get unique stage names from filtered operations
-    const stageNamesInOperations = new Set<PlantStageName>(
-        filteredOperations
-            ?.map((op) => op.attributes.stage?.information?.name)
-            .filter((name): name is PlantStageName => name !== undefined) || [],
+    const publicOperations = filteredOperations.filter(
+        (operation) => operation.attributes.internal !== true,
     );
-
-    // Order stages according to PLANT_STAGES definition (canonical order)
-    const availableStages = PLANT_STAGES.filter((stage) =>
-        stageNamesInOperations.has(stage.name),
+    const availableStages = getAvailableOperationStages(publicOperations);
+    const suggestionStages = PLANT_STAGES.flatMap((stageDefinition) => {
+        const stage = operationsData.find(
+            (operation) =>
+                operation.attributes.stage?.information?.name ===
+                stageDefinition.name,
+        )?.attributes.stage;
+        return stage
+            ? [
+                  {
+                      id: stage.id,
+                      label: stage.information.label,
+                  },
+              ]
+            : [];
+    });
+    const orderedOperations = availableStages.flatMap((stage) =>
+        publicOperations
+            .filter(
+                (operation) =>
+                    operation.attributes.stage?.information?.name ===
+                    stage.name,
+            )
+            .sort((left, right) =>
+                left.information.label.localeCompare(right.information.label),
+            ),
     );
-    const stageOperations = new Map<
-        PlantStageName,
-        NonNullable<typeof filteredOperations>
-    >(
-        availableStages.map<
-            [PlantStageName, NonNullable<typeof filteredOperations>]
-        >((stage) => [
-            stage.name,
-            filteredOperations
-                ?.filter(
-                    (op) =>
-                        op.attributes.stage?.information?.name === stage.name,
-                )
-                .sort((a, b) =>
-                    a.information.label.localeCompare(b.information.label),
-                ) ?? [],
-        ]),
-    );
-    const orderedOperations = availableStages.flatMap(
-        (stage) => stageOperations.get(stage.name) ?? [],
-    );
+    const stageNavOperations = operationsData
+        .filter((operation) => operation.attributes.internal !== true)
+        .map((operation) => ({
+            information: { label: operation.information.label },
+            attributes: {
+                stage: {
+                    information: {
+                        name: operation.attributes.stage?.information?.name,
+                    },
+                },
+            },
+        }));
 
     return (
-        <Stack spacing={4}>
+        <Stack spacing={8}>
             <StructuredDataScript
                 data={{
                     '@context': 'https://schema.org',
@@ -105,91 +97,62 @@ export default async function OperationsPage({
                             '@type': 'ListItem',
                             position: index + 1,
                             item: {
-                                '@type': 'Product',
+                                '@type': 'Service',
                                 name: operation.information.label,
+                                category: 'Vrtlarska radnja',
                                 url: `https://www.gredice.com${KnownPages.Operation(operation.information.label)}`,
                                 image: operation.image?.cover?.url,
-                                offers: {
-                                    '@type': 'Offer',
-                                    price: operation.prices.perOperation.toFixed(
-                                        2,
-                                    ),
-                                    priceCurrency: 'EUR',
-                                    hasMerchantReturnPolicy:
-                                        merchantReturnPolicy,
+                                provider: {
+                                    '@type': 'Organization',
+                                    name: 'Gredice',
                                 },
+                                ...(getOperationPriceAvailability(operation) ===
+                                'available'
+                                    ? {
+                                          offers: {
+                                              '@type': 'Offer',
+                                              price: operation.prices.perOperation.toFixed(
+                                                  2,
+                                              ),
+                                              priceCurrency: 'EUR',
+                                              hasMerchantReturnPolicy:
+                                                  merchantReturnPolicy,
+                                          },
+                                      }
+                                    : {}),
                             },
                         }),
                     ),
                 }}
             />
-            <PageHeader header="Radnje" subHeader={pageDescription} padded>
-                <Suspense>
-                    <PageFilterInput
-                        searchParamName="pretraga"
-                        fieldName="operation-search"
-                        className="lg:flex items-start justify-end w-full"
+            <OperationStagesNav
+                operations={stageNavOperations}
+                initialSearch={search}
+                className="mt-8 md:mt-12"
+            />
+            <PageHeader header="Radnje" subHeader={pageDescription}>
+                <div className="flex w-full flex-col items-start gap-3 md:items-end">
+                    <CommunityEntitySuggestionButton
+                        kind="operation"
+                        publicPath={KnownPages.Operations}
+                        stages={suggestionStages}
                     />
-                </Suspense>
+                    <Suspense>
+                        <PageFilterInput
+                            searchParamName="pretraga"
+                            fieldName="operation-search"
+                            initialValue={search}
+                            className="lg:flex items-start justify-end w-full"
+                        />
+                    </Suspense>
+                </div>
             </PageHeader>
-            {availableStages.length > 0 && (
-                <Stack spacing={1}>
-                    <Typography level="body3">Kategorije</Typography>
-                    <Row spacing={1} className="flex-wrap">
-                        {availableStages.map((stage) => {
-                            const Icon = stageIcons[stage.name];
-                            return (
-                                <Chip
-                                    key={stage.name}
-                                    color="neutral"
-                                    href={`#${slug(stage.label)}`}
-                                    startDecorator={<Icon className="size-4" />}
-                                >
-                                    {stage.label}
-                                </Chip>
-                            );
-                        })}
-                    </Row>
-                </Stack>
-            )}
-            <Stack spacing={6}>
-                {!filteredOperations?.length && (
-                    <div className="border rounded py-4">
-                        <NoDataPlaceholder>
-                            Nema dostupnih radnji.
-                        </NoDataPlaceholder>
-                    </div>
-                )}
-                {availableStages.map((stage) => {
-                    const operationsForStage =
-                        stageOperations.get(stage.name) ?? [];
-                    const Icon = stageIcons[stage.name];
-                    return (
-                        <Stack
-                            key={stage.name}
-                            spacing={2}
-                            id={slug(stage.label)}
-                            className="scroll-mt-24"
-                        >
-                            <Row spacing={2}>
-                                <Icon className="size-5 shrink-0" />
-                                <Typography level="h5" component="h2">
-                                    {stage.label}
-                                </Typography>
-                            </Row>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                                {operationsForStage.map((operation) => (
-                                    <OperationCard
-                                        key={operation.id}
-                                        operation={operation}
-                                    />
-                                ))}
-                            </div>
-                        </Stack>
-                    );
-                })}
-            </Stack>
-            <Row spacing={2}>
+            <OperationsList
+                operationsData={operationsData}
+                initialSearch={search}
+            />
+            <RelatedFaq placement="operations" />
+            <Row spacing={4}>
                 <Typography level="body1">
                     Jesu li ti informacije o radnjama korisne?
                 </Typography>

@@ -1,14 +1,17 @@
 'use client';
 
 import type { BlockData } from '@gredice/client';
-import { BlockImage } from '@gredice/ui/BlockImage';
-import { useSearchParam } from '@signalco/hooks/useSearchParam';
-import { orderBy } from '@signalco/js';
-import { Gallery } from '@signalco/ui/Gallery';
-import { cx } from '@signalco/ui-primitives/cx';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { orderBy } from '@gredice/js/arrays';
+import { Gallery } from '@gredice/ui/Gallery';
+import { GameBlocksIcon, GameSunflowerIcon } from '@gredice/ui/GameIcons';
+import { Row } from '@gredice/ui/Row';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import { ItemCard } from '../../components/shared/ItemCard';
+import { PublicBlockImage as BlockImage } from '../../components/shared/PublicBlockImage';
+import { PublicEmptyState } from '../../components/shared/placeholders/PublicEmptyState';
+import { getBlockRouteAlias } from '../../lib/blocks/blockRoute';
+import { normalizeSearchText } from '../../lib/search/normalizeSearchText';
 import { KnownPages } from '../../src/KnownPages';
 
 function BlockGalleryItem(
@@ -19,7 +22,7 @@ function BlockGalleryItem(
         <ItemCard
             label={
                 <Row
-                    spacing={1}
+                    spacing={2}
                     justifyContent={cx(showPrices ? 'space-between' : 'center')}
                 >
                     <Typography>{entity.information.label}</Typography>
@@ -30,43 +33,51 @@ function BlockGalleryItem(
                                 level="body2"
                                 className="flex flex-row gap-2"
                             >
-                                <span>🌻</span>
+                                <GameSunflowerIcon className="size-5 shrink-0" />
                                 <span>{entity.prices.sunflowers}</span>
                             </Typography>
                         )}
                 </Row>
             }
-            href={KnownPages.Block(entity.information.label)}
+            href={KnownPages.Block(getBlockRouteAlias(entity))}
         >
             <BlockImage
                 blockName={entity.information.name}
                 fill
-                preload
-                sizes="(max-width: 768px) 50vw, (min-width: 768px) 33vw, (min-width: 1200px) 9vw"
+                sizes="(min-width: 1280px) 16vw, (min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
             />
         </ItemCard>
     );
 }
 
-export function BlockGallery({ blocks }: { blocks: BlockData[] | undefined }) {
-    const [search] = useSearchParam('pretraga');
+export function BlockGallery({
+    blocks,
+    hasOtherResults,
+    normalizedSearch,
+}: {
+    blocks: BlockData[] | undefined;
+    hasOtherResults: boolean;
+    normalizedSearch: string;
+}) {
     const filteredBlocks = orderBy(blocks ?? [], (a, b) =>
         a.information.name.localeCompare(b.information.label),
     )
         .filter(
             (blocks) =>
-                !search ||
-                blocks.information.label
-                    .toLowerCase()
-                    .includes(search.toLowerCase()),
+                !normalizedSearch ||
+                normalizeSearchText(blocks.information.label).includes(
+                    normalizedSearch,
+                ),
         )
         .map((blocks) => ({ ...blocks, id: blocks.id.toString() }));
 
     return (
         <>
-            {filteredBlocks.length === 0 && (
-                <Typography level="body2">Nema rezultata pretrage.</Typography>
-            )}
+            {filteredBlocks.length === 0 && !hasOtherResults ? (
+                <PublicEmptyState icon={GameBlocksIcon}>
+                    Nema rezultata pretrage.
+                </PublicEmptyState>
+            ) : null}
             <Gallery
                 gridHeader={''}
                 items={filteredBlocks}

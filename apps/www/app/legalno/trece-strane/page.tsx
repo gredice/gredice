@@ -1,14 +1,17 @@
+import { Container } from '@gredice/ui/Container';
+import { PageHeader } from '@gredice/ui/PageHeader';
+import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
-import { Container } from '@signalco/ui-primitives/Container';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
-import type { Metadata } from 'next';
-import { PageHeader } from '../../../components/shared/PageHeader';
+import { Typography } from '@gredice/ui/Typography';
+import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
+import { KnownPages } from '../../../src/KnownPages';
 
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
     title: 'Treće strane',
     description: 'Informacije o korištenim izvorima podataka trećih strana.',
-};
+    path: KnownPages.LegalThirdParty,
+    eyebrow: 'Pravni dokument',
+});
 
 const thirdPartyPlatforms = [
     {
@@ -75,7 +78,7 @@ const thirdPartyPlatforms = [
                 name: 'Vercel Analytics',
                 category: 'Web analitika',
                 description:
-                    'Alat za analitiku koji nam pomaže razumjeti kako korisnici koriste našu web stranicu.',
+                    'Alat za analitiku koji nam pomaže razumjeti korištenje naše web stranice.',
                 iconUrl: 'https://vercel.com/favicon.ico',
                 website: 'https://vercel.com',
             },
@@ -184,7 +187,7 @@ export default function UvjetiKoristenjaPage() {
                                                             {/** biome-ignore lint/performance/noImgElement: Favicons come from third-party domains that are not part of Next image config. */}
                                                             <img
                                                                 alt=""
-                                                                className="size-5 shrink-0 rounded-sm"
+                                                                className="size-5 shrink-0 rounded-xs"
                                                                 height={20}
                                                                 loading="lazy"
                                                                 referrerPolicy="no-referrer"
@@ -214,8 +217,8 @@ export default function UvjetiKoristenjaPage() {
                     <p>
                         Zadržavamo pravo izmjene ovih informacija u bilo kojem
                         trenutku, uključujući dodavanje ili uklanjanje platformi
-                        trećih strana. Ukoliko platforma nije navedena na ovoj
-                        stranici, molimo kontaktirajte nas na{' '}
+                        trećih strana. Ako platforma nije navedena na ovoj
+                        stranici, slobodno nas kontaktiraj na{' '}
                         <a href="mailto:kontakt@gredice.com">
                             kontakt@gredice.com
                         </a>

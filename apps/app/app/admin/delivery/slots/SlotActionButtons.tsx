@@ -1,16 +1,17 @@
 'use client';
 
 import type { SelectTimeSlot } from '@gredice/storage';
-import { Close } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Row } from '@signalco/ui-primitives/Row';
+import { Button } from '@gredice/ui/Button';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Close } from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
 import { useTransition } from 'react';
 import {
     archiveTimeSlotAction,
     closeTimeSlotAction,
     updateTimeSlotStatusAction,
 } from './actions';
+import { EditTimeSlotCloseAtModal } from './EditTimeSlotCloseAtModal';
 
 interface SlotActionButtonsProps {
     slot: SelectTimeSlot;
@@ -54,7 +55,9 @@ export function SlotActionButtons({ slot }: SlotActionButtonsProps) {
     const isPastSlot = new Date(slot.endAt) < new Date();
 
     return (
-        <Row spacing={1}>
+        <Row spacing={2}>
+            <EditTimeSlotCloseAtModal slot={slot} />
+
             {isScheduled && (
                 <IconButton
                     title="Zatvori"

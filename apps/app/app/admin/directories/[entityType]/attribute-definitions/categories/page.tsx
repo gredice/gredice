@@ -1,6 +1,6 @@
 import { getEntityTypeByName } from '@gredice/storage';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { notFound } from 'next/navigation';
 import {
     AdminDirectoryBreadcrumbs,
@@ -18,7 +18,7 @@ export default async function EntityTypeAttributeDefinitionCategoriesPage({
     }
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             <AdminPageHeader
                 breadcrumbs={
                     <AdminDirectoryBreadcrumbs
@@ -37,7 +37,7 @@ export default async function EntityTypeAttributeDefinitionCategoriesPage({
                 }
                 heading="Kategorije"
             />
-            <Stack spacing={2} className="py-8" alignItems="center">
+            <Stack spacing={4} className="py-8" alignItems="center">
                 <Typography level="body2" center>
                     Odaberite zapis ili kreirajte novi.
                 </Typography>

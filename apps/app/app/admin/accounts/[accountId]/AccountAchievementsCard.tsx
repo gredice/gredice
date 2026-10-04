@@ -1,17 +1,22 @@
 import { getAchievementDefinition } from '@gredice/js/achievements';
 import { getAccountAchievements } from '@gredice/storage';
-import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { AchievementAward } from '@gredice/ui/AchievementAwards';
 import {
     Card,
     CardContent,
     CardHeader,
     CardOverflow,
     CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { Divider } from '@signalco/ui-primitives/Divider';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Table } from '@signalco/ui-primitives/Table';
-import { Typography } from '@signalco/ui-primitives/Typography';
+} from '@gredice/ui/Card';
+import { Chip } from '@gredice/ui/Chip';
+import { GameSunflowerIcon } from '@gredice/ui/GameIcons';
+import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
+import {
+    scrollableTableCardClassName,
+    scrollableTableCardOverflowClassName,
+} from '../../../../components/admin/cards/tableCardLayout';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
 
 function statusLabel(status: string) {
@@ -38,101 +43,123 @@ export async function AccountAchievementsCard({
     );
 
     return (
-        <Card>
+        <Card className={scrollableTableCardClassName}>
             <CardHeader>
                 <CardTitle>Postignuća</CardTitle>
             </CardHeader>
             <CardContent>
-                <Stack spacing={1}>
+                <Stack spacing={2}>
                     <Typography level="body2">
                         Ukupno {achievements.length} postignuća evidentirano.
                     </Typography>
                 </Stack>
             </CardContent>
-            <CardOverflow>
-                <div className="max-h-80 overflow-auto">
-                    <Table>
-                        <Table.Header>
-                            <Table.Row>
-                                <Table.Head>Postignuće</Table.Head>
-                                <Table.Head>Status</Table.Head>
-                                <Table.Head>Nagrada</Table.Head>
-                                <Table.Head>Stečeno</Table.Head>
-                                <Table.Head>Odobreno</Table.Head>
-                            </Table.Row>
-                        </Table.Header>
-                        <Table.Body>
-                            {sorted.length === 0 && (
-                                <Table.Row>
-                                    <Table.Cell colSpan={5}>
-                                        <NoDataPlaceholder>
-                                            Nema zabilježenih postignuća
-                                        </NoDataPlaceholder>
-                                    </Table.Cell>
-                                </Table.Row>
-                            )}
-                            {sorted.map((achievement) => {
-                                const definition = getAchievementDefinition(
-                                    achievement.achievementKey,
-                                );
-                                const status = statusLabel(achievement.status);
-                                return (
-                                    <Table.Row key={achievement.id}>
-                                        <Table.Cell>
-                                            <Stack spacing={1}>
+            <CardOverflow className={scrollableTableCardOverflowClassName}>
+                {sorted.length === 0 ? (
+                    <div className="p-4">
+                        <NoDataPlaceholder>
+                            Nema zabilježenih postignuća
+                        </NoDataPlaceholder>
+                    </div>
+                ) : (
+                    <ul className="divide-y">
+                        {sorted.map((achievement) => {
+                            const definition = getAchievementDefinition(
+                                achievement.achievementKey,
+                            );
+                            const status = statusLabel(achievement.status);
+                            return (
+                                <li
+                                    key={achievement.id}
+                                    className="px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4"
+                                >
+                                    <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                        <div className="flex min-w-0 flex-1 items-start gap-3">
+                                            <AchievementAward
+                                                achievementKey={
+                                                    achievement.achievementKey
+                                                }
+                                                className="size-12 shrink-0"
+                                                aria-hidden
+                                            />
+                                            <Stack
+                                                spacing={1}
+                                                className="min-w-0 flex-1"
+                                            >
                                                 <Typography
                                                     level="body2"
                                                     semiBold
+                                                    className="min-w-0 break-words"
                                                 >
                                                     {definition?.title ??
                                                         achievement.achievementKey}
                                                 </Typography>
-                                                <Typography
-                                                    level="body3"
-                                                    secondary
-                                                >
-                                                    {definition?.description}
-                                                </Typography>
+                                                {definition?.description ? (
+                                                    <Typography
+                                                        level="body3"
+                                                        secondary
+                                                        className="min-w-0 break-words"
+                                                    >
+                                                        {definition.description}
+                                                    </Typography>
+                                                ) : null}
                                             </Stack>
-                                        </Table.Cell>
-                                        <Table.Cell>
-                                            <Typography
-                                                className={status.color}
-                                            >
-                                                {status.label}
-                                            </Typography>
-                                        </Table.Cell>
-                                        <Table.Cell>
-                                            🌻{' '}
-                                            {achievement.rewardSunflowers.toLocaleString(
-                                                'hr-HR',
-                                            )}
-                                        </Table.Cell>
-                                        <Table.Cell>
-                                            <LocalDateTime>
-                                                {achievement.earnedAt}
-                                            </LocalDateTime>
-                                        </Table.Cell>
-                                        <Table.Cell>
-                                            {achievement.approvedAt ? (
-                                                <LocalDateTime>
-                                                    {achievement.approvedAt}
-                                                </LocalDateTime>
-                                            ) : (
-                                                <Typography
-                                                    level="body3"
-                                                    secondary
+                                        </div>
+                                        <div className="flex shrink-0 flex-col gap-2 lg:items-end">
+                                            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+                                                <Chip
+                                                    size="sm"
+                                                    variant="soft"
+                                                    className={status.color}
                                                 >
-                                                    —
+                                                    {status.label}
+                                                </Chip>
+                                                <Chip
+                                                    color="neutral"
+                                                    size="sm"
+                                                    variant="outlined"
+                                                >
+                                                    <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />{' '}
+                                                    {achievement.rewardSunflowers.toLocaleString(
+                                                        'hr-HR',
+                                                    )}
+                                                </Chip>
+                                            </div>
+                                            <div className="flex flex-col gap-1 text-left lg:items-end lg:text-right">
+                                                <Typography
+                                                    component="div"
+                                                    level="body3"
+                                                    className="text-muted-foreground"
+                                                >
+                                                    Stečeno:{' '}
+                                                    <LocalDateTime>
+                                                        {achievement.earnedAt}
+                                                    </LocalDateTime>
                                                 </Typography>
-                                            )}
-                                        </Table.Cell>
-                                    </Table.Row>
-                                );
-                            })}
-                        </Table.Body>
-                    </Table>
-                </div>
+                                                <Typography
+                                                    component="div"
+                                                    level="body3"
+                                                    className="text-muted-foreground"
+                                                >
+                                                    Odobreno:{' '}
+                                                    {achievement.approvedAt ? (
+                                                        <LocalDateTime>
+                                                            {
+                                                                achievement.approvedAt
+                                                            }
+                                                        </LocalDateTime>
+                                                    ) : (
+                                                        '—'
+                                                    )}
+                                                </Typography>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                )}
             </CardOverflow>
         </Card>
     );

@@ -1,5 +1,5 @@
 import type { EmailStatus } from '@gredice/storage';
-import { Chip } from '@signalco/ui-primitives/Chip';
+import { Chip } from '@gredice/ui/Chip';
 
 function getStatusMetadata(status: EmailStatus) {
     switch (status) {
@@ -21,9 +21,5 @@ function getStatusMetadata(status: EmailStatus) {
 export function EmailStatusBadge({ status }: { status: EmailStatus }) {
     const { label, color } = getStatusMetadata(status);
 
-    return (
-        <Chip color={color} className="w-fit">
-            {label}
-        </Chip>
-    );
+    return <Chip color={color}>{label}</Chip>;
 }

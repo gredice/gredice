@@ -3,6 +3,7 @@
     "compilerOptions": {
         "lib": ["dom", "dom.iterable", "esnext"],
         "allowJs": true,
+        "allowImportingTsExtensions": true,
         "skipLibCheck": true,
         "strict": true,
         "noEmit": true,
@@ -15,11 +16,13 @@
         "jsx": "react-jsx",
         "incremental": true,
         "target": "ESNext",
+        "types": ["vite/client"],
         "paths": {
             "@apps/app/*": ["../app/*"],
             "@apps/farm/*": ["../farm/*"],
             "@apps/garden/*": ["../garden/*"],
-            "@apps/www/*": ["../www/*"]
+            "@apps/www/*": ["../www/*"],
+            "@packages/game/*": ["../../packages/game/src/*"]
         },
         "plugins": [
             {
@@ -33,7 +36,35 @@
         ".storybook/**/*.tsx",
         "stories/**/*.mdx",
         "stories/**/*.ts",
-        "stories/**/*.tsx"
+        "stories/**/*.tsx",
+        "../../packages/ui/src/**/*.ts",
+        "../../packages/ui/src/**/*.tsx",
+        "../../packages/game/src/hud/**/*.ts",
+        "../../packages/game/src/hud/**/*.tsx",
+        "../../packages/game/src/shared-ui/delivery/DeliverySlotPicker.tsx",
+        "../../packages/game/src/utils/raisedBedFields.ts",
+        "../app/app/admin/operations/operationsListGrouping.ts",
+        "../app/components/admin/cards/FactCard.tsx",
+        "../app/components/operations/OperationListItemContent.tsx",
+        "../app/components/operations/OperationsDayBubbles.tsx",
+        "../app/components/operations/OperationsDayGroup.tsx",
+        "../app/components/raised-beds/RaisedBedFieldCard.tsx",
+        "../app/components/shared/ServerActionButton.tsx",
+        "../app/components/shared/ServerActionIconButton.tsx",
+        "../app/components/shared/fields/Field.tsx",
+        "../app/components/shared/fields/FieldSet.tsx",
+        "../app/components/shared/fields/FormFields.tsx",
+        "../app/components/shared/placeholders/NoDataPlaceholder.tsx",
+        "../farm/app/schedule/FarmScheduleSectionSkeleton.tsx",
+        "../farm/app/schedule/ScheduleDateNavigation.tsx",
+        "../farm/components/HomeButton.tsx",
+        "../garden/components/Logotype.tsx",
+        "../www/app/sjetva/SowingCalendarPreview.tsx",
+        "../www/components/attributes/DetailCard.tsx",
+        "../www/components/shared/ExpandableText.tsx",
+        "../www/components/shared/ItemCard.tsx",
+        "../www/components/shared/ListCollapsable.tsx",
+        "../www/components/social/SocialCard.tsx"
     ],
     "exclude": ["node_modules", "storybook-static"]
 }

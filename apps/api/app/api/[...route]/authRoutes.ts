@@ -1,18 +1,28 @@
-import { pbkdf2Sync, randomUUID } from 'node:crypto';
+import { pbkdf2Sync } from 'node:crypto';
+import { userIdToPublicId } from '@gredice/js/publicId';
+import { safeUserDisplayName } from '@gredice/js/userDisplayName';
 import { notifyNewUserRegistered } from '@gredice/notifications';
 import {
     blockLogin,
     changePassword,
     clearLoginFailedAttempts,
+    createOrUpdateUserPasswordLogin,
     createOrUpdateUserWithOauth,
+    createTemporaryUserAndAccount,
     createUserPasswordLogin,
     createUserWithPassword,
     doUseRefreshToken,
+    ensureRegisteredUserAccount,
+    getAccountUsers,
     getLastUserLogin,
     getUser,
+    getUserDefaultGarden,
     getUserWithLogins,
+    getUserWithLoginsByLogin,
     incLoginFailedAttempts,
     loginSuccessful,
+    promoteTemporaryUser,
+    retireTemporaryUserForCleanup,
     updateLoginData,
 } from '@gredice/storage';
 import { type Context, Hono } from 'hono';
@@ -27,7 +37,9 @@ import {
     clearCookie,
     createJwt,
     setCookie,
+    verifyAccessJwt,
     verifyJwt,
+    verifyOAuthStateJwt,
 } from '../../../lib/auth/auth';
 import {
     sendChangePassword,
@@ -39,11 +51,27 @@ import {
     generateAuthUrl,
 } from '../../../lib/auth/oauth';
 import {
+    createOAuthCallbackErrorRedirect,
+    type OAuthCallbackProvider,
+    oauthRedirectCookieName,
+    oauthStateCookieName,
+    oauthTimeZoneCookieName,
+    resolveOAuthCallback,
+    sanitizeOAuthCallbackUrl,
+} from '../../../lib/auth/oauthCallbackContract';
+import { createOAuthStateFromSession } from '../../../lib/auth/oauthSessionState';
+import {
+    resolvePostLoginAccountId,
+    resolveTemporaryUserIdToRetire,
+} from '../../../lib/auth/postLoginAccount';
+import {
     clearRefreshCookie,
     setRefreshCookie,
 } from '../../../lib/auth/refreshCookies';
 import {
     accessTokenExpiry,
+    accountCookieName,
+    cookieDomain,
     refreshTokenCookieName,
     sessionCookieName,
 } from '../../../lib/auth/sessionConfig';
@@ -51,6 +79,12 @@ import {
     issueSessionTokens,
     revokeSessionToken,
 } from '../../../lib/auth/sessionTokens';
+import {
+    temporaryAccountClientAddress,
+    temporaryAccountRateLimitAllows,
+    temporaryAccountRateLimitRetryAfterSeconds,
+} from '../../../lib/auth/temporaryAccountRateLimit';
+import { touchTemporaryUserActivityBestEffort } from '../../../lib/auth/temporaryUserActivity';
 import { sendWelcome } from '../../../lib/email/transactional';
 import { getPostHogClient } from '../../../lib/posthog-server';
 
@@ -64,19 +98,28 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isStringArray(value: unknown): value is string[] {
     return (
-        Array.isArray(value) &&
-        value.every((item) => typeof item === 'string')
+        Array.isArray(value) && value.every((item) => typeof item === 'string')
     );
 }
 
-type CurrentClaims = {
+type CurrentSessionClaims = {
     id: string;
     userName: string;
     role: string;
     accountIds: string[];
 };
 
-function currentClaimsFromPayload(payload: unknown): CurrentClaims | null {
+type CurrentClaims = CurrentSessionClaims & {
+    achievementCount: number;
+    publicId: string;
+    displayName: string;
+    avatarUrl: string | null;
+    isTemporary: boolean;
+};
+
+function currentClaimsFromPayload(
+    payload: unknown,
+): CurrentSessionClaims | null {
     if (!isRecord(payload) || typeof payload.sub !== 'string') {
         return null;
     }
@@ -108,9 +151,14 @@ function currentClaimsFromUser(
 ): CurrentClaims {
     return {
         id: user.id,
+        publicId: userIdToPublicId(user.id),
         userName: user.userName,
+        displayName: safeUserDisplayName(user.displayName ?? user.userName),
+        avatarUrl: user.avatarUrl,
+        achievementCount: user.achievementCount,
         role: user.role,
         accountIds: user.accounts.map((account) => account.accountId),
+        isTemporary: user.isTemporary,
     };
 }
 
@@ -121,7 +169,7 @@ async function currentClaimsFromSessionCookie(context: Context) {
     }
 
     try {
-        const { result, error } = await verifyJwt(sessionCookie);
+        const { result, error } = await verifyAccessJwt(sessionCookie);
         if (error) {
             return null;
         }
@@ -156,79 +204,40 @@ async function currentClaimsFromRefreshToken(context: Context) {
         setRefreshCookie(context, refreshToken),
     ]);
 
+    if (user.isTemporary) {
+        await touchTemporaryUserActivityBestEffort(user.id);
+    }
+
     return currentClaimsFromUser(user);
 }
 
 async function getCurrentClaims(context: Context) {
-    return (
-        (await currentClaimsFromSessionCookie(context)) ??
-        (await currentClaimsFromRefreshToken(context))
-    );
-}
-
-/**
- * Reads the session cookie and, if valid, creates a short-lived JWT
- * to use as the OAuth state so the callback can link the provider
- * to the current user.
- */
-async function createOAuthStateFromSession(context: Context): Promise<string> {
-    const sessionCookie = getCookie(context, sessionCookieName);
-    if (sessionCookie) {
-        try {
-            const { result, error } = await verifyJwt(sessionCookie);
-            if (!error && result?.payload.sub) {
-                return createJwt(result.payload.sub, '10m');
-            }
-        } catch {
-            // Not authenticated – fall through to random UUID
+    const sessionClaims = await currentClaimsFromSessionCookie(context);
+    if (sessionClaims) {
+        const user = await getUser(sessionClaims.id);
+        if (!user) {
+            return null;
         }
-    }
-    return randomUUID().toString().replace('-', '');
-}
-
-const defaultWebAppOrigin = 'https://vrt.gredice.com';
-const oauthRedirectCookieName = 'oauth_redirect';
-const oauthTimeZoneCookieName = 'oauth_timezone';
-const allowedLocalRedirectHosts = new Set([
-    'localhost',
-    '127.0.0.1',
-    'app.gredice.test',
-    'vrt.gredice.test',
-    'farma.gredice.test',
-]);
-
-function sanitizeRedirectUrl(redirectUrl?: string) {
-    if (!redirectUrl) {
-        return undefined;
+        if (user.isTemporary) {
+            await touchTemporaryUserActivityBestEffort(user.id);
+        }
+        return currentClaimsFromUser(user);
     }
 
-    try {
-        const parsed = new URL(redirectUrl);
-        const hostname = parsed.hostname.toLowerCase();
-        const isSecureProtocol =
-            parsed.protocol === 'https:' ||
-            (parsed.protocol === 'http:' &&
-                allowedLocalRedirectHosts.has(hostname));
-        if (!isSecureProtocol) {
-            return undefined;
-        }
-
-        if (
-            hostname === 'gredice.com' ||
-            hostname.endsWith('.gredice.com') ||
-            allowedLocalRedirectHosts.has(hostname)
-        ) {
-            return parsed.toString();
-        }
-    } catch {
-        return undefined;
-    }
-
-    return undefined;
+    return await currentClaimsFromRefreshToken(context);
 }
 
-function storeRedirectCookie(context: Context, redirectUrl?: string) {
-    const sanitized = sanitizeRedirectUrl(redirectUrl);
+async function getCurrentTemporaryClaims(context: Context) {
+    const claims = await getCurrentClaims(context);
+    return claims?.isTemporary ? claims : null;
+}
+
+function storeRedirectCookie(
+    context: Context,
+    provider: OAuthCallbackProvider,
+    redirectUrl?: string,
+) {
+    const sanitized = sanitizeOAuthCallbackUrl(provider, redirectUrl);
     if (!sanitized) {
         deleteContextCookie(context, oauthRedirectCookieName);
         return;
@@ -260,30 +269,26 @@ function storeTimeZoneCookie(context: Context, timeZone?: string) {
     });
 }
 
-function getTimeZoneCookie(context: Context): string | undefined {
+function prepareOAuthCallback(
+    context: Context,
+    provider: OAuthCallbackProvider,
+) {
     const timeZone = getCookie(context, oauthTimeZoneCookieName);
-    deleteContextCookie(context, oauthTimeZoneCookieName);
-    return timeZone;
-}
+    const decision = resolveOAuthCallback({
+        provider,
+        code: context.req.query('code'),
+        state: context.req.query('state'),
+        storedState: getCookie(context, oauthStateCookieName),
+        storedRedirect: getCookie(context, oauthRedirectCookieName),
+        providerError: context.req.query('error'),
+        providerErrorReason: context.req.query('error_reason'),
+    });
 
-function resolveRedirectUrl(context: Context, fallbackPath: string) {
-    const fallbackUrl = new URL(fallbackPath, defaultWebAppOrigin);
-    const stored = getCookie(context, oauthRedirectCookieName);
-    if (!stored) {
-        return fallbackUrl;
+    for (const cookieName of decision.clearCookieNames) {
+        deleteContextCookie(context, cookieName);
     }
 
-    deleteContextCookie(context, oauthRedirectCookieName);
-    const sanitized = sanitizeRedirectUrl(stored);
-    if (!sanitized) {
-        return fallbackUrl;
-    }
-
-    try {
-        return new URL(sanitized);
-    } catch {
-        return fallbackUrl;
-    }
+    return { decision, timeZone };
 }
 
 type AuthProvider = 'password' | 'google' | 'facebook';
@@ -300,6 +305,63 @@ type TrackAuthEventInput = {
 
 function normalizeEmail(email?: string) {
     return email?.trim().toLowerCase();
+}
+
+async function findPasswordUser(email: string) {
+    return (
+        (await getUserWithLogins(email)) ??
+        (await getUserWithLoginsByLogin('password', email))
+    );
+}
+
+function setActiveAccountCookie(context: Context, accountId?: string) {
+    if (!accountId) {
+        return;
+    }
+
+    setContextCookie(context, accountCookieName, accountId, {
+        secure: true,
+        httpOnly: true,
+        sameSite: 'Lax',
+        domain: cookieDomain,
+        maxAge: 365 * 24 * 60 * 60,
+    });
+}
+
+async function getPostLoginAccountId(
+    userId: string,
+    selectedAccountId: string | undefined,
+) {
+    const user = await getUser(userId);
+    const accountIds = user?.accounts.map((account) => account.accountId) ?? [];
+    if (accountIds.length === 0) {
+        return await ensureRegisteredUserAccount(userId);
+    }
+
+    const defaultGarden = await getUserDefaultGarden(userId);
+    return resolvePostLoginAccountId({
+        accountIds,
+        defaultGardenAccountId: defaultGarden?.accountId,
+        selectedAccountId,
+    });
+}
+
+async function retireTemporaryUserBestEffort(userId?: string) {
+    if (!userId) {
+        return false;
+    }
+
+    try {
+        return await retireTemporaryUserForCleanup(userId);
+    } catch (error) {
+        console.warn(
+            'Unable to retire temporary user after existing-user login',
+            {
+                error,
+            },
+        );
+        return false;
+    }
 }
 
 function getEmailDomain(email?: string) {
@@ -367,6 +429,66 @@ async function trackAuthEvent({
 
 const app = new Hono()
     .post(
+        '/temporary',
+        describeRoute({
+            description:
+                'Create or reuse a temporary user session for signed-out garden visitors.',
+        }),
+        async (context) => {
+            const existingClaims = await getCurrentClaims(context);
+            if (existingClaims) {
+                if (existingClaims.isTemporary) {
+                    await touchTemporaryUserActivityBestEffort(
+                        existingClaims.id,
+                        { force: true },
+                    );
+                }
+                return context.json(existingClaims);
+            }
+
+            const withinRateLimit = await temporaryAccountRateLimitAllows(
+                temporaryAccountClientAddress(context.req.raw.headers),
+            );
+            if (!withinRateLimit) {
+                context.header(
+                    'Retry-After',
+                    temporaryAccountRateLimitRetryAfterSeconds.toString(),
+                );
+                return context.json(
+                    {
+                        error: 'Too many temporary account requests',
+                        errorCode: 'rate_limited',
+                    },
+                    429,
+                );
+            }
+
+            const temporary = await createTemporaryUserAndAccount();
+            const { accessToken, refreshToken } = await issueSessionTokens(
+                temporary.userId,
+            );
+            await Promise.all([
+                setCookie(context, accessToken),
+                setRefreshCookie(context, refreshToken),
+            ]);
+            setActiveAccountCookie(context, temporary.accountId);
+
+            return context.json(
+                {
+                    id: temporary.userId,
+                    publicId: userIdToPublicId(temporary.userId),
+                    userName: temporary.userName,
+                    displayName: temporary.displayName,
+                    avatarUrl: null,
+                    role: 'user',
+                    accountIds: [temporary.accountId],
+                    isTemporary: true,
+                },
+                201,
+            );
+        },
+    )
+    .post(
         '/login',
         describeRoute({
             description: 'Login with email and password',
@@ -380,9 +502,21 @@ const app = new Hono()
         ),
         async (context) => {
             const { email, password } = context.req.valid('json');
-            const user = await getUserWithLogins(email);
+            const normalizedEmail = normalizeEmail(email);
+            if (!normalizedEmail) {
+                return context.json(
+                    {
+                        error: 'User not found',
+                        errorCode: 'user_not_found',
+                    },
+                    { status: 404 },
+                );
+            }
+
+            const temporaryClaims = await getCurrentTemporaryClaims(context);
+            const user = await findPasswordUser(normalizedEmail);
             if (!user) {
-                console.debug('User not found', email);
+                console.debug('User not found', normalizedEmail);
                 return context.json(
                     {
                         error: 'User not found',
@@ -393,10 +527,12 @@ const app = new Hono()
             }
 
             const login = user.usersLogins.find(
-                (login) => login.loginType === 'password',
+                (login) =>
+                    login.loginType === 'password' &&
+                    login.loginId === normalizedEmail,
             );
             if (!login) {
-                console.debug('User login not found', email);
+                console.debug('User login not found', normalizedEmail);
                 return context.json(
                     {
                         error: 'User not found',
@@ -412,7 +548,7 @@ const app = new Hono()
                 login.blockedUntil &&
                 login.blockedUntil.getTime() > Date.now()
             ) {
-                console.debug('User blocked', email);
+                console.debug('User blocked', normalizedEmail);
                 return context.json(
                     {
                         error: 'User blocked',
@@ -428,7 +564,7 @@ const app = new Hono()
             if (!salt || !storedHash) {
                 console.debug(
                     'User password login data corrupted',
-                    email,
+                    normalizedEmail,
                     login.id,
                 );
                 return context.json(
@@ -449,7 +585,7 @@ const app = new Hono()
                 'sha512',
             ).toString('hex');
             if (checkHash !== storedHash) {
-                console.debug('User password not matching', email);
+                console.debug('User password not matching', normalizedEmail);
 
                 // TODO: Move to Auth library
                 // Clear failed attempts after some time or block user
@@ -488,7 +624,11 @@ const app = new Hono()
             // Check email verified
             const { isVerified } = JSON.parse(login.loginData);
             if (isVerified !== true) {
-                console.warn('User email not verified', email);
+                console.warn('User email not verified', {
+                    loginId: login.id,
+                    provider: 'email',
+                    userId: user.id,
+                });
                 return context.json(
                     {
                         error: 'User email not verified',
@@ -501,17 +641,34 @@ const app = new Hono()
             const { accessToken, refreshToken } = await issueSessionTokens(
                 user.id,
             );
+            const temporaryUserIdToRetire = resolveTemporaryUserIdToRetire({
+                authenticatedUserId: user.id,
+                currentTemporaryUserId: temporaryClaims?.id,
+            });
             await Promise.all([
                 setCookie(context, accessToken),
                 loginSuccessful(login.id),
                 setRefreshCookie(context, refreshToken),
             ]);
+            const retiredTemporaryUser = await retireTemporaryUserBestEffort(
+                temporaryUserIdToRetire,
+            );
+            setActiveAccountCookie(
+                context,
+                await getPostLoginAccountId(
+                    user.id,
+                    getCookie(context, accountCookieName),
+                ),
+            );
 
             await trackAuthEvent({
                 distinctId: user.id,
-                email: user.userName,
+                email: normalizedEmail,
                 event: 'user_logged_in',
                 provider: 'password',
+                properties: {
+                    retired_temporary_account: retiredTemporaryUser,
+                },
             });
 
             return context.json({
@@ -534,13 +691,15 @@ const app = new Hono()
         ),
         async (context) => {
             const query = context.req.valid('query');
-            const state = await createOAuthStateFromSession(context);
-            storeRedirectCookie(context, query?.redirect);
+            const state = await createOAuthStateFromSession(
+                getCookie(context, sessionCookieName),
+            );
+            storeRedirectCookie(context, 'google', query?.redirect);
             storeTimeZoneCookie(context, query?.timeZone);
             const authUrl = generateAuthUrl('google', state);
 
             // Store state in cookie for verification
-            setContextCookie(context, 'oauth_state', state, {
+            setContextCookie(context, oauthStateCookieName, state, {
                 httpOnly: true,
                 secure: true,
                 sameSite: 'Lax',
@@ -556,27 +715,26 @@ const app = new Hono()
             description: 'Google OAuth callback',
         }),
         async (context) => {
-            try {
-                const code = context.req.query('code');
-                const state = context.req.query('state');
-                if (!code || !state) {
-                    return context.json(
-                        { message: 'Missing code or state' },
-                        400,
-                    );
-                }
+            const { decision, timeZone } = prepareOAuthCallback(
+                context,
+                'google',
+            );
+            if (decision.kind === 'redirect') {
+                return context.redirect(decision.redirectUrl);
+            }
 
+            try {
                 let currentUserId: string | undefined;
                 try {
-                    const { result, error } = await verifyJwt(state);
+                    const { result, error } = await verifyOAuthStateJwt(
+                        decision.state,
+                    );
                     if (error || !result?.payload.sub) {
                         throw new Error('Invalid state token');
                     }
                     currentUserId = result.payload.sub;
                     console.debug(
-                        'User authenticated',
-                        currentUserId,
-                        'proceeding with OAuth flow and existing user assignment',
+                        'Authenticated user is adding an OAuth login method.',
                     );
                 } catch {
                     // Note: this means user is not authenticated, and we can proceed with
@@ -586,23 +744,25 @@ const app = new Hono()
                     );
                 }
 
-                const tokenData = await exchangeCodeForToken('google', code);
+                const tokenData = await exchangeCodeForToken(
+                    'google',
+                    decision.code,
+                );
                 const userInfo = await fetchUserInfo(
                     'google',
                     tokenData.access_token,
                 );
-                const timeZone = getTimeZoneCookie(context);
-                const { userId, loginId, isNewUser } =
-                    await createOrUpdateUserWithOauth(
-                        {
-                            name: userInfo.name,
-                            email: userInfo.email,
-                            providerUserId: userInfo.id,
-                            provider: 'google',
-                        },
-                        currentUserId,
-                        timeZone,
-                    );
+                const oauthResult = await createOrUpdateUserWithOauth(
+                    {
+                        email: userInfo.email,
+                        providerUserId: userInfo.id,
+                        provider: 'google',
+                    },
+                    currentUserId,
+                    timeZone,
+                );
+                const { userId, loginId, isNewUser, temporaryUserIdToRetire } =
+                    oauthResult;
 
                 if (isNewUser) {
                     await notifyNewUserRegistered(userId);
@@ -615,12 +775,26 @@ const app = new Hono()
                     loginSuccessful(loginId),
                     setRefreshCookie(context, refreshToken),
                 ]);
+                const retiredTemporaryUser =
+                    await retireTemporaryUserBestEffort(
+                        temporaryUserIdToRetire,
+                    );
+                setActiveAccountCookie(
+                    context,
+                    await getPostLoginAccountId(
+                        userId,
+                        getCookie(context, accountCookieName),
+                    ),
+                );
 
                 await trackAuthEvent({
                     distinctId: userId,
                     email: userInfo.email,
                     event: isNewUser ? 'user_signed_up' : 'user_logged_in',
                     provider: 'google',
+                    properties: {
+                        retired_temporary_account: retiredTemporaryUser,
+                    },
                     setProperties: {
                         name: userInfo.name,
                     },
@@ -647,23 +821,23 @@ const app = new Hono()
                     });
                 }
 
-                const redirectUrl = resolveRedirectUrl(
-                    context,
-                    '/prijava/google-prijava/povratak',
-                );
+                const redirectUrl = new URL(decision.callbackUrl);
                 // Pass tokens to frontend via URL fragment (hash) so they don't appear in logs/referrer
                 redirectUrl.hash = `token=${encodeURIComponent(accessToken)}&refreshToken=${encodeURIComponent(refreshToken)}`;
 
                 return context.redirect(redirectUrl.toString());
-            } catch (error) {
-                console.error('Google OAuth error:', error);
-                const redirectUrl = resolveRedirectUrl(
-                    context,
-                    '/prijava/google-prijava/povratak',
+            } catch {
+                console.error('Google OAuth callback failed', {
+                    provider: 'google',
+                    reason: 'callback_error',
+                });
+                const redirectUrl = createOAuthCallbackErrorRedirect(
+                    'google',
+                    decision.callbackUrl,
+                    'callback_error',
                 );
-                redirectUrl.searchParams.set('error', 'oauth_error');
 
-                return context.redirect(redirectUrl.toString());
+                return context.redirect(redirectUrl);
             }
         },
     )
@@ -681,13 +855,15 @@ const app = new Hono()
         ),
         async (context) => {
             const query = context.req.valid('query');
-            const state = await createOAuthStateFromSession(context);
+            const state = await createOAuthStateFromSession(
+                getCookie(context, sessionCookieName),
+            );
             const authUrl = generateAuthUrl('facebook', state);
 
             // Store state in cookie for verification
-            storeRedirectCookie(context, query?.redirect);
+            storeRedirectCookie(context, 'facebook', query?.redirect);
             storeTimeZoneCookie(context, query?.timeZone);
-            setContextCookie(context, 'oauth_state', state, {
+            setContextCookie(context, oauthStateCookieName, state, {
                 httpOnly: true,
                 secure: true,
                 sameSite: 'Lax',
@@ -703,27 +879,26 @@ const app = new Hono()
             description: 'Facebook OAuth callback',
         }),
         async (context) => {
-            try {
-                const code = context.req.query('code');
-                const state = context.req.query('state');
-                if (!code || !state) {
-                    return context.json(
-                        { message: 'Missing code or state' },
-                        400,
-                    );
-                }
+            const { decision, timeZone } = prepareOAuthCallback(
+                context,
+                'facebook',
+            );
+            if (decision.kind === 'redirect') {
+                return context.redirect(decision.redirectUrl);
+            }
 
+            try {
                 let currentUserId: string | undefined;
                 try {
-                    const { result, error } = await verifyJwt(state);
+                    const { result, error } = await verifyOAuthStateJwt(
+                        decision.state,
+                    );
                     if (error || !result?.payload.sub) {
                         throw new Error('Invalid state token');
                     }
                     currentUserId = result.payload.sub;
                     console.debug(
-                        'User authenticated',
-                        currentUserId,
-                        'proceeding with OAuth flow and existing user assignment',
+                        'Authenticated user is adding an OAuth login method.',
                     );
                 } catch {
                     // Note: this means user is not authenticated, and we can proceed with
@@ -733,23 +908,25 @@ const app = new Hono()
                     );
                 }
 
-                const tokenData = await exchangeCodeForToken('facebook', code);
+                const tokenData = await exchangeCodeForToken(
+                    'facebook',
+                    decision.code,
+                );
                 const userInfo = await fetchUserInfo(
                     'facebook',
                     tokenData.access_token,
                 );
-                const timeZone = getTimeZoneCookie(context);
-                const { userId, loginId, isNewUser } =
-                    await createOrUpdateUserWithOauth(
-                        {
-                            name: userInfo.name,
-                            email: userInfo.email,
-                            providerUserId: userInfo.id,
-                            provider: 'facebook',
-                        },
-                        currentUserId,
-                        timeZone,
-                    );
+                const oauthResult = await createOrUpdateUserWithOauth(
+                    {
+                        email: userInfo.email,
+                        providerUserId: userInfo.id,
+                        provider: 'facebook',
+                    },
+                    currentUserId,
+                    timeZone,
+                );
+                const { userId, loginId, isNewUser, temporaryUserIdToRetire } =
+                    oauthResult;
 
                 if (isNewUser) {
                     await notifyNewUserRegistered(userId);
@@ -762,12 +939,26 @@ const app = new Hono()
                     loginSuccessful(loginId),
                     setRefreshCookie(context, refreshToken),
                 ]);
+                const retiredTemporaryUser =
+                    await retireTemporaryUserBestEffort(
+                        temporaryUserIdToRetire,
+                    );
+                setActiveAccountCookie(
+                    context,
+                    await getPostLoginAccountId(
+                        userId,
+                        getCookie(context, accountCookieName),
+                    ),
+                );
 
                 await trackAuthEvent({
                     distinctId: userId,
                     email: userInfo.email,
                     event: isNewUser ? 'user_signed_up' : 'user_logged_in',
                     provider: 'facebook',
+                    properties: {
+                        retired_temporary_account: retiredTemporaryUser,
+                    },
                     setProperties: {
                         name: userInfo.name,
                     },
@@ -794,23 +985,23 @@ const app = new Hono()
                     });
                 }
 
-                const redirectUrl = resolveRedirectUrl(
-                    context,
-                    '/prijava/facebook-prijava/povratak',
-                );
+                const redirectUrl = new URL(decision.callbackUrl);
                 // Pass tokens to frontend via URL fragment (hash) so they don't appear in logs/referrer
                 redirectUrl.hash = `token=${encodeURIComponent(accessToken)}&refreshToken=${encodeURIComponent(refreshToken)}`;
 
                 return context.redirect(redirectUrl.toString());
-            } catch (error) {
-                console.error('Facebook OAuth error:', error);
-                const redirectUrl = resolveRedirectUrl(
-                    context,
-                    '/prijava/facebook-prijava/povratak',
+            } catch {
+                console.error('Facebook OAuth callback failed', {
+                    provider: 'facebook',
+                    reason: 'callback_error',
+                });
+                const redirectUrl = createOAuthCallbackErrorRedirect(
+                    'facebook',
+                    decision.callbackUrl,
+                    'callback_error',
                 );
-                redirectUrl.searchParams.set('error', 'oauth_error');
 
-                return context.redirect(redirectUrl.toString());
+                return context.redirect(redirectUrl);
             }
         },
     )
@@ -818,12 +1009,27 @@ const app = new Hono()
         '/current-claims',
         describeRoute({
             description:
-                'Get basic current user claims from a verified or refreshed session token.',
+                'Get current user claims and profile fields from a verified or refreshed session token.',
         }),
         async (context) => {
+            const selectedAccountId = getCookie(context, accountCookieName);
             const claims = await getCurrentClaims(context);
             if (!claims) {
-                return context.json({ error: 'Unauthorized' }, { status: 401 });
+                const returningUser = selectedAccountId
+                    ? (await getAccountUsers(selectedAccountId)).some(
+                          (accountUser) => !accountUser.user.isTemporary,
+                      )
+                    : false;
+                return context.json(
+                    { error: 'Unauthorized', returningUser },
+                    { status: 401 },
+                );
+            }
+
+            if (!claims.isTemporary && claims.accountIds.length === 0) {
+                const accountId = await ensureRegisteredUserAccount(claims.id);
+                setActiveAccountCookie(context, accountId);
+                return context.json({ ...claims, accountIds: [accountId] });
             }
 
             return context.json(claims);
@@ -962,7 +1168,7 @@ const app = new Hono()
             let userId: string | undefined;
             if (sessionCookie) {
                 try {
-                    const { result } = await verifyJwt(sessionCookie);
+                    const { result } = await verifyAccessJwt(sessionCookie);
                     userId = result?.payload.sub ?? undefined;
                 } catch {
                     // ignore
@@ -999,9 +1205,20 @@ const app = new Hono()
         ),
         async (context) => {
             const { email, password } = context.req.valid('json');
-            const user = await getUserWithLogins(email);
-            if (user) {
-                console.debug('User already exists', email);
+            const normalizedEmail = normalizeEmail(email);
+            if (!normalizedEmail) {
+                return context.json(
+                    {
+                        error: 'Email is required',
+                    },
+                    { status: 400 },
+                );
+            }
+
+            const temporaryClaims = await getCurrentTemporaryClaims(context);
+            const user = await findPasswordUser(normalizedEmail);
+            if (user && (!temporaryClaims || user.id !== temporaryClaims.id)) {
+                console.debug('User already exists', normalizedEmail);
                 await trackAuthEvent({
                     distinctId: user.id,
                     email: user.userName,
@@ -1020,14 +1237,25 @@ const app = new Hono()
                 );
             }
 
-            // Create user with password
-            const userId = await createUserWithPassword(email, password);
+            const userId = temporaryClaims
+                ? temporaryClaims.id
+                : await createUserWithPassword(normalizedEmail, password);
+            if (temporaryClaims) {
+                await createOrUpdateUserPasswordLogin(
+                    temporaryClaims.id,
+                    normalizedEmail,
+                    password,
+                );
+            }
 
             await trackAuthEvent({
                 distinctId: userId,
-                email,
+                email: normalizedEmail,
                 event: 'user_signed_up',
                 provider: 'password',
+                properties: {
+                    upgraded_temporary_account: Boolean(temporaryClaims),
+                },
                 setOnceProperties: {
                     signed_up_at: new Date().toISOString(),
                     signup_provider: 'password',
@@ -1036,11 +1264,11 @@ const app = new Hono()
 
             await notifyNewUserRegistered(userId);
 
-            await sendEmailVerification(email);
+            await sendEmailVerification(normalizedEmail);
 
             await trackAuthEvent({
                 distinctId: userId,
-                email,
+                email: normalizedEmail,
                 event: 'user_verification_email_sent',
                 provider: 'password',
                 properties: {
@@ -1069,9 +1297,19 @@ const app = new Hono()
         ),
         async (context) => {
             const { email } = context.req.valid('json');
-            const user = await getUserWithLogins(email);
+            const normalizedEmail = normalizeEmail(email);
+            if (!normalizedEmail) {
+                return context.json(
+                    {
+                        error: 'User not found',
+                    },
+                    { status: 404 },
+                );
+            }
+
+            const user = await findPasswordUser(normalizedEmail);
             if (!user) {
-                console.debug('User does not exist', email);
+                console.debug('User does not exist', normalizedEmail);
                 return context.json(
                     {
                         error: 'User not found',
@@ -1081,7 +1319,7 @@ const app = new Hono()
             }
 
             // Send email
-            await sendChangePassword(email);
+            await sendChangePassword(normalizedEmail);
 
             await trackAuthEvent({
                 distinctId: user.id,
@@ -1108,9 +1346,19 @@ const app = new Hono()
         ),
         async (context) => {
             const { email } = context.req.valid('json');
-            const user = await getUserWithLogins(email);
+            const normalizedEmail = normalizeEmail(email);
+            if (!normalizedEmail) {
+                return context.json(
+                    {
+                        error: 'User not found',
+                    },
+                    { status: 404 },
+                );
+            }
+
+            const user = await findPasswordUser(normalizedEmail);
             if (!user) {
-                console.debug('User does not exist', email);
+                console.debug('User does not exist', normalizedEmail);
                 return context.json(
                     {
                         error: 'User not found',
@@ -1120,11 +1368,11 @@ const app = new Hono()
             }
 
             // Send email
-            await sendEmailVerification(email);
+            await sendEmailVerification(normalizedEmail);
 
             await trackAuthEvent({
                 distinctId: user.id,
-                email: user.userName,
+                email: normalizedEmail,
                 event: 'user_verification_email_sent',
                 provider: 'password',
                 properties: {
@@ -1167,7 +1415,7 @@ const app = new Hono()
             }
 
             // Get user with logins
-            const user = await getUserWithLogins(email);
+            const user = await findPasswordUser(email);
             if (!user) {
                 console.debug('User does not exist', email);
                 return context.json(
@@ -1217,6 +1465,12 @@ const app = new Hono()
             }
 
             if (loginData.isVerified === true) {
+                if (user.isTemporary) {
+                    await promoteTemporaryUser({
+                        userId: user.id,
+                        userName: email,
+                    });
+                }
                 // Already verified
                 return await loginAndRespond(true);
             }
@@ -1224,10 +1478,16 @@ const app = new Hono()
                 ...loginData,
                 isVerified: true,
             });
+            if (user.isTemporary) {
+                await promoteTemporaryUser({
+                    userId: user.id,
+                    userName: email,
+                });
+            }
 
             await trackAuthEvent({
                 distinctId: user.id,
-                email: user.userName,
+                email,
                 event: 'user_email_verified',
                 provider: 'password',
                 properties: {

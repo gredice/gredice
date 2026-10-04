@@ -1,63 +1,304 @@
-import type { SectionData } from '@signalco/cms-core/SectionData';
-import { SectionsView } from '@signalco/cms-core/SectionsView';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import type { Metadata } from 'next';
+import { Button } from '@gredice/ui/Button';
+import { Chip } from '@gredice/ui/Chip';
+import { Container } from '@gredice/ui/Container';
+import { GameSunflowerIcon } from '@gredice/ui/GameIcons';
+import { Navigate } from '@gredice/ui/icons';
+import { PageHeader } from '@gredice/ui/PageHeader';
+import { Stack } from '@gredice/ui/Stack';
+import {
+    SunflowerPackageVisual,
+    sunflowerMascotArtwork,
+} from '@gredice/ui/SunflowerVisuals';
+import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
-import { PageHeader } from '../../components/shared/PageHeader';
-import { sectionsComponentRegistry } from '../../components/shared/sectionsComponentRegistry';
+import Link from 'next/link';
+import { RelatedFaq } from '../../components/faq/RelatedFaq';
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from '../../components/shared/Card';
+import { createPublicMetadata } from '../../lib/seo/publicMetadata';
+import {
+    getPublicSunflowerPackages,
+    type PublicSunflowerPackage,
+} from '../../lib/sunflowerPackages';
+import { KnownPages } from '../../src/KnownPages';
 
-export const metadata: Metadata = {
-    title: 'Suncokreti',
-    description: 'Sve što trebaš znati o suncokretima.',
-};
+export const metadata = createPublicMetadata({
+    title: 'Suncokreti i Gredice saldo',
+    description:
+        'Suncokreti su prepaid Gredice bodovi za vrtne akcije. Pogledaj pakete, bonus suncokrete i pravila korištenja salda.',
+    path: KnownPages.Sunflowers,
+    eyebrow: 'Gredice saldo',
+});
 
-const sectionsData: SectionData[] = [
-    {
-        component: 'Faq1',
-        header: 'Sve što trebaš znati o suncokretima',
-        description:
-            'Suncokreti ne dolaze samo u jednoj boji i veličini. Postoje različite vrste suncokreta, a svaka od njih ima svoje karakteristike i boje.',
-        features: [
-            {
-                header: 'Što su suncokreti?',
-                description:
-                    'Sakupljaj i koristi suncokrete za uređenje i dekoraciju vrta ili kupnju i brigu o svojim biljkama 🌱',
-            },
-            {
-                header: 'Kako skupljam suncokrete?',
-                description:
-                    'Suncokrete dobiješ prilikom registracije, redovitim posjetima svog vrta te za svaku odrađenu radnju u vrtu. Također, za svaku kupnju od 1 € dobivaš 🌻10. Ujedno, posjeti svoj vrt svaki dan i uvijek će te čekati novi 🌻.',
-            },
-            {
-                header: 'Za što se mogu koristiti suncokreti?',
-                description:
-                    'Suncokrete možeš koristiti za ukrašavanje svog vrta te brigu o gredicama i biljkama. Suncokrete možeš koristiti umjesto plaćanja pojedinih akcija. 🌻1000 je jednako 1 € prilikom korištenja za akcije ili kupnju biljaka u svom vrtu.',
-            },
-        ],
-    },
-];
+const sunflowerFormatter = new Intl.NumberFormat('hr-HR', {
+    maximumFractionDigits: 0,
+});
+const euroFormatter = new Intl.NumberFormat('hr-HR', {
+    currency: 'EUR',
+    style: 'currency',
+});
 
-export default function SunflowersPage() {
+function packagePrice(pkg: PublicSunflowerPackage) {
+    return euroFormatter.format(pkg.priceCents / 100);
+}
+
+function packageCtaUrl() {
+    return `${KnownPages.GardenApp}/?pregled=suncokreti`;
+}
+
+function packageCard(pkg: PublicSunflowerPackage) {
     return (
-        <Stack>
-            <PageHeader
-                header="Suncokreti"
-                subHeader={`Sakupljaj i koristi suncokrete za uređenje i dekoraciju vrta ili kupnju i brigu o svojim biljkama 🌱`}
-                padded
-                visual={
-                    <Image
-                        src="https://cdn.gredice.com/sunflower-large.svg"
-                        alt="Suncokret"
-                        width={192}
-                        height={192}
-                        priority
-                    />
-                }
-            />
-            <SectionsView
-                sectionsData={sectionsData}
-                componentsRegistry={sectionsComponentRegistry}
-            />
-        </Stack>
+        <Card key={pkg.code} className="h-full border-tertiary border-b-4">
+            <CardHeader>
+                <SunflowerPackageVisual
+                    packageCode={pkg.code}
+                    className="mb-3 h-28 w-full"
+                    aria-hidden
+                />
+                <div className="flex items-start justify-between gap-3">
+                    <Stack spacing={1}>
+                        <CardTitle>{pkg.name}</CardTitle>
+                        {pkg.tag ? (
+                            <Chip size="sm" variant="soft">
+                                {pkg.tag}
+                            </Chip>
+                        ) : null}
+                    </Stack>
+                    <Typography level="body1" bold className="tabular-nums">
+                        {packagePrice(pkg)}
+                    </Typography>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <Stack spacing={3}>
+                    <Typography level="h3" className="tabular-nums">
+                        {sunflowerFormatter.format(pkg.sunflowers)}
+                        <GameSunflowerIcon className="ml-1 inline-block size-6 align-text-bottom" />
+                    </Typography>
+                    {pkg.bonusSunflowers > 0 ? (
+                        <Typography level="body2" className="text-primary">
+                            +{sunflowerFormatter.format(pkg.bonusSunflowers)}{' '}
+                            bonus suncokreta
+                        </Typography>
+                    ) : null}
+                    {pkg.descriptionShort ? (
+                        <Typography level="body2" secondary>
+                            {pkg.descriptionShort}
+                        </Typography>
+                    ) : null}
+                    {pkg.isOneTime ? (
+                        <Typography level="body3" secondary>
+                            Jednokratna ponuda po korisničkom računu.
+                        </Typography>
+                    ) : null}
+                    {pkg.role === 'upsell' ? (
+                        <Typography level="body3" secondary>
+                            Najveći paket prikazuje se u vrtu nakon odabira
+                            paketa Mirna sezona.
+                        </Typography>
+                    ) : null}
+                    <Button
+                        href={packageCtaUrl()}
+                        endDecorator={<Navigate className="size-4" />}
+                        size="sm"
+                    >
+                        {pkg.cta ?? 'Kupi paket'}
+                    </Button>
+                </Stack>
+            </CardContent>
+        </Card>
+    );
+}
+
+export default async function SunflowersPage() {
+    const packages = await getPublicSunflowerPackages();
+    const renderPackage = (pkg: PublicSunflowerPackage) => packageCard(pkg);
+    const initialOffer = packages.filter(
+        (pkg) => pkg.role === 'initial_one_time',
+    );
+    const mainPackages = packages.filter(
+        (pkg) => pkg.role === 'main' && pkg.showInPrimaryList,
+    );
+    const upsellPackages = packages.filter((pkg) => pkg.role === 'upsell');
+
+    return (
+        <Container maxWidth="lg">
+            <Stack spacing={6}>
+                <PageHeader
+                    header="Suncokreti"
+                    subHeader="Gredice bodovi za vrtne akcije u tvojoj gredici"
+                    padded
+                    visual={
+                        <Image
+                            src={sunflowerMascotArtwork}
+                            alt="Suncokret"
+                            width={192}
+                            height={192}
+                            priority
+                        />
+                    }
+                />
+
+                <section className="grid gap-4 md:grid-cols-[1.2fr_0.8fr]">
+                    <Card className="border-tertiary border-b-4">
+                        <CardHeader>
+                            <CardTitle>Kako funkcionira saldo</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <Stack spacing={3}>
+                                <Typography level="body1">
+                                    Suncokreti su Gredice bodovi koje koristiš
+                                    za vrtne akcije - sadnju, sjetvu,
+                                    zalijevanje, plijevljenje, fotografiranje,
+                                    berbu, dostavu i druge zadatke u svojoj
+                                    gredici.
+                                </Typography>
+                                <Typography level="body2" secondary>
+                                    Kod korištenja salda vrijedi orijentacijski
+                                    odnos 1 EUR ≈ 1.000 suncokreta. Saldo se
+                                    evidentira na korisničkom računu i dostupan
+                                    je u vrtu nakon uspješne uplate.
+                                </Typography>
+                                <Typography level="body2" secondary>
+                                    Suncokreti se mogu koristiti samo unutar
+                                    Gredica, ne prenose se na druge korisnike i
+                                    ne mijenjaju se za gotovinu osim kod
+                                    zakonski obveznih ili odobrenih povrata.
+                                </Typography>
+                            </Stack>
+                        </CardContent>
+                    </Card>
+                    <Card className="border-tertiary border-b-4">
+                        <CardHeader>
+                            <CardTitle>Korištenje u vrtu</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <Stack spacing={3}>
+                                <Typography level="body2" secondary>
+                                    Pri potvrdi narudžbe vrtne akcije suncokreti
+                                    se odmah oduzimaju sa salda. Ako se akcija
+                                    otkaže prije obrade, iznos se vraća na saldo.
+                                </Typography>
+                                <Typography level="body2" secondary>
+                                    Nakon izvršene akcije eventualni povrat ili
+                                    korekciju rješava podrška, a dokumenti su
+                                    dostupni u korisničkom profilu.
+                                </Typography>
+                                <Link
+                                    className="font-medium text-primary underline-offset-4 hover:underline"
+                                    href={KnownPages.Refunds}
+                                >
+                                    Pravila povrata i korekcija
+                                </Link>
+                            </Stack>
+                        </CardContent>
+                    </Card>
+                </section>
+
+                <section
+                    className="rounded-2xl border bg-muted/30 p-6"
+                    aria-labelledby="achievement-rewards-title"
+                >
+                    <h2
+                        id="achievement-rewards-title"
+                        className="text-xl font-semibold"
+                    >
+                        Suncokreti za tvoja postignuća
+                    </h2>
+                    <p className="mt-2 text-muted-foreground">
+                        Sadnja, zalijevanje, berba i doprinos zajednici donose
+                        značke i nagrade nakon odobrenja postignuća.
+                    </p>
+                    <Link
+                        href={KnownPages.Achievements}
+                        className="mt-4 inline-block font-semibold underline underline-offset-4"
+                    >
+                        Pogledaj sva postignuća i nagrade
+                    </Link>
+                    <p className="mt-4 text-muted-foreground">
+                        Suncokrete trošiš na vrtne akcije, a XP skupljaš
+                        odobrenim postignućima. Kupnja i trošenje suncokreta ne
+                        mijenjaju tvoju razinu.
+                    </p>
+                    <Link
+                        href={KnownPages.Experience}
+                        className="mt-4 inline-block underline underline-offset-4"
+                    >
+                        Saznaj kako skupljati XP i napredovati kroz razine
+                    </Link>
+                </section>
+
+                <section className="space-y-4">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                        <Stack spacing={1}>
+                            <Typography level="h2">
+                                Paketi suncokreta
+                            </Typography>
+                            <Typography level="body2" secondary>
+                                Bonus je prikazan kao dodatni broj suncokreta
+                                koji se dodaje na Gredice saldo.
+                            </Typography>
+                        </Stack>
+                        <Button
+                            href={packageCtaUrl()}
+                            variant="outlined"
+                            endDecorator={<Navigate className="size-4" />}
+                        >
+                            Otvori vrt
+                        </Button>
+                    </div>
+
+                    {packages.length === 0 ? (
+                        <Card>
+                            <CardContent noHeader>
+                                <Typography level="body2" secondary>
+                                    Paketi se trenutno ne mogu učitati.
+                                    Suncokrete možeš kupiti iz profila u vrtu
+                                    čim je katalog dostupan.
+                                </Typography>
+                            </CardContent>
+                        </Card>
+                    ) : null}
+
+                    {initialOffer.length > 0 ? (
+                        <Stack spacing={2}>
+                            <Typography level="body1" bold>
+                                Početna ponuda
+                            </Typography>
+                            <div className="grid gap-4 md:grid-cols-2">
+                                {initialOffer.map(renderPackage)}
+                            </div>
+                        </Stack>
+                    ) : null}
+
+                    {mainPackages.length > 0 ? (
+                        <Stack spacing={2}>
+                            <Typography level="body1" bold>
+                                Glavni paketi
+                            </Typography>
+                            <div className="grid gap-4 md:grid-cols-3">
+                                {mainPackages.map(renderPackage)}
+                            </div>
+                        </Stack>
+                    ) : null}
+
+                    {upsellPackages.length > 0 ? (
+                        <Stack spacing={2}>
+                            <Typography level="body1" bold>
+                                Najveći paket
+                            </Typography>
+                            <div className="grid gap-4 md:grid-cols-2">
+                                {upsellPackages.map(renderPackage)}
+                            </div>
+                        </Stack>
+                    ) : null}
+                </section>
+            </Stack>
+            <RelatedFaq placement="sunflowers" />
+        </Container>
     );
 }

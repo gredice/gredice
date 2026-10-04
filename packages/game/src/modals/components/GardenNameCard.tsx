@@ -1,8 +1,8 @@
-import { Button } from '@signalco/ui-primitives/Button';
-import { Card, CardActions, CardContent } from '@signalco/ui-primitives/Card';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Card, CardActions, CardContent } from '@gredice/ui/Card';
+import { Input } from '@gredice/ui/Input';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { type FormEvent, useEffect, useState } from 'react';
 import { useRenameGarden } from '../../hooks/useRenameGarden';
 
@@ -57,8 +57,8 @@ export function GardenNameCard({
         <Card>
             <form onSubmit={handleRenameGarden}>
                 <CardContent noHeader>
-                    <Stack spacing={3}>
-                        <Stack spacing={1}>
+                    <Stack spacing={6}>
+                        <Stack spacing={2}>
                             <Input
                                 name="gardenName"
                                 label="Naziv vrta"

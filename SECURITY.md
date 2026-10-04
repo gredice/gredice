@@ -4,11 +4,20 @@ Use this guide for auth, secrets, validation, payments, private data, and unsafe
 
 ## Auth and authorization
 
-- Use the existing Signalco auth helpers and app-local `auth` wrappers.
+- Use `@gredice/auth`, `@gredice/ui/auth`, and app-local `auth` wrappers.
 - Enforce authorization on the server for pages, route handlers, and Server Actions.
 - Do not rely on hidden UI, disabled buttons, or client checks for access control.
 - Admin workflows must require the appropriate role before reading or mutating data.
 - Preserve impersonation and session handling patterns where they already exist.
+
+Use `verifyAccessJwt` for session cookies, bearer authentication, session refresh,
+and OAuth session exchange. `verifyJwt` only checks signature, issuer, audience,
+and expiration; callers for single-purpose flows must validate the purpose.
+New access JWTs use `tokenUse: 'access'`, account-deletion links use
+`'account_delete'`, and OAuth linking state uses `'oauth_state'`. Existing
+unmarked sessions remain valid, but unmarked account-bound deletion links are
+rejected by access verification. OAuth callbacks accept their dedicated purpose
+and existing unmarked state tokens while rejecting deletion tokens.
 
 ## Secrets and environment variables
 

@@ -1,0 +1,163 @@
+import { Button } from '@gredice/ui/Button';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Delete, Edit, MoreHorizontal, Save } from '@gredice/ui/icons';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuRadioGroup,
+    DropdownMenuRadioItem,
+    DropdownMenuSeparator,
+    DropdownMenuShortcut,
+    DropdownMenuSub,
+    DropdownMenuSubContent,
+    DropdownMenuSubTrigger,
+    DropdownMenuTrigger,
+} from '@gredice/ui/Menu';
+import type { Meta, StoryObj } from '@storybook/nextjs-vite';
+import { useState } from 'react';
+
+const meta = {
+    title: 'packages/ui/Overlays/Menu',
+    component: DropdownMenu,
+    tags: ['autodocs'],
+    parameters: {
+        docs: {
+            description: {
+                component:
+                    'Menu provides first-party dropdown menu wrappers for compact commands and contextual actions.',
+            },
+        },
+    },
+    render: (args) => (
+        <DropdownMenu {...args}>
+            <DropdownMenuTrigger asChild>
+                <IconButton title="Opcije" variant="outlined">
+                    <MoreHorizontal className="size-4" />
+                </IconButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuLabel>Akcije</DropdownMenuLabel>
+                <DropdownMenuItem startDecorator={<Edit className="size-4" />}>
+                    Uredi
+                    <DropdownMenuShortcut>E</DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuItem startDecorator={<Save className="size-4" />}>
+                    Spremi
+                    <DropdownMenuShortcut>S</DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled>Nije dostupno</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>Vise opcija</DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
+                        <DropdownMenuItem>Dupliciraj</DropdownMenuItem>
+                        <DropdownMenuItem>Arhiviraj</DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                </DropdownMenuSub>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                    className="text-destructive focus:text-destructive"
+                    startDecorator={<Delete className="size-4" />}
+                >
+                    Obrisi
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
+    ),
+} satisfies Meta<typeof DropdownMenu>;
+
+export default meta;
+
+type Story = StoryObj<typeof meta>;
+
+const scrollablePageNumbers = Array.from(
+    { length: 24 },
+    (_, index) => index + 1,
+);
+
+export const Default: Story = {};
+
+export const ButtonTrigger: Story = {
+    render: (args) => (
+        <DropdownMenu {...args}>
+            <DropdownMenuTrigger asChild>
+                <Button variant="outlined">Otvori izbornik</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+                <DropdownMenuItem>Pregled</DropdownMenuItem>
+                <DropdownMenuItem href="/">Otvori pocetnu</DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
+    ),
+};
+
+export const ScrollableContent: Story = {
+    render: (args) => (
+        <div className="flex h-72 items-end">
+            <DropdownMenu {...args}>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="outlined">Otvori dugi izbornik</Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-56">
+                    <DropdownMenuLabel>Odaberi stranicu</DropdownMenuLabel>
+                    {scrollablePageNumbers.map((pageNumber) => (
+                        <DropdownMenuItem key={pageNumber}>
+                            Stranica {pageNumber}
+                        </DropdownMenuItem>
+                    ))}
+                </DropdownMenuContent>
+            </DropdownMenu>
+        </div>
+    ),
+};
+
+function ControlledMenu() {
+    const [open, setOpen] = useState(false);
+    const [density, setDensity] = useState('comfortable');
+
+    return (
+        <DropdownMenu onOpenChange={setOpen} open={open}>
+            <DropdownMenuTrigger asChild>
+                <Button variant="outlined">
+                    {open ? 'Zatvori izbornik' : 'Otvori izbornik'}
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56">
+                <DropdownMenuLabel>Gustoca prikaza</DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                    onValueChange={setDensity}
+                    value={density}
+                >
+                    <DropdownMenuRadioItem value="comfortable">
+                        Ugodno
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="compact">
+                        Kompaktno
+                    </DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+        </DropdownMenu>
+    );
+}
+
+export const Controlled: Story = {
+    render: () => <ControlledMenu />,
+};
+
+export const CollisionEdge: Story = {
+    render: (args) => (
+        <div className="flex h-64 w-full items-start justify-end">
+            <DropdownMenu {...args} defaultOpen>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="outlined">Rub prikaza</Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="right" className="w-52">
+                    <DropdownMenuItem>Prva akcija</DropdownMenuItem>
+                    <DropdownMenuItem>Druga akcija</DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+        </div>
+    ),
+};

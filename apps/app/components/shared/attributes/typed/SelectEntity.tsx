@@ -1,6 +1,6 @@
-import { ExternalLink } from '@signalco/ui-icons';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
+import { Chip } from '@gredice/ui/Chip';
+import { ExternalLink } from '@gredice/ui/icons';
+import { SelectItems } from '@gredice/ui/SelectItems';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { KnownPages } from '../../../../src/KnownPages';
@@ -8,6 +8,8 @@ import type { AttributeInputProps } from '../AttributeInputProps';
 import { getRefEntities } from '../actions/entitiesActions';
 
 export function SelectEntity({
+    blockedValues = [],
+    entityId,
     value,
     onChange,
     attributeDefinition,
@@ -30,15 +32,53 @@ export function SelectEntity({
             });
     }, [entityTypeName]);
 
+    const blocksDuplicateReferences = Boolean(
+        attributeDefinition?.multiple &&
+            attributeDefinition.dataType.startsWith('ref:'),
+    );
+    const blocksSelfReference = Boolean(
+        entityTypeName &&
+            attributeDefinition?.entityTypeName &&
+            entityTypeName === attributeDefinition.entityTypeName,
+    );
+    const blockedValueSet = useMemo(
+        () => new Set(blockedValues),
+        [blockedValues],
+    );
+    const selectableEntities = useMemo(() => {
+        if (!entities) {
+            return [];
+        }
+
+        if (!blocksDuplicateReferences) {
+            return entities;
+        }
+
+        return entities.filter((entity) => {
+            const entityValue = entity.id.toString();
+            if (blocksSelfReference && entity.id === entityId) {
+                return false;
+            }
+            return entityValue === value || !blockedValueSet.has(entityValue);
+        });
+    }, [
+        blockedValueSet,
+        blocksDuplicateReferences,
+        blocksSelfReference,
+        entities,
+        entityId,
+        value,
+    ]);
+
     const items = [
         { value: '-', label: '-' },
-        ...(entities?.map((entity) => ({
+        ...selectableEntities.map((entity) => ({
             value: entity.id.toString(),
             label:
                 entity.state === 'draft'
                     ? `${entity.label} (Draft)`
                     : entity.label,
-        })) ?? []),
+        })),
     ];
 
     const selectedEntity = useMemo(() => {
@@ -56,18 +96,17 @@ export function SelectEntity({
     };
 
     return (
-        <div className="flex items-center gap-2">
-            <div className="flex-1">
+        <div className="flex w-full max-w-xl items-center gap-2">
+            <div className="min-w-0 flex-1">
                 <SelectItems
+                    className="min-w-0"
                     items={items}
                     value={selectedEntity?.id.toString() ?? '-'}
                     onValueChange={handleOnChange}
                 />
             </div>
             {selectedEntity?.state === 'draft' ? (
-                <Chip color="neutral" className="w-fit">
-                    Draft
-                </Chip>
+                <Chip color="neutral">Draft</Chip>
             ) : null}
             {entityTypeName && selectedEntity && (
                 <Link

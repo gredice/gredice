@@ -10,7 +10,14 @@ const localDomain = 'storybook.dev.gredice.test';
 
 const config: StorybookConfig = {
     stories: ['../stories/**/*.mdx', '../stories/**/*.stories.@(ts|tsx)'],
-    staticDirs: ['../public'],
+    staticDirs: [
+        '../public',
+        { from: '../../www/public/assets/plants', to: '/assets/plants' },
+        {
+            from: '../../www/public/assets/faq-categories',
+            to: '/assets/faq-categories',
+        },
+    ],
     addons: [
         '@storybook/addon-docs',
         '@storybook/addon-a11y',
@@ -20,6 +27,45 @@ const config: StorybookConfig = {
         name: '@storybook/nextjs-vite',
         options: {
             nextConfigPath: resolve(appRoot, 'next.config.ts'),
+        },
+    },
+    typescript: {
+        reactDocgen: 'react-docgen-typescript',
+        reactDocgenTypescriptOptions: {
+            tsconfigPath: resolve(appRoot, 'tsconfig.json'),
+            include: [
+                '../../packages/ui/src/**/*.tsx',
+                '../../packages/game/src/hud/**/*.tsx',
+                '../../packages/game/src/shared-ui/delivery/DeliverySlotPicker.tsx',
+                '../app/components/admin/cards/FactCard.tsx',
+                '../app/components/operations/OperationListItemContent.tsx',
+                '../app/components/operations/OperationsDayBubbles.tsx',
+                '../app/components/operations/OperationsDayGroup.tsx',
+                '../app/components/raised-beds/RaisedBedFieldCard.tsx',
+                '../app/components/shared/ServerActionButton.tsx',
+                '../app/components/shared/ServerActionIconButton.tsx',
+                '../app/components/shared/fields/Field.tsx',
+                '../app/components/shared/fields/FieldSet.tsx',
+                '../app/components/shared/fields/FormFields.tsx',
+                '../app/components/shared/placeholders/NoDataPlaceholder.tsx',
+                '../farm/app/schedule/FarmScheduleSectionSkeleton.tsx',
+                '../farm/app/schedule/ScheduleDateNavigation.tsx',
+                '../farm/components/HomeButton.tsx',
+                '../garden/components/Logotype.tsx',
+                '../www/app/sjetva/SowingCalendarPreview.tsx',
+                '../www/components/Logotype.tsx',
+                '../www/components/attributes/DetailCard.tsx',
+                '../www/components/shared/ExpandableText.tsx',
+                '../www/components/shared/ItemCard.tsx',
+                '../www/components/shared/ListCollapsable.tsx',
+                '../www/components/social/SocialCard.tsx',
+            ],
+            shouldExtractLiteralValuesFromEnum: true,
+            shouldRemoveUndefinedFromOptional: true,
+            propFilter: (prop) =>
+                prop.parent
+                    ? !prop.parent.fileName.includes('node_modules')
+                    : true,
         },
     },
     docs: {

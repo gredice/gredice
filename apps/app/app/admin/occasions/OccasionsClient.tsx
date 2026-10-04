@@ -1,8 +1,8 @@
 'use client';
 
 import type { AdventCalendarTopUser } from '@gredice/storage';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { TopAdventUsersCard } from '../../../components/admin/dashboard/TopAdventUsersCard';
 
 type OccasionsClientProps = {
@@ -11,11 +11,11 @@ type OccasionsClientProps = {
 
 export function OccasionsClient({ topAdventUsers2025 }: OccasionsClientProps) {
     return (
-        <Stack spacing={4}>
+        <Stack spacing={8}>
             <Typography level="h1" semiBold>
                 Prigode
             </Typography>
-            <Stack spacing={2}>
+            <Stack spacing={4}>
                 <TopAdventUsersCard year={2025} users={topAdventUsers2025} />
             </Stack>
         </Stack>

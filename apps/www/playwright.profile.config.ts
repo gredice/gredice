@@ -1,0 +1,50 @@
+import { fileURLToPath } from 'node:url';
+import { defineConfig } from '@playwright/experimental-ct-react';
+import { config } from './playwright.config';
+
+export default defineConfig({
+    ...config,
+    testMatch: [
+        'public-profile.spec.tsx',
+        'avatar-profile-links.spec.tsx',
+        'public-garden-members.spec.tsx',
+        'user-leaderboard.spec.tsx',
+        'achievement-catalog.spec.tsx',
+        'experience-guide.spec.tsx',
+        'harvest-trace-group.spec.tsx',
+    ],
+    testIgnore: [],
+    webServer: undefined,
+    use: {
+        ...config.use,
+        // Keep the stubbed renderer build separate from the real WebGL suite.
+        ctCacheDir: './playwright/.cache/profile',
+        ctViteConfig: {
+            ...config.use?.ctViteConfig,
+            resolve: {
+                dedupe: ['nuqs', 'react', 'react-dom'],
+                // Exercise profile data flow without starting the WebGL renderer.
+                alias: [
+                    {
+                        find: './LandingPublicGardenViewer',
+                        replacement: fileURLToPath(
+                            new URL(
+                                './playwright/LandingPublicGardenViewerStub.tsx',
+                                import.meta.url,
+                            ),
+                        ),
+                    },
+                    {
+                        find: './PublicGardenViewerDynamic',
+                        replacement: fileURLToPath(
+                            new URL(
+                                './playwright/PublicGardenViewerStub.tsx',
+                                import.meta.url,
+                            ),
+                        ),
+                    },
+                ],
+            },
+        },
+    },
+});

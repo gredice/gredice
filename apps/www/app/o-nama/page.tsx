@@ -1,17 +1,27 @@
-import { Container } from '@signalco/ui-primitives/Container';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
-import type { Metadata } from 'next';
+import { Container } from '@gredice/ui/Container';
+import {
+    GameCommunityIcon,
+    GameGlobeIcon,
+    GameIdeaIcon,
+    GameSeedlingIcon,
+} from '@gredice/ui/GameIcons';
+import { PageHeader } from '@gredice/ui/PageHeader';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
-import { PageHeader } from '../../components/shared/PageHeader';
 import { WhatsAppCard } from '../../components/social/WhatsAppCard';
+import { createPublicMetadata } from '../../lib/seo/publicMetadata';
+import { KnownPages } from '../../src/KnownPages';
+import { AboutValueCard } from './AboutValueCard';
 
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
     title: 'O nama',
     description:
         'Tvoj vrt, gdje god bio. Jer vrt ne mora biti ispred kuće da bi bio tvoj.',
-};
+    path: KnownPages.AboutUs,
+    eyebrow: 'O Gredicama',
+});
 
 function SectionHeader({
     children,
@@ -34,37 +44,10 @@ function SectionHeader({
     );
 }
 
-function ValueCard({
-    icon,
-    title,
-    description,
-    microCopy,
-}: {
-    icon: string;
-    title: string;
-    description: string;
-    microCopy: string;
-}) {
-    return (
-        <Stack
-            spacing={2}
-            className="bg-card border border-tertiary border-b-4 rounded-xl p-6 shadow"
-        >
-            <Typography level="h5" component="h3">
-                {icon} {title}
-            </Typography>
-            <Typography level="body1">{description}</Typography>
-            <Typography level="body2" className="italic text-muted-foreground">
-                {microCopy}
-            </Typography>
-        </Stack>
-    );
-}
-
 export default function AboutUsPage() {
     return (
         <Container maxWidth="md">
-            <Stack spacing={8}>
+            <Stack spacing={16}>
                 <PageHeader
                     header="O nama"
                     subHeader="Tvoj vrt, gdje god bio 🌱"
@@ -72,7 +55,7 @@ export default function AboutUsPage() {
                 />
 
                 {/* Ideja */}
-                <Stack spacing={3}>
+                <Stack spacing={6}>
                     <SectionHeader subheader="Vrt bez selidbe na selo.">
                         Ideja
                     </SectionHeader>
@@ -94,7 +77,7 @@ export default function AboutUsPage() {
                 </Stack>
 
                 {/* Kako se ideja razvila */}
-                <Stack spacing={3}>
+                <Stack spacing={6}>
                     <SectionHeader subheader="Jedan vrt. Više mogućnosti.">
                         Kako se ideja razvila
                     </SectionHeader>
@@ -129,7 +112,7 @@ export default function AboutUsPage() {
                 </Stack>
 
                 {/* Kako Gredice funkcioniraju */}
-                <Stack spacing={3}>
+                <Stack spacing={6}>
                     <SectionHeader subheader="Ti biraš vrt. Mi pazimo da uspije.">
                         Kako Gredice funkcioniraju
                     </SectionHeader>
@@ -157,7 +140,7 @@ export default function AboutUsPage() {
                 </Stack>
 
                 {/* Naš tim */}
-                <Stack spacing={3}>
+                <Stack spacing={6}>
                     <SectionHeader subheader="Malo ljudi. Puno zemlje pod noktima.">
                         Naš tim
                     </SectionHeader>
@@ -177,7 +160,7 @@ export default function AboutUsPage() {
                 </Stack>
 
                 {/* Naša vizija */}
-                <Stack spacing={3}>
+                <Stack spacing={6}>
                     <SectionHeader subheader="Vrtovi bez granica.">
                         Naša vizija
                     </SectionHeader>
@@ -197,29 +180,46 @@ export default function AboutUsPage() {
                 </Stack>
 
                 {/* Naše vrijednosti */}
-                <Stack spacing={4}>
+                <Stack spacing={8}>
                     <SectionHeader>Naše vrijednosti</SectionHeader>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <ValueCard
-                            icon="🌱"
+                        <AboutValueCard
+                            icon={
+                                <GameSeedlingIcon
+                                    aria-hidden
+                                    className="size-16"
+                                />
+                            }
                             title="Lokalno i održivo"
                             description="Radimo s malim OPG-ovima i vjerujemo u lokalnu proizvodnju, pošten odnos i dugoročnu održivost."
                             microCopy="Malo lokalno. Velika razlika."
                         />
-                        <ValueCard
-                            icon="🤝"
+                        <AboutValueCard
+                            icon={
+                                <GameCommunityIcon
+                                    aria-hidden
+                                    className="size-16"
+                                />
+                            }
                             title="Povjerenje i transparentnost"
                             description="Tvoj vrt je stvaran. Znaš gdje je, tko ga uzgaja i kako."
                             microCopy="Bez skrivenih slojeva."
                         />
-                        <ValueCard
-                            icon="🌍"
+                        <AboutValueCard
+                            icon={
+                                <GameGlobeIcon
+                                    aria-hidden
+                                    className="size-16"
+                                />
+                            }
                             title="Dostupnost svima"
                             description="Vrt ne smije biti luksuz. Gredice postoje kako bi vrt bio dostupan svima — bez obzira gdje živiš."
                             microCopy="Vrt za grad, selo i sve između."
                         />
-                        <ValueCard
-                            icon="🧠"
+                        <AboutValueCard
+                            icon={
+                                <GameIdeaIcon aria-hidden className="size-16" />
+                            }
                             title="Pametna tehnologija"
                             description="Koristimo tehnologiju da bismo pojednostavili vrtlarenje, ne da bismo ga udaljili od prirode."
                             microCopy="Tehnologija u službi zemlje."
@@ -228,7 +228,7 @@ export default function AboutUsPage() {
                 </Stack>
 
                 {/* CTA - Contact */}
-                <Stack spacing={2}>
+                <Stack spacing={4}>
                     <Typography level="h5">
                         Imaš pitanja ili želiš surađivati?
                     </Typography>
@@ -236,7 +236,7 @@ export default function AboutUsPage() {
                 </Stack>
 
                 {/* Feedback */}
-                <Row spacing={2} className="mt-4">
+                <Row spacing={4} className="mt-4">
                     <Typography level="body1">
                         Jesu li ti informacije korisne?
                     </Typography>

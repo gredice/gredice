@@ -1,0 +1,124 @@
+import type { GameSceneProps } from '@gredice/game';
+
+export type GameProfileWeatherTransitionRequest =
+    | 'clear-to-cloudy'
+    | 'clear-to-rain'
+    | 'clear-to-frost'
+    | 'frost-to-clear'
+    | 'cloudy-to-clear'
+    | 'rain-to-clear'
+    | 'snow-integrated-to-sparse'
+    | 'snow-sparse-to-integrated';
+
+export const gameProfileWeatherTransitionEventName =
+    'gredice:game-profile-weather-transition';
+
+export const gameProfileClearWeather = {
+    cloudy: 0,
+    rainy: 0,
+    snowy: 0,
+    foggy: 0,
+    windSpeed: 0,
+    windDirection: 0,
+    snowAccumulation: 0,
+} satisfies NonNullable<GameSceneProps['weather']>;
+
+export const gameProfileCloudyWeather = {
+    ...gameProfileClearWeather,
+    cloudy: 0.85,
+    foggy: 0.06,
+    windSpeed: 0.35,
+    windDirection: 80,
+} satisfies NonNullable<GameSceneProps['weather']>;
+
+export const gameProfileSnowSparseWeather = {
+    ...gameProfileClearWeather,
+    snowAccumulation: 0.75,
+    windSpeed: 1.3,
+} satisfies NonNullable<GameSceneProps['weather']>;
+
+export const gameProfileSnowIntegratedWeather = {
+    ...gameProfileSnowSparseWeather,
+    snowAccumulation: 24,
+} satisfies NonNullable<GameSceneProps['weather']>;
+
+/** Exact inputs committed to GameScene, separate from effect-policy diagnostics. */
+export function createGameProfileWeatherWitness(
+    weather: GameSceneProps['weather'],
+) {
+    return {
+        cloudy: weather?.cloudy ?? 0,
+        foggy: weather?.foggy ?? 0,
+        rainy: weather?.rainy ?? 0,
+        snowy: weather?.snowy ?? 0,
+        snowAccumulation: weather?.snowAccumulation ?? 0,
+        temperature: weather?.temperature ?? null,
+        source:
+            weather && 'source' in weather && typeof weather.source === 'string'
+                ? weather.source
+                : null,
+        isStale:
+            weather &&
+            'isStale' in weather &&
+            typeof weather.isStale === 'boolean'
+                ? weather.isStale
+                : null,
+    };
+}
+
+export function readGameProfileWeatherTransitionRequest(value: unknown) {
+    if (typeof value !== 'object' || value === null) {
+        return undefined;
+    }
+
+    const request = Reflect.get(value, 'request');
+    return request === 'clear-to-cloudy' ||
+        request === 'cloudy-to-clear' ||
+        request === 'clear-to-rain' ||
+        request === 'clear-to-frost' ||
+        request === 'frost-to-clear' ||
+        request === 'rain-to-clear' ||
+        request === 'snow-integrated-to-sparse' ||
+        request === 'snow-sparse-to-integrated'
+        ? request
+        : undefined;
+}
+
+export function resolveGameProfileWeatherTransition(
+    request: GameProfileWeatherTransitionRequest,
+) {
+    if (request === 'clear-to-cloudy') {
+        return gameProfileCloudyWeather;
+    }
+    if (request === 'clear-to-rain') {
+        return {
+            ...gameProfileClearWeather,
+            rainy: 1,
+            source: 'profile',
+            isStale: false,
+        };
+    }
+    if (request === 'clear-to-frost') {
+        return {
+            ...gameProfileClearWeather,
+            temperature: -4,
+            source: 'profile',
+            isStale: false,
+        };
+    }
+    if (request === 'frost-to-clear') {
+        return {
+            ...gameProfileClearWeather,
+            temperature: 12,
+            source: 'profile',
+            isStale: false,
+        };
+    }
+    if (request === 'snow-sparse-to-integrated') {
+        return gameProfileSnowIntegratedWeather;
+    }
+    if (request === 'snow-integrated-to-sparse') {
+        return gameProfileSnowSparseWeather;
+    }
+    return gameProfileClearWeather;
+}

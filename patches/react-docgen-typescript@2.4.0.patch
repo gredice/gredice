@@ -1,0 +1,16 @@
+diff --git a/lib/parser.d.ts b/lib/parser.d.ts
+index 14d3512..bbf6497 100644
+--- a/lib/parser.d.ts
++++ b/lib/parser.d.ts
+@@ -1,2 +1,2 @@
+-import * as ts from 'typescript';
+-import { SymbolDisplayPart } from 'typescript';
++import * as ts from '@typescript/typescript6';
++import { SymbolDisplayPart } from '@typescript/typescript6';
+diff --git a/lib/parser.js b/lib/parser.js
+index 3e83fdc..cbe3b50 100644
+--- a/lib/parser.js
++++ b/lib/parser.js
+@@ -22 +22 @@ var path = require("path");
+-var ts = require("typescript");
++var ts = require("@typescript/typescript6");

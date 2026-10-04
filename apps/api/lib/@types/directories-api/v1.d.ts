@@ -4,6 +4,260 @@
  */
 
 export interface paths {
+    "/pages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * /pages
+         * @description Get published CMS pages.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["page-summary"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * /search
+         * @description Search published directory entities.
+         */
+        get: {
+            parameters: {
+                query: {
+                    q: string;
+                    category?: string | string[];
+                    entityType?: string | string[];
+                    limit?: number;
+                    offset?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["directory-search-response"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * /pages/{slug}
+         * @description Get a published CMS page by slug/path.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    slug: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["page-detail"];
+                    };
+                };
+                /** @description Page not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/community-edits/entities/{entityType}/{entityId}/fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * /community-edits/entities/{entityType}/{entityId}/fields
+         * @description List public-editable fields for an authenticated user editing a directory entity.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    sectionKey?: string;
+                };
+                header?: never;
+                path: {
+                    entityType: string;
+                    entityId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Editable fields for the entity. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["community-edit-fields-response"];
+                    };
+                };
+                /** @description Entity or field lookup failed. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Authentication is required. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/community-edits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * /community-edits
+         * @description Submit a pending community edit request for admin approval. Live directory content is not changed by this endpoint.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["community-edit-submit-request"];
+                };
+            };
+            responses: {
+                /** @description Community edit request was created and is pending admin approval. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["community-edit-submit-response"];
+                    };
+                };
+                /** @description Invalid entity, field, data type, value, or unchanged submission. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Authentication is required. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Submitted base value hash is stale and the user should reload current content. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/entities/plant": {
         parameters: {
             query?: never;
@@ -187,6 +441,45 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["entity-brand"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/entities/liquidPreparation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * /entities/liquidPreparation
+         * @description Get all entities of type liquidPreparation.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["entity-liquidPreparation"][];
                     };
                 };
             };
@@ -394,6 +687,123 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/entities/farmSupply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * /entities/farmSupply
+         * @description Get all entities of type farmSupply.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["entity-farmSupply"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/entities/plantDisease": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * /entities/plantDisease
+         * @description Get all entities of type plantDisease.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["entity-plantDisease"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/entities/plantPest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * /entities/plantPest
+         * @description Get all entities of type plantPest.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["entity-plantPest"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/entities/occasions": {
         parameters: {
             query?: never;
@@ -480,6 +890,168 @@ export interface components {
             /** Format: uri */
             url: string;
         };
+        "plant-relationship": {
+            id: number;
+            slug: string;
+            name: string;
+            latinName?: string;
+            image?: {
+                cover?: components["schemas"]["image"];
+            };
+            /** @enum {string} */
+            relationship: "companion" | "antagonist";
+        };
+        "plant-health-operation": {
+            id: number;
+            slug: string;
+            name: string;
+            label?: string;
+        };
+        "plant-health-affected-plant": {
+            id: number;
+            slug: string;
+            name: string;
+            latinName?: string;
+            image?: {
+                cover?: components["schemas"]["image"];
+            };
+        };
+        "plant-health-issue": {
+            id: number;
+            slug: string;
+            name: string;
+            /** @enum {string} */
+            kind: "disease" | "pest";
+            shortDescription?: string;
+            symptoms?: string;
+            conditions?: string;
+            image?: {
+                cover?: components["schemas"]["image"];
+            };
+            operations?: {
+                prevention?: components["schemas"]["plant-health-operation"][];
+                reduction?: components["schemas"]["plant-health-operation"][];
+                alleviation?: components["schemas"]["plant-health-operation"][];
+            };
+        };
+        "plant-health": {
+            diseases?: components["schemas"]["plant-health-issue"][];
+            pests?: components["schemas"]["plant-health-issue"][];
+        };
+        "section-data": {
+            component: string;
+        } & {
+            [key: string]: unknown;
+        };
+        "page-summary": {
+            slug: string;
+            title: string;
+            /** @enum {string} */
+            contentKind?: "page" | "blog" | "changelog";
+            category?: string | null;
+            tags?: string[];
+            /** @enum {string} */
+            state: "published";
+            /** Format: date-time */
+            publishedAt?: string | null;
+            metaTitle?: string | null;
+            metaDescription?: string | null;
+            metaImageUrl?: string | null;
+            metaImagePoiX?: number | null;
+            metaImagePoiY?: number | null;
+            seoImageUrl?: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        "page-detail": components["schemas"]["page-summary"] & {
+            content: components["schemas"]["section-data"][];
+            /** @enum {string} */
+            renderMode: "container" | "fullWidth";
+            /** @enum {string} */
+            renderMaxWidth: "xs" | "sm" | "md" | "lg" | "xl";
+        };
+        "directory-search-result": {
+            entityId: number;
+            entityType: string;
+            category: string;
+            categoryLabel: string;
+            title: string;
+            summary?: string | null;
+            imageUrl?: string | null;
+            imageAlt?: string | null;
+            visualKey?: string | null;
+            /** Format: uri */
+            href: string;
+            rank: number;
+            /** Format: date-time */
+            publishedAt: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        "directory-search-response": {
+            query: string;
+            limit: number;
+            offset: number;
+            count: number;
+            results: components["schemas"]["directory-search-result"][];
+        };
+        "community-edit-field": {
+            entityTypeName: string;
+            entityId: number;
+            fieldKey: string;
+            sectionKey: string;
+            attributeDefinitionId: number;
+            attributeValueId?: number | null;
+            attributePath: string;
+            dataType: string;
+            /** @enum {string} */
+            controlType: "boolean" | "json" | "markdown" | "number" | "operationSuggestion" | "range" | "reference" | "select" | "text";
+            multiple: boolean;
+            publicLabel: string;
+            helpText?: string;
+            options?: {
+                value: string;
+                label: string;
+                helpText?: string;
+                description?: string;
+                iconKey?: string;
+            }[];
+            operationSuggestionStage?: {
+                name: string;
+                label: string;
+            };
+            currentValue: string | null;
+            baseValueHash: string;
+        };
+        "community-edit-fields-response": {
+            entityTypeName: string;
+            entityId: number;
+            sectionKey: string | null;
+            fields: components["schemas"]["community-edit-field"][];
+        };
+        "community-edit-change-submit": {
+            fieldKey: string;
+            /** @description Serialized proposed value. Type is validated against the editable field registry. Text and markdown submissions are stored with replayable patches so non-overlapping edits on the same attribute can be approved later. Operation suggestions use a structured add/remove intent for existing plant-stage operations and can also propose a new operation name and description. */
+            proposedValue: unknown;
+            /** @description Hash returned by the editable fields endpoint. A stale hash is rejected at submission time; accepted text and markdown requests can later replay their stored patch over unrelated approved edits. */
+            baseValueHash?: string | null;
+        };
+        "community-edit-submit-request": {
+            entityTypeName: string;
+            entityId: number;
+            publicPath: string;
+            sectionKey?: string | null;
+            submitterNote?: string | null;
+            changes: components["schemas"]["community-edit-change-submit"][];
+        };
+        "community-edit-submit-response": {
+            /** @enum {string} */
+            status: "pending_admin_approval";
+            requestId: number;
+            /** @enum {string} */
+            requestStatus: "pending";
+            changeCount: number;
+        };
         "entity-plant": {
             id: number;
             entityType: {
@@ -490,8 +1062,11 @@ export interface components {
                 /** @default Biljka */
                 label: string;
             };
+            slug: string;
             information: {
                 name: string;
+                /** @description (alternativni nazivi za biljku, iz naroda, druga nariječja) */
+                alternativeName?: string[];
                 latinName: string;
                 origin: string;
                 verified?: boolean;
@@ -507,123 +1082,200 @@ export interface components {
                 harvest: string;
                 storage: string;
                 tip?: {
-                    header?: string;
+                    header: string;
                     /** @description Markdown formatted text */
-                    content?: string;
+                    content: string;
                 }[];
+                /** @description (popis dozvoljenih operacija za biljku) */
                 operations: {
                     id: number;
                     attributes: {
-                        /** @description (broj dana kada se radi operacija relativno na životni ciklus biljke) */
-                        relativeDays?: number;
+                        /** @description Controls the exact in-game visual reward a completed operation creates. Supported values: watering, weeding, mulch, removeMulch, agrotextile, removeAgrotextile, supports, harvest, photographyUpdate. */
+                        visualReward?: string;
+                        /** @description (jedno od: optional, once, periodic, daily, weekly, biweekly, monthly) */
+                        frequency?: string;
                         /** @description (na koji stadij biljke se primjenjuje radnja) */
                         stage: {
-                            id?: number;
-                            information?: {
+                            id: number;
+                            information: {
                                 name: string;
                                 label: string;
                             };
                         };
-                        /** @description (jedno od: optional, once, periodic, daily, weekly, biweekly, monthly) */
-                        frequency?: string;
-                        /** @description (na što se primjenjuje operacije - jedno od: garden, raisedBedFull, raisedBed1m, plant) */
+                        /** @description (na što se primjenjuje operacije - jedno od: farm, garden, raisedBedFull, raisedBed1m, plant) */
                         application: string;
-                        /** @description (vrijeme potrebno za izvršavanje radnje u minutama) */
-                        duration: number;
+                        /** @description (broj dana kada se radi operacija relativno na životni ciklus biljke) */
+                        relativeDays?: number;
                         /** @description (ako je radnja za dostavu, korisnik mora ugovoriti dostavu za odrađivanje ove radnje npr. Branje svih plodova) */
                         deliverable: boolean;
+                        /** @description (vrijeme potrebno za izvršavanje radnje u minutama) */
+                        duration: number;
                         /** @description (interna radnja se ne dojavljuje niti prikazuje korisnicima aplikacije - namjenjena je za poslove farmera) */
                         internal?: boolean;
                         printLabel?: boolean;
-                    };
-                    image: {
-                        cover?: components["schemas"]["image"];
+                        /** @description Jedan ili više točnih tekućih pripravaka koji se mogu koristiti za ovu radnju. Koristi se kod radnji primjene/tretmana kada radnja može trošiti pripravke različitih brendova ili pakiranja. Primjer: liquidPreparation#566 za pripravak za otpornost rajčice 750 ml; kasnije se može dodati i drugi pripravak iste namjene u drugom pakiranju. */
+                        liquidPreparation?: {
+                            id: number;
+                            images?: {
+                                cover?: components["schemas"]["image"];
+                            };
+                            information: {
+                                brandName: string;
+                                barcode?: string;
+                                name: string;
+                                label: string;
+                                productUrl?: string;
+                            };
+                            attributes: {
+                                volumeMl: number;
+                                price?: number;
+                                certification?: string;
+                                form?: string;
+                            };
+                            application: {
+                                dosage: string;
+                                purpose: string;
+                                target: string;
+                                applicationMethod: string;
+                                frequencyRecommendation?: string;
+                            };
+                        }[];
+                        /** @description Tehnički naziv tipa entiteta čija se zaliha provjerava ili koristi kroz ovu radnju. Ovo polje služi za usmjeravanje prema pravoj evidenciji zalihe. Primjeri: farmSupply, seed, liquidPreparation. */
+                        inventoryEntityType?: string;
+                        /** @description Grupa zalihe unutar odabranog tipa entiteta. Koristi se za inventurne radnje koje broje širu skupinu zalihe, a ne samo jedan proizvod. Primjeri: raisedBedBoards, seed, plantProtection, paperDeliveryBag. */
+                        inventoryKind?: string;
+                        /** @description Jedan ili više konkretnih materijala iz tipa farmSupply koji pripadaju ovoj inventurnoj radnji. Koristi se kada jedna radnja pokriva više dobavljača, brendova, dimenzija ili pakiranja istog materijala. Primjer: farmSupply#573 za daske za gredice; kasnije se mogu dodati posebne daske drugog dobavljača ili druge dimenzije. */
+                        inventorySupply?: {
+                            id: number;
+                            images?: {
+                                cover?: components["schemas"]["image"];
+                            };
+                            attributes: {
+                                category: string;
+                                kind: string;
+                                packSize?: number;
+                                unit: string;
+                                notes?: string;
+                                /** @description (cijena pakiranja u EUR) */
+                                price: number;
+                            };
+                            information: {
+                                barcode?: string;
+                                name: string;
+                                label: string;
+                                description?: string;
+                                supplier?: string;
+                                productUrl?: string;
+                            };
+                        }[];
+                        /** @description When true, the operation applies to every target covered by its application (for example, every plant when application is plant). */
+                        appliesToAllTargets?: boolean;
                     };
                     information: {
-                        /** @description (prevedeni naziv operacije) */
-                        label: string;
-                        /** @description (kratki opis operacije) */
-                        shortDescription: string;
                         /** @description (puni opis operacije) */
                         description: string;
+                        /** @description (kratki opis operacije) */
+                        shortDescription: string;
                         /** @description (tehnički naziv operacije - jednom postavljen ne smije se mjenjati!) */
                         name: string;
+                        /** @description (prevedeni naziv operacije) */
+                        label: string;
                         /** @description (postupak za izvršavanje radnje) */
                         instructions: string;
                     };
                     prices: {
+                        /** @description (EUR cijena za jednu operaciju) */
+                        perOperation: number;
                         /** @description (EUR cijena s popustom) */
                         discounted?: number;
                         /** @description (opis popusta npr. "Za kupnju 18 biljaka") */
                         discountDescription?: string;
-                        /** @description (EUR cijena za jednu operaciju) */
-                        perOperation: number;
+                    };
+                    image: {
+                        cover: components["schemas"]["image"];
                     };
                     conditions: {
-                        /** @description (da li je obavezno proložiti slike za završetak radnje) */
-                        completionAttachImagesRequired: boolean;
                         /** @description (da li se mogu proložiti slike za završetak radnje) */
                         completionAttachImages: boolean;
+                        /** @description (da li je obavezno proložiti slike za završetak radnje) */
+                        completionAttachImagesRequired: boolean;
+                        /** @description (da li se mo\e priložiti napomena za završetak radnje) */
+                        completionAttachNotes: boolean;
+                        /** @description (da li je obavezno proložiti napomenu za završetak radnje) */
+                        completionAttachNotesRequired: boolean;
                     };
-                    actions: {
+                    actions?: {
                         removePlant?: boolean;
                     };
                 }[];
             };
             calendar: {
-                sowing?: {
-                    start?: number;
-                    end?: number;
-                }[];
-                planting?: {
-                    start?: number;
-                    end?: number;
-                }[];
-                harvest: {
-                    start?: number;
-                    end?: number;
-                }[];
+                /** @description vrijeme sijanja u zatvorenom (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
                 propagating?: {
-                    start?: number;
-                    end?: number;
+                    start: number;
+                    end: number;
+                }[];
+                /** @description vrijeme presađivanja na otvoreno (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
+                planting?: {
+                    start: number;
+                    end: number;
+                }[];
+                /** @description vrijeme sijanja na otvorenom (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
+                sowing?: {
+                    start: number;
+                    end: number;
+                }[];
+                /** @description (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
+                harvest: {
+                    start: number;
+                    end: number;
                 }[];
             };
             attributes: {
-                /** @description (u gramima) */
-                yieldMin: number;
+                /** @description (u danima) */
+                harvestWindowMin: number;
                 /** @description (u gramima) */
                 yieldMax: number;
                 /** @description (u danima) */
-                harvestWindowMin: number;
-                /** @description (u danima) */
-                harvestWindowMax: number;
-                /** @description (Niske potrebe, Srednje potrebe, Visoke potrebe) */
-                nutrients: string;
-                /** @description (Klijanje pod svijetlosti, Klijanje u mraku) */
-                germinationType: string;
-                /** @description (u stupnjevima °C) */
-                gernimationTemperature: number;
-                /** @description (Suho tlo, Vlažno tlo, Mokro tlo) */
-                water: string;
-                /** @description (od 0 do 1 gdje 0 označava potpuni hlad a 1 direktno sunce) */
-                light: number;
-                /** @description (Lagano (pješčano), Srednje (ilovasto), Teško (glineno)) */
-                soil: string;
+                germinationWindowMax: number;
                 /** @description (u centimetrima) */
                 seedingDistance: number;
+                /** @description (u centimetrima) */
+                seedingDepth: number;
+                /** @description (u stupnjevima °C) */
+                gernimationTemperature: number;
+                /** @description (Klijanje pod svijetlosti, Klijanje u mraku) */
+                germinationType: string;
+                /** @description (Lagano (pješčano), Srednje (ilovasto), Teško (glineno)) */
+                soil: string;
                 germinationWindowMin: number;
-                /** @description (u danima) */
-                germinationWindowMax: number;
                 /** @description (u danima) */
                 growthWindowMin: number;
                 /** @description (u danima) */
                 growthWindowMax: number;
-                /** @description (u centimetrima) */
-                seedingDepth: number;
+                /** @description (u gramima) */
+                yieldMin: number;
+                /** @description (u danima) */
+                harvestWindowMax: number;
                 /** @description ('perPlant' ako je mjera po biljci ili 'perField' ako je mjera za jedno polje gredice) */
                 yieldType: string;
+                /** @description (od 0 do 1 gdje 0 označava potpuni hlad a 1 direktno sunce) */
+                light: number;
+                /** @description (Niske potrebe, Srednje potrebe, Visoke potrebe) */
+                nutrients: string;
+                /** @description (Suho tlo, Vlažno tlo, Mokro tlo) */
+                water: string;
                 /** @description (da li je polje čisto nakon branja biljke; u suprotnom je pokrebna radnja uklanjanja biljke) */
                 cleanHarvest: boolean;
+            };
+            relationships?: {
+                /** @description Biljke koje se preporučuju kao dobri susjedi u gredici. Veza se prikazuje obostrano, pa ju treba unijeti samo na jednoj biljci. */
+                companions?: components["schemas"]["plant-relationship"][];
+                /** @description Biljke koje se ne preporučuju saditi u neposrednoj blizini. Veza se prikazuje obostrano, pa ju treba unijeti samo na jednoj biljci. */
+                antagonists?: components["schemas"]["plant-relationship"][];
+            };
+            image: {
+                cover: components["schemas"]["image"];
             };
             prices: {
                 /** @description (EUR cijena za jednu biljku - presadnica ili 30x30cm sijanje) */
@@ -632,9 +1284,7 @@ export interface components {
             store: {
                 availableInStore: boolean;
             };
-            image: {
-                cover: components["schemas"]["image"];
-            };
+            health?: components["schemas"]["plant-health"];
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -650,13 +1300,14 @@ export interface components {
                 /** @default Sorta biljke */
                 label: string;
             };
+            slug: string;
             information: {
-                planting?: string;
-                flowering?: string;
                 plant: {
-                    id?: number;
-                    information?: {
+                    id: number;
+                    information: {
                         name: string;
+                        /** @description (alternativni nazivi za biljku, iz naroda, druga nariječja) */
+                        alternativeName?: string[];
                         latinName: string;
                         origin: string;
                         verified?: boolean;
@@ -672,137 +1323,212 @@ export interface components {
                         harvest: string;
                         storage: string;
                         tip?: {
-                            header?: string;
+                            header: string;
                             /** @description Markdown formatted text */
-                            content?: string;
+                            content: string;
                         }[];
+                        /** @description (popis dozvoljenih operacija za biljku) */
                         operations: {
                             id: number;
                             attributes: {
-                                /** @description (broj dana kada se radi operacija relativno na životni ciklus biljke) */
-                                relativeDays?: number;
+                                /** @description Controls the exact in-game visual reward a completed operation creates. Supported values: watering, weeding, mulch, removeMulch, agrotextile, removeAgrotextile, supports, harvest, photographyUpdate. */
+                                visualReward?: string;
+                                /** @description (jedno od: optional, once, periodic, daily, weekly, biweekly, monthly) */
+                                frequency?: string;
                                 /** @description (na koji stadij biljke se primjenjuje radnja) */
                                 stage: {
-                                    id?: number;
-                                    information?: {
+                                    id: number;
+                                    information: {
                                         name: string;
                                         label: string;
                                     };
                                 };
-                                /** @description (jedno od: optional, once, periodic, daily, weekly, biweekly, monthly) */
-                                frequency?: string;
-                                /** @description (na što se primjenjuje operacije - jedno od: garden, raisedBedFull, raisedBed1m, plant) */
+                                /** @description (na što se primjenjuje operacije - jedno od: farm, garden, raisedBedFull, raisedBed1m, plant) */
                                 application: string;
-                                /** @description (vrijeme potrebno za izvršavanje radnje u minutama) */
-                                duration: number;
+                                /** @description (broj dana kada se radi operacija relativno na životni ciklus biljke) */
+                                relativeDays?: number;
                                 /** @description (ako je radnja za dostavu, korisnik mora ugovoriti dostavu za odrađivanje ove radnje npr. Branje svih plodova) */
                                 deliverable: boolean;
+                                /** @description (vrijeme potrebno za izvršavanje radnje u minutama) */
+                                duration: number;
                                 /** @description (interna radnja se ne dojavljuje niti prikazuje korisnicima aplikacije - namjenjena je za poslove farmera) */
                                 internal?: boolean;
                                 printLabel?: boolean;
-                            };
-                            image: {
-                                cover?: components["schemas"]["image"];
+                                /** @description Jedan ili više točnih tekućih pripravaka koji se mogu koristiti za ovu radnju. Koristi se kod radnji primjene/tretmana kada radnja može trošiti pripravke različitih brendova ili pakiranja. Primjer: liquidPreparation#566 za pripravak za otpornost rajčice 750 ml; kasnije se može dodati i drugi pripravak iste namjene u drugom pakiranju. */
+                                liquidPreparation?: {
+                                    id: number;
+                                    images?: {
+                                        cover?: components["schemas"]["image"];
+                                    };
+                                    information: {
+                                        brandName: string;
+                                        barcode?: string;
+                                        name: string;
+                                        label: string;
+                                        productUrl?: string;
+                                    };
+                                    attributes: {
+                                        volumeMl: number;
+                                        price?: number;
+                                        certification?: string;
+                                        form?: string;
+                                    };
+                                    application: {
+                                        dosage: string;
+                                        purpose: string;
+                                        target: string;
+                                        applicationMethod: string;
+                                        frequencyRecommendation?: string;
+                                    };
+                                }[];
+                                /** @description Tehnički naziv tipa entiteta čija se zaliha provjerava ili koristi kroz ovu radnju. Ovo polje služi za usmjeravanje prema pravoj evidenciji zalihe. Primjeri: farmSupply, seed, liquidPreparation. */
+                                inventoryEntityType?: string;
+                                /** @description Grupa zalihe unutar odabranog tipa entiteta. Koristi se za inventurne radnje koje broje širu skupinu zalihe, a ne samo jedan proizvod. Primjeri: raisedBedBoards, seed, plantProtection, paperDeliveryBag. */
+                                inventoryKind?: string;
+                                /** @description Jedan ili više konkretnih materijala iz tipa farmSupply koji pripadaju ovoj inventurnoj radnji. Koristi se kada jedna radnja pokriva više dobavljača, brendova, dimenzija ili pakiranja istog materijala. Primjer: farmSupply#573 za daske za gredice; kasnije se mogu dodati posebne daske drugog dobavljača ili druge dimenzije. */
+                                inventorySupply?: {
+                                    id: number;
+                                    images?: {
+                                        cover?: components["schemas"]["image"];
+                                    };
+                                    attributes: {
+                                        category: string;
+                                        kind: string;
+                                        packSize?: number;
+                                        unit: string;
+                                        notes?: string;
+                                        /** @description (cijena pakiranja u EUR) */
+                                        price: number;
+                                    };
+                                    information: {
+                                        barcode?: string;
+                                        name: string;
+                                        label: string;
+                                        description?: string;
+                                        supplier?: string;
+                                        productUrl?: string;
+                                    };
+                                }[];
+                                /** @description When true, the operation applies to every target covered by its application (for example, every plant when application is plant). */
+                                appliesToAllTargets?: boolean;
                             };
                             information: {
-                                /** @description (prevedeni naziv operacije) */
-                                label: string;
-                                /** @description (kratki opis operacije) */
-                                shortDescription: string;
                                 /** @description (puni opis operacije) */
                                 description: string;
+                                /** @description (kratki opis operacije) */
+                                shortDescription: string;
                                 /** @description (tehnički naziv operacije - jednom postavljen ne smije se mjenjati!) */
                                 name: string;
+                                /** @description (prevedeni naziv operacije) */
+                                label: string;
                                 /** @description (postupak za izvršavanje radnje) */
                                 instructions: string;
                             };
                             prices: {
+                                /** @description (EUR cijena za jednu operaciju) */
+                                perOperation: number;
                                 /** @description (EUR cijena s popustom) */
                                 discounted?: number;
                                 /** @description (opis popusta npr. "Za kupnju 18 biljaka") */
                                 discountDescription?: string;
-                                /** @description (EUR cijena za jednu operaciju) */
-                                perOperation: number;
+                            };
+                            image: {
+                                cover: components["schemas"]["image"];
                             };
                             conditions: {
-                                /** @description (da li je obavezno proložiti slike za završetak radnje) */
-                                completionAttachImagesRequired: boolean;
                                 /** @description (da li se mogu proložiti slike za završetak radnje) */
                                 completionAttachImages: boolean;
+                                /** @description (da li je obavezno proložiti slike za završetak radnje) */
+                                completionAttachImagesRequired: boolean;
+                                /** @description (da li se mo\e priložiti napomena za završetak radnje) */
+                                completionAttachNotes: boolean;
+                                /** @description (da li je obavezno proložiti napomenu za završetak radnje) */
+                                completionAttachNotesRequired: boolean;
                             };
-                            actions: {
+                            actions?: {
                                 removePlant?: boolean;
                             };
                         }[];
                     };
-                    calendar?: {
-                        sowing?: {
-                            start?: number;
-                            end?: number;
-                        }[];
-                        planting?: {
-                            start?: number;
-                            end?: number;
-                        }[];
-                        harvest: {
-                            start?: number;
-                            end?: number;
-                        }[];
+                    calendar: {
+                        /** @description vrijeme sijanja u zatvorenom (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
                         propagating?: {
-                            start?: number;
-                            end?: number;
+                            start: number;
+                            end: number;
+                        }[];
+                        /** @description vrijeme presađivanja na otvoreno (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
+                        planting?: {
+                            start: number;
+                            end: number;
+                        }[];
+                        /** @description vrijeme sijanja na otvorenom (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
+                        sowing?: {
+                            start: number;
+                            end: number;
+                        }[];
+                        /** @description (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
+                        harvest: {
+                            start: number;
+                            end: number;
                         }[];
                     };
-                    attributes?: {
-                        /** @description (u gramima) */
-                        yieldMin: number;
+                    attributes: {
+                        /** @description (u danima) */
+                        harvestWindowMin: number;
                         /** @description (u gramima) */
                         yieldMax: number;
                         /** @description (u danima) */
-                        harvestWindowMin: number;
-                        /** @description (u danima) */
-                        harvestWindowMax: number;
-                        /** @description (Niske potrebe, Srednje potrebe, Visoke potrebe) */
-                        nutrients: string;
-                        /** @description (Klijanje pod svijetlosti, Klijanje u mraku) */
-                        germinationType: string;
-                        /** @description (u stupnjevima °C) */
-                        gernimationTemperature: number;
-                        /** @description (Suho tlo, Vlažno tlo, Mokro tlo) */
-                        water: string;
-                        /** @description (od 0 do 1 gdje 0 označava potpuni hlad a 1 direktno sunce) */
-                        light: number;
-                        /** @description (Lagano (pješčano), Srednje (ilovasto), Teško (glineno)) */
-                        soil: string;
+                        germinationWindowMax: number;
                         /** @description (u centimetrima) */
                         seedingDistance: number;
+                        /** @description (u centimetrima) */
+                        seedingDepth: number;
+                        /** @description (u stupnjevima °C) */
+                        gernimationTemperature: number;
+                        /** @description (Klijanje pod svijetlosti, Klijanje u mraku) */
+                        germinationType: string;
+                        /** @description (Lagano (pješčano), Srednje (ilovasto), Teško (glineno)) */
+                        soil: string;
                         germinationWindowMin: number;
-                        /** @description (u danima) */
-                        germinationWindowMax: number;
                         /** @description (u danima) */
                         growthWindowMin: number;
                         /** @description (u danima) */
                         growthWindowMax: number;
-                        /** @description (u centimetrima) */
-                        seedingDepth: number;
+                        /** @description (u gramima) */
+                        yieldMin: number;
+                        /** @description (u danima) */
+                        harvestWindowMax: number;
                         /** @description ('perPlant' ako je mjera po biljci ili 'perField' ako je mjera za jedno polje gredice) */
                         yieldType: string;
+                        /** @description (od 0 do 1 gdje 0 označava potpuni hlad a 1 direktno sunce) */
+                        light: number;
+                        /** @description (Niske potrebe, Srednje potrebe, Visoke potrebe) */
+                        nutrients: string;
+                        /** @description (Suho tlo, Vlažno tlo, Mokro tlo) */
+                        water: string;
                         /** @description (da li je polje čisto nakon branja biljke; u suprotnom je pokrebna radnja uklanjanja biljke) */
                         cleanHarvest: boolean;
                     };
-                    prices?: {
+                    relationships?: {
+                        /** @description Biljke koje se preporučuju kao dobri susjedi u gredici. Veza se prikazuje obostrano, pa ju treba unijeti samo na jednoj biljci. */
+                        companions?: components["schemas"]["plant-relationship"][];
+                        /** @description Biljke koje se ne preporučuju saditi u neposrednoj blizini. Veza se prikazuje obostrano, pa ju treba unijeti samo na jednoj biljci. */
+                        antagonists?: components["schemas"]["plant-relationship"][];
+                    };
+                    image: {
+                        cover: components["schemas"]["image"];
+                    };
+                    prices: {
                         /** @description (EUR cijena za jednu biljku - presadnica ili 30x30cm sijanje) */
                         perPlant: number;
                     };
-                    store?: {
+                    store: {
                         availableInStore: boolean;
-                    };
-                    image?: {
-                        cover: components["schemas"]["image"];
                     };
                 };
                 name: string;
                 description?: string;
+                shortDescription: string;
                 latinName?: string;
                 sowing?: string;
                 origin?: string;
@@ -812,7 +1538,11 @@ export interface components {
                 storage?: string;
                 maintenance?: string;
                 harvest?: string;
-                shortDescription: string;
+                planting?: string;
+                flowering?: string;
+            };
+            image: {
+                cover: components["schemas"]["image"];
             };
             store: {
                 availableInStore: boolean;
@@ -820,9 +1550,6 @@ export interface components {
             attributes: {
                 /** @description (vrsta reprodukcije sorte dostupne u Gredicama; "seed" ili "bulb") */
                 reproductionType: string;
-            };
-            image: {
-                cover: components["schemas"]["image"];
             };
             /** Format: date-time */
             createdAt: string;
@@ -839,6 +1566,7 @@ export interface components {
                 /** @default Stadij biljke */
                 label: string;
             };
+            slug: string;
             information: {
                 name: string;
                 label: string;
@@ -858,20 +1586,28 @@ export interface components {
                 /** @default Sjeme */
                 label: string;
             };
+            slug: string;
+            images?: {
+                cover?: components["schemas"]["image"];
+                /** @description (slika pozadine pakiranja) */
+                back?: components["schemas"]["image"];
+            };
             information: {
-                name: string;
-                barcode?: string;
                 brand: {
-                    id?: number;
-                    information?: {
-                        website?: string;
+                    id: number;
+                    information: {
                         name: string;
+                        website?: string;
                     };
                 };
+                barcode: string;
+                name: string;
                 plant: {
-                    id?: number;
-                    information?: {
+                    id: number;
+                    information: {
                         name: string;
+                        /** @description (alternativni nazivi za biljku, iz naroda, druga nariječja) */
+                        alternativeName?: string[];
                         latinName: string;
                         origin: string;
                         verified?: boolean;
@@ -887,144 +1623,218 @@ export interface components {
                         harvest: string;
                         storage: string;
                         tip?: {
-                            header?: string;
+                            header: string;
                             /** @description Markdown formatted text */
-                            content?: string;
+                            content: string;
                         }[];
+                        /** @description (popis dozvoljenih operacija za biljku) */
                         operations: {
                             id: number;
                             attributes: {
-                                /** @description (broj dana kada se radi operacija relativno na životni ciklus biljke) */
-                                relativeDays?: number;
+                                /** @description Controls the exact in-game visual reward a completed operation creates. Supported values: watering, weeding, mulch, removeMulch, agrotextile, removeAgrotextile, supports, harvest, photographyUpdate. */
+                                visualReward?: string;
+                                /** @description (jedno od: optional, once, periodic, daily, weekly, biweekly, monthly) */
+                                frequency?: string;
                                 /** @description (na koji stadij biljke se primjenjuje radnja) */
                                 stage: {
-                                    id?: number;
-                                    information?: {
+                                    id: number;
+                                    information: {
                                         name: string;
                                         label: string;
                                     };
                                 };
-                                /** @description (jedno od: optional, once, periodic, daily, weekly, biweekly, monthly) */
-                                frequency?: string;
-                                /** @description (na što se primjenjuje operacije - jedno od: garden, raisedBedFull, raisedBed1m, plant) */
+                                /** @description (na što se primjenjuje operacije - jedno od: farm, garden, raisedBedFull, raisedBed1m, plant) */
                                 application: string;
-                                /** @description (vrijeme potrebno za izvršavanje radnje u minutama) */
-                                duration: number;
+                                /** @description (broj dana kada se radi operacija relativno na životni ciklus biljke) */
+                                relativeDays?: number;
                                 /** @description (ako je radnja za dostavu, korisnik mora ugovoriti dostavu za odrađivanje ove radnje npr. Branje svih plodova) */
                                 deliverable: boolean;
+                                /** @description (vrijeme potrebno za izvršavanje radnje u minutama) */
+                                duration: number;
                                 /** @description (interna radnja se ne dojavljuje niti prikazuje korisnicima aplikacije - namjenjena je za poslove farmera) */
                                 internal?: boolean;
                                 printLabel?: boolean;
-                            };
-                            image: {
-                                cover?: components["schemas"]["image"];
+                                /** @description Jedan ili više točnih tekućih pripravaka koji se mogu koristiti za ovu radnju. Koristi se kod radnji primjene/tretmana kada radnja može trošiti pripravke različitih brendova ili pakiranja. Primjer: liquidPreparation#566 za pripravak za otpornost rajčice 750 ml; kasnije se može dodati i drugi pripravak iste namjene u drugom pakiranju. */
+                                liquidPreparation?: {
+                                    id: number;
+                                    images?: {
+                                        cover?: components["schemas"]["image"];
+                                    };
+                                    information: {
+                                        brandName: string;
+                                        barcode?: string;
+                                        name: string;
+                                        label: string;
+                                        productUrl?: string;
+                                    };
+                                    attributes: {
+                                        volumeMl: number;
+                                        price?: number;
+                                        certification?: string;
+                                        form?: string;
+                                    };
+                                    application: {
+                                        dosage: string;
+                                        purpose: string;
+                                        target: string;
+                                        applicationMethod: string;
+                                        frequencyRecommendation?: string;
+                                    };
+                                }[];
+                                /** @description Tehnički naziv tipa entiteta čija se zaliha provjerava ili koristi kroz ovu radnju. Ovo polje služi za usmjeravanje prema pravoj evidenciji zalihe. Primjeri: farmSupply, seed, liquidPreparation. */
+                                inventoryEntityType?: string;
+                                /** @description Grupa zalihe unutar odabranog tipa entiteta. Koristi se za inventurne radnje koje broje širu skupinu zalihe, a ne samo jedan proizvod. Primjeri: raisedBedBoards, seed, plantProtection, paperDeliveryBag. */
+                                inventoryKind?: string;
+                                /** @description Jedan ili više konkretnih materijala iz tipa farmSupply koji pripadaju ovoj inventurnoj radnji. Koristi se kada jedna radnja pokriva više dobavljača, brendova, dimenzija ili pakiranja istog materijala. Primjer: farmSupply#573 za daske za gredice; kasnije se mogu dodati posebne daske drugog dobavljača ili druge dimenzije. */
+                                inventorySupply?: {
+                                    id: number;
+                                    images?: {
+                                        cover?: components["schemas"]["image"];
+                                    };
+                                    attributes: {
+                                        category: string;
+                                        kind: string;
+                                        packSize?: number;
+                                        unit: string;
+                                        notes?: string;
+                                        /** @description (cijena pakiranja u EUR) */
+                                        price: number;
+                                    };
+                                    information: {
+                                        barcode?: string;
+                                        name: string;
+                                        label: string;
+                                        description?: string;
+                                        supplier?: string;
+                                        productUrl?: string;
+                                    };
+                                }[];
+                                /** @description When true, the operation applies to every target covered by its application (for example, every plant when application is plant). */
+                                appliesToAllTargets?: boolean;
                             };
                             information: {
-                                /** @description (prevedeni naziv operacije) */
-                                label: string;
-                                /** @description (kratki opis operacije) */
-                                shortDescription: string;
                                 /** @description (puni opis operacije) */
                                 description: string;
+                                /** @description (kratki opis operacije) */
+                                shortDescription: string;
                                 /** @description (tehnički naziv operacije - jednom postavljen ne smije se mjenjati!) */
                                 name: string;
+                                /** @description (prevedeni naziv operacije) */
+                                label: string;
                                 /** @description (postupak za izvršavanje radnje) */
                                 instructions: string;
                             };
                             prices: {
+                                /** @description (EUR cijena za jednu operaciju) */
+                                perOperation: number;
                                 /** @description (EUR cijena s popustom) */
                                 discounted?: number;
                                 /** @description (opis popusta npr. "Za kupnju 18 biljaka") */
                                 discountDescription?: string;
-                                /** @description (EUR cijena za jednu operaciju) */
-                                perOperation: number;
+                            };
+                            image: {
+                                cover: components["schemas"]["image"];
                             };
                             conditions: {
-                                /** @description (da li je obavezno proložiti slike za završetak radnje) */
-                                completionAttachImagesRequired: boolean;
                                 /** @description (da li se mogu proložiti slike za završetak radnje) */
                                 completionAttachImages: boolean;
+                                /** @description (da li je obavezno proložiti slike za završetak radnje) */
+                                completionAttachImagesRequired: boolean;
+                                /** @description (da li se mo\e priložiti napomena za završetak radnje) */
+                                completionAttachNotes: boolean;
+                                /** @description (da li je obavezno proložiti napomenu za završetak radnje) */
+                                completionAttachNotesRequired: boolean;
                             };
-                            actions: {
+                            actions?: {
                                 removePlant?: boolean;
                             };
                         }[];
                     };
-                    calendar?: {
-                        sowing?: {
-                            start?: number;
-                            end?: number;
-                        }[];
-                        planting?: {
-                            start?: number;
-                            end?: number;
-                        }[];
-                        harvest: {
-                            start?: number;
-                            end?: number;
-                        }[];
+                    calendar: {
+                        /** @description vrijeme sijanja u zatvorenom (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
                         propagating?: {
-                            start?: number;
-                            end?: number;
+                            start: number;
+                            end: number;
+                        }[];
+                        /** @description vrijeme presađivanja na otvoreno (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
+                        planting?: {
+                            start: number;
+                            end: number;
+                        }[];
+                        /** @description vrijeme sijanja na otvorenom (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
+                        sowing?: {
+                            start: number;
+                            end: number;
+                        }[];
+                        /** @description (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
+                        harvest: {
+                            start: number;
+                            end: number;
                         }[];
                     };
-                    attributes?: {
-                        /** @description (u gramima) */
-                        yieldMin: number;
+                    attributes: {
+                        /** @description (u danima) */
+                        harvestWindowMin: number;
                         /** @description (u gramima) */
                         yieldMax: number;
                         /** @description (u danima) */
-                        harvestWindowMin: number;
-                        /** @description (u danima) */
-                        harvestWindowMax: number;
-                        /** @description (Niske potrebe, Srednje potrebe, Visoke potrebe) */
-                        nutrients: string;
-                        /** @description (Klijanje pod svijetlosti, Klijanje u mraku) */
-                        germinationType: string;
-                        /** @description (u stupnjevima °C) */
-                        gernimationTemperature: number;
-                        /** @description (Suho tlo, Vlažno tlo, Mokro tlo) */
-                        water: string;
-                        /** @description (od 0 do 1 gdje 0 označava potpuni hlad a 1 direktno sunce) */
-                        light: number;
-                        /** @description (Lagano (pješčano), Srednje (ilovasto), Teško (glineno)) */
-                        soil: string;
+                        germinationWindowMax: number;
                         /** @description (u centimetrima) */
                         seedingDistance: number;
+                        /** @description (u centimetrima) */
+                        seedingDepth: number;
+                        /** @description (u stupnjevima °C) */
+                        gernimationTemperature: number;
+                        /** @description (Klijanje pod svijetlosti, Klijanje u mraku) */
+                        germinationType: string;
+                        /** @description (Lagano (pješčano), Srednje (ilovasto), Teško (glineno)) */
+                        soil: string;
                         germinationWindowMin: number;
-                        /** @description (u danima) */
-                        germinationWindowMax: number;
                         /** @description (u danima) */
                         growthWindowMin: number;
                         /** @description (u danima) */
                         growthWindowMax: number;
-                        /** @description (u centimetrima) */
-                        seedingDepth: number;
+                        /** @description (u gramima) */
+                        yieldMin: number;
+                        /** @description (u danima) */
+                        harvestWindowMax: number;
                         /** @description ('perPlant' ako je mjera po biljci ili 'perField' ako je mjera za jedno polje gredice) */
                         yieldType: string;
+                        /** @description (od 0 do 1 gdje 0 označava potpuni hlad a 1 direktno sunce) */
+                        light: number;
+                        /** @description (Niske potrebe, Srednje potrebe, Visoke potrebe) */
+                        nutrients: string;
+                        /** @description (Suho tlo, Vlažno tlo, Mokro tlo) */
+                        water: string;
                         /** @description (da li je polje čisto nakon branja biljke; u suprotnom je pokrebna radnja uklanjanja biljke) */
                         cleanHarvest: boolean;
                     };
-                    prices?: {
+                    relationships?: {
+                        /** @description Biljke koje se preporučuju kao dobri susjedi u gredici. Veza se prikazuje obostrano, pa ju treba unijeti samo na jednoj biljci. */
+                        companions?: components["schemas"]["plant-relationship"][];
+                        /** @description Biljke koje se ne preporučuju saditi u neposrednoj blizini. Veza se prikazuje obostrano, pa ju treba unijeti samo na jednoj biljci. */
+                        antagonists?: components["schemas"]["plant-relationship"][];
+                    };
+                    image: {
+                        cover: components["schemas"]["image"];
+                    };
+                    prices: {
                         /** @description (EUR cijena za jednu biljku - presadnica ili 30x30cm sijanje) */
                         perPlant: number;
                     };
-                    store?: {
+                    store: {
                         availableInStore: boolean;
-                    };
-                    image?: {
-                        cover: components["schemas"]["image"];
                     };
                 };
                 plantSort: {
-                    id?: number;
-                    information?: {
-                        planting?: string;
-                        flowering?: string;
+                    id: number;
+                    information: {
                         plant: {
-                            id?: number;
-                            information?: {
+                            id: number;
+                            information: {
                                 name: string;
+                                /** @description (alternativni nazivi za biljku, iz naroda, druga nariječja) */
+                                alternativeName?: string[];
                                 latinName: string;
                                 origin: string;
                                 verified?: boolean;
@@ -1040,137 +1850,212 @@ export interface components {
                                 harvest: string;
                                 storage: string;
                                 tip?: {
-                                    header?: string;
+                                    header: string;
                                     /** @description Markdown formatted text */
-                                    content?: string;
+                                    content: string;
                                 }[];
+                                /** @description (popis dozvoljenih operacija za biljku) */
                                 operations: {
                                     id: number;
                                     attributes: {
-                                        /** @description (broj dana kada se radi operacija relativno na životni ciklus biljke) */
-                                        relativeDays?: number;
+                                        /** @description Controls the exact in-game visual reward a completed operation creates. Supported values: watering, weeding, mulch, removeMulch, agrotextile, removeAgrotextile, supports, harvest, photographyUpdate. */
+                                        visualReward?: string;
+                                        /** @description (jedno od: optional, once, periodic, daily, weekly, biweekly, monthly) */
+                                        frequency?: string;
                                         /** @description (na koji stadij biljke se primjenjuje radnja) */
                                         stage: {
-                                            id?: number;
-                                            information?: {
+                                            id: number;
+                                            information: {
                                                 name: string;
                                                 label: string;
                                             };
                                         };
-                                        /** @description (jedno od: optional, once, periodic, daily, weekly, biweekly, monthly) */
-                                        frequency?: string;
-                                        /** @description (na što se primjenjuje operacije - jedno od: garden, raisedBedFull, raisedBed1m, plant) */
+                                        /** @description (na što se primjenjuje operacije - jedno od: farm, garden, raisedBedFull, raisedBed1m, plant) */
                                         application: string;
-                                        /** @description (vrijeme potrebno za izvršavanje radnje u minutama) */
-                                        duration: number;
+                                        /** @description (broj dana kada se radi operacija relativno na životni ciklus biljke) */
+                                        relativeDays?: number;
                                         /** @description (ako je radnja za dostavu, korisnik mora ugovoriti dostavu za odrađivanje ove radnje npr. Branje svih plodova) */
                                         deliverable: boolean;
+                                        /** @description (vrijeme potrebno za izvršavanje radnje u minutama) */
+                                        duration: number;
                                         /** @description (interna radnja se ne dojavljuje niti prikazuje korisnicima aplikacije - namjenjena je za poslove farmera) */
                                         internal?: boolean;
                                         printLabel?: boolean;
-                                    };
-                                    image: {
-                                        cover?: components["schemas"]["image"];
+                                        /** @description Jedan ili više točnih tekućih pripravaka koji se mogu koristiti za ovu radnju. Koristi se kod radnji primjene/tretmana kada radnja može trošiti pripravke različitih brendova ili pakiranja. Primjer: liquidPreparation#566 za pripravak za otpornost rajčice 750 ml; kasnije se može dodati i drugi pripravak iste namjene u drugom pakiranju. */
+                                        liquidPreparation?: {
+                                            id: number;
+                                            images?: {
+                                                cover?: components["schemas"]["image"];
+                                            };
+                                            information: {
+                                                brandName: string;
+                                                barcode?: string;
+                                                name: string;
+                                                label: string;
+                                                productUrl?: string;
+                                            };
+                                            attributes: {
+                                                volumeMl: number;
+                                                price?: number;
+                                                certification?: string;
+                                                form?: string;
+                                            };
+                                            application: {
+                                                dosage: string;
+                                                purpose: string;
+                                                target: string;
+                                                applicationMethod: string;
+                                                frequencyRecommendation?: string;
+                                            };
+                                        }[];
+                                        /** @description Tehnički naziv tipa entiteta čija se zaliha provjerava ili koristi kroz ovu radnju. Ovo polje služi za usmjeravanje prema pravoj evidenciji zalihe. Primjeri: farmSupply, seed, liquidPreparation. */
+                                        inventoryEntityType?: string;
+                                        /** @description Grupa zalihe unutar odabranog tipa entiteta. Koristi se za inventurne radnje koje broje širu skupinu zalihe, a ne samo jedan proizvod. Primjeri: raisedBedBoards, seed, plantProtection, paperDeliveryBag. */
+                                        inventoryKind?: string;
+                                        /** @description Jedan ili više konkretnih materijala iz tipa farmSupply koji pripadaju ovoj inventurnoj radnji. Koristi se kada jedna radnja pokriva više dobavljača, brendova, dimenzija ili pakiranja istog materijala. Primjer: farmSupply#573 za daske za gredice; kasnije se mogu dodati posebne daske drugog dobavljača ili druge dimenzije. */
+                                        inventorySupply?: {
+                                            id: number;
+                                            images?: {
+                                                cover?: components["schemas"]["image"];
+                                            };
+                                            attributes: {
+                                                category: string;
+                                                kind: string;
+                                                packSize?: number;
+                                                unit: string;
+                                                notes?: string;
+                                                /** @description (cijena pakiranja u EUR) */
+                                                price: number;
+                                            };
+                                            information: {
+                                                barcode?: string;
+                                                name: string;
+                                                label: string;
+                                                description?: string;
+                                                supplier?: string;
+                                                productUrl?: string;
+                                            };
+                                        }[];
+                                        /** @description When true, the operation applies to every target covered by its application (for example, every plant when application is plant). */
+                                        appliesToAllTargets?: boolean;
                                     };
                                     information: {
-                                        /** @description (prevedeni naziv operacije) */
-                                        label: string;
-                                        /** @description (kratki opis operacije) */
-                                        shortDescription: string;
                                         /** @description (puni opis operacije) */
                                         description: string;
+                                        /** @description (kratki opis operacije) */
+                                        shortDescription: string;
                                         /** @description (tehnički naziv operacije - jednom postavljen ne smije se mjenjati!) */
                                         name: string;
+                                        /** @description (prevedeni naziv operacije) */
+                                        label: string;
                                         /** @description (postupak za izvršavanje radnje) */
                                         instructions: string;
                                     };
                                     prices: {
+                                        /** @description (EUR cijena za jednu operaciju) */
+                                        perOperation: number;
                                         /** @description (EUR cijena s popustom) */
                                         discounted?: number;
                                         /** @description (opis popusta npr. "Za kupnju 18 biljaka") */
                                         discountDescription?: string;
-                                        /** @description (EUR cijena za jednu operaciju) */
-                                        perOperation: number;
+                                    };
+                                    image: {
+                                        cover: components["schemas"]["image"];
                                     };
                                     conditions: {
-                                        /** @description (da li je obavezno proložiti slike za završetak radnje) */
-                                        completionAttachImagesRequired: boolean;
                                         /** @description (da li se mogu proložiti slike za završetak radnje) */
                                         completionAttachImages: boolean;
+                                        /** @description (da li je obavezno proložiti slike za završetak radnje) */
+                                        completionAttachImagesRequired: boolean;
+                                        /** @description (da li se mo\e priložiti napomena za završetak radnje) */
+                                        completionAttachNotes: boolean;
+                                        /** @description (da li je obavezno proložiti napomenu za završetak radnje) */
+                                        completionAttachNotesRequired: boolean;
                                     };
-                                    actions: {
+                                    actions?: {
                                         removePlant?: boolean;
                                     };
                                 }[];
                             };
-                            calendar?: {
-                                sowing?: {
-                                    start?: number;
-                                    end?: number;
-                                }[];
-                                planting?: {
-                                    start?: number;
-                                    end?: number;
-                                }[];
-                                harvest: {
-                                    start?: number;
-                                    end?: number;
-                                }[];
+                            calendar: {
+                                /** @description vrijeme sijanja u zatvorenom (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
                                 propagating?: {
-                                    start?: number;
-                                    end?: number;
+                                    start: number;
+                                    end: number;
+                                }[];
+                                /** @description vrijeme presađivanja na otvoreno (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
+                                planting?: {
+                                    start: number;
+                                    end: number;
+                                }[];
+                                /** @description vrijeme sijanja na otvorenom (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
+                                sowing?: {
+                                    start: number;
+                                    end: number;
+                                }[];
+                                /** @description (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
+                                harvest: {
+                                    start: number;
+                                    end: number;
                                 }[];
                             };
-                            attributes?: {
-                                /** @description (u gramima) */
-                                yieldMin: number;
+                            attributes: {
+                                /** @description (u danima) */
+                                harvestWindowMin: number;
                                 /** @description (u gramima) */
                                 yieldMax: number;
                                 /** @description (u danima) */
-                                harvestWindowMin: number;
-                                /** @description (u danima) */
-                                harvestWindowMax: number;
-                                /** @description (Niske potrebe, Srednje potrebe, Visoke potrebe) */
-                                nutrients: string;
-                                /** @description (Klijanje pod svijetlosti, Klijanje u mraku) */
-                                germinationType: string;
-                                /** @description (u stupnjevima °C) */
-                                gernimationTemperature: number;
-                                /** @description (Suho tlo, Vlažno tlo, Mokro tlo) */
-                                water: string;
-                                /** @description (od 0 do 1 gdje 0 označava potpuni hlad a 1 direktno sunce) */
-                                light: number;
-                                /** @description (Lagano (pješčano), Srednje (ilovasto), Teško (glineno)) */
-                                soil: string;
+                                germinationWindowMax: number;
                                 /** @description (u centimetrima) */
                                 seedingDistance: number;
+                                /** @description (u centimetrima) */
+                                seedingDepth: number;
+                                /** @description (u stupnjevima °C) */
+                                gernimationTemperature: number;
+                                /** @description (Klijanje pod svijetlosti, Klijanje u mraku) */
+                                germinationType: string;
+                                /** @description (Lagano (pješčano), Srednje (ilovasto), Teško (glineno)) */
+                                soil: string;
                                 germinationWindowMin: number;
-                                /** @description (u danima) */
-                                germinationWindowMax: number;
                                 /** @description (u danima) */
                                 growthWindowMin: number;
                                 /** @description (u danima) */
                                 growthWindowMax: number;
-                                /** @description (u centimetrima) */
-                                seedingDepth: number;
+                                /** @description (u gramima) */
+                                yieldMin: number;
+                                /** @description (u danima) */
+                                harvestWindowMax: number;
                                 /** @description ('perPlant' ako je mjera po biljci ili 'perField' ako je mjera za jedno polje gredice) */
                                 yieldType: string;
+                                /** @description (od 0 do 1 gdje 0 označava potpuni hlad a 1 direktno sunce) */
+                                light: number;
+                                /** @description (Niske potrebe, Srednje potrebe, Visoke potrebe) */
+                                nutrients: string;
+                                /** @description (Suho tlo, Vlažno tlo, Mokro tlo) */
+                                water: string;
                                 /** @description (da li je polje čisto nakon branja biljke; u suprotnom je pokrebna radnja uklanjanja biljke) */
                                 cleanHarvest: boolean;
                             };
-                            prices?: {
+                            relationships?: {
+                                /** @description Biljke koje se preporučuju kao dobri susjedi u gredici. Veza se prikazuje obostrano, pa ju treba unijeti samo na jednoj biljci. */
+                                companions?: components["schemas"]["plant-relationship"][];
+                                /** @description Biljke koje se ne preporučuju saditi u neposrednoj blizini. Veza se prikazuje obostrano, pa ju treba unijeti samo na jednoj biljci. */
+                                antagonists?: components["schemas"]["plant-relationship"][];
+                            };
+                            image: {
+                                cover: components["schemas"]["image"];
+                            };
+                            prices: {
                                 /** @description (EUR cijena za jednu biljku - presadnica ili 30x30cm sijanje) */
                                 perPlant: number;
                             };
-                            store?: {
+                            store: {
                                 availableInStore: boolean;
-                            };
-                            image?: {
-                                cover: components["schemas"]["image"];
                             };
                         };
                         name: string;
                         description?: string;
+                        shortDescription: string;
                         latinName?: string;
                         sowing?: string;
                         origin?: string;
@@ -1180,30 +2065,34 @@ export interface components {
                         storage?: string;
                         maintenance?: string;
                         harvest?: string;
-                        shortDescription: string;
+                        planting?: string;
+                        flowering?: string;
                     };
-                    store?: {
+                    image: {
+                        cover: components["schemas"]["image"];
+                    };
+                    store: {
                         availableInStore: boolean;
                     };
-                    attributes?: {
+                    attributes: {
                         /** @description (vrsta reprodukcije sorte dostupne u Gredicama; "seed" ili "bulb") */
                         reproductionType: string;
-                    };
-                    image?: {
-                        cover: components["schemas"]["image"];
                     };
                 };
                 countryOfOrigin?: string;
             };
-            application: {
-                applicationArea?: number;
-            };
             attributes: {
-                germinationPercentage?: number;
                 /** @description (cijena pakiranja u EUR) */
                 price: number;
                 /** @description (težina pakiranja u gramima) */
                 weight: number;
+                germinationPercentage?: number;
+            };
+            application?: {
+                /** @description (površina primjene pakiranja u m2) */
+                applicationArea?: number;
+                /** @description (broj biljaka u pakiranju) */
+                applicationPlants?: number;
             };
             /** Format: date-time */
             createdAt: string;
@@ -1220,9 +2109,49 @@ export interface components {
                 /** @default Brend sjemena */
                 label: string;
             };
+            slug: string;
             information: {
-                website?: string;
                 name: string;
+                website?: string;
+            };
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        "entity-liquidPreparation": {
+            id: number;
+            entityType: {
+                /** @default 19 */
+                id: number;
+                /** @default liquidPreparation */
+                name: string;
+                /** @default Tekući pripravci */
+                label: string;
+            };
+            slug: string;
+            images?: {
+                cover?: components["schemas"]["image"];
+            };
+            information: {
+                brandName: string;
+                barcode?: string;
+                name: string;
+                label: string;
+                productUrl?: string;
+            };
+            attributes: {
+                volumeMl: number;
+                price?: number;
+                certification?: string;
+                form?: string;
+            };
+            application: {
+                dosage: string;
+                purpose: string;
+                target: string;
+                applicationMethod: string;
+                frequencyRecommendation?: string;
             };
             /** Format: date-time */
             createdAt: string;
@@ -1239,59 +2168,123 @@ export interface components {
                 /** @default Radnje */
                 label: string;
             };
+            slug: string;
             attributes: {
-                /** @description (broj dana kada se radi operacija relativno na životni ciklus biljke) */
-                relativeDays?: number;
+                /** @description Controls the exact in-game visual reward a completed operation creates. Supported values: watering, weeding, mulch, removeMulch, agrotextile, removeAgrotextile, supports, harvest, photographyUpdate. */
+                visualReward?: string;
+                /** @description (jedno od: optional, once, periodic, daily, weekly, biweekly, monthly) */
+                frequency?: string;
                 /** @description (na koji stadij biljke se primjenjuje radnja) */
                 stage: {
-                    id?: number;
-                    information?: {
+                    id: number;
+                    information: {
                         name: string;
                         label: string;
                     };
                 };
-                /** @description (jedno od: optional, once, periodic, daily, weekly, biweekly, monthly) */
-                frequency?: string;
-                /** @description (na što se primjenjuje operacije - jedno od: garden, raisedBedFull, raisedBed1m, plant) */
+                /** @description (na što se primjenjuje operacije - jedno od: farm, garden, raisedBedFull, raisedBed1m, plant) */
                 application: string;
-                /** @description (vrijeme potrebno za izvršavanje radnje u minutama) */
-                duration: number;
+                /** @description (broj dana kada se radi operacija relativno na životni ciklus biljke) */
+                relativeDays?: number;
                 /** @description (ako je radnja za dostavu, korisnik mora ugovoriti dostavu za odrađivanje ove radnje npr. Branje svih plodova) */
                 deliverable: boolean;
+                /** @description (vrijeme potrebno za izvršavanje radnje u minutama) */
+                duration: number;
                 /** @description (interna radnja se ne dojavljuje niti prikazuje korisnicima aplikacije - namjenjena je za poslove farmera) */
                 internal?: boolean;
                 printLabel?: boolean;
-            };
-            image: {
-                cover?: components["schemas"]["image"];
+                /** @description Jedan ili više točnih tekućih pripravaka koji se mogu koristiti za ovu radnju. Koristi se kod radnji primjene/tretmana kada radnja može trošiti pripravke različitih brendova ili pakiranja. Primjer: liquidPreparation#566 za pripravak za otpornost rajčice 750 ml; kasnije se može dodati i drugi pripravak iste namjene u drugom pakiranju. */
+                liquidPreparation?: {
+                    id: number;
+                    images?: {
+                        cover?: components["schemas"]["image"];
+                    };
+                    information: {
+                        brandName: string;
+                        barcode?: string;
+                        name: string;
+                        label: string;
+                        productUrl?: string;
+                    };
+                    attributes: {
+                        volumeMl: number;
+                        price?: number;
+                        certification?: string;
+                        form?: string;
+                    };
+                    application: {
+                        dosage: string;
+                        purpose: string;
+                        target: string;
+                        applicationMethod: string;
+                        frequencyRecommendation?: string;
+                    };
+                }[];
+                /** @description Tehnički naziv tipa entiteta čija se zaliha provjerava ili koristi kroz ovu radnju. Ovo polje služi za usmjeravanje prema pravoj evidenciji zalihe. Primjeri: farmSupply, seed, liquidPreparation. */
+                inventoryEntityType?: string;
+                /** @description Grupa zalihe unutar odabranog tipa entiteta. Koristi se za inventurne radnje koje broje širu skupinu zalihe, a ne samo jedan proizvod. Primjeri: raisedBedBoards, seed, plantProtection, paperDeliveryBag. */
+                inventoryKind?: string;
+                /** @description Jedan ili više konkretnih materijala iz tipa farmSupply koji pripadaju ovoj inventurnoj radnji. Koristi se kada jedna radnja pokriva više dobavljača, brendova, dimenzija ili pakiranja istog materijala. Primjer: farmSupply#573 za daske za gredice; kasnije se mogu dodati posebne daske drugog dobavljača ili druge dimenzije. */
+                inventorySupply?: {
+                    id: number;
+                    images?: {
+                        cover?: components["schemas"]["image"];
+                    };
+                    attributes: {
+                        category: string;
+                        kind: string;
+                        packSize?: number;
+                        unit: string;
+                        notes?: string;
+                        /** @description (cijena pakiranja u EUR) */
+                        price: number;
+                    };
+                    information: {
+                        barcode?: string;
+                        name: string;
+                        label: string;
+                        description?: string;
+                        supplier?: string;
+                        productUrl?: string;
+                    };
+                }[];
+                /** @description When true, the operation applies to every target covered by its application (for example, every plant when application is plant). */
+                appliesToAllTargets?: boolean;
             };
             information: {
-                /** @description (prevedeni naziv operacije) */
-                label: string;
-                /** @description (kratki opis operacije) */
-                shortDescription: string;
                 /** @description (puni opis operacije) */
                 description: string;
+                /** @description (kratki opis operacije) */
+                shortDescription: string;
                 /** @description (tehnički naziv operacije - jednom postavljen ne smije se mjenjati!) */
                 name: string;
+                /** @description (prevedeni naziv operacije) */
+                label: string;
                 /** @description (postupak za izvršavanje radnje) */
                 instructions: string;
             };
             prices: {
+                /** @description (EUR cijena za jednu operaciju) */
+                perOperation: number;
                 /** @description (EUR cijena s popustom) */
                 discounted?: number;
                 /** @description (opis popusta npr. "Za kupnju 18 biljaka") */
                 discountDescription?: string;
-                /** @description (EUR cijena za jednu operaciju) */
-                perOperation: number;
+            };
+            image: {
+                cover: components["schemas"]["image"];
             };
             conditions: {
-                /** @description (da li je obavezno proložiti slike za završetak radnje) */
-                completionAttachImagesRequired: boolean;
                 /** @description (da li se mogu proložiti slike za završetak radnje) */
                 completionAttachImages: boolean;
+                /** @description (da li je obavezno proložiti slike za završetak radnje) */
+                completionAttachImagesRequired: boolean;
+                /** @description (da li se mo\e priložiti napomena za završetak radnje) */
+                completionAttachNotes: boolean;
+                /** @description (da li je obavezno proložiti napomenu za završetak radnje) */
+                completionAttachNotesRequired: boolean;
             };
-            actions: {
+            actions?: {
                 removePlant?: boolean;
             };
             /** Format: date-time */
@@ -1309,6 +2302,7 @@ export interface components {
                 /** @default Učestalost radnje */
                 label: string;
             };
+            slug: string;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -1324,20 +2318,21 @@ export interface components {
                 /** @default FAQ */
                 label: string;
             };
+            slug: string;
             information: {
                 header: string;
-                name: string;
                 content: string;
+                name: string;
             };
             attributes: {
-                tags?: string[];
                 category: {
-                    id?: number;
-                    information?: {
+                    id: number;
+                    information: {
                         name: string;
                         label: string;
                     };
                 };
+                tags?: string[];
             };
             /** Format: date-time */
             createdAt: string;
@@ -1354,6 +2349,7 @@ export interface components {
                 /** @default FAQ Kategorija */
                 label: string;
             };
+            slug: string;
             information: {
                 name: string;
                 label: string;
@@ -1373,26 +2369,171 @@ export interface components {
                 /** @default Blok */
                 label: string;
             };
-            attributes: {
-                /** @description (jedan od: decoration, raisedBed, raisedBedPart, plant, plantPart) */
-                type: string;
-                height: number;
-                stackable: boolean;
+            slug: string;
+            image?: {
+                /** @description Public block image generated from the in-game block name and used by admin previews, directory cards, search results, and compact block UI. */
+                cover?: components["schemas"]["image"];
             };
             information: {
+                name: string;
                 shortDescription: string;
                 fullDescription: string;
-                name: string;
                 label: string;
+            };
+            attributes: {
+                height: number;
+                stackable: boolean;
+                /** @description (jedan od: decoration, raisedBed, raisedBedPart, plant, plantPart) */
+                type: string;
+                /** @description Blok je moguće kupiti samo tijekom noći. */
+                nightOnlyPurchase: boolean;
+                /** @description Širina nevidljive zone za odabir i povlačenje bloka u vrtu. */
+                hitboxWidth?: number;
+                /** @description Visina nevidljive zone za odabir i povlačenje bloka u vrtu. */
+                hitboxHeight?: number;
+                /** @description Dubina nevidljive zone za odabir i povlačenje bloka u vrtu. */
+                hitboxDepth?: number;
+                /** @description Broj vrtnih blokova koje zauzima po širini. */
+                spanWidth?: number;
+                /** @description Broj vrtnih blokova koje zauzima po dubini. */
+                spanDepth?: number;
+                /** @description Dopušta postavljanje bloka izravno na vodeni blok. */
+                placeableOnWater?: boolean;
             };
             prices: {
                 sunflowers: number;
             };
             functions: {
-                /** @description Blokovi koji predstavljaju podignutu gredicu */
-                raisedBed: boolean;
                 /** @description Blokovi koji mogu reciklirati druge blokove */
                 recycler: boolean;
+                /** @description Blokovi koji predstavljaju podignutu gredicu */
+                raisedBed: boolean;
+            };
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        "entity-farmSupply": {
+            id: number;
+            entityType: {
+                /** @default 20 */
+                id: number;
+                /** @default farmSupply */
+                name: string;
+                /** @default Materijali i potrošni inventar */
+                label: string;
+            };
+            slug: string;
+            images?: {
+                cover?: components["schemas"]["image"];
+            };
+            attributes: {
+                category: string;
+                kind: string;
+                packSize?: number;
+                unit: string;
+                notes?: string;
+                /** @description (cijena pakiranja u EUR) */
+                price: number;
+            };
+            information: {
+                barcode?: string;
+                name: string;
+                label: string;
+                description?: string;
+                supplier?: string;
+                productUrl?: string;
+            };
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        "entity-plantDisease": {
+            id: number;
+            entityType: {
+                /** @default 21 */
+                id: number;
+                /** @default plantDisease */
+                name: string;
+                /** @default Bolesti biljaka */
+                label: string;
+            };
+            slug: string;
+            information: {
+                name: string;
+                label?: string;
+                shortDescription: string;
+                description?: string;
+            };
+            symptoms: {
+                symptoms: string;
+            };
+            conditions: {
+                favorableConditions: string;
+                severity?: string;
+            };
+            relationships: {
+                /** @description Biljke na koje se bolest ili štetnik odnosi. Veza se održava na ovom zapisu, a javne biljke dobiju izvedeni prikaz. */
+                affectedPlants: components["schemas"]["plant-health-affected-plant"][];
+            };
+            operations?: {
+                prevention?: components["schemas"]["plant-health-operation"][];
+                reduction?: components["schemas"]["plant-health-operation"][];
+                alleviation?: components["schemas"]["plant-health-operation"][];
+            };
+            review?: {
+                sources?: {
+                    label: string;
+                    url: string;
+                }[];
+                reviewNotes?: string;
+            };
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        "entity-plantPest": {
+            id: number;
+            entityType: {
+                /** @default 22 */
+                id: number;
+                /** @default plantPest */
+                name: string;
+                /** @default Štetnici biljaka */
+                label: string;
+            };
+            slug: string;
+            information: {
+                name: string;
+                label?: string;
+                shortDescription: string;
+                description?: string;
+            };
+            symptoms: {
+                symptoms: string;
+            };
+            conditions: {
+                favorableConditions: string;
+                severity?: string;
+            };
+            relationships: {
+                /** @description Biljke na koje se bolest ili štetnik odnosi. Veza se održava na ovom zapisu, a javne biljke dobiju izvedeni prikaz. */
+                affectedPlants: components["schemas"]["plant-health-affected-plant"][];
+            };
+            operations?: {
+                prevention?: components["schemas"]["plant-health-operation"][];
+                reduction?: components["schemas"]["plant-health-operation"][];
+                alleviation?: components["schemas"]["plant-health-operation"][];
+            };
+            review?: {
+                sources?: {
+                    label: string;
+                    url: string;
+                }[];
+                reviewNotes?: string;
             };
             /** Format: date-time */
             createdAt: string;
@@ -1409,12 +2550,13 @@ export interface components {
                 /** @default Natječaji */
                 label: string;
             };
+            slug: string;
             information: {
                 name: string;
-                rulesChangedDate: string;
                 rules: string;
-                endDate?: string;
+                rulesChangedDate: string;
                 startDate: string;
+                endDate?: string;
             };
             /** Format: date-time */
             createdAt: string;
@@ -1431,14 +2573,19 @@ export interface components {
                 /** @default HQ lokacije */
                 label: string;
             };
+            slug: string;
             location: {
                 addressStreet1: string;
                 addressStreet2?: string;
                 addressCity: string;
                 addressZip: string;
                 addressCountry: string;
-                longitude: number;
                 latitude: number;
+                longitude: number;
+            };
+            information: {
+                name: string;
+                label: string;
             };
             delivery: {
                 freeRadius: number;
@@ -1446,10 +2593,6 @@ export interface components {
             };
             prices: {
                 pricePerKilometer: number;
-            };
-            information: {
-                name: string;
-                label: string;
             };
             /** Format: date-time */
             createdAt: string;

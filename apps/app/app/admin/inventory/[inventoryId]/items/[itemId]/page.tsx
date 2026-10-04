@@ -1,17 +1,17 @@
 import {
     getEntitiesRaw,
+    getEntityDisplayLabels,
     getInventoryItem,
     getInventoryItemEvents,
 } from '@gredice/storage';
+import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
+import { Button } from '@gredice/ui/Button';
+import { Card, CardOverflow } from '@gredice/ui/Card';
+import { Input } from '@gredice/ui/Input';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Card } from '@signalco/ui-primitives/Card';
-import { Input } from '@signalco/ui-primitives/Input';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Table } from '@signalco/ui-primitives/Table';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { SelectItems } from '@gredice/ui/SelectItems';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { notFound } from 'next/navigation';
 import { AdminPageHeader } from '../../../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
@@ -22,6 +22,7 @@ import {
     getInventorySelectOptions,
 } from '../../../../../../lib/inventoryFieldTypes';
 import { KnownPages } from '../../../../../../src/KnownPages';
+import { isInventoryItemOrphaned } from '../../inventoryStatus';
 import {
     quickAdjustInventoryItemAction,
     updateInventoryItemAction,
@@ -65,9 +66,25 @@ export default async function InventoryItemPage({
             };
         }),
     ];
-    const entityLabel = item.entityId
+    const entityId = item.entityId;
+    const isOrphaned = isInventoryItemOrphaned(item);
+    if (
+        entityId &&
+        !entityItems.some(
+            (entityItem) => entityItem.value === entityId.toString(),
+        )
+    ) {
+        // Keep the current reference selectable so saving any other field does
+        // not silently re-point the item at a different entity.
+        const [deletedEntity] = await getEntityDisplayLabels([entityId]);
+        entityItems.splice(1, 0, {
+            value: entityId.toString(),
+            label: `${deletedEntity?.label ?? `Entitet #${entityId}`} (obrisano)`,
+        });
+    }
+    const entityLabel = entityId
         ? entityItems.find(
-              (entityItem) => entityItem.value === item.entityId.toString(),
+              (entityItem) => entityItem.value === entityId.toString(),
           )?.label
         : null;
     const itemTitle = entityLabel
@@ -122,7 +139,7 @@ export default async function InventoryItemPage({
         : '';
 
     return (
-        <Stack spacing={4}>
+        <Stack spacing={8}>
             <AdminPageTitle title={itemTitle} />
             <AdminPageHeader
                 breadcrumbs={
@@ -149,10 +166,10 @@ export default async function InventoryItemPage({
             </Typography>
 
             <Card className="max-w-2xl">
-                <Stack spacing={4} className="p-6">
+                <Stack spacing={8} className="p-6">
                     <form action={updateItemBound}>
-                        <Stack spacing={4}>
-                            <Stack spacing={3}>
+                        <Stack spacing={8}>
+                            <Stack spacing={6}>
                                 <SelectItems
                                     name="entityId"
                                     label="Entitet (opcionalno)"
@@ -162,6 +179,17 @@ export default async function InventoryItemPage({
                                         noEntityValue
                                     }
                                 />
+                                {isOrphaned ? (
+                                    <Typography
+                                        level="body2"
+                                        className="text-amber-600"
+                                    >
+                                        Entitet ove stavke nije dostupan
+                                        (obrisan je ili ne postoji). Stavka je
+                                        zadržana - odaberi drugi entitet ili
+                                        obriši stavku.
+                                    </Typography>
+                                ) : null}
                                 <SelectItems
                                     name="trackingType"
                                     label="Način praćenja"
@@ -200,7 +228,7 @@ export default async function InventoryItemPage({
                                 />
 
                                 {config.fieldDefinitions.length > 0 && (
-                                    <Stack spacing={3}>
+                                    <Stack spacing={6}>
                                         <Typography level="body1" semiBold>
                                             Dodatna polja
                                         </Typography>
@@ -318,12 +346,12 @@ export default async function InventoryItemPage({
             </Card>
 
             <Card className="max-w-2xl">
-                <Stack spacing={4} className="p-6">
+                <Stack spacing={8} className="p-6">
                     <Typography level="h3" semiBold>
                         Brza promjena stanja/količine
                     </Typography>
                     <form action={quickAdjustItemBound}>
-                        <Stack spacing={3}>
+                        <Stack spacing={6}>
                             <Input
                                 name="quantity"
                                 label="Nova količina (opcionalno)"
@@ -366,58 +394,101 @@ export default async function InventoryItemPage({
             </Card>
 
             <Card>
-                <Stack spacing={2} className="p-6 pb-0">
+                <Stack spacing={4} className="p-6 pb-0">
                     <Typography level="h3" semiBold>
                         Povijest promjena
                     </Typography>
                 </Stack>
-                <Table>
-                    <Table.Header>
-                        <Table.Row>
-                            <Table.Head>Vrijeme</Table.Head>
-                            <Table.Head>Akcija</Table.Head>
-                            <Table.Head>Količina</Table.Head>
-                            <Table.Head>Stanje</Table.Head>
-                            <Table.Head>Napomena</Table.Head>
-                            <Table.Head />
-                        </Table.Row>
-                    </Table.Header>
-                    <Table.Body>
-                        {events.length === 0 && (
-                            <Table.Row>
-                                <Table.Cell colSpan={6}>
-                                    Nema događaja za ovu stavku.
-                                </Table.Cell>
-                            </Table.Row>
-                        )}
-                        {events.map((event) => (
-                            <Table.Row key={event.id}>
-                                <Table.Cell>
-                                    <LocalDateTime time>
-                                        {event.createdAt}
-                                    </LocalDateTime>
-                                </Table.Cell>
-                                <Table.Cell>{event.action}</Table.Cell>
-                                <Table.Cell>
-                                    {event.previousQuantity ?? '-'} →{' '}
-                                    {event.newQuantity ?? '-'}
-                                </Table.Cell>
-                                <Table.Cell>
-                                    {event.previousState ?? '-'} →{' '}
-                                    {event.newState ?? '-'}
-                                </Table.Cell>
-                                <Table.Cell>{event.notes ?? '-'}</Table.Cell>
-                                <Table.Cell>
-                                    <DeleteInventoryItemEventButton
-                                        inventoryConfigId={inventoryConfigId}
-                                        itemId={id}
-                                        eventId={event.id}
-                                    />
-                                </Table.Cell>
-                            </Table.Row>
-                        ))}
-                    </Table.Body>
-                </Table>
+                <CardOverflow>
+                    {events.length === 0 ? (
+                        <div className="p-4">
+                            <Typography level="body2">
+                                Nema događaja za ovu stavku.
+                            </Typography>
+                        </div>
+                    ) : (
+                        <ul className="divide-y">
+                            {events.map((event) => (
+                                <li
+                                    key={event.id}
+                                    className="px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4"
+                                >
+                                    <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                        <div className="min-w-0 space-y-1">
+                                            <Typography
+                                                level="body2"
+                                                semiBold
+                                                className="min-w-0 break-words"
+                                            >
+                                                {event.action}
+                                            </Typography>
+                                            <Typography
+                                                component="div"
+                                                level="body3"
+                                                className="text-muted-foreground"
+                                            >
+                                                Vrijeme:{' '}
+                                                <LocalDateTime time>
+                                                    {event.createdAt}
+                                                </LocalDateTime>
+                                            </Typography>
+                                            <Typography
+                                                component="div"
+                                                level="body3"
+                                                className="min-w-0 break-words text-muted-foreground"
+                                            >
+                                                Napomena:{' '}
+                                                <span className="text-foreground">
+                                                    {event.notes ?? '-'}
+                                                </span>
+                                            </Typography>
+                                        </div>
+                                        <div className="flex min-w-0 flex-col gap-2 lg:items-end lg:text-right">
+                                            <div className="flex min-w-0 flex-wrap gap-x-4 gap-y-1 lg:justify-end">
+                                                <Typography
+                                                    component="div"
+                                                    level="body3"
+                                                    className="text-muted-foreground"
+                                                >
+                                                    Količina:{' '}
+                                                    <span className="text-foreground">
+                                                        {event.previousQuantity ??
+                                                            '-'}{' '}
+                                                        →{' '}
+                                                        {event.newQuantity ??
+                                                            '-'}
+                                                    </span>
+                                                </Typography>
+                                                <Typography
+                                                    component="div"
+                                                    level="body3"
+                                                    className="text-muted-foreground"
+                                                >
+                                                    Stanje:{' '}
+                                                    <span className="text-foreground">
+                                                        {event.previousState ??
+                                                            '-'}{' '}
+                                                        →{' '}
+                                                        {event.newState ?? '-'}
+                                                    </span>
+                                                </Typography>
+                                            </div>
+                                            <div className="flex justify-start lg:justify-end">
+                                                <DeleteInventoryItemEventButton
+                                                    inventoryConfigId={
+                                                        inventoryConfigId
+                                                    }
+                                                    itemId={id}
+                                                    eventId={event.id}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </CardOverflow>
             </Card>
         </Stack>
     );

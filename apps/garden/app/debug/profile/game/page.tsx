@@ -1,21 +1,96 @@
-import { GameScene, type GameSceneProps } from '@gredice/game';
+import {
+    faunaHeavyMockGardenProfile,
+    type GameSceneProps,
+    isOperationVisualRewardDebugProfile,
+    operationVisualRewardDebugProfile,
+    operationVisualRewardDebugScenarios,
+} from '@gredice/game';
+import { getSeasonDebugDates } from '@gredice/game/seasonal-debug';
+import { ProfileGameScene } from './ProfileGameScene';
+import { resolveGameProfileLeafWind } from './profileAudio';
+import {
+    resolveGameProfileDate,
+    serializeGameProfileDate,
+} from './profileDate';
+import {
+    highTargetOperationVisualHighlightTarget,
+    resolveGameProfileAdaptiveHigh,
+    resolveGameProfileFlags,
+    resolveGameProfileGardenAvatar,
+    resolveGameProfileOperationVisuals,
+    resolveGameProfileStaticIdle,
+    resolveGameProfileStaticSceneCache,
+    resolveGameProfileStaticSceneCacheOcclusionFixture,
+    resolveGameProfileWeatherSurface,
+} from './profileFlags';
+import {
+    gameProfileClearWeather,
+    gameProfileCloudyWeather,
+    gameProfileSnowSparseWeather,
+} from './profileWeather';
+
+export const instant = false;
 
 type GameProfileSearchParams = Promise<
     Record<string, string | string[] | undefined>
 >;
 
-type GameProfileMode = 'baseline' | 'details' | 'rain' | 'snow';
+type GameProfileMode =
+    | 'baseline'
+    | 'cloudy'
+    | 'details'
+    | 'rain'
+    | 'snow'
+    | 'snow-onset'
+    | 'night'
+    | 'storm'
+    | 'autumn'
+    | 'windy'
+    | 'mist';
+
+type GameProfileMockGardenProfile = NonNullable<
+    GameSceneProps['mockGardenProfile']
+>;
 
 function firstValue(value: string | string[] | undefined) {
     return Array.isArray(value) ? value[0] : value;
 }
 
+function resolvePositiveInteger(value: string | undefined) {
+    if (!value) {
+        return null;
+    }
+
+    const parsed = Number.parseInt(value, 10);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function resolveNonNegativeNumber(value: string | undefined) {
+    if (!value) {
+        return null;
+    }
+
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
 function resolveMode(value: string | undefined): GameProfileMode {
+    if (value === 'autum') {
+        return 'autumn';
+    }
+
     if (
         value === 'baseline' ||
+        value === 'cloudy' ||
         value === 'details' ||
         value === 'rain' ||
-        value === 'snow'
+        value === 'snow' ||
+        value === 'snow-onset' ||
+        value === 'night' ||
+        value === 'storm' ||
+        value === 'autumn' ||
+        value === 'windy' ||
+        value === 'mist'
     ) {
         return value;
     }
@@ -23,17 +98,54 @@ function resolveMode(value: string | undefined): GameProfileMode {
     return 'baseline';
 }
 
-function resolveQuality(value: string | undefined): GameSceneProps['quality'] {
-    if (value === 'low' || value === 'medium' || value === 'high') {
+function resolveQuality(
+    value: string | undefined,
+): GameSceneProps['initialQualitySetting'] {
+    if (
+        value === 'auto' ||
+        value === 'low' ||
+        value === 'medium' ||
+        value === 'high'
+    ) {
         return value;
     }
 
     return undefined;
 }
 
+function resolveMockGardenProfile(
+    value: string | undefined,
+): GameProfileMockGardenProfile {
+    if (
+        value === 'dense' ||
+        value === 'dense-autumn' ||
+        value === faunaHeavyMockGardenProfile ||
+        value === 'high-target' ||
+        value === operationVisualRewardDebugProfile ||
+        value === 'plant-heavy'
+    ) {
+        return value;
+    }
+
+    return 'default';
+}
+
 function resolveWeather(
     mode: GameProfileMode,
-): GameSceneProps['weather'] | undefined {
+): NonNullable<GameSceneProps['weather']> {
+    if (mode === 'mist') {
+        return {
+            ...gameProfileClearWeather,
+            cloudy: 0.6,
+            foggy: 1,
+            windSpeed: 0.4,
+        };
+    }
+
+    if (mode === 'cloudy') {
+        return gameProfileCloudyWeather;
+    }
+
     if (mode === 'rain') {
         return {
             cloudy: 0.85,
@@ -58,7 +170,119 @@ function resolveWeather(
         };
     }
 
-    return undefined;
+    if (mode === 'snow-onset') {
+        // High quality starts rendering snow at 0.02 coverage (0.6 cm).
+        // Keep this fixture just above that edge so sparse coverage and
+        // skirt continuity remain easy to compare without snow particles.
+        // A particle-free breeze keeps bees out of the deterministic
+        // high-target actor count.
+        return gameProfileSnowSparseWeather;
+    }
+
+    if (mode === 'night') {
+        return {
+            ...gameProfileClearWeather,
+            cloudy: 0.1,
+            windSpeed: 0.2,
+            windDirection: 45,
+        };
+    }
+
+    if (mode === 'storm') {
+        return {
+            cloudy: 1,
+            rainy: 1,
+            snowy: 0,
+            foggy: 0.35,
+            thundery: 1,
+            windSpeed: 3,
+            windDirection: 135,
+            snowAccumulation: 0,
+        };
+    }
+
+    if (mode === 'autumn') {
+        return {
+            ...gameProfileClearWeather,
+            cloudy: 0.35,
+            foggy: 0.08,
+            windSpeed: 0.7,
+            windDirection: 270,
+        };
+    }
+
+    if (mode === 'windy') {
+        return {
+            ...gameProfileClearWeather,
+            cloudy: 0.45,
+            foggy: 0.04,
+            windSpeed: 2.4,
+            windDirection: 235,
+        };
+    }
+
+    return gameProfileClearWeather;
+}
+
+function resolveFreezeTime(mode: GameProfileMode) {
+    const dates = getSeasonDebugDates();
+    const date = mode === 'autumn' ? dates.earlyAutumn : dates.summer;
+    if (mode === 'mist') date.setHours(8, 0);
+    if (mode === 'night') date.setHours(22, 30);
+    if (mode === 'storm') date.setHours(18, 30);
+    if (mode === 'autumn') date.setHours(16, 30);
+    return date;
+}
+
+function OperationRewardDebugOverlay() {
+    return (
+        <aside
+            className="pointer-events-auto absolute inset-x-4 bottom-4 max-h-[36vh] overflow-auto rounded-lg border border-neutral-800 bg-neutral-950/90 p-4 text-white shadow-2xl backdrop-blur"
+            data-operation-reward-debug-panel="1"
+        >
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+                <span className="shrink-0 text-base font-semibold">
+                    Operation reward matrix
+                </span>
+                <span className="max-w-3xl text-xs text-neutral-400">
+                    Each operation is resolved from attributes.visualReward and
+                    rendered as before/after beds.
+                </span>
+            </div>
+            <div className="mt-4 grid gap-2 md:grid-cols-3 xl:grid-cols-5">
+                {operationVisualRewardDebugScenarios.map((scenario) => (
+                    <div
+                        key={scenario.kind}
+                        className="rounded-md border border-neutral-800 bg-neutral-900/80 p-3"
+                    >
+                        <div className="flex items-center justify-between gap-3">
+                            <span className="text-sm font-semibold">
+                                {scenario.title}
+                            </span>
+                            <code className="rounded bg-neutral-950 px-1.5 py-0.5 font-mono text-[11px] text-neutral-400">
+                                {scenario.kind} #{scenario.operationId}
+                            </code>
+                        </div>
+                        <div className="mt-2 grid gap-2">
+                            {[scenario.before, scenario.after].map((state) => (
+                                <div
+                                    key={`${scenario.kind}-${state.label}`}
+                                    className="rounded border border-neutral-800 bg-neutral-950/70 p-2"
+                                >
+                                    <span className="block text-[11px] font-semibold uppercase text-neutral-500">
+                                        {state.label} bed {state.raisedBedId}
+                                    </span>
+                                    <span className="mt-1 block text-xs text-neutral-300">
+                                        {state.state}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </aside>
+    );
 }
 
 export default async function GameProfilePage({
@@ -68,31 +292,173 @@ export default async function GameProfilePage({
 }) {
     const params = await searchParams;
     const mode = resolveMode(firstValue(params.mode));
-    const renderDetails =
-        mode === 'details' || firstValue(params.details) === '1';
+    const renderDetails = firstValue(params.details) !== '0';
+    const showLegend = firstValue(params.legend) !== '0';
+    const soundEnabled = firstValue(params.sound) === '1';
+    const leafWind = resolveGameProfileLeafWind(firstValue(params.leafWind));
     const showHud = firstValue(params.hud) === '1';
-    const enableControls = firstValue(params.controls) !== '0';
+    const showDebugHud = firstValue(params.debugHud) === '1';
+    const enableControls = firstValue(params.controls) === '1';
+    const cameraProfile = firstValue(params.cameraProfile) === '1';
+    const gardenSwitchProfile = firstValue(params.gardenSwitch) === '1';
+    const lifecycleProfile = firstValue(params.lifecycle) === '1';
+    const staticIdleProfile = resolveGameProfileStaticIdle(
+        firstValue(params.staticIdle),
+    );
+    const continuousRenderLeasesEnabled = true;
+    const mockGardenProfile = resolveMockGardenProfile(
+        firstValue(params.profile),
+    );
+    const closeupRaisedBedId = resolvePositiveInteger(
+        firstValue(params.closeupRaisedBedId),
+    );
+    const fixedTimeSeconds = resolveNonNegativeNumber(
+        firstValue(params.fixedTimeSeconds),
+    );
+    const outlineProfile = firstValue(params.outline) === '1';
+    const placementProfile = firstValue(params.placement) === '1';
+    const operationVisuals =
+        mockGardenProfile === 'high-target' &&
+        resolveGameProfileOperationVisuals(firstValue(params.operationVisuals));
+    const gardenAvatar = resolveGameProfileGardenAvatar(
+        firstValue(params.avatar),
+    );
+    const debugGameFlags = resolveGameProfileFlags(
+        firstValue(params.weatherSurface),
+        firstValue(params.avatar),
+        mockGardenProfile !== 'fauna-heavy',
+    );
+    const staticSceneCacheMode = resolveGameProfileStaticSceneCache(
+        firstValue(params.staticSceneCache),
+    );
+    const staticSceneCacheOcclusionFixture =
+        staticSceneCacheMode === 'cache' &&
+        resolveGameProfileStaticSceneCacheOcclusionFixture(
+            firstValue(params.staticSceneCacheOcclusionFixture),
+        );
+    const weatherSurfaceMode = resolveGameProfileWeatherSurface(
+        firstValue(params.weatherSurface),
+    );
+    const adaptiveHigh = resolveGameProfileAdaptiveHigh(
+        firstValue(params.adaptiveHigh),
+    );
+    const isOperationRewardDebug =
+        isOperationVisualRewardDebugProfile(mockGardenProfile);
     const quality = resolveQuality(firstValue(params.quality));
     const weather = resolveWeather(mode);
+    const freezeTime = resolveGameProfileDate(
+        firstValue(params.date),
+        resolveFreezeTime(mode),
+    );
 
     return (
         <main
-            className="h-screen w-screen overflow-hidden bg-neutral-950"
+            className="relative h-screen w-screen overflow-hidden bg-[#e7e2cc]"
             data-game-profile-mode={mode}
+            data-game-profile-date={serializeGameProfileDate(freezeTime)}
+            data-game-profile-comparison-contract-version={
+                process.env.NEXT_PUBLIC_GAME_PROFILE_COMPARISON_CONTRACT_VERSION
+            }
+            data-game-profile-controls={enableControls ? '1' : '0'}
+            data-game-profile-details={renderDetails ? '1' : '0'}
+            data-game-profile-fixed-time-seconds={fixedTimeSeconds ?? undefined}
+            data-game-profile-debug-hud={showDebugHud ? '1' : '0'}
+            data-game-profile-hud={showHud ? '1' : '0'}
+            data-game-profile-garden-profile={mockGardenProfile}
+            data-game-profile-garden-switch={gardenSwitchProfile ? '1' : '0'}
+            data-game-profile-lifecycle={lifecycleProfile ? '1' : '0'}
             data-game-profile-quality={quality ?? 'auto'}
+            data-game-profile-adaptive-high={adaptiveHigh ? '1' : '0'}
+            data-game-profile-avatar={gardenAvatar ? '1' : '0'}
+            data-game-profile-closeup-raised-bed-id={
+                closeupRaisedBedId ?? undefined
+            }
+            data-game-profile-outline={outlineProfile ? '1' : '0'}
+            data-game-profile-sound={soundEnabled ? '1' : '0'}
+            data-game-profile-placement={placementProfile ? '1' : '0'}
+            data-game-profile-operation-visuals={operationVisuals ? '1' : '0'}
+            data-game-profile-static-scene-cache={staticSceneCacheMode}
+            data-game-profile-static-idle={staticIdleProfile ? '1' : '0'}
+            data-game-profile-continuous-render-leases={
+                continuousRenderLeasesEnabled ? '1' : '0'
+            }
+            data-game-profile-static-scene-cache-occlusion-fixture={
+                staticSceneCacheOcclusionFixture ? '1' : '0'
+            }
+            data-game-profile-source-commit={
+                process.env.NEXT_PUBLIC_GAME_PROFILE_SOURCE_COMMIT
+            }
+            data-game-profile-source-dirty={
+                process.env.NEXT_PUBLIC_GAME_PROFILE_SOURCE_DIRTY
+            }
+            data-game-profile-weather-surface={weatherSurfaceMode}
+            data-game-profile-operation-visual-highlight-raised-bed-id={
+                operationVisuals
+                    ? highTargetOperationVisualHighlightTarget.raisedBedId
+                    : undefined
+            }
+            data-game-profile-operation-visual-highlight-field-id={
+                operationVisuals
+                    ? highTargetOperationVisualHighlightTarget.fieldId
+                    : undefined
+            }
+            data-game-profile-operation-visual-highlight-position-index={
+                operationVisuals
+                    ? highTargetOperationVisualHighlightTarget.positionIndex
+                    : undefined
+            }
         >
-            <GameScene
+            <ProfileGameScene
+                cacheClearanceWitnessMode={
+                    firstValue(params.staticCacheWitness) === '1'
+                        ? mode
+                        : undefined
+                }
+                adaptiveHighQuality={adaptiveHigh}
+                authenticatedGardenQueriesEnabled={!staticIdleProfile}
+                key={mode}
                 className="h-full w-full"
-                deferDetails={!renderDetails}
+                dayNightCycleDisabled={false}
+                flags={debugGameFlags}
+                fixedTimeSeconds={fixedTimeSeconds ?? undefined}
+                freezeTime={serializeGameProfileDate(freezeTime)}
+                debugHud={showDebugHud}
+                gardenSwitchEnabled={gardenSwitchProfile}
                 hideHud={!showHud}
+                initialQualitySetting={quality}
+                enableGameProfileController={
+                    adaptiveHigh ||
+                    cameraProfile ||
+                    gardenSwitchProfile ||
+                    lifecycleProfile ||
+                    staticIdleProfile ||
+                    mockGardenProfile === 'fauna-heavy' ||
+                    closeupRaisedBedId !== null ||
+                    outlineProfile ||
+                    placementProfile ||
+                    operationVisuals
+                }
+                enableStaticOpaqueSceneCacheOcclusionFixture={
+                    staticSceneCacheOcclusionFixture
+                }
+                continuousRenderLeasesEnabled={continuousRenderLeasesEnabled}
                 mockGarden
+                mockGardenProfile={mockGardenProfile}
                 noControls={!enableControls}
-                noSound
-                noWeather={!weather}
-                quality={quality}
-                weather={weather}
+                noSound={!soundEnabled}
+                renderDetails={renderDetails}
+                staticOpaqueSceneCache={staticSceneCacheMode === 'cache'}
+                weather={
+                    leafWind === undefined
+                        ? weather
+                        : { ...weather, windSpeed: leafWind }
+                }
                 winterMode={mode === 'snow' ? 'winter' : 'summer'}
+                zoom={isOperationRewardDebug ? 'far' : 'normal'}
             />
+            {isOperationRewardDebug && showLegend ? (
+                <OperationRewardDebugOverlay />
+            ) : null}
         </main>
     );
 }

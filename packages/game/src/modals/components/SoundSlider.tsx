@@ -1,6 +1,6 @@
-import { cx } from '@signalco/ui-primitives/cx';
-import { Typography } from '@signalco/ui-primitives/Typography';
-import { Slider } from './Slider';
+import { Slider } from '@gredice/ui/Slider';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 
 interface SoundSliderProps {
     label: string;
@@ -38,7 +38,7 @@ export function SoundSlider({
             <button
                 type="button"
                 onClick={onMuteToggle}
-                className="focus:outline-none relative size-6"
+                className="focus:outline-hidden relative size-6"
             >
                 <svg
                     viewBox="0 0 24 24"

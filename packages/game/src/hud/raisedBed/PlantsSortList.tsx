@@ -1,45 +1,92 @@
 import type { PlantSortData } from '@gredice/client';
+import { Alert } from '@gredice/ui/Alert';
+import { Button } from '@gredice/ui/Button';
+import { GameBackpackIcon as BackpackIcon } from '@gredice/ui/GameIcons';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Check } from '@gredice/ui/icons';
+import { List } from '@gredice/ui/List';
+import { NoDataPlaceholder } from '@gredice/ui/NoDataPlaceholder';
 import { PlantOrSortImage } from '@gredice/ui/plants';
-import { useSearchParam } from '@signalco/hooks/useSearchParam';
-import { Alert } from '@signalco/ui/Alert';
-import { NoDataPlaceholder } from '@signalco/ui/NoDataPlaceholder';
-import { Check } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { cx } from '@signalco/ui-primitives/cx';
-import { List } from '@signalco/ui-primitives/List';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
-import { useEffect } from 'react';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
+import { type MouseEvent, useEffect, useMemo } from 'react';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
+import { sortFavoritesFirst, useFavoriteIds } from '../../hooks/useFavorites';
+import type { OutletOfferData } from '../../hooks/useOutletOffers';
 import { usePlantSorts } from '../../hooks/usePlantSorts';
 import {
     AnimateFlyToItem,
     useAnimateFlyToShoppingCart,
 } from '../../indicators/AnimateFlyTo';
 import { KnownPages } from '../../knownPages';
+import { OutletBadge } from '../components/OutletBadge';
+import { FavoriteToggleButton } from './FavoriteToggleButton';
 import { PlantListItemSkeleton } from './PlantListItemSkeleton';
+import { PlantRelationshipSignalChips } from './PlantsList';
+import {
+    getPlantRelationshipCandidateForSort,
+    getPlantRelationshipSignal,
+    type NeighborPlantSummary,
+} from './plantRelationshipSignals';
 
 type PlantsSortListProps = {
     plantId: number;
     selectedSortId: number | null;
     onChange: (plant: PlantSortData) => void;
+    search: string;
     flyToShoppingCart?: boolean;
+    neighborPlants?: NeighborPlantSummary[];
+    outletOffersBySortId?: Map<number, OutletOfferData[]>;
+    inventoryAvailabilityBySortId?: Map<number, number>;
+    inventorySelectedSortId?: number | null;
+    onInventoryToggle?: (sort: PlantSortData) => void;
 };
+
+const currencyFormatter = new Intl.NumberFormat('hr-HR', {
+    style: 'currency',
+    currency: 'EUR',
+});
+
+function outletOfferBadgeLabel(outletOffers: OutletOfferData[]) {
+    if (outletOffers.length === 1) {
+        return `Outlet ${currencyFormatter.format(outletOffers[0].outletPrice)}`;
+    }
+
+    return `Outlet ${outletOffers.length} ponude`;
+}
 
 function PlantSortListItem({
     sort,
     selectedSortId,
     onChange,
     flyToShoppingCart,
+    neighborPlants,
+    outletOffers,
+    availableFromInventory,
+    inventorySelected,
+    onInventoryToggle,
 }: {
     sort: PlantSortData;
     selectedSortId: number | null;
     onChange: (sort: PlantSortData) => void;
     flyToShoppingCart?: boolean;
+    neighborPlants: NeighborPlantSummary[];
+    outletOffers?: OutletOfferData[];
+    availableFromInventory?: number;
+    inventorySelected?: boolean;
+    onInventoryToggle?: (sort: PlantSortData) => void;
 }) {
     const animateFlyToShoppingCart = useAnimateFlyToShoppingCart();
     const { track } = useGameAnalytics();
+    const relationshipCandidate = getPlantRelationshipCandidateForSort(sort);
+    const relationshipSignal = relationshipCandidate
+        ? getPlantRelationshipSignal({
+              candidate: relationshipCandidate,
+              neighborPlants,
+          })
+        : null;
 
     useEffect(() => {
         if (flyToShoppingCart) {
@@ -53,8 +100,17 @@ function PlantSortListItem({
         animateFlyToShoppingCart.run,
     ]);
 
+    function handleInventoryToggle(event: MouseEvent<HTMLButtonElement>) {
+        event.preventDefault();
+        event.stopPropagation();
+        onInventoryToggle?.(sort);
+    }
+
     return (
-        <Stack className={cx(selectedSortId === sort.id && 'bg-muted')}>
+        <Stack
+            className={cx(selectedSortId === sort.id && 'bg-muted')}
+            data-plant-picker-sort-id={sort.id}
+        >
             <Button
                 // variant={selectedSortId === sort.id ? "soft" : "plain"}
                 variant="plain"
@@ -66,11 +122,22 @@ function PlantSortListItem({
                         plant_name: sort.information.plant.information?.name,
                         sort_id: sort.id,
                         sort_name: sort.information.name,
+                        ...(relationshipSignal?.status &&
+                        relationshipSignal.status !== 'neutral'
+                            ? {
+                                  relationship_neighbor_plant_ids:
+                                      relationshipSignal.neighborPlantIds.join(
+                                          ',',
+                                      ),
+                                  relationship_signal:
+                                      relationshipSignal.status,
+                              }
+                            : {}),
                     });
                     onChange(sort);
                 }}
             >
-                <Row spacing={1.5}>
+                <Row spacing={3}>
                     <AnimateFlyToItem {...animateFlyToShoppingCart.props}>
                         <PlantOrSortImage
                             plantSort={sort}
@@ -93,29 +160,76 @@ function PlantSortListItem({
                     </Stack>
                 </Row>
                 {selectedSortId === sort.id && (
-                    <Check className="size-5 shrink-0" title="Odabrano" />
+                    <span title="Odabrano">
+                        <Check aria-hidden className="size-5 shrink-0" />
+                    </span>
                 )}
             </Button>
-            <Row justifyContent="end" className="px-4">
-                <Button
-                    title="Više informacija"
-                    href={KnownPages.GredicePlantSort(
-                        sort.information.plant.information?.name ?? 'nepoznato',
-                        sort.information.name,
-                    )}
-                    variant="link"
-                    size="sm"
-                    onClick={() =>
-                        track('game_plant_sort_details_opened', {
-                            plant_name:
-                                sort.information.plant.information?.name,
-                            sort_id: sort.id,
-                            sort_name: sort.information.name,
-                        })
-                    }
-                >
-                    Više informacija...
-                </Button>
+            <Row
+                justifyContent="space-between"
+                className="flex-wrap gap-y-1 px-4"
+            >
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    {outletOffers?.length ? (
+                        <OutletBadge>
+                            {outletOfferBadgeLabel(outletOffers)}
+                        </OutletBadge>
+                    ) : null}
+                    {relationshipSignal ? (
+                        <PlantRelationshipSignalChips
+                            signal={relationshipSignal}
+                        />
+                    ) : null}
+                </div>
+                <div className="flex items-center gap-1">
+                    <Button
+                        title="Više informacija"
+                        href={KnownPages.GredicePlantSort(
+                            sort.information.plant.information?.name ??
+                                'nepoznato',
+                            sort.information.name,
+                        )}
+                        variant="link"
+                        size="sm"
+                        onClick={() =>
+                            track('game_plant_sort_details_opened', {
+                                plant_name:
+                                    sort.information.plant.information?.name,
+                                sort_id: sort.id,
+                                sort_name: sort.information.name,
+                            })
+                        }
+                    >
+                        Više informacija...
+                    </Button>
+                    {availableFromInventory ? (
+                        <IconButton
+                            aria-pressed={inventorySelected}
+                            className={cx(
+                                'size-8 shrink-0',
+                                inventorySelected &&
+                                    'text-green-700 dark:text-green-300',
+                            )}
+                            color={inventorySelected ? 'success' : 'neutral'}
+                            onClick={handleInventoryToggle}
+                            size="sm"
+                            title={
+                                inventorySelected
+                                    ? 'Ne koristi iz ruksaka'
+                                    : `Koristi iz ruksaka (${availableFromInventory})`
+                            }
+                            type="button"
+                            variant={inventorySelected ? 'soft' : 'plain'}
+                        >
+                            <BackpackIcon aria-hidden className="size-4" />
+                        </IconButton>
+                    ) : null}
+                    <FavoriteToggleButton
+                        entityId={sort.id}
+                        entityType="plantSort"
+                        label={sort.information.name}
+                    />
+                </div>
             </Row>
         </Stack>
     );
@@ -125,28 +239,43 @@ export function PlantsSortList({
     plantId,
     selectedSortId,
     onChange,
+    search,
     flyToShoppingCart,
+    neighborPlants = [],
+    outletOffersBySortId,
+    inventoryAvailabilityBySortId,
+    inventorySelectedSortId,
+    onInventoryToggle,
 }: PlantsSortListProps) {
     const { data: plantSorts, isLoading, isError } = usePlantSorts(plantId);
-    const [search] = useSearchParam('pretraga', '');
-    const storePlants = plantSorts?.filter(
-        (sort) => sort.store.availableInStore,
-    );
-    const filteredPlantSorts =
-        search.length > 0
-            ? storePlants?.filter((sort) =>
-                  sort.information.name
-                      .toLowerCase()
-                      .includes(search.toLowerCase()),
-              )
-            : storePlants;
+    const favoriteSortIds = useFavoriteIds('plantSort');
+    const normalizedSearch = search.trim().toLowerCase();
+    const sortedPlantSorts = useMemo(() => {
+        const availablePlantSorts = plantSorts?.filter(
+            (sort) =>
+                sort.store.availableInStore ||
+                outletOffersBySortId?.has(sort.id),
+        );
+        const filteredPlantSorts =
+            normalizedSearch.length > 0
+                ? availablePlantSorts?.filter((sort) =>
+                      sort.information.name
+                          .toLowerCase()
+                          .includes(normalizedSearch),
+                  )
+                : availablePlantSorts;
+
+        return filteredPlantSorts
+            ? sortFavoritesFirst(filteredPlantSorts, favoriteSortIds)
+            : undefined;
+    }, [favoriteSortIds, normalizedSearch, outletOffersBySortId, plantSorts]);
 
     // Select first sort if only one is available
     useEffect(() => {
-        if (filteredPlantSorts?.length === 1 && !selectedSortId) {
-            onChange(filteredPlantSorts[0]);
+        if (sortedPlantSorts?.length === 1 && !selectedSortId) {
+            onChange(sortedPlantSorts[0]);
         }
-    }, [filteredPlantSorts, selectedSortId, onChange]);
+    }, [sortedPlantSorts, selectedSortId, onChange]);
 
     return (
         <>
@@ -157,9 +286,9 @@ export function PlantsSortList({
             )}
             <List
                 variant="outlined"
-                className="bg-card max-h-96 overflow-y-auto"
+                className="max-h-[40dvh] overflow-y-auto bg-card md:max-h-96"
             >
-                {!isLoading && filteredPlantSorts?.length === 0 && (
+                {!isLoading && sortedPlantSorts?.length === 0 && (
                     <NoDataPlaceholder className="p-4">
                         Nema rezultata
                     </NoDataPlaceholder>
@@ -169,12 +298,19 @@ export function PlantsSortList({
                         // biome-ignore lint/suspicious/noArrayIndexKey: Allowed, skeleton
                         <PlantListItemSkeleton key={index} />
                     ))}
-                {filteredPlantSorts?.map((sort) => (
+                {sortedPlantSorts?.map((sort) => (
                     <PlantSortListItem
                         key={sort.id}
                         sort={sort}
                         selectedSortId={selectedSortId}
                         onChange={onChange}
+                        neighborPlants={neighborPlants}
+                        outletOffers={outletOffersBySortId?.get(sort.id)}
+                        availableFromInventory={inventoryAvailabilityBySortId?.get(
+                            sort.id,
+                        )}
+                        inventorySelected={inventorySelectedSortId === sort.id}
+                        onInventoryToggle={onInventoryToggle}
                         flyToShoppingCart={
                             flyToShoppingCart && selectedSortId === sort.id
                         }

@@ -1,11 +1,11 @@
-import { animated } from '@react-spring/three';
+import { animated } from '../../scene/sceneSpring';
 import type { EntityInstanceProps } from '../../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../../utils/getStackHeight';
 import { useGameGLTF } from '../../utils/useGameGLTF';
 import { useAnimatedEntityRotation } from '../helpers/useAnimatedEntityRotation';
 
 export function Seed({ stack, block, rotation }: EntityInstanceProps) {
-    const { nodes } = useGameGLTF();
+    const { nodes } = useGameGLTF('Seed');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
 

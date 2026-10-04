@@ -3,7 +3,7 @@
 // Pulls Vercel environment variables for every app in one go.
 
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { appRegistry } from './app-registry.ts';
@@ -13,6 +13,17 @@ const vercelScope = 'gredice';
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, '..');
 const vercelApps = appRegistry.filter((app) => app.vercelProjectName);
+
+// Packages that don't have their own Vercel project but need values from an app .env.
+// Source apps are tried in order; the first .env containing the key wins.
+const sharedPackageEnvs = [
+    {
+        name: '@gredice/storage',
+        targetEnv: resolve(repoRoot, 'packages', 'storage', '.env'),
+        keys: ['POSTGRES_URL'],
+        sourceAppOrder: ['api', 'www', 'app', 'garden', 'farm'],
+    },
+];
 
 function getSpawnOptions(command, args) {
     if (process.platform !== 'win32') {
@@ -97,6 +108,56 @@ function explainFailure(output, appName, projectName) {
     return `${appName}: env pull command failed. See output above for details.`;
 }
 
+function findKeyLineInAppEnv(key, appName) {
+    const app = appRegistry.find((candidate) => candidate.name === appName);
+    if (!app) return undefined;
+    const envPath = resolve(repoRoot, app.packagePath, '.env');
+    if (!existsSync(envPath)) return undefined;
+
+    const text = readFileSync(envPath, 'utf8');
+    for (const rawLine of text.split(/\r?\n/)) {
+        const trimmed = rawLine.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const eq = trimmed.indexOf('=');
+        if (eq === -1) continue;
+        const candidateKey = trimmed.slice(0, eq).trim();
+        if (candidateKey === key) {
+            return { app: appName, line: rawLine };
+        }
+    }
+    return undefined;
+}
+
+function populateSharedPackageEnvs() {
+    for (const pkg of sharedPackageEnvs) {
+        const lines = [];
+        const sources = [];
+        for (const key of pkg.keys) {
+            let found;
+            for (const appName of pkg.sourceAppOrder) {
+                found = findKeyLineInAppEnv(key, appName);
+                if (found) break;
+            }
+            if (!found) {
+                console.warn(
+                    `${pkg.name}: ${key} not found in any source app .env (tried ${pkg.sourceAppOrder.join(', ')}). Skipping.`,
+                );
+                continue;
+            }
+            lines.push(found.line);
+            sources.push(`${key}<-${found.app}`);
+        }
+
+        if (lines.length === 0) {
+            console.warn(`${pkg.name}: no keys copied; ${pkg.targetEnv} not updated.`);
+            continue;
+        }
+
+        writeFileSync(pkg.targetEnv, `${lines.join('\n')}\n`);
+        console.log(`\nWrote ${pkg.name} env (${sources.join(', ')}).`);
+    }
+}
+
 async function main() {
     if (!(await hasVercelCli())) {
         console.error(
@@ -137,6 +198,8 @@ async function main() {
             process.exit(result.code ?? 1);
         }
     }
+
+    populateSharedPackageEnvs();
 
     console.log('\nFinished pulling environment variables for all apps.');
 }

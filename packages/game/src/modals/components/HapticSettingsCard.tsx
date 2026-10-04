@@ -1,5 +1,5 @@
-import { Card, CardContent } from '@signalco/ui-primitives/Card';
-import { Checkbox } from '@signalco/ui-primitives/Checkbox';
+import { Card, CardContent } from '@gredice/ui/Card';
+import { Checkbox } from '@gredice/ui/Checkbox';
 import { useState } from 'react';
 import {
     canVibrate,

@@ -47,7 +47,7 @@ export function TableFilter({
     const updateFilters = useCallback(
         (key: string, value: string) => {
             const params = new URLSearchParams(searchParams.toString());
-            if (value && value !== 'all') {
+            if (value) {
                 params.set(key, value);
             } else {
                 params.delete(key);
@@ -60,7 +60,7 @@ export function TableFilter({
             filters.forEach((filter: FilterOption) => {
                 const filterValue =
                     key === filter.key ? value : searchParams.get(filter.key);
-                if (filterValue && filterValue !== 'all') {
+                if (filterValue) {
                     newFilters[filter.key] = filterValue;
                 }
             });

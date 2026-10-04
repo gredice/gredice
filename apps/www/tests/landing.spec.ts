@@ -1,6 +1,495 @@
-import { expect, test } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
+import { expect, test } from './fixtures';
+
+test.describe.configure({ mode: 'default' });
+
+async function expectPillBorderRadius(locator: Locator) {
+    await expect
+        .poll(
+            async () =>
+                locator.evaluate((element) => {
+                    const styles = window.getComputedStyle(element);
+                    const radii = [
+                        styles.borderTopLeftRadius,
+                        styles.borderTopRightRadius,
+                        styles.borderBottomRightRadius,
+                        styles.borderBottomLeftRadius,
+                    ].map((radius) => Number.parseFloat(radius));
+                    const { height } = element.getBoundingClientRect();
+
+                    return Math.min(...radii) - height / 2;
+                }),
+            { timeout: 15_000 },
+        )
+        .toBeGreaterThanOrEqual(0);
+}
+
+async function expectOpaqueBackground(locator: Locator) {
+    await expect
+        .poll(
+            () =>
+                locator.evaluate((element) => {
+                    const backgroundColor =
+                        window.getComputedStyle(element).backgroundColor;
+                    const canvas = document.createElement('canvas');
+                    const context = canvas.getContext('2d');
+                    if (!context) {
+                        return null;
+                    }
+
+                    context.clearRect(0, 0, 1, 1);
+                    context.fillStyle = backgroundColor;
+                    context.fillRect(0, 0, 1, 1);
+                    return context.getImageData(0, 0, 1, 1).data[3] / 255;
+                }),
+            { timeout: 15_000 },
+        )
+        .toBe(1);
+}
+
+async function expectMobileNavActionsDoNotOverlap(page: Page) {
+    const cta = page.getByRole('link', { name: 'Moj novi vrt' });
+    const menuButton = page.getByRole('button', {
+        name: /Otvori navigaciju|Zatvori navigaciju/u,
+    });
+
+    await expect(cta).toBeVisible();
+    await expect(menuButton).toBeVisible();
+
+    await expect
+        .poll(
+            async () => {
+                const ctaBox = await cta.boundingBox();
+                const menuButtonBox = await menuButton.boundingBox();
+                if (!ctaBox || !menuButtonBox) {
+                    return Number.NEGATIVE_INFINITY;
+                }
+
+                return menuButtonBox.x - (ctaBox.x + ctaBox.width);
+            },
+            { timeout: 15_000 },
+        )
+        .toBeGreaterThan(0);
+    await expect
+        .poll(
+            async () => {
+                const ctaBox = await cta.boundingBox();
+                return ctaBox?.width ?? Number.POSITIVE_INFINITY;
+            },
+            { timeout: 15_000 },
+        )
+        .toBeLessThanOrEqual(56);
+}
+
+test('public chrome stays inside mobile safe areas', async ({ page }) => {
+    test.slow();
+
+    const safeArea = { bottom: 24, left: 12, right: 12, top: 32 };
+    await page.setViewportSize({ height: 844, width: 390 });
+    const session = await page.context().newCDPSession(page);
+    await session.send('Emulation.setSafeAreaInsetsOverride', {
+        insets: {
+            bottom: safeArea.bottom,
+            bottomMax: safeArea.bottom,
+            left: safeArea.left,
+            leftMax: safeArea.left,
+            right: safeArea.right,
+            rightMax: safeArea.right,
+            top: safeArea.top,
+            topMax: safeArea.top,
+        },
+    });
+
+    await page.goto('/kontakt');
+
+    await expect(page.locator('meta[name="viewport"]')).toHaveAttribute(
+        'content',
+        /viewport-fit=cover/u,
+    );
+
+    const headerBounds = await page.locator('header').boundingBox();
+    expect(headerBounds).not.toBeNull();
+    expect(headerBounds?.x).toBeGreaterThanOrEqual(safeArea.left);
+    expect(headerBounds?.y).toBeGreaterThanOrEqual(safeArea.top);
+    expect(
+        (headerBounds?.x ?? 0) + (headerBounds?.width ?? 0),
+    ).toBeLessThanOrEqual(390 - safeArea.right);
+
+    await page.getByRole('button', { name: 'Pretraga' }).click();
+    const searchDialog = page.getByRole('dialog', { name: 'Pretraga' });
+    await expect(searchDialog).toBeVisible({ timeout: 15_000 });
+    const searchBounds = await searchDialog.boundingBox();
+    expect(searchBounds).not.toBeNull();
+    expect(searchBounds?.x).toBeGreaterThanOrEqual(safeArea.left);
+    expect(searchBounds?.y).toBeGreaterThanOrEqual(safeArea.top);
+    expect(
+        (searchBounds?.x ?? 0) + (searchBounds?.width ?? 0),
+    ).toBeLessThanOrEqual(390 - safeArea.right);
+    expect(
+        (searchBounds?.y ?? 0) + (searchBounds?.height ?? 0),
+    ).toBeLessThanOrEqual(844 - safeArea.bottom);
+
+    await expect(page.locator('.site-footer').locator('..')).toHaveCSS(
+        'padding-bottom',
+        `${safeArea.bottom}px`,
+    );
+});
 
 test('has title', async ({ page }) => {
+    // The first `/` hit in a shard pays the Next.js SSR cold-start cost,
+    // which can exceed the 10s default test timeout. Triple it.
+    test.slow();
     await page.goto('/');
     await expect(page).toHaveTitle(/Gredice/);
+});
+
+test('mobile navbar closes after navigating from the menu', async ({
+    page,
+}) => {
+    test.slow();
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/kontakt');
+    await expectMobileNavActionsDoNotOverlap(page);
+
+    const menuButton = page.getByRole('button', {
+        name: 'Otvori navigaciju',
+    });
+    await menuButton.click();
+
+    const mobileNav = page.getByRole('navigation', {
+        name: 'Glavna navigacija',
+    });
+    await expect(mobileNav).toBeVisible();
+
+    await mobileNav.getByRole('link', { name: 'Česta pitanja' }).click();
+
+    await expect(page).toHaveURL(/\/cesta-pitanja/u);
+    await expect(mobileNav).toBeHidden();
+    await expect(
+        page.getByRole('button', { name: 'Otvori navigaciju' }),
+    ).toBeVisible();
+});
+
+test('navbar floats on scroll and landing game frame is rounded', async ({
+    page,
+}, testInfo) => {
+    test.slow();
+    testInfo.setTimeout(90_000);
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/');
+
+    const header = page.locator('header');
+    await expect(header).toHaveCSS('border-bottom-width', '0px');
+
+    await expect(page.getByTestId('landing-game-frame')).toHaveCSS(
+        'border-radius',
+        '24px',
+    );
+    const featuredGardenCarousel = page.getByTestId('landing-featured-gardens');
+    const hasFeaturedGardenCarousel =
+        (await featuredGardenCarousel.count()) > 0;
+    await expect(page.getByTestId('landing-hero-card')).toHaveCSS(
+        'border-radius',
+        hasFeaturedGardenCarousel ? '16px' : '15px',
+    );
+    await expect(
+        page
+            .getByTestId('landing-game-frame')
+            .locator('[style*="linear-gradient"]'),
+    ).toHaveCount(0);
+
+    const frameBox = await page.getByTestId('landing-game-frame').boundingBox();
+    const heroCardBox = await page
+        .getByTestId('landing-hero-card')
+        .boundingBox();
+    expect(frameBox).not.toBeNull();
+    expect(heroCardBox).not.toBeNull();
+    if (!frameBox || !heroCardBox) {
+        throw new Error('Expected landing game frame and hero card boxes.');
+    }
+
+    const minimumCardInset = hasFeaturedGardenCarousel ? 12 : 23;
+    expect(heroCardBox.x - frameBox.x).toBeGreaterThanOrEqual(minimumCardInset);
+    expect(heroCardBox.y - frameBox.y).toBeGreaterThanOrEqual(minimumCardInset);
+    expect(
+        frameBox.x + frameBox.width - (heroCardBox.x + heroCardBox.width),
+    ).toBeGreaterThanOrEqual(minimumCardInset);
+    expect(frameBox.height).toBeLessThanOrEqual(550);
+    if (process.env.GREDICE_PLAYWRIGHT_FEATURED_GARDENS_FIXTURE === 'true') {
+        const gardens = page.getByRole('region', {
+            name: 'Vrtovi korisnika Gredica',
+        });
+        await expect(gardens).toBeVisible();
+        await expect(
+            gardens.getByRole('link', { name: 'Pogledaj' }),
+        ).toHaveAttribute('href', '/vrtovi/99999');
+    } else {
+        await expect(page.locator('canvas')).toBeVisible({ timeout: 35_000 });
+    }
+
+    const signupCta = page.getByTestId('landing-game-signup-cta');
+    await expect(signupCta).toBeVisible();
+    await expect(
+        signupCta.getByRole('link', { name: 'Započni svoj vrt' }),
+    ).toBeVisible();
+    const openAppCta = signupCta.getByRole('link', {
+        name: 'Otvori aplikaciju',
+    });
+    await expect(openAppCta).toBeVisible();
+    await expectOpaqueBackground(openAppCta);
+    await openAppCta.hover();
+    await expectOpaqueBackground(openAppCta);
+
+    const signupCtaBox = await signupCta.boundingBox();
+    expect(signupCtaBox).not.toBeNull();
+    if (!signupCtaBox) {
+        throw new Error('Expected landing game signup CTA box.');
+    }
+
+    expect(signupCtaBox.y).toBeGreaterThanOrEqual(frameBox.y + frameBox.height);
+
+    if (process.env.GREDICE_PLAYWRIGHT_FEATURED_GARDENS_FIXTURE === 'true') {
+        await expect(page.locator('canvas')).toHaveCount(0);
+    } else {
+        await expect
+            .poll(
+                () =>
+                    page.evaluate(() => {
+                        const profile = (
+                            window as Window & {
+                                __grediceGameProfile?: {
+                                    adaptiveHighEnabled?: boolean;
+                                    dprCap?: number;
+                                    qualityTier?: string;
+                                };
+                            }
+                        ).__grediceGameProfile;
+
+                        return {
+                            adaptiveHighEnabled: profile?.adaptiveHighEnabled,
+                            dprCapIsSupported:
+                                typeof profile?.dprCap === 'number' &&
+                                profile.dprCap >= 1 &&
+                                profile.dprCap <= 2,
+                            qualityTier: profile?.qualityTier,
+                        };
+                    }),
+                { timeout: 15_000 },
+            )
+            .toEqual({
+                adaptiveHighEnabled: !hasFeaturedGardenCarousel,
+                dprCapIsSupported: true,
+                qualityTier: hasFeaturedGardenCarousel
+                    ? 'auto-constrained'
+                    : 'high',
+            });
+
+        const canvas = page.locator('canvas');
+        const countVisibleCanvasPixels = async () => {
+            const screenshot = await canvas.screenshot({ scale: 'css' });
+
+            return page.evaluate(async (base64) => {
+                const image = new Image();
+                image.src = `data:image/png;base64,${base64}`;
+                await image.decode();
+
+                const sampleCanvas = document.createElement('canvas');
+                sampleCanvas.width = 20;
+                sampleCanvas.height = 20;
+                const context = sampleCanvas.getContext('2d');
+                if (!context) {
+                    return 0;
+                }
+
+                context.drawImage(image, 0, 0, 20, 20);
+                const pixels = context.getImageData(0, 0, 20, 20).data;
+                let visiblePixels = 0;
+                for (let index = 0; index < pixels.length; index += 4) {
+                    const red = pixels[index] ?? 0;
+                    const green = pixels[index + 1] ?? 0;
+                    const blue = pixels[index + 2] ?? 0;
+                    const alpha = pixels[index + 3] ?? 0;
+                    if (alpha > 0 && red + green + blue > 0) {
+                        visiblePixels += 1;
+                    }
+                }
+
+                return visiblePixels;
+            }, screenshot.toString('base64'));
+        };
+        await expect
+            .poll(countVisibleCanvasPixels, { timeout: 35_000 })
+            .toBeGreaterThan(10);
+    }
+
+    await page.evaluate(() => window.scrollTo(0, 160));
+    await expect
+        .poll(() => page.evaluate(() => window.scrollY), { timeout: 15_000 })
+        .toBeGreaterThan(12);
+    await expectPillBorderRadius(header);
+    await expect(header).toHaveCSS('border-bottom-width', '1px');
+    await expectMobileNavActionsDoNotOverlap(page);
+
+    await expect
+        .poll(async () => {
+            const mobileHeaderBox = await header.boundingBox();
+            return mobileHeaderBox?.x ?? Number.NEGATIVE_INFINITY;
+        })
+        .toBeGreaterThanOrEqual(7);
+    await expect
+        .poll(async () => {
+            const mobileHeaderBox = await header.boundingBox();
+            return mobileHeaderBox?.y ?? Number.NEGATIVE_INFINITY;
+        })
+        .toBeGreaterThanOrEqual(7);
+});
+
+test('desktop floating navbar keeps its width and balanced CTA spacing', async ({
+    page,
+}) => {
+    test.slow();
+
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/');
+
+    const header = page.locator('header');
+    const gardenCta = page.getByRole('link', { name: 'Moj novi vrt' });
+    const gardenCtaIcon = gardenCta.locator('svg:visible').last();
+
+    await expect
+        .poll(
+            async () => {
+                const [buttonBox, iconBox] = await Promise.all([
+                    gardenCta.boundingBox(),
+                    gardenCtaIcon.boundingBox(),
+                ]);
+                if (!buttonBox || !iconBox) {
+                    return Number.POSITIVE_INFINITY;
+                }
+
+                const trailingSpace =
+                    buttonBox.x + buttonBox.width - (iconBox.x + iconBox.width);
+                const verticalSpace = (buttonBox.height - iconBox.height) / 2;
+
+                return Math.abs(trailingSpace - verticalSpace);
+            },
+            { timeout: 15_000 },
+        )
+        .toBeLessThanOrEqual(0.5);
+
+    await page.evaluate(() => window.scrollTo(0, 160));
+    await expectPillBorderRadius(header);
+
+    const headerBox = await header.boundingBox();
+    expect(headerBox).not.toBeNull();
+    if (!headerBox) {
+        throw new Error('Expected desktop navbar to have a bounding box.');
+    }
+
+    expect(headerBox.width).toBeLessThanOrEqual(1280);
+    expect(headerBox.x).toBeGreaterThanOrEqual(70);
+});
+
+test('logged-in landing links the owned garden and its owner to their destinations', async ({
+    page,
+}) => {
+    test.slow();
+
+    await page.unroute('**/api/gredice/api/auth/current-claims**');
+    await page.route(
+        '**/api/gredice/api/auth/current-claims**',
+        async (route) => {
+            await route.fulfill({
+                body: JSON.stringify({
+                    id: 'test-user',
+                    publicId: 'u_test-user',
+                    userName: 'test',
+                    displayName: 'Test User',
+                    avatarUrl: null,
+                }),
+                contentType: 'application/json',
+                status: 200,
+            });
+        },
+    );
+    await page.route('**/api/gredice/api/gardens**', async (route) => {
+        const pathname = new URL(route.request().url()).pathname;
+        if (pathname.endsWith('/gardens')) {
+            await route.fulfill({
+                body: JSON.stringify([
+                    {
+                        createdAt: '2026-08-29T12:00:00.000Z',
+                        id: 37,
+                        isSandbox: false,
+                        name: 'Testov vrt',
+                    },
+                ]),
+                contentType: 'application/json',
+                status: 200,
+            });
+            return;
+        }
+
+        if (pathname.endsWith('/gardens/37')) {
+            await route.fulfill({
+                body: JSON.stringify({
+                    backgroundPalette: 'current',
+                    farmId: 1,
+                    homeCamera: null,
+                    id: 37,
+                    isPublic: true,
+                    isSandbox: false,
+                    latitude: 45.815,
+                    longitude: 15.982,
+                    name: 'Testov vrt',
+                    raisedBeds: [],
+                    stacks: {},
+                    updatedAt: '2026-08-29T12:00:00.000Z',
+                }),
+                contentType: 'application/json',
+                status: 200,
+            });
+            return;
+        }
+
+        await route.continue();
+    });
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/');
+
+    const featuredGardens = page.getByTestId('landing-featured-gardens');
+    await expect(featuredGardens).toHaveAttribute('data-garden-id', '37', {
+        timeout: 15_000,
+    });
+    await expect(featuredGardens).toHaveAttribute(
+        'data-garden-source',
+        'owned',
+    );
+    await expect(page.getByText('Testov vrt', { exact: true })).toBeVisible();
+    await expect(page.getByText('Tvoj vrt', { exact: true })).toBeVisible();
+    await expect(
+        featuredGardens.getByRole('link', { name: 'Otvori profil: Test User' }),
+    ).toHaveAttribute('href', '/korisnici/u_test-user');
+    await expect(
+        page.getByRole('link', { name: 'Otvori', exact: true }),
+    ).toHaveAttribute('href', /[?&]vrt=37(?:&|$)/u);
+    await page.route('**/api/users/public/u_test-user/profile', (route) =>
+        route.fulfill({
+            json: {
+                user: { displayName: 'Test User' },
+                gardens: [],
+                achievements: [],
+            },
+        }),
+    );
+    await featuredGardens
+        .getByRole('link', { name: 'Otvori profil: Test User' })
+        .click();
+    await expect(page).toHaveURL(/\/korisnici\/u_test-user$/u);
+    await expect(
+        page.getByRole('heading', { name: 'Test User', exact: true }),
+    ).toBeVisible();
 });

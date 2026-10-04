@@ -1,7 +1,4 @@
-import {
-    Typography,
-    type TypographyProps,
-} from '@signalco/ui-primitives/Typography';
+import { Typography, type TypographyProps } from '@gredice/ui/Typography';
 
 export type NoDataPlaceholder = TypographyProps;
 

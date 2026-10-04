@@ -54,3 +54,13 @@ export type GardenResponse = InferResponseType<
     ReturnType<typeof client>['api']['gardens'][':gardenId']['$get'],
     200
 >;
+
+export type PublicGardenResponse = InferResponseType<
+    ReturnType<typeof client>['api']['gardens'][':gardenId']['public']['$get'],
+    200
+>;
+
+export type PublicGardensResponse = InferResponseType<
+    ReturnType<typeof client>['api']['gardens']['public']['$get'],
+    200
+>;

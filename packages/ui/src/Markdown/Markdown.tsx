@@ -6,7 +6,9 @@ import {
 } from 'react';
 import type { Components } from 'react-markdown';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { StyledHtml } from '../StyledHtml';
+import { MarkdownTable } from './MarkdownTable';
 
 function getTextContent(node: ReactNode): string {
     if (typeof node === 'string' || typeof node === 'number') {
@@ -38,6 +40,7 @@ function getFallbackLinkLabel(href: string | undefined): string {
 }
 
 const components: Components = {
+    table: ({ node: _node, ...props }) => <MarkdownTable {...props} />,
     a: ({ children, href, ...props }) => {
         const textContent = Children.toArray(children)
             .map(getTextContent)
@@ -55,10 +58,17 @@ const components: Components = {
 export function Markdown({
     children,
     ...rest
-}: Omit<HTMLAttributes<HTMLDivElement>, 'children'> & { children: string }) {
+}: Omit<
+    HTMLAttributes<HTMLDivElement>,
+    'children' | 'dangerouslySetInnerHTML'
+> & {
+    children: string;
+}) {
     return (
         <StyledHtml {...rest}>
-            <ReactMarkdown components={components}>{children}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+                {children}
+            </ReactMarkdown>
         </StyledHtml>
     );
 }

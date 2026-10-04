@@ -1,7 +1,7 @@
 import { doUseRefreshToken, getUser } from '@gredice/storage';
 import type { Context } from 'hono';
 import { getCookie } from 'hono/cookie';
-import { createJwt, setCookie, verifyJwt } from '../auth/auth';
+import { createJwt, setCookie, verifyAccessJwt } from '../auth/auth';
 import { clearRefreshCookie, setRefreshCookie } from '../auth/refreshCookies';
 import {
     accessTokenExpiry,
@@ -9,6 +9,7 @@ import {
     refreshTokenCookieName,
     sessionCookieName,
 } from '../auth/sessionConfig';
+import { touchTemporaryUserActivityBestEffort } from '../auth/temporaryUserActivity';
 
 type AuthContext = Exclude<
     Awaited<ReturnType<typeof getAuthContextFromAccessToken>>,
@@ -58,7 +59,7 @@ async function getAuthContextFromAccessToken(
     }
 
     try {
-        const { result, error } = await verifyJwt(accessToken);
+        const { result, error } = await verifyAccessJwt(accessToken);
         if (error) {
             if (!isExpectedExpiryError(error)) {
                 console.warn('Unauthorized: invalid access token', error);
@@ -67,10 +68,6 @@ async function getAuthContextFromAccessToken(
         }
 
         const userId = result?.payload.sub;
-        const tokenUse = result?.payload.tokenUse;
-        if (typeof tokenUse === 'string' && tokenUse !== 'access') {
-            return null;
-        }
         if (typeof userId !== 'string' || userId.length === 0) {
             return null;
         }
@@ -87,11 +84,16 @@ async function getAuthContextFromAccessToken(
             return null;
         }
 
+        if (dbUser.isTemporary) {
+            await touchTemporaryUserActivityBestEffort(dbUser.id);
+        }
+
         return {
             userId: dbUser.id,
             user: {
                 id: dbUser.id,
                 accountIds,
+                isTemporary: dbUser.isTemporary,
                 role: dbUser.role,
             },
             accountId,
@@ -144,6 +146,10 @@ export function authValidator(roles: string[]) {
             return context.newResponse('Unauthorized', { status: 401 });
         }
 
+        if (dbUser.isTemporary) {
+            await touchTemporaryUserActivityBestEffort(dbUser.id);
+        }
+
         const newAccessToken = await createJwt(
             refreshed.userId,
             accessTokenExpiry,
@@ -158,6 +164,7 @@ export function authValidator(roles: string[]) {
             user: {
                 id: dbUser.id,
                 accountIds,
+                isTemporary: dbUser.isTemporary,
                 role: dbUser.role,
             },
             accountId,

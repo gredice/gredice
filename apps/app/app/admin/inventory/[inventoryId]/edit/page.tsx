@@ -1,11 +1,11 @@
 import { getInventoryConfig } from '@gredice/storage';
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Card } from '@signalco/ui-primitives/Card';
-import { Input } from '@signalco/ui-primitives/Input';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
+import { Button } from '@gredice/ui/Button';
+import { Card } from '@gredice/ui/Card';
+import { Input } from '@gredice/ui/Input';
+import { SelectItems } from '@gredice/ui/SelectItems';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { notFound } from 'next/navigation';
 import { AdminPageHeader } from '../../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
@@ -86,7 +86,7 @@ export default async function EditInventoryConfigPage({
     );
 
     return (
-        <Stack spacing={4}>
+        <Stack spacing={8}>
             <AdminPageHeader
                 breadcrumbs={
                     <Breadcrumbs
@@ -110,10 +110,10 @@ export default async function EditInventoryConfigPage({
             </Typography>
 
             <Card className="max-w-2xl">
-                <Stack spacing={4} className="p-6">
+                <Stack spacing={8} className="p-6">
                     <form action={updateConfigBound}>
-                        <Stack spacing={4}>
-                            <Stack spacing={3}>
+                        <Stack spacing={8}>
+                            <Stack spacing={6}>
                                 <Input
                                     name="label"
                                     label="Naziv zalihe"
@@ -185,7 +185,7 @@ export default async function EditInventoryConfigPage({
                 </Stack>
             </Card>
 
-            <Stack spacing={2}>
+            <Stack spacing={4}>
                 <Typography level="h3" semiBold>
                     Dodatna polja
                 </Typography>
@@ -253,7 +253,7 @@ export default async function EditInventoryConfigPage({
                 />
             </Stack>
 
-            <Stack spacing={2}>
+            <Stack spacing={4}>
                 <Typography level="h3" semiBold>
                     Opasna zona
                 </Typography>

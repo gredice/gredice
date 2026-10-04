@@ -1,13 +1,8 @@
-import { Password } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
+import { Password } from '@gredice/ui/icons';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 
 export default function RegistrationSuccessfulPage() {
     return (
@@ -22,7 +17,7 @@ export default function RegistrationSuccessfulPage() {
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <Stack spacing={3}>
+                    <Stack spacing={6}>
                         <Typography level="body2" center>
                             Možeš se prijaviti s novom zaporkom.
                         </Typography>

@@ -1,0 +1,168 @@
+import { GameCalendarIcon, GameSeedlingIcon } from '@gredice/ui/GameIcons';
+import { Discount, Timer } from '@gredice/ui/icons';
+import { NavigatingButton } from '@gredice/ui/NavigatingButton';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
+import { KnownPages } from '../../src/KnownPages';
+import {
+    type OutletOffer,
+    outletGardenUrl,
+    outletOfferImage,
+} from './outletData';
+import {
+    currencyFormatter,
+    formatOutletSowingDate,
+    offerEndFormatter,
+    outletDiscountLabel,
+    outletIsLowStock,
+    outletRemainingLabel,
+} from './outletPresentation';
+
+export function OutletOfferCard({ offer }: { offer: OutletOffer }) {
+    const imageUrl = outletOfferImage(offer);
+    const plantName = offer.plantSort.plant?.name;
+    const detailsHref = plantName
+        ? KnownPages.PlantSort(plantName, offer.plantSort.name)
+        : KnownPages.Plants;
+
+    return (
+        <article className="grid h-full grid-cols-[7.5rem_minmax(0,1fr)] overflow-hidden rounded-xl border border-tertiary border-b-4 bg-card shadow-sm sm:grid-cols-[minmax(8rem,10rem)_minmax(0,1fr)]">
+            <div className="relative min-h-36 overflow-hidden bg-muted sm:min-h-44">
+                {imageUrl ? (
+                    <>
+                        {/** biome-ignore lint/performance/noImgElement: Offer images come from API data and may use configured external origins. */}
+                        <img
+                            alt={offer.plantSort.name}
+                            className="h-full w-full object-cover transition-transform duration-300 hover:scale-[1.02]"
+                            src={imageUrl}
+                        />
+                    </>
+                ) : (
+                    <div className="flex h-full min-h-36 items-center justify-center bg-tertiary/15 px-4 text-center">
+                        <Typography level="body2" secondary>
+                            Fotografija sadnice uskoro stiže
+                        </Typography>
+                    </div>
+                )}
+                <div className="absolute left-3 top-3 flex flex-wrap gap-2">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-900 shadow-sm dark:bg-emerald-950 dark:text-emerald-200">
+                        <Discount aria-hidden className="size-3.5" />
+                        {outletDiscountLabel(offer)}
+                    </span>
+                    {outletIsLowStock(offer) ? (
+                        <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-900 shadow-sm dark:bg-amber-950 dark:text-amber-200">
+                            {outletRemainingLabel(offer)}
+                        </span>
+                    ) : null}
+                </div>
+            </div>
+            <div className="p-3 sm:p-4">
+                <Stack spacing={3}>
+                    <Stack spacing={1}>
+                        <div className="min-w-0">
+                            <Typography
+                                level="h5"
+                                component="h2"
+                                className="line-clamp-2"
+                            >
+                                {offer.plantSort.name}
+                            </Typography>
+                            {offer.plantSort.plant?.name ? (
+                                <Typography level="body2" tertiary>
+                                    {offer.plantSort.plant.name}
+                                </Typography>
+                            ) : null}
+                        </div>
+                        {offer.plantSort.description ? (
+                            <Typography
+                                level="body2"
+                                secondary
+                                className="hidden max-w-2xl text-pretty lg:line-clamp-2 lg:block"
+                            >
+                                {offer.plantSort.description}
+                            </Typography>
+                        ) : null}
+                    </Stack>
+                    <dl className="grid gap-2 text-xs sm:text-sm lg:grid-cols-3">
+                        <div>
+                            <dt className="flex items-center gap-1.5 text-muted-foreground">
+                                <GameSeedlingIcon
+                                    aria-hidden
+                                    className="size-5 shrink-0"
+                                />
+                                Sjetva
+                            </dt>
+                            <dd className="mt-1 font-medium">
+                                {formatOutletSowingDate(
+                                    new Date(offer.sowingDate),
+                                )}
+                            </dd>
+                        </div>
+                        <div>
+                            <dt className="flex items-center gap-1.5 text-muted-foreground">
+                                <GameCalendarIcon
+                                    aria-hidden
+                                    className="size-4 sm:size-5"
+                                />
+                                Preostalo
+                            </dt>
+                            <dd className="mt-1 font-medium">
+                                {offer.remainingQuantity} od {offer.quantity}
+                            </dd>
+                        </div>
+                        <div>
+                            <dt className="flex items-center gap-1.5 text-muted-foreground">
+                                <Timer
+                                    aria-hidden
+                                    className="size-4 sm:size-5"
+                                />
+                                Istječe
+                            </dt>
+                            <dd className="mt-1 font-medium">
+                                {offerEndFormatter.format(
+                                    new Date(offer.endAt),
+                                )}
+                            </dd>
+                        </div>
+                    </dl>
+                </Stack>
+            </div>
+            <div className="col-span-2 flex items-end justify-between gap-3 border-t border-tertiary p-3 sm:p-4">
+                <div>
+                    <Typography level="body3" tertiary>
+                        Outlet cijena
+                    </Typography>
+                    <Typography level="h5" component="p">
+                        {currencyFormatter.format(offer.outletPrice)}
+                    </Typography>
+                    {typeof offer.comparePrice === 'number' ? (
+                        <Typography
+                            level="body2"
+                            secondary
+                            className="line-through"
+                        >
+                            {currencyFormatter.format(offer.comparePrice)}
+                        </Typography>
+                    ) : null}
+                </div>
+                <div className="flex flex-wrap justify-end gap-2">
+                    <NavigatingButton
+                        href={detailsHref}
+                        size="sm"
+                        variant="outlined"
+                        className="w-fit shrink-0"
+                    >
+                        Detalji sorte
+                    </NavigatingButton>
+                    <NavigatingButton
+                        href={outletGardenUrl(offer.id)}
+                        size="sm"
+                        className="w-fit shrink-0"
+                    >
+                        Razgledaj u 3D vrtu
+                    </NavigatingButton>
+                </div>
+            </div>
+        </article>
+    );
+}

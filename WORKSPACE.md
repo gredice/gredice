@@ -5,23 +5,26 @@ Use this guide for repo layout, setup, commands, package boundaries, and local d
 ## Repository layout
 
 - `apps/api`: Next.js app exposing API routes, OpenAPI documentation, Stripe cron routes, internal cron routes, and API Playwright tests.
-- `apps/www`: public marketing and commerce site. It owns SEO-heavy public pages, sitemap generation, accessibility tests, and visual tests.
+- `apps/www`: public marketing and commerce site. It owns SEO-heavy public pages, sitemap generation, accessibility tests, and public route tests.
+- `apps/news`: public Novosti app served through `www.gredice.com/novosti` for CMS-backed blog posts and changelog updates.
 - `apps/garden`: customer garden experience and game-facing UI.
 - `apps/farm`: farm back-office application.
+- `apps/delivery`: driver route execution and customer delivery tracking.
 - `apps/app`: internal operations/admin application.
+- `apps/desktop`: Electron desktop release shells for `garden`, `farm`, and `app`.
 - `apps/storybook`: public Storybook documentation for shared and app-adjacent UI.
 - `apps/status`: public status page. It is not started by the default root dev command.
-- `packages/*`: shared libraries such as `@gredice/ui`, `@gredice/client`, `@gredice/storage`, `@gredice/email`, `@gredice/transactional`, `@gredice/stripe`, `@gredice/game`, and integration helpers.
+- `packages/*`: shared libraries such as `@gredice/ui`, `@gredice/auth`, `@gredice/client`, `@gredice/storage`, `@gredice/email`, `@gredice/transactional`, `@gredice/stripe`, `@gredice/game`, and integration helpers.
 - `assets`: source files for brand and 3D/game assets.
 - `scripts`: repo automation for development proxy, environment pull, Vercel linking, and generated assets.
 
 ## Tooling
 
 - Runtime: Node.js `>=24`.
-- Package manager: pnpm `10.33.2`.
+- Package manager: pnpm, pinned by the root `packageManager` field.
 - Task runner: Turborepo.
 - Formatting and linting: Biome per app/package.
-- Framework: Next.js 16 with React 19 and TypeScript 6.
+- Framework: Next.js 16 with React 19 and TypeScript 7.
 - Styling: Tailwind CSS 3 where applicable.
 - Browser tests: Playwright.
 - Node tests: Node's built-in test runner through `node --test` with `tsx` where needed.
@@ -51,6 +54,9 @@ pnpm env:pull
 # Start the default development stack with the local HTTPS proxy
 pnpm dev
 
+# Build Electron desktop artifacts for garden, farm, and app
+pnpm desktop:dist
+
 # Lint the full workspace
 pnpm lint
 
@@ -58,9 +64,14 @@ pnpm lint
 pnpm lint --filter @gredice/storage
 pnpm lint --filter garden
 
-# Run tests
+# Typecheck one workspace
+pnpm typecheck --filter garden
+pnpm typecheck --filter www
+
+# Run tests (keep `run`: pnpm 12 applies `pnpm test --filter` as its own
+# workspace filter and skips the root turbo script and its build dependency)
 pnpm test
-pnpm test --filter garden
+pnpm run test --filter garden
 
 # Build
 pnpm build
@@ -88,7 +99,19 @@ Use `pnpm --filter @gredice/directory-types regenerate:cms-types` only when `src
 
 ## Type checking
 
-Type checking is integrated into Next.js builds and package scripts. To validate app or package types, build the consuming app or run the targeted package test/build command that exercises the change.
+Use `pnpm typecheck --filter <workspace>` for a fast TypeScript compatibility check. Next.js apps run `next typegen` before the native TypeScript 7 CLI, so route, page, and layout types are generated without running a full production build. Production builds opt into Next.js' experimental `useTypeScriptCli` integration for the same compiler.
+
+TypeScript 7 does not expose the compiler API yet. `openapi-typescript` and Storybook's transitive tsconfig and React docgen tooling still require that API, so `pnpm-workspace.yaml` gives those tools the official `@typescript/typescript6` compatibility package and applies the matching patches from `patches/`. Remove that bridge once those dependencies support the TypeScript 7 API.
+
+For ordinary `@gredice/game` package changes, this is the default consumer compatibility check:
+
+```bash
+pnpm typecheck --filter @gredice/game
+pnpm typecheck --filter garden
+pnpm typecheck --filter www
+```
+
+Run `pnpm build --filter garden` or `pnpm build --filter www` only when the change affects Next.js configuration, routing, static assets, bundling behavior, production-only code paths, or when a release/sign-off requires the full build output.
 
 ## Development servers
 
@@ -98,30 +121,51 @@ The app names, paths, local domains, ports, and Vercel project names live in
 The dev proxy writes its Caddyfile from the registry at startup.
 
 - `www`: <https://www.gredice.test>
+- `news`: <https://novosti.gredice.test>
 - `garden`: <https://vrt.gredice.test>
 - `farm`: <https://farma.gredice.test>
+- `delivery`: <https://dostava.gredice.test>
 - `app`: <https://app.gredice.test>
 - `storybook`: <https://storybook.dev.gredice.test>
 - `api`: <https://api.gredice.test>
 - `status`: <https://status.gredice.test> with `pnpm --filter=status dev`
 
+Dev server ports are worktree-aware. App ports use the registry base port plus
+the current worktree's deterministic offset, and linked Git worktrees use proxy
+ports derived from the same offset instead of binding `80` and `443`. This lets
+a feature/Codex worktree run the same app beside a normal local checkout. The
+dev script prints the effective URL for each app; when the HTTPS proxy port is
+not `443`, use the printed port-qualified form such as
+`https://vrt.gredice.test:8001`. Override the derived slot with
+`GREDICE_PORT_OFFSET`, or force proxy ports with `GREDICE_PROXY_HTTP_PORT` and
+`GREDICE_PROXY_HTTPS_PORT`.
+
 The dev script verifies the hosts entries for the local `gredice.test` domains and attempts to add missing entries automatically. If it cannot modify the hosts file, add this entry manually and rerun the command:
 
 ```text
-127.0.0.1 www.gredice.test vrt.gredice.test farma.gredice.test app.gredice.test storybook.dev.gredice.test api.gredice.test status.gredice.test
+127.0.0.1 www.gredice.test novosti.gredice.test vrt.gredice.test farma.gredice.test dostava.gredice.test app.gredice.test storybook.dev.gredice.test api.gredice.test status.gredice.test
 ```
 
 Docker must be running for the proxy. Use `SKIP_DEV_PROXY=1 pnpm dev` only when the local proxy is not needed.
 
+Only one default Caddy proxy can bind ports `80` and `443` at a time. Starting
+`pnpm dev` from another worktree stops older `gredice-dev-caddy*` containers
+that are holding those ports, then starts the proxy for the current worktree. To
+run another proxy concurrently, set `GREDICE_PROXY_HTTP_PORT` and
+`GREDICE_PROXY_HTTPS_PORT` and include the HTTPS port in local URLs.
+
 ### Development HTTPS certificates
 
-The local Caddy proxy terminates HTTPS. Its internal certificate authority is stored in `~/.gredice/dev-caddy` unless `GREDICE_DEV_CADDY_DATA_DIR` points somewhere else. The dev script attempts to trust the certificate authority automatically for the current OS.
+The local Caddy proxy terminates HTTPS. Its internal certificate authority is
+stored in `~/.gredice/dev-caddy/<worktree-slug>` unless
+`GREDICE_DEV_CADDY_DATA_DIR` points somewhere else. The dev script attempts to
+trust the certificate authority automatically for the current OS.
 
 If automatic trust fails, import `root.crt` manually from the Caddy data directory:
 
 - macOS: import `root.crt` into Keychain Access and mark it as trusted for SSL.
 - Windows: open `certmgr.msc`, then import `root.crt` into Trusted Root Certification Authorities.
-- Linux: run `trust anchor ~/.gredice/dev-caddy/caddy/pki/authorities/local/root.crt`, or use the distribution's certificate tooling.
+- Linux: run `trust anchor ~/.gredice/dev-caddy/<worktree-slug>/caddy/pki/authorities/local/root.crt`, or use the distribution's certificate tooling.
 
 After the certificate is trusted, browsers should accept the local `gredice.test` HTTPS domains.
 
@@ -135,7 +179,70 @@ pnpm vercel:link
 pnpm env:pull
 ```
 
-`pnpm env:pull` runs `vercel env pull .env` in `apps/www`, `apps/garden`, `apps/farm`, `apps/app`, `apps/storybook`, `apps/api`, and `apps/status`.
+`pnpm env:pull` runs `vercel env pull .env` in every app with a Vercel project in `scripts/app-registry.ts`, including `apps/www`, `apps/news`, `apps/garden`, `apps/farm`, `apps/delivery`, `apps/app`, `apps/storybook`, `apps/api`, and `apps/status`.
+
+### Turborepo remote cache
+
+Turbo build/test results are cached remotely through Vercel for the `gredice` team, which speeds up cold builds locally and in CI.
+
+- Local and worktrees: `pnpm bootstrap` runs `pnpm turbo link --yes --scope=gredice`, which writes `.turbo/config.json` for the current worktree. The link relies on Vercel CLI auth, so run `vercel login` first if it has not been done on the machine. Each linked worktree gets its own `.turbo/config.json` (the `.turbo` directory is gitignored).
+- CI: only `TURBO_TEAM=gredice` is set in workflows by default. `TURBO_TOKEN` is intentionally not exported workflow-wide to avoid exposing secrets to pull-request code; remote cache auth must be provided only in tightly scoped trusted contexts.
+
+`pnpm doctor` reports the link status under the optional "Turbo remote cache" check.
+
+### Next.js build cache
+
+Next.js 16.3 enables the Turbopack filesystem cache for development and
+production builds by default. Vercel persists `.next/cache` automatically,
+while the reusable GitHub Actions workflow persists it only when the caller
+sets `nextBuildCache: true`.
+
+### Public page revalidation
+
+`apps/app` triggers public `apps/www` ISR revalidation after admin changes to directory plants, plant sorts, and operations. Configure the same `GREDICE_WWW_REVALIDATE_SECRET` in both apps. In production the admin app calls `https://www.gredice.com/api/revalidate/directories`; for preview or custom environments, set `GREDICE_WWW_REVALIDATE_URL` in `apps/app` to the target `www` deployment URL.
+
+### Codex environment setup
+
+Use a lean Codex environment for routine code tasks. Set Node.js to a current `24.x` release when the environment UI asks for an exact version. The repo-owned setup scripts also bootstrap Node.js `>=24` for their own run if the base image starts on an older Node.js release, then use Corepack to install the pnpm version pinned by `packageManager`.
+
+Recommended Codex setup script:
+
+```bash
+./scripts/codex-cloud-setup.sh
+```
+
+Recommended Codex maintenance script:
+
+```bash
+./scripts/codex-cloud-maintenance.sh
+```
+
+Override the setup-time Node.js installer with `GREDICE_CODEX_NODE_VERSION=<major-or-full-version>` only when the Codex base image does not already provide Node.js `>=24` and a specific release is required.
+
+`./scripts/codex-cloud-setup.sh` installs the `www` Playwright Chromium browser. By default it tries `playwright install --with-deps chromium`, then falls back to browser-only `playwright install chromium` if Codex Cloud's Ubuntu package mirror or apt proxy is unavailable. Set `GREDICE_CODEX_PLAYWRIGHT_WITH_DEPS=browser-only` to skip apt entirely, or `GREDICE_CODEX_PLAYWRIGHT_WITH_DEPS=required` when a task must fail fast unless OS-level Playwright dependencies install successfully.
+
+Recommended Codex environment variables:
+
+```bash
+CI=true
+NEXT_TELEMETRY_DISABLED=1
+TURBO_TELEMETRY_DISABLED=1
+PLAYWRIGHT_HTML_OPEN=never
+```
+
+Keep agent internet access off by default. Setup scripts already have internet access for dependency installation. If a task truly needs runtime internet access, prefer the common dependency allowlist and read-only HTTP methods.
+
+Do not use `pnpm dev` as the default Codex validation path. It starts the local HTTPS proxy and expects Docker, host entries, and Caddy certificate setup. Use targeted `pnpm lint --filter <workspace>`, `pnpm run test --filter <workspace>`, and `pnpm build --filter <workspace>` commands instead.
+
+Avoid `pnpm bootstrap` in Codex unless Vercel auth and project access are configured. It links projects and pulls real environment variables. For most Codex tasks, the checked-in `.env.example` files provide enough safe smoke-test configuration.
+
+For secret-backed integration tests, create a separate Codex environment with the required Vercel credentials, then run:
+
+```bash
+npm i -g vercel@latest
+pnpm vercel:link
+pnpm env:pull
+```
 
 ## Storage test database (Docker, local Postgres, and PGlite)
 
@@ -152,7 +259,7 @@ Use Docker or local Postgres when validating behavior that depends on exact Post
 Each app now includes a checked-in `.env.example` (or `.env.test.example` where needed) with safe local defaults for smoke tests. Copy the file to `.env` in each app when starting from a fresh worktree.
 
 - Local smoke tests should run with placeholders for analytics, email, payment, and similar nonessential integrations.
-- Integration or visual tests that validate those providers still require real secrets pulled from Vercel (`pnpm env:pull`) or another secure secret source.
+- Integration tests that validate those providers still require real secrets pulled from Vercel (`pnpm env:pull`) or another secure secret source.
 - Never commit real secrets; keep examples sanitized and use them as shape documentation only.
 
 ## Asset generation
@@ -161,21 +268,39 @@ Coordinate with teammates before editing shared game asset files. Only one perso
 
 ### Game assets
 
-After changing `assets/GameAssets.blend`, regenerate the exported GLB and model types from the repo root:
+Game asset source files live as one Blender file per asset under
+`assets/game-assets`. The manifest `assets/game-assets.json` defines which
+source file exports to each runtime GLB and which assets are preloaded first.
+
+After changing a split Blender file or the asset manifest, regenerate the
+exported GLBs and model types from the repo root:
 
 ```bash
 pnpm generate:game-assets
 ```
 
-This runs the platform export script from `assets`, writes `apps/garden/public/assets/models/GameAssets.glb`, then runs `pnpm generate:models-types` to update `packages/game/src/models/GameAssets.tsx` through `gltfjsx` and the local post-processing script.
+This runs the platform export script from `assets`, writes one GLB per asset to
+`apps/garden/public/assets/models`, then runs `pnpm generate:models-types` to
+update `packages/game/src/data/gameAssetModels.generated.ts` and
+`packages/game/src/models/GameAssets.tsx`. Type generation uses a temporary
+combined GLB under `apps/garden/.tmp` and removes it after `gltfjsx` finishes.
 
 Blender must be installed where the export scripts expect it:
 
 - macOS: `/Applications/Blender.app`
 - Windows: `C:\Program Files\Blender Foundation\Blender 4.5\blender.exe`
-- Linux/other Unix-like systems: update `assets/export.sh` for the local Blender path before running the generator.
+- Linux/other Unix-like systems: `blender` on `PATH`, or set `BLENDER_BINARY`.
 
-If the steps need to run separately, run `./export.sh` from `assets` on Unix-like systems or `.\export.ps1` from `assets` on Windows, then run `pnpm generate:models-types` from the repo root.
+If the steps need to run separately, run `./export.sh` from `assets` on
+Unix-like systems or `.\export.ps1` from `assets` on Windows, then run
+`pnpm generate:models-types` from the repo root.
+
+To recreate the split Blender files from an old monolithic source, run Blender
+against `assets/split-game-assets.py` with `-- --source /path/to/GameAssets.blend`.
+
+For the complete workflow that turns a model into a placeable and purchasable
+game entity, including runtime component registration, public block screenshots,
+and the directory CMS row, see [docs/game-entity-creation.md](./docs/game-entity-creation.md).
 
 ### Decoration sprite atlas
 

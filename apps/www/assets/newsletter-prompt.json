@@ -1,0 +1,14 @@
+{
+    "file": "NewsletterVisual.webp",
+    "generatedWith": "built-in image_gen",
+    "references": [
+        "apps/www/assets/NewsletterVisual.webp",
+        "apps/www/assets/SeedsAndTransplants.webp",
+        "apps/www/assets/DeliveryTruck.webp",
+        "packages/ui/src/GameIcons/assets/backpack.webp",
+        "packages/ui/src/GameIcons/assets/water.webp"
+    ],
+    "prompt": "Use case: style-transfer. Replace the first reference image, the old newsletter composition, with a redesigned editorial illustration for the same farming-game newsletter. Images 2–5 are STYLE references: match their chunky low-poly geometry, broad clean polygon facets, bevelled edges, substantial 3D volume, matte tactile toy materials, soft upper-left lighting and coherent darker right sides. Palette: teal-blue envelope, warm ivory paper, tomato coral red, fresh leaf green, carrot orange, slate-silver tool and terracotta grip. The primary subject is ONE large, slightly tilted TEAL-BLUE envelope, open with ONE ivory gardening newsletter sheet inside, bearing only a simple embossed green leaf symbol, no lettering. Cluster a plump red tomato with a short green calyx at lower left, ONE orange carrot with lush green leaves at lower right, and ONE small gardening hand trowel leaning behind the left of the envelope. Trowel must have exactly ONE slate-silver shovel blade connected through a short shaft to ONE terracotta handle, anatomically coherent complete tool, no fork or pick. A compact balanced 3D still life with unified perspective, envelope occupying about half the silhouette. All objects fully visible with 8 percent transparent margin. Render on a genuinely transparent alpha background, no ground plane, no cream silhouettes or cast shadows outside the objects, no grain, no watercolor or clay finish, no extraneous floating bits, no golden tint, no gold frame, no badges, no letters, no @ sign, no numbers, no watermark. Square composition intended to display at 192px and 320px on both cream and dark blue-gray cards.",
+    "inputRevision": "e9ae807756fed282aa8336853a0866ac08aa85f5",
+    "processing": "Resized to 768px and encoded as WebP quality 90, preserving generated alpha. No manual repainting or background removal."
+}

@@ -5,6 +5,9 @@ import {
     getEntityRaw,
     upsertAttributeValue,
 } from '@gredice/storage';
+import { revalidatePath } from 'next/cache';
+import { revalidatePublicDirectoryPagesForEntityType } from '../../../../lib/revalidation/publicDirectoryPages';
+import { KnownPages } from '../../../../src/KnownPages';
 
 export async function importEntityData(
     entityType: string,
@@ -72,6 +75,13 @@ export async function importEntityData(
             `Imported attribute: ${name} with value: ${value} for entity: ${entityId}`,
         );
     }
+
+    revalidatePath(KnownPages.DirectoryEntity(entityType, entityId));
+    revalidatePath(KnownPages.DirectoryEntityType(entityType));
+    await revalidatePublicDirectoryPagesForEntityType(
+        entityType,
+        'entity.import',
+    );
 
     return { success: true };
 }

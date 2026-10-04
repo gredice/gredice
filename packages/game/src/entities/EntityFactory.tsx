@@ -1,11 +1,17 @@
-import type { PropsWithChildren } from 'react';
+import { Edges } from '@react-three/drei';
+import { type ComponentType, memo, type PropsWithChildren } from 'react';
 import { PickableGroup } from '../controls/PickableGroup';
 import { RotatableGroup } from '../controls/RotatableGroup';
 import { SelectableGroup } from '../controls/SelectableGroup';
-import { useIsEditMode } from '../hooks/useIsEditMode';
+import { useBlockData } from '../hooks/useBlockData';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useGameState } from '../useGameState';
+import { useStackHeight } from '../utils/getStackHeight';
+import { areEntityFactoryPropsEqual } from './entityFactoryMemo';
 import { entityNameMap } from './entityNameMap';
+import { QueuedPlacementDropAnimation } from './helpers/PlacementDropAnimation';
+import { isEnvironmentAnimalEntityName } from './ladybugs/environmentAnimalPolicy';
+import { UnknownEntityPlaceholder } from './UnknownEntityPlaceholder';
 
 export type EntityFactoryProps = {
     name: string;
@@ -13,62 +19,155 @@ export type EntityFactoryProps = {
     noRenderInView?: string[];
 };
 
-export function EntityFactory({
+type EntityFactoryComponentProps = EntityFactoryProps & EntityInstanceProps;
+
+const instancedRenderModeDebugColor = '#22c55e';
+const componentRenderModeDebugColor = '#f59e0b';
+const entityComponents: Record<
+    string,
+    ComponentType<EntityInstanceProps>
+> = entityNameMap;
+
+function EntityRenderModeDebugOverlay({
+    stack,
+    block,
+    instanced,
+}: Pick<EntityInstanceProps, 'stack' | 'block'> & { instanced: boolean }) {
+    const { data: blockData } = useBlockData();
+    const currentStackHeight = useStackHeight(stack, block);
+    const visible = useGameState((state) => state.entityRenderModeDebugVisible);
+
+    if (!visible) {
+        return null;
+    }
+
+    const blockHeight =
+        blockData?.find((entity) => entity.information.name === block.name)
+            ?.attributes.height ?? 1;
+    const overlayHeight = Math.max(blockHeight, 0.35);
+    const overlayScale = 1.05;
+
+    return (
+        <mesh
+            name={`Debug:EntityRenderMode:${instanced ? 'instanced' : 'component'}:${block.name}:${block.id}`}
+            position={[
+                stack.position.x,
+                currentStackHeight + overlayHeight / 2,
+                stack.position.z,
+            ]}
+            scale={[overlayScale, 1.02, overlayScale]}
+            renderOrder={10_001}
+            raycast={() => null}
+        >
+            <boxGeometry args={[1, overlayHeight, 1]} />
+            <meshBasicMaterial visible={false} />
+            <Edges
+                color={
+                    instanced
+                        ? instancedRenderModeDebugColor
+                        : componentRenderModeDebugColor
+                }
+                renderOrder={10_001}
+                threshold={1}
+            />
+        </mesh>
+    );
+}
+
+function EntityPlacementDropAnimation({
+    children,
+    stack,
+    block,
+}: PropsWithChildren<Pick<EntityInstanceProps, 'stack' | 'block'>>) {
+    const currentStackHeight = useStackHeight(stack, block);
+
+    return (
+        <QueuedPlacementDropAnimation
+            block={block}
+            particlePosition={[
+                stack.position.x,
+                currentStackHeight,
+                stack.position.z,
+            ]}
+        >
+            {children}
+        </QueuedPlacementDropAnimation>
+    );
+}
+
+function EntityFactoryComponent({
     name,
     stack,
     block,
     noControl,
     noRenderInView,
     ...rest
-}: EntityFactoryProps & EntityInstanceProps) {
-    const isEditMode = useIsEditMode();
-    const EntityComponent = entityNameMap[name];
+}: EntityFactoryComponentProps) {
     const view = useGameState((state) => state.view);
 
-    if (!EntityComponent) {
-        console.error(
-            `Unknown entity: ${name} at ${stack.position.x}, ${stack.position.z}`,
-        );
-        console.debug(stack);
+    if (isEnvironmentAnimalEntityName(name)) {
         return null;
     }
 
-    if (!isEditMode) {
-        if (noRenderInView?.includes(name)) {
-            return null;
-        }
+    const EntityComponent = entityComponents[name];
+    const isInstancedInView = noRenderInView?.includes(name) ?? false;
 
-        if (noControl) {
-            return <EntityComponent stack={stack} block={block} {...rest} />;
-        }
-
-        const SelectableGroupWrapper =
-            view !== 'closeup'
-                ? SelectableGroup
-                : (props: PropsWithChildren) => <>{props.children}</>;
-
+    if (isInstancedInView) {
         return (
-            <SelectableGroupWrapper block={block}>
-                <EntityComponent stack={stack} block={block} {...rest} />
-            </SelectableGroupWrapper>
+            <EntityRenderModeDebugOverlay
+                stack={stack}
+                block={block}
+                instanced
+            />
         );
     }
 
-    // Non-top blocks are not pickable
-    const isTopBlock = stack.blocks.indexOf(block) === stack.blocks.length - 1;
-    if (!isTopBlock) {
+    const entity = EntityComponent ? (
+        <EntityComponent stack={stack} block={block} {...rest} />
+    ) : (
+        <UnknownEntityPlaceholder
+            stack={stack}
+            block={block}
+            rotation={rest.rotation}
+        />
+    );
+
+    if (noControl || view === 'closeup') {
         return (
+            <>
+                <EntityRenderModeDebugOverlay
+                    stack={stack}
+                    block={block}
+                    instanced={false}
+                />
+                {entity}
+            </>
+        );
+    }
+
+    const entityContent = (
+        <EntityPlacementDropAnimation stack={stack} block={block}>
             <RotatableGroup block={block}>
-                <EntityComponent stack={stack} block={block} {...rest} />
+                <EntityRenderModeDebugOverlay
+                    stack={stack}
+                    block={block}
+                    instanced={false}
+                />
+                {entity}
             </RotatableGroup>
-        );
-    }
+        </EntityPlacementDropAnimation>
+    );
 
     return (
-        <PickableGroup stack={stack} block={block} noControl={noControl}>
-            <RotatableGroup block={block}>
-                <EntityComponent stack={stack} block={block} {...rest} />
-            </RotatableGroup>
-        </PickableGroup>
+        <SelectableGroup block={block}>
+            <PickableGroup stack={stack} block={block} noControl={noControl}>
+                {entityContent}
+            </PickableGroup>
+        </SelectableGroup>
     );
 }
+
+export const EntityFactory = memo(
+    EntityFactoryComponent,
+    areEntityFactoryPropsEqual,
+);

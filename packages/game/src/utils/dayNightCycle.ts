@@ -1,6 +1,9 @@
 const DAY_NIGHT_CYCLE_DISABLED_STORAGE_KEY = 'game-day-night-cycle-disabled';
 let cachedDayNightCycleDisabled: boolean | undefined;
 
+export const DAY_NIGHT_CYCLE_DISABLED_CHANGE_EVENT =
+    'game-day-night-cycle-disabled-change';
+
 // Normalized midpoint of the day-night cycle, equivalent to noon.
 export const ALWAYS_DAY_TIME = 0.5;
 
@@ -35,4 +38,5 @@ export function setDayNightCycleDisabled(disabled: boolean) {
     } catch {
         // Ignore storage failures and keep the in-memory state updated.
     }
+    window.dispatchEvent(new Event(DAY_NIGHT_CYCLE_DISABLED_CHANGE_EVENT));
 }

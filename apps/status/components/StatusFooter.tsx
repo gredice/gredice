@@ -1,6 +1,5 @@
-import { Footer1 } from '@signalco/cms-components-marketing/Footer';
-import type { SectionData } from '@signalco/cms-core/SectionData';
-import { SectionsView } from '@signalco/cms-core/SectionsView';
+import type { SectionData } from '@gredice/ui/cms';
+import { Footer1, SectionsView } from '@gredice/ui/cms';
 import { memo } from 'react';
 import { Logotype } from './Logotype';
 

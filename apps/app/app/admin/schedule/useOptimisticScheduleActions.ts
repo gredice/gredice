@@ -1,0 +1,242 @@
+'use client';
+
+import {
+    createContext,
+    createElement,
+    type ReactNode,
+    useCallback,
+    useContext,
+    useRef,
+    useState,
+} from 'react';
+import { getOperationScheduleActionFailureMessage } from './operationScheduleActionResult';
+import { createScheduleActionQueue } from './scheduleActionQueue';
+import type { Operation, RaisedBedField } from './types';
+
+export type OperationOptimisticPatch = Partial<
+    Pick<
+        Operation,
+        | 'assignedUser'
+        | 'assignedUserId'
+        | 'assignedUserIds'
+        | 'assignedUsers'
+        | 'completionNotes'
+        | 'imageUrls'
+        | 'isAccepted'
+        | 'scheduledDate'
+        | 'status'
+    >
+>;
+
+export type RaisedBedFieldOptimisticPatch = Partial<
+    Pick<
+        RaisedBedField,
+        | 'assignedUserId'
+        | 'assignedUserIds'
+        | 'isDeleted'
+        | 'plantScheduledDate'
+        | 'plantStatus'
+        | 'sowingLocation'
+    >
+>;
+
+type PatchEntry<TPatch> = {
+    token: number;
+    patch: TPatch;
+};
+
+type PatchTarget<TPatch> = {
+    id: number;
+    patch: TPatch;
+};
+
+type OptimisticScheduleAction = {
+    operationPatches?: PatchTarget<OperationOptimisticPatch>[];
+    fieldPatches?: PatchTarget<RaisedBedFieldOptimisticPatch>[];
+    action: Parameters<ReturnType<typeof createScheduleActionQueue>['run']>[1];
+    errorLogMessage: string;
+    errorAlertMessage: string;
+};
+
+function addPatchEntries<TPatch>(
+    currentEntriesById: Map<number, PatchEntry<TPatch>[]>,
+    patches: PatchTarget<TPatch>[],
+    token: number,
+) {
+    if (patches.length === 0) {
+        return currentEntriesById;
+    }
+
+    const nextEntriesById = new Map(currentEntriesById);
+    for (const { id, patch } of patches) {
+        nextEntriesById.set(id, [
+            ...(nextEntriesById.get(id) ?? []),
+            { token, patch },
+        ]);
+    }
+
+    return nextEntriesById;
+}
+
+function removePatchToken<TPatch>(
+    currentEntriesById: Map<number, PatchEntry<TPatch>[]>,
+    token: number,
+) {
+    const nextEntriesById = new Map<number, PatchEntry<TPatch>[]>();
+
+    for (const [id, entries] of currentEntriesById) {
+        const nextEntries = entries.filter((entry) => entry.token !== token);
+        if (nextEntries.length > 0) {
+            nextEntriesById.set(id, nextEntries);
+        }
+    }
+
+    return nextEntriesById;
+}
+
+function mergePatchEntries<TPatch extends object>(
+    entries: PatchEntry<TPatch>[] | undefined,
+) {
+    if (!entries?.length) {
+        return undefined;
+    }
+
+    const mergedPatch: Partial<TPatch> = {};
+    for (const entry of entries) {
+        Object.assign(mergedPatch, entry.patch);
+    }
+
+    return mergedPatch;
+}
+
+type OptimisticScheduleActionsContextValue = {
+    pendingCount: number;
+    runScheduleAction: ReturnType<typeof createScheduleActionQueue>['run'];
+    getFieldPatch: (
+        fieldId: number,
+    ) => RaisedBedFieldOptimisticPatch | undefined;
+    getOperationPatch: (
+        operationId: number,
+    ) => OperationOptimisticPatch | undefined;
+    runOptimisticAction: (action: OptimisticScheduleAction) => Promise<unknown>;
+};
+
+const OptimisticScheduleActionsContext =
+    createContext<OptimisticScheduleActionsContextValue | null>(null);
+
+function useOptimisticScheduleActionState(): OptimisticScheduleActionsContextValue {
+    const tokenRef = useRef(0);
+    const [queue] = useState(createScheduleActionQueue);
+    const [pendingCount, setPendingCount] = useState(0);
+    const runScheduleAction = useCallback<
+        ReturnType<typeof createScheduleActionQueue>['run']
+    >(
+        (keys, action) => {
+            setPendingCount((count) => count + 1);
+            return queue.run(keys, action).finally(() => {
+                setPendingCount((count) => count - 1);
+            });
+        },
+        [queue],
+    );
+    const [operationEntriesById, setOperationEntriesById] = useState<
+        Map<number, PatchEntry<OperationOptimisticPatch>[]>
+    >(() => new Map());
+    const [fieldEntriesById, setFieldEntriesById] = useState<
+        Map<number, PatchEntry<RaisedBedFieldOptimisticPatch>[]>
+    >(() => new Map());
+
+    const runOptimisticAction = useCallback(
+        ({
+            operationPatches = [],
+            fieldPatches = [],
+            action,
+            errorLogMessage,
+            errorAlertMessage,
+        }: OptimisticScheduleAction) => {
+            const token = tokenRef.current;
+            tokenRef.current += 1;
+
+            setOperationEntriesById((currentEntriesById) =>
+                addPatchEntries(currentEntriesById, operationPatches, token),
+            );
+            setFieldEntriesById((currentEntriesById) =>
+                addPatchEntries(currentEntriesById, fieldPatches, token),
+            );
+
+            return runScheduleAction(
+                [
+                    ...operationPatches.map(({ id }) => `operation:${id}`),
+                    ...fieldPatches.map(({ id }) => `field:${id}`),
+                ],
+                action,
+            )
+                .then((result) => {
+                    const actionFailureMessage =
+                        getOperationScheduleActionFailureMessage(result);
+                    if (!actionFailureMessage) {
+                        return result;
+                    }
+
+                    setOperationEntriesById((currentEntriesById) =>
+                        removePatchToken(currentEntriesById, token),
+                    );
+                    setFieldEntriesById((currentEntriesById) =>
+                        removePatchToken(currentEntriesById, token),
+                    );
+                    return result;
+                })
+                .catch((error: unknown) => {
+                    console.error(errorLogMessage, error);
+                    setOperationEntriesById((currentEntriesById) =>
+                        removePatchToken(currentEntriesById, token),
+                    );
+                    setFieldEntriesById((currentEntriesById) =>
+                        removePatchToken(currentEntriesById, token),
+                    );
+                    alert(errorAlertMessage);
+                });
+        },
+        [runScheduleAction],
+    );
+
+    const getOperationPatch = useCallback(
+        (operationId: number) =>
+            mergePatchEntries(operationEntriesById.get(operationId)),
+        [operationEntriesById],
+    );
+
+    const getFieldPatch = useCallback(
+        (fieldId: number) => mergePatchEntries(fieldEntriesById.get(fieldId)),
+        [fieldEntriesById],
+    );
+
+    return {
+        pendingCount,
+        runScheduleAction,
+        getFieldPatch,
+        getOperationPatch,
+        runOptimisticAction,
+    };
+}
+
+export function OptimisticScheduleActionsProvider({
+    children,
+}: {
+    children: ReactNode;
+}) {
+    const actions = useOptimisticScheduleActionState();
+
+    return createElement(
+        OptimisticScheduleActionsContext.Provider,
+        { value: actions },
+        children,
+    );
+}
+
+export function useOptimisticScheduleActions() {
+    const contextActions = useContext(OptimisticScheduleActionsContext);
+    const localActions = useOptimisticScheduleActionState();
+
+    return contextActions ?? localActions;
+}

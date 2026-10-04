@@ -1,6 +1,4 @@
-/**
- * Shared types and constants for procedural plant presets.
- */
+/** Shared appearance and developmental-program types for procedural plants. */
 
 export type VegetableType =
     | 'strawberry'
@@ -30,15 +28,132 @@ export type VegetableType =
     | 'fennel'
     | 'kohlrabi';
 
-export interface RuleOption {
-    rule: string;
-    weight: number;
-    left?: string[];
-    right?: string[];
-    ignore?: string[];
+export type PlantArchitecture =
+    | 'clump'
+    | 'rosette'
+    | 'shrub'
+    | 'tree'
+    | 'upright'
+    | 'vine';
+
+export type PlantAxisHabit =
+    | 'basal'
+    | 'climbing'
+    | 'prostrate'
+    | 'upright'
+    | 'woody';
+
+export type PlantBranchingPattern =
+    | 'alternate'
+    | 'forked'
+    | 'multi-stem'
+    | 'none'
+    | 'opposite'
+    | 'sympodial';
+
+export type PlantFoliageArrangement =
+    | 'alternate'
+    | 'fan'
+    | 'opposite'
+    | 'rosette'
+    | 'whorled';
+
+export type PlantFlowerForm =
+    | 'cluster'
+    | 'pea'
+    | 'pom-pom'
+    | 'spike'
+    | 'star'
+    | 'umbel';
+
+export type PlantReproductiveSite =
+    | 'axillary'
+    | 'spike'
+    | 'terminal'
+    | 'truss'
+    | 'umbel';
+
+export interface PlantDevelopmentPhenology {
+    emergenceStart: number;
+    maturityGeneration: number;
+    senescenceStart?: number;
 }
 
-export type Rule = string | RuleOption[];
+export interface PlantDevelopmentAxes {
+    axisCount: number;
+    branchCount: number;
+    branchLengthScale: number;
+    branchNodeCount: number;
+    branchPitchDegrees: number;
+    branchingPattern: PlantBranchingPattern;
+    habit: PlantAxisHabit;
+    internodeLengthScale: number;
+    mainStemHorizontalScale?: number;
+    nodeCount: number;
+    pitchDegrees: number;
+    spread: number;
+}
+
+export interface PlantDevelopmentFoliage {
+    arrangement: PlantFoliageArrangement;
+    count: number;
+    emergenceInterval: number;
+    maturityDuration: number;
+    petioleLengthScale: number;
+    phyllotaxisDegrees: number;
+    pitchRangeDegrees: readonly [minimum: number, maximum: number];
+    sizeRange: readonly [minimum: number, maximum: number];
+}
+
+export interface PlantDevelopmentReproduction {
+    flowerStart: number;
+    flowersPerSite: number;
+    form: PlantFlowerForm;
+    fruitStart?: number;
+    produceCount: number;
+    site: PlantReproductiveSite;
+    siteCount: number;
+}
+
+export interface PlantDevelopmentStorage {
+    aboveSoilFraction: number;
+    birthGeneration: number;
+    matureGeneration: number;
+    sizeScale: number;
+}
+
+export interface PlantDevelopmentSpecial {
+    runnerCount?: number;
+    tendrilCount?: number;
+    thornCount?: number;
+}
+
+export interface PlantDevelopmentProgram {
+    architecture: PlantArchitecture;
+    axes: PlantDevelopmentAxes;
+    foliage: PlantDevelopmentFoliage;
+    phenology: PlantDevelopmentPhenology;
+    reproduction: PlantDevelopmentReproduction;
+    special?: PlantDevelopmentSpecial;
+    storage?: PlantDevelopmentStorage;
+    variability: number;
+}
+
+export type PlantLeafType =
+    | 'round'
+    | 'oval'
+    | 'heart'
+    | 'serrated'
+    | 'compound'
+    | 'ruffled'
+    | 'lobed'
+    | 'strap'
+    | 'tubular'
+    | 'lanceolate'
+    | 'trifoliate'
+    | 'pinnate'
+    | 'feathery'
+    | 'palmate';
 
 export interface ThornDefinition {
     enabled: boolean;
@@ -55,17 +170,13 @@ export const defaultThornDefinition: ThornDefinition = {
 };
 
 export interface PlantDefinition {
+    key: string;
     name: string;
-    axiom: string;
-    rules: Record<string, Rule>;
-    angle: number;
+    development: PlantDevelopmentProgram;
     height: number;
-    branching: number;
-    directionVariability: number;
     stem: {
         color: string;
         radius: number;
-        length: number;
         radiusDecay: number;
         minRadius: number;
         surface?: 'smooth' | 'bark';
@@ -76,37 +187,19 @@ export interface PlantDefinition {
     leaf: {
         color: string;
         size: number;
-        type: 'round' | 'oval' | 'heart' | 'serrated' | 'compound';
-        density: number;
-        hangAngle: number;
-        hangAngleRandomness: number;
-        sizeDecay: number;
+        type: PlantLeafType;
     };
     flower: {
         enabled: boolean;
-        ageStart: number;
         color: string;
         size: number;
     };
     vegetable: {
         enabled: boolean;
-        ageStart: number;
         type: VegetableType;
-        yield: number;
         baseSize: number;
     };
     thorn?: ThornDefinition;
-}
-
-export const TERMINAL_STEM_SYMBOL = 'G';
-export const TERMINAL_LEAF_SYMBOL = 'J';
-
-export function isStemSymbol(char: string) {
-    return char === 'F' || char === 'S' || char === TERMINAL_STEM_SYMBOL;
-}
-
-export function isLeafSymbol(char: string) {
-    return char === 'L' || char === TERMINAL_LEAF_SYMBOL;
 }
 
 export const MAX_PLANT_GENERATION = 12;

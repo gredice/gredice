@@ -1,11 +1,12 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@import "@gredice/ui/utilities.css";
+@config "../tailwind.config.ts";
+@source "../../../packages/ui/src";
 
 @layer base {
     :root {
         interpolate-size: allow-keywords;
-        --background: 36 43% 93%;
+        --background: 28 76.5% 98%;
         --foreground: 32 22% 10%;
 
         --muted: 35 38% 88%;
@@ -20,12 +21,13 @@
 
         --border: 34 32% 82%;
         --input: 34 32% 82%;
+        --field: 35 38% 96%;
 
         --primary: 29 45% 37%;
         --primary-foreground: 36 43% 93%;
 
-        --secondary: 75 37% 36%;
-        --secondary-foreground: 36 43% 93%;
+        --secondary: 75 32% 88%;
+        --secondary-foreground: 75 35% 24%;
 
         --tertiary: 35 38% 84%;
         --tertiary-foreground: 30 25% 28%;
@@ -45,6 +47,12 @@
 
         --bg-selection: #8b5e34;
         --text-selection: #fff;
+
+        --farm-mobile-navigation-height: 3.5rem;
+        --farm-safe-area-bottom: env(safe-area-inset-bottom, 0px);
+        --farm-safe-area-left: env(safe-area-inset-left, 0px);
+        --farm-safe-area-right: env(safe-area-inset-right, 0px);
+        --farm-safe-area-top: env(safe-area-inset-top, 0px);
     }
 
     .dark {
@@ -67,6 +75,7 @@
 
         --border: var(--hue) 16% 25%;
         --input: var(--hue) 31% 9%;
+        --field: var(--hue) 16% 24%;
 
         --primary: var(--hue-primary) 16% 98%;
         --primary-foreground: var(--hue) 40% 20%;
@@ -95,19 +104,26 @@
     }
 
     * {
-        @apply border-border;
+        border-color: hsl(var(--border));
     }
 
     body {
-        @apply bg-background text-foreground;
+        background-color: hsl(var(--background));
+        color: hsl(var(--foreground));
         font-feature-settings:
             "rlig" 1,
             "calt" 1;
     }
 
+    @media (max-width: 767px) {
+        html {
+            font-size: 17px;
+        }
+    }
+
     button,
     [role="button"] {
-        @apply cursor-auto;
+        cursor: auto;
     }
 
     ::selection {

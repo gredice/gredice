@@ -1,5 +1,7 @@
 'use client';
 
+import { Button, type ButtonProps } from '@gredice/ui/Button';
+import { Chip } from '@gredice/ui/Chip';
 import {
     Check,
     LoaderSpinner,
@@ -7,11 +9,9 @@ import {
     Stop,
     Tally3,
     Warning,
-} from '@signalco/ui-icons';
-import { Button, type ButtonProps } from '@signalco/ui-primitives/Button';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Row } from '@signalco/ui-primitives/Row';
+} from '@gredice/ui/icons';
+import { Modal } from '@gredice/ui/Modal';
+import { Row } from '@gredice/ui/Row';
 import {
     BrowserMultiFormatReader,
     ChecksumException,

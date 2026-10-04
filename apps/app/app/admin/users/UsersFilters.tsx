@@ -1,6 +1,6 @@
 'use client';
 
-import { User } from '@signalco/ui-icons';
+import { User } from '@gredice/ui/icons';
 import {
     type FilterOption,
     TableFilter,

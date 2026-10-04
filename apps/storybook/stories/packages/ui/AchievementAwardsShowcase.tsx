@@ -1,0 +1,123 @@
+import {
+    type AchievementDefinition,
+    getAchievementFamilies,
+} from '@gredice/js/achievements';
+import {
+    AchievementAward,
+    AchievementLevelLabel,
+} from '@gredice/ui/AchievementAwards';
+
+export function isAdvancedAchievement(definition: AchievementDefinition) {
+    const originalLevels: Partial<
+        Record<AchievementDefinition['familyKey'], number>
+    > = {
+        watering: 9,
+        community_editing: 6,
+        garden_diversity: 5,
+        seed_to_table: 5,
+    };
+    const original = originalLevels[definition.familyKey];
+    return original !== undefined && definition.level > original;
+}
+
+export function AchievementAwardsShowcase({
+    dark = false,
+    newFamiliesOnly = false,
+    advancedLevelsOnly = false,
+}: {
+    dark?: boolean;
+    newFamiliesOnly?: boolean;
+    advancedLevelsOnly?: boolean;
+}) {
+    const families = getAchievementFamilies([]).filter(
+        (family) =>
+            !newFamiliesOnly ||
+            ['garden_diversity', 'seed_to_table', 'seasonal'].includes(
+                family.key,
+            ),
+    );
+    const displayedFamilies = families
+        .map((family) => ({
+            ...family,
+            totalLevels: family.levels.length,
+            levels: family.levels.filter(
+                ({ definition }) =>
+                    !advancedLevelsOnly || isAdvancedAchievement(definition),
+            ),
+        }))
+        .filter((family) => family.levels.length > 0);
+    const awardCount = displayedFamilies.reduce(
+        (total, family) => total + family.levels.length,
+        0,
+    );
+    return (
+        <div
+            className={`${dark ? 'dark' : ''} min-h-screen bg-background p-4 text-foreground sm:p-8`}
+        >
+            <div className="mx-auto max-w-6xl space-y-8">
+                <header className="space-y-2">
+                    <h1 className="text-2xl font-semibold">
+                        Achievement awards
+                    </h1>
+                    <p className="text-foreground/75">
+                        {awardCount} distinct awards across{' '}
+                        {displayedFamilies.length} families. Starter keepsakes
+                        grow into garden trophies with distinct silhouettes and
+                        colorful materials. Compare every level at 32, 64 and
+                        160 pixels.
+                    </p>
+                </header>
+                {displayedFamilies.map((family) => (
+                    <section key={family.key} className="space-y-4">
+                        <h2 className="text-xl font-semibold">
+                            {family.label}
+                        </h2>
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                            {family.levels.map(({ definition }) => (
+                                <article
+                                    key={definition.key}
+                                    data-award-example={definition.key}
+                                    className="space-y-3 rounded-xl border bg-card p-4"
+                                >
+                                    <div className="flex items-end justify-center gap-2">
+                                        <AchievementAward
+                                            achievementKey={definition.key}
+                                            width={32}
+                                            height={32}
+                                        />
+                                        <AchievementAward
+                                            achievementKey={definition.key}
+                                            width={64}
+                                            height={64}
+                                            aria-hidden
+                                        />
+                                        <AchievementAward
+                                            achievementKey={definition.key}
+                                            width={160}
+                                            height={160}
+                                            aria-hidden
+                                        />
+                                    </div>
+                                    <AchievementLevelLabel
+                                        level={definition.level}
+                                        total={family.totalLevels}
+                                    />
+                                    <h3 className="font-semibold">
+                                        {definition.title.trim()}
+                                    </h3>
+                                    <p className="text-sm text-foreground/75">
+                                        {definition.description}
+                                    </p>
+                                    <code className="text-xs text-foreground/75">
+                                        {definition.artworkKey} ·{' '}
+                                        {definition.visualGrade}
+                                    </code>
+                                </article>
+                            ))}
+                        </div>
+                    </section>
+                ))}
+            </div>
+        </div>
+    );
+}

@@ -1,4 +1,4 @@
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Stack } from '@gredice/ui/Stack';
 import { auth } from '../../../lib/auth/auth';
 import { RaisedBedsTableCard } from '../accounts/[accountId]/RaisedBedsTableCard';
 import { RaisedBedsFilters } from './RaisedBedsFilters';
@@ -14,7 +14,7 @@ export default async function RaisedBedsPage({
     const params = await searchParams;
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             <RaisedBedsFilters />
 
             <RaisedBedsTableCard searchParams={params} />

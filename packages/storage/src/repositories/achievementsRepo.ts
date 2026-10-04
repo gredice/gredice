@@ -1,14 +1,18 @@
 import 'server-only';
 import {
+    type AchievementActivity,
     type AchievementDefinition,
+    evaluateGardenAchievementProgress,
     getAchievementDefinition,
     getAchievementDefinitions,
 } from '@gredice/js/achievements';
-import { and, asc, desc, eq, isNotNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, or, sql } from 'drizzle-orm';
 import {
     type AccountSunflowersPayload,
     accountAchievements,
     accounts,
+    accountUsers,
+    communityEditRequests,
     type EntityStandardized,
     earnSunflowers,
     events,
@@ -18,8 +22,22 @@ import {
     type SelectAccountAchievement,
     storage,
 } from '..';
+import {
+    gardenAchievementEventTypes,
+    gardenFamilyAchievementPlansFromProgress,
+    getGardenAchievementPlantings,
+    getPlantIdBySortId,
+    mapGardenAchievementCommands,
+} from '../helpers/gardenAchievementEvaluation';
+import { isCanonicalSelectedPlantingSowedEvent } from '../helpers/selectedPlantingSowedEvent';
 import { getEntitiesFormatted } from './entitiesRepo';
 import type { RaisedBedFieldPlantEventsPayload } from './events/types';
+
+type StorageClient = ReturnType<typeof storage>;
+type TransactionClient = Parameters<
+    Parameters<StorageClient['transaction']>[0]
+>[0];
+type DatabaseClient = StorageClient | TransactionClient;
 
 interface CreateAchievementOptions {
     earnedAt?: Date;
@@ -86,6 +104,7 @@ async function createAccountAchievement(
     accountId: string,
     key: string,
     options: CreateAchievementOptions = {},
+    db: DatabaseClient = storage(),
 ): Promise<EnsureAchievementResult> {
     const definition = definitionForKey(key);
     const status =
@@ -99,7 +118,7 @@ async function createAccountAchievement(
     const threshold = options.threshold ?? definition.threshold ?? null;
     const progressValue = options.progressValue ?? threshold ?? null;
 
-    const insertResult = await storage()
+    const insertResult = await db
         .insert(accountAchievements)
         .values({
             accountId,
@@ -122,7 +141,7 @@ async function createAccountAchievement(
         .returning();
 
     if (insertResult.length === 0) {
-        const existing = await storage().query.accountAchievements.findFirst({
+        const existing = await db.query.accountAchievements.findFirst({
             where: and(
                 eq(accountAchievements.accountId, accountId),
                 eq(accountAchievements.achievementKey, key),
@@ -142,8 +161,9 @@ async function createAccountAchievement(
                 accountId,
                 rewardSunflowers,
                 `achievement:${key}`,
+                db,
             );
-            const [updated] = await storage()
+            const [updated] = await db
                 .update(accountAchievements)
                 .set({
                     rewardGrantedAt: new Date(),
@@ -153,7 +173,7 @@ async function createAccountAchievement(
                 .returning();
             if (updated) achievement = updated;
         } else if (options.skipReward) {
-            const [updated] = await storage()
+            const [updated] = await db
                 .update(accountAchievements)
                 .set({
                     rewardGrantedAt: earnedAt,
@@ -172,8 +192,9 @@ export async function ensureAccountAchievement(
     accountId: string,
     key: string,
     options: CreateAchievementOptions = {},
+    db: DatabaseClient = storage(),
 ) {
-    return createAccountAchievement(accountId, key, options);
+    return createAccountAchievement(accountId, key, options, db);
 }
 
 export async function approveAchievement(
@@ -277,6 +298,165 @@ interface AchievementPlan {
     skipReward?: boolean;
 }
 
+interface CommunityEditAchievementSource {
+    requestId: number;
+    accountId: string;
+    earnedAt: Date;
+}
+
+function addThresholdPlans(input: {
+    plans: AchievementPlan[];
+    existingByAccount: Map<string, Set<string>>;
+    plannedByAccount: Map<string, Set<string>>;
+    accountId: string;
+    count: number;
+    earnedAt: Date;
+    definitions: AchievementDefinition[];
+}) {
+    const existing = input.existingByAccount.get(input.accountId) ?? new Set();
+    const planned = ensureAccountSet(input.plannedByAccount, input.accountId);
+    for (const definition of input.definitions) {
+        const threshold = definition.threshold ?? 0;
+        if (
+            input.count >= threshold &&
+            !existing.has(definition.key) &&
+            !planned.has(definition.key)
+        ) {
+            input.plans.push({
+                accountId: input.accountId,
+                definition,
+                earnedAt: input.earnedAt,
+                progressValue: input.count,
+            });
+            planned.add(definition.key);
+        }
+    }
+}
+
+function addCommunityEditAchievementPlans(input: {
+    sources: CommunityEditAchievementSource[];
+    definitions: AchievementDefinition[];
+    existingByAccount: Map<string, Set<string>>;
+    plannedByAccount: Map<string, Set<string>>;
+    plans: AchievementPlan[];
+}) {
+    const counters = new Map<string, number>();
+    const seenRequestIds = new Set<number>();
+    for (const source of input.sources) {
+        if (seenRequestIds.has(source.requestId)) {
+            continue;
+        }
+        seenRequestIds.add(source.requestId);
+
+        const nextCount = (counters.get(source.accountId) ?? 0) + 1;
+        counters.set(source.accountId, nextCount);
+        addThresholdPlans({
+            plans: input.plans,
+            existingByAccount: input.existingByAccount,
+            plannedByAccount: input.plannedByAccount,
+            accountId: source.accountId,
+            count: nextCount,
+            earnedAt: source.earnedAt,
+            definitions: input.definitions,
+        });
+    }
+    return counters;
+}
+
+async function createPlannedAchievements(
+    plans: AchievementPlan[],
+    existingByAccount: Map<string, Set<string>>,
+) {
+    let created = 0;
+    for (const plan of plans) {
+        const result = await createAccountAchievement(
+            plan.accountId,
+            plan.definition.key,
+            {
+                earnedAt: plan.earnedAt,
+                progressValue: plan.progressValue,
+                threshold: plan.definition.threshold ?? null,
+                skipReward: plan.skipReward,
+            },
+        );
+        if (result.created) {
+            created += 1;
+            ensureAccountSet(existingByAccount, plan.accountId).add(
+                plan.definition.key,
+            );
+        }
+    }
+
+    return { created, attempts: plans.length };
+}
+
+export async function evaluateCommunityEditAchievementsForSubmitter(
+    userId: string,
+) {
+    const [primaryAccountUser] = await storage()
+        .select({ accountId: accountUsers.accountId })
+        .from(accountUsers)
+        .where(eq(accountUsers.userId, userId))
+        .orderBy(asc(accountUsers.createdAt), asc(accountUsers.id))
+        .limit(1);
+
+    if (!primaryAccountUser) {
+        return { created: 0, attempts: 0 };
+    }
+
+    const [existingAchievements, appliedRequests] = await Promise.all([
+        storage()
+            .select({ achievementKey: accountAchievements.achievementKey })
+            .from(accountAchievements)
+            .where(
+                eq(accountAchievements.accountId, primaryAccountUser.accountId),
+            ),
+        storage()
+            .select({
+                requestId: communityEditRequests.id,
+                appliedAt: communityEditRequests.appliedAt,
+                reviewedAt: communityEditRequests.reviewedAt,
+                createdAt: communityEditRequests.createdAt,
+            })
+            .from(communityEditRequests)
+            .where(
+                and(
+                    eq(communityEditRequests.submitterUserId, userId),
+                    eq(communityEditRequests.status, 'applied'),
+                ),
+            )
+            .orderBy(
+                asc(communityEditRequests.appliedAt),
+                asc(communityEditRequests.id),
+            ),
+    ]);
+
+    const existingByAccount = new Map<string, Set<string>>();
+    const existingKeys = ensureAccountSet(
+        existingByAccount,
+        primaryAccountUser.accountId,
+    );
+    for (const achievement of existingAchievements) {
+        existingKeys.add(achievement.achievementKey);
+    }
+
+    const plans: AchievementPlan[] = [];
+    addCommunityEditAchievementPlans({
+        sources: appliedRequests.map((request) => ({
+            requestId: request.requestId,
+            accountId: primaryAccountUser.accountId,
+            earnedAt:
+                request.appliedAt ?? request.reviewedAt ?? request.createdAt,
+        })),
+        definitions: getDefinitionsByCategory('community_editing'),
+        existingByAccount,
+        plannedByAccount: new Map(),
+        plans,
+    });
+
+    return createPlannedAchievements(plans, existingByAccount);
+}
+
 function parseRaisedBedId(aggregateId: string) {
     const [raisedBedPart] = aggregateId.split('|');
     const raisedBedId = Number.parseInt(raisedBedPart ?? '', 10);
@@ -318,34 +498,94 @@ function isHarvestOperation(entity: EntityStandardized | null | undefined) {
     return false;
 }
 
-export async function evaluateAchievements() {
-    const [accountsList, existingAchievements, raisedBedList, operationsList] =
-        await Promise.all([
-            storage()
-                .select({ id: accounts.id, createdAt: accounts.createdAt })
-                .from(accounts),
-            storage()
-                .select({
-                    accountId: accountAchievements.accountId,
-                    achievementKey: accountAchievements.achievementKey,
-                })
-                .from(accountAchievements),
-            storage()
-                .select({
-                    id: raisedBeds.id,
-                    accountId: raisedBeds.accountId,
-                })
-                .from(raisedBeds)
-                .where(isNotNull(raisedBeds.accountId)),
-            storage()
-                .select({
-                    id: operations.id,
-                    accountId: operations.accountId,
-                    entityId: operations.entityId,
-                })
-                .from(operations)
-                .where(eq(operations.isDeleted, false)),
-        ]);
+async function buildAchievementEvaluation(accountId?: string) {
+    const [
+        accountsList,
+        existingAchievements,
+        raisedBedList,
+        operationsList,
+        communityEditAchievementRows,
+    ] = await Promise.all([
+        storage()
+            .select({ id: accounts.id, createdAt: accounts.createdAt })
+            .from(accounts)
+            .where(
+                accountId === undefined
+                    ? undefined
+                    : eq(accounts.id, accountId),
+            ),
+        storage()
+            .select({
+                accountId: accountAchievements.accountId,
+                achievementKey: accountAchievements.achievementKey,
+            })
+            .from(accountAchievements)
+            .where(
+                accountId === undefined
+                    ? undefined
+                    : eq(accountAchievements.accountId, accountId),
+            ),
+        storage()
+            .select({
+                id: raisedBeds.id,
+                accountId: raisedBeds.accountId,
+            })
+            .from(raisedBeds)
+            .where(
+                and(
+                    isNotNull(raisedBeds.accountId),
+                    accountId === undefined
+                        ? undefined
+                        : eq(raisedBeds.accountId, accountId),
+                ),
+            ),
+        storage()
+            .select({
+                id: operations.id,
+                accountId: operations.accountId,
+                entityId: operations.entityId,
+            })
+            .from(operations)
+            .where(
+                and(
+                    eq(operations.isDeleted, false),
+                    accountId === undefined
+                        ? undefined
+                        : eq(operations.accountId, accountId),
+                ),
+            ),
+        storage()
+            .select({
+                requestId: communityEditRequests.id,
+                accountId: accountUsers.accountId,
+                appliedAt: communityEditRequests.appliedAt,
+                reviewedAt: communityEditRequests.reviewedAt,
+                createdAt: communityEditRequests.createdAt,
+            })
+            .from(communityEditRequests)
+            .innerJoin(
+                accountUsers,
+                eq(accountUsers.userId, communityEditRequests.submitterUserId),
+            )
+            .where(
+                and(
+                    eq(communityEditRequests.status, 'applied'),
+                    eq(
+                        accountUsers.id,
+                        sql<number>`(select primary_membership.id from account_users primary_membership where primary_membership.user_id = ${communityEditRequests.submitterUserId} order by primary_membership.created_at, primary_membership.id limit 1)`,
+                    ),
+                    accountId === undefined
+                        ? undefined
+                        : eq(accountUsers.accountId, accountId),
+                ),
+            )
+            .orderBy(
+                asc(communityEditRequests.appliedAt),
+                asc(communityEditRequests.id),
+                asc(accountUsers.createdAt),
+                asc(accountUsers.id),
+            ),
+    ]);
 
     const existingByAccount = new Map<string, Set<string>>();
     for (const achievement of existingAchievements) {
@@ -378,27 +618,68 @@ export async function evaluateAchievements() {
     const plantingDefinitions = getDefinitionsByCategory('planting');
     const harvestDefinitions = getDefinitionsByCategory('harvest');
     const wateringDefinitions = getDefinitionsByCategory('watering');
+    const communityEditDefinitions =
+        getDefinitionsByCategory('community_editing');
 
     const plantingCounters = new Map<string, number>();
     const harvestCounters = new Map<string, number>();
     const wateringCounters = new Map<string, number>();
 
+    const [gardenPlantings, plantIdBySortId] = await Promise.all([
+        getGardenAchievementPlantings(accountId),
+        getPlantIdBySortId(),
+    ]);
+    const selectedBedIds = new Map(
+        gardenPlantings
+            .filter((planting) => planting.configurationSource === 'selected')
+            .map((planting) => [
+                planting.eventAggregateId,
+                planting.raisedBedId,
+            ]),
+    );
     const plantEvents = await storage().query.events.findMany({
-        where: eq(events.type, knownEventTypes.raisedBedFields.plantUpdate),
-        orderBy: [asc(events.createdAt)],
+        where: and(
+            inArray(events.type, [...gardenAchievementEventTypes]),
+            accountId === undefined
+                ? undefined
+                : or(
+                      inArray(
+                          sql<string>`split_part(${events.aggregateId}, '|', 1)`,
+                          raisedBedList.map((bed) => String(bed.id)),
+                      ),
+                      inArray(events.aggregateId, [...selectedBedIds.keys()]),
+                  ),
+        ),
+        orderBy: [asc(events.createdAt), asc(events.id)],
     });
-
+    const countedSelectedPlantings = new Set<string>();
+    const legacyCycleStart = new Map<string, number>();
+    const countedLegacyCycles = new Set<string>();
     for (const event of plantEvents) {
+        if (event.type === knownEventTypes.raisedBedFields.plantPlace) {
+            legacyCycleStart.set(event.aggregateId, event.id);
+        }
         const data = event.data as RaisedBedFieldPlantEventsPayload | undefined;
         const status =
             data && 'status' in data ? data?.status?.toLowerCase() : undefined;
         if (status !== 'sowed') {
             continue;
         }
-        const raisedBedId = parseRaisedBedId(event.aggregateId);
+        const selected = isCanonicalSelectedPlantingSowedEvent(event);
+        if (selected && countedSelectedPlantings.has(event.aggregateId))
+            continue;
+        if (selected) countedSelectedPlantings.add(event.aggregateId);
+        const raisedBedId = selected
+            ? selectedBedIds.get(event.aggregateId)
+            : parseRaisedBedId(event.aggregateId);
         if (!raisedBedId) continue;
         const accountId = raisedBedAccountMap.get(raisedBedId);
         if (!accountId) continue;
+        if (!selected) {
+            const cycle = `${event.aggregateId}:${legacyCycleStart.get(event.aggregateId) ?? 0}`;
+            if (countedLegacyCycles.has(cycle)) continue;
+            countedLegacyCycles.add(cycle);
+        }
 
         const nextCount = (plantingCounters.get(accountId) ?? 0) + 1;
         plantingCounters.set(accountId, nextCount);
@@ -439,15 +720,25 @@ export async function evaluateAchievements() {
     }
 
     const operationEvents = await storage().query.events.findMany({
-        where: eq(events.type, knownEventTypes.operations.complete),
+        where: and(
+            eq(events.type, knownEventTypes.operations.complete),
+            accountId === undefined
+                ? undefined
+                : inArray(
+                      events.aggregateId,
+                      operationsList.map((operation) => String(operation.id)),
+                  ),
+        ),
         orderBy: [asc(events.createdAt)],
     });
 
+    const countedOperations = new Set<number>();
     for (const event of operationEvents) {
         const operationId = Number.parseInt(event.aggregateId, 10);
         if (Number.isNaN(operationId)) continue;
         const info = operationAccountMap.get(operationId);
-        if (!info?.accountId) continue;
+        if (!info?.accountId || countedOperations.has(operationId)) continue;
+        countedOperations.add(operationId);
 
         // Track watering operations
         if (wateringEntityIds.has(info.entityId)) {
@@ -498,10 +789,25 @@ export async function evaluateAchievements() {
         }
     }
 
+    const communityCounters = addCommunityEditAchievementPlans({
+        sources: communityEditAchievementRows.map((row) => ({
+            requestId: row.requestId,
+            accountId: row.accountId,
+            earnedAt: row.appliedAt ?? row.reviewedAt ?? row.createdAt,
+        })),
+        definitions: communityEditDefinitions,
+        existingByAccount,
+        plannedByAccount,
+        plans,
+    });
+
     const registrationDefinition = definitionForKey('registration');
     const registrationEvents = await storage().query.events.findMany({
         where: and(
             eq(events.type, knownEventTypes.accounts.earnSunflowers),
+            accountId === undefined
+                ? undefined
+                : eq(events.aggregateId, accountId),
             sql`${events.data} ->> 'reason' IN ('registration', 'achievement:registration')`,
         ),
         orderBy: [asc(events.createdAt)],
@@ -539,25 +845,68 @@ export async function evaluateAchievements() {
         ensureAccountSet(plannedByAccount, account.id).add('registration');
     }
 
-    let created = 0;
-    for (const plan of plans) {
-        const result = await createAccountAchievement(
-            plan.accountId,
-            plan.definition.key,
-            {
-                earnedAt: plan.earnedAt,
-                progressValue: plan.progressValue,
-                threshold: plan.definition.threshold ?? null,
-                skipReward: plan.skipReward,
-            },
-        );
-        if (result.created) {
-            created += 1;
-            ensureAccountSet(existingByAccount, plan.accountId).add(
-                plan.definition.key,
-            );
+    const gardenProgress = evaluateGardenAchievementProgress(
+        mapGardenAchievementCommands({
+            events: plantEvents,
+            plantings: gardenPlantings,
+            raisedBedAccountId: raisedBedAccountMap,
+        }),
+        plantIdBySortId,
+    );
+    const gardenPlans =
+        gardenFamilyAchievementPlansFromProgress(gardenProgress);
+    for (const plan of gardenPlans) {
+        const existing = existingByAccount.get(plan.accountId) ?? new Set();
+        const planned = ensureAccountSet(plannedByAccount, plan.accountId);
+        if (
+            existing.has(plan.definition.key) ||
+            planned.has(plan.definition.key)
+        ) {
+            continue;
         }
+        plans.push(plan);
+        planned.add(plan.definition.key);
     }
 
-    return { created, attempts: plans.length };
+    const activityByAccount = new Map(
+        accountsList.map((account) => {
+            const garden = gardenProgress.get(account.id);
+            const activity: AchievementActivity['counts'] = {
+                planting: plantingCounters.get(account.id) ?? 0,
+                watering: wateringCounters.get(account.id) ?? 0,
+                harvest: harvestCounters.get(account.id) ?? 0,
+                community_editing: communityCounters.get(account.id) ?? 0,
+                garden_diversity: garden?.distinctPlants.length ?? 0,
+                seed_to_table: garden?.completedCycles.length ?? 0,
+            };
+            return [account.id, activity] satisfies [
+                string,
+                AchievementActivity['counts'],
+            ];
+        }),
+    );
+    return { plans, existingByAccount, activityByAccount };
+}
+
+/** Account-scoped, read-only projection sharing the cron's eligibility calculation. */
+export async function getAccountAchievementActivity(
+    accountId: string,
+): Promise<AchievementActivity> {
+    const { activityByAccount } = await buildAchievementEvaluation(accountId);
+    return {
+        calculatedAt: new Date().toISOString(),
+        counts: activityByAccount.get(accountId) ?? {
+            planting: 0,
+            watering: 0,
+            harvest: 0,
+            community_editing: 0,
+            garden_diversity: 0,
+            seed_to_table: 0,
+        },
+    };
+}
+
+export async function evaluateAchievements() {
+    const { plans, existingByAccount } = await buildAchievementEvaluation();
+    return createPlannedAchievements(plans, existingByAccount);
 }

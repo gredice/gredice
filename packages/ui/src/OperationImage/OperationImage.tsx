@@ -1,14 +1,19 @@
-import {
-    Droplet,
-    Hammer,
-    Leaf,
-    Sprout,
-    Store,
-    Tally3,
-    Upload,
-} from '@signalco/ui-icons';
-import { cx } from '@signalco/ui-primitives/cx';
 import Image from 'next/image';
+import type { ComponentType, CSSProperties, SVGProps } from 'react';
+import {
+    GameBasketIcon,
+    GameBlossomIcon,
+    GameHarvestIcon,
+    GameLeafIcon,
+    GameRaisedBedSimpleIcon,
+    GameSeedlingIcon,
+    GameShovelIcon,
+    GameToolsIcon,
+    GameWaterIcon,
+} from '../GameIcons';
+import { Droplet, Hammer, Leaf, Sprout, Store, Tally3, Upload } from '../icons';
+import { ShovelIcon } from '../ShovelIcon';
+import { cx } from '../utils';
 
 export type OperationImageProps = {
     operation: {
@@ -35,30 +40,23 @@ export type OperationImageProps = {
     };
     size?: number;
     className?: string;
+    variant?: 'default' | 'game';
 };
 
-type OperationCategoryIconProps = {
-    className?: string;
-    style?: React.CSSProperties;
+export type OperationCategoryIconProps = SVGProps<SVGSVGElement> & {
+    categoryName?: string | null;
+    variant?: 'default' | 'game';
 };
 
-const categoryIcons: Record<
-    string,
-    React.ComponentType<OperationCategoryIconProps>
-> = {
+const categoryIcons: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
     soilpreparation: function SoilPreparationIcon({
         className,
-        style,
-    }: {
-        className?: string;
-        style?: React.CSSProperties;
-    }) {
-        return (
-            <Tally3 style={style} className={cx('rotate-90 mt-1', className)} />
-        );
+        ...rest
+    }: SVGProps<SVGSVGElement>) {
+        return <Tally3 {...rest} className={cx('rotate-90 mt-1', className)} />;
     },
     sowing: Sprout,
-    planting: Sprout,
+    planting: ShovelIcon,
     growth: Leaf,
     maintenance: Leaf,
     watering: Droplet,
@@ -67,56 +65,98 @@ const categoryIcons: Record<
     storage: Store,
 };
 
+const gameCategoryIcons: Record<
+    string,
+    ComponentType<SVGProps<SVGSVGElement>>
+> = {
+    soilpreparation: GameRaisedBedSimpleIcon,
+    sowing: GameSeedlingIcon,
+    planting: GameShovelIcon,
+    growth: GameLeafIcon,
+    maintenance: GameToolsIcon,
+    watering: GameWaterIcon,
+    flowering: GameBlossomIcon,
+    harvest: GameHarvestIcon,
+    storage: GameBasketIcon,
+};
+
 function normalizeCategoryName(name: string | null | undefined) {
     return name?.toLowerCase().replace(/[\s_-]/g, '') ?? '';
+}
+
+export function OperationCategoryIcon({
+    categoryName,
+    variant = 'default',
+    ...props
+}: OperationCategoryIconProps) {
+    const icons = variant === 'game' ? gameCategoryIcons : categoryIcons;
+    const Icon =
+        icons[normalizeCategoryName(categoryName)] ??
+        (variant === 'game' ? GameToolsIcon : Hammer);
+    return <Icon {...props} />;
 }
 
 export function OperationImage({
     operation,
     size,
     className,
+    variant = 'default',
 }: OperationImageProps) {
     const categoryName =
         operation.attributes?.category?.information?.name ??
         operation.attributes?.stage?.information?.name;
-    const Icon = categoryIcons[normalizeCategoryName(categoryName)] ?? Hammer;
+    const fallbackSize = size ?? 48;
+    const imageSize = size ?? 24;
 
     if (!operation.image?.cover?.url) {
         return (
-            <div
+            <span
                 style={{
-                    width: size ? `${size}px` : '48px',
-                    height: size ? `${size}px` : '48px',
+                    width: `${fallbackSize}px`,
+                    height: `${fallbackSize}px`,
                 }}
                 className={cx(
-                    'aspect-square flex items-center justify-center',
+                    'aspect-square inline-flex shrink-0 items-center justify-center',
                     className,
                 )}
             >
-                <Icon
+                <OperationCategoryIcon
+                    categoryName={categoryName}
+                    variant={variant}
                     style={
                         {
                             '--imageSize': size ? `${size / 2}px` : '24px',
-                        } as React.CSSProperties
+                        } as CSSProperties
                     }
-                    className="size-[--imageSize] shrink-0"
+                    className={cx(
+                        'shrink-0',
+                        variant === 'game'
+                            ? 'size-full p-2'
+                            : 'size-[--imageSize]',
+                    )}
                 />
-            </div>
+            </span>
         );
     }
 
     return (
-        <Image
-            src={operation.image.cover.url}
-            width={size ?? 24}
-            height={size ?? 24}
+        <span
             style={{
-                objectFit: 'contain',
-                width: `${size ?? 24}px`,
-                height: `${size ?? 24}px`,
+                width: `${imageSize}px`,
+                height: `${imageSize}px`,
             }}
-            alt={operation.information?.label ?? 'Slika radnje'}
-            className={className}
-        />
+            className={cx(
+                'relative inline-flex shrink-0 items-center justify-center overflow-hidden',
+                className,
+            )}
+        >
+            <Image
+                src={operation.image.cover.url}
+                fill
+                sizes={`${imageSize}px`}
+                style={{ objectFit: 'contain' }}
+                alt={operation.information?.label ?? 'Slika radnje'}
+            />
+        </span>
     );
 }

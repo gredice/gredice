@@ -1,4 +1,4 @@
-import { Card, CardContent } from '@signalco/ui-primitives/Card';
+import { Card, CardContent } from '@gredice/ui/Card';
 import type { DeliveryRequestData } from '../../hooks/useDeliveryRequests';
 import { DeliveryRequestRow } from './DeliveryRequestRow';
 

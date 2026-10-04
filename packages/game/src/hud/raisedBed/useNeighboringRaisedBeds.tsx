@@ -1,61 +1,69 @@
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
-import { getRaisedBedBlockIds } from '../../utils/raisedBedBlocks';
+import { getRaisedBedFootprintSegments } from '../../utils/raisedBedBlocks';
 
 export function useNeighboringRaisedBeds(raisedBedId: number) {
     const { data: garden } = useCurrentGarden();
-    const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
-    if (!garden || !raisedBed?.blockId) {
+    if (!garden) {
         return [];
     }
 
-    const blockIds = getRaisedBedBlockIds(garden, raisedBedId);
-    const neighboringBlockIds = blockIds
-        .map((blockId) =>
-            garden.stacks
-                .flatMap((stack) =>
-                    stack.blocks.map((block, index) => ({
-                        block,
-                        index,
-                        x: stack.position.x,
-                        z: stack.position.z,
-                    })),
-                )
-                .find((candidate) => candidate.block.id === blockId),
-        )
-        .filter(Boolean);
-
-    return garden.raisedBeds.filter((bed) => {
-        if (!bed.blockId || bed.id === raisedBedId) {
-            return false;
-        }
-
-        const bedPlacement = garden.stacks
-            .flatMap((stack) =>
-                stack.blocks.map((block, index) => ({
-                    block,
-                    index,
-                    x: stack.position.x,
-                    z: stack.position.z,
-                })),
-            )
-            .find((candidate) => candidate.block.id === bed.blockId);
-
-        if (!bedPlacement) {
-            return false;
-        }
-
-        return neighboringBlockIds.some((placement) => {
-            if (!placement) {
-                return false;
+    const placements = new Map(
+        garden.raisedBeds.flatMap((raisedBed) => {
+            if (!raisedBed.blockId) {
+                return [];
             }
 
-            return (
-                placement.index === bedPlacement.index &&
-                ((placement.x === bedPlacement.x &&
-                    Math.abs(placement.z - bedPlacement.z) === 1) ||
-                    (placement.z === bedPlacement.z &&
-                        Math.abs(placement.x - bedPlacement.x) === 1))
-            );
-        });
+            for (const stack of garden.stacks) {
+                const index = stack.blocks.findIndex(
+                    (block) => block.id === raisedBed.blockId,
+                );
+                const block = stack.blocks[index];
+                if (index >= 0 && block) {
+                    return [
+                        [
+                            raisedBed.id,
+                            {
+                                cells: getRaisedBedFootprintSegments(
+                                    block.rotation,
+                                ).map((segment) => ({
+                                    x:
+                                        stack.position.x +
+                                        Math.round(segment.offset.x),
+                                    z:
+                                        stack.position.z +
+                                        Math.round(segment.offset.z),
+                                })),
+                                index,
+                            },
+                        ] as const,
+                    ];
+                }
+            }
+
+            return [];
+        }),
+    );
+    const source = placements.get(raisedBedId);
+    if (!source) {
+        return [];
+    }
+
+    return garden.raisedBeds.filter((raisedBed) => {
+        if (raisedBed.id === raisedBedId) {
+            return false;
+        }
+
+        const candidate = placements.get(raisedBed.id);
+        return (
+            candidate?.index === source.index &&
+            source.cells.some((sourceCell) =>
+                candidate.cells.some(
+                    (candidateCell) =>
+                        Math.abs(sourceCell.x - candidateCell.x) +
+                            Math.abs(sourceCell.z - candidateCell.z) ===
+                        1,
+                ),
+            )
+        );
     });
 }

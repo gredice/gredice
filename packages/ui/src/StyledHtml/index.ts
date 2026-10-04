@@ -1,1 +1,1 @@
-export { StyledHtml } from './StyledHtml';
+export { StyledHtml, type StyledHtmlProps } from './StyledHtml';

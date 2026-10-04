@@ -1,9 +1,25 @@
-export type GroundDecorationSurface = 'grass' | 'sand';
+import { swampGroundDecorationColor } from '../swampGroundPalette';
+
+export type GroundDecorationSurface = 'grass' | 'sand' | 'swamp';
+
+type GroundFlowerOptions = {
+    clusterChance: number;
+    maxCount: number;
+    minDistance: number;
+    scaleRange: [number, number];
+    spread: number;
+    spawnChance: number;
+    variants: readonly {
+        color: string;
+        spriteName: string;
+    }[];
+};
 
 type GroundDecorationOptions = {
     angleLiftPerUnit: number;
     baseY: number;
     clusterChance: number;
+    flowers?: GroundFlowerOptions;
     heightRange: [number, number];
     maxCount: number;
     minDistance: number;
@@ -17,16 +33,33 @@ const spriteNumbers = Array.from({ length: 8 }, (_, index) =>
 );
 
 export const groundDecorationAtlasBasePath =
-    '/assets/sprites/decorations/ground-cover.atlas';
+    '/assets/sprites/decorations/ground-cover-v2.atlas';
+export const swampGroundDecorationTint = swampGroundDecorationColor;
 
 export const groundDecorationOptions: Record<
     GroundDecorationSurface,
     GroundDecorationOptions
 > = {
     grass: {
-        angleLiftPerUnit: 0.3,
+        angleLiftPerUnit: 0.4,
         baseY: 0.16,
         clusterChance: 0.42,
+        flowers: {
+            clusterChance: 0.46,
+            variants: [
+                { color: '#f7f1d0', spriteName: 'flower__cream' },
+                { color: '#ffd35a', spriteName: 'flower__yellow' },
+                { color: '#f58ab7', spriteName: 'flower__pink' },
+                { color: '#9f8cff', spriteName: 'flower__violet' },
+                { color: '#73c7ff', spriteName: 'flower__blue' },
+                { color: '#ff9f6e', spriteName: 'flower__orange' },
+            ],
+            maxCount: 2,
+            minDistance: 0.055,
+            scaleRange: [0.12, 0.3],
+            spread: 0.085,
+            spawnChance: 0.7,
+        },
         heightRange: [0.09, 0.14],
         maxCount: 5,
         minDistance: 0.17,
@@ -35,7 +68,7 @@ export const groundDecorationOptions: Record<
         spawnChance: 1,
     },
     sand: {
-        angleLiftPerUnit: 0.3,
+        angleLiftPerUnit: 0.4,
         baseY: 0.2,
         clusterChance: 0.1,
         heightRange: [0.09, 0.25],
@@ -45,11 +78,25 @@ export const groundDecorationOptions: Record<
         positionRange: 0.26,
         spawnChance: 1,
     },
+    swamp: {
+        angleLiftPerUnit: 0.4,
+        baseY: 0.2,
+        clusterChance: 0.34,
+        heightRange: [0.15, 0.28],
+        maxCount: 4,
+        minDistance: 0.16,
+        opacityRange: [0.82, 0.94],
+        positionRange: 0.27,
+        spawnChance: 1,
+    },
 };
 
 const groundDecorationSprites = {
     grass: spriteNumbers.map((value) => `grass__${value}`),
     sand: spriteNumbers.map((value) => `desert__${value}`),
+    // The desert atlas sprites are naturally straw-gold/light brown, which
+    // gives swamp soil sparse dry reeds without introducing another atlas.
+    swamp: spriteNumbers.map((value) => `desert__${value}`),
 } satisfies Record<GroundDecorationSurface, string[]>;
 
 export function getGroundDecorationSprites(surface: GroundDecorationSurface) {
@@ -62,10 +109,17 @@ export function resolveGroundDecorationSurface(
     switch (blockName) {
         case 'Block_Grass':
         case 'Block_Grass_Angle':
+        case 'Block_Grass_Corner':
+        case 'Block_Grass_Reverse_Corner':
             return 'grass';
         case 'Block_Sand':
         case 'Block_Sand_Angle':
+        case 'Block_Sand_Corner':
+        case 'Block_Sand_Reverse_Corner':
             return 'sand';
+        case 'Block_Swamp_Ground':
+        case 'Block_Swamp_Ground_Angle':
+            return 'swamp';
         default:
             return null;
     }

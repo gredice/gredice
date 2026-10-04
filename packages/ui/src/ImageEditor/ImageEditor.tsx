@@ -1,11 +1,11 @@
 'use client';
 
-import { Button } from '@signalco/ui-primitives/Button';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Button } from '../Button';
+import { Input } from '../Input';
+import { Modal } from '../Modal';
+import { Row } from '../Row';
+import { Stack } from '../Stack';
 
 interface ImageEditorProps {
     file: File;
@@ -111,9 +111,9 @@ export function ImageEditor({ file, onSave, onCancel }: ImageEditorProps) {
             title="Uredi sliku"
             className="md:max-w-lg"
         >
-            <Stack spacing={3}>
+            <Stack spacing={6}>
                 <canvas ref={canvasRef} className="max-w-full" />
-                <Row spacing={2}>
+                <Row spacing={4}>
                     <div className="flex flex-col">
                         <span>X</span>
                         <Input
@@ -167,7 +167,7 @@ export function ImageEditor({ file, onSave, onCancel }: ImageEditorProps) {
                         />
                     </div>
                 </Row>
-                <Row spacing={2}>
+                <Row spacing={4}>
                     <div className="flex flex-col">
                         <span>Rotacija</span>
                         <Input
@@ -213,7 +213,7 @@ export function ImageEditor({ file, onSave, onCancel }: ImageEditorProps) {
                         />
                     </div>
                 </Row>
-                <Row spacing={2} justifyContent="end">
+                <Row spacing={4} justifyContent="end">
                     <Button variant="outlined" onClick={onCancel}>
                         Odustani
                     </Button>

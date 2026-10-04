@@ -1,7 +1,7 @@
-import { Add } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Card, CardOverflow } from '@gredice/ui/Card';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Add } from '@gredice/ui/icons';
+import { Stack } from '@gredice/ui/Stack';
 import { AdminPageHeader } from '../../../components/admin/navigation';
 import { auth } from '../../../lib/auth/auth';
 import { KnownPages } from '../../../src/KnownPages';
@@ -13,16 +13,17 @@ export default async function InvoicesPage() {
     await auth(['admin']);
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             <AdminPageHeader
                 actions={
-                    <Button
-                        variant="solid"
-                        startDecorator={<Add className="size-5 shrink-0" />}
+                    <IconButton
+                        aria-label="Nova ponuda"
                         href={KnownPages.CreateInvoice}
+                        title="Nova ponuda"
+                        variant="solid"
                     >
-                        Nova ponuda
-                    </Button>
+                        <Add className="size-5" />
+                    </IconButton>
                 }
             />
             <Card>

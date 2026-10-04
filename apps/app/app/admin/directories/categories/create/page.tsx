@@ -1,7 +1,7 @@
-import { Button } from '@signalco/ui-primitives/Button';
-import { Card } from '@signalco/ui-primitives/Card';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Card } from '@gredice/ui/Card';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import {
     AdminDirectoryBreadcrumbs,
     AdminPageHeader,
@@ -16,7 +16,7 @@ export default async function CreateEntityTypeCategoryPage() {
     await auth(['admin']);
 
     return (
-        <Stack spacing={4}>
+        <Stack spacing={8}>
             <AdminPageHeader
                 breadcrumbs={
                     <AdminDirectoryBreadcrumbs
@@ -26,7 +26,7 @@ export default async function CreateEntityTypeCategoryPage() {
                 heading="Nova kategorija tipova zapisa"
             />
 
-            <Stack spacing={2}>
+            <Stack spacing={4}>
                 <Typography level="h2" className="text-2xl" semiBold>
                     Nova kategorija tipova zapisa
                 </Typography>
@@ -37,9 +37,9 @@ export default async function CreateEntityTypeCategoryPage() {
             </Stack>
 
             <Card className="max-w-2xl">
-                <Stack spacing={4} className="p-6">
+                <Stack spacing={8} className="p-6">
                     <form action={createEntityTypeCategoryFromForm}>
-                        <Stack spacing={4}>
+                        <Stack spacing={8}>
                             <EntityTypeCategoryFormFields />
                             <Button
                                 variant="solid"

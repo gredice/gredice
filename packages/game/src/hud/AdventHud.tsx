@@ -1,11 +1,12 @@
 'use client';
 
-import { useSearchParam } from '@signalco/hooks/useSearchParam';
-import { cx } from '@signalco/ui-primitives/cx';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { useSearchParam } from '@gredice/ui/hooks';
+import { IconButton } from '@gredice/ui/IconButton';
+import { cx } from '@gredice/ui/utils';
 import { useCallback, useEffect, useState } from 'react';
 import { useAdventCalendar } from '../hooks/useAdventCalendar';
 import { SantaCapIcon } from '../icons/SantaCap';
+import { isAdventCalendarHudPeriod } from './adventCalendarPeriod';
 import { HudCard } from './components/HudCard';
 import { HudMessageBubble } from './components/HudMessageBubble';
 
@@ -32,10 +33,8 @@ function useAdventMessageDismissed(currentDay: number | null) {
 export function AdventHud() {
     const [, setAdventParam] = useSearchParam('advent');
 
-    // Check if current date is in December
     const now = new Date();
-    const isDecember = now.getMonth() === 11;
-    const isAdventPeriod = isDecember;
+    const isAdventPeriod = isAdventCalendarHudPeriod(now);
     const currentDay = now.getDate();
 
     // Determine if there's a day to open (today's day exists and is not opened yet)

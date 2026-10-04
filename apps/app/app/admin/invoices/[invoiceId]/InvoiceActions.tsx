@@ -1,11 +1,11 @@
 'use client';
 
-import { ModalConfirm } from '@signalco/ui/ModalConfirm';
-import { Check, Clear, Delete, Edit, FileText, Send } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Check, Clear, Delete, Edit, FileText, Send } from '@gredice/ui/icons';
+import { ModalConfirm } from '@gredice/ui/ModalConfirm';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useEffect, useState, useTransition } from 'react';
 import { KnownPages } from '../../../../src/KnownPages';
 import {
@@ -99,7 +99,7 @@ export function InvoiceActions({ invoice }: InvoiceActionsProps) {
     };
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             {error && (
                 <Typography
                     level="body2"
@@ -109,7 +109,7 @@ export function InvoiceActions({ invoice }: InvoiceActionsProps) {
                 </Typography>
             )}
 
-            <Row spacing={2} className="flex-wrap">
+            <Row spacing={4} className="flex-wrap">
                 {/* Edit Button */}
                 {canEdit && (
                     <Button

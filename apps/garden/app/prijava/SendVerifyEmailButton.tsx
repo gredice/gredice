@@ -1,9 +1,9 @@
 'use client';
 
 import { clientPublic } from '@gredice/client';
-import { showNotification } from '@signalco/ui-notifications';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { showNotification } from '@gredice/ui/notifications';
+import { Typography } from '@gredice/ui/Typography';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { errorMessages } from '../../misc/errorMessages';
@@ -20,21 +20,26 @@ export function SendVerifyEmailButton() {
         }
 
         setIsLoading(true);
-        const response = await clientPublic().api.auth[
-            'send-verify-email'
-        ].$post({
-            json: {
-                email,
-            },
-        });
+        try {
+            const response = await clientPublic().api.auth[
+                'send-verify-email'
+            ].$post({
+                json: {
+                    email,
+                },
+            });
 
-        if (response.status === 404 || response) {
-            setIsLoading(false);
+            if (response.ok) {
+                router.push('/prijava/potvrda-emaila/poslano');
+                return;
+            }
+
             showNotification(errorMessages.verificationEmail, 'error');
-            return;
+        } catch {
+            showNotification(errorMessages.verificationEmail, 'error');
+        } finally {
+            setIsLoading(false);
         }
-
-        router.push('/prijava/potvrda-emaila/poslano');
     };
 
     return (
@@ -45,6 +50,7 @@ export function SendVerifyEmailButton() {
                 onClick={handleSend}
                 disabled={!email}
                 loading={isLoading}
+                size="lg"
             >
                 Pošalji ponovno
             </Button>

@@ -15,6 +15,8 @@ const meta = {
         },
     },
     args: {
+        value: '',
+        onChange: () => undefined,
         placeholder: 'Pretraži...',
     },
     render: (args) => {

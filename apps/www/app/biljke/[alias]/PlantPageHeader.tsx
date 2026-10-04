@@ -1,56 +1,154 @@
-import type { PlantData, PlantSortData } from '@gredice/client';
+import type { OperationData, PlantData } from '@gredice/client';
+import { gardenActionUrl } from '@gredice/js/gardenActions';
 import { calculatePlantsPerField, FIELD_SIZE_LABEL } from '@gredice/js/plants';
+import { slug } from '@gredice/js/slug';
+import { Chip } from '@gredice/ui/Chip';
+import { GameCoinsIcon, GameLocationIcon } from '@gredice/ui/GameIcons';
 import { PlantGridIcon } from '@gredice/ui/GridIcons';
+import { NavigatingButton } from '@gredice/ui/NavigatingButton';
+import { PageHeader } from '@gredice/ui/PageHeader';
 import { PlantOrSortImage, SeedTimeInformationBadge } from '@gredice/ui/plants';
-import { slug } from '@signalco/js';
-import { NavigatingButton } from '@signalco/ui/NavigatingButton';
-import { MapPinHouse, Sprout } from '@signalco/ui-icons';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
+import { PriceAttributeCard } from '../../../components/attributes/PriceAttributeCard';
+import { CommunityEditButton } from '../../../components/community-edits/CommunityEditButton';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
-import { PageHeader } from '../../../components/shared/PageHeader';
+import type { PlantSortDataWithRelationships } from '../../../lib/plants/getPlantSortsData';
+import { resolvePlantSowingPrice } from '../../../lib/plants/resolvePlantSowingPrice';
 import { KnownPages } from '../../../src/KnownPages';
+import { getPlantImageViewTransitionName } from '../plantViewTransition';
 import { getPlantInforationSections } from './getPlantInforationSections';
 import { PlantCalendarPicker } from './PlantCalendarPicker';
 import { VerifiedInformationBadge } from './VerifiedInformationBadge';
 
+type InformationWithAlternativeName = {
+    name?: unknown;
+    alternativeName?: unknown;
+};
+type OverviewEditTarget = {
+    entityTypeName: 'plant' | 'plantSort';
+    entityId: number;
+    publicPath: string;
+};
+
+const alternativeNamesLocale = 'hr-HR';
+
+function formatAlternativeNames(
+    information: InformationWithAlternativeName | null | undefined,
+) {
+    const names = Array.isArray(information?.alternativeName)
+        ? information.alternativeName
+              .filter((name): name is string => typeof name === 'string')
+              .map((name) => name.trim())
+              .filter(Boolean)
+        : [];
+
+    return names
+        .map((name, index) => {
+            const lowerName = name.toLocaleLowerCase(alternativeNamesLocale);
+            if (index > 0) {
+                return lowerName;
+            }
+
+            const [firstLetter, ...rest] = Array.from(lowerName);
+            return firstLetter
+                ? `${firstLetter.toLocaleUpperCase(alternativeNamesLocale)}${rest.join('')}`
+                : lowerName;
+        })
+        .join(', ');
+}
+
 export function PlantPageHeader({
+    operations,
+    overviewEditTarget,
     plant,
     sort,
 }: {
+    operations?: readonly OperationData[];
+    overviewEditTarget?: OverviewEditTarget;
     plant: PlantData & { isRecommended: boolean | null | undefined };
-    sort?: PlantSortData;
+    sort?: PlantSortDataWithRelationships;
 }) {
-    const informationSections = getPlantInforationSections(plant);
+    const informationSections = getPlantInforationSections(
+        plant,
+        sort,
+        operations,
+    );
     const { totalPlants } = calculatePlantsPerField(
         plant.attributes?.seedingDistance,
+        sort?.information.name ?? plant.information.name,
     );
+    const contentLinks = informationSections
+        .filter((section) => section.avaialble)
+        .map((section) => ({
+            href: `#${slug(section.header)}`,
+            label: section.header,
+        }));
+    if (!sort) {
+        contentLinks.unshift({
+            href: `#${slug('Sorte')}`,
+            label: 'Sorte',
+        });
+    }
+    if ((plant.information.tip?.length ?? 0) > 0) {
+        contentLinks.push({
+            href: `#${slug('Savjeti')}`,
+            label: 'Savjeti',
+        });
+    }
+    contentLinks.push({
+        href: `#${slug('Biljni susjedi')}`,
+        label: 'Biljni susjedi',
+    });
 
     const baseLatinName = plant.information.latinName
         ? `lat. ${plant.information.latinName}`
         : null;
     const sortLatinName = `lat. ${sort?.information.latinName ?? '-'}`;
+    const origin = sort?.information.origin ?? plant.information.origin;
+    const alternativeNames =
+        formatAlternativeNames(sort?.information) ||
+        formatAlternativeNames(plant.information);
+    const price = resolvePlantSowingPrice(plant, sort);
+
     return (
         <PageHeader
             visual={
                 sort ? (
-                    <PlantOrSortImage
-                        plantSort={sort}
-                        preload
-                        width={192}
-                        height={192}
-                    />
+                    <span
+                        className="public-content-card-view-transition inline-flex size-48 items-center justify-center overflow-hidden"
+                        style={{
+                            viewTransitionName: getPlantImageViewTransitionName(
+                                plant.id,
+                            ),
+                        }}
+                    >
+                        <PlantOrSortImage
+                            plantSort={sort}
+                            preload
+                            width={192}
+                            height={192}
+                        />
+                    </span>
                 ) : (
-                    <PlantOrSortImage
-                        plant={plant}
-                        preload
-                        width={192}
-                        height={192}
-                    />
+                    <span
+                        className="public-content-card-view-transition inline-flex size-48 items-center justify-center overflow-hidden"
+                        style={{
+                            viewTransitionName: getPlantImageViewTransitionName(
+                                plant.id,
+                            ),
+                        }}
+                    >
+                        <PlantOrSortImage
+                            plant={plant}
+                            preload
+                            width={192}
+                            height={192}
+                        />
+                    </span>
                 )
             }
             header={sort?.information?.name ?? plant.information.name}
@@ -72,20 +170,27 @@ export function PlantPageHeader({
                 sort?.information.description ?? plant.information.description
             }
             headerChildren={
-                <Stack spacing={4} alignItems="start">
-                    {(plant.information.origin || sort?.information.origin) && (
-                        <Stack spacing={1}>
+                <Stack spacing={8} alignItems="start">
+                    {(origin || alternativeNames) && (
+                        <Stack spacing={2}>
                             <Typography level="body2">Porijeklo</Typography>
-                            <Row spacing={1}>
-                                <MapPinHouse className="size-5 shrink-0" />
-                                <Typography>
-                                    {sort?.information.origin ??
-                                        plant.information.origin}
+                            {origin && (
+                                <Row spacing={2}>
+                                    <GameLocationIcon
+                                        aria-hidden
+                                        className="size-5 shrink-0"
+                                    />
+                                    <Typography>{origin}</Typography>
+                                </Row>
+                            )}
+                            {alternativeNames && (
+                                <Typography level="body2" secondary>
+                                    Alternativni nazivi: {alternativeNames}
                                 </Typography>
-                            </Row>
+                            )}
                         </Stack>
                     )}
-                    <Row spacing={1}>
+                    <Row spacing={2}>
                         {plant.information.verified && (
                             <VerifiedInformationBadge />
                         )}
@@ -99,28 +204,28 @@ export function PlantPageHeader({
                             Trenutno nije dostupna za sjetvu
                         </Typography>
                     )}
-                    {informationSections.some(
-                        (section) => section.avaialble,
-                    ) && (
-                        <Stack spacing={1}>
+                    {contentLinks.length > 0 && (
+                        <Stack spacing={2}>
                             <Typography level="body2">Sadržaj</Typography>
-                            <Row spacing={1} className="flex-wrap">
-                                {informationSections
-                                    .filter((section) => section.avaialble)
-                                    .map((section) => (
-                                        <Chip
-                                            key={section.id}
-                                            color="neutral"
-                                            href={`#${slug(section.header)}`}
-                                        >
-                                            {section.header}
-                                        </Chip>
-                                    ))}
+                            <Row spacing={2} className="flex-wrap">
+                                {contentLinks.map((link) => (
+                                    <Chip
+                                        key={link.href}
+                                        color="neutral"
+                                        href={link.href}
+                                    >
+                                        {link.label}
+                                    </Chip>
+                                ))}
                             </Row>
                         </Stack>
                     )}
                     <NavigatingButton
-                        href={KnownPages.GardenApp}
+                        href={gardenActionUrl(KnownPages.GardenApp, {
+                            type: 'sow',
+                            plantId: plant.id,
+                            sortId: sort?.id,
+                        })}
                         className="bg-green-800 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 text-white"
                     >
                         Moj vrt
@@ -130,16 +235,16 @@ export function PlantPageHeader({
         >
             <Stack>
                 <PlantCalendarPicker plant={plant} sort={sort} />
-                <Stack spacing={1} className="group">
+                <Stack spacing={2} className="group">
                     <Typography level="h5" component="h2">
                         Informacije
                     </Typography>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {plant.prices?.perPlant && (
-                            <AttributeCard
-                                icon={<Sprout />}
+                        {price && (
+                            <PriceAttributeCard
+                                icon={<GameCoinsIcon aria-hidden />}
                                 header="Cijena sijanja"
-                                value={`${plant.prices.perPlant.toFixed(2)}€`}
+                                currentPrice={price.currentPrice}
                                 description="Cijena jedne biljke uključuje troškove sjemena, pripreme tla, sjetve i sezonske pogodnosti. Više o samoj sjetvi u gredicama možeš pročitati u nastavku."
                                 navigateHref={KnownPages.Sowing}
                                 navigateLabel="Više o sjetvi"
@@ -154,20 +259,34 @@ export function PlantPageHeader({
                             navigateLabel="Više o gredicama"
                         />
                     </div>
-                    <FeedbackModal
-                        topic={
-                            sort
-                                ? 'www/plants/sorts/information'
-                                : 'www/plants/information'
-                        }
-                        data={{
-                            plantId: plant.id,
-                            plantAlias: plant.information.name,
-                            sortId: sort?.id,
-                            sortAlias: sort?.information.name,
-                        }}
-                        className="self-end group-hover:opacity-100 opacity-0 transition-opacity"
-                    />
+                    <Row
+                        spacing={1}
+                        className="self-end md:opacity-0 md:transition-opacity md:group-hover:opacity-100 md:group-focus-within:opacity-100"
+                    >
+                        {overviewEditTarget ? (
+                            <CommunityEditButton
+                                entityTypeName={
+                                    overviewEditTarget.entityTypeName
+                                }
+                                entityId={overviewEditTarget.entityId}
+                                publicPath={overviewEditTarget.publicPath}
+                                sectionKey="overview"
+                            />
+                        ) : null}
+                        <FeedbackModal
+                            topic={
+                                sort
+                                    ? 'www/plants/sorts/information'
+                                    : 'www/plants/information'
+                            }
+                            data={{
+                                plantId: plant.id,
+                                plantAlias: plant.information.name,
+                                sortId: sort?.id,
+                                sortAlias: sort?.information.name,
+                            }}
+                        />
+                    </Row>
                     <Typography level="body2" secondary>
                         Nisi zadovoljan uslugom ili proizvodom? Pogledaj{' '}
                         <Link className="underline" href={KnownPages.Refunds}>

@@ -1,14 +1,16 @@
-import { Navigate } from '@signalco/ui-icons';
-import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
-import { List } from '@signalco/ui-primitives/List';
-import { ListItem } from '@signalco/ui-primitives/ListItem';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Card, CardOverflow } from '@gredice/ui/Card';
+import { Navigate } from '@gredice/ui/icons';
+import { List } from '@gredice/ui/List';
+import { ListItem } from '@gredice/ui/ListItem';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 
-const apis = [
+const apiReferences = [
+    { label: '/api/mcp', href: '/test' },
     { label: '/api/auth', href: '/docs/auth' },
     { label: '/api/accounts', href: '/docs/accounts' },
     { label: '/api/users', href: '/docs/users' },
+    { label: '/api/favorites', href: '/docs/favorites' },
     { label: '/api/directories', href: '/docs/directories' },
     { label: '/api/data', href: '/docs/data' },
     { label: '/api/gardens', href: '/docs/gardens' },
@@ -22,12 +24,12 @@ const apis = [
 
 export default function Home() {
     return (
-        <Stack spacing={1} className="p-4">
+        <Stack spacing={2} className="p-4">
             <Typography level="body2">API Reference</Typography>
             <Card>
                 <CardOverflow>
                     <List variant="outlined">
-                        {apis.map(({ label, href }) => (
+                        {apiReferences.map(({ label, href }) => (
                             <ListItem
                                 key={label}
                                 variant="outlined"

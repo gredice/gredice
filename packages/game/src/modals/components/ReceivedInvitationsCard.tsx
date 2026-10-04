@@ -1,9 +1,10 @@
-import { Button } from '@signalco/ui-primitives/Button';
-import { Card, CardContent } from '@signalco/ui-primitives/Card';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Spinner } from '@signalco/ui-primitives/Spinner';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Card, CardContent } from '@gredice/ui/Card';
+import { GameMailboxIcon } from '@gredice/ui/GameIcons';
+import { Row } from '@gredice/ui/Row';
+import { Spinner } from '@gredice/ui/Spinner';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useAcceptInvitation } from '../../hooks/useInvitationMutations';
 import { usePendingInvitations } from '../../hooks/usePendingInvitations';
 
@@ -28,14 +29,22 @@ export function ReceivedInvitationsCard() {
     return (
         <Card>
             <CardContent noHeader>
-                <Stack spacing={2}>
-                    <Typography level="body1" semiBold>
-                        📬 Pozivnice
+                <Stack spacing={4}>
+                    <Typography
+                        level="body1"
+                        semiBold
+                        className="flex items-center gap-2"
+                    >
+                        <GameMailboxIcon
+                            aria-hidden
+                            className="size-6 shrink-0"
+                        />
+                        Pozivnice
                     </Typography>
                     {pendingInvitations.data.map((invitation) => (
                         <Row
                             key={invitation.id}
-                            spacing={2}
+                            spacing={4}
                             className="items-center justify-between"
                         >
                             <Stack spacing={0}>

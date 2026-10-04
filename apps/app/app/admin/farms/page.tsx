@@ -1,87 +1,73 @@
 import { getFarms } from '@gredice/storage';
+import { Card, CardOverflow } from '@gredice/ui/Card';
+import { List, ListItem } from '@gredice/ui/List';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Table } from '@signalco/ui-primitives/Table';
-import Link from 'next/link';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { auth } from '../../../lib/auth/auth';
-import { getDateFromTimeFilter } from '../../../lib/utils/timeFilters';
 import { KnownPages } from '../../../src/KnownPages';
-import { FarmsFilters } from './FarmsFilters';
 
 export const dynamic = 'force-dynamic';
 
-export default async function FarmsPage({
-    searchParams,
-}: {
-    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}) {
+export default async function FarmsPage() {
     await auth(['admin']);
-    const params = await searchParams;
-
-    const fromFilter =
-        typeof params.from === 'string' ? params.from : 'last-30-days';
-    const fromDate = getDateFromTimeFilter(fromFilter);
-
-    const allFarms = await getFarms();
-
-    const filteredFarms = fromDate
-        ? allFarms.filter(
-              (farm) => farm.createdAt && farm.createdAt >= fromDate,
-          )
-        : allFarms;
+    const farms = await getFarms();
 
     return (
-        <Stack spacing={2}>
-            <Row spacing={1} alignItems="center">
-                <Chip color="primary">{filteredFarms.length}</Chip>
-            </Row>
-
-            <FarmsFilters />
-
+        <Stack spacing={4}>
             <Card>
                 <CardOverflow>
-                    <Table>
-                        <Table.Header>
-                            <Table.Row>
-                                <Table.Head>Naziv</Table.Head>
-                                <Table.Head>Lokacija</Table.Head>
-                                <Table.Head>Datum kreiranja</Table.Head>
-                            </Table.Row>
-                        </Table.Header>
-                        <Table.Body>
-                            {filteredFarms.length === 0 && (
-                                <Table.Row>
-                                    <Table.Cell colSpan={3}>
-                                        <NoDataPlaceholder>
-                                            Nema farmi
-                                        </NoDataPlaceholder>
-                                    </Table.Cell>
-                                </Table.Row>
-                            )}
-                            {filteredFarms.map((farm) => (
-                                <Table.Row key={farm.id}>
-                                    <Table.Cell>
-                                        <Link href={KnownPages.Farm(farm.id)}>
-                                            {farm.name}
-                                        </Link>
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        {farm.latitude.toFixed(4)}°,{' '}
-                                        {farm.longitude.toFixed(4)}°
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        <LocalDateTime time={false}>
-                                            {farm.createdAt}
-                                        </LocalDateTime>
-                                    </Table.Cell>
-                                </Table.Row>
+                    {farms.length === 0 ? (
+                        <div className="p-4">
+                            <NoDataPlaceholder>Nema farmi</NoDataPlaceholder>
+                        </div>
+                    ) : (
+                        <List className="divide-y" spacing={0}>
+                            {farms.map((farm) => (
+                                <ListItem
+                                    key={farm.id}
+                                    href={KnownPages.Farm(farm.id)}
+                                    className="rounded-none px-3 py-3 first:rounded-t-lg last:rounded-b-lg hover:bg-muted/40 sm:px-4"
+                                    label={
+                                        <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                                            <Stack
+                                                spacing={1}
+                                                className="min-w-0"
+                                            >
+                                                <Typography
+                                                    level="body1"
+                                                    component="span"
+                                                    semiBold
+                                                    noWrap
+                                                    className="text-foreground"
+                                                >
+                                                    {farm.name}
+                                                </Typography>
+                                                <Typography
+                                                    level="body3"
+                                                    className="font-mono text-muted-foreground"
+                                                >
+                                                    {farm.latitude.toFixed(4)}
+                                                    °,{' '}
+                                                    {farm.longitude.toFixed(4)}°
+                                                </Typography>
+                                            </Stack>
+                                            <Typography
+                                                level="body3"
+                                                className="text-muted-foreground sm:text-right"
+                                            >
+                                                Kreirano:{' '}
+                                                <LocalDateTime time={false}>
+                                                    {farm.createdAt}
+                                                </LocalDateTime>
+                                            </Typography>
+                                        </div>
+                                    }
+                                />
                             ))}
-                        </Table.Body>
-                    </Table>
+                        </List>
+                    )}
                 </CardOverflow>
             </Card>
         </Stack>

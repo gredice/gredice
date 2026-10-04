@@ -1,4 +1,5 @@
-import { animated } from '@react-spring/three';
+import { RainWetOverlay } from '../rain/RainWetOverlay';
+import { animated } from '../scene/sceneSpring';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
@@ -7,7 +8,7 @@ import { useGameGLTF } from '../utils/useGameGLTF';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
 export function ShovelSmall({ stack, block, rotation }: EntityInstanceProps) {
-    const { nodes, materials } = useGameGLTF();
+    const { nodes, materials } = useGameGLTF('ShovelSmall');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
 
@@ -25,6 +26,12 @@ export function ShovelSmall({ stack, block, rotation }: EntityInstanceProps) {
                 <SnowOverlay
                     geometry={nodes.Shovel_Small.geometry}
                     {...snowPresets.tool}
+                />
+                <RainWetOverlay
+                    geometry={nodes.Shovel_Small.geometry}
+                    topSurfaceBias={2.8}
+                    darkness={0.8}
+                    glossiness={0.9}
                 />
             </mesh>
         </animated.group>

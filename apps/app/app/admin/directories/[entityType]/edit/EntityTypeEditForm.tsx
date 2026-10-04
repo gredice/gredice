@@ -4,12 +4,12 @@ import type {
     SelectEntityType,
     SelectEntityTypeCategory,
 } from '@gredice/storage';
-import { ModalConfirm } from '@signalco/ui/ModalConfirm';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Input } from '@signalco/ui-primitives/Input';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Input } from '@gredice/ui/Input';
+import { ModalConfirm } from '@gredice/ui/ModalConfirm';
+import { SelectItems } from '@gredice/ui/SelectItems';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 import { IconPicker } from '../../../../../components/admin/directories/IconPicker';
 import {
@@ -22,11 +22,16 @@ interface EntityTypeEditFormProps {
         category: SelectEntityTypeCategory | null;
     };
     categories: SelectEntityTypeCategory[];
+    inventorySourceAttributeOptions: {
+        value: string;
+        label: string;
+    }[];
 }
 
 export function EntityTypeEditForm({
     entityType,
     categories,
+    inventorySourceAttributeOptions,
 }: EntityTypeEditFormProps) {
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [selectedIcon, setSelectedIcon] = useState(entityType.icon ?? '');
@@ -48,8 +53,8 @@ export function EntityTypeEditForm({
 
     return (
         <div className="max-w-2xl mx-auto p-6">
-            <Stack spacing={4}>
-                <Stack spacing={1}>
+            <Stack spacing={8}>
+                <Stack spacing={2}>
                     <Typography level="h4">Uredi tip zapisa</Typography>
                     <Typography level="body2">
                         Uredite podatke za tip zapisa &quot;{entityType.label}
@@ -58,8 +63,8 @@ export function EntityTypeEditForm({
                 </Stack>
 
                 <form action={updateEntityTypeFromEditPage}>
-                    <Stack spacing={4}>
-                        <Stack spacing={3}>
+                    <Stack spacing={8}>
+                        <Stack spacing={6}>
                             <input
                                 type="hidden"
                                 name="id"
@@ -113,6 +118,22 @@ export function EntityTypeEditForm({
                                 defaultValue={
                                     entityType.isRoot ? 'true' : 'false'
                                 }
+                            />
+                            <SelectItems
+                                name="inventorySourceAttributeDefinitionId"
+                                label="Izvor zalihe povezanih zapisa"
+                                items={[
+                                    {
+                                        value: 'none',
+                                        label: '- Nije odabrano -',
+                                    },
+                                    ...inventorySourceAttributeOptions,
+                                ]}
+                                defaultValue={
+                                    entityType.inventorySourceAttributeDefinitionId?.toString() ??
+                                    'none'
+                                }
+                                helperText="Prikaži zalihu iz povezanog tipa zapisa koji referencira ovaj tip"
                             />
                         </Stack>
 

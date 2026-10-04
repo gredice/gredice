@@ -1,16 +1,12 @@
 import { getGardens } from '@gredice/storage';
-import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Table } from '@signalco/ui-primitives/Table';
-import Link from 'next/link';
-import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
+import { Card, CardOverflow } from '@gredice/ui/Card';
+import { Chip } from '@gredice/ui/Chip';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
 import { auth } from '../../../lib/auth/auth';
 import { getDateFromTimeFilter } from '../../../lib/utils/timeFilters';
-import { KnownPages } from '../../../src/KnownPages';
 import { GardensFilters } from './GardensFilters';
+import { GardensTable } from './GardensTable';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,8 +37,8 @@ export default async function GardensPage({
     }
 
     return (
-        <Stack spacing={2}>
-            <Row spacing={1}>
+        <Stack spacing={4}>
+            <Row spacing={2}>
                 <Chip color="primary">{filteredGardens.length}</Chip>
             </Row>
 
@@ -50,51 +46,7 @@ export default async function GardensPage({
 
             <Card>
                 <CardOverflow>
-                    <Table>
-                        <Table.Header>
-                            <Table.Row>
-                                <Table.Head>Naziv</Table.Head>
-                                <Table.Head>Račun</Table.Head>
-                                <Table.Head>Datum kreiranja</Table.Head>
-                            </Table.Row>
-                        </Table.Header>
-                        <Table.Body>
-                            {filteredGardens.length === 0 && (
-                                <Table.Row>
-                                    <Table.Cell colSpan={3}>
-                                        <NoDataPlaceholder>
-                                            Nema vrtova
-                                        </NoDataPlaceholder>
-                                    </Table.Cell>
-                                </Table.Row>
-                            )}
-                            {filteredGardens.map((garden) => (
-                                <Table.Row key={garden.id}>
-                                    <Table.Cell>
-                                        <Link
-                                            href={KnownPages.Garden(garden.id)}
-                                        >
-                                            {garden.name}
-                                        </Link>
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        <Link
-                                            href={KnownPages.Account(
-                                                garden.accountId,
-                                            )}
-                                        >
-                                            {garden.accountId}
-                                        </Link>
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        <LocalDateTime time={false}>
-                                            {garden.createdAt}
-                                        </LocalDateTime>
-                                    </Table.Cell>
-                                </Table.Row>
-                            ))}
-                        </Table.Body>
-                    </Table>
+                    <GardensTable gardens={filteredGardens} />
                 </CardOverflow>
             </Card>
         </Stack>

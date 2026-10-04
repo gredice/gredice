@@ -1,0 +1,4 @@
+interface:
+  display_name: "Gredice Storybook Docs"
+  short_description: "Document reusable UI in Storybook"
+  default_prompt: "Use $gredice-storybook-component-docs to add or review Storybook stories for a reusable Gredice component."

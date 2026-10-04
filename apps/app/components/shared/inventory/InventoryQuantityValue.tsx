@@ -1,4 +1,4 @@
-import { Error as ErrorIcon, Warning } from '@signalco/ui-icons';
+import { Error as ErrorIcon, Warning } from '@gredice/ui/icons';
 
 export function InventoryQuantityValue({
     quantity,
