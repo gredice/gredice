@@ -27,11 +27,14 @@ type PendingQuery = {
     kind: StaticOpaqueSceneCacheBenefitSampleKind;
     query: WebGLQuery;
     startedAtMs: number;
+    windowId: number;
 };
 
 export type StaticOpaqueSceneCacheGpuSample = {
     elapsedMs: number;
     kind: StaticOpaqueSceneCacheBenefitSampleKind;
+    startedAtMs: number;
+    windowId: number;
 };
 
 function isTimerExtension(
@@ -67,6 +70,7 @@ export class StaticOpaqueSceneCacheGpuTimer {
     private pending: PendingQuery[] = [];
     private quarantinedUntilMs = 0;
     supported: boolean | null = null;
+    evidenceEpoch = 0;
 
     attach(context: TimerQueryContext | null) {
         if (this.context === context) {
@@ -80,6 +84,7 @@ export class StaticOpaqueSceneCacheGpuTimer {
         );
         this.extension = isTimerExtension(extension) ? extension : null;
         this.supported = this.extension !== null;
+        this.observeProfile({ type: 'supported', supported: this.supported });
     }
 
     /** True when `begin` would open a query right now. */
@@ -101,7 +106,11 @@ export class StaticOpaqueSceneCacheGpuTimer {
         );
     }
 
-    begin(kind: StaticOpaqueSceneCacheBenefitSampleKind, nowMs: number) {
+    begin(
+        kind: StaticOpaqueSceneCacheBenefitSampleKind,
+        nowMs: number,
+        windowId = 0,
+    ) {
         const { context, extension } = this;
         if (!context || !extension || !this.isAvailable(nowMs)) {
             return false;
@@ -113,7 +122,8 @@ export class StaticOpaqueSceneCacheGpuTimer {
             return false;
         }
         context.beginQuery(extension.TIME_ELAPSED_EXT, query);
-        this.active = { kind, query, startedAtMs: nowMs };
+        this.active = { kind, query, startedAtMs: nowMs, windowId };
+        this.observeProfile({ type: 'begin', startedAtMs: nowMs });
         return true;
     }
 
@@ -142,7 +152,11 @@ export class StaticOpaqueSceneCacheGpuTimer {
         }
         if (context.getParameter(extension.GPU_DISJOINT_EXT)) {
             this.deletePending();
+            if (nowMs >= this.quarantinedUntilMs) {
+                this.evidenceEpoch += 1;
+            }
             this.quarantinedUntilMs = nowMs + disjointQuarantineMs;
+            this.observeProfile({ type: 'invalid', reason: 'disjoint' });
             return [];
         }
 
@@ -159,10 +173,27 @@ export class StaticOpaqueSceneCacheGpuTimer {
                     entry.query,
                     context.QUERY_RESULT,
                 );
-                if (typeof elapsedNanoseconds === 'number') {
+                if (
+                    typeof elapsedNanoseconds === 'number' &&
+                    Number.isFinite(elapsedNanoseconds) &&
+                    elapsedNanoseconds >= 0
+                ) {
                     samples.push({
                         elapsedMs: elapsedNanoseconds / 1_000_000,
                         kind: entry.kind,
+                        startedAtMs: entry.startedAtMs,
+                        windowId: entry.windowId,
+                    });
+                    this.observeProfile({
+                        type: 'sample',
+                        sample: samples.at(-1),
+                    });
+                } else {
+                    this.supported = false;
+                    this.evidenceEpoch += 1;
+                    this.observeProfile({
+                        type: 'invalid',
+                        reason: 'invalid-result',
                     });
                 }
                 context.deleteQuery(entry.query);
@@ -171,6 +202,8 @@ export class StaticOpaqueSceneCacheGpuTimer {
             if (nowMs - entry.startedAtMs >= queryTimeoutMs) {
                 context.deleteQuery(entry.query);
                 this.supported = false;
+                this.evidenceEpoch += 1;
+                this.observeProfile({ type: 'invalid', reason: 'timeout' });
                 continue;
             }
             remaining.push(entry);
@@ -179,7 +212,32 @@ export class StaticOpaqueSceneCacheGpuTimer {
         return samples;
     }
 
+    /** Supplemental profiler observes these queries without owning a WebGL query. */
+    isProfileObserved() {
+        return (
+            typeof window !== 'undefined' &&
+            typeof Reflect.get(window, '__gameProfileCacheGpuObserver') ===
+                'function'
+        );
+    }
+
+    private observeProfile(event: unknown) {
+        if (typeof window === 'undefined') {
+            return;
+        }
+        const observer = Reflect.get(window, '__gameProfileCacheGpuObserver');
+        if (typeof observer === 'function') {
+            try {
+                Reflect.apply(observer, window, [event]);
+            } catch {
+                // Diagnostic observers must not interrupt scene rendering.
+            }
+        }
+    }
+
     markContextLost() {
+        this.evidenceEpoch += 1;
+        this.observeProfile({ type: 'invalid', reason: 'context-lost' });
         this.contextLost = true;
         this.active = null;
         this.pending = [];

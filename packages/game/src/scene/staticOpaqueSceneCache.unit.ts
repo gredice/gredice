@@ -4,6 +4,7 @@ import {
     createStaticOpaqueSceneCacheRuntime,
     estimateStaticOpaqueSceneCacheBytes,
     isStaticOpaqueSceneCacheMaterialEligible,
+    resolveStaticOpaqueSceneCacheShadowBypass,
     resolveStaticOpaqueSceneCacheTarget,
     transitionStaticOpaqueSceneCache,
 } from './staticOpaqueSceneCacheState';
@@ -173,6 +174,44 @@ describe('static opaque scene cache transitions', () => {
             shadow.runtime,
             enabledInput,
         );
+        assert.equal(capture.action, 'capture');
+    });
+
+    it('captures with disabled dirty shadows, then refreshes when they are enabled', () => {
+        const shadowMap = {
+            autoUpdate: true,
+            enabled: false,
+            needsUpdate: true,
+        };
+        let runtime = createStaticOpaqueSceneCacheRuntime();
+        for (const expectedAction of ['live', 'live', 'capture', 'hit']) {
+            const transition = transitionStaticOpaqueSceneCache(runtime, {
+                ...enabledInput,
+                bypassReason:
+                    resolveStaticOpaqueSceneCacheShadowBypass(shadowMap),
+            });
+            assert.equal(transition.action, expectedAction);
+            runtime = transition.runtime;
+        }
+        assert.equal(shadowMap.needsUpdate, true);
+        shadowMap.enabled = true;
+        assert.equal(
+            resolveStaticOpaqueSceneCacheShadowBypass(shadowMap),
+            'unsupported',
+        );
+        shadowMap.autoUpdate = false;
+        const refresh = transitionStaticOpaqueSceneCache(runtime, {
+            ...enabledInput,
+            bypassReason: resolveStaticOpaqueSceneCacheShadowBypass(shadowMap),
+        });
+        assert.equal(refresh.action, 'live');
+        assert.equal(refresh.reason, 'shadow-update');
+        assert.equal(refresh.invalidated, true);
+        shadowMap.needsUpdate = false;
+        const capture = transitionStaticOpaqueSceneCache(refresh.runtime, {
+            ...enabledInput,
+            bypassReason: resolveStaticOpaqueSceneCacheShadowBypass(shadowMap),
+        });
         assert.equal(capture.action, 'capture');
     });
 
