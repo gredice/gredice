@@ -30,3 +30,4 @@ export {
     operationRequestNoteMaxLength,
     readOperationRequestNote,
 } from './operationRequestNote';
+export * from './raisedBedObservation';

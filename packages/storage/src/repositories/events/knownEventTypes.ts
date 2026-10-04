@@ -42,6 +42,7 @@ export const knownEventTypes = {
         fiscalize: 'receipt.fiscalize',
     },
     raisedBeds: {
+        observationSubmitted: 'raisedBed.observation.submitted',
         create: 'raisedBed.create',
         place: 'raisedBed.place',
         delete: 'raisedBed.delete',
@@ -73,6 +74,7 @@ export const knownEventTypes = {
         taskCancelled: 'raisedBedPlanting.task.cancelled',
     },
     operations: {
+        observationRecorded: 'operation.observation.recorded',
         adminUpdate: 'operation.admin.update',
         acceptance: 'operation.acceptance',
         assign: 'operation.assign',

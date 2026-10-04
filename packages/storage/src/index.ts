@@ -97,6 +97,7 @@ export * from './repositories/publishedPriceListsRepo';
 export * from './repositories/raisedBedDiaryRepo';
 export * from './repositories/raisedBedFieldEventMutationsRepo';
 export * from './repositories/raisedBedFieldsRepo';
+export * from './repositories/raisedBedObservationsRepo';
 export * from './repositories/raisedBedPlantCorrectionsRepo';
 export * from './repositories/raisedBedPlantingsRepo';
 export * from './repositories/raisedBedPlantingTasksRepo';
