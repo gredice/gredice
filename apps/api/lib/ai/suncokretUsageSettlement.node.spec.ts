@@ -6,6 +6,7 @@ import {
 } from '@gredice/storage';
 import { simulateReadableStream, streamText } from 'ai';
 import { MockLanguageModelV4 } from 'ai/test';
+import { getSuncokretGatewayBilledCostMicroEur } from './suncokretModels';
 import { scheduleSuncokretUsageSettlement } from './suncokretUsageSettlement';
 
 const context = {
@@ -130,6 +131,16 @@ test('unavailable or failed billed lookup settles the current reservation using 
         assert.equal(finalize.mock.callCount(), 1);
     }
     assert.equal(warning.mock.callCount(), 2);
+    for (const call of warning.mock.calls) {
+        assert.deepEqual(call.arguments[1], {
+            ...context,
+            ledgerId: usage.ledgerId,
+            generationIds: ['gen_test'],
+            ...(call.arguments[1]?.error
+                ? { error: call.arguments[1].error }
+                : {}),
+        });
+    }
 });
 
 test('settlement preserves zero billed cost and reports persistence failure without retrying or releasing quota', async (t) => {
@@ -154,4 +165,100 @@ test('settlement preserves zero billed cost and reports persistence failure with
     await Promise.all(background);
     assert.equal(finalize.mock.callCount(), 1);
     assert.equal(error.mock.callCount(), 1);
+});
+
+test('settlement limits polling to remaining invocation runtime and falls back before termination', async (t) => {
+    const warning = t.mock.method(console, 'warn', () => {});
+    const background: Promise<unknown>[] = [];
+    const finalized: Parameters<typeof finalizeAiChatUsage>[0][] = [];
+    let lookupSignal: AbortSignal | undefined;
+    scheduleSuncokretUsageSettlement({
+        context,
+        steps,
+        usage,
+        // A late chat has just 5,020ms remaining: poll for 20ms, retaining
+        // 5,000ms to persist the fallback before the invocation is killed.
+        invocationDeadline: new Date(5_020),
+        now: () => 0,
+        loadBilledCost: (lookupSteps, _load, _wait, timeoutMs) => {
+            assert.equal(timeoutMs, 20);
+            return getSuncokretGatewayBilledCostMicroEur(
+                lookupSteps,
+                async (_, signal) => {
+                    lookupSignal = signal;
+                    return new Promise<never>(() => {});
+                },
+                undefined,
+                timeoutMs,
+            );
+        },
+        finalize: async (input) => {
+            finalized.push(input);
+            return calculateAiChatUsageCostMicroEur(input);
+        },
+        schedule: (task) => {
+            background.push(task);
+        },
+    });
+    assert.equal(finalized.length, 0);
+    await Promise.all(background);
+    assert.equal(lookupSignal?.aborted, true);
+    assert.equal(warning.mock.callCount(), 1);
+    assert.equal(finalized.length, 1);
+    assert.equal(finalized[0]?.billedTotalMicroEur, undefined);
+});
+
+test('settlement skips Gateway polling when only persistence headroom remains', async (t) => {
+    const warning = t.mock.method(console, 'warn', () => {});
+    for (const deadline of [5_000, 4_000, -1]) {
+        const background: Promise<unknown>[] = [];
+        const finalize = t.mock.fn(
+            async (input: Parameters<typeof finalizeAiChatUsage>[0]) => {
+                assert.equal(input.billedTotalMicroEur, undefined);
+                return calculateAiChatUsageCostMicroEur(input);
+            },
+        );
+        scheduleSuncokretUsageSettlement({
+            context,
+            steps,
+            usage,
+            invocationDeadline: new Date(deadline),
+            now: () => 0,
+            loadBilledCost: async () => {
+                assert.fail('Polling must not consume persistence headroom');
+            },
+            finalize,
+            schedule: (task) => {
+                background.push(task);
+            },
+        });
+        await Promise.all(background);
+        assert.equal(finalize.mock.callCount(), 1);
+    }
+    assert.equal(warning.mock.callCount(), 3);
+});
+
+test('settlement keeps the bounded lookup window with ample or unavailable invocation time', async () => {
+    for (const invocationDeadline of [undefined, new Date(300_000)]) {
+        const background: Promise<unknown>[] = [];
+        scheduleSuncokretUsageSettlement({
+            context,
+            steps,
+            usage,
+            invocationDeadline,
+            now: () => 0,
+            loadBilledCost: async (_, _load, _wait, timeoutMs) => {
+                assert.equal(timeoutMs, 90_000);
+                return 200;
+            },
+            finalize: async (input) => {
+                assert.equal(input.billedTotalMicroEur, 200);
+                return calculateAiChatUsageCostMicroEur(input);
+            },
+            schedule: (task) => {
+                background.push(task);
+            },
+        });
+        await Promise.all(background);
+    }
 });

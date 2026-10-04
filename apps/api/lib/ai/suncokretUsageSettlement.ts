@@ -2,8 +2,12 @@ import {
     calculateAiChatUsageCostMicroEur,
     finalizeAiChatUsage,
 } from '@gredice/storage';
-import { waitUntil } from '@vercel/functions';
-import { getSuncokretGatewayBilledCostMicroEur } from './suncokretModels';
+import { getDeadline, waitUntil } from '@vercel/functions';
+import {
+    getSuncokretGatewayBilledCostMicroEur,
+    SUNCOKRET_GATEWAY_COST_LOOKUP_TIMEOUT_MS,
+    suncokretGatewayGenerationIds,
+} from './suncokretModels';
 
 type UsageFinalization = Parameters<typeof finalizeAiChatUsage>[0];
 
@@ -11,6 +15,8 @@ export function scheduleSuncokretUsageSettlement({
     context,
     steps,
     usage,
+    invocationDeadline = getDeadline(),
+    now = Date.now,
     loadBilledCost = getSuncokretGatewayBilledCostMicroEur,
     finalize = finalizeAiChatUsage,
     schedule = waitUntil,
@@ -23,6 +29,8 @@ export function scheduleSuncokretUsageSettlement({
     };
     steps: Parameters<typeof getSuncokretGatewayBilledCostMicroEur>[0];
     usage: Omit<UsageFinalization, 'billedTotalMicroEur'>;
+    invocationDeadline?: Date;
+    now?: () => number;
     loadBilledCost?: typeof getSuncokretGatewayBilledCostMicroEur;
     finalize?: typeof finalizeAiChatUsage;
     schedule?: (task: Promise<unknown>) => void;
@@ -30,19 +38,40 @@ export function scheduleSuncokretUsageSettlement({
     // Do not await Gateway polling in streamText.onFinish. Keep the existing
     // reservation counted in both quotas until this single settlement completes.
     const settlement = async () => {
+        const lookupContext = {
+            ...context,
+            ledgerId: usage.ledgerId,
+            generationIds: suncokretGatewayGenerationIds(steps),
+        };
         let billedTotalMicroEur: number | null = null;
         try {
-            billedTotalMicroEur = await loadBilledCost(steps);
+            // waitUntil shares the invocation's deadline. Leave five seconds
+            // for ledger persistence, including when generation finishes late.
+            const lookupTimeoutMs = Math.max(
+                0,
+                Math.min(
+                    SUNCOKRET_GATEWAY_COST_LOOKUP_TIMEOUT_MS,
+                    (invocationDeadline?.getTime() ?? Infinity) - now() - 5_000,
+                ),
+            );
+            if (lookupTimeoutMs > 0) {
+                billedTotalMicroEur = await loadBilledCost(
+                    steps,
+                    undefined,
+                    undefined,
+                    lookupTimeoutMs,
+                );
+            }
             if (billedTotalMicroEur === null) {
                 console.warn(
                     'Suncokret AI Gateway billed cost is unavailable; using token estimate',
-                    context,
+                    lookupContext,
                 );
             }
         } catch (error) {
             console.warn(
                 'Suncokret AI Gateway billed cost lookup failed; using token estimate',
-                { ...context, error },
+                { ...lookupContext, error },
             );
         }
 
