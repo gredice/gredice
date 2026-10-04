@@ -309,7 +309,12 @@ export async function applyAutumnPublicationPlan(
         await (options.refresh ?? refreshPublished)(
             committed.map((row) => row.id),
         );
-    } catch {
+    } catch (error) {
+        console.error('autumn-publication-refresh', {
+            error,
+            entityIds: committed.map((row) => row.id),
+            planDigest,
+        });
         refreshStatus = 'pending';
     }
     return {

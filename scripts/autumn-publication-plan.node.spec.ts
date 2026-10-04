@@ -52,7 +52,10 @@ test('exact 24-item sorted offline plan freezes real fixture identities/prices/r
         publicationDigest(
             createAutumnPublicationPlan(source, {
                 ...cms,
-                entities: [...cms.entities].reverse(),
+                entities: cms.entities.toReversed().map((entity) => ({
+                    ...entity,
+                    attributes: entity.attributes.toReversed(),
+                })),
             }),
         ),
         publicationDigest(plan),

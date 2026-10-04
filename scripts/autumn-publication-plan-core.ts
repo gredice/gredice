@@ -79,16 +79,20 @@ export function createAutumnPublicationPlan(source: Source, cmsInput: unknown) {
     const operations = [...source.items]
         .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
         .map((item) => {
-            const expected = cms.entities.find(
+            const entity = cms.entities.find(
                 (entity) =>
                     publicationAttributeMap(entity, cms.definitions).get(
                         'information.name',
                     ) === item.name,
             );
-            if (!expected)
+            if (!entity)
                 throw new Error(
                     `Missing actual CMS draft/published identity: ${item.name}`,
                 );
+            const expected = {
+                ...entity,
+                attributes: entity.attributes.toSorted((a, b) => a.id - b.id),
+            };
             const reviewedAttributes = reviewedPublicationAttributes(item);
             const actualPrice = assertReviewedPublicationEntity(
                 expected,
