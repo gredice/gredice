@@ -74,6 +74,7 @@ import type {
     RaisedBedWeedStateSetPayload,
     ReceiptCreatePayload,
     ReceiptFiscalizePayload,
+    SeasonalSowingOfferGrantedPayload,
     TransactionCreatePayload,
     TransactionUpdatePayload,
     UserBirthdayRewardPayload,
@@ -286,6 +287,15 @@ export const knownEvents = {
         }),
     },
     raisedBeds: {
+        seasonalSowingOfferGrantedV1: (
+            aggregateId: string,
+            data: SeasonalSowingOfferGrantedPayload,
+        ) => ({
+            type: knownEventTypes.raisedBeds.seasonalSowingOfferGranted,
+            version: 1,
+            aggregateId,
+            data,
+        }),
         createdV1: (aggregateId: string, data: RaisedBedCreatePayload) => ({
             type: knownEventTypes.raisedBeds.create,
             version: 1,

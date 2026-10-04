@@ -1,6 +1,9 @@
+import { and, eq, sql } from 'drizzle-orm';
 import { bustScheduleCache } from '../cache/scheduleCache';
+import { events } from '../schema';
 import { storage } from '../storage';
 import { knownEvents } from './events/knownEvents';
+import { knownEventTypes } from './events/knownEventTypes';
 import { createEvent } from './eventsRepo';
 import { createOperation, getOperations } from './operationsRepo';
 import { acquireScheduleTaskAdvisoryLock } from './scheduleTaskTransactionsRepo';
@@ -18,6 +21,7 @@ const postTransplantWateringMinExistingLiters = 50;
 type SeasonalSowingOffer = {
     freeWaterings: number;
     dayInterval: number;
+    seasonStartMonth: number;
 };
 
 function getSeasonalSowingOffer(date: Date): SeasonalSowingOffer | null {
@@ -27,6 +31,7 @@ function getSeasonalSowingOffer(date: Date): SeasonalSowingOffer | null {
         return {
             freeWaterings: 3,
             dayInterval: 2,
+            seasonStartMonth: 3,
         };
     }
 
@@ -34,6 +39,7 @@ function getSeasonalSowingOffer(date: Date): SeasonalSowingOffer | null {
         return {
             freeWaterings: 5,
             dayInterval: 1,
+            seasonStartMonth: 6,
         };
     }
 
@@ -41,6 +47,7 @@ function getSeasonalSowingOffer(date: Date): SeasonalSowingOffer | null {
         return {
             freeWaterings: 3,
             dayInterval: 2,
+            seasonStartMonth: 9,
         };
     }
 
@@ -115,11 +122,30 @@ export async function queueSeasonalSowingOfferOperations({
         return [];
     }
 
+    const seasonKey = `${referenceDate.getUTCFullYear()}:${offer.seasonStartMonth}`;
     const result = await storage().transaction(async (tx) => {
         await acquireScheduleTaskAdvisoryLock(
             tx,
             `seasonal-sowing-watering:${raisedBedId}`,
         );
+        const existingGrant = await tx
+            .select({ id: events.id })
+            .from(events)
+            .where(
+                and(
+                    eq(
+                        events.type,
+                        knownEventTypes.raisedBeds.seasonalSowingOfferGranted,
+                    ),
+                    eq(events.version, 1),
+                    eq(events.aggregateId, raisedBedId.toString()),
+                    eq(sql<string>`${events.data}->>'seasonKey'`, seasonKey),
+                ),
+            )
+            .limit(1);
+        if (existingGrant.length > 0) {
+            return [];
+        }
         const existingOperations = await getOperations(
             accountId,
             gardenId,
@@ -164,6 +190,19 @@ export async function queueSeasonalSowingOfferOperations({
             createdOperationIds.push(operationId);
         }
 
+        // Commit the originating season and the complete batch together. An
+        // operation's execution date can cross a season boundary or be edited.
+        await createEvent(
+            knownEvents.raisedBeds.seasonalSowingOfferGrantedV1(
+                raisedBedId.toString(),
+                {
+                    seasonKey,
+                    referenceDate: referenceDate.toISOString(),
+                    operationIds: createdOperationIds,
+                },
+            ),
+            tx,
+        );
         return createdOperationIds;
     });
     await bustScheduleCache();
