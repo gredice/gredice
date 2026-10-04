@@ -52,3 +52,5 @@ patchedDependencies:
   tsconfck@3.1.6: patches/tsconfck@3.1.6.patch
   # Backport https://github.com/web-push-libs/web-push/pull/948 until a release includes it.
   'web-push@3.6.7': patches/web-push@3.6.7.patch
+  # xml-crypto 6.3.2 still uses xmldom's old parser API; remove after upstream supports 0.9.
+  xml-crypto@6.3.2: patches/xml-crypto@6.3.2.patch
