@@ -9,7 +9,10 @@ test('Electron property lists round-trip with xmldom 0.9', () => {
         CFBundleVersion: '1.0.0',
         NSHighResolutionCapable: true,
         CFBundleURLTypes: [
-            { CFBundleURLSchemes: ['gredice'], CFBundleURLName: 'Vrt & povrće' },
+            {
+                CFBundleURLSchemes: ['gredice'],
+                CFBundleURLName: 'Vrt & povrće',
+            },
         ],
     };
     assert.deepEqual(plist.parse(plist.build(info)), info);
