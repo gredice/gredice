@@ -48,7 +48,7 @@
         "@react-three/drei": "10.7.9",
         "@react-three/fiber": "9.7.0",
         "@tailwindcss/typography": "0.5.20",
-        "@tanstack/react-query": "5.103.2",
+        "@tanstack/react-query": "5.104.0",
         "@types/chroma-js": "3.1.2",
         "@types/react": "19.2.18",
         "@types/react-dom": "19.2.4",
