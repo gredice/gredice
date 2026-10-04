@@ -66,7 +66,7 @@
         "suncalc": "2.0.2",
         "tailwindcss": "4.3.3",
         "tailwindcss-animate": "1.0.7",
-        "three": "0.186.0",
+        "three": "0.186.1",
         "three-custom-shader-material": "6.4.0",
         "three-stdlib": "2.36.1",
         "tsx": "4.23.15",
