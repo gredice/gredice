@@ -16,7 +16,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  TURBO_TOKEN: ${{ secrets.VERCEL_TOKEN }}
   TURBO_TEAM: gredice
 
 jobs:
