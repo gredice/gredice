@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isDeepStrictEqual } from 'node:util';
 import { autumnArrangements } from '@gredice/js/autumnArrangements';
 import {
     autumnStarterPackRecipes,
@@ -18,12 +19,10 @@ export async function loadReviewedAutumnStarterPackEvidence(
         readFile(resolve(repositoryRoot, path)),
 ) {
     const manifest = JSON.parse(
-        await readFile(
-            new URL(
-                './autumnStarterPackEvidence.reviewed.json',
-                import.meta.url,
+        new TextDecoder().decode(
+            await readBytes(
+                'apps/api/lib/garden/autumnStarterPackEvidence.reviewed.json',
             ),
-            'utf8',
         ),
     );
     const evidence = reviewedAutumnStarterPackEvidenceSchema.parse(manifest);
@@ -46,6 +45,16 @@ export async function loadReviewedAutumnStarterPackEvidence(
         if (sha256(capture) !== proof.captureSha256)
             throw new Error(
                 `Committed reviewed capture record changed: ${recipe.arrangementId}`,
+            );
+        if (
+            proof.recapture &&
+            !isDeepStrictEqual(
+                JSON.parse(new TextDecoder().decode(capture)).source,
+                proof.recapture.source,
+            )
+        )
+            throw new Error(
+                `Reviewed recapture source differs: ${recipe.arrangementId}`,
             );
         const preview = await readBytes(
             `apps/garden/public${arrangement.preview}`,

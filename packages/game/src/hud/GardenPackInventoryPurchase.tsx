@@ -2,6 +2,7 @@ import type { BlockData } from '@gredice/client';
 import { BlockImage } from '@gredice/ui/BlockImage';
 import { Button } from '@gredice/ui/Button';
 import { useState } from 'react';
+import { GardenPackLayoutInventoryAction } from './GardenPackLayoutInventoryAction';
 import {
     type GardenPackInventoryPlacement,
     getOwnedPackLineBlock,
@@ -17,17 +18,18 @@ export function GardenPackInventoryPurchase({
     catalogueUnavailable = false,
     placement,
     onPlaced,
+    previewLayouts = false,
 }: {
     pack: OwnedGardenPack;
     blockData: BlockData[] | null | undefined;
     catalogueUnavailable?: boolean;
     placement?: GardenPackInventoryPlacement;
     onPlaced: () => void;
+    previewLayouts?: boolean;
 }) {
     const [failed, setFailed] = useState(false);
     const [placing, setPlacing] = useState(false);
-    const name =
-        pack.name.hr ?? Object.values(pack.name)[0] ?? 'Kupljeni paket';
+    const name = pack.name.hr ?? Object.values(pack.name)[0] ?? 'Moj paket';
     return (
         <details
             className="border-b pb-3 min-w-0"
@@ -40,15 +42,15 @@ export function GardenPackInventoryPurchase({
                     {pack.remainingQuantity}/{pack.totalQuantity} preostalo
                 </span>
                 <span className="block text-sm text-muted-foreground">
-                    {getOwnedPackStateLabel(pack)} ·{' '}
+                    {getOwnedPackStateLabel(pack)} · Preuzeto{' '}
                     {new Date(pack.purchasedAt).toLocaleDateString('hr-HR')}
                 </span>
                 <span className="block break-all text-xs text-muted-foreground">
-                    Kupnja {pack.purchaseId.slice(-8)}
+                    Paket {pack.purchaseId.slice(-8)}
                 </span>
             </summary>
             <p className="break-all text-xs text-muted-foreground">
-                Kupnja {pack.purchaseId}
+                Paket {pack.purchaseId}
             </p>
             <ul
                 className="space-y-3 pt-2"
@@ -147,6 +149,13 @@ export function GardenPackInventoryPurchase({
                     );
                 })}
             </ul>
+            {placement && previewLayouts && (
+                <GardenPackLayoutInventoryAction
+                    pack={pack}
+                    blockData={blockData}
+                    onPreview={onPlaced}
+                />
+            )}
             {(failed || placement?.error) && (
                 <p role="alert" className="mt-3 text-sm text-destructive">
                     Postavljanje nije potvrđeno. Osvježi paket ili pokušaj

@@ -9,6 +9,10 @@ import { getSeasonDebugDates } from '@gredice/game/seasonal-debug';
 import { ProfileGameScene } from './ProfileGameScene';
 import { resolveGameProfileLeafWind } from './profileAudio';
 import {
+    createAutumnLaunchFixture,
+    resolveAutumnLaunchSize,
+} from './profileAutumnLaunch';
+import {
     resolveGameProfileDate,
     serializeGameProfileDate,
 } from './profileDate';
@@ -292,6 +296,12 @@ export default async function GameProfilePage({
 }) {
     const params = await searchParams;
     const mode = resolveMode(firstValue(params.mode));
+    const autumnLaunchSize = resolveAutumnLaunchSize(
+        firstValue(params.autumnLaunch),
+    );
+    const autumnLaunchFixture = autumnLaunchSize
+        ? createAutumnLaunchFixture(autumnLaunchSize)
+        : null;
     const renderDetails = firstValue(params.details) !== '0';
     const showLegend = firstValue(params.legend) !== '0';
     const soundEnabled = firstValue(params.sound) === '1';
@@ -355,6 +365,11 @@ export default async function GameProfilePage({
         <main
             className="relative h-screen w-screen overflow-hidden bg-[#e7e2cc]"
             data-game-profile-mode={mode}
+            data-game-profile-autumn-launch={
+                autumnLaunchFixture
+                    ? JSON.stringify(autumnLaunchFixture.stats)
+                    : undefined
+            }
             data-game-profile-date={serializeGameProfileDate(freezeTime)}
             data-game-profile-comparison-contract-version={
                 process.env.NEXT_PUBLIC_GAME_PROFILE_COMPARISON_CONTRACT_VERSION
@@ -415,7 +430,10 @@ export default async function GameProfilePage({
                         : undefined
                 }
                 adaptiveHighQuality={adaptiveHigh}
-                authenticatedGardenQueriesEnabled={!staticIdleProfile}
+                authenticatedGardenQueriesEnabled={
+                    !staticIdleProfile && !autumnLaunchSize
+                }
+                autumnLaunchSize={autumnLaunchSize ?? undefined}
                 key={mode}
                 className="h-full w-full"
                 dayNightCycleDisabled={false}
@@ -427,6 +445,7 @@ export default async function GameProfilePage({
                 hideHud={!showHud}
                 initialQualitySetting={quality}
                 enableGameProfileController={
+                    Boolean(autumnLaunchSize) ||
                     adaptiveHigh ||
                     cameraProfile ||
                     gardenSwitchProfile ||

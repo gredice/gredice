@@ -17,6 +17,7 @@ export type GameRuntimeProviderProps = PropsWithChildren<
         | 'appBaseUrl'
         | 'authenticatedGardenQueriesEnabled'
         | 'gardenPacksEnabled'
+        | 'autumnActivityEnabled'
         | 'dayNightCycleDisabled'
         | 'flags'
         | 'freezeTime'
@@ -36,6 +37,7 @@ export function GameRuntimeProvider({
     appBaseUrl,
     authenticatedGardenQueriesEnabled = true,
     gardenPacksEnabled = false,
+    autumnActivityEnabled = false,
     children,
     dayNightCycleDisabled,
     flags,
@@ -55,6 +57,7 @@ export function GameRuntimeProvider({
             appBaseUrl: appBaseUrl || '',
             authenticatedGardenQueriesEnabled,
             gardenPacksEnabled,
+            autumnActivityEnabled,
             spriteBaseUrl,
             dayNightCycleDisabled,
             freezeTime: freezeTime || null,

@@ -2,7 +2,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import { useEffect, useMemo, useState } from 'react';
 import { GameScene } from '../../../packages/game/src/GameScene';
-import { currentAccountKeys } from '../../../packages/game/src/hooks/useCurrentAccount';
+import {
+    currentAccountKeys,
+    type useCurrentAccount,
+} from '../../../packages/game/src/hooks/useCurrentAccount';
 import {
     type CurrentGarden,
     currentGardenKeys,
@@ -53,6 +56,15 @@ const initialGarden: CurrentGarden = {
         },
     ],
 };
+type FixtureAccount = NonNullable<ReturnType<typeof useCurrentAccount>['data']>;
+const fixtureAccount = {
+    id: 'own-account',
+    timeZone: 'Europe/Zagreb',
+    createdAt: '2026-10-15T00:00:00Z',
+    updatedAt: '2026-10-15T00:00:00Z',
+    sunflowers: { amount: 0, history: [] },
+} satisfies FixtureAccount;
+
 export function AutumnPhotoStory({
     privateOwner,
 }: {
@@ -66,9 +78,9 @@ export function AutumnPhotoStory({
         const client = new QueryClient({
             defaultOptions: { queries: { retry: false, staleTime: Infinity } },
         });
-        client.setQueryData(
+        client.setQueryData<FixtureAccount | null>(
             currentAccountKeys,
-            privateOwner ? { id: 'own-account' } : null,
+            privateOwner ? fixtureAccount : null,
         );
         client.setQueryData(useGardensKeys, [fixtureGarden]);
         client.setQueryData(gardenAccountGroupsKeys, [
@@ -172,9 +184,13 @@ export function AutumnPhotoStory({
                     <button
                         type="button"
                         onClick={() =>
-                            queryClient.setQueryData(currentAccountKeys, {
-                                id: 'other-owner',
-                            })
+                            queryClient.setQueryData<FixtureAccount>(
+                                currentAccountKeys,
+                                {
+                                    ...fixtureAccount,
+                                    id: 'other-owner',
+                                },
+                            )
                         }
                     >
                         Switch fixture account

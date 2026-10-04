@@ -4,7 +4,7 @@ import { GardenTeaTableFixture } from '../../../packages/game/tests/GardenTeaTab
 import { SteamLifecycleFixture } from '../../../packages/game/tests/SteamLifecycleFixture';
 import { SteamProfileFixture } from '../../../packages/game/tests/SteamProfileFixture';
 
-// Also runs in the regular CI WebGL project, whose default timeouts suit smaller fixtures.
+// Functional cases run in regular CI; long profiles use the dedicated steam config.
 test.setTimeout(120_000);
 const expect = baseExpect.configure({ timeout: 60_000 });
 
@@ -17,9 +17,11 @@ for (const tier of ['low', 'medium', 'high'] satisfies (
     | 'medium'
     | 'high'
 )[]) {
-    test(`profile steam with dense autumn layers on ${tier}`, async ({
+    test(`profile steam with dense autumn layers on ${tier} @profile`, async ({
         mount,
     }, testInfo) => {
+        testInfo.setTimeout(600_000);
+        const expect = baseExpect.configure({ timeout: 300_000 });
         const fixture = await mount(
             <SteamProfileFixture tier={tier} steam={false} />,
         );

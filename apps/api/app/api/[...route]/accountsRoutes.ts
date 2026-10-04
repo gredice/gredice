@@ -80,6 +80,7 @@ import { getBjelovarForecast } from '../../../lib/weather/forecast';
 import { populateWeatherFromSymbol } from '../../../lib/weather/populateWeatherFromSymbol';
 import { findClosestForecastEntry } from '../../../lib/weather/weatherNowContract';
 import accountBillingRoutes from './accountBillingRoutes';
+import autumnActivityRoutes from './autumnActivityRoutes';
 import gardenPackCatalogueRoutes from './gardenPackCatalogueRoutes';
 import gardenPacksRoutes from './gardenPacksRoutes';
 
@@ -268,6 +269,7 @@ function pickSunflowerBlock<T extends { id: string }>(blocks: T[]) {
 
 const app = new Hono<{ Variables: AuthVariables }>()
     .route('/current/billing', accountBillingRoutes)
+    .route('/current/autumn-activity', autumnActivityRoutes)
     .route('/current/garden-packs', gardenPacksRoutes)
     .route('/current/garden-pack-catalogue', gardenPackCatalogueRoutes)
     .get(
