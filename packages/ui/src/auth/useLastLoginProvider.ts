@@ -2,18 +2,28 @@
 
 import { useEffect, useState } from 'react';
 
-export type OAuthProvider = 'google' | 'facebook';
+import {
+    acquireLastLoginProvider,
+    type FetchLastLogin,
+    type OAuthProvider,
+} from './lastLoginProviderRequest';
+
+export type { OAuthProvider } from './lastLoginProviderRequest';
 
 const defaultDelaysMs = [0, 250, 750];
 
 export function useLastLoginProvider(
-    fetchLastLogin: () => Promise<Response>,
+    fetchLastLogin: FetchLastLogin,
     delaysMs: number[] = defaultDelaysMs,
+    enabled = true,
 ) {
     const [lastLoginProvider, setLastLoginProvider] = useState<OAuthProvider>();
 
     useEffect(() => {
+        setLastLoginProvider(undefined);
+        if (!enabled) return;
         let isMounted = true;
+        let releaseRequest: (() => void) | undefined;
 
         const fetchLastLoginProvider = async () => {
             for (const delayMs of delaysMs) {
@@ -31,29 +41,18 @@ export function useLastLoginProvider(
                 }
 
                 try {
-                    const response = await fetchLastLogin();
-                    if (!response.ok) {
-                        continue;
-                    }
-
-                    const data: unknown = await response.json();
-                    if (
-                        data &&
-                        typeof data === 'object' &&
-                        'provider' in data
-                    ) {
-                        const provider = data.provider;
-                        if (
-                            (provider === 'google' ||
-                                provider === 'facebook') &&
-                            isMounted
-                        ) {
-                            setLastLoginProvider(provider);
-                        }
+                    const request = acquireLastLoginProvider(fetchLastLogin);
+                    releaseRequest = request.release;
+                    const provider = await request.promise;
+                    if (isMounted) {
+                        setLastLoginProvider(provider);
                     }
                     return;
                 } catch {
                     // retry
+                } finally {
+                    releaseRequest?.();
+                    releaseRequest = undefined;
                 }
             }
         };
@@ -62,8 +61,9 @@ export function useLastLoginProvider(
 
         return () => {
             isMounted = false;
+            releaseRequest?.();
         };
-    }, [delaysMs, fetchLastLogin]);
+    }, [delaysMs, enabled, fetchLastLogin]);
 
-    return lastLoginProvider;
+    return enabled ? lastLoginProvider : undefined;
 }

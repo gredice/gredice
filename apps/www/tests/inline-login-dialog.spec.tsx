@@ -27,6 +27,60 @@ test.beforeEach(async ({ page }) => {
     );
 });
 
+test('closed gallery dialogs make no requests and reopening reads the current hint', async ({
+    mount,
+    page,
+}) => {
+    let requests = 0;
+    let provider: string | null = 'google';
+    await page.route('**/api/gredice/api/auth/last-login', async (route) => {
+        requests += 1;
+        await route.fulfill({ status: 200, json: { provider } });
+    });
+    await mount(<InlineLoginDialogHarness count={207} initiallyOpen={false} />);
+    await expect(
+        page.getByRole('button', { name: 'Otvori prijavu 207', exact: true }),
+    ).toBeVisible();
+    // Allow the old eager effect and its retry window to run: this fails before the fix.
+    await page.waitForTimeout(1100);
+    expect(requests).toBe(0);
+    await page
+        .getByRole('button', { name: 'Otvori prijavu 207', exact: true })
+        .click();
+    await expect.poll(() => requests).toBe(1);
+    await expect(page.getByText('Zadnje korišteno')).toBeVisible();
+    await page.keyboard.press('Escape');
+    provider = null;
+    await page
+        .getByRole('button', { name: 'Otvori prijavu 1', exact: true })
+        .click();
+    await expect.poll(() => requests).toBe(2);
+    await expect(page.getByText('Zadnje korišteno')).toHaveCount(0);
+});
+
+test('closing a dialog stops hint retries after a failed request', async ({
+    mount,
+    page,
+}) => {
+    let requests = 0;
+    await page.route('**/api/gredice/api/auth/last-login', async (route) => {
+        requests += 1;
+        await route.fulfill({ status: 503 });
+    });
+    const firstFailure = page.waitForResponse(
+        (response) =>
+            response.url().includes('/api/gredice/api/auth/last-login') &&
+            response.status() === 503,
+    );
+    await mount(<InlineLoginDialogHarness />);
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await firstFailure;
+    await page.keyboard.press('Escape');
+    const requestsAtClose = requests;
+    await page.waitForTimeout(1100);
+    expect(requests).toBe(requestsAtClose);
+});
+
 test('shows social login first and expands email login on request', async ({
     mount,
     page,

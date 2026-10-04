@@ -16,20 +16,15 @@ import { Typography } from '@gredice/ui/Typography';
 import { usePostHog } from '@posthog/next';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import {
-    type ReactNode,
-    useCallback,
-    useEffect,
-    useId,
-    useRef,
-    useState,
-} from 'react';
+import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import {
     type GardenOAuthProvider,
     getGardenOAuthStartUrl,
 } from '../../lib/auth/gardenAuthContinuation';
 import { EmailPasswordForm } from './EmailPasswordForm';
 import LoginBanner from './LoginBanner';
+
+const fetchLastLogin = () => clientPublic().api.auth['last-login'].$get();
 
 type AuthTab = 'login' | 'register';
 type RegistrationSuccessHref =
@@ -82,11 +77,11 @@ export default function LoginModal({
         useState(false);
     const emailTriggerId = useId();
     const restoreEmailTriggerFocusRef = useRef(false);
-    const fetchLastLogin = useCallback(
-        () => clientPublic().api.auth['last-login'].$get(),
-        [],
+    const lastLoginProvider = useLastLoginProvider(
+        fetchLastLogin,
+        undefined,
+        open,
     );
-    const lastLoginProvider = useLastLoginProvider(fetchLastLogin);
 
     useEffect(() => {
         if (!open) {
