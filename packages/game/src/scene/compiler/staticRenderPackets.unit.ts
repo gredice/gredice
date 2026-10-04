@@ -5,6 +5,7 @@ import { meshGeometryLayoutSignature } from './meshBuffers';
 import {
     planStaticRenderPackets,
     readStaticRenderPacketMetrics,
+    type StaticRenderPacket,
     type StaticRenderPacketContribution,
     StaticRenderPacketRegistry,
 } from './staticRenderPackets';
@@ -251,5 +252,367 @@ describe('static render packet registry', () => {
         registry.set('ground', []);
         assert.equal(registry.getSnapshot().length, 0);
         unsubscribe();
+    });
+
+    it('publishes a current snapshot synchronously and preserves no-op notifications', () => {
+        const registry = new StaticRenderPacketRegistry();
+        const snapshots: (readonly StaticRenderPacket[])[] = [];
+        registry.subscribe(() => snapshots.push(registry.getSnapshot()));
+        const a = contribution('a');
+        registry.set('a', [a]);
+        assert.equal(snapshots.length, 1);
+        assert.equal(snapshots[0], registry.getSnapshot());
+        assert.deepEqual(snapshots[0]?.[0]?.contributions, [a]);
+        registry.set('a', [a]);
+        registry.delete('missing');
+        registry.set('missing', []);
+        assert.equal(snapshots.length, 1);
+        const b = contribution('b', { chunkKey: '1:0' });
+        registry.set('a', [b]);
+        assert.equal(snapshots.length, 2);
+        assert.deepEqual(snapshots[1]?.[0]?.contributions, [b]);
+        registry.set('a', []);
+        assert.equal(snapshots.length, 3);
+        assert.equal(snapshots[2]?.length, 0);
+    });
+
+    it('preserves occurrence multiplicity and stable tied-id owner ordering', () => {
+        const registry = new StaticRenderPacketRegistry();
+        const repeated = contribution('same');
+        const second = contribution('same', { geometry: wide });
+        registry.set('first', [repeated, repeated]);
+        registry.set('second', [second, repeated]);
+        assert.deepEqual(registry.getSnapshot()[0]?.contributions, [
+            repeated,
+            repeated,
+            second,
+            repeated,
+        ]);
+        const replacement = contribution('same', {
+            instances: [{ position: [7, 0, 1], rotation: 0 }],
+        });
+        registry.set('first', [replacement]);
+        assert.deepEqual(registry.getSnapshot()[0]?.contributions, [
+            replacement,
+            second,
+            repeated,
+        ]);
+        registry.delete('first');
+        registry.set('first', [replacement]);
+        assert.deepEqual(registry.getSnapshot()[0]?.contributions, [
+            second,
+            repeated,
+            replacement,
+        ]);
+        registry.delete('second');
+        const packet = registry.getSnapshot()[0];
+        assert.deepEqual(packet?.contributions, [replacement]);
+        assert.equal(packet?.sources.length, 1);
+        assert.equal(packet?.instanceCount, 1);
+    });
+
+    it('updates both sides of every packet-key migration and retains unrelated sources', () => {
+        const migrations: Partial<StaticRenderPacketContribution>[] = [
+            { chunkKey: '1:0' },
+            { material: otherMaterial },
+            { castShadow: false },
+            { receiveShadow: false },
+            { renderOrder: 2 },
+            { cacheGroup: 'static-props' },
+            { layoutSignature: 'other' },
+        ];
+        for (const migration of migrations) {
+            const registry = new StaticRenderPacketRegistry();
+            const a = contribution('a');
+            const peer = contribution('peer');
+            const unrelated = contribution('unrelated', {
+                chunkKey: 'unrelated',
+            });
+            registry.set('a', [a]);
+            registry.set('peer', [peer]);
+            registry.set('unrelated', [unrelated]);
+            const before = registry.getSnapshot();
+            const retained = before.find(
+                ({ chunkKey }) => chunkKey === 'unrelated',
+            );
+            const moved = contribution('a', migration);
+            registry.set('a', [moved]);
+            const after = registry.getSnapshot();
+            assert.deepEqual(
+                after,
+                planStaticRenderPackets([moved, peer, unrelated], before),
+            );
+            assert.equal(after.length, 3);
+            assert.equal(
+                after.find(({ chunkKey }) => chunkKey === 'unrelated'),
+                retained,
+            );
+            assert.equal(
+                after.find(({ chunkKey }) => chunkKey === 'unrelated')?.sources,
+                retained?.sources,
+            );
+            registry.set('a', [a]);
+            const joined = registry.getSnapshot();
+            assert.deepEqual(
+                joined,
+                planStaticRenderPackets([a, peer, unrelated], after),
+            );
+            assert.equal(joined.length, 2);
+            assert.equal(
+                joined.find(({ chunkKey }) => chunkKey === 'unrelated'),
+                retained,
+            );
+        }
+    });
+
+    it('keeps signed-empty buckets and telemetry without rebuilding compiler inputs', () => {
+        const registry = new StaticRenderPacketRegistry();
+        let notifications = 0;
+        registry.subscribe(() => notifications++);
+        const empty = contribution('a', {
+            instances: [],
+            placementSignature: 'first',
+        });
+        registry.set('empty', [empty]);
+        const initial = registry.getSnapshot();
+        assert.equal(initial.length, 0);
+        const drawable = contribution('b');
+        registry.set('drawable', [drawable]);
+        const packet = registry.getSnapshot()[0];
+        assert.ok(packet);
+        assert.deepEqual(packet.placementContributions, [empty, drawable]);
+        const changed = { ...empty, placementSignature: 'second' };
+        registry.set('empty', [changed]);
+        const telemetry = registry.getSnapshot()[0];
+        assert.notEqual(telemetry, packet);
+        assert.equal(telemetry?.sources, packet.sources);
+        assert.equal(telemetry?.contributions, packet.contributions);
+        const unsigned = { ...changed, placementSignature: undefined };
+        registry.set('empty', [unsigned]);
+        const withoutTelemetry = registry.getSnapshot()[0];
+        assert.equal(withoutTelemetry?.sources, packet.sources);
+        assert.deepEqual(withoutTelemetry?.placementContributions, [drawable]);
+        const snapshot = registry.getSnapshot();
+        registry.set('empty', [contribution('ignored', { instances: [] })]);
+        assert.equal(registry.getSnapshot(), snapshot);
+        assert.equal(notifications, 5);
+        registry.delete('drawable');
+        assert.equal(registry.getSnapshot().length, 0);
+        registry.set('empty', [changed]);
+        assert.equal(registry.getSnapshot().length, 0);
+        registry.set('drawable', [drawable]);
+        assert.deepEqual(registry.getSnapshot()[0]?.placementContributions, [
+            changed,
+            drawable,
+        ]);
+        const becameDrawable = {
+            ...changed,
+            instances: drawable.instances,
+        };
+        registry.set('empty', [becameDrawable]);
+        const withBothSources = registry.getSnapshot()[0];
+        assert.deepEqual(withBothSources?.contributions, [
+            becameDrawable,
+            drawable,
+        ]);
+        assert.equal(withBothSources?.sources.length, 2);
+        registry.set('empty', [changed]);
+        const backToTelemetry = registry.getSnapshot()[0];
+        assert.deepEqual(backToTelemetry?.contributions, [drawable]);
+        assert.equal(backToTelemetry?.sources.length, 1);
+        assert.notEqual(backToTelemetry?.sources, withBothSources?.sources);
+    });
+
+    it('coalesces unread replacements and committed setup-cleanup-setup without stale members', () => {
+        const registry = new StaticRenderPacketRegistry();
+        const a = contribution('a');
+        registry.set('owner', [a]);
+        const original = registry.getSnapshot();
+        registry.set('owner', [
+            contribution('transient', { chunkKey: 'other' }),
+        ]);
+        registry.set('owner', [a]);
+        assert.equal(registry.getSnapshot(), original);
+        registry.delete('owner');
+        registry.set('owner', [a]);
+        assert.equal(registry.getSnapshot(), original);
+        registry.delete('owner');
+        assert.equal(registry.getSnapshot().length, 0);
+        // An aborted render never calls the layout-effect registration writer.
+        const otherRoot = new StaticRenderPacketRegistry();
+        assert.equal(otherRoot.getSnapshot().length, 0);
+        registry.set('owner', [a]);
+        assert.equal(otherRoot.getSnapshot().length, 0);
+        assert.deepEqual(registry.getSnapshot()[0]?.contributions, [a]);
+    });
+
+    it('allows reentrant updates before later synchronous subscribers read the snapshot', () => {
+        const registry = new StaticRenderPacketRegistry();
+        const a = contribution('a');
+        const b = contribution('b');
+        const seen: string[][] = [];
+        let nested = false;
+        registry.subscribe(() => {
+            seen.push(
+                registry
+                    .getSnapshot()
+                    .flatMap(({ contributions }) =>
+                        contributions.map(({ id }) => id),
+                    ),
+            );
+            if (!nested) {
+                nested = true;
+                registry.set('nested', [b]);
+            }
+        });
+        registry.subscribe(() => {
+            seen.push(
+                registry
+                    .getSnapshot()
+                    .flatMap(({ contributions }) =>
+                        contributions.map(({ id }) => id),
+                    ),
+            );
+        });
+        registry.set('outer', [a]);
+        assert.deepEqual(seen, [['a'], ['a', 'b'], ['a', 'b'], ['a', 'b']]);
+        assert.deepEqual(registry.getSnapshot()[0]?.contributions, [a, b]);
+    });
+
+    it('preserves live subscription changes while notifying', () => {
+        const registry = new StaticRenderPacketRegistry();
+        const called: string[] = [];
+        let removeSecond = () => {};
+        let changed = false;
+        registry.subscribe(() => {
+            called.push('first');
+            if (!changed) {
+                changed = true;
+                removeSecond();
+                registry.subscribe(() => called.push('third'));
+            }
+        });
+        removeSecond = registry.subscribe(() => called.push('second'));
+        registry.set('owner', [contribution('a')]);
+        assert.deepEqual(called, ['first', 'third']);
+    });
+
+    it('never revisits unrelated contribution keys on synchronous registration, replacement or deletion', () => {
+        const registry = new StaticRenderPacketRegistry();
+        registry.subscribe(() => registry.getSnapshot());
+        const reads = new Map<string, number>();
+        for (let index = 0; index < 64; index++) {
+            const id = `owner-${index}`;
+            const previous = new Map(reads);
+            const base = contribution(id, { chunkKey: `chunk-${index}` });
+            const tracked = {
+                ...base,
+                get layoutSignature() {
+                    reads.set(id, (reads.get(id) ?? 0) + 1);
+                    return base.layoutSignature;
+                },
+            };
+            registry.set(id, [tracked]);
+            for (const [owner, count] of previous)
+                assert.equal(reads.get(owner), count);
+        }
+        const before = registry.getSnapshot();
+        const previous = new Map(reads);
+        registry.delete('owner-0');
+        for (const [owner, count] of previous)
+            assert.equal(reads.get(owner), count);
+        const afterDelete = registry.getSnapshot();
+        for (const packet of afterDelete) {
+            const old = before.find(({ key }) => key === packet.key);
+            assert.equal(packet, old);
+            assert.equal(packet.sources, old?.sources);
+        }
+        registry.set('owner-1', [
+            contribution('replacement', { chunkKey: 'replacement' }),
+        ]);
+        for (const [owner, count] of previous)
+            assert.equal(reads.get(owner), count);
+        assert.equal(
+            registry.getSnapshot().flatMap(({ contributions }) => contributions)
+                .length,
+            63,
+        );
+    });
+
+    it('matches the full planner oracle through ordered owner mutations and delayed snapshots', () => {
+        const registry = new StaticRenderPacketRegistry();
+        const owners = new Map<
+            string,
+            readonly StaticRenderPacketContribution[]
+        >();
+        const inputs = Array.from({ length: 12 }, (_, index) =>
+            contribution(`id-${index % 3}`, {
+                chunkKey: `chunk-${index % 4}`,
+                instances:
+                    index % 5 === 0
+                        ? []
+                        : [{ position: [index, 0, 1], rotation: 0 }],
+                placementSignature:
+                    index % 5 === 0 && index % 2 === 0
+                        ? `placement-${index}`
+                        : undefined,
+                material: index % 2 === 0 ? sharedMaterial : otherMaterial,
+            }),
+        );
+        let expected: readonly StaticRenderPacket[] = [];
+        let previousActual = registry.getSnapshot();
+        let random = 12345;
+        const next = () => {
+            random = (Math.imul(random, 1664525) + 1013904223) >>> 0;
+            return random >>> 8;
+        };
+        const check = () => {
+            const previousExpected = expected;
+            expected = planStaticRenderPackets(
+                [...owners.values()].flat(),
+                expected,
+            );
+            const actual = registry.getSnapshot();
+            assert.deepEqual(actual, expected);
+            if (expected === previousExpected)
+                assert.equal(actual, previousActual);
+            const unchanged = new Set(
+                expected
+                    .filter((packet) => previousExpected.includes(packet))
+                    .map(({ key }) => key),
+            );
+            for (const packet of actual) {
+                if (!unchanged.has(packet.key)) continue;
+                const old = previousActual.find(
+                    ({ key }) => key === packet.key,
+                );
+                assert.equal(packet, old);
+                assert.equal(packet.sources, old?.sources);
+            }
+            previousActual = actual;
+        };
+        for (let index = 0; index < 180; index++) {
+            const owner = `owner-${next() % 9}`;
+            if (next() % 4 === 0) {
+                owners.delete(owner);
+                registry.delete(owner);
+            } else {
+                const first = inputs[next() % inputs.length];
+                const second = inputs[next() % inputs.length];
+                assert.ok(first);
+                assert.ok(second);
+                const members =
+                    index % 7 === 0
+                        ? []
+                        : index % 3 === 0
+                          ? [first, first, second]
+                          : [first, second];
+                if (members.length) owners.set(owner, members);
+                else owners.delete(owner);
+                registry.set(owner, members);
+            }
+            if (index % 3 === 0) check();
+        }
+        check();
     });
 });

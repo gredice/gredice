@@ -269,47 +269,110 @@ export function recordStaticRenderPacketFallbackComponent(
     publishMetrics();
 }
 
+type StaticRenderPacketOwner = {
+    contributions: readonly StaticRenderPacketContribution[];
+    order: number;
+    members: Map<string, StaticRenderPacketContribution[]>;
+};
+
 /**
- * Collects contributions from every participating component under one
- * provider and plans packets lazily, once per change, for all of them.
+ * Registered contributions, their ordered arrays and instance membership are
+ * immutable. Owners replace them through `set`; layout effects publish only
+ * committed inputs. A snapshot replans the changed keys without revisiting
+ * unrelated owners, while notifications and presentation remain synchronous.
  */
 export class StaticRenderPacketRegistry {
-    private readonly owners = new Map<
+    private readonly owners = new Map<string, StaticRenderPacketOwner>();
+    private readonly membersByKey = new Map<
         string,
-        readonly StaticRenderPacketContribution[]
+        Map<
+            string,
+            { order: number; contributions: StaticRenderPacketContribution[] }
+        >
     >();
+    private readonly packetByKey = new Map<string, StaticRenderPacket>();
+    private readonly dirtyKeys = new Set<string>();
     private readonly listeners = new Set<() => void>();
     private packets: readonly StaticRenderPacket[] = [];
-    private dirty = false;
+    private nextOwnerOrder = 0;
 
     set(
         owner: string,
         contributions: readonly StaticRenderPacketContribution[],
     ) {
         const previous = this.owners.get(owner);
-        if (previous && sameContributions(previous, contributions)) return;
+        if (
+            previous &&
+            sameContributions(previous.contributions, contributions)
+        )
+            return;
         if (contributions.length === 0) {
             if (!previous) return;
             this.owners.delete(owner);
-        } else this.owners.set(owner, contributions);
-        this.invalidate();
+            this.removeMembers(owner, previous);
+        } else {
+            const members = new Map<string, StaticRenderPacketContribution[]>();
+            for (const contribution of contributions) {
+                if (
+                    contribution.instances.length === 0 &&
+                    !contribution.placementSignature
+                )
+                    continue;
+                const key = staticRenderPacketKey(contribution);
+                const group = members.get(key);
+                if (group) group.push(contribution);
+                else members.set(key, [contribution]);
+            }
+            const order = previous?.order ?? this.nextOwnerOrder++;
+            if (previous) this.removeMembers(owner, previous);
+            this.owners.set(owner, { contributions, order, members });
+            for (const [key, group] of members) {
+                let bucket = this.membersByKey.get(key);
+                if (!bucket) {
+                    bucket = new Map();
+                    this.membersByKey.set(key, bucket);
+                }
+                bucket.set(owner, { order, contributions: group });
+                this.dirtyKeys.add(key);
+            }
+        }
+        this.notify();
     }
 
     delete(owner: string) {
-        if (this.owners.delete(owner)) this.invalidate();
+        const previous = this.owners.get(owner);
+        if (!previous) return;
+        this.owners.delete(owner);
+        this.removeMembers(owner, previous);
+        this.notify();
     }
 
     getSnapshot = () => {
-        if (this.dirty) {
-            this.dirty = false;
-            const next = planStaticRenderPackets(
-                [...this.owners.values()].flat(),
-                this.packets,
+        let changed = false;
+        for (const key of this.dirtyKeys) {
+            const bucket = this.membersByKey.get(key);
+            const previous = this.packetByKey.get(key);
+            const members = bucket
+                ? [...bucket.values()]
+                      .sort((left, right) => left.order - right.order)
+                      .flatMap(({ contributions }) => contributions)
+                : [];
+            const [next] = planStaticRenderPackets(
+                members,
+                previous ? [previous] : [],
             );
-            if (next !== this.packets) {
-                this.packets = next;
-                recordStaticRenderPacketPlan(next);
+            if (next !== previous) {
+                changed = true;
+                if (next) this.packetByKey.set(key, next);
+                else this.packetByKey.delete(key);
             }
+        }
+        this.dirtyKeys.clear();
+        if (changed) {
+            this.packets = [...this.packetByKey.values()].sort((left, right) =>
+                left.key < right.key ? -1 : left.key > right.key ? 1 : 0,
+            );
+            recordStaticRenderPacketPlan(this.packets);
         }
         return this.packets;
     };
@@ -321,8 +384,16 @@ export class StaticRenderPacketRegistry {
         };
     };
 
-    private invalidate() {
-        this.dirty = true;
+    private removeMembers(owner: string, previous: StaticRenderPacketOwner) {
+        for (const key of previous.members.keys()) {
+            const bucket = this.membersByKey.get(key);
+            bucket?.delete(owner);
+            if (bucket?.size === 0) this.membersByKey.delete(key);
+            this.dirtyKeys.add(key);
+        }
+    }
+
+    private notify() {
         for (const listener of this.listeners) listener();
     }
 }
