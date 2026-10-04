@@ -138,7 +138,7 @@ test('queueSeasonalSowingOfferOperations skips dates without a seasonal offer', 
     );
 });
 
-test('queueSeasonalSowingOfferOperations skips days with existing scheduled free waterings', async () => {
+test('queueSeasonalSowingOfferOperations skips when seasonal free watering was already consumed', async () => {
     createTestDb();
     const { accountId, gardenId, raisedBedId } =
         await createSeasonalOfferTestContext();
@@ -162,17 +162,10 @@ test('queueSeasonalSowingOfferOperations skips days with existing scheduled free
         referenceDate: new Date('2026-06-15T08:00:00.000Z'),
     });
 
-    assert.strictEqual(createdOperationIds.length, 5);
+    assert.deepStrictEqual(createdOperationIds, []);
     assert.deepStrictEqual(
         await getScheduledFreeWateringDates(accountId, gardenId, raisedBedId),
-        [
-            '2026-06-15T08:00:00.000Z',
-            '2026-06-16T08:00:00.000Z',
-            '2026-06-17T08:00:00.000Z',
-            '2026-06-18T08:00:00.000Z',
-            '2026-06-19T08:00:00.000Z',
-            '2026-06-20T08:00:00.000Z',
-        ],
+        ['2026-06-20T08:00:00.000Z'],
     );
 });
 
@@ -205,4 +198,60 @@ test('queueSeasonalSowingOfferOperations does not duplicate existing offer days 
             '2026-03-14T08:00:00.000Z',
         ],
     );
+});
+
+test('queueSeasonalSowingOfferOperations does not mint a second offer later in the same season', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createSeasonalOfferTestContext();
+
+    const firstRun = await queueSeasonalSowingOfferOperations({
+        accountId,
+        gardenId,
+        raisedBedId,
+        referenceDate: new Date('2026-06-01T08:00:00.000Z'),
+    });
+
+    const secondRun = await queueSeasonalSowingOfferOperations({
+        accountId,
+        gardenId,
+        raisedBedId,
+        referenceDate: new Date('2026-06-10T08:00:00.000Z'),
+    });
+
+    assert.strictEqual(firstRun.length, 5);
+    assert.strictEqual(secondRun.length, 0);
+    assert.deepStrictEqual(
+        await getScheduledFreeWateringDates(accountId, gardenId, raisedBedId),
+        [
+            '2026-06-01T08:00:00.000Z',
+            '2026-06-02T08:00:00.000Z',
+            '2026-06-03T08:00:00.000Z',
+            '2026-06-04T08:00:00.000Z',
+            '2026-06-05T08:00:00.000Z',
+        ],
+    );
+});
+
+test('queueSeasonalSowingOfferOperations allows a new offer in a later season', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createSeasonalOfferTestContext();
+
+    const springRun = await queueSeasonalSowingOfferOperations({
+        accountId,
+        gardenId,
+        raisedBedId,
+        referenceDate: new Date('2026-03-10T08:00:00.000Z'),
+    });
+
+    const summerRun = await queueSeasonalSowingOfferOperations({
+        accountId,
+        gardenId,
+        raisedBedId,
+        referenceDate: new Date('2026-06-01T08:00:00.000Z'),
+    });
+
+    assert.strictEqual(springRun.length, 3);
+    assert.strictEqual(summerRun.length, 5);
 });

@@ -7,6 +7,8 @@ export const FREE_WATERING_OPERATION_ID = 274;
 type SeasonalSowingOffer = {
     freeWaterings: number;
     dayInterval: number;
+    seasonStartMonth: number;
+    seasonEndMonth: number;
 };
 
 function getSeasonalSowingOffer(date: Date): SeasonalSowingOffer | null {
@@ -16,6 +18,8 @@ function getSeasonalSowingOffer(date: Date): SeasonalSowingOffer | null {
         return {
             freeWaterings: 3,
             dayInterval: 2,
+            seasonStartMonth: 3,
+            seasonEndMonth: 5,
         };
     }
 
@@ -23,6 +27,8 @@ function getSeasonalSowingOffer(date: Date): SeasonalSowingOffer | null {
         return {
             freeWaterings: 5,
             dayInterval: 1,
+            seasonStartMonth: 6,
+            seasonEndMonth: 8,
         };
     }
 
@@ -30,6 +36,8 @@ function getSeasonalSowingOffer(date: Date): SeasonalSowingOffer | null {
         return {
             freeWaterings: 3,
             dayInterval: 2,
+            seasonStartMonth: 9,
+            seasonEndMonth: 11,
         };
     }
 
@@ -38,6 +46,17 @@ function getSeasonalSowingOffer(date: Date): SeasonalSowingOffer | null {
 
 function toUtcDayKey(date: Date) {
     return date.toISOString().slice(0, 10);
+}
+
+function getSeasonWindow(date: Date, offer: SeasonalSowingOffer) {
+    const seasonStart = new Date(
+        Date.UTC(date.getUTCFullYear(), offer.seasonStartMonth - 1, 1),
+    );
+    const seasonEnd = new Date(
+        Date.UTC(date.getUTCFullYear(), offer.seasonEndMonth, 1),
+    );
+
+    return { seasonStart, seasonEnd };
 }
 
 function getScheduledWateringDayKeys(
@@ -57,6 +76,33 @@ function getScheduledWateringDayKeys(
             return [toUtcDayKey(operation.scheduledDate)];
         }),
     );
+}
+
+function hasConsumedSeasonalOffer(
+    operations: Awaited<ReturnType<typeof getOperations>>,
+    {
+        seasonStart,
+        seasonEnd,
+    }: {
+        seasonStart: Date;
+        seasonEnd: Date;
+    },
+) {
+    return operations.some((operation) => {
+        if (
+            operation.entityId !== FREE_WATERING_OPERATION_ID ||
+            operation.status === 'canceled' ||
+            operation.status === 'failed' ||
+            !operation.scheduledDate
+        ) {
+            return false;
+        }
+
+        return (
+            operation.scheduledDate >= seasonStart &&
+            operation.scheduledDate < seasonEnd
+        );
+    });
 }
 
 function addDays(date: Date, days: number) {
@@ -86,6 +132,11 @@ export async function queueSeasonalSowingOfferOperations({
         gardenId,
         raisedBedId,
     );
+
+    const seasonWindow = getSeasonWindow(referenceDate, offer);
+    if (hasConsumedSeasonalOffer(existingOperations, seasonWindow)) {
+        return [];
+    }
 
     const scheduledWateringDayKeys =
         getScheduledWateringDayKeys(existingOperations);
