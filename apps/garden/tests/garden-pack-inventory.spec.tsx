@@ -1,6 +1,59 @@
 import { expect, test } from '@playwright/experimental-ct-react';
+import { getLocalSandboxBlockData } from '../../../packages/game/src/localSandboxBlockData';
 import { createOwnedGardenPackFixture } from '../../../packages/game/tests/ownedGardenPackFixture';
 import { GardenPackInventoryStory } from './GardenPackInventoryStory';
+
+test('catalogue loading and HTTP failure preserve paid contents and retry the catalogue', async ({
+    mount,
+    page,
+}) => {
+    let attempts = 0;
+    let release: (() => void) | undefined;
+    await page.route('**/entities/block**', async (route) => {
+        attempts++;
+        if (attempts === 1)
+            await new Promise<void>((resolve) => {
+                release = resolve;
+            });
+        await route.fulfill({
+            status: attempts === 1 ? 503 : 200,
+            json:
+                attempts === 1
+                    ? { error: 'unavailable' }
+                    : getLocalSandboxBlockData(),
+        });
+    });
+    await mount(
+        <GardenPackInventoryStory seedBlocks={false} placementFailure />,
+    );
+    const pack = page.locator('[data-owned-pack="purchase-one"]');
+    await pack.locator('summary').click();
+    await expect(page.getByText('Učitavanje predmeta…')).toBeVisible();
+    await expect(pack).toContainText('2/3 preostalo');
+    await expect(pack).not.toContainText(
+        'Predmet trenutačno nije dostupan za prikaz.',
+    );
+    release?.();
+    await expect(page.getByRole('alert')).toContainText(
+        'Predmete trenutačno nije moguće učitati.',
+    );
+    await expect(pack).not.toContainText(
+        'Predmet trenutačno nije dostupan za prikaz.',
+    );
+    const response = page.waitForResponse('**/entities/block**');
+    await page
+        .getByRole('button', { name: 'Osvježi predmete', exact: true })
+        .click();
+    await response;
+    await expect(
+        page.getByRole('button', { name: 'Osvježi predmete', exact: true }),
+    ).toHaveCount(0);
+    await expect(
+        pack.getByRole('button', { name: /Postavi .*purchase-one/u }),
+    ).toBeEnabled();
+    await expect(pack).toContainText('2/3 preostalo');
+    expect(attempts).toBe(2);
+});
 
 test('saved purchased contents are separate, keyboard accessible and fit mobile after remount', async ({
     mount,

@@ -24,13 +24,16 @@ export function GardenPackInventory({
     previewLayouts?: boolean;
 }) {
     if (!inventory.visible) return null;
+    const catalogueUnavailable = Boolean(
+        catalogue && (catalogue.isPending || catalogue.isError || !blockData),
+    );
     return (
         <div
             className="min-w-0 space-y-3"
             aria-busy={inventory.isFetching || catalogue?.isFetching}
         >
             {catalogue?.isPending && <p role="status">Učitavanje predmeta…</p>}
-            {catalogue?.isError && (
+            {catalogue && catalogueUnavailable && !catalogue.isPending && (
                 <div role="alert" className="space-y-2">
                     <p>
                         Predmete trenutačno nije moguće učitati. Pokušaj
@@ -78,9 +81,7 @@ export function GardenPackInventory({
                     key={pack.purchaseId}
                     pack={pack}
                     blockData={blockData}
-                    catalogueUnavailable={
-                        catalogue?.isPending || catalogue?.isError
-                    }
+                    catalogueUnavailable={catalogueUnavailable}
                     placement={placement}
                     onPlaced={onPlaced}
                     previewLayouts={previewLayouts}

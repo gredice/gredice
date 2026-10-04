@@ -21,6 +21,7 @@ export function GardenPackInventoryStory({
     sandbox = false,
     anonymous = false,
     seed = true,
+    seedBlocks = true,
     placementFailure = false,
     actualPlacement = false,
 }: {
@@ -28,6 +29,7 @@ export function GardenPackInventoryStory({
     sandbox?: boolean;
     anonymous?: boolean;
     seed?: boolean;
+    seedBlocks?: boolean;
     placementFailure?: boolean;
     actualPlacement?: boolean;
 }) {
@@ -75,7 +77,7 @@ export function GardenPackInventoryStory({
                   }
                 : block,
         );
-        client.setQueryData(['blocks'], blocks);
+        if (seedBlocks) client.setQueryData(['blocks'], blocks);
         if (seed) {
             const partial = createOwnedGardenPackFixture();
             const unopened = {
@@ -123,7 +125,7 @@ export function GardenPackInventoryStory({
             );
         }
         return client;
-    }, [anonymous, sandbox, seed]);
+    }, [anonymous, sandbox, seed, seedBlocks]);
     useEffect(() => {
         const switchAccount = () => {
             queryClient.setQueryData(currentAccountKeys, { id: 'account-two' });
