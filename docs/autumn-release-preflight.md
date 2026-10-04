@@ -117,3 +117,22 @@ IDs, cover/geometry/metadata, immutable recipe versions, sales-off, artifact tru
 file bounds, escaping symlink and CLI/overwrite regressions in existing API node CI.
 It requires no workflow change, database, live configuration or asset regeneration.
 Existing sample workflow pins are preserved.
+
+## Dated prepared-candidate output (2026-10-04)
+
+The committed [manifest](autumn-release-2026/2026-10-04-preflight/manifest.json),
+[report](autumn-release-2026/2026-10-04-preflight/report.json) and
+[validation identities](autumn-release-2026/2026-10-04-preflight/validation.json)
+were generated from clean `22e48526d2b5f7e03386cb6540733386296c92db` with
+394 inspected files. Source is ready; release is blocked. The supplied public export
+was freshly observed at **2026-10-03T23:10:28Z** (October 4 in Zagreb), with 144 rows,
+CDN MISS/Age 0 and the same bytes as the earlier observation. This is public readback,
+not direct database verification.
+
+All 24 new family rows are absent. The exact recipes are missing ten models;
+StoneMedium `140` (5 suncokreta) and EnamelGardenLamp `758` (80 suncokreta) resolve
+with matching metadata. Three actual offers and the six independent release gates
+remain unverified. No IDs, prices or versions were invented to fill those gaps.
+Eleven focused cases pass both in the normal workspace and a fresh API-only source
+archive; API compilation passes. These outputs are a dated checkpoint, not current
+production configuration or a future-release certificate.

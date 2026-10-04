@@ -65,3 +65,9 @@ fallback, interaction/cleanup and the bundle economy matrix remain separate
 those gates or authorize campaign/catalogue publication.
 
 The [2026-10-04 local production readback](./autumn-release-2026/2026-10-04-launch-profile/README.md) archives a corrected 18-case pass plus the rejected sky-only first run. It retains the standard-camera visible-subset limitation and physical-device gates.
+
+The normal `test:profile` command also runs the two selected-fixture regressions
+with the existing tsx dependency, so Garden `test:ci:prepare` checks them without
+changing the workflow or recorded scene-input pins. The measurement record retains
+its actual earlier clean source; this subsequent test registration changes no
+production/profile runtime or captured result.

@@ -76,6 +76,25 @@ starter packs select twelve exact models, including two existing catalogue
 models. Family and pack coverage are distinct. No products, campaign dates,
 rollout flags or catalogue publications are activated by this continuation.
 
+The [selected-launch production profile](autumn-launch-profiling.md) now records
+18 corrected cases on clean `22e48526d2b5f7e03386cb6540733386296c92db` using
+native Metal on Apple M4 Pro. Existing budgets and comparability pass. The initial
+run whose medium-mobile view showed mostly sky is retained as rejected evidence;
+corrected views enforce visible geometry and received representative Astra review.
+The normal camera shows a central subset: density increases total/offscreen runtime
+data, not nine full sets simultaneously submitted. This does not establish worst-case
+on-screen density, all 24 rendered identities, or physical mobile/audio/thermal readiness.
+Garden compilation passes with `tsc --noEmit --incremental false`; the earlier
+incremental typed-route diagnostic is recorded as local cache state.
+
+The [consolidated preflight output](autumn-release-2026/2026-10-04-preflight/report.json)
+is source-ready and release-blocked. The fresh public observation still lacks all
+24 new family rows and ten recipe ingredients. Exact published products, deployment
+bytes, storage rollout, combined QA acceptance, physical devices and authorized
+live commerce remain open. The two ordinary Kestenijada photo cases are being
+handled in a separate bounded functional-test follow-up; no performance budget
+or strict source assertion is relaxed by this tooling.
+
 ## Release scope
 
 The A/B pilot consists of the Jesen picker, the twelve first-wave prop families,
