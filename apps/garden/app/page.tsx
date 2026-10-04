@@ -7,6 +7,7 @@ import { TemporaryAccountUpgradeModal } from '../components/auth/TemporaryAccoun
 import { GameSceneWithAnalytics } from '../components/game/GameSceneWithAnalytics';
 import { GardenRouteLoading } from '../components/game/GardenRouteLoading';
 import { getGardenGameFlags } from './getGardenGameFlags';
+import { KestenijadaDiscoveryEntry } from './kestenijada/KestenijadaDiscoveryEntry';
 
 const impersonationFlagCookieName = 'gredice_impersonating';
 
@@ -40,6 +41,11 @@ async function GardenHome() {
             <SignedIn>
                 <GameSceneWithAnalytics
                     flags={flags}
+                    autumnActivityEnabled={
+                        process.env
+                            .NEXT_PUBLIC_GREDICE_AUTUMN_ACTIVITY_ENABLED ===
+                        'true'
+                    }
                     gardenPacksEnabled={
                         process.env.NEXT_PUBLIC_GREDICE_GARDEN_PACKS_ENABLED ===
                         'true'
@@ -58,6 +64,9 @@ async function GardenHome() {
                     />
                 </TemporaryAccountBootstrap>
             </SignedOut>
+            <Suspense fallback={null}>
+                <KestenijadaDiscoveryEntry />
+            </Suspense>
             <TemporaryAccountUpgradeModal />
         </div>
     );

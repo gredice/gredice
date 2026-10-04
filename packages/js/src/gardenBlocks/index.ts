@@ -451,6 +451,7 @@ export function validateStackPlacement(params: {
 }
 
 function validatePlacementAtPosition(params: {
+    requestedRotation?: number;
     blockName: string;
     position: Position;
     occupiedCells: Map<string, OccupiedCell[]>;
@@ -474,7 +475,10 @@ function validatePlacementAtPosition(params: {
     blockNameByIdWithCandidate.set(CANDIDATE_BLOCK_ID, blockName);
 
     let firstFootprintHeight: number | null = null;
-    for (const offset of getGardenBlockFootprintOffsets(blockData)) {
+    for (const offset of getGardenBlockFootprintOffsets(
+        blockData,
+        params.requestedRotation,
+    )) {
         const footprintPosition = {
             x: position.x + offset.x,
             y: position.y + offset.y,
@@ -642,6 +646,7 @@ export function resolveGardenBlockPlacement(params: {
     blockRotationById?: Map<string, number | null | undefined>;
     preferredPosition?: Position;
     requestedPosition?: Position;
+    requestedRotation?: number;
 }): GardenBlockPlacementResult {
     const {
         blockName,
@@ -664,6 +669,7 @@ export function resolveGardenBlockPlacement(params: {
             blockName,
             occupiedCells,
             position: requestedPosition,
+            requestedRotation: params.requestedRotation,
             stacks,
             blockNameById,
             blockDataByName,

@@ -1,0 +1,10 @@
+{
+  "startedAt": "2026-10-03T23:28:03.057481+00:00",
+  "sourceCommit": "9facdce16b31cc0dfc237fed49706d428c4caf97",
+  "sourceTree": "df2978505c477d93c395ca81ff689cf8f52c9dc3",
+  "status": "",
+  "command": "GAME_PROFILE_BASE_URL=http://localhost:5495 GREDICE_API_HOST=http://127.0.0.1:9 GAME_PROFILE_OUT_DIR=/tmp/gredice-autumn-launch-9facdce16 pnpm --filter garden run profile:game:autumn-launch",
+  "warmupMs": 5000,
+  "sampleMs": 5000,
+  "scope": "All24 first-wave A/B identities +2 legacy pilot extras; local native ANGLE Metal production build, not physical mobile."
+}

@@ -87,6 +87,17 @@ export const reviewedAutumnStarterPackEvidenceSchema = z.record(
             'deca1575e69ddc52eb2f3ff89ca3333b714239fd',
         ),
         captureSha256: z.string().regex(/^[a-f0-9]{64}$/),
+        recapture: z
+            .strictObject({
+                source: z.strictObject({
+                    commit: z.string().regex(/^[a-f0-9]{40}$/),
+                    tree: z.string().regex(/^[a-f0-9]{40}$/),
+                    status: z.literal(''),
+                }),
+                previousCaptureSha256: z.string().regex(/^[a-f0-9]{64}$/),
+                previousPreviewSha256: z.string().regex(/^[a-f0-9]{64}$/),
+            })
+            .optional(),
         included: z.array(
             z.object({
                 entityName: z.string(),

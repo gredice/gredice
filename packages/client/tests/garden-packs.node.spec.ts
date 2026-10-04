@@ -19,6 +19,7 @@ test('pack purchases preserve server errors and tolerate non-JSON failures', asy
             await assert.rejects(
                 purchaseGardenPack({
                     operationId: randomUUID(),
+                    expectedAccountId: randomUUID(),
                     productId: 'test-pack',
                     quote: {
                         productVersionId: 'test-pack:v1',

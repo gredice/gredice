@@ -57,7 +57,7 @@ export function GardenPackStorefrontHud() {
                         void setInventoryOpen(true);
                     }}
                 >
-                    Kupljeni paketi
+                    Moji paketi
                 </Button>
                 {review ? (
                     <GardenPackPurchaseReview
