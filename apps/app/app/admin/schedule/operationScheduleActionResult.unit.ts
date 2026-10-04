@@ -65,6 +65,21 @@ test('successful operation schedule actions return a success result', async () =
     });
 });
 
+test('successful operation schedule actions hand off the committed task version', async () => {
+    const scheduleTaskVersions = [
+        { key: 'operation:1', previous: 10, current: 11 },
+    ];
+    assert.deepEqual(
+        await runOperationScheduleAction(async () => ({
+            scheduleTaskVersions,
+        })),
+        {
+            success: true,
+            scheduleTaskVersions,
+        },
+    );
+});
+
 test('failure messages are found in single and bulk action results', () => {
     const failure = {
         success: false,

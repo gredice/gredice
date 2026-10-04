@@ -48,6 +48,7 @@ import {
     OperationScheduleConflictError,
     runOperationScheduleAction,
 } from '../admin/schedule/operationScheduleActionResult';
+import { scheduleTaskVersionChange } from '../admin/schedule/scheduleActionQueue';
 import {
     canAcceptOperationTask,
     canRescheduleOperationTask,
@@ -634,7 +635,7 @@ async function rescheduleOperation(formData: FormData) {
                 transaction,
             );
             await unacceptOperation(operationId, transaction);
-            return currentOperation;
+            return getOperationById(operationId, transaction);
         },
     );
 
@@ -643,6 +644,11 @@ async function rescheduleOperation(formData: FormData) {
     });
 
     await revalidateOperationPaths(operation);
+    return scheduleTaskVersionChange(
+        `operation:${operationId}`,
+        expectedTaskVersionEventId,
+        operation.taskVersionEventId,
+    );
 }
 
 export async function rescheduleOperationAction(formData: FormData) {
@@ -688,11 +694,16 @@ async function acceptOperationMutation(
                 );
             }
             await acceptOperation(operationId, transaction);
-            return currentOperation;
+            return getOperationById(operationId, transaction);
         },
     );
     await notifyOperationUpdate(operationId, 'approved');
     await revalidateOperationPaths(operation);
+    return scheduleTaskVersionChange(
+        `operation:${operationId}`,
+        expectedTaskVersionEventId,
+        operation.taskVersionEventId,
+    );
 }
 
 export async function acceptOperationAction(
@@ -741,7 +752,10 @@ async function unacceptOperationMutation(
             }
 
             await unacceptOperation(operationId, transaction);
-            return { changed: true, operation };
+            return {
+                changed: true,
+                operation: await getOperationById(operationId, transaction),
+            };
         },
     );
     if (!mutation.changed) {
@@ -750,6 +764,11 @@ async function unacceptOperationMutation(
 
     const { operation } = mutation;
     await revalidateOperationPaths(operation);
+    return scheduleTaskVersionChange(
+        `operation:${operationId}`,
+        expectedTaskVersionEventId,
+        operation.taskVersionEventId,
+    );
 }
 
 export async function unacceptOperationAction(
@@ -802,6 +821,11 @@ async function assignOperationUser(
     }
 
     await revalidateOperationPaths(operation);
+    return scheduleTaskVersionChange(
+        `operation:${operationId}`,
+        expectedTaskVersionEventId,
+        assignment.eventId ?? expectedTaskVersionEventId,
+    );
 }
 
 export async function assignOperationUserAction(
@@ -957,6 +981,11 @@ async function verifyOperationCompletion(
         notifySlack: result.created,
     });
     await revalidateOperationPaths(verifiedOperation);
+    return scheduleTaskVersionChange(
+        `operation:${operationId}`,
+        expectedTaskVersionEventId,
+        result.eventId,
+    );
 }
 
 type OperationCompletionActor = {
@@ -981,16 +1010,35 @@ async function completeOperationForActor(
         throw new Error('Operation must be accepted before completion');
     }
 
-    const result = await submitOperationTaskCompletion({
-        actor,
-        imageUrls,
-        notes: completionNotes,
-        operationId,
-        expectedEntityId,
-        expectedTaskVersionEventId: assertTaskVersionEventId(
-            expectedTaskVersionEventId,
-        ),
-    });
+    const { result, taskVersionEventId } =
+        await withOperationScheduleTaskTransaction(
+            operationId,
+            async (transaction) => {
+                const result = await submitOperationTaskCompletion(
+                    {
+                        actor,
+                        imageUrls,
+                        notes: completionNotes,
+                        operationId,
+                        expectedEntityId,
+                        expectedTaskVersionEventId: assertTaskVersionEventId(
+                            expectedTaskVersionEventId,
+                        ),
+                    },
+                    transaction,
+                );
+                // Admin completion also writes verification. Return the final task
+                // version while holding the same lock, rather than the completion ID.
+                const completedOperation = await getOperationById(
+                    operationId,
+                    transaction,
+                );
+                return {
+                    result,
+                    taskVersionEventId: completedOperation.taskVersionEventId,
+                };
+            },
+        );
     if (result.status === 'completed') {
         const verifiedOperation = await getOperationById(operationId);
         await notifyVerifiedOperationCompletion(verifiedOperation, {
@@ -999,6 +1047,11 @@ async function completeOperationForActor(
     }
 
     await revalidateOperationPaths(operation);
+    return scheduleTaskVersionChange(
+        `operation:${operationId}`,
+        expectedTaskVersionEventId,
+        taskVersionEventId,
+    );
 }
 
 export async function completeOperation(
@@ -1100,6 +1153,11 @@ export async function completeOperationsWithImageUrls(
 
     return {
         success: failedCount === 0,
+        scheduleTaskVersions: results.flatMap((result) =>
+            result.status === 'fulfilled'
+                ? result.value.scheduleTaskVersions
+                : [],
+        ),
         completedCount: results.length - failedCount,
         failedCount,
     };
@@ -1114,7 +1172,7 @@ async function updateOperationCompletionEvidenceMutation(
 ) {
     const { userId } = await auth(['admin']);
     const operation = await getOperationById(operationId);
-    await updateOperationCompletionEvidence({
+    const result = await updateOperationCompletionEvidence({
         administration,
         expectedTaskVersionEventId: assertTaskVersionEventId(
             expectedTaskVersionEventId,
@@ -1130,6 +1188,11 @@ async function updateOperationCompletionEvidenceMutation(
 
     const updatedOperation = await getOperationById(operationId);
     await revalidateOperationPaths(updatedOperation);
+    return scheduleTaskVersionChange(
+        `operation:${operationId}`,
+        expectedTaskVersionEventId,
+        result.eventId,
+    );
 }
 
 export async function updateOperationCompletionEvidenceAction(

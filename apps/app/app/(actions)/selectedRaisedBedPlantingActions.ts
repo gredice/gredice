@@ -17,6 +17,7 @@ import {
 import { revalidatePath } from 'next/cache';
 import { auth } from '../../lib/auth/auth';
 import { KnownPages } from '../../src/KnownPages';
+import { scheduleTaskVersionChange } from '../admin/schedule/scheduleActionQueue';
 import {
     completeSelectedRaisedBedPlantingTaskAndNotify,
     verifySelectedRaisedBedPlantingTaskAndNotify,
@@ -59,7 +60,15 @@ export async function assignSelectedPlantingTaskAction(
         commandId,
     });
     await revalidateSelectedPlantingPaths(identity.plantingId);
-    return { result, success: true as const };
+    return {
+        result,
+        success: true as const,
+        ...scheduleTaskVersionChange(
+            `selectedPlanting:${identity.plantingId}`,
+            identity.expectedLifecycleVersionEventId,
+            result.task.identity.expectedLifecycleVersionEventId,
+        ),
+    };
 }
 
 export async function rescheduleSelectedPlantingTaskAction(
@@ -76,7 +85,15 @@ export async function rescheduleSelectedPlantingTaskAction(
         sowingLocation,
     });
     await revalidateSelectedPlantingPaths(identity.plantingId);
-    return { result, success: true as const };
+    return {
+        result,
+        success: true as const,
+        ...scheduleTaskVersionChange(
+            `selectedPlanting:${identity.plantingId}`,
+            identity.expectedLifecycleVersionEventId,
+            result.task.identity.expectedLifecycleVersionEventId,
+        ),
+    };
 }
 
 export async function cancelSelectedPlantingTaskAction(
@@ -93,7 +110,15 @@ export async function cancelSelectedPlantingTaskAction(
         reason,
     });
     await revalidateSelectedPlantingPaths(identity.plantingId);
-    return { result, success: true as const };
+    return {
+        result,
+        success: true as const,
+        ...scheduleTaskVersionChange(
+            `selectedPlanting:${identity.plantingId}`,
+            identity.expectedLifecycleVersionEventId,
+            result.task.identity.expectedLifecycleVersionEventId,
+        ),
+    };
 }
 
 export async function completeSelectedPlantingTaskAction(
@@ -106,7 +131,15 @@ export async function completeSelectedPlantingTaskAction(
         commandId,
     });
     await revalidateSelectedPlantingPaths(identity.plantingId);
-    return { result, success: true as const };
+    return {
+        result,
+        success: true as const,
+        ...scheduleTaskVersionChange(
+            `selectedPlanting:${identity.plantingId}`,
+            identity.expectedLifecycleVersionEventId,
+            result.task.identity.expectedLifecycleVersionEventId,
+        ),
+    };
 }
 
 export async function blockSelectedPlantingTaskAction(
@@ -123,7 +156,15 @@ export async function blockSelectedPlantingTaskAction(
         reasonCode,
     });
     await revalidateSelectedPlantingPaths(identity.plantingId);
-    return { result, success: true as const };
+    return {
+        result,
+        success: true as const,
+        ...scheduleTaskVersionChange(
+            `selectedPlanting:${identity.plantingId}`,
+            identity.expectedLifecycleVersionEventId,
+            result.task.identity.expectedLifecycleVersionEventId,
+        ),
+    };
 }
 
 export async function verifySelectedPlantingTaskAction(
@@ -136,7 +177,15 @@ export async function verifySelectedPlantingTaskAction(
         commandId,
     });
     await revalidateSelectedPlantingPaths(identity.plantingId);
-    return { result, success: true as const };
+    return {
+        result,
+        success: true as const,
+        ...scheduleTaskVersionChange(
+            `selectedPlanting:${identity.plantingId}`,
+            identity.expectedLifecycleVersionEventId,
+            result.task.identity.expectedLifecycleVersionEventId,
+        ),
+    };
 }
 
 export async function updateSelectedPlantingLifecycleStatusAction(
@@ -156,7 +205,15 @@ export async function updateSelectedPlantingLifecycleStatusAction(
         status,
     });
     await revalidateSelectedPlantingPaths(identity.plantingId);
-    return { result, success: true as const };
+    return {
+        result,
+        success: true as const,
+        ...scheduleTaskVersionChange(
+            `selectedPlanting:${identity.plantingId}`,
+            identity.expectedLifecycleVersionEventId,
+            result.task.identity.expectedLifecycleVersionEventId,
+        ),
+    };
 }
 
 export async function createSelectedPlantingOperationAction(

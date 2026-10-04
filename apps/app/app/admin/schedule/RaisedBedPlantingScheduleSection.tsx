@@ -39,6 +39,10 @@ import { CopyTasksButton } from './CopyTasksButton';
 import { RescheduleRaisedBedFieldModal } from './RescheduleRaisedBedFieldModal';
 import { SchedulePlantVisual } from './ScheduleTaskVisual';
 import { SelectedPlantingScheduleTaskRow } from './SelectedPlantingScheduleTaskRow';
+import {
+    resolveScheduleFormVersion,
+    settleScheduleActions,
+} from './scheduleActionQueue';
 import { parseScheduledDateInput } from './scheduleOptimisticHelpers';
 import {
     activePlantCycleEventId,
@@ -362,15 +366,18 @@ export function RaisedBedPlantingScheduleSection({
                                     id: field.id,
                                     patch: { plantStatus: 'planned' },
                                 })),
-                                action: () =>
-                                    Promise.all(
+                                action: (getVersion) =>
+                                    settleScheduleActions(
                                         fieldsToApprove.map((field) =>
                                             acceptRaisedBedFieldAction(
                                                 field.raisedBedId,
                                                 field.positionIndex,
                                                 field.expectedPlantCycleEventId,
                                                 field.expectedPlantSortId,
-                                                field.expectedPlantCycleVersionEventId,
+                                                getVersion(
+                                                    `field:${field.id}`,
+                                                    field.expectedPlantCycleVersionEventId,
+                                                ),
                                             ),
                                         ),
                                     ),
@@ -399,14 +406,17 @@ export function RaisedBedPlantingScheduleSection({
                                         assignedUserIds,
                                     },
                                 })),
-                                action: () =>
-                                    Promise.all(
+                                action: (getVersion) =>
+                                    settleScheduleActions(
                                         fieldsToAssign.map((field) =>
                                             assignRaisedBedFieldUserAction(
                                                 field.id,
                                                 field.expectedPlantCycleEventId,
                                                 field.expectedPlantSortId,
-                                                field.expectedPlantCycleVersionEventId,
+                                                getVersion(
+                                                    `field:${field.id}`,
+                                                    field.expectedPlantCycleVersionEventId,
+                                                ),
                                                 assignedUserIds,
                                             ),
                                         ),
@@ -435,8 +445,8 @@ export function RaisedBedPlantingScheduleSection({
                                         },
                                     }),
                                 ),
-                                action: () =>
-                                    Promise.all(
+                                action: (getVersion) =>
+                                    settleScheduleActions(
                                         fieldsToReschedule.map((field) => {
                                             const formData = new FormData();
                                             formData.set(
@@ -453,7 +463,10 @@ export function RaisedBedPlantingScheduleSection({
                                             );
                                             formData.set(
                                                 'expectedPlantCycleVersionEventId',
-                                                field.expectedPlantCycleVersionEventId.toString(),
+                                                getVersion(
+                                                    `field:${field.id}`,
+                                                    field.expectedPlantCycleVersionEventId,
+                                                ).toString(),
                                             );
                                             formData.set(
                                                 'expectedPlantSortId',
@@ -464,7 +477,12 @@ export function RaisedBedPlantingScheduleSection({
                                                 scheduledDate,
                                             );
                                             return rescheduleRaisedBedFieldAction(
-                                                formData,
+                                                resolveScheduleFormVersion(
+                                                    formData,
+                                                    `field:${field.id}`,
+                                                    'expectedPlantCycleVersionEventId',
+                                                    getVersion,
+                                                ),
                                             );
                                         }),
                                     ),
@@ -485,12 +503,19 @@ export function RaisedBedPlantingScheduleSection({
                                     id: field.id,
                                     patch: { isDeleted: true },
                                 })),
-                                action: () =>
-                                    Promise.all(
+                                action: (getVersion) =>
+                                    settleScheduleActions(
                                         fieldsToCancel.map((field) =>
                                             cancelRaisedBedFieldAction(
                                                 buildFieldCancelFormData(
-                                                    field,
+                                                    {
+                                                        ...field,
+                                                        expectedPlantCycleVersionEventId:
+                                                            getVersion(
+                                                                `field:${field.id}`,
+                                                                field.expectedPlantCycleVersionEventId,
+                                                            ),
+                                                    },
                                                     formData,
                                                 ),
                                             ),
@@ -532,13 +557,16 @@ export function RaisedBedPlantingScheduleSection({
                                     patch: { plantStatus: 'sowed' },
                                 },
                             ],
-                            action: () =>
+                            action: (getVersion) =>
                                 raisedBedPlanted(
                                     field.raisedBedId,
                                     field.positionIndex,
                                     taskIdentity.expectedPlantCycleEventId,
                                     taskIdentity.expectedPlantSortId,
-                                    taskIdentity.expectedPlantCycleVersionEventId,
+                                    getVersion(
+                                        `field:${field.id}`,
+                                        taskIdentity.expectedPlantCycleVersionEventId,
+                                    ),
                                 ),
                             errorLogMessage: 'Error completing planting:',
                             errorAlertMessage:
@@ -626,13 +654,16 @@ export function RaisedBedPlantingScheduleSection({
                                                             },
                                                         },
                                                     ],
-                                                    action: () =>
+                                                    action: (getVersion) =>
                                                         verifyRaisedBedPlantingAction(
                                                             field.raisedBedId,
                                                             field.positionIndex,
                                                             taskIdentity.expectedPlantCycleEventId,
                                                             taskIdentity.expectedPlantSortId,
-                                                            taskIdentity.expectedPlantCycleVersionEventId,
+                                                            getVersion(
+                                                                `field:${field.id}`,
+                                                                taskIdentity.expectedPlantCycleVersionEventId,
+                                                            ),
                                                         ),
                                                     errorLogMessage:
                                                         'Error verifying planting:',
@@ -664,13 +695,16 @@ export function RaisedBedPlantingScheduleSection({
                                                             },
                                                         },
                                                     ],
-                                                    action: () =>
+                                                    action: (getVersion) =>
                                                         acceptRaisedBedFieldAction(
                                                             field.raisedBedId,
                                                             field.positionIndex,
                                                             taskIdentity.expectedPlantCycleEventId,
                                                             taskIdentity.expectedPlantSortId,
-                                                            taskIdentity.expectedPlantCycleVersionEventId,
+                                                            getVersion(
+                                                                `field:${field.id}`,
+                                                                taskIdentity.expectedPlantCycleVersionEventId,
+                                                            ),
                                                         ),
                                                     errorLogMessage:
                                                         'Error accepting field request:',
@@ -782,7 +816,7 @@ export function RaisedBedPlantingScheduleSection({
                                                         },
                                                     },
                                                 ],
-                                                action: () =>
+                                                action: (getVersion) =>
                                                     setRaisedBedFieldSowingLocationAction(
                                                         field.raisedBedId,
                                                         field.positionIndex,
@@ -790,8 +824,11 @@ export function RaisedBedPlantingScheduleSection({
                                                             0,
                                                         taskIdentity?.expectedPlantSortId ??
                                                             0,
-                                                        taskIdentity?.expectedPlantCycleVersionEventId ??
-                                                            0,
+                                                        getVersion(
+                                                            `field:${field.id}`,
+                                                            taskIdentity?.expectedPlantCycleVersionEventId ??
+                                                                0,
+                                                        ),
                                                         nextSowingLocation,
                                                     ),
                                                 errorLogMessage:
@@ -835,12 +872,15 @@ export function RaisedBedPlantingScheduleSection({
                                                             },
                                                         },
                                                     ],
-                                                    action: () =>
+                                                    action: (getVersion) =>
                                                         assignRaisedBedFieldUserAction(
                                                             field.id,
                                                             taskIdentity.expectedPlantCycleEventId,
                                                             taskIdentity.expectedPlantSortId,
-                                                            taskIdentity.expectedPlantCycleVersionEventId,
+                                                            getVersion(
+                                                                `field:${field.id}`,
+                                                                taskIdentity.expectedPlantCycleVersionEventId,
+                                                            ),
                                                             assignedUserIds,
                                                         ),
                                                     errorLogMessage:
@@ -886,9 +926,14 @@ export function RaisedBedPlantingScheduleSection({
                                                             },
                                                         },
                                                     ],
-                                                    action: () =>
+                                                    action: (getVersion) =>
                                                         rescheduleRaisedBedFieldAction(
-                                                            formData,
+                                                            resolveScheduleFormVersion(
+                                                                formData,
+                                                                `field:${field.id}`,
+                                                                'expectedPlantCycleVersionEventId',
+                                                                getVersion,
+                                                            ),
                                                         ),
                                                     errorLogMessage:
                                                         'Error rescheduling planting:',
@@ -934,9 +979,14 @@ export function RaisedBedPlantingScheduleSection({
                                                             },
                                                         },
                                                     ],
-                                                    action: () =>
+                                                    action: (getVersion) =>
                                                         cancelRaisedBedFieldAction(
-                                                            formData,
+                                                            resolveScheduleFormVersion(
+                                                                formData,
+                                                                `field:${field.id}`,
+                                                                'expectedPlantCycleVersionEventId',
+                                                                getVersion,
+                                                            ),
                                                         ),
                                                     errorLogMessage:
                                                         'Error canceling planting:',
