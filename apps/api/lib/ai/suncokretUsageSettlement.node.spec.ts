@@ -130,6 +130,16 @@ test('unavailable or failed billed lookup settles the current reservation using 
         assert.equal(finalize.mock.callCount(), 1);
     }
     assert.equal(warning.mock.callCount(), 2);
+    for (const call of warning.mock.calls) {
+        assert.deepEqual(call.arguments[1], {
+            ...context,
+            ledgerId: usage.ledgerId,
+            generationIds: ['gen_test'],
+            ...(call.arguments[1]?.error
+                ? { error: call.arguments[1].error }
+                : {}),
+        });
+    }
 });
 
 test('settlement preserves zero billed cost and reports persistence failure without retrying or releasing quota', async (t) => {

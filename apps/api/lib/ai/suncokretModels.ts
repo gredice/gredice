@@ -285,7 +285,7 @@ export async function getSuncokretGatewayBilledCostMicroEur(
         }).getGenerationInfo({ id }),
     wait: (ms: number, signal: AbortSignal) => Promise<void> = (ms, signal) =>
         delay(ms, undefined, { signal }),
-    timeoutMs = 15_000,
+    timeoutMs = 90_000,
 ) {
     const generationIds = suncokretGatewayGenerationIds(steps);
     if (generationIds.length === 0) {
@@ -300,7 +300,9 @@ export async function getSuncokretGatewayBilledCostMicroEur(
         controller.abort(new Error('Suncokret Gateway cost lookup timed out'));
     }, timeoutMs);
     const { signal } = controller;
-    const retryDelays = [1_000, 2_000, 4_000];
+    // Keep the fast initial polls, then allow ingestion beyond the old seven
+    // second window. This runs in waitUntil, with the quota reservation held.
+    const retryDelays = [1_000, 2_000, 4_000, 8_000, 16_000, 32_000];
     const aborted = new Promise<never>((_, reject) => {
         signal.addEventListener('abort', () => reject(signal.reason), {
             once: true,

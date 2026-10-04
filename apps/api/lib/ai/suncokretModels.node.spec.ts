@@ -356,7 +356,29 @@ test('Gateway retries delayed usage and fetches ready and duplicate generations 
     });
 });
 
-test('Gateway stops polling persistently missing usage after four attempts without partial billing', async () => {
+test('Gateway recovers usage that arrives after the original polling window without reloading ready tool steps', async () => {
+    let elapsedMs = 0;
+    const calls: string[] = [];
+    const billed = await getSuncokretGatewayBilledCostMicroEur(
+        delayedSteps,
+        async (id) => {
+            calls.push(id);
+            if (id === 'gen_delayed' && elapsedMs < 60_000) {
+                throw usageNotFound();
+            }
+            return generationInfo(id);
+        },
+        async (ms) => {
+            elapsedMs += ms;
+        },
+    );
+    assert.equal(billed, 1760);
+    assert.equal(elapsedMs, 63_000);
+    assert.equal(calls.filter((id) => id === 'gen_ready').length, 1);
+    assert.equal(calls.filter((id) => id === 'gen_delayed').length, 7);
+});
+
+test('Gateway stops polling persistently missing usage after seven attempts without partial billing', async () => {
     let attempts = 0;
     const delays: number[] = [];
     const error = usageNotFound();
@@ -374,8 +396,8 @@ test('Gateway stops polling persistently missing usage after four attempts witho
         ),
         (caught) => caught === error,
     );
-    assert.equal(attempts, 4);
-    assert.deepEqual(delays, [1000, 2000, 4000]);
+    assert.equal(attempts, 7);
+    assert.deepEqual(delays, [1000, 2000, 4000, 8000, 16000, 32000]);
 });
 
 test('Gateway does not poll authentication, unrelated not-found, network or validation errors', async () => {
@@ -421,6 +443,36 @@ test('Gateway applies a shared deadline even when a lookup ignores cancellation'
         /cost lookup timed out/,
     );
     assert.equal(lookupSignal?.aborted, true);
+});
+
+test('Gateway cancels pending backoff at the shared deadline without another lookup', async () => {
+    let attempts = 0;
+    let backoffSignal: AbortSignal | undefined;
+    await assert.rejects(
+        getSuncokretGatewayBilledCostMicroEur(
+            delayedSteps.slice(0, 1),
+            async () => {
+                attempts++;
+                throw usageNotFound();
+            },
+            async (_, signal) => {
+                backoffSignal = signal;
+                await new Promise<void>((_, reject) => {
+                    signal.addEventListener(
+                        'abort',
+                        () => reject(signal.reason),
+                        {
+                            once: true,
+                        },
+                    );
+                });
+            },
+            10,
+        ),
+        /cost lookup timed out/,
+    );
+    assert.equal(backoffSignal?.aborted, true);
+    assert.equal(attempts, 1);
 });
 
 test('Gateway returns no billed total for missing IDs or invalid individual costs', async () => {

@@ -3,7 +3,10 @@ import {
     finalizeAiChatUsage,
 } from '@gredice/storage';
 import { waitUntil } from '@vercel/functions';
-import { getSuncokretGatewayBilledCostMicroEur } from './suncokretModels';
+import {
+    getSuncokretGatewayBilledCostMicroEur,
+    suncokretGatewayGenerationIds,
+} from './suncokretModels';
 
 type UsageFinalization = Parameters<typeof finalizeAiChatUsage>[0];
 
@@ -30,19 +33,24 @@ export function scheduleSuncokretUsageSettlement({
     // Do not await Gateway polling in streamText.onFinish. Keep the existing
     // reservation counted in both quotas until this single settlement completes.
     const settlement = async () => {
+        const lookupContext = {
+            ...context,
+            ledgerId: usage.ledgerId,
+            generationIds: suncokretGatewayGenerationIds(steps),
+        };
         let billedTotalMicroEur: number | null = null;
         try {
             billedTotalMicroEur = await loadBilledCost(steps);
             if (billedTotalMicroEur === null) {
                 console.warn(
                     'Suncokret AI Gateway billed cost is unavailable; using token estimate',
-                    context,
+                    lookupContext,
                 );
             }
         } catch (error) {
             console.warn(
                 'Suncokret AI Gateway billed cost lookup failed; using token estimate',
-                { ...context, error },
+                { ...lookupContext, error },
             );
         }
 
