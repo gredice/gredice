@@ -2,6 +2,7 @@ import 'server-only';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { v5 as uuidV5 } from 'uuid';
 import { bustScheduleCache } from '../cache/scheduleCache';
+import { hasRaisedBedObservationReceipt } from '../helpers/raisedBedObservationOperation';
 import { events, operations, raisedBedPlantings, raisedBeds } from '../schema';
 import { createEvent, knownEvents, knownEventTypes } from './events';
 import {
@@ -164,6 +165,17 @@ export async function applySelectedPlantingOperationVerification(
     verifiedBy: string,
     tx: ScheduleTaskTransaction,
 ) {
+    // An observation records what was seen at submission, even before sowing or
+    // after the crop changes. Approval never advances its lifecycle.
+    if (
+        operation.plantingId &&
+        (await hasRaisedBedObservationReceipt(
+            operation.id,
+            operation.entityId,
+            tx,
+        ))
+    )
+        return;
     if (
         operation.plantingId &&
         [SELECTED_PLANTING_TRANSPLANT_OPERATION_ID, 346].includes(
