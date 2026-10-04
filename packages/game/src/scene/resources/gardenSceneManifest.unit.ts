@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { harvestPumpkins } from '@gredice/js/harvestPumpkins';
 import { Vector3 } from 'three';
 import { gameAssetModels } from '../../data/models';
 import type { Stack } from '../../types/Stack';
@@ -30,6 +31,40 @@ function assetNames(
 }
 
 describe('garden scene manifest', () => {
+    it('resolves every fixed harvest pumpkin identity to its authored model', () => {
+        assert.equal(harvestPumpkins.length, 9);
+        for (const pumpkin of harvestPumpkins) {
+            const manifest = createGardenSceneManifest({
+                blockNames: [pumpkin.name],
+            });
+
+            assert.deepEqual(manifest.unknownBlockNames, [], pumpkin.name);
+            assert.deepEqual(
+                manifest.assets,
+                [{ name: pumpkin.asset, priority: 'current' }],
+                pumpkin.name,
+            );
+            assert.deepEqual(manifest.shaderVariants, [], pumpkin.name);
+        }
+    });
+
+    it('deduplicates pumpkin colors and repeated blocks to exactly three models', () => {
+        const manifest = createGardenSceneManifest({
+            blockNames: collectGardenBlockNames(
+                harvestPumpkins.flatMap((pumpkin, index) => [
+                    stack(index, pumpkin.name, pumpkin.name),
+                ]),
+            ),
+        });
+
+        assert.deepEqual(manifest.unknownBlockNames, []);
+        assert.deepEqual(assetNames(manifest), [
+            'HarvestPumpkinGourd',
+            'HarvestPumpkinGroup',
+            'HarvestPumpkinSquat',
+        ]);
+    });
+
     it('declares only generated game assets', () => {
         const knownAssets = new Set(Object.keys(gameAssetModels));
         for (const [blockName, requirement] of Object.entries(
