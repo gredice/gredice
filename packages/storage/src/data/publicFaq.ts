@@ -131,7 +131,7 @@ export const publicFaqEntries = [
         category: 'pricing',
         header: 'Kako mogu zatražiti povrat novca?',
         content:
-            'Javi se podršci, navedi narudžbu ili radnju i opiši problem. Za biljke i radnje javna politika predviđa zahtjev unutar 30 dana od kupnje. Nakon provjere dogovaramo povrat novca ili korekciju salda; povrat se ne provodi automatski. [Pročitaj pravila povrata](/povrati-i-povrat-novca).',
+            'Ako biljka nije proklijala, nakon najmanje 15 dana od sijanja promijeni stanje u „Nije proklijala”. Puni plaćeni iznos sadnje automatski vraćamo na saldo u suncokretima, jednom po sadnji. Prije 15 dana nema povrata. Za ostale zahtjeve javi se podršci i navedi narudžbu ili radnju; reklamacije za biljke i radnje moguće su unutar 30 dana od kupnje. [Pročitaj pravila povrata](/povrati-i-povrat-novca).',
     },
     {
         name: 'choice-of-plants',

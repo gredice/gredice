@@ -675,6 +675,7 @@ export function RaisedBedFieldItemPlanted({
                                             field.active &&
                                             currentPlantIdentity ? (
                                                 <RaisedBedFieldStatusChange
+                                                    sowedAt={field.plantSowDate}
                                                     expectedPlantCycleEventId={
                                                         currentPlantIdentity.plantPlaceEventId
                                                     }

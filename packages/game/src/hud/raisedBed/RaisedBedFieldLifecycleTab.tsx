@@ -207,6 +207,7 @@ export function RaisedBedFieldLifecycleTab({
                             raisedBedId={raisedBedId}
                             positionIndex={positionIndex}
                             currentStatus={field.plantStatus ?? undefined}
+                            sowedAt={field.plantSowDate}
                             trigger={statusTrigger}
                         />
                     ) : (

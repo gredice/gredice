@@ -41,6 +41,17 @@ export default async function FaqPage() {
                 subHeader="Od prve sadnje do dostave: pronađi odgovor za svoj sljedeći korak."
             />
             <Stack spacing={8} className="mt-8">
+                <Stack spacing={3}>
+                    <Typography level="h4" component="h2">
+                        Što ako biljka nije proklijala?
+                    </Typography>
+                    <Typography>{notSproutedRefundPolicy}</Typography>
+                    <Typography>
+                        <Link className="underline" href={KnownPages.Refunds}>
+                            Pravila povrata i suncokreta
+                        </Link>
+                    </Typography>
+                </Stack>
                 {!faq?.length && (
                     <div className=" border rounded py-4 md:col-span-2">
                         <NoDataPlaceholder>
@@ -78,3 +89,5 @@ export default async function FaqPage() {
         </Stack>
     );
 }
+
+import { notSproutedRefundPolicy } from '@gredice/js/plants';

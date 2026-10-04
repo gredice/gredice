@@ -55,6 +55,7 @@ export const knownEventTypes = {
         plantPlace: 'raisedBedField.plantPlace',
         plantSchedule: 'raisedBedField.plantSchedule',
         plantUpdate: 'raisedBedField.plantUpdate',
+        notSproutedRefund: 'planting.notSproutedRefund',
         plantBlock: 'raisedBedField.plantBlock',
         plantReplaceSort: 'raisedBedField.plantReplaceSort',
         aiAnalysis: 'raisedBedField.aiAnalysis',

@@ -25,6 +25,54 @@ import {
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
 const DESKTOP_VIEWPORT = { width: 1280, height: 800 };
 
+for (const sowDays of [3, 20]) {
+    test(`not sprouted confirmation explains refund at ${sowDays} days`, async ({
+        mount,
+        page,
+    }) => {
+        await page.setViewportSize(MOBILE_VIEWPORT);
+        await mount(
+            <RaisedBedFieldHudStory
+                scenario={{
+                    fields: [
+                        {
+                            positionIndex: 0,
+                            plantSortId: testSorts.tomato.id,
+                            plantStatus: 'sowed',
+                            plantSowDate: new Date(
+                                Date.now() - sowDays * 24 * 60 * 60 * 1000,
+                            ).toISOString(),
+                        },
+                    ],
+                }}
+                positionIndex={0}
+            />,
+        );
+        await page.getByRole('button').first().click();
+        await page
+            .getByRole('button', { name: 'Promijeni stanje biljke: Posijana' })
+            .click();
+        await page
+            .getByRole('button', { name: 'Nije proklijala', exact: true })
+            .click();
+        const confirmation = page.getByRole('alertdialog', {
+            name: 'Potvrda promjene stanja',
+        });
+        await expect(confirmation).toContainText(
+            sowDays >= 15
+                ? 'Puni plaćeni iznos sadnje'
+                : 'Ova promjena stanja neće vratiti suncokrete',
+        );
+        await expect(
+            confirmation.getByRole('button', { name: 'Odustani' }),
+        ).toBeVisible();
+        const overflows = await confirmation.evaluate(
+            (node) => node.scrollWidth > node.clientWidth,
+        );
+        expect(overflows).toBe(false);
+    });
+}
+
 async function expectRenderedGameIcon(icon: Locator, label?: string) {
     if (label) await expect(icon.locator('title')).toHaveText(label);
     const artwork = icon.locator('image');
