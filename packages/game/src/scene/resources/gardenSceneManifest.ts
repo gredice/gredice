@@ -241,6 +241,7 @@ export const blockAssetRequirements: {
     GardenBrazier: assets('GardenBrazier'),
     AutumnGrassTuft: assets('AutumnGrassTuft'),
     AutumnSeedHeads: assets('AutumnSeedHeads'),
+    SeedDryingRack: assets('SeedDryingRack'),
     PotLowBowl: assets('PotLowBowl'),
     PotRoundedBowl: assets('PotRoundedBowl'),
     PotBulbousNeck: assets('PotBulbousNeck'),
