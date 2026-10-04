@@ -142,6 +142,7 @@ async function createAccountBoundJwt(
             iat: issuedAt,
             iss: 'urn:gredice:issuer:api',
             sub: payload.sub,
+            tokenUse: 'account_delete',
         }),
     ].join('.');
     const signature = createHmac('sha256', await jwtSecretFactory())

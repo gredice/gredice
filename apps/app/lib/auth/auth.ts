@@ -23,6 +23,7 @@ type AuthUser = {
 
 type TokenClaims = {
     sub?: unknown;
+    tokenUse?: unknown;
     gredice?: {
         userName?: unknown;
         accountIds?: unknown;
@@ -61,8 +62,12 @@ async function authFromToken(token: string, roles: string[]) {
     const { result, error } = await verifyJwt(token);
     const payload = result?.payload as TokenClaims | undefined;
     const userId = payload?.sub;
+    const tokenUse = payload?.tokenUse;
     if (error || typeof userId !== 'string' || userId.length === 0) {
         throw new Error('Unauthorized: Invalid user ID');
+    }
+    if (typeof tokenUse === 'string' && tokenUse !== 'access') {
+        throw new Error('Unauthorized: Invalid token use');
     }
 
     const claims = payload?.gredice;

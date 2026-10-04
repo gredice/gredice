@@ -67,6 +67,10 @@ async function getAuthContextFromAccessToken(
         }
 
         const userId = result?.payload.sub;
+        const tokenUse = result?.payload.tokenUse;
+        if (typeof tokenUse === 'string' && tokenUse !== 'access') {
+            return null;
+        }
         if (typeof userId !== 'string' || userId.length === 0) {
             return null;
         }
