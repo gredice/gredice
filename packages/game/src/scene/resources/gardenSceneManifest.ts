@@ -251,6 +251,8 @@ export const blockAssetRequirements: {
     BirdFeeder: assets('BirdFeeder'),
     PumpkinLanternSmile: assets('PumpkinLanternSmile'),
     PumpkinLanternWink: assets('PumpkinLanternWink'),
+    FriendlyGhost: assets('FriendlyGhost'),
+    SupportedCobweb: assets('SupportedCobweb'),
     PotLowBowl: assets('PotLowBowl'),
     PotRoundedBowl: assets('PotRoundedBowl'),
     PotBulbousNeck: assets('PotBulbousNeck'),
