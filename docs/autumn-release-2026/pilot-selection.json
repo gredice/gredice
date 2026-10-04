@@ -222,11 +222,11 @@
   "sourceInputs": [
     {
       "path": "apps/api/lib/garden/autumnStarterPackEvidence.reviewed.json",
-      "sha256": "18ec76227c8b71c265f4259f2dd38aaca53d5753f2fdaf52e467aac3e8a02d71"
+      "sha256": "931b07a15223ef60d53b80c81c63653cf0e08afad5fa9c6427161ef14f267a96"
     },
     {
       "path": "apps/api/lib/garden/autumnStarterPackEvidence.ts",
-      "sha256": "ad9de4a96fdcf296dada8f49c32b05304510d4131c670d3c9e8112ae52023ed1"
+      "sha256": "b308be0455b26361d7cb3c98e57637ab742b7ad26f486f86bf3add64d58156cf"
     },
     {
       "path": "apps/api/lib/garden/autumnStarterPackPreparation.ts",
@@ -246,15 +246,15 @@
     },
     {
       "path": "docs/autumn-arrangements-2026/evening-seat.json",
-      "sha256": "7cdd43bab41e43e05bb334fd5952b09d9a8956ab84022bc1161aeb899c3a3992"
+      "sha256": "59de1448b3c9888297a565f3b6b3bb8c1a63a2207bd7a66beba446c56ade3ad4"
     },
     {
       "path": "docs/autumn-arrangements-2026/harvest-corner.json",
-      "sha256": "5f342081c539d52e6a14ce2f183cfddabc1997aeec28cf49c9e72f7d63306480"
+      "sha256": "fd5da939da6318cab25e83200dcb3a7aa66f5203e3b1f9443149078bce6a7f64"
     },
     {
       "path": "docs/autumn-arrangements-2026/woodland-path.json",
-      "sha256": "325531d479340a4c0f80ab45c1affecaad4649384b86f73024935e2fb4a5da2e"
+      "sha256": "45250e85d7ed1dedb8d7b25c0bb121c17924454fb116f7fa1ba42a2c1925ac50"
     },
     {
       "path": "docs/autumn-aster-pots-2026/release-manifest.json",
@@ -306,7 +306,7 @@
     },
     {
       "path": "packages/game/src/arrangements/autumnArrangements.ts",
-      "sha256": "e43767268e295afd799e4ec8c643ace3506c45695dadf3a90fa3e7b69022ff7e"
+      "sha256": "4b9f39411b0d36c90b01063975647761b87d91f77d20866417fb7aa9ac43c10a"
     },
     {
       "path": "packages/game/src/data/gameAssetModels.generated.ts",
@@ -442,7 +442,7 @@
     },
     {
       "path": "packages/game/src/hud/ItemsHud.tsx",
-      "sha256": "1e65daed0c8d9fc65fd50321c57460166445ca3d0922ee9b6e51faa6ae6baa1a"
+      "sha256": "a7873469f753023b3e6ae80f30d3fa28d3394ff7690908ab501925122f39a9ca"
     },
     {
       "path": "packages/game/src/internalSceneBlockData.ts",
@@ -466,7 +466,7 @@
     },
     {
       "path": "packages/game/src/scene/Environment.tsx",
-      "sha256": "c33fe3cfe2492025d4a712d9e26d53f90aea6c9e29f9065606ce3985cdf2966f"
+      "sha256": "e45f224b836ba55dad371255bae7bc67f8bf38df2148b861de927f084318e6ec"
     },
     {
       "path": "packages/game/src/scene/gameQuality.ts",
@@ -486,7 +486,7 @@
     },
     {
       "path": "packages/game/src/scene/Scene.tsx",
-      "sha256": "fc4519167920321aacb864a2a3a8777e1dfa3105f39dc2ed14b32c06038a6167"
+      "sha256": "dd303a06cdb5a4cc7ee0910ce3940efed10eea422f6d2ac7af933b84fabc0dac"
     },
     {
       "path": "packages/game/src/scene/SteamEmitter.tsx",
@@ -506,7 +506,7 @@
     },
     {
       "path": "packages/game/src/useGameState.ts",
-      "sha256": "3902a31eb255dbc853ef9839fc4dc07132c5984ed0c3dab9738b7027b4e9c289"
+      "sha256": "2197a8ef0ea7fda327faba5be442b9c5cb52614ba11fcc2114cbbc0af6ecbed4"
     },
     {
       "path": "packages/game/src/utils/configureGameGLTFMaterials.ts",
@@ -518,7 +518,7 @@
     },
     {
       "path": "packages/game/src/utils/useGameGLTF.ts",
-      "sha256": "cecb0cda7acb92a2c8bb41e8c7ef84e25843d04c1fc1d8c27d48d84642afa0b0"
+      "sha256": "0a950d810e5af14de7f6ad6dd005b793eab52690b348e36245911067fe8be57a"
     },
     {
       "path": "packages/game/tests/AutumnArrangementFixture.tsx",

@@ -1,7 +1,7 @@
 {
   "source": {
-    "commit": "c525984cb92f191a68d9b434db96b10619c92d83",
-    "tree": "87f32cb44dd0ced6abfe96126602a6c3bef5e007",
+    "commit": "6f7d5700a5426282d78b417908da9ce2ce6b0e00",
+    "tree": "b783e17be5439ee9ebe7dc10dccf87b7653a568d",
     "status": ""
   },
   "browser": "151.0.7922.34",
@@ -29,19 +29,19 @@
   "quality": "high",
   "included": [
     {
-      "entityName": "AutumnBlanketBench",
+      "entityName": "HarvestPumpkinGroupOrange",
       "quantity": 1
     },
     {
-      "entityName": "GardenTeaTable",
+      "entityName": "HarvestPumpkinSquatCream",
       "quantity": 1
     },
     {
-      "entityName": "EnamelGardenLamp",
+      "entityName": "HarvestCrateOrchard",
       "quantity": 1
     },
     {
-      "entityName": "AutumnAsterPotMauve",
+      "entityName": "GardenScarecrow",
       "quantity": 1
     }
   ],
@@ -66,28 +66,8 @@
   "layout": {
     "placements": [
       {
-        "id": "AutumnBlanketBench",
-        "entityName": "AutumnBlanketBench",
-        "x": 0,
-        "z": 3,
-        "rotation": 0,
-        "role": "included",
-        "width": 2,
-        "depth": 1,
-        "cells": [
-          {
-            "x": 0,
-            "z": 3
-          },
-          {
-            "x": 1,
-            "z": 3
-          }
-        ]
-      },
-      {
-        "id": "GardenTeaTable",
-        "entityName": "GardenTeaTable",
+        "id": "HarvestPumpkinGroupOrange",
+        "entityName": "HarvestPumpkinGroupOrange",
         "x": 0,
         "z": 1,
         "rotation": 0,
@@ -102,9 +82,25 @@
         ]
       },
       {
-        "id": "EnamelGardenLamp",
-        "entityName": "EnamelGardenLamp",
+        "id": "HarvestPumpkinSquatCream",
+        "entityName": "HarvestPumpkinSquatCream",
         "x": 0,
+        "z": 3,
+        "rotation": 0,
+        "role": "included",
+        "width": 1,
+        "depth": 1,
+        "cells": [
+          {
+            "x": 0,
+            "z": 3
+          }
+        ]
+      },
+      {
+        "id": "HarvestCrateOrchard",
+        "entityName": "HarvestCrateOrchard",
+        "x": 1,
         "z": 2,
         "rotation": 0,
         "role": "included",
@@ -112,16 +108,16 @@
         "depth": 1,
         "cells": [
           {
-            "x": 0,
+            "x": 1,
             "z": 2
           }
         ]
       },
       {
-        "id": "AutumnAsterPotMauve",
-        "entityName": "AutumnAsterPotMauve",
+        "id": "GardenScarecrow",
+        "entityName": "GardenScarecrow",
         "x": 1,
-        "z": 1,
+        "z": 3,
         "rotation": 0,
         "role": "included",
         "width": 1,
@@ -129,7 +125,7 @@
         "cells": [
           {
             "x": 1,
-            "z": 1
+            "z": 3
           }
         ]
       },
@@ -482,12 +478,12 @@
       "z": 1,
       "width": 2,
       "depth": 3,
-      "occupiedCells": 5
+      "occupiedCells": 4
     }
   },
   "records": [
     {
-      "file": "evening-seat-earlyAutumn-day.png",
+      "file": "harvest-corner-earlyAutumn-day.png",
       "stage": "earlyAutumn",
       "light": "day",
       "date": "2026-09-22T10:00:00.000Z",
@@ -499,91 +495,91 @@
       },
       "objects": [
         {
-          "id": "AutumnBlanketBench",
-          "entityName": "AutumnBlanketBench",
+          "id": "HarvestPumpkinGroupOrange",
+          "entityName": "HarvestPumpkinGroupOrange",
           "role": "included",
           "meshes": 2,
           "min": [
-            -2.0459999442100525,
-            0.39999999906867745,
-            0.7750000059604645
+            -2.4132381081581116,
+            0.4,
+            -1.3732381165027618
           ],
           "max": [
-            -0.9540000557899475,
-            0.821999990940094,
-            1.2450000047683716
+            -1.5996452569961548,
+            0.7987999856472016,
+            -0.574999988079071
           ],
           "screen": {
-            "minX": 487.80701346684987,
-            "maxX": 576.1670704645738,
-            "minY": 256.4825199576279,
-            "maxY": 334.987153271706
+            "minX": 402.8075219481505,
+            "maxX": 493.986451211476,
+            "minY": 338.3649870437867,
+            "maxY": 416.9768796835152
           }
         },
         {
-          "id": "GardenTeaTable",
-          "entityName": "GardenTeaTable",
+          "id": "HarvestPumpkinSquatCream",
+          "entityName": "HarvestPumpkinSquatCream",
           "role": "included",
           "meshes": 2,
           "min": [
-            -2.431999981403351,
+            -2.3474830090999603,
             0.4,
-            -1.3599999845027924
+            0.6525169909000397
           ],
           "max": [
-            -1.5679999887943268,
-            1.3552000164985656,
-            -0.6400000154972076
+            -1.6525169909000397,
+            0.8101000130176544,
+            1.3474830090999603
           ],
           "screen": {
-            "minX": 401.7662570817059,
-            "maxX": 491.3708262222596,
-            "minY": 303.07173166075023,
-            "maxY": 417.1569211477311
+            "minX": 520.3924127516971,
+            "maxX": 599.0188422178373,
+            "minY": 276.6878036898035,
+            "maxY": 348.80595290159414
           }
         },
         {
-          "id": "EnamelGardenLamp",
-          "entityName": "EnamelGardenLamp",
+          "id": "HarvestCrateOrchard",
+          "entityName": "HarvestCrateOrchard",
           "role": "included",
           "meshes": 5,
           "min": [
-            -2.220555156469345,
+            -1.420500010251999,
             0.4,
-            -0.17299999296665192
+            -0.35750001668930054
           ],
           "max": [
-            -1.6970000267028809,
-            1.811055564880371,
-            0.17299999296665192
+            -0.5794999897480011,
+            0.8943065643310547,
+            0.35750001668930054
           ],
           "screen": {
-            "minX": 476.210460670669,
-            "maxX": 525.3999261848097,
-            "minY": 250.97107145264954,
-            "maxY": 371.5758482475625
+            "minX": 402.5582149098389,
+            "maxX": 490.57887008000046,
+            "minY": 268.47550668041214,
+            "maxY": 351.51237303420066
           }
         },
         {
-          "id": "AutumnAsterPotMauve",
-          "entityName": "AutumnAsterPotMauve",
+          "id": "GardenScarecrow",
+          "entityName": "GardenScarecrow",
           "role": "included",
-          "meshes": 5,
+          "meshes": 6,
           "min": [
-            -1.3279761672019958,
+            -1.4197290241718292,
             0.4,
-            -1.318974494934082
+            0.7950000017881393
           ],
           "max": [
-            -0.6811067461967468,
-            0.9979999899864197,
-            -0.699999988079071
+            -0.5802421569824219,
+            1.8099750518798827,
+            1.2049999982118607
           ],
           "screen": {
-            "minX": 353.91675114940654,
-            "maxX": 425.52369717451086,
-            "minY": 299.47553373781517,
-            "maxY": 379.83505104264435
+            "minX": 467.7954444992191,
+            "maxX": 538.4770952403675,
+            "minY": 181.00485725612435,
+            "maxY": 313.92252385797235
           }
         },
         {
@@ -1051,7 +1047,7 @@
       ]
     },
     {
-      "file": "evening-seat-earlyAutumn-overcast.png",
+      "file": "harvest-corner-earlyAutumn-overcast.png",
       "stage": "earlyAutumn",
       "light": "overcast",
       "date": "2026-09-22T10:00:00.000Z",
@@ -1063,91 +1059,91 @@
       },
       "objects": [
         {
-          "id": "AutumnBlanketBench",
-          "entityName": "AutumnBlanketBench",
+          "id": "HarvestPumpkinGroupOrange",
+          "entityName": "HarvestPumpkinGroupOrange",
           "role": "included",
           "meshes": 2,
           "min": [
-            -2.0459999442100525,
-            0.39999999906867745,
-            0.7750000059604645
+            -2.4132381081581116,
+            0.4,
+            -1.3732381165027618
           ],
           "max": [
-            -0.9540000557899475,
-            0.821999990940094,
-            1.2450000047683716
+            -1.5996452569961548,
+            0.7987999856472016,
+            -0.574999988079071
           ],
           "screen": {
-            "minX": 487.80701346684987,
-            "maxX": 576.1670704645738,
-            "minY": 256.4825199576279,
-            "maxY": 334.987153271706
+            "minX": 402.8075219481505,
+            "maxX": 493.986451211476,
+            "minY": 338.3649870437867,
+            "maxY": 416.9768796835152
           }
         },
         {
-          "id": "GardenTeaTable",
-          "entityName": "GardenTeaTable",
+          "id": "HarvestPumpkinSquatCream",
+          "entityName": "HarvestPumpkinSquatCream",
           "role": "included",
           "meshes": 2,
           "min": [
-            -2.431999981403351,
+            -2.3474830090999603,
             0.4,
-            -1.3599999845027924
+            0.6525169909000397
           ],
           "max": [
-            -1.5679999887943268,
-            1.3552000164985656,
-            -0.6400000154972076
+            -1.6525169909000397,
+            0.8101000130176544,
+            1.3474830090999603
           ],
           "screen": {
-            "minX": 401.7662570817059,
-            "maxX": 491.3708262222596,
-            "minY": 303.07173166075023,
-            "maxY": 417.1569211477311
+            "minX": 520.3924127516971,
+            "maxX": 599.0188422178373,
+            "minY": 276.6878036898035,
+            "maxY": 348.80595290159414
           }
         },
         {
-          "id": "EnamelGardenLamp",
-          "entityName": "EnamelGardenLamp",
+          "id": "HarvestCrateOrchard",
+          "entityName": "HarvestCrateOrchard",
           "role": "included",
           "meshes": 5,
           "min": [
-            -2.220555156469345,
+            -1.420500010251999,
             0.4,
-            -0.17299999296665192
+            -0.35750001668930054
           ],
           "max": [
-            -1.6970000267028809,
-            1.811055564880371,
-            0.17299999296665192
+            -0.5794999897480011,
+            0.8943065643310547,
+            0.35750001668930054
           ],
           "screen": {
-            "minX": 476.210460670669,
-            "maxX": 525.3999261848097,
-            "minY": 250.97107145264954,
-            "maxY": 371.5758482475625
+            "minX": 402.5582149098389,
+            "maxX": 490.57887008000046,
+            "minY": 268.47550668041214,
+            "maxY": 351.51237303420066
           }
         },
         {
-          "id": "AutumnAsterPotMauve",
-          "entityName": "AutumnAsterPotMauve",
+          "id": "GardenScarecrow",
+          "entityName": "GardenScarecrow",
           "role": "included",
-          "meshes": 5,
+          "meshes": 6,
           "min": [
-            -1.3279761672019958,
+            -1.4197290241718292,
             0.4,
-            -1.318974494934082
+            0.7950000017881393
           ],
           "max": [
-            -0.6811067461967468,
-            0.9979999899864197,
-            -0.699999988079071
+            -0.5802421569824219,
+            1.8099750518798827,
+            1.2049999982118607
           ],
           "screen": {
-            "minX": 353.91675114940654,
-            "maxX": 425.52369717451086,
-            "minY": 299.47553373781517,
-            "maxY": 379.83505104264435
+            "minX": 467.7954444992191,
+            "maxX": 538.4770952403675,
+            "minY": 181.00485725612435,
+            "maxY": 313.92252385797235
           }
         },
         {
@@ -1615,7 +1611,7 @@
       ]
     },
     {
-      "file": "evening-seat-earlyAutumn-dusk.png",
+      "file": "harvest-corner-earlyAutumn-dusk.png",
       "stage": "earlyAutumn",
       "light": "dusk",
       "date": "2026-09-22T16:51:00.000Z",
@@ -1627,91 +1623,91 @@
       },
       "objects": [
         {
-          "id": "AutumnBlanketBench",
-          "entityName": "AutumnBlanketBench",
+          "id": "HarvestPumpkinGroupOrange",
+          "entityName": "HarvestPumpkinGroupOrange",
           "role": "included",
           "meshes": 2,
           "min": [
-            -2.0459999442100525,
-            0.39999999906867745,
-            0.7750000059604645
+            -2.4132381081581116,
+            0.4,
+            -1.3732381165027618
           ],
           "max": [
-            -0.9540000557899475,
-            0.821999990940094,
-            1.2450000047683716
+            -1.5996452569961548,
+            0.7987999856472016,
+            -0.574999988079071
           ],
           "screen": {
-            "minX": 487.80701346684987,
-            "maxX": 576.1670704645738,
-            "minY": 256.4825199576279,
-            "maxY": 334.987153271706
+            "minX": 402.8075219481505,
+            "maxX": 493.986451211476,
+            "minY": 338.3649870437867,
+            "maxY": 416.9768796835152
           }
         },
         {
-          "id": "GardenTeaTable",
-          "entityName": "GardenTeaTable",
+          "id": "HarvestPumpkinSquatCream",
+          "entityName": "HarvestPumpkinSquatCream",
           "role": "included",
           "meshes": 2,
           "min": [
-            -2.431999981403351,
+            -2.3474830090999603,
             0.4,
-            -1.3599999845027924
+            0.6525169909000397
           ],
           "max": [
-            -1.5679999887943268,
-            1.3552000164985656,
-            -0.6400000154972076
+            -1.6525169909000397,
+            0.8101000130176544,
+            1.3474830090999603
           ],
           "screen": {
-            "minX": 401.7662570817059,
-            "maxX": 491.3708262222596,
-            "minY": 303.07173166075023,
-            "maxY": 417.1569211477311
+            "minX": 520.3924127516971,
+            "maxX": 599.0188422178373,
+            "minY": 276.6878036898035,
+            "maxY": 348.80595290159414
           }
         },
         {
-          "id": "EnamelGardenLamp",
-          "entityName": "EnamelGardenLamp",
+          "id": "HarvestCrateOrchard",
+          "entityName": "HarvestCrateOrchard",
           "role": "included",
           "meshes": 5,
           "min": [
-            -2.220555156469345,
+            -1.420500010251999,
             0.4,
-            -0.17299999296665192
+            -0.35750001668930054
           ],
           "max": [
-            -1.6970000267028809,
-            1.811055564880371,
-            0.17299999296665192
+            -0.5794999897480011,
+            0.8943065643310547,
+            0.35750001668930054
           ],
           "screen": {
-            "minX": 476.210460670669,
-            "maxX": 525.3999261848097,
-            "minY": 250.97107145264954,
-            "maxY": 371.5758482475625
+            "minX": 402.5582149098389,
+            "maxX": 490.57887008000046,
+            "minY": 268.47550668041214,
+            "maxY": 351.51237303420066
           }
         },
         {
-          "id": "AutumnAsterPotMauve",
-          "entityName": "AutumnAsterPotMauve",
+          "id": "GardenScarecrow",
+          "entityName": "GardenScarecrow",
           "role": "included",
-          "meshes": 5,
+          "meshes": 6,
           "min": [
-            -1.3279761672019958,
+            -1.4197290241718292,
             0.4,
-            -1.318974494934082
+            0.7950000017881393
           ],
           "max": [
-            -0.6811067461967468,
-            0.9979999899864197,
-            -0.699999988079071
+            -0.5802421569824219,
+            1.8099750518798827,
+            1.2049999982118607
           ],
           "screen": {
-            "minX": 353.91675114940654,
-            "maxX": 425.52369717451086,
-            "minY": 299.47553373781517,
-            "maxY": 379.83505104264435
+            "minX": 467.7954444992191,
+            "maxX": 538.4770952403675,
+            "minY": 181.00485725612435,
+            "maxY": 313.92252385797235
           }
         },
         {
@@ -2179,7 +2175,7 @@
       ]
     },
     {
-      "file": "evening-seat-earlyAutumn-night.png",
+      "file": "harvest-corner-earlyAutumn-night.png",
       "stage": "earlyAutumn",
       "light": "night",
       "date": "2026-09-22T20:30:00.000Z",
@@ -2191,91 +2187,91 @@
       },
       "objects": [
         {
-          "id": "AutumnBlanketBench",
-          "entityName": "AutumnBlanketBench",
+          "id": "HarvestPumpkinGroupOrange",
+          "entityName": "HarvestPumpkinGroupOrange",
           "role": "included",
           "meshes": 2,
           "min": [
-            -2.0459999442100525,
-            0.39999999906867745,
-            0.7750000059604645
+            -2.4132381081581116,
+            0.4,
+            -1.3732381165027618
           ],
           "max": [
-            -0.9540000557899475,
-            0.821999990940094,
-            1.2450000047683716
+            -1.5996452569961548,
+            0.7987999856472016,
+            -0.574999988079071
           ],
           "screen": {
-            "minX": 487.80701346684987,
-            "maxX": 576.1670704645738,
-            "minY": 256.4825199576279,
-            "maxY": 334.987153271706
+            "minX": 402.8075219481505,
+            "maxX": 493.986451211476,
+            "minY": 338.3649870437867,
+            "maxY": 416.9768796835152
           }
         },
         {
-          "id": "GardenTeaTable",
-          "entityName": "GardenTeaTable",
+          "id": "HarvestPumpkinSquatCream",
+          "entityName": "HarvestPumpkinSquatCream",
           "role": "included",
           "meshes": 2,
           "min": [
-            -2.431999981403351,
+            -2.3474830090999603,
             0.4,
-            -1.3599999845027924
+            0.6525169909000397
           ],
           "max": [
-            -1.5679999887943268,
-            1.3552000164985656,
-            -0.6400000154972076
+            -1.6525169909000397,
+            0.8101000130176544,
+            1.3474830090999603
           ],
           "screen": {
-            "minX": 401.7662570817059,
-            "maxX": 491.3708262222596,
-            "minY": 303.07173166075023,
-            "maxY": 417.1569211477311
+            "minX": 520.3924127516971,
+            "maxX": 599.0188422178373,
+            "minY": 276.6878036898035,
+            "maxY": 348.80595290159414
           }
         },
         {
-          "id": "EnamelGardenLamp",
-          "entityName": "EnamelGardenLamp",
+          "id": "HarvestCrateOrchard",
+          "entityName": "HarvestCrateOrchard",
           "role": "included",
           "meshes": 5,
           "min": [
-            -2.220555156469345,
+            -1.420500010251999,
             0.4,
-            -0.17299999296665192
+            -0.35750001668930054
           ],
           "max": [
-            -1.6970000267028809,
-            1.811055564880371,
-            0.17299999296665192
+            -0.5794999897480011,
+            0.8943065643310547,
+            0.35750001668930054
           ],
           "screen": {
-            "minX": 476.210460670669,
-            "maxX": 525.3999261848097,
-            "minY": 250.97107145264954,
-            "maxY": 371.5758482475625
+            "minX": 402.5582149098389,
+            "maxX": 490.57887008000046,
+            "minY": 268.47550668041214,
+            "maxY": 351.51237303420066
           }
         },
         {
-          "id": "AutumnAsterPotMauve",
-          "entityName": "AutumnAsterPotMauve",
+          "id": "GardenScarecrow",
+          "entityName": "GardenScarecrow",
           "role": "included",
-          "meshes": 5,
+          "meshes": 6,
           "min": [
-            -1.3279761672019958,
+            -1.4197290241718292,
             0.4,
-            -1.318974494934082
+            0.7950000017881393
           ],
           "max": [
-            -0.6811067461967468,
-            0.9979999899864197,
-            -0.699999988079071
+            -0.5802421569824219,
+            1.8099750518798827,
+            1.2049999982118607
           ],
           "screen": {
-            "minX": 353.91675114940654,
-            "maxX": 425.52369717451086,
-            "minY": 299.47553373781517,
-            "maxY": 379.83505104264435
+            "minX": 467.7954444992191,
+            "maxX": 538.4770952403675,
+            "minY": 181.00485725612435,
+            "maxY": 313.92252385797235
           }
         },
         {
@@ -2743,7 +2739,7 @@
       ]
     },
     {
-      "file": "evening-seat-midAutumn-day.png",
+      "file": "harvest-corner-midAutumn-day.png",
       "stage": "midAutumn",
       "light": "day",
       "date": "2026-10-22T10:00:00.000Z",
@@ -2755,91 +2751,91 @@
       },
       "objects": [
         {
-          "id": "AutumnBlanketBench",
-          "entityName": "AutumnBlanketBench",
+          "id": "HarvestPumpkinGroupOrange",
+          "entityName": "HarvestPumpkinGroupOrange",
           "role": "included",
           "meshes": 2,
           "min": [
-            -2.0459999442100525,
-            0.39999999906867745,
-            0.7750000059604645
+            -2.4132381081581116,
+            0.4,
+            -1.3732381165027618
           ],
           "max": [
-            -0.9540000557899475,
-            0.821999990940094,
-            1.2450000047683716
+            -1.5996452569961548,
+            0.7987999856472016,
+            -0.574999988079071
           ],
           "screen": {
-            "minX": 487.80701346684987,
-            "maxX": 576.1670704645738,
-            "minY": 256.4825199576279,
-            "maxY": 334.987153271706
+            "minX": 402.8075219481505,
+            "maxX": 493.986451211476,
+            "minY": 338.3649870437867,
+            "maxY": 416.9768796835152
           }
         },
         {
-          "id": "GardenTeaTable",
-          "entityName": "GardenTeaTable",
+          "id": "HarvestPumpkinSquatCream",
+          "entityName": "HarvestPumpkinSquatCream",
           "role": "included",
           "meshes": 2,
           "min": [
-            -2.431999981403351,
+            -2.3474830090999603,
             0.4,
-            -1.3599999845027924
+            0.6525169909000397
           ],
           "max": [
-            -1.5679999887943268,
-            1.3552000164985656,
-            -0.6400000154972076
+            -1.6525169909000397,
+            0.8101000130176544,
+            1.3474830090999603
           ],
           "screen": {
-            "minX": 401.7662570817059,
-            "maxX": 491.3708262222596,
-            "minY": 303.07173166075023,
-            "maxY": 417.1569211477311
+            "minX": 520.3924127516971,
+            "maxX": 599.0188422178373,
+            "minY": 276.6878036898035,
+            "maxY": 348.80595290159414
           }
         },
         {
-          "id": "EnamelGardenLamp",
-          "entityName": "EnamelGardenLamp",
+          "id": "HarvestCrateOrchard",
+          "entityName": "HarvestCrateOrchard",
           "role": "included",
           "meshes": 5,
           "min": [
-            -2.220555156469345,
+            -1.420500010251999,
             0.4,
-            -0.17299999296665192
+            -0.35750001668930054
           ],
           "max": [
-            -1.6970000267028809,
-            1.811055564880371,
-            0.17299999296665192
+            -0.5794999897480011,
+            0.8943065643310547,
+            0.35750001668930054
           ],
           "screen": {
-            "minX": 476.210460670669,
-            "maxX": 525.3999261848097,
-            "minY": 250.97107145264954,
-            "maxY": 371.5758482475625
+            "minX": 402.5582149098389,
+            "maxX": 490.57887008000046,
+            "minY": 268.47550668041214,
+            "maxY": 351.51237303420066
           }
         },
         {
-          "id": "AutumnAsterPotMauve",
-          "entityName": "AutumnAsterPotMauve",
+          "id": "GardenScarecrow",
+          "entityName": "GardenScarecrow",
           "role": "included",
-          "meshes": 5,
+          "meshes": 6,
           "min": [
-            -1.3279761672019958,
+            -1.4197290241718292,
             0.4,
-            -1.318974494934082
+            0.7950000017881393
           ],
           "max": [
-            -0.6811067461967468,
-            0.9979999899864197,
-            -0.699999988079071
+            -0.5802421569824219,
+            1.8099750518798827,
+            1.2049999982118607
           ],
           "screen": {
-            "minX": 353.91675114940654,
-            "maxX": 425.52369717451086,
-            "minY": 299.47553373781517,
-            "maxY": 379.83505104264435
+            "minX": 467.7954444992191,
+            "maxX": 538.4770952403675,
+            "minY": 181.00485725612435,
+            "maxY": 313.92252385797235
           }
         },
         {
@@ -3307,7 +3303,7 @@
       ]
     },
     {
-      "file": "evening-seat-midAutumn-overcast.png",
+      "file": "harvest-corner-midAutumn-overcast.png",
       "stage": "midAutumn",
       "light": "overcast",
       "date": "2026-10-22T10:00:00.000Z",
@@ -3319,91 +3315,91 @@
       },
       "objects": [
         {
-          "id": "AutumnBlanketBench",
-          "entityName": "AutumnBlanketBench",
+          "id": "HarvestPumpkinGroupOrange",
+          "entityName": "HarvestPumpkinGroupOrange",
           "role": "included",
           "meshes": 2,
           "min": [
-            -2.0459999442100525,
-            0.39999999906867745,
-            0.7750000059604645
+            -2.4132381081581116,
+            0.4,
+            -1.3732381165027618
           ],
           "max": [
-            -0.9540000557899475,
-            0.821999990940094,
-            1.2450000047683716
+            -1.5996452569961548,
+            0.7987999856472016,
+            -0.574999988079071
           ],
           "screen": {
-            "minX": 487.80701346684987,
-            "maxX": 576.1670704645738,
-            "minY": 256.4825199576279,
-            "maxY": 334.987153271706
+            "minX": 402.8075219481505,
+            "maxX": 493.986451211476,
+            "minY": 338.3649870437867,
+            "maxY": 416.9768796835152
           }
         },
         {
-          "id": "GardenTeaTable",
-          "entityName": "GardenTeaTable",
+          "id": "HarvestPumpkinSquatCream",
+          "entityName": "HarvestPumpkinSquatCream",
           "role": "included",
           "meshes": 2,
           "min": [
-            -2.431999981403351,
+            -2.3474830090999603,
             0.4,
-            -1.3599999845027924
+            0.6525169909000397
           ],
           "max": [
-            -1.5679999887943268,
-            1.3552000164985656,
-            -0.6400000154972076
+            -1.6525169909000397,
+            0.8101000130176544,
+            1.3474830090999603
           ],
           "screen": {
-            "minX": 401.7662570817059,
-            "maxX": 491.3708262222596,
-            "minY": 303.07173166075023,
-            "maxY": 417.1569211477311
+            "minX": 520.3924127516971,
+            "maxX": 599.0188422178373,
+            "minY": 276.6878036898035,
+            "maxY": 348.80595290159414
           }
         },
         {
-          "id": "EnamelGardenLamp",
-          "entityName": "EnamelGardenLamp",
+          "id": "HarvestCrateOrchard",
+          "entityName": "HarvestCrateOrchard",
           "role": "included",
           "meshes": 5,
           "min": [
-            -2.220555156469345,
+            -1.420500010251999,
             0.4,
-            -0.17299999296665192
+            -0.35750001668930054
           ],
           "max": [
-            -1.6970000267028809,
-            1.811055564880371,
-            0.17299999296665192
+            -0.5794999897480011,
+            0.8943065643310547,
+            0.35750001668930054
           ],
           "screen": {
-            "minX": 476.210460670669,
-            "maxX": 525.3999261848097,
-            "minY": 250.97107145264954,
-            "maxY": 371.5758482475625
+            "minX": 402.5582149098389,
+            "maxX": 490.57887008000046,
+            "minY": 268.47550668041214,
+            "maxY": 351.51237303420066
           }
         },
         {
-          "id": "AutumnAsterPotMauve",
-          "entityName": "AutumnAsterPotMauve",
+          "id": "GardenScarecrow",
+          "entityName": "GardenScarecrow",
           "role": "included",
-          "meshes": 5,
+          "meshes": 6,
           "min": [
-            -1.3279761672019958,
+            -1.4197290241718292,
             0.4,
-            -1.318974494934082
+            0.7950000017881393
           ],
           "max": [
-            -0.6811067461967468,
-            0.9979999899864197,
-            -0.699999988079071
+            -0.5802421569824219,
+            1.8099750518798827,
+            1.2049999982118607
           ],
           "screen": {
-            "minX": 353.91675114940654,
-            "maxX": 425.52369717451086,
-            "minY": 299.47553373781517,
-            "maxY": 379.83505104264435
+            "minX": 467.7954444992191,
+            "maxX": 538.4770952403675,
+            "minY": 181.00485725612435,
+            "maxY": 313.92252385797235
           }
         },
         {
@@ -3871,7 +3867,7 @@
       ]
     },
     {
-      "file": "evening-seat-midAutumn-dusk.png",
+      "file": "harvest-corner-midAutumn-dusk.png",
       "stage": "midAutumn",
       "light": "dusk",
       "date": "2026-10-22T15:56:00.000Z",
@@ -3883,91 +3879,91 @@
       },
       "objects": [
         {
-          "id": "AutumnBlanketBench",
-          "entityName": "AutumnBlanketBench",
+          "id": "HarvestPumpkinGroupOrange",
+          "entityName": "HarvestPumpkinGroupOrange",
           "role": "included",
           "meshes": 2,
           "min": [
-            -2.0459999442100525,
-            0.39999999906867745,
-            0.7750000059604645
+            -2.4132381081581116,
+            0.4,
+            -1.3732381165027618
           ],
           "max": [
-            -0.9540000557899475,
-            0.821999990940094,
-            1.2450000047683716
+            -1.5996452569961548,
+            0.7987999856472016,
+            -0.574999988079071
           ],
           "screen": {
-            "minX": 487.80701346684987,
-            "maxX": 576.1670704645738,
-            "minY": 256.4825199576279,
-            "maxY": 334.987153271706
+            "minX": 402.8075219481505,
+            "maxX": 493.986451211476,
+            "minY": 338.3649870437867,
+            "maxY": 416.9768796835152
           }
         },
         {
-          "id": "GardenTeaTable",
-          "entityName": "GardenTeaTable",
+          "id": "HarvestPumpkinSquatCream",
+          "entityName": "HarvestPumpkinSquatCream",
           "role": "included",
           "meshes": 2,
           "min": [
-            -2.431999981403351,
+            -2.3474830090999603,
             0.4,
-            -1.3599999845027924
+            0.6525169909000397
           ],
           "max": [
-            -1.5679999887943268,
-            1.3552000164985656,
-            -0.6400000154972076
+            -1.6525169909000397,
+            0.8101000130176544,
+            1.3474830090999603
           ],
           "screen": {
-            "minX": 401.7662570817059,
-            "maxX": 491.3708262222596,
-            "minY": 303.07173166075023,
-            "maxY": 417.1569211477311
+            "minX": 520.3924127516971,
+            "maxX": 599.0188422178373,
+            "minY": 276.6878036898035,
+            "maxY": 348.80595290159414
           }
         },
         {
-          "id": "EnamelGardenLamp",
-          "entityName": "EnamelGardenLamp",
+          "id": "HarvestCrateOrchard",
+          "entityName": "HarvestCrateOrchard",
           "role": "included",
           "meshes": 5,
           "min": [
-            -2.220555156469345,
+            -1.420500010251999,
             0.4,
-            -0.17299999296665192
+            -0.35750001668930054
           ],
           "max": [
-            -1.6970000267028809,
-            1.811055564880371,
-            0.17299999296665192
+            -0.5794999897480011,
+            0.8943065643310547,
+            0.35750001668930054
           ],
           "screen": {
-            "minX": 476.210460670669,
-            "maxX": 525.3999261848097,
-            "minY": 250.97107145264954,
-            "maxY": 371.5758482475625
+            "minX": 402.5582149098389,
+            "maxX": 490.57887008000046,
+            "minY": 268.47550668041214,
+            "maxY": 351.51237303420066
           }
         },
         {
-          "id": "AutumnAsterPotMauve",
-          "entityName": "AutumnAsterPotMauve",
+          "id": "GardenScarecrow",
+          "entityName": "GardenScarecrow",
           "role": "included",
-          "meshes": 5,
+          "meshes": 6,
           "min": [
-            -1.3279761672019958,
+            -1.4197290241718292,
             0.4,
-            -1.318974494934082
+            0.7950000017881393
           ],
           "max": [
-            -0.6811067461967468,
-            0.9979999899864197,
-            -0.699999988079071
+            -0.5802421569824219,
+            1.8099750518798827,
+            1.2049999982118607
           ],
           "screen": {
-            "minX": 353.91675114940654,
-            "maxX": 425.52369717451086,
-            "minY": 299.47553373781517,
-            "maxY": 379.83505104264435
+            "minX": 467.7954444992191,
+            "maxX": 538.4770952403675,
+            "minY": 181.00485725612435,
+            "maxY": 313.92252385797235
           }
         },
         {
@@ -4435,7 +4431,7 @@
       ]
     },
     {
-      "file": "evening-seat-midAutumn-night.png",
+      "file": "harvest-corner-midAutumn-night.png",
       "stage": "midAutumn",
       "light": "night",
       "date": "2026-10-22T20:30:00.000Z",
@@ -4447,91 +4443,91 @@
       },
       "objects": [
         {
-          "id": "AutumnBlanketBench",
-          "entityName": "AutumnBlanketBench",
+          "id": "HarvestPumpkinGroupOrange",
+          "entityName": "HarvestPumpkinGroupOrange",
           "role": "included",
           "meshes": 2,
           "min": [
-            -2.0459999442100525,
-            0.39999999906867745,
-            0.7750000059604645
+            -2.4132381081581116,
+            0.4,
+            -1.3732381165027618
           ],
           "max": [
-            -0.9540000557899475,
-            0.821999990940094,
-            1.2450000047683716
+            -1.5996452569961548,
+            0.7987999856472016,
+            -0.574999988079071
           ],
           "screen": {
-            "minX": 487.80701346684987,
-            "maxX": 576.1670704645738,
-            "minY": 256.4825199576279,
-            "maxY": 334.987153271706
+            "minX": 402.8075219481505,
+            "maxX": 493.986451211476,
+            "minY": 338.3649870437867,
+            "maxY": 416.9768796835152
           }
         },
         {
-          "id": "GardenTeaTable",
-          "entityName": "GardenTeaTable",
+          "id": "HarvestPumpkinSquatCream",
+          "entityName": "HarvestPumpkinSquatCream",
           "role": "included",
           "meshes": 2,
           "min": [
-            -2.431999981403351,
+            -2.3474830090999603,
             0.4,
-            -1.3599999845027924
+            0.6525169909000397
           ],
           "max": [
-            -1.5679999887943268,
-            1.3552000164985656,
-            -0.6400000154972076
+            -1.6525169909000397,
+            0.8101000130176544,
+            1.3474830090999603
           ],
           "screen": {
-            "minX": 401.7662570817059,
-            "maxX": 491.3708262222596,
-            "minY": 303.07173166075023,
-            "maxY": 417.1569211477311
+            "minX": 520.3924127516971,
+            "maxX": 599.0188422178373,
+            "minY": 276.6878036898035,
+            "maxY": 348.80595290159414
           }
         },
         {
-          "id": "EnamelGardenLamp",
-          "entityName": "EnamelGardenLamp",
+          "id": "HarvestCrateOrchard",
+          "entityName": "HarvestCrateOrchard",
           "role": "included",
           "meshes": 5,
           "min": [
-            -2.220555156469345,
+            -1.420500010251999,
             0.4,
-            -0.17299999296665192
+            -0.35750001668930054
           ],
           "max": [
-            -1.6970000267028809,
-            1.811055564880371,
-            0.17299999296665192
+            -0.5794999897480011,
+            0.8943065643310547,
+            0.35750001668930054
           ],
           "screen": {
-            "minX": 476.210460670669,
-            "maxX": 525.3999261848097,
-            "minY": 250.97107145264954,
-            "maxY": 371.5758482475625
+            "minX": 402.5582149098389,
+            "maxX": 490.57887008000046,
+            "minY": 268.47550668041214,
+            "maxY": 351.51237303420066
           }
         },
         {
-          "id": "AutumnAsterPotMauve",
-          "entityName": "AutumnAsterPotMauve",
+          "id": "GardenScarecrow",
+          "entityName": "GardenScarecrow",
           "role": "included",
-          "meshes": 5,
+          "meshes": 6,
           "min": [
-            -1.3279761672019958,
+            -1.4197290241718292,
             0.4,
-            -1.318974494934082
+            0.7950000017881393
           ],
           "max": [
-            -0.6811067461967468,
-            0.9979999899864197,
-            -0.699999988079071
+            -0.5802421569824219,
+            1.8099750518798827,
+            1.2049999982118607
           ],
           "screen": {
-            "minX": 353.91675114940654,
-            "maxX": 425.52369717451086,
-            "minY": 299.47553373781517,
-            "maxY": 379.83505104264435
+            "minX": 467.7954444992191,
+            "maxX": 538.4770952403675,
+            "minY": 181.00485725612435,
+            "maxY": 313.92252385797235
           }
         },
         {
@@ -4999,7 +4995,7 @@
       ]
     },
     {
-      "file": "evening-seat-lateAutumn-day.png",
+      "file": "harvest-corner-lateAutumn-day.png",
       "stage": "lateAutumn",
       "light": "day",
       "date": "2026-11-21T11:00:00.000Z",
@@ -5011,91 +5007,91 @@
       },
       "objects": [
         {
-          "id": "AutumnBlanketBench",
-          "entityName": "AutumnBlanketBench",
+          "id": "HarvestPumpkinGroupOrange",
+          "entityName": "HarvestPumpkinGroupOrange",
           "role": "included",
           "meshes": 2,
           "min": [
-            -2.0459999442100525,
-            0.39999999906867745,
-            0.7750000059604645
+            -2.4132381081581116,
+            0.4,
+            -1.3732381165027618
           ],
           "max": [
-            -0.9540000557899475,
-            0.821999990940094,
-            1.2450000047683716
+            -1.5996452569961548,
+            0.7987999856472016,
+            -0.574999988079071
           ],
           "screen": {
-            "minX": 487.80701346684987,
-            "maxX": 576.1670704645738,
-            "minY": 256.4825199576279,
-            "maxY": 334.987153271706
+            "minX": 402.8075219481505,
+            "maxX": 493.986451211476,
+            "minY": 338.3649870437867,
+            "maxY": 416.9768796835152
           }
         },
         {
-          "id": "GardenTeaTable",
-          "entityName": "GardenTeaTable",
+          "id": "HarvestPumpkinSquatCream",
+          "entityName": "HarvestPumpkinSquatCream",
           "role": "included",
           "meshes": 2,
           "min": [
-            -2.431999981403351,
+            -2.3474830090999603,
             0.4,
-            -1.3599999845027924
+            0.6525169909000397
           ],
           "max": [
-            -1.5679999887943268,
-            1.3552000164985656,
-            -0.6400000154972076
+            -1.6525169909000397,
+            0.8101000130176544,
+            1.3474830090999603
           ],
           "screen": {
-            "minX": 401.7662570817059,
-            "maxX": 491.3708262222596,
-            "minY": 303.07173166075023,
-            "maxY": 417.1569211477311
+            "minX": 520.3924127516971,
+            "maxX": 599.0188422178373,
+            "minY": 276.6878036898035,
+            "maxY": 348.80595290159414
           }
         },
         {
-          "id": "EnamelGardenLamp",
-          "entityName": "EnamelGardenLamp",
+          "id": "HarvestCrateOrchard",
+          "entityName": "HarvestCrateOrchard",
           "role": "included",
           "meshes": 5,
           "min": [
-            -2.220555156469345,
+            -1.420500010251999,
             0.4,
-            -0.17299999296665192
+            -0.35750001668930054
           ],
           "max": [
-            -1.6970000267028809,
-            1.811055564880371,
-            0.17299999296665192
+            -0.5794999897480011,
+            0.8943065643310547,
+            0.35750001668930054
           ],
           "screen": {
-            "minX": 476.210460670669,
-            "maxX": 525.3999261848097,
-            "minY": 250.97107145264954,
-            "maxY": 371.5758482475625
+            "minX": 402.5582149098389,
+            "maxX": 490.57887008000046,
+            "minY": 268.47550668041214,
+            "maxY": 351.51237303420066
           }
         },
         {
-          "id": "AutumnAsterPotMauve",
-          "entityName": "AutumnAsterPotMauve",
+          "id": "GardenScarecrow",
+          "entityName": "GardenScarecrow",
           "role": "included",
-          "meshes": 5,
+          "meshes": 6,
           "min": [
-            -1.3279761672019958,
+            -1.4197290241718292,
             0.4,
-            -1.318974494934082
+            0.7950000017881393
           ],
           "max": [
-            -0.6811067461967468,
-            0.9979999899864197,
-            -0.699999988079071
+            -0.5802421569824219,
+            1.8099750518798827,
+            1.2049999982118607
           ],
           "screen": {
-            "minX": 353.91675114940654,
-            "maxX": 425.52369717451086,
-            "minY": 299.47553373781517,
-            "maxY": 379.83505104264435
+            "minX": 467.7954444992191,
+            "maxX": 538.4770952403675,
+            "minY": 181.00485725612435,
+            "maxY": 313.92252385797235
           }
         },
         {
@@ -5563,7 +5559,7 @@
       ]
     },
     {
-      "file": "evening-seat-lateAutumn-overcast.png",
+      "file": "harvest-corner-lateAutumn-overcast.png",
       "stage": "lateAutumn",
       "light": "overcast",
       "date": "2026-11-21T11:00:00.000Z",
@@ -5575,91 +5571,91 @@
       },
       "objects": [
         {
-          "id": "AutumnBlanketBench",
-          "entityName": "AutumnBlanketBench",
+          "id": "HarvestPumpkinGroupOrange",
+          "entityName": "HarvestPumpkinGroupOrange",
           "role": "included",
           "meshes": 2,
           "min": [
-            -2.0459999442100525,
-            0.39999999906867745,
-            0.7750000059604645
+            -2.4132381081581116,
+            0.4,
+            -1.3732381165027618
           ],
           "max": [
-            -0.9540000557899475,
-            0.821999990940094,
-            1.2450000047683716
+            -1.5996452569961548,
+            0.7987999856472016,
+            -0.574999988079071
           ],
           "screen": {
-            "minX": 487.80701346684987,
-            "maxX": 576.1670704645738,
-            "minY": 256.4825199576279,
-            "maxY": 334.987153271706
+            "minX": 402.8075219481505,
+            "maxX": 493.986451211476,
+            "minY": 338.3649870437867,
+            "maxY": 416.9768796835152
           }
         },
         {
-          "id": "GardenTeaTable",
-          "entityName": "GardenTeaTable",
+          "id": "HarvestPumpkinSquatCream",
+          "entityName": "HarvestPumpkinSquatCream",
           "role": "included",
           "meshes": 2,
           "min": [
-            -2.431999981403351,
+            -2.3474830090999603,
             0.4,
-            -1.3599999845027924
+            0.6525169909000397
           ],
           "max": [
-            -1.5679999887943268,
-            1.3552000164985656,
-            -0.6400000154972076
+            -1.6525169909000397,
+            0.8101000130176544,
+            1.3474830090999603
           ],
           "screen": {
-            "minX": 401.7662570817059,
-            "maxX": 491.3708262222596,
-            "minY": 303.07173166075023,
-            "maxY": 417.1569211477311
+            "minX": 520.3924127516971,
+            "maxX": 599.0188422178373,
+            "minY": 276.6878036898035,
+            "maxY": 348.80595290159414
           }
         },
         {
-          "id": "EnamelGardenLamp",
-          "entityName": "EnamelGardenLamp",
+          "id": "HarvestCrateOrchard",
+          "entityName": "HarvestCrateOrchard",
           "role": "included",
           "meshes": 5,
           "min": [
-            -2.220555156469345,
+            -1.420500010251999,
             0.4,
-            -0.17299999296665192
+            -0.35750001668930054
           ],
           "max": [
-            -1.6970000267028809,
-            1.811055564880371,
-            0.17299999296665192
+            -0.5794999897480011,
+            0.8943065643310547,
+            0.35750001668930054
           ],
           "screen": {
-            "minX": 476.210460670669,
-            "maxX": 525.3999261848097,
-            "minY": 250.97107145264954,
-            "maxY": 371.5758482475625
+            "minX": 402.5582149098389,
+            "maxX": 490.57887008000046,
+            "minY": 268.47550668041214,
+            "maxY": 351.51237303420066
           }
         },
         {
-          "id": "AutumnAsterPotMauve",
-          "entityName": "AutumnAsterPotMauve",
+          "id": "GardenScarecrow",
+          "entityName": "GardenScarecrow",
           "role": "included",
-          "meshes": 5,
+          "meshes": 6,
           "min": [
-            -1.3279761672019958,
+            -1.4197290241718292,
             0.4,
-            -1.318974494934082
+            0.7950000017881393
           ],
           "max": [
-            -0.6811067461967468,
-            0.9979999899864197,
-            -0.699999988079071
+            -0.5802421569824219,
+            1.8099750518798827,
+            1.2049999982118607
           ],
           "screen": {
-            "minX": 353.91675114940654,
-            "maxX": 425.52369717451086,
-            "minY": 299.47553373781517,
-            "maxY": 379.83505104264435
+            "minX": 467.7954444992191,
+            "maxX": 538.4770952403675,
+            "minY": 181.00485725612435,
+            "maxY": 313.92252385797235
           }
         },
         {
@@ -6127,7 +6123,7 @@
       ]
     },
     {
-      "file": "evening-seat-lateAutumn-dusk.png",
+      "file": "harvest-corner-lateAutumn-dusk.png",
       "stage": "lateAutumn",
       "light": "dusk",
       "date": "2026-11-21T15:17:00.000Z",
@@ -6139,91 +6135,91 @@
       },
       "objects": [
         {
-          "id": "AutumnBlanketBench",
-          "entityName": "AutumnBlanketBench",
+          "id": "HarvestPumpkinGroupOrange",
+          "entityName": "HarvestPumpkinGroupOrange",
           "role": "included",
           "meshes": 2,
           "min": [
-            -2.0459999442100525,
-            0.39999999906867745,
-            0.7750000059604645
+            -2.4132381081581116,
+            0.4,
+            -1.3732381165027618
           ],
           "max": [
-            -0.9540000557899475,
-            0.821999990940094,
-            1.2450000047683716
+            -1.5996452569961548,
+            0.7987999856472016,
+            -0.574999988079071
           ],
           "screen": {
-            "minX": 487.80701346684987,
-            "maxX": 576.1670704645738,
-            "minY": 256.4825199576279,
-            "maxY": 334.987153271706
+            "minX": 402.8075219481505,
+            "maxX": 493.986451211476,
+            "minY": 338.3649870437867,
+            "maxY": 416.9768796835152
           }
         },
         {
-          "id": "GardenTeaTable",
-          "entityName": "GardenTeaTable",
+          "id": "HarvestPumpkinSquatCream",
+          "entityName": "HarvestPumpkinSquatCream",
           "role": "included",
           "meshes": 2,
           "min": [
-            -2.431999981403351,
+            -2.3474830090999603,
             0.4,
-            -1.3599999845027924
+            0.6525169909000397
           ],
           "max": [
-            -1.5679999887943268,
-            1.3552000164985656,
-            -0.6400000154972076
+            -1.6525169909000397,
+            0.8101000130176544,
+            1.3474830090999603
           ],
           "screen": {
-            "minX": 401.7662570817059,
-            "maxX": 491.3708262222596,
-            "minY": 303.07173166075023,
-            "maxY": 417.1569211477311
+            "minX": 520.3924127516971,
+            "maxX": 599.0188422178373,
+            "minY": 276.6878036898035,
+            "maxY": 348.80595290159414
           }
         },
         {
-          "id": "EnamelGardenLamp",
-          "entityName": "EnamelGardenLamp",
+          "id": "HarvestCrateOrchard",
+          "entityName": "HarvestCrateOrchard",
           "role": "included",
           "meshes": 5,
           "min": [
-            -2.220555156469345,
+            -1.420500010251999,
             0.4,
-            -0.17299999296665192
+            -0.35750001668930054
           ],
           "max": [
-            -1.6970000267028809,
-            1.811055564880371,
-            0.17299999296665192
+            -0.5794999897480011,
+            0.8943065643310547,
+            0.35750001668930054
           ],
           "screen": {
-            "minX": 476.210460670669,
-            "maxX": 525.3999261848097,
-            "minY": 250.97107145264954,
-            "maxY": 371.5758482475625
+            "minX": 402.5582149098389,
+            "maxX": 490.57887008000046,
+            "minY": 268.47550668041214,
+            "maxY": 351.51237303420066
           }
         },
         {
-          "id": "AutumnAsterPotMauve",
-          "entityName": "AutumnAsterPotMauve",
+          "id": "GardenScarecrow",
+          "entityName": "GardenScarecrow",
           "role": "included",
-          "meshes": 5,
+          "meshes": 6,
           "min": [
-            -1.3279761672019958,
+            -1.4197290241718292,
             0.4,
-            -1.318974494934082
+            0.7950000017881393
           ],
           "max": [
-            -0.6811067461967468,
-            0.9979999899864197,
-            -0.699999988079071
+            -0.5802421569824219,
+            1.8099750518798827,
+            1.2049999982118607
           ],
           "screen": {
-            "minX": 353.91675114940654,
-            "maxX": 425.52369717451086,
-            "minY": 299.47553373781517,
-            "maxY": 379.83505104264435
+            "minX": 467.7954444992191,
+            "maxX": 538.4770952403675,
+            "minY": 181.00485725612435,
+            "maxY": 313.92252385797235
           }
         },
         {
@@ -6691,7 +6687,7 @@
       ]
     },
     {
-      "file": "evening-seat-lateAutumn-night.png",
+      "file": "harvest-corner-lateAutumn-night.png",
       "stage": "lateAutumn",
       "light": "night",
       "date": "2026-11-21T21:30:00.000Z",
@@ -6703,91 +6699,91 @@
       },
       "objects": [
         {
-          "id": "AutumnBlanketBench",
-          "entityName": "AutumnBlanketBench",
+          "id": "HarvestPumpkinGroupOrange",
+          "entityName": "HarvestPumpkinGroupOrange",
           "role": "included",
           "meshes": 2,
           "min": [
-            -2.0459999442100525,
-            0.39999999906867745,
-            0.7750000059604645
+            -2.4132381081581116,
+            0.4,
+            -1.3732381165027618
           ],
           "max": [
-            -0.9540000557899475,
-            0.821999990940094,
-            1.2450000047683716
+            -1.5996452569961548,
+            0.7987999856472016,
+            -0.574999988079071
           ],
           "screen": {
-            "minX": 487.80701346684987,
-            "maxX": 576.1670704645738,
-            "minY": 256.4825199576279,
-            "maxY": 334.987153271706
+            "minX": 402.8075219481505,
+            "maxX": 493.986451211476,
+            "minY": 338.3649870437867,
+            "maxY": 416.9768796835152
           }
         },
         {
-          "id": "GardenTeaTable",
-          "entityName": "GardenTeaTable",
+          "id": "HarvestPumpkinSquatCream",
+          "entityName": "HarvestPumpkinSquatCream",
           "role": "included",
           "meshes": 2,
           "min": [
-            -2.431999981403351,
+            -2.3474830090999603,
             0.4,
-            -1.3599999845027924
+            0.6525169909000397
           ],
           "max": [
-            -1.5679999887943268,
-            1.3552000164985656,
-            -0.6400000154972076
+            -1.6525169909000397,
+            0.8101000130176544,
+            1.3474830090999603
           ],
           "screen": {
-            "minX": 401.7662570817059,
-            "maxX": 491.3708262222596,
-            "minY": 303.07173166075023,
-            "maxY": 417.1569211477311
+            "minX": 520.3924127516971,
+            "maxX": 599.0188422178373,
+            "minY": 276.6878036898035,
+            "maxY": 348.80595290159414
           }
         },
         {
-          "id": "EnamelGardenLamp",
-          "entityName": "EnamelGardenLamp",
+          "id": "HarvestCrateOrchard",
+          "entityName": "HarvestCrateOrchard",
           "role": "included",
           "meshes": 5,
           "min": [
-            -2.220555156469345,
+            -1.420500010251999,
             0.4,
-            -0.17299999296665192
+            -0.35750001668930054
           ],
           "max": [
-            -1.6970000267028809,
-            1.811055564880371,
-            0.17299999296665192
+            -0.5794999897480011,
+            0.8943065643310547,
+            0.35750001668930054
           ],
           "screen": {
-            "minX": 476.210460670669,
-            "maxX": 525.3999261848097,
-            "minY": 250.97107145264954,
-            "maxY": 371.5758482475625
+            "minX": 402.5582149098389,
+            "maxX": 490.57887008000046,
+            "minY": 268.47550668041214,
+            "maxY": 351.51237303420066
           }
         },
         {
-          "id": "AutumnAsterPotMauve",
-          "entityName": "AutumnAsterPotMauve",
+          "id": "GardenScarecrow",
+          "entityName": "GardenScarecrow",
           "role": "included",
-          "meshes": 5,
+          "meshes": 6,
           "min": [
-            -1.3279761672019958,
+            -1.4197290241718292,
             0.4,
-            -1.318974494934082
+            0.7950000017881393
           ],
           "max": [
-            -0.6811067461967468,
-            0.9979999899864197,
-            -0.699999988079071
+            -0.5802421569824219,
+            1.8099750518798827,
+            1.2049999982118607
           ],
           "screen": {
-            "minX": 353.91675114940654,
-            "maxX": 425.52369717451086,
-            "minY": 299.47553373781517,
-            "maxY": 379.83505104264435
+            "minX": 467.7954444992191,
+            "maxX": 538.4770952403675,
+            "minY": 181.00485725612435,
+            "maxY": 313.92252385797235
           }
         },
         {
