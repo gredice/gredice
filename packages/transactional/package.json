@@ -16,7 +16,7 @@
     "devDependencies": {
         "@biomejs/biome": "2.5.14",
         "@gredice/ui": "workspace:*",
-        "@react-email/ui": "6.9.5",
+        "@react-email/ui": "6.11.0",
         "@tailwindcss/postcss": "4.3.3",
         "@types/node": "24.19.0",
         "@types/react": "19.2.18",
@@ -28,6 +28,6 @@
         "@gredice/js": "workspace:*",
         "@gredice/notifications": "workspace:*",
         "react": "19.2.8",
-        "react-email": "6.9.5"
+        "react-email": "6.11.0"
     }
 }
