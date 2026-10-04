@@ -91,6 +91,11 @@ export function createOAuthStateJwt(userId: string) {
     return rbac.createJwtWithClaims(userId, { tokenUse: 'oauth_state' }, '10m');
 }
 
+export function createMcpAccessJwt(userId: string) {
+    // MCP selects and authorizes the account from x-gredice-account-id.
+    return rbac.createJwt(userId, '72h');
+}
+
 export async function verifyOAuthStateJwt(token: string) {
     const verified = await verifyJwt(token);
     const payload = verified.result?.payload;

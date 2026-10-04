@@ -6,6 +6,7 @@ import { Hono } from 'hono';
 import { authValidator } from '../hono/authValidator';
 import {
     createJwt,
+    createMcpAccessJwt,
     verifyAccessJwt,
     verifyJwt,
     verifyOAuthStateJwt,
@@ -21,6 +22,29 @@ const auth = initAuth({
         jwtSecretFactory: () => secret,
     },
     getUser: () => null,
+});
+
+test('Suncokret MCP tokens verify as access tokens with the existing lifetime', async () => {
+    const previousSecret = process.env.GREDICE_JWT_SIGN_SECRET;
+    process.env.GREDICE_JWT_SIGN_SECRET = secret.toString('base64');
+    try {
+        const token = await createMcpAccessJwt('user-1');
+        const verified = await verifyAccessJwt(token);
+        assert.ifError(verified.error);
+        assert.equal(verified.result?.payload.sub, 'user-1');
+        assert.equal(verified.result?.payload.tokenUse, 'access');
+        assert.equal(verified.result?.payload.accountId, undefined);
+        assert.equal(
+            Number(verified.result?.payload.exp) -
+                Number(verified.result?.payload.iat),
+            72 * 60 * 60,
+        );
+        assert.ok((await verifyOAuthStateJwt(token)).error);
+    } finally {
+        if (previousSecret === undefined)
+            delete process.env.GREDICE_JWT_SIGN_SECRET;
+        else process.env.GREDICE_JWT_SIGN_SECRET = previousSecret;
+    }
 });
 
 function legacyToken(claims: Record<string, unknown>) {
