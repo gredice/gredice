@@ -1,7 +1,8 @@
 # Localized tea steam validation
 
-Issue #4972, stacked on tea-table PR #5041. The shared emitter contract is ready
-for a future chestnut cart; this change integrates only the available tea table.
+Issue #4972, stacked on tea-table PR #5041. This record covers the original
+tea-table integration. The chestnut pan now uses the same bounded layer; see
+[chestnut steam validation](chestnut-steam-2026.md) for the mixed-prop checks.
 
 The [validation record](localized-steam-2026/validation.json) identifies the
 tested source commit, source hashes, capture hashes, tooling and exact fixture.

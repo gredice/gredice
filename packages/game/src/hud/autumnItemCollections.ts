@@ -70,6 +70,7 @@ export const autumnItemCollections = [
         entityNames: [
             autumnBlanketBench.name,
             gardenTeaTable.name,
+            'AutumnAsterPotMauve',
             stackedFirewood.name,
             gardenBrazier.name,
             'WoodenBench',

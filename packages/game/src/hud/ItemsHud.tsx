@@ -63,6 +63,7 @@ import {
 } from '../itemsHudDropTarget';
 import { KnownPages } from '../knownPages';
 import { useGameState } from '../useGameState';
+import { AutumnArrangementPreview } from './AutumnArrangementPreview';
 import { getAutumnItemCollections } from './autumnItemCollections';
 import { HudCard } from './components/HudCard';
 import {
@@ -82,6 +83,7 @@ type HudItemEntity = {
 };
 
 type HudItemPicker = {
+    autumnCollectionId?: string;
     type: 'picker';
     label: string;
     imageSrc: string;
@@ -974,6 +976,7 @@ function getHudItems({
         (collection) => ({
             type: 'picker',
             label: collection.label,
+            autumnCollectionId: collection.id,
             imageSrc: getBlockImageUrl(collection.entityNames[0]),
             items: collection.entityNames.map((name) => {
                 const block = blockData?.find(
@@ -1250,7 +1253,7 @@ type EntityItemProps = HudItemEntity & {
     onHudDragStart?: () => void;
 };
 
-function EntityItem({
+export function EntityItem({
     footprintLabel,
     name,
     onHudDragEnd,
@@ -1603,6 +1606,11 @@ function PickerItem({ label, items, imageSrc }: HudItemPicker) {
                 data-items-picker-scroll
                 className="grid gap-1 p-2 grid-cols-4 md:grid-cols-6 overflow-y-auto overscroll-contain"
             >
+                {activeSubPicker?.autumnCollectionId && (
+                    <AutumnArrangementPreview
+                        collectionId={activeSubPicker.autumnCollectionId}
+                    />
+                )}
                 {currentItems.map((item) => {
                     if (item.type === 'entity') {
                         return (
