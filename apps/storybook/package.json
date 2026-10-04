@@ -32,7 +32,7 @@
         "@storybook/addon-mcp": "10.6.0",
         "@storybook/nextjs-vite": "10.6.0",
         "@tailwindcss/postcss": "4.3.3",
-        "@types/node": "24.13.6",
+        "@types/node": "24.19.0",
         "@types/react": "19.2.18",
         "@types/react-dom": "19.2.4",
         "nuqs": "2.10.1",
