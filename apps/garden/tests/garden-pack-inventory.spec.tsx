@@ -136,7 +136,7 @@ test('inventory loading, failure retry and empty states use actual API query', a
     });
     await mount(<GardenPackInventoryStory seed={false} />);
     await expect(page.getByRole('status')).toHaveText(
-        'Učitavanje kupljenih paketa…',
+        'Učitavanje mojih paketa…',
     );
     release?.();
     await expect(page.getByRole('alert')).toContainText(
@@ -146,7 +146,7 @@ test('inventory loading, failure retry and empty states use actual API query', a
         .getByRole('button', { name: 'Pokušaj ponovno', exact: true })
         .focus();
     await page.keyboard.press('Enter');
-    await expect(page.getByText('Još nema kupljenih paketa.')).toBeVisible();
+    await expect(page.getByText('Još nema preuzetih paketa.')).toBeVisible();
     expect(attempts).toBe(2);
 });
 
@@ -248,5 +248,81 @@ test('authoritative server rollout hides tab despite a public UI flag', async ({
     await expect(page.getByRole('tab', { name: /^Ruksak/u })).toHaveAttribute(
         'aria-selected',
         'true',
+    );
+});
+
+test('actual prepaid hook rolls back an uncertain response, retains exact retry, and never debits the account', async ({
+    mount,
+    page,
+}) => {
+    const requests: unknown[] = [];
+    await page.route(
+        '**/api/accounts/current/garden-packs/**/place',
+        async (route) => {
+            requests.push(route.request().postDataJSON());
+            if (requests.length === 1) {
+                await route.abort('failed');
+                return;
+            }
+            await route.fulfill({
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    ok: true,
+                    replayed: true,
+                    blockId: 'prepaid-block',
+                    variant: null,
+                    position: { x: 0, y: 0 },
+                }),
+            });
+        },
+    );
+    await page.route('**/api/accounts/current/garden-packs?*', async (route) =>
+        route.fulfill({
+            status: 503,
+            contentType: 'application/json',
+            body: JSON.stringify({ error: 'unavailable' }),
+        }),
+    );
+    await mount(<GardenPackInventoryStory actualPlacement />);
+    const pack = page.locator('[data-owned-pack="purchase-one"]');
+    await pack.locator('summary').click();
+    await pack.getByRole('button', { name: /Postavi .*purchase-one/u }).click();
+    await expect(pack.getByRole('alert')).toContainText(
+        'Postavljanje nije potvrđeno.',
+    );
+    await expect(page.getByTestId('pack-placement-state')).toContainText(
+        '"amount":123',
+    );
+    await expect(page.getByTestId('pack-placement-state')).not.toContainText(
+        'optimistic-pack',
+    );
+    await pack.getByRole('button', { name: /Postavi .*purchase-one/u }).click();
+    await expect.poll(() => requests.length).toBe(2);
+    expect(requests[1]).toEqual(requests[0]);
+    await expect(page.getByTestId('pack-placement-state')).toContainText(
+        '"amount":123',
+    );
+});
+
+test('actual prepaid hook rejects a stale owner before calling the placement API', async ({
+    mount,
+    page,
+}) => {
+    const requests: string[] = [];
+    page.on('request', (request) => {
+        if (request.url().endsWith('/place')) requests.push(request.url());
+    });
+    await mount(<GardenPackInventoryStory actualPlacement />);
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: 'Switch fixture account' }).click();
+    await page
+        .getByRole('button', { name: 'Try fixture prepaid placement' })
+        .click();
+    await expect(page.getByTestId('pack-placement-error')).toContainText(
+        'Odaberi vlastiti vrt',
+    );
+    expect(requests).toEqual([]);
+    await expect(page.getByTestId('pack-placement-state')).not.toContainText(
+        'optimistic-pack',
     );
 });

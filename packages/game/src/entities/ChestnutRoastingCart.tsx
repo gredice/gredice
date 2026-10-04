@@ -5,6 +5,7 @@ import {
 import { getGardenBlockSpan } from '@gredice/js/gardenBlocks';
 import { useRef } from 'react';
 import type { Group } from 'three';
+import { SteamEmitter } from '../scene/SteamEmitter';
 import { animated } from '../scene/sceneSpring';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useGameState } from '../useGameState';
@@ -47,13 +48,23 @@ export function ChestnutRoastingCart({
             position={position}
             rotation-y={animatedRotation?.to((_, y) => y)}
         >
-            {chestnutRoastingCartEffectAnchors.map((anchor) => (
-                <group
-                    key={anchor.id}
-                    name={`ChestnutRoastingCart:${anchor.id}:${block.id}`}
-                    position={anchor.position}
-                />
-            ))}
+            {chestnutRoastingCartEffectAnchors.map((anchor) =>
+                anchor.id === 'steam' ? (
+                    <SteamEmitter
+                        key={anchor.id}
+                        id={`ChestnutRoastingCart:${anchor.id}:${block.id}`}
+                        position={anchor.position}
+                        radius={anchor.radius}
+                        enabled={!disabled}
+                    />
+                ) : (
+                    <group
+                        key={anchor.id}
+                        name={`ChestnutRoastingCart:${anchor.id}:${block.id}`}
+                        position={anchor.position}
+                    />
+                ),
+            )}
             <WeatheredEntityPart
                 node={nodes.ChestnutRoastingCart_Cart}
                 material={nodes.ChestnutRoastingCart_Cart.material}
