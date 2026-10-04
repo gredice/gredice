@@ -15,10 +15,10 @@ const directoryEntityId = z
 const previewUrl = z
     .string()
     .url()
-    .refine(
-        (url) => ['http:', 'https:'].includes(new URL(url).protocol),
-        'Preview must use HTTP or HTTPS',
-    );
+    .refine((url) => {
+        const parsed = URL.parse(url);
+        return parsed !== null && ['http:', 'https:'].includes(parsed.protocol);
+    }, 'Preview must use HTTP or HTTPS');
 
 const sunflowerAmount = z.number().int().min(0).max(2_147_483_647);
 const localizedText = z
