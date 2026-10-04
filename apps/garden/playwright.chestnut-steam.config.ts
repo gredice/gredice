@@ -13,6 +13,7 @@ export default defineConfig({
         ?.filter((project) => project.name === 'chromium-webgl')
         .map((project) => ({
             ...project,
+            grepInvert: undefined,
             testMatch: 'tests/chestnut-steam.spec.tsx',
             use: {
                 ...project.use,
