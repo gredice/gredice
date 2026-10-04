@@ -290,8 +290,8 @@ importers:
         specifier: 8.23.0
         version: 8.23.0
       prettier:
-        specifier: 3.9.8
-        version: 3.9.8
+        specifier: 3.9.9
+        version: 3.9.9
       react:
         specifier: 19.2.8
         version: 19.2.8
@@ -465,8 +465,8 @@ importers:
         specifier: 8.23.0
         version: 8.23.0
       prettier:
-        specifier: 3.9.8
-        version: 3.9.8
+        specifier: 3.9.9
+        version: 3.9.9
       qrcode:
         specifier: 1.5.4
         version: 1.5.4
@@ -9594,6 +9594,11 @@ packages:
 
   prettier@3.9.8:
     resolution: {integrity: sha512-WRFq3Wn3WId7LLROfMLdH7xaFr2jR62wU8nLO6rQUOLOxNZUviyJQs1M0iIhLexSFy+L+w0ch66wtoO2jRjG0A==}
+    engines: {node: '>=14'}
+    hasBin: true
+
+  prettier@3.9.9:
+    resolution: {integrity: sha512-Z/CJHIkdujO/OtN7nXUii0Rf3VT5SRuhjBA82Xvu2XhBUgX3nhP67T0LHceBdQLex7OOFGTox+Q5Yg8Jk2Qivg==}
     engines: {node: '>=14'}
     hasBin: true
 
@@ -19351,6 +19356,8 @@ snapshots:
   preact@10.29.8: {}
 
   prettier@3.9.8: {}
+
+  prettier@3.9.9: {}
 
   pretty-format@27.5.1:
     dependencies:
