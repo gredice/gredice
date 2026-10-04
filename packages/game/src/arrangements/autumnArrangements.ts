@@ -145,8 +145,8 @@ export function getAvailableAutumnArrangements({
         blockData
             ?.filter(
                 (block) =>
-                    isSandbox ||
-                    (block.id > 0 && !isInternalSceneBlockData(block)),
+                    !isInternalSceneBlockData(block) &&
+                    (isSandbox || block.id > 0),
             )
             .map((block) => [block.information.name, block]),
     );

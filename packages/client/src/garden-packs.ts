@@ -44,9 +44,12 @@ export async function purchaseGardenPack(
         'garden-packs'
     ].purchase.$post({ json: input });
     if (!response.ok) {
-        const result = await response.json();
+        const result = await response.json().catch(() => null);
         throw new Error(
-            'error' in result
+            result !== null &&
+                typeof result === 'object' &&
+                'error' in result &&
+                typeof result.error === 'string'
                 ? result.error
                 : 'Kupnju paketa trenutačno nije moguće dovršiti.',
         );
