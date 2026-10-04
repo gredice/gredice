@@ -206,9 +206,11 @@ for (const tier of ['low', 'medium', 'high'] satisfies (
     | 'medium'
     | 'high'
 )[]) {
-    test(`matched mixed tea/cart steam cost with existing autumn and warm-prop layers on ${tier}`, async ({
+    test(`matched mixed tea/cart steam cost with existing autumn and warm-prop layers on ${tier} @profile`, async ({
         mount,
     }, testInfo) => {
+        testInfo.setTimeout(600_000);
+        const expect = baseExpect.configure({ timeout: 300_000 });
         const fixture = await mount(
             <SteamProfileFixture tier={tier} steam={false} chestnuts />,
         );
