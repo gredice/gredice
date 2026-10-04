@@ -18,6 +18,7 @@ test('createJwt supports account-bound payloads', async () => {
         assert.ifError(error);
         assert.equal(result?.payload.sub, 'user-1');
         assert.equal(result?.payload.accountId, 'account-1');
+        assert.equal(result?.payload.tokenUse, 'account_delete');
     } finally {
         if (previousSecret === undefined) {
             delete process.env.GREDICE_JWT_SIGN_SECRET;

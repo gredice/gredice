@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import {
     clearCookie,
     createFarmSessionIncarnation,
-    verifyJwt,
+    verifyAccessJwt,
 } from '../../../lib/auth/auth';
 import { collectFarmLoggedOutSessions } from '../../../lib/auth/logoutSessions';
 import {
@@ -14,7 +14,9 @@ import { sessionCookieName } from '../../../lib/auth/sessionConfig';
 
 async function getLoggedOutSessions(refreshToken: string | null) {
     const accessToken = (await cookies()).get(sessionCookieName)?.value ?? null;
-    const accessTokenResult = accessToken ? await verifyJwt(accessToken) : null;
+    const accessTokenResult = accessToken
+        ? await verifyAccessJwt(accessToken)
+        : null;
     const accessUserId = accessTokenResult?.result?.payload.sub;
     const refreshUser = refreshToken
         ? await getRefreshTokenUserId(refreshToken)

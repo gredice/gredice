@@ -58,7 +58,12 @@ const rbac = initRbac(
     }),
 );
 
-export const { withAuth: baseWithAuth, auth: baseAuth, verifyJwt } = rbac;
+export const {
+    withAuth: baseWithAuth,
+    auth: baseAuth,
+    verifyJwt,
+    verifyAccessJwt,
+} = rbac;
 
 type CreateJwtExpiration = Parameters<typeof rbac.createJwt>[1];
 type CreateJwtOverride = Parameters<typeof rbac.createJwt>[2];
@@ -117,6 +122,7 @@ async function createAccountBoundJwt(
             iat: issuedAt,
             iss: 'urn:gredice:issuer:api',
             sub: payload.sub,
+            tokenUse: 'account_delete',
         }),
     ].join('.');
     const signature = createHmac('sha256', await jwtSecretFactory())

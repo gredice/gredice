@@ -4,7 +4,11 @@ import {
     getUser,
     revokeRefreshToken,
 } from '@gredice/storage';
-import { clearCookie, setCookie, verifyJwt } from '../../../lib/auth/auth';
+import {
+    clearCookie,
+    setCookie,
+    verifyAccessJwt,
+} from '../../../lib/auth/auth';
 import {
     establishFarmLoginSession,
     type FarmLoginErrorCode,
@@ -96,7 +100,7 @@ export async function POST(request: Request) {
         },
         revokeRefreshToken,
         verifyAccessTokenSubject: async (token) => {
-            const { error, result } = await verifyJwt(token);
+            const { error, result } = await verifyAccessJwt(token);
             const subject = result?.payload.sub;
             return !error && subject && subject.trim() === subject
                 ? subject

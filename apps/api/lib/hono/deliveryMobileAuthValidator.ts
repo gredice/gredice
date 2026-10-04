@@ -1,7 +1,7 @@
 import { getUser } from '@gredice/storage';
 import type { MiddlewareHandler } from 'hono';
 import 'server-only';
-import { verifyJwt } from '../auth/auth';
+import { verifyAccessJwt } from '../auth/auth';
 import {
     deliveryMobileAudience,
     deliveryMobileRouteScope,
@@ -34,7 +34,7 @@ export type DeliveryMobileAuthDeps = {
 
 const defaultDeps: DeliveryMobileAuthDeps = {
     async verifyAccessToken(token) {
-        const { result, error } = await verifyJwt(token, {
+        const { result, error } = await verifyAccessJwt(token, {
             audience: deliveryMobileAudience,
         });
         return {

@@ -30,6 +30,7 @@ export const {
     createJwt,
     auth: baseAuth,
     verifyJwt,
+    verifyAccessJwt,
 } = initRbac(
     initAuth({
         security: { expiry: accessTokenExpiryMs },

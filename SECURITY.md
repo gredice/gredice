@@ -10,6 +10,15 @@ Use this guide for auth, secrets, validation, payments, private data, and unsafe
 - Admin workflows must require the appropriate role before reading or mutating data.
 - Preserve impersonation and session handling patterns where they already exist.
 
+Use `verifyAccessJwt` for session cookies, bearer authentication, session refresh,
+and OAuth session exchange. `verifyJwt` only checks signature, issuer, audience,
+and expiration; callers for single-purpose flows must validate the purpose.
+New access JWTs use `tokenUse: 'access'`, account-deletion links use
+`'account_delete'`, and OAuth linking state uses `'oauth_state'`. Existing
+unmarked sessions remain valid, but unmarked account-bound deletion links are
+rejected by access verification. OAuth callbacks accept their dedicated purpose
+and existing unmarked state tokens while rejecting deletion tokens.
+
 ## Secrets and environment variables
 
 - Never hardcode secrets, tokens, connection strings, webhook secrets, or private keys.

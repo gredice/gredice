@@ -1,6 +1,6 @@
 import { doUseRefreshToken, getRefreshTokenUserId } from '@gredice/storage';
 import { cookies } from 'next/headers';
-import { createJwt, setCookie, verifyJwt } from './baseAuth';
+import { createJwt, setCookie, verifyAccessJwt } from './baseAuth';
 import {
     clearRefreshCookie,
     getRefreshTokenCookie,
@@ -13,7 +13,7 @@ type RefreshSessionOptions = {
 };
 
 async function isAccessTokenValid(token: string) {
-    const { result, error } = await verifyJwt(token);
+    const { result, error } = await verifyAccessJwt(token);
     if (error || !result?.payload?.sub) {
         return false;
     }
