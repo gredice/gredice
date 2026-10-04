@@ -1,0 +1,179 @@
+{
+  "measuredAt": "2026-10-03",
+  "renderer": "Chromium headless SwiftShader on shared macOS host",
+  "canvas": {
+    "width": 680,
+    "height": 520,
+    "dpr": 1
+  },
+  "warmupRenderedFrames": 60,
+  "sampleRenderedFrames": 120,
+  "timingLimitation": "Concurrent browser and compiler work; timings are diagnostics, not a hardware budget or attributed effect cost.",
+  "samples": [
+    {
+      "tier": "low",
+      "baseline": {
+        "enabled": false,
+        "frames": 120,
+        "calls": 201,
+        "triangles": 163942,
+        "p95FrameMs": 90.89999997615814,
+        "steam": 0,
+        "emitters": 0,
+        "warmProps": 2,
+        "warmSmoke": 0,
+        "sourceIds": [
+          "ChestnutRoastingCart:steam:profile-cart:-2",
+          "ChestnutRoastingCart:steam:profile-cart:2",
+          "GardenTeaTable:mug:left:profile-tea:-2:-2",
+          "GardenTeaTable:mug:left:profile-tea:-2:2",
+          "GardenTeaTable:mug:left:profile-tea:2:-2",
+          "GardenTeaTable:mug:left:profile-tea:2:2",
+          "GardenTeaTable:mug:right:profile-tea:-2:-2",
+          "GardenTeaTable:mug:right:profile-tea:-2:2",
+          "GardenTeaTable:mug:right:profile-tea:2:-2",
+          "GardenTeaTable:mug:right:profile-tea:2:2"
+        ],
+        "falling": 24,
+        "ground": 48,
+        "entity": 20
+      },
+      "candidate": {
+        "enabled": true,
+        "frames": 120,
+        "calls": 201,
+        "triangles": 163942,
+        "p95FrameMs": 897.1000000238419,
+        "steam": 0,
+        "emitters": 0,
+        "warmProps": 2,
+        "warmSmoke": 0,
+        "sourceIds": [
+          "ChestnutRoastingCart:steam:profile-cart:-2",
+          "ChestnutRoastingCart:steam:profile-cart:2",
+          "GardenTeaTable:mug:left:profile-tea:-2:-2",
+          "GardenTeaTable:mug:left:profile-tea:-2:2",
+          "GardenTeaTable:mug:left:profile-tea:2:-2",
+          "GardenTeaTable:mug:left:profile-tea:2:2",
+          "GardenTeaTable:mug:right:profile-tea:-2:-2",
+          "GardenTeaTable:mug:right:profile-tea:-2:2",
+          "GardenTeaTable:mug:right:profile-tea:2:-2",
+          "GardenTeaTable:mug:right:profile-tea:2:2"
+        ],
+        "falling": 24,
+        "ground": 48,
+        "entity": 20
+      }
+    },
+    {
+      "tier": "medium",
+      "baseline": {
+        "enabled": false,
+        "frames": 120,
+        "calls": 219,
+        "triangles": 167224,
+        "p95FrameMs": 375.7999999523163,
+        "steam": 0,
+        "emitters": 0,
+        "warmProps": 2,
+        "warmSmoke": 0,
+        "sourceIds": [
+          "ChestnutRoastingCart:steam:profile-cart:-2",
+          "ChestnutRoastingCart:steam:profile-cart:2",
+          "GardenTeaTable:mug:left:profile-tea:-2:-2",
+          "GardenTeaTable:mug:left:profile-tea:-2:2",
+          "GardenTeaTable:mug:left:profile-tea:2:-2",
+          "GardenTeaTable:mug:left:profile-tea:2:2",
+          "GardenTeaTable:mug:right:profile-tea:-2:-2",
+          "GardenTeaTable:mug:right:profile-tea:-2:2",
+          "GardenTeaTable:mug:right:profile-tea:2:-2",
+          "GardenTeaTable:mug:right:profile-tea:2:2"
+        ],
+        "falling": 80,
+        "ground": 221,
+        "entity": 20
+      },
+      "candidate": {
+        "enabled": true,
+        "frames": 120,
+        "calls": 220,
+        "triangles": 167272,
+        "p95FrameMs": 1094.7000000476837,
+        "steam": 24,
+        "emitters": 4,
+        "warmProps": 2,
+        "warmSmoke": 0,
+        "sourceIds": [
+          "ChestnutRoastingCart:steam:profile-cart:-2",
+          "ChestnutRoastingCart:steam:profile-cart:2",
+          "GardenTeaTable:mug:left:profile-tea:-2:-2",
+          "GardenTeaTable:mug:left:profile-tea:-2:2",
+          "GardenTeaTable:mug:left:profile-tea:2:-2",
+          "GardenTeaTable:mug:left:profile-tea:2:2",
+          "GardenTeaTable:mug:right:profile-tea:-2:-2",
+          "GardenTeaTable:mug:right:profile-tea:-2:2",
+          "GardenTeaTable:mug:right:profile-tea:2:-2",
+          "GardenTeaTable:mug:right:profile-tea:2:2"
+        ],
+        "falling": 80,
+        "ground": 221,
+        "entity": 20
+      }
+    },
+    {
+      "tier": "high",
+      "baseline": {
+        "enabled": false,
+        "frames": 120,
+        "calls": 219,
+        "triangles": 168066,
+        "p95FrameMs": 151.5,
+        "steam": 0,
+        "emitters": 0,
+        "warmProps": 2,
+        "warmSmoke": 0,
+        "sourceIds": [
+          "ChestnutRoastingCart:steam:profile-cart:-2",
+          "ChestnutRoastingCart:steam:profile-cart:2",
+          "GardenTeaTable:mug:left:profile-tea:-2:-2",
+          "GardenTeaTable:mug:left:profile-tea:-2:2",
+          "GardenTeaTable:mug:left:profile-tea:2:-2",
+          "GardenTeaTable:mug:left:profile-tea:2:2",
+          "GardenTeaTable:mug:right:profile-tea:-2:-2",
+          "GardenTeaTable:mug:right:profile-tea:-2:2",
+          "GardenTeaTable:mug:right:profile-tea:2:-2",
+          "GardenTeaTable:mug:right:profile-tea:2:2"
+        ],
+        "falling": 160,
+        "ground": 221,
+        "entity": 20
+      },
+      "candidate": {
+        "enabled": true,
+        "frames": 120,
+        "calls": 220,
+        "triangles": 168162,
+        "p95FrameMs": 133.69999992847443,
+        "steam": 48,
+        "emitters": 8,
+        "warmProps": 2,
+        "warmSmoke": 0,
+        "sourceIds": [
+          "ChestnutRoastingCart:steam:profile-cart:-2",
+          "ChestnutRoastingCart:steam:profile-cart:2",
+          "GardenTeaTable:mug:left:profile-tea:-2:-2",
+          "GardenTeaTable:mug:left:profile-tea:-2:2",
+          "GardenTeaTable:mug:left:profile-tea:2:-2",
+          "GardenTeaTable:mug:left:profile-tea:2:2",
+          "GardenTeaTable:mug:right:profile-tea:-2:-2",
+          "GardenTeaTable:mug:right:profile-tea:-2:2",
+          "GardenTeaTable:mug:right:profile-tea:2:-2",
+          "GardenTeaTable:mug:right:profile-tea:2:2"
+        ],
+        "falling": 160,
+        "ground": 221,
+        "entity": 20
+      }
+    }
+  ]
+}

@@ -3,9 +3,10 @@ import { useQuery } from '@tanstack/react-query';
 
 export const currentAccountKeys = ['accounts', 'current'];
 
-export function useCurrentAccount() {
+export function useCurrentAccount(enabled = true) {
     return useQuery({
         queryKey: currentAccountKeys,
+        enabled,
         queryFn: async () => {
             const [accountResponse, sunflowersResponse] = await Promise.all([
                 clientAuthenticated().api.accounts.current.$get(),

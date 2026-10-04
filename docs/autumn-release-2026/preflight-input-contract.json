@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Offline local input documentation, not a sale configuration or accepted release evidence",
+  "limits": {"jsonBytes": 10000000, "assetBytes": 50000000, "directoryRows": 10000, "offers": 3, "artifacts": 100},
+  "catalogue": {
+    "format": "Raw published /api/directories/entities/block JSON array",
+    "requirements": "Positive globally unique integer IDs and model names; exact selected metadata/attributes/functions/cover; positive safe integer sunflower price. No fallback/internal rows or invented identities. Input hash is recorded, not certified as a live observation."
+  },
+  "products": {
+    "format": "Exactly three gardenPackOfferSchema objects from existing service contract",
+    "ids": ["autumn-harvest", "autumn-woodland", "autumn-evening"],
+    "requirements": "Exact derived recipes/current individual allocations and reviewed evidence; existing full immutable version digest; publication/window changes mint new versions; emitted sale.enabled is always false. Never installed by the tool."
+  },
+  "evidence": {
+    "format": "Object with exactly schemaVersion:1, sourceFingerprint:<actual report hash>, artifacts:<array>",
+    "artifactFields": ["kind", "path", "sha256", "note (optional)"],
+    "kinds": ["headless", "production-profile", "physical-device", "deployed-readback", "rollout-readback"],
+    "requirements": "Unique safe repository-relative regular-file paths; actual SHA256; current selected source fingerprint. Unknown fields, booleans or stale fingerprints fail. Artifact assertions are never automatically accepted as a release gate."
+  },
+  "output": {
+    "files": ["manifest.json", "report.json"],
+    "sourceStatus": ["source-ready", "blocked"],
+    "releaseStatus": "release-blocked",
+    "exitCode": 1,
+    "externalGates": ["deployment", "storage-rollout", "combined-qa", "physical-device", "live-acceptance", "publication"],
+    "gitProvenance": "headCommit/headTree/workingTreeStatus describe local Git separately; sourceFingerprint describes inspected bytes. Dirty trees cannot be relabelled as the HEAD source. Archives may use null Git provenance."
+  }
+}

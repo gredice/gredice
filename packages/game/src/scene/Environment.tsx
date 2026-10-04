@@ -31,6 +31,7 @@ import { getAutumnCanopyShadowKey } from './autumnCanopy';
 import { defaultGameBackgroundPaletteIndex } from './backgroundPalettes';
 import { CloudLayer } from './CloudLayer';
 import { ColdWeatherEffects } from './cold/ColdWeatherEffects';
+import { DistantBirdFlocks } from './DistantBirdFlocks';
 import { updateGameProfileMetadata } from './gameProfileMetadata';
 import {
     type GameQualityProfile,
@@ -316,6 +317,8 @@ export type EnvironmentProps = {
     noWeather?: boolean;
     /** Static catalogue/review captures can preserve the dormant asset appearance. */
     noWarmProps?: boolean;
+    /** Preserve static captures without distant wildlife crossings. */
+    noDistantBirdFlocks?: boolean;
     quality?: GameQualityProfile;
     weather?: Partial<GameState['weather']>;
 };
@@ -646,6 +649,7 @@ export function Environment({
     noSound,
     noWeather,
     noWarmProps,
+    noDistantBirdFlocks,
     quality,
     weather,
 }: EnvironmentProps) {
@@ -1141,6 +1145,20 @@ export function Environment({
                     windDirection={windDirection}
                     rain={blendedWeather?.rainy ?? 0}
                     snow={blendedWeather?.snowy ?? 0}
+                />
+                <DistantBirdFlocks
+                    tier={qualityProfile.tier}
+                    stacks={sceneGarden?.stacks}
+                    gardenId={garden?.id}
+                    enabled={
+                        !weatherDisabled &&
+                        !noDistantBirdFlocks &&
+                        !closeupCameraSettled
+                    }
+                    rain={blendedWeather?.rainy ?? 0}
+                    snow={blendedWeather?.snowy ?? 0}
+                    fog={blendedWeather?.foggy ?? 0}
+                    windSpeed={blendedWeather?.windSpeed ?? 0}
                 />
                 <MorningMist
                     stacks={sceneGarden?.stacks}
