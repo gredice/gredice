@@ -14,7 +14,10 @@ import { Modal } from '@gredice/ui/Modal';
 import { upload } from '@vercel/blob/client';
 import Image from 'next/image';
 import { useEffect, useId, useRef, useState } from 'react';
-import { submitRaisedBedObservationAction } from './observationActions';
+import {
+    recoverRaisedBedObservationImageAction,
+    submitRaisedBedObservationAction,
+} from './observationActions';
 
 type Photo = { id: string; file: File; preview: string; url?: string };
 
@@ -38,9 +41,12 @@ export function RaisedBedObservationForm({
     const [notes, setNotes] = useState('');
     const [photos, setPhotos] = useState<Photo[]>([]);
     const [pending, setPending] = useState(false);
+    const [submissionUncertain, setSubmissionUncertain] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const submissionId = useRef<string | null>(null);
+    const retrySubmission = useRef<FormData | null>(null);
+    const editingLocked = pending || submissionUncertain;
     const busy = useRef(false);
     const photosRef = useRef(photos);
     photosRef.current = photos;
@@ -61,51 +67,70 @@ export function RaisedBedObservationForm({
         setSuccess(null);
         submissionId.current ??= crypto.randomUUID();
         try {
-            const target = parseRaisedBedObservationTarget(
-                targetValue === 'bed'
-                    ? { kind: 'bed', raisedBedId }
-                    : JSON.parse(targetValue),
-            );
-            const imageUrls: string[] = [];
-            for (const photo of photos) {
-                let url = photo.url;
-                if (!url) {
-                    const extension =
-                        photo.file.name
-                            .split('.')
-                            .pop()
-                            ?.replace(/[^a-z0-9]/gi, '')
-                            .slice(0, 10) || 'jpg';
-                    const blob = await upload(
-                        `${getObservationImagePathPrefix(raisedBedId, userId, submissionId.current)}${photo.id}.${extension}`,
-                        photo.file,
-                        {
-                            access: 'public',
-                            handleUploadUrl:
-                                '/api/raised-beds/observations/images/upload',
-                            clientPayload: JSON.stringify({
-                                target,
-                                submissionId: submissionId.current,
-                            }),
-                        },
-                    );
-                    url = blob.url;
-                    setPhotos((current) =>
-                        current.map((item) =>
-                            item.id === photo.id ? { ...item, url } : item,
-                        ),
-                    );
+            let formData = retrySubmission.current;
+            if (!formData) {
+                const target = parseRaisedBedObservationTarget(
+                    targetValue === 'bed'
+                        ? { kind: 'bed', raisedBedId }
+                        : JSON.parse(targetValue),
+                );
+                const imageUrls: string[] = [];
+                for (const photo of photos) {
+                    let url = photo.url;
+                    if (!url) {
+                        const extension =
+                            photo.file.name
+                                .split('.')
+                                .pop()
+                                ?.replace(/[^a-z0-9]/gi, '')
+                                .slice(0, 10) || 'jpg';
+                        const pathname = `${getObservationImagePathPrefix(raisedBedId, userId, submissionId.current)}${photo.id}.${extension}`;
+                        try {
+                            const blob = await upload(pathname, photo.file, {
+                                access: 'public',
+                                handleUploadUrl:
+                                    '/api/raised-beds/observations/images/upload',
+                                clientPayload: JSON.stringify({
+                                    target,
+                                    submissionId: submissionId.current,
+                                }),
+                            });
+                            url = blob.url;
+                        } catch (uploadError) {
+                            url =
+                                (await recoverRaisedBedObservationImageAction({
+                                    target,
+                                    submissionId: submissionId.current,
+                                    pathname,
+                                })) ?? undefined;
+                            if (!url) throw uploadError;
+                        }
+                        setPhotos((current) =>
+                            current.map((item) =>
+                                item.id === photo.id ? { ...item, url } : item,
+                            ),
+                        );
+                    }
+                    imageUrls.push(url);
                 }
-                imageUrls.push(url);
+                formData = new FormData();
+                formData.set('target', JSON.stringify(target));
+                formData.set('submissionId', submissionId.current);
+                formData.set('notes', notes);
+                formData.set('imageUrls', JSON.stringify(imageUrls));
             }
-            const formData = new FormData();
-            formData.set('target', JSON.stringify(target));
-            formData.set('submissionId', submissionId.current);
-            formData.set('notes', notes);
-            formData.set('imageUrls', JSON.stringify(imageUrls));
+            retrySubmission.current = formData;
             const result = await submitRaisedBedObservationAction(formData);
             if (!result.success) {
-                setError(result.message);
+                if (result.submissionUncertain || submissionUncertain) {
+                    setSubmissionUncertain(true);
+                    setError(
+                        'Slanje nije potvrđeno. Pokušaj ponovno s istim opažanjem.',
+                    );
+                } else {
+                    retrySubmission.current = null;
+                    setError(result.message);
+                }
                 return;
             }
             for (const photo of photos) URL.revokeObjectURL(photo.preview);
@@ -113,10 +138,21 @@ export function RaisedBedObservationForm({
             setNotes('');
             setTargetValue('bed');
             submissionId.current = null;
+            retrySubmission.current = null;
+            setSubmissionUncertain(false);
             setSuccess(result.message);
             setOpen(false);
         } catch {
-            setError('Opažanje nije poslano. Provjeri vezu i pokušaj ponovno.');
+            if (retrySubmission.current) {
+                setSubmissionUncertain(true);
+                setError(
+                    'Slanje nije potvrđeno. Pokušaj ponovno s istim opažanjem.',
+                );
+            } else {
+                setError(
+                    'Opažanje nije poslano. Provjeri vezu i pokušaj ponovno.',
+                );
+            }
         } finally {
             busy.current = false;
             setPending(false);
@@ -132,7 +168,10 @@ export function RaisedBedObservationForm({
                     if (!busy.current) setOpen(next);
                 }}
                 trigger={
-                    <Button disabled={disabled} variant="outlined">
+                    <Button
+                        disabled={disabled && !submissionUncertain}
+                        variant="outlined"
+                    >
                         Zabilježi opažanje
                     </Button>
                 }
@@ -151,13 +190,15 @@ export function RaisedBedObservationForm({
                             onChange={(event) =>
                                 setTargetValue(event.target.value)
                             }
-                            disabled={pending}
+                            disabled={editingLocked}
                             className="w-full rounded-md border border-input bg-field p-2 text-base"
                         >
                             <option value="bed">Cijela gredica</option>
                             {targetUnavailable && (
                                 <option value={targetValue} disabled>
-                                    Biljka više nije dostupna — ponovno odaberi
+                                    {submissionUncertain
+                                        ? 'Odabrana biljka više nije na popisu'
+                                        : 'Biljka više nije dostupna — ponovno odaberi'}
                                 </option>
                             )}
                             {plants.map((plant) => (
@@ -181,7 +222,7 @@ export function RaisedBedObservationForm({
                             id={`${id}-notes`}
                             value={notes}
                             onChange={(event) => setNotes(event.target.value)}
-                            disabled={pending}
+                            disabled={editingLocked}
                             maxLength={MAX_OBSERVATION_NOTES_LENGTH}
                             rows={4}
                             className="w-full rounded-md border border-input bg-field p-2 text-base"
@@ -199,7 +240,7 @@ export function RaisedBedObservationForm({
                             type="file"
                             accept="image/*"
                             multiple
-                            disabled={pending}
+                            disabled={editingLocked}
                             className="block w-full text-sm"
                             onChange={(event) => {
                                 const files = Array.from(
@@ -259,7 +300,7 @@ export function RaisedBedObservationForm({
                                 <Button
                                     type="button"
                                     variant="plain"
-                                    disabled={pending}
+                                    disabled={editingLocked}
                                     aria-label={`Ukloni fotografiju ${index + 1}`}
                                     onClick={() => {
                                         URL.revokeObjectURL(photo.preview);
@@ -295,8 +336,8 @@ export function RaisedBedObservationForm({
                             aria-busy={pending}
                             disabled={
                                 pending ||
-                                targetUnavailable ||
-                                disabled ||
+                                (!submissionUncertain &&
+                                    (targetUnavailable || disabled)) ||
                                 (!notes.trim() && photos.length === 0)
                             }
                         >

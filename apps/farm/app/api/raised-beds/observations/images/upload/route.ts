@@ -1,12 +1,10 @@
 import {
-    getObservationImagePathPrefix,
-    isObservationImageUploadPath,
     MAX_OBSERVATION_IMAGE_SIZE,
     parseObservationSubmissionId,
     parseRaisedBedObservationTarget,
     RaisedBedObservationError,
 } from '@gredice/js/operations';
-import { validateRaisedBedObservationTarget } from '@gredice/storage';
+import { reserveRaisedBedObservationImage } from '@gredice/storage';
 import { handleUpload } from '@vercel/blob/client';
 import { withAuth } from '../../../../../../lib/auth/auth';
 
@@ -34,30 +32,19 @@ export async function POST(request: Request) {
                     const submissionId = parseObservationSubmissionId(
                         parsed.submissionId,
                     );
-                    await validateRaisedBedObservationTarget(
-                        {
+                    await reserveRaisedBedObservationImage({
+                        actor: {
                             userId,
                             role: user.role === 'admin' ? 'admin' : 'farmer',
                         },
                         target,
-                    );
-                    if (
-                        !isObservationImageUploadPath(
-                            pathname,
-                            getObservationImagePathPrefix(
-                                target.raisedBedId,
-                                userId,
-                                submissionId,
-                            ),
-                        )
-                    )
-                        throw new RaisedBedObservationError(
-                            'Putanja fotografije nije valjana.',
-                        );
+                        submissionId,
+                        pathname,
+                    });
                     return {
                         allowedContentTypes: ['image/*'],
                         maximumSizeInBytes: MAX_OBSERVATION_IMAGE_SIZE,
-                        addRandomSuffix: true,
+                        addRandomSuffix: false,
                         allowOverwrite: false,
                     };
                 },

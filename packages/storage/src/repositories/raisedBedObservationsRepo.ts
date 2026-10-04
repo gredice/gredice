@@ -2,6 +2,8 @@ import 'server-only';
 import { createHash } from 'node:crypto';
 import {
     getObservationImagePathPrefix,
+    isObservationImageUploadPath,
+    MAX_OBSERVATION_IMAGE_COUNT,
     normalizeObservationContent,
     parseObservationSubmissionId,
     parseRaisedBedObservationTarget,
@@ -170,6 +172,87 @@ export async function validateRaisedBedObservationTarget(
     const target = parseRaisedBedObservationTarget(input);
     await storage().transaction((tx) => authorizedContext(tx, actor, target));
     return target;
+}
+
+// Slots are never recycled: removed photos and failed uploads still consume the
+// submission's budget. The token fixes this pathname without suffixes/overwrite.
+export async function reserveRaisedBedObservationImage(input: {
+    actor: ObservationActor;
+    target: RaisedBedObservationTarget;
+    submissionId: string;
+    pathname: string;
+}) {
+    const target = parseRaisedBedObservationTarget(input.target);
+    const submissionId = parseObservationSubmissionId(input.submissionId);
+    if (
+        typeof input.pathname !== 'string' ||
+        !isObservationImageUploadPath(
+            input.pathname,
+            getObservationImagePathPrefix(
+                target.raisedBedId,
+                input.actor.userId,
+                submissionId,
+            ),
+        )
+    )
+        throw new RaisedBedObservationError(
+            'Putanja fotografije nije valjana.',
+        );
+    const receiptId = `observation:${input.actor.userId}:${submissionId}`;
+    await storage().transaction(async (tx) => {
+        await acquireScheduleTaskAdvisoryLock(tx, receiptId);
+        await authorizedContext(tx, input.actor, target);
+        const [receipt] = await tx
+            .select({ id: events.id })
+            .from(events)
+            .where(
+                and(
+                    eq(
+                        events.type,
+                        knownEventTypes.raisedBeds.observationSubmitted,
+                    ),
+                    eq(events.aggregateId, receiptId),
+                ),
+            );
+        if (receipt)
+            throw new RaisedBedObservationError('Opažanje je već poslano.');
+        const slots = await tx
+            .select({ data: events.data })
+            .from(events)
+            .where(
+                and(
+                    eq(
+                        events.type,
+                        knownEventTypes.raisedBeds.observationImageReserved,
+                    ),
+                    eq(events.aggregateId, receiptId),
+                ),
+            );
+        if (
+            slots.some(
+                ({ data }) =>
+                    data &&
+                    typeof data === 'object' &&
+                    'pathname' in data &&
+                    data.pathname === input.pathname,
+            )
+        )
+            return;
+        if (slots.length >= MAX_OBSERVATION_IMAGE_COUNT)
+            throw new RaisedBedObservationError(
+                'Za jedno opažanje možeš učitati najviše 20 fotografija.',
+            );
+        await createEvent(
+            {
+                type: knownEventTypes.raisedBeds.observationImageReserved,
+                version: 1,
+                aggregateId: receiptId,
+                data: { pathname: input.pathname },
+            },
+            tx,
+        );
+    });
+    return input.pathname;
 }
 
 export async function submitRaisedBedObservation(input: {

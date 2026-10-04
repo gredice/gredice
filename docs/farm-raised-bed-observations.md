@@ -30,16 +30,29 @@ Empty submissions are disabled; abandoned beds disable capture. Submission locks
 editing and closing while pending. Errors retain the text, selected identity,
 photos, uploaded URLs and submission ID for a retry. Closing the modal preserves
 its draft only while the page remains mounted; there is no durable offline queue
-for new observations. If refreshed plant options no longer contain the exact
-selection, the farmer must select a target again. Reordering options cannot
-change the submitted identity.
+for new observations. An unconfirmed submission response locks the exact target,
+text, photos and receipt until an identical retry succeeds. This also applies to
+unexpected server errors that may occur after commit; later rejections cannot
+prove the original command did not commit. Closing and reopening preserves that
+retry, even if the plant options change or the bed becomes unavailable. A known
+pre-commit rejection still permits editing. While editing is available, a removed
+exact plant selection must be chosen again. Reordering options cannot change the
+submitted identity.
 
 ## Persistence and access
 
 Both the upload-token route and submission boundary validate current farm access,
 stored user role, non-deleted farm/garden/bed, sandbox exclusion, abandonment and
 exact crop identity. Account, farm and garden IDs come from storage. Blob paths
-are bound to the author, bed and submission, with one UUID filename. Submission
+are bound to the author, bed and submission, with one UUID filename. Before issuing
+a token, storage durably reserves one of at most 20 paths per author/submission,
+serialized with submission by the same advisory lock. Repeated requests reuse a
+slot; removed and failed uploads do not free slots. Tokens disable random suffixes
+and overwrite, so each slot can create only one blob, and no more tokens are
+issued after submission. An upload whose response was lost is recovered by exact
+path and validated Blob metadata. The budget is per submission, not a global
+per-farmer quota. `raisedBed.observation.imageReserved` records these slots in the
+existing event table; no schema migration is needed. Submission
 checks allowlisted image hosts and existing Blob metadata, image content type,
 path and size. Text is displayed through the existing plain-text evidence UI.
 
@@ -60,12 +73,15 @@ already committed command is rejected. Different observations use fresh UUIDs.
 
 - Browser component tests cover whole-bed text capture, selected plants,
   photo-only upload and retry without re-upload, pending close protection,
+  lost upload/submission responses, locked retries after plant refresh,
   empty/invalid inputs, photo removal, cancellation, refreshed plant options,
   abandoned beds, mobile layout, keyboard focus and accessibility.
 - Storage integration tests cover the real schedule projection and ordinary
   admin verification, farmer verification denial, exact crop targets, pre-sowing
   multi-field plants, unchanged plant lifecycle, stale identity, inaccessible and
   sandbox/abandoned beds, photo evidence and duplicate/concurrent retries.
+  Upload reservations cover inaccessible targets, forged roles/paths, durable
+  duplicate slot reuse, concurrent requests at the cap and post-submission denial.
 - Existing plant-status browser tests and schedule-submission/advanced-sowing
   storage tests cover adjacent regressions. Shared contract unit tests validate
   content bounds, upload paths and Blob metadata.

@@ -96,11 +96,15 @@ test('plant observation retains text, target and receipt across errors and cance
     await page.getByRole('button', { name: 'Pošalji na odobrenje' }).click();
     await expect(page.getByRole('alert')).toContainText('nije spremljeno');
     await expect(page.getByLabel('Tekst opažanja')).toHaveValue('Suho tlo.');
+    await expect(page.getByLabel('Opažanje za')).toBeEnabled();
+    await expect(page.getByLabel('Tekst opažanja')).toBeEnabled();
+    await expect(page.getByLabel(/Fotografije/)).toBeEnabled();
     await page.keyboard.press('Escape');
     await page.getByRole('button', { name: 'Zabilježi opažanje' }).click();
     await expect(page.getByLabel('Opažanje za')).toHaveValue(
         JSON.stringify(plants[1]?.target),
     );
+    await page.getByLabel('Tekst opažanja').fill('Tlo je jako suho.');
     await page.evaluate(() => {
         if (window.observationTest) window.observationTest.fail = false;
     });
@@ -116,14 +120,15 @@ test('plant observation retains text, target and receipt across errors and cance
     expect(JSON.parse(submissions?.[0]?.target ?? '{}')).toEqual(
         plants[1]?.target,
     );
+    expect(submissions?.[1]?.notes).toBe('Tlo je jako suho.');
 });
 
-test('photo-only observation uploads proof and retries without uploading it again', async ({
+test('photo-only observation locks after a lost submission response and retries without uploading it again', async ({
     mount,
     page,
 }) => {
     await page.evaluate(() => {
-        window.observationTest = { fail: true };
+        window.observationTest = { throwAfterCommit: true };
     });
     await page.route('**/api/raised-beds/observations/images/upload', (route) =>
         route.fulfill({
@@ -168,9 +173,18 @@ test('photo-only observation uploads proof and retries without uploading it agai
         page.getByRole('img', { name: 'Odabrana fotografija 1' }),
     ).toBeVisible();
     await page.getByRole('button', { name: 'Pošalji na odobrenje' }).click();
-    await expect(page.getByRole('alert')).toContainText('nije spremljeno');
+    await expect(page.getByRole('alert')).toContainText(
+        'Slanje nije potvrđeno',
+    );
+    await expect(page.getByLabel('Opažanje za')).toBeDisabled();
+    await expect(page.getByLabel('Tekst opažanja')).toBeDisabled();
+    await expect(page.getByLabel(/Fotografije/)).toBeDisabled();
+    await expect(
+        page.getByRole('button', { name: 'Ukloni fotografiju 1' }),
+    ).toBeDisabled();
     await page.evaluate(() => {
-        if (window.observationTest) window.observationTest.fail = false;
+        if (window.observationTest)
+            window.observationTest.throwAfterCommit = false;
     });
     await page.getByRole('button', { name: 'Pošalji na odobrenje' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -181,6 +195,157 @@ test('photo-only observation uploads proof and retries without uploading it agai
     expect(JSON.parse(submissions?.[0]?.imageUrls ?? '[]')).toHaveLength(1);
     expect(submissions?.[0]?.imageUrls).toEqual(submissions?.[1]?.imageUrls);
     expect(submissions?.[0]?.notes).toBe('');
+    expect(
+        await page.evaluate(
+            () =>
+                Object.keys(window.observationTest?.committedSubmissions ?? {})
+                    .length,
+        ),
+    ).toBe(1);
+});
+
+for (const transportError of [true, false]) {
+    test(`uncertain ${transportError ? 'transport' : 'server'} result preserves the exact command after closing and plant refresh`, async ({
+        mount,
+        page,
+    }) => {
+        await page.evaluate((transportError) => {
+            window.observationTest = {
+                throwAfterCommit: transportError,
+                fail: !transportError,
+                submissionUncertain: !transportError,
+            };
+        }, transportError);
+        const component = await mount(
+            <RaisedBedObservationForm
+                raisedBedId={498}
+                userId="farmer"
+                plants={plants}
+            />,
+        );
+        await page.getByRole('button', { name: 'Zabilježi opažanje' }).click();
+        await page
+            .getByLabel('Opažanje za')
+            .selectOption(JSON.stringify(plants[1]?.target));
+        await page.getByLabel('Tekst opažanja').fill('Suho tlo.');
+        await page
+            .getByRole('button', { name: 'Pošalji na odobrenje' })
+            .click();
+        await expect(page.getByRole('alert')).toContainText(
+            'Slanje nije potvrđeno',
+        );
+        await expect(page.getByLabel('Tekst opažanja')).toBeDisabled();
+        await component.update(
+            <RaisedBedObservationForm
+                raisedBedId={498}
+                userId="farmer"
+                plants={[]}
+                disabled
+            />,
+        );
+        await page.keyboard.press('Escape');
+        await page.getByRole('button', { name: 'Zabilježi opažanje' }).click();
+        await expect(page.getByLabel('Opažanje za')).toHaveValue(
+            JSON.stringify(plants[1]?.target),
+        );
+        await expect(page.getByLabel('Opažanje za')).toBeDisabled();
+        await expect(
+            page.getByRole('button', { name: 'Pošalji na odobrenje' }),
+        ).toBeEnabled();
+        // Even a definite rejection on a later retry cannot prove the first
+        // command did not commit. Keep the original command locked until success.
+        await page.evaluate(() => {
+            if (window.observationTest) {
+                window.observationTest.throwAfterCommit = false;
+                window.observationTest.submissionUncertain = false;
+                window.observationTest.fail = true;
+            }
+        });
+        await page
+            .getByRole('button', { name: 'Pošalji na odobrenje' })
+            .click();
+        await expect(page.getByRole('alert')).toContainText(
+            'Slanje nije potvrđeno',
+        );
+        await expect(page.getByLabel('Tekst opažanja')).toBeDisabled();
+        await page.evaluate(() => {
+            if (window.observationTest) window.observationTest.fail = false;
+        });
+        await page
+            .getByRole('button', { name: 'Pošalji na odobrenje' })
+            .click();
+        await expect(page.getByRole('dialog')).toHaveCount(0);
+        const submissions = await page.evaluate(
+            () => window.observationTest?.submissions,
+        );
+        expect(submissions).toHaveLength(3);
+        expect(submissions?.[0]).toEqual(submissions?.[1]);
+        expect(submissions?.[0]).toEqual(submissions?.[2]);
+        expect(
+            await page.evaluate(
+                () =>
+                    Object.keys(
+                        window.observationTest?.committedSubmissions ?? {},
+                    ).length,
+            ),
+        ).toBe(1);
+    });
+}
+
+test('an existing fixed-path upload is recovered after its response is lost', async ({
+    mount,
+    page,
+}) => {
+    await page.route('**/api/raised-beds/observations/images/upload', (route) =>
+        route.fulfill({
+            contentType: 'application/json',
+            body: JSON.stringify({
+                clientToken: 'vercel_blob_client_test_fake',
+            }),
+        }),
+    );
+    let uploads = 0;
+    await page.route('**/api/blob/**', async (route) => {
+        uploads++;
+        const pathname =
+            new URL(route.request().url()).searchParams.get('pathname') ?? '';
+        await page.evaluate((url) => {
+            window.observationTest = { recoveredImageUrl: url };
+        }, `https://myegtvromcktt2y7.public.blob.vercel-storage.com/${pathname}`);
+        await route.fulfill({
+            status: 400,
+            contentType: 'application/json',
+            body: JSON.stringify({
+                error: {
+                    code: 'blob_already_exists',
+                    message: 'Blob already exists',
+                },
+            }),
+        });
+    });
+    await mount(
+        <RaisedBedObservationForm
+            raisedBedId={498}
+            userId="farmer"
+            plants={[]}
+        />,
+    );
+    await page.getByRole('button', { name: 'Zabilježi opažanje' }).click();
+    await page.getByLabel(/Fotografije/).setInputFiles({
+        name: 'photo.png',
+        mimeType: 'image/png',
+        buffer: Buffer.from('photo'),
+    });
+    await page.getByRole('button', { name: 'Pošalji na odobrenje' }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    expect(uploads).toBe(1);
+    const state = await page.evaluate(() => ({
+        submissions: window.observationTest?.submissions,
+        recoveryRequests: window.observationTest?.recoveryRequests,
+    }));
+    expect(state.recoveryRequests).toHaveLength(1);
+    const url = JSON.parse(state.submissions?.[0]?.imageUrls ?? '[]')[0];
+    expect(new URL(url).pathname.slice(1)).toBe(state.recoveryRequests?.[0]);
 });
 
 test('validates gallery input, removes photos and remains accessible on mobile', async ({

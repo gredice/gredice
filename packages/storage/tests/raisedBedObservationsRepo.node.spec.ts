@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test, { before } from 'node:test';
+import { getObservationImagePathPrefix } from '@gredice/js/operations';
 import {
     attributeDefinitions,
     createEvent,
+    events,
     gardens,
     getAllOperations,
     getEntitiesFormatted,
@@ -11,8 +13,10 @@ import {
     getRaisedBedFieldsWithEvents,
     getRaisedBedPlanting,
     knownEvents,
+    knownEventTypes,
     operations,
     raisedBeds,
+    reserveRaisedBedObservationImage,
     storage,
     submitRaisedBedObservation,
     upsertEntityType,
@@ -20,7 +24,7 @@ import {
     validateRaisedBedObservationTarget,
     verifyOperationTaskCompletion,
 } from '@gredice/storage';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { createSelectedTaskFixture } from './helpers/selectedPlantingFixture';
 import { createTestDb } from './testDb';
 
@@ -166,6 +170,143 @@ test('duplicate and concurrent retries create one operation; changing a receipt 
         () => submitRaisedBedObservation({ ...input, notes: 'Izmjena' }),
         /drugim sadržajem/,
     );
+});
+
+test('durable upload reservations cap a submission at 20 slots, including concurrent requests and path changes', async () => {
+    const fixture = await createSelectedTaskFixture();
+    const input = {
+        actor: { userId: fixture.farmerId, role: 'farmer' as const },
+        target: { kind: 'bed' as const, raisedBedId: fixture.raisedBedId },
+        submissionId: randomUUID(),
+    };
+    const prefix = getObservationImagePathPrefix(
+        fixture.raisedBedId,
+        fixture.farmerId,
+        input.submissionId,
+    );
+    const firstPath = `${prefix}${randomUUID()}.jpg`;
+    await reserveRaisedBedObservationImage({ ...input, pathname: firstPath });
+    await Promise.all([
+        reserveRaisedBedObservationImage({ ...input, pathname: firstPath }),
+        reserveRaisedBedObservationImage({ ...input, pathname: firstPath }),
+    ]);
+    for (let i = 1; i < 19; i++)
+        await reserveRaisedBedObservationImage({
+            ...input,
+            pathname: `${prefix}${randomUUID()}.jpg`,
+        });
+    const results = await Promise.allSettled([
+        reserveRaisedBedObservationImage({
+            ...input,
+            pathname: `${prefix}${randomUUID()}.jpg`,
+        }),
+        reserveRaisedBedObservationImage({
+            ...input,
+            pathname: `${prefix}${randomUUID()}.jpg`,
+        }),
+    ]);
+    assert.equal(
+        results.filter((result) => result.status === 'fulfilled').length,
+        1,
+    );
+    assert.equal(
+        results.filter((result) => result.status === 'rejected').length,
+        1,
+    );
+    const slots = await storage()
+        .select()
+        .from(events)
+        .where(
+            and(
+                eq(
+                    events.type,
+                    knownEventTypes.raisedBeds.observationImageReserved,
+                ),
+                eq(
+                    events.aggregateId,
+                    `observation:${fixture.farmerId}:${input.submissionId}`,
+                ),
+            ),
+        );
+    assert.equal(slots.length, 20);
+    assert.equal(
+        await reserveRaisedBedObservationImage({
+            ...input,
+            pathname: firstPath,
+        }),
+        firstPath,
+    );
+    await assert.rejects(
+        () =>
+            reserveRaisedBedObservationImage({
+                ...input,
+                pathname: firstPath.replace('.jpg', '.png'),
+            }),
+        /najviše 20/,
+    );
+    await submitRaisedBedObservation({
+        ...input,
+        notes: 'Opažanje',
+        imageUrls: [],
+    });
+    await assert.rejects(
+        () =>
+            reserveRaisedBedObservationImage({ ...input, pathname: firstPath }),
+        /već poslano/,
+    );
+});
+
+test('upload reservations reject forged paths, inaccessible beds and forged roles before allocating a slot', async () => {
+    const fixture = await createSelectedTaskFixture();
+    const submissionId = randomUUID();
+    const target = { kind: 'bed' as const, raisedBedId: fixture.raisedBedId };
+    const input = {
+        actor: { userId: fixture.farmerId, role: 'farmer' as const },
+        target,
+        submissionId,
+        pathname: `${getObservationImagePathPrefix(fixture.raisedBedId, fixture.farmerId, submissionId)}${randomUUID()}.jpg`,
+    };
+    await assert.rejects(
+        () =>
+            reserveRaisedBedObservationImage({
+                ...input,
+                pathname: `${input.pathname}/other.jpg`,
+            }),
+        /Putanja/,
+    );
+    await assert.rejects(
+        () =>
+            reserveRaisedBedObservationImage({
+                ...input,
+                actor: { userId: fixture.farmerId, role: 'admin' },
+            }),
+        /Nemaš ovlast/,
+    );
+    await assert.rejects(
+        () =>
+            reserveRaisedBedObservationImage({
+                ...input,
+                actor: { userId: fixture.outsiderId, role: 'farmer' },
+                pathname: `${getObservationImagePathPrefix(fixture.raisedBedId, fixture.outsiderId, submissionId)}${randomUUID()}.jpg`,
+            }),
+        /nije dostupna/,
+    );
+    const slots = await storage()
+        .select()
+        .from(events)
+        .where(
+            and(
+                eq(
+                    events.type,
+                    knownEventTypes.raisedBeds.observationImageReserved,
+                ),
+                eq(
+                    events.aggregateId,
+                    `observation:${fixture.farmerId}:${submissionId}`,
+                ),
+            ),
+        );
+    assert.equal(slots.length, 0);
 });
 
 test('farm membership, stored role, sandbox and abandoned beds are checked before creating work', async () => {

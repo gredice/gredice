@@ -42,6 +42,7 @@ export const knownEventTypes = {
         fiscalize: 'receipt.fiscalize',
     },
     raisedBeds: {
+        observationImageReserved: 'raisedBed.observation.imageReserved',
         observationSubmitted: 'raisedBed.observation.submitted',
         create: 'raisedBed.create',
         place: 'raisedBed.place',
