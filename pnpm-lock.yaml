@@ -187,6 +187,7 @@ packageExtensionsChecksum: sha256-y2BYGjR2uQ+NBok9HqAy+T4U7Di94KBF/DmMKB9VtBc=
 patchedDependencies:
   '@joshwooding/vite-plugin-react-docgen-typescript@0.7.0': 9c0494be68fc5d63ae2b8e9a96397680c82ea5ac7260f4b46b4f8814cb3c561f
   openapi-typescript@7.13.0: fab737196e4bf943943c70c0e6955e385055ef06f3d8ad61ffb53c4b41c6d419
+  plist@3.1.0: de821f6f9078ce712eb4ef1dc955ccd63e682bf2dfc6a7d135dc82b69466395e
   react-docgen-typescript@2.4.0: c6a1bb9c2e242a146914bb8e4de55736df0f5fbcd6edcc210eb92b44a18db846
   tsconfck@3.1.6: 8e77e2162331e3bd628516d51ccbf2a0ce9c5a31d9bad8e22cc42458370bec37
   web-push@3.6.7: 4554572bbbd76721b65fb3004602f11f77b665c8e48f33a4e318a2c47b34a172
@@ -676,6 +677,9 @@ importers:
       electron-builder:
         specifier: 26.15.3
         version: 26.15.3(electron-builder-squirrel-windows@26.15.3)(supports-color@10.2.2)
+      plist:
+        specifier: 3.1.0
+        version: 3.1.0(patch_hash=de821f6f9078ce712eb4ef1dc955ccd63e682bf2dfc6a7d135dc82b69466395e)
       rimraf:
         specifier: 6.1.3
         version: 6.1.3
@@ -11990,7 +11994,7 @@ snapshots:
       fs-extra: 10.1.0
       isbinaryfile: 4.0.10
       minimist: 1.2.8
-      plist: 3.1.0
+      plist: 3.1.0(patch_hash=de821f6f9078ce712eb4ef1dc955ccd63e682bf2dfc6a7d135dc82b69466395e)
     transitivePeerDependencies:
       - supports-color
 
@@ -12013,7 +12017,7 @@ snapshots:
       dir-compare: 4.2.0
       fs-extra: 11.4.0
       minimatch: 9.0.9
-      plist: 3.1.0
+      plist: 3.1.0(patch_hash=de821f6f9078ce712eb4ef1dc955ccd63e682bf2dfc6a7d135dc82b69466395e)
     transitivePeerDependencies:
       - supports-color
 
@@ -16231,7 +16235,7 @@ snapshots:
       lazy-val: 1.0.5
       minimatch: 10.2.6
       pkijs: 3.4.0
-      plist: 3.1.0
+      plist: 3.1.0(patch_hash=de821f6f9078ce712eb4ef1dc955ccd63e682bf2dfc6a7d135dc82b69466395e)
       proper-lockfile: 4.1.2
       resedit: 1.7.2
       semver: 7.7.4
@@ -19414,7 +19418,7 @@ snapshots:
     optionalDependencies:
       fsevents: 2.3.2
 
-  plist@3.1.0:
+  plist@3.1.0(patch_hash=de821f6f9078ce712eb4ef1dc955ccd63e682bf2dfc6a7d135dc82b69466395e):
     dependencies:
       '@xmldom/xmldom': 0.9.12
       base64-js: 1.5.1

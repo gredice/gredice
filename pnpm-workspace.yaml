@@ -54,3 +54,5 @@ patchedDependencies:
   'web-push@3.6.7': patches/web-push@3.6.7.patch
   # xml-crypto 6.3.2 still uses xmldom's old parser API; remove after upstream supports 0.9.
   xml-crypto@6.3.2: patches/xml-crypto@6.3.2.patch
+  # Electron's plist 3.x parser also omits the MIME type required by xmldom 0.9.
+  plist@3.1.0: patches/plist@3.1.0.patch
