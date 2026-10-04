@@ -46,19 +46,25 @@ export function resolveScheduleFormVersion(
     return next;
 }
 
+class SettledScheduleActionsError extends Error {
+    constructor(
+        readonly results: unknown[],
+        cause: unknown,
+    ) {
+        super('Promjena rasporeda nije uspjela. Pokušajte ponovno.', { cause });
+    }
+}
+
 export async function settleScheduleActions(actions: Promise<unknown>[]) {
-    const results = await Promise.allSettled(actions);
-    return results.map((result) =>
-        result.status === 'fulfilled'
-            ? result.value
-            : {
-                  success: false,
-                  message:
-                      result.reason instanceof Error
-                          ? result.reason.message
-                          : 'Promjena rasporeda nije uspjela. Pokušajte ponovno.',
-              },
+    const settled = await Promise.allSettled(actions);
+    const results = settled.flatMap((result) =>
+        result.status === 'fulfilled' ? [result.value] : [],
     );
+    const rejection = settled.find((result) => result.status === 'rejected');
+    if (rejection) {
+        throw new SettledScheduleActionsError(results, rejection.reason);
+    }
+    return results;
 }
 
 export function createScheduleActionQueue() {
@@ -117,9 +123,19 @@ export function createScheduleActionQueue() {
             return tail ? [tail] : [];
         });
         const result = Promise.all(predecessors).then(async () => {
-            const value = await action(getTaskVersion);
-            rememberVersions(value);
-            return value;
+            try {
+                const value = await action(getTaskVersion);
+                rememberVersions(value);
+                return value;
+            } catch (error) {
+                if (error instanceof SettledScheduleActionsError) {
+                    // Keep successful bulk mutations while preserving the
+                    // caller's existing error alert and rollback behavior.
+                    rememberVersions(error.results);
+                    throw error.cause;
+                }
+                throw error;
+            }
         });
         // Rejections release every target without poisoning its next request.
         const settled = result.then(

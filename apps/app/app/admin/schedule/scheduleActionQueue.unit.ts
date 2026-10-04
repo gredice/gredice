@@ -147,10 +147,26 @@ test('bulk failure waits for every target and retains successful version changes
     await Promise.resolve();
     assert.equal(nextStarted, false);
     slow.resolve();
-    const result = await bulk;
-    assert.deepEqual(result[0], { success: false, message: 'Failed' });
+    await assert.rejects(bulk, (error) => error === failure);
     await next;
     assert.equal(nextStarted, true);
+});
+
+test('recoverable bulk conflicts remain results and hand off successful versions', async () => {
+    const queue = createScheduleActionQueue();
+    const conflict = { success: false, message: 'Task changed.' };
+    const success = scheduleTaskVersionChange('operation:2', 10, 11);
+    const results = await queue.run(['operation:1', 'operation:2'], () =>
+        settleScheduleActions([
+            Promise.resolve(conflict),
+            Promise.resolve(success),
+        ]),
+    );
+    assert.deepEqual(results, [conflict, success]);
+    await queue.run(['operation:1', 'operation:2'], async (version) => {
+        assert.equal(version('operation:1', 10), 10);
+        assert.equal(version('operation:2', 10), 11);
+    });
 });
 
 test('form version handoff preserves repeated values and the original input', () => {
