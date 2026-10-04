@@ -1709,11 +1709,9 @@ export function ItemsHud() {
                             />
                         );
                     } else if (item.type === 'entity') {
-                        // biome-ignore lint/suspicious/noArrayIndexKey: Allowed
-                        return <EntityItem key={index} {...item} />;
+                        return <EntityItem key={item.name} {...item} />;
                     } else if (item.type === 'picker') {
-                        // biome-ignore lint/suspicious/noArrayIndexKey: Allowed
-                        return <PickerItem key={index} {...item} />;
+                        return <PickerItem key={item.label} {...item} />;
                     } else {
                         return null;
                     }
