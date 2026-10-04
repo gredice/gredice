@@ -1,0 +1,10 @@
+$ next typegen && tsc --noEmit --pretty false
+Generating route types...
+✓ Types generated successfully
+app/kestenijada/page.tsx(58,21): error TS2322: Type '"/staza-bundeva"' is not assignable to type 'UrlObject | RouteImpl<"/staza-bundeva">'.
+[ELIFECYCLE] Command failed with exit code 1.
+Error: ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL
+
+  × "pnpm recursive run" failed in /Users/aleks/.codex/worktrees/80a6/gredice/
+  │ apps/garden
+

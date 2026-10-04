@@ -7,6 +7,7 @@
     "license": "MIT",
     "exports": {
         ".": "./src/index.ts",
+        "./gardenPackPlacementContract": "./src/gardenPackPlacementContract.ts",
         "./gardenPackContract": "./src/gardenPackContract.ts",
         "./cmsPageContent": "./src/cmsPageContent.ts",
         "./deliveryTrackingPolicy": "./src/deliveryTrackingPolicy.ts",
@@ -14,7 +15,10 @@
         "./entityPageSections": "./src/helpers/entityPageSections.ts",
         "./cmsPageSections": "./src/cmsPageSections.ts",
         "./cmsNewsRevalidation": "./src/cmsNewsRevalidation.ts",
-        "./operationTaskAdministration": "./src/operationTaskAdministration.ts"
+        "./operationTaskAdministration": "./src/operationTaskAdministration.ts",
+        "./testing/gardenPackTestSchema": "./tests/helpers/gardenPackTestSchema.ts",
+        "./gardenPackGroupPlacementContract": "./src/gardenPackGroupPlacementContract.ts",
+        "./autumnActivityContract": "./src/autumnActivityContract.ts"
     },
     "scripts": {
         "clean": "rimraf .turbo dist build out coverage tsconfig.tsbuildinfo",

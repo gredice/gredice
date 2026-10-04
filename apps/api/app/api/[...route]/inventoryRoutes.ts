@@ -5,6 +5,7 @@ import {
     getGardenBlock,
     getGardenBoxBlocksForAccount,
     getGardenBoxInventory,
+    getGardenBoxStoredPackUnits,
     getInventory,
     type InventoryItem,
 } from '@gredice/storage';
@@ -125,6 +126,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     ),
                 ),
             );
+            const storedPackItems = await Promise.all(
+                gardenBoxes.map((box) =>
+                    getGardenBoxStoredPackUnits(
+                        accountId,
+                        box.gardenId,
+                        box.blockId,
+                    ),
+                ),
+            );
             const [items, ...gardenBoxItems] = await enrichInventoryItems([
                 inventory,
                 ...gardenBoxInventories,
@@ -134,7 +144,22 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 items,
                 gardenBoxes: gardenBoxes.map((gardenBox, index) => ({
                     ...gardenBox,
-                    items: gardenBoxItems[index] ?? [],
+                    items: [
+                        ...(gardenBoxItems[index] ?? []),
+                        ...(storedPackItems[index] ?? []).map((unit) => ({
+                            entityTypeName: 'block',
+                            entityId: unit.entityId,
+                            amount: 1,
+                            name: unit.modelName,
+                            packUnit: {
+                                purchaseId: unit.purchaseId,
+                                lineId: unit.lineId,
+                                unitOrdinal: unit.unitOrdinal,
+                            },
+                            blockId: unit.blockId,
+                            variant: unit.variant,
+                        })),
+                    ],
                 })),
             });
         },
@@ -168,9 +193,29 @@ const app = new Hono<{ Variables: AuthVariables }>()
             );
             const [items] = await enrichInventoryItems([inventory]);
 
+            const stored = await getGardenBoxStoredPackUnits(
+                accountId,
+                gardenId,
+                blockId,
+            );
             return context.json({
                 ...gardenBox,
-                items,
+                items: [
+                    ...(items ?? []),
+                    ...stored.map((unit) => ({
+                        entityTypeName: 'block',
+                        entityId: unit.entityId,
+                        amount: 1,
+                        name: unit.modelName,
+                        packUnit: {
+                            purchaseId: unit.purchaseId,
+                            lineId: unit.lineId,
+                            unitOrdinal: unit.unitOrdinal,
+                        },
+                        blockId: unit.blockId,
+                        variant: unit.variant,
+                    })),
+                ],
             });
         },
     )

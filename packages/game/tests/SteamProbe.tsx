@@ -24,6 +24,7 @@ export function SteamProbe({
         });
         const sample = JSON.stringify({
             count: mesh.count,
+            sourceIds: sources.map((source) => source.id),
             anchors: sources.map(({ object }) =>
                 object.getWorldPosition(new Vector3()).toArray(),
             ),

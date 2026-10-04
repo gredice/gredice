@@ -16,7 +16,8 @@
     },
     "dependencies": {
         "@gredice/directory-types": "workspace:*",
-        "openapi-fetch": "0.17.0"
+        "openapi-fetch": "0.17.0",
+        "@gredice/storage": "workspace:*"
     },
     "devDependencies": {
         "@biomejs/biome": "2.5.14",
