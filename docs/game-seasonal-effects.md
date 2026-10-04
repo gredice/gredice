@@ -730,3 +730,12 @@ The browser cases select a camera rotation and layout before capture, inspect
 nonblank PNG pixels and metadata chunks, verify a local download without garden
 reads or network writes, and exercise mobile keyboard controls, cancellation,
 account changes, encoder failure and an obsolete completion during a new capture.
+
+## Distant autumn bird flocks
+
+`DistantBirdFlocks` reuses `BirdSmall` for seeded rare crossings beyond the
+interaction footprint. It samples the shared live/frozen scene clock, uses one
+idle deadline and a render lease only during live flights, and disables on low
+quality, reduced motion and harsh weather. Its cloned resources have separate
+lifetimes from interactive birds. The [flock validation record](distant-bird-flocks-2026.md)
+documents exact caps, lifecycle checks, screenshots and matched autumn draw counts.

@@ -116,9 +116,11 @@ export async function listPurchasedGardenPacks(
 }
 
 /**
- * Internal grant primitive, NOT a purchase service. Caller must debit the wallet
- * in this same transaction, validate server catalogue authority and wrap it in
- * the existing account-economic lock. No default transaction can grant for free.
+ * Internal grant primitive, NOT a public purchase service. Purchases debit the wallet
+ * in this transaction under the account-economic lock. The separate cosmetic
+ * activity authority may grant a validated finite zero-paid/zero-recycling reward
+ * under the account deletion fence. Every caller validates trusted server contents;
+ * this primitive supplies no catalogue, campaign, or client-facing grant authority.
  */
 export async function recordPurchasedGardenPack(
     accountId: string,
