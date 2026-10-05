@@ -1,0 +1,106 @@
+{
+  "state": "unpublished",
+  "publicationIssue": 5000,
+  "snapshotDate": "2026-10-22T12:00:00+02:00",
+  "source": {
+    "path": "assets/game-assets/SeasonalMaple.blend",
+    "bytes": 110465,
+    "sha256": "2f3d374d503134078da4daa784e6bad9f036b4194f6987f70942e0f2a5080f75"
+  },
+  "models": [
+    {
+      "name": "SeasonalMaple",
+      "path": "apps/garden/public/assets/models/SeasonalMaple.glb",
+      "bytes": 122024,
+      "sha256": "ee04fd1802d02bd23d6cf158581352b8e0d8fb53dfcafc4371f9ba09a3079ddb",
+      "url": "https://vrt.gredice.com/assets/models/SeasonalMaple.glb?v=ee04fd1802d0",
+      "triangles": 1240,
+      "trianglesByMesh": {
+        "SeasonalMaple_Full": 460,
+        "SeasonalMaple_Sparse": 220,
+        "SeasonalMaple_Thinning": 340,
+        "SeasonalMaple_Wood": 220
+      },
+      "meshCount": 4,
+      "materialCount": 2
+    }
+  ],
+  "items": [
+    {
+      "name": "SeasonalMaple",
+      "information": {
+        "label": "Ukrasni javor",
+        "shortDescription": "Malo stablo javora s rašljastim deblom i širokim režnjevitim lišćem.",
+        "fullDescription": "Ukrasni javor koji zauzima jedno polje. Ljeti je zelen, ujesen poprima zlatne i riđe tonove te gubi lišće, zimi ostaje tek poneki list, a u proljeće lišće ponovno raste. Kad su vremenski prikazi isključeni, javor ostaje zelen. Služi samo za ukrašavanje i ne daje urod."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 1.81,
+        "hitboxHeight": 1.81,
+        "hitboxWidth": 0.9,
+        "hitboxDepth": 0.9,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 85,
+      "catalogueId": null,
+      "cover": "https://www.gredice.com/assets/blocks/SeasonalMaple.webp",
+      "topDown": "https://vrt.gredice.com/assets/blocks/top-down/SeasonalMaple.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/SeasonalMaple.webp",
+          "bytes": 6196,
+          "sha256": "6c458964b26d32a9eeda92cce0732a6b18077290ad2447d26ddae49cf679aacb"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/SeasonalMaple_1.webp",
+          "bytes": 6196,
+          "sha256": "6c458964b26d32a9eeda92cce0732a6b18077290ad2447d26ddae49cf679aacb"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/SeasonalMaple_2.webp",
+          "bytes": 6510,
+          "sha256": "694c0cabb4f1d806cd830f66aad81eca9e4dc6af36ac20be255d7e8ad8632739"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/SeasonalMaple_3.webp",
+          "bytes": 5986,
+          "sha256": "b9df8c13fd6a30bab0b9070f6598168b985364d592b1a758aab9c52b2213df07"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/SeasonalMaple_4.webp",
+          "bytes": 6264,
+          "sha256": "e74bf58965b91b079d74f5b57e862a0b58b5bdd6cd26988c46c9dd31ccfa4f6b"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/SeasonalMaple.webp",
+          "bytes": 4760,
+          "sha256": "91fafa68e9688fa21d36af51d379dce937a5a6c23e7276953a786b1efc91f7ef"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/SeasonalMaple_1.webp",
+          "bytes": 4760,
+          "sha256": "91fafa68e9688fa21d36af51d379dce937a5a6c23e7276953a786b1efc91f7ef"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/SeasonalMaple_2.webp",
+          "bytes": 4374,
+          "sha256": "a8be5417bf752307e2be6ff4bad7eda22c1d138685a0b076eb66f809330f21cd"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/SeasonalMaple_3.webp",
+          "bytes": 4296,
+          "sha256": "bd6d66c9e737b03626b5dcc3af9151ab45017773baed413f9f355bd66ddd652f"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/SeasonalMaple_4.webp",
+          "bytes": 4534,
+          "sha256": "21e3f87998874023bb8b0f71a8d064938c284fedfd04583b02f7cfb1347e429a"
+        }
+      ]
+    }
+  ]
+}
