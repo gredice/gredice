@@ -70,7 +70,7 @@
         "payout-items:backfill": "tsx --conditions=react-server --env-file=.env ./scripts/backfillPayoutRequestItems.ts"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.5.14",
+        "@biomejs/biome": "2.5.15",
         "@electric-sql/pglite": "0.5.8",
         "@gredice/directory-types": "workspace:*",
         "@gredice/js": "workspace:*",
