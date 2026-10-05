@@ -37,6 +37,7 @@ import {
 import { isFenceGateBlockName } from './entities/fenceConnections';
 import { getToggledFenceGateVariant } from './entities/fenceGateState';
 import { Frogs } from './entities/frogs/Frogs';
+import { Hedgehogs } from './entities/hedgehogs/Hedgehogs';
 import { PlacementGroundingShadows } from './entities/helpers/PlacementGroundingShadows';
 import { Ladybugs } from './entities/ladybugs/Ladybugs';
 import { HomeSpawnedPersistentPets } from './entities/persistentPets/HomeSpawnedPetActors';
@@ -657,6 +658,17 @@ export function GameScene({
                                     renderDetails={renderDetails}
                                     weather={weather}
                                 />
+                                <Suspense fallback={null}>
+                                    <Hedgehogs
+                                        enabled={
+                                            renderDetails && zoom !== 'far'
+                                        }
+                                        stacks={retainedScene.stacks}
+                                        gardenId={garden?.id}
+                                        quality={qualityProfile}
+                                        weather={weather}
+                                    />
+                                </Suspense>
                                 {renderDetails && zoom !== 'far' && (
                                     <Suspense fallback={null}>
                                         <SunflowerDropReward

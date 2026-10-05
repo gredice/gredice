@@ -1,0 +1,117 @@
+{
+  "state": "unpublished",
+  "snapshotDate": "2026-10-22T12:00:00+02:00",
+  "publicationIssue": 5000,
+  "sources": [
+    {
+      "path": "assets/game-assets/Hedgehog.blend",
+      "bytes": 110186,
+      "sha256": "288ffc0c00caac68aca983708292a477c71bda4679e2391f53544b05accac4f2"
+    },
+    {
+      "path": "assets/game-assets/HedgehogShelter.blend",
+      "bytes": 93548,
+      "sha256": "fde9b6b6ab54b770cb766afba94525606340fa51968f4c355abfd0a222454f87"
+    }
+  ],
+  "models": [
+    {
+      "name": "Hedgehog",
+      "path": "apps/garden/public/assets/models/Hedgehog.glb",
+      "bytes": 70104,
+      "sha256": "cde12d271bb2d9a028cf25af5d7b27abd1198e806394bf371ba7a142673d1201",
+      "url": "https://vrt.gredice.com/assets/models/Hedgehog.glb?v=cde12d271bb2",
+      "triangles": 444,
+      "meshCount": 6,
+      "materialCount": 1
+    },
+    {
+      "name": "HedgehogShelter",
+      "path": "apps/garden/public/assets/models/HedgehogShelter.glb",
+      "bytes": 24732,
+      "sha256": "c2116bf92e35cc514767193e021b46a9c4aac761495b0b1f002c65dfbcf5c611",
+      "url": "https://vrt.gredice.com/assets/models/HedgehogShelter.glb?v=c2116bf92e35",
+      "triangles": 260,
+      "meshCount": 1,
+      "materialCount": 1
+    }
+  ],
+  "items": [
+    {
+      "name": "HedgehogShelter",
+      "information": {
+        "label": "Sklonište za ježa",
+        "shortDescription": "Nisko drveno sklonište za povremeni posjet ježa.",
+        "fullDescription": "Lučni drveni zaklon zauzima jedno polje. Kada uz otvor ima dovoljno slobodnog tla, može ga povremeno posjetiti jedan jež. Posjet je kratak i završava povratkom u sklonište. Ne traži hranu, ne daje predmete i ne mijenja zdravlje ni urod biljaka. Na zaklon se ne slažu drugi predmeti."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 0.49,
+        "hitboxHeight": 0.49,
+        "hitboxWidth": 0.9,
+        "hitboxDepth": 0.9,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 70,
+      "catalogueId": null,
+      "cover": "https://www.gredice.com/assets/blocks/HedgehogShelter.webp",
+      "topDown": "https://vrt.gredice.com/assets/blocks/top-down/HedgehogShelter.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/HedgehogShelter.webp",
+          "bytes": 12336,
+          "sha256": "1d81e8bb41186f26349a3dc5b2f2fa094f49c9df11ae96115224df5a69a2fdf0"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HedgehogShelter_1.webp",
+          "bytes": 11782,
+          "sha256": "c0f907d7c4aac75827bf50a5b9235611060545bf03c1002ec490d71620511a8b"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HedgehogShelter_2.webp",
+          "bytes": 10924,
+          "sha256": "d1238141220608f74440005a1c274b9aa91537cc8b45eb5f5e19f38e86737cdc"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HedgehogShelter_3.webp",
+          "bytes": 12336,
+          "sha256": "1d81e8bb41186f26349a3dc5b2f2fa094f49c9df11ae96115224df5a69a2fdf0"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HedgehogShelter_4.webp",
+          "bytes": 11206,
+          "sha256": "48898c23fe7afaceb432c1fef401280dd6d95376e20625ca00464ad6dc6176df"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HedgehogShelter.webp",
+          "bytes": 4530,
+          "sha256": "0297c1a1ae201e77ebf1bde3513d48727ecd8060f736caf1410d5aa0deab7102"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HedgehogShelter_1.webp",
+          "bytes": 4530,
+          "sha256": "0297c1a1ae201e77ebf1bde3513d48727ecd8060f736caf1410d5aa0deab7102"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HedgehogShelter_2.webp",
+          "bytes": 3816,
+          "sha256": "9357fb202e5e2e799b2c7aac87e584d117ab7720020bff26128d76fee97c943b"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HedgehogShelter_3.webp",
+          "bytes": 5418,
+          "sha256": "8433e30c364878c945f7485cfb0b35b9809406fa2f25945792a64b8f4e35b009"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HedgehogShelter_4.webp",
+          "bytes": 4218,
+          "sha256": "a74845f9fe151d0160dd503a56848728dad4922956712dd1ed5b1dea5b308f9b"
+        }
+      ]
+    }
+  ]
+}
