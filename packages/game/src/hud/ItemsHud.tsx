@@ -5,6 +5,7 @@ import { autumnEntranceNames } from '@gredice/js/autumnEntrances';
 import { autumnGrassNames } from '@gredice/js/autumnGrasses';
 import { autumnLeafPileNames } from '@gredice/js/autumnLeafPiles';
 import { autumnShrub } from '@gredice/js/autumnShrub';
+import { birdFeeder } from '@gredice/js/birdFeeder';
 import { chestnutRoastingCart } from '@gredice/js/chestnutRoastingCart';
 import {
     type HorseAppearanceVariant,
@@ -375,6 +376,7 @@ const items: HudItem[] = [
             { type: 'entity', name: leafRake.name },
             { type: 'entity', name: stackedFirewood.name },
             { type: 'entity', name: seedDryingRack.name },
+            { type: 'entity', name: birdFeeder.name },
             { type: 'entity', name: gardenBrazier.name },
             { type: 'entity', name: gardenTeaTable.name },
             { type: 'entity', name: fallenLog.name },
