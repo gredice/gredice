@@ -21,7 +21,7 @@
         "@opentelemetry/sdk-logs": "0.222.0"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.5.14",
+        "@biomejs/biome": "2.5.15",
         "@types/node": "24.19.0",
         "tsx": "4.23.15",
         "typescript": "7.0.2"
