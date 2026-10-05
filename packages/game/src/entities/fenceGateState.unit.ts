@@ -29,6 +29,7 @@ describe('fence gate state', () => {
             'WhiteFenceGate',
             'StoneFenceGate',
             'PolishedStoneFenceGate',
+            'AutumnFenceGate',
         ]) {
             assert.equal(
                 getToggledFenceGateVariant({ name, variant: null }),

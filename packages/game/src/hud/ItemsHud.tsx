@@ -1,6 +1,7 @@
 import type { BlockData } from '@gredice/client';
 import { autumnAsterPotNames } from '@gredice/js/autumnAsterPots';
 import { autumnBlanketBench } from '@gredice/js/autumnBlanketBench';
+import { autumnEntranceNames } from '@gredice/js/autumnEntrances';
 import { autumnGrassNames } from '@gredice/js/autumnGrasses';
 import { autumnLeafPileNames } from '@gredice/js/autumnLeafPiles';
 import { autumnShrub } from '@gredice/js/autumnShrub';
@@ -385,6 +386,9 @@ const items: HudItem[] = [
                 name: autumnBlanketBench.name,
                 footprintLabel: '2 × 1',
             },
+            ...autumnEntranceNames.map(
+                (name) => ({ type: 'entity', name }) satisfies HudItemEntity,
+            ),
             ...woodlandArrangementNames.map(
                 (name) => ({ type: 'entity', name }) satisfies HudItemEntity,
             ),

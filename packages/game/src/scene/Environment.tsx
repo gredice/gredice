@@ -25,6 +25,7 @@ import { useWeatherNow } from '../hooks/useWeatherNow';
 import { RainRipples } from '../rain/RainRipples';
 import { type GameState, useGameState } from '../useGameState';
 import { AutumnLeaves } from './AutumnLeaves';
+import { AutumnPropWindEnvironment } from './AutumnPropWindEnvironment';
 import { getAutumnCanopyShadowKey } from './autumnCanopy';
 import { defaultGameBackgroundPaletteIndex } from './backgroundPalettes';
 import { CloudLayer } from './CloudLayer';
@@ -1084,6 +1085,12 @@ export function Environment({
                     enabled={qualityProfile.shadows}
                 />
             </directionalLight>
+            <AutumnPropWindEnvironment
+                speed={windSpeed}
+                direction={windDirection}
+                snow={Math.max(snowCoverage, blendedWeather?.snowy ?? 0)}
+                enabled={!weatherDisabled}
+            />
             <WeatherAmbience
                 weather={actualWeather}
                 timeOfDay={timeOfDay}
