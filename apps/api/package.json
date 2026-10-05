@@ -17,6 +17,7 @@
         "test:run": "playwright test",
         "test:node": "node --import tsx --test --conditions=react-server ./lib/**/*.node.spec.ts",
         "test:infrastructure-cost-report": "node --test ../../scripts/infrastructure-cost-report.test.mjs",
+        "prepare:autumn-packs": "node --import tsx ./scripts/prepareAutumnGardenPacks.ts",
         "test:fiscalization": "pnpm --filter @gredice/fiscalization test:unit",
         "mcp:smoke:public": "node ./scripts/smokePublicMcp.mjs",
         "checkout:resume-direct": "node --conditions=react-server --env-file=.env --import tsx ./scripts/resumeDirectCheckout.ts",
@@ -65,6 +66,7 @@
     },
     "devDependencies": {
         "@biomejs/biome": "2.5.14",
+        "@electric-sql/pglite": "0.5.8",
         "@gredice/auth": "workspace:*",
         "@gredice/directory-types": "workspace:*",
         "@gredice/email": "workspace:*",

@@ -63,6 +63,8 @@ import {
 } from '../itemsHudDropTarget';
 import { KnownPages } from '../knownPages';
 import { useGameState } from '../useGameState';
+import { AutumnArrangementPreview } from './AutumnArrangementPreview';
+import { getAutumnItemCollections } from './autumnItemCollections';
 import { HudCard } from './components/HudCard';
 import {
     type HudImagePreload,
@@ -81,6 +83,7 @@ type HudItemEntity = {
 };
 
 type HudItemPicker = {
+    autumnCollectionId?: string;
     type: 'picker';
     label: string;
     imageSrc: string;
@@ -965,6 +968,47 @@ function getHudItems({
     blockData: BlockData[] | null | undefined;
     isSandbox: boolean;
 }) {
+    const autumnCollections = getAutumnItemCollections({
+        blockData,
+        isSandbox,
+    });
+    const autumnPickers: HudItemPicker[] = autumnCollections.map(
+        (collection) => ({
+            type: 'picker',
+            label: collection.label,
+            autumnCollectionId: collection.id,
+            imageSrc: getBlockImageUrl(collection.entityNames[0]),
+            items: collection.entityNames.map((name) => {
+                const block = blockData?.find(
+                    (block) => block.information.name === name,
+                );
+                const width = block?.attributes.spanWidth ?? 1;
+                const depth = block?.attributes.spanDepth ?? 1;
+                return {
+                    type: 'entity',
+                    name,
+                    ...(width > 1 || depth > 1
+                        ? { footprintLabel: `${width} × ${depth}` }
+                        : {}),
+                };
+            }),
+        }),
+    );
+    const seasonalItems = items.flatMap<HudItem>((item) =>
+        item.type === 'picker' &&
+        item.label === 'Dekoracija' &&
+        autumnPickers.length > 0
+            ? [
+                  item,
+                  {
+                      type: 'picker',
+                      label: 'Jesen',
+                      imageSrc: autumnPickers[0].imageSrc,
+                      items: autumnPickers,
+                  },
+              ]
+            : [item],
+    );
     // Only expose this release's picker when its catalogue rows are available.
     // Local sandbox data can preview the deployed models without a live sale.
     const pumpkinItems = harvestPumpkinNames.filter((name) =>
@@ -974,7 +1018,7 @@ function getHudItems({
                 !isInternalSceneBlockData(block),
         ),
     );
-    const releasedItems = items.map<HudItem>((item) =>
+    const releasedItems = seasonalItems.map<HudItem>((item) =>
         item.type === 'picker' &&
         item.label === 'Dekoracija' &&
         pumpkinItems.length > 0
@@ -1209,7 +1253,7 @@ type EntityItemProps = HudItemEntity & {
     onHudDragStart?: () => void;
 };
 
-function EntityItem({
+export function EntityItem({
     footprintLabel,
     name,
     onHudDragEnd,
@@ -1562,6 +1606,11 @@ function PickerItem({ label, items, imageSrc }: HudItemPicker) {
                 data-items-picker-scroll
                 className="grid gap-1 p-2 grid-cols-4 md:grid-cols-6 overflow-y-auto overscroll-contain"
             >
+                {activeSubPicker?.autumnCollectionId && (
+                    <AutumnArrangementPreview
+                        collectionId={activeSubPicker.autumnCollectionId}
+                    />
+                )}
                 {currentItems.map((item) => {
                     if (item.type === 'entity') {
                         return (
@@ -1668,11 +1717,9 @@ export function ItemsHud() {
                             />
                         );
                     } else if (item.type === 'entity') {
-                        // biome-ignore lint/suspicious/noArrayIndexKey: Allowed
-                        return <EntityItem key={index} {...item} />;
+                        return <EntityItem key={item.name} {...item} />;
                     } else if (item.type === 'picker') {
-                        // biome-ignore lint/suspicious/noArrayIndexKey: Allowed
-                        return <PickerItem key={index} {...item} />;
+                        return <PickerItem key={item.label} {...item} />;
                     } else {
                         return null;
                     }

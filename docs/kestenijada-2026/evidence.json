@@ -1,0 +1,412 @@
+{
+  "schemaVersion": 3,
+  "originalImplementationCommit": "d0fee5e13a2230d160c723a4ea65e52d1c285d83",
+  "originalEvidencePath": "docs/kestenijada-2026/original-d0fee5e13/evidence.json",
+  "originalEvidenceSha256": "62f52280e2ee04b7360bd871f3573185b88970a3a6d7aa5ec59d295f37654d42",
+  "previousEvidence": {
+    "path": "docs/kestenijada-2026/pre-stack-merge/evidence.json",
+    "sha256": "b8cec1a7ccecdbda7d704305fea30db90b67a13fefce229cc97e6c30e349225c",
+    "captureSource": {
+      "commit": "6d27794cc6f5c50a95e74916d6c9b5ff5959eff3",
+      "tree": "be3c21454a61edc2659fb1c6fae0882eb513d266",
+      "status": ""
+    }
+  },
+  "functionalCiCapture": {
+    "source": {
+      "commit": "ecde3becaa4710fb47583ab731db6430c5afc986",
+      "tree": "d5c0d517fca4566196d926a6c67e4a1605ef1f2e",
+      "status": ""
+    },
+    "command": "GREDICE_GARDEN_CT_PORT=5498 pnpm --filter garden exec playwright test --config playwright.kestenijada.config.ts",
+    "captureTests": 4,
+    "sceneCaptures": 4,
+    "suiteTests": 6,
+    "scope": "Fresh clean-source recapture after main integration and stack review fixes. All six functional cases passed and all four PNGs remain byte-identical to the previous authored captures. Route and physical-device acceptance are outside this check."
+  },
+  "sourceIdentity": "Exact current-source SHA256 records; verification needs no historic Git objects or network.",
+  "scope": "Bounded selected runtime identity evidence, not a complete renderer dependency graph or reproducible full-engine/performance proof.",
+  "models": [
+    "ChestnutRoastingCart",
+    "GardenTeaTable",
+    "AutumnBlanketBench",
+    "HarvestCrateOrchard",
+    "WoodenHandLantern",
+    "BlockGrass",
+    "StoneWalkway"
+  ],
+  "captureParity": [
+    {
+      "view": "day",
+      "pngByteIdentical": true,
+      "previousCapturePngByteIdentical": true,
+      "worldAndScreenBoundsIdentical": true,
+      "viewportIdentical": true
+    },
+    {
+      "view": "dusk",
+      "pngByteIdentical": true,
+      "previousCapturePngByteIdentical": true,
+      "worldAndScreenBoundsIdentical": true,
+      "viewportIdentical": true
+    },
+    {
+      "view": "night",
+      "pngByteIdentical": true,
+      "previousCapturePngByteIdentical": true,
+      "worldAndScreenBoundsIdentical": true,
+      "viewportIdentical": true
+    },
+    {
+      "view": "mobile-low",
+      "pngByteIdentical": true,
+      "previousCapturePngByteIdentical": true,
+      "worldAndScreenBoundsIdentical": true,
+      "viewportIdentical": true
+    }
+  ],
+  "visualReview": "All four new PNGs are byte-identical to the archived activity-stack and original authored captures. Prior visual approval is retained; no new visual or physical-device review is claimed. Comparisons and before/after evidence are recorded in functional-ci-recapture.json.",
+  "rendererCounters": "Incidental diagnostic samples, not cost or performance evidence.",
+  "files": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "bytes": 21537,
+      "sha256": "a8daf33916d6651e599eb97c12c002a9498a7d545f539bb71f5b04edcf6c8726"
+    },
+    {
+      "path": "apps/garden/app/kestenijada/KestenijadaDiscoveryEntry.tsx",
+      "bytes": 1358,
+      "sha256": "f4b30d6d202afc7b4afd2c005089e4db3a798467d6f7dc1232d0c1b4c4b5ef03"
+    },
+    {
+      "path": "apps/garden/app/kestenijada/page.tsx",
+      "bytes": 2036,
+      "sha256": "0a30c2e3cd4aec8cfccf8f449759241f4548ea793ca6703a9eccc4826f55328c"
+    },
+    {
+      "path": "apps/garden/app/layout.tsx",
+      "bytes": 3242,
+      "sha256": "538e628aced44d25b281e85c9d21d07bfbdad8dc81cef82ee167e30b5eac8b4e"
+    },
+    {
+      "path": "apps/garden/components/providers/ClientAppProvider.tsx",
+      "bytes": 3064,
+      "sha256": "0184bdf1a62f32722f5fd8caf35d6d78763f438e1e0b478f85aca8e200d3e227"
+    },
+    {
+      "path": "apps/garden/playwright.config.ts",
+      "bytes": 6126,
+      "sha256": "a247112913a304cf78a2231cb8d43309e3ffcbd8cd4f2d2ab57197c4916fe6c6"
+    },
+    {
+      "path": "apps/garden/playwright.kestenijada-route.config.ts",
+      "bytes": 854,
+      "sha256": "653dff1c81042f277c7ce0c89827ab328a73d5ff396bd2473e31117f24d03351"
+    },
+    {
+      "path": "apps/garden/public/assets/models/AutumnBlanketBench.glb",
+      "bytes": 162344,
+      "sha256": "6bc5acbeff925d7f5a5bf255f4b2b0b48d3cec11e6b85dd15ca019fe6ec50851"
+    },
+    {
+      "path": "apps/garden/public/assets/models/BlockGrass.glb",
+      "bytes": 8908,
+      "sha256": "c63b0a39f94243d337caec4cb786c5b2f5f856dc915f910fb349bc12508feacd"
+    },
+    {
+      "path": "apps/garden/public/assets/models/ChestnutRoastingCart.glb",
+      "bytes": 184624,
+      "sha256": "16c0c20649872c4af3b9c4278e70d93e14aecdfd8cdfaedbaa19d2925276a2de"
+    },
+    {
+      "path": "apps/garden/public/assets/models/GardenTeaTable.glb",
+      "bytes": 108248,
+      "sha256": "36d8a3e3ed2db49ceb6fc75983dc306462112f6d90bd763674d84c93941ad1bc"
+    },
+    {
+      "path": "apps/garden/public/assets/models/HarvestCrateOrchard.glb",
+      "bytes": 146048,
+      "sha256": "715049a6ea1338c9a5fdabfee8cda99b0e67d769d62ca7794e62ffba5f60e4ae"
+    },
+    {
+      "path": "apps/garden/public/assets/models/StoneWalkway.glb",
+      "bytes": 23248,
+      "sha256": "075166e1440880725dbac2cdf3dbca648512373feaae677265cefc66dd3f322b"
+    },
+    {
+      "path": "apps/garden/public/assets/models/WoodenHandLantern.glb",
+      "bytes": 135152,
+      "sha256": "583d3ee528345d79cdaa6ba8fd045218bd7336439be728c42f249578165684f9"
+    },
+    {
+      "path": "apps/garden/tests/fixtures/kestenijada-server.mjs",
+      "bytes": 2316,
+      "sha256": "b76c9ebf324397ddd94dfb07a9cb6ebd7608185b67cd711ce188ad48439414dd"
+    },
+    {
+      "path": "apps/garden/tests/kestenijada-route.spec.ts",
+      "bytes": 4761,
+      "sha256": "82582626f928aceff5b2d45842eca502b13ee53caaa2312aa71822b26f5e15a6"
+    },
+    {
+      "path": "apps/garden/tests/kestenijada.spec.tsx",
+      "bytes": 10119,
+      "sha256": "9c3ce5f0182a7035a82e8c664b6f38aa5ae2c718dcc3791c194832be6b7ebb5d"
+    },
+    {
+      "path": "docs/kestenijada-2026/day.json",
+      "bytes": 2547,
+      "sha256": "5e1d11d7c13b5bb51a728991cc87b7237559fce4bf7ec1e346186fc128fbf86e"
+    },
+    {
+      "path": "docs/kestenijada-2026/day.png",
+      "bytes": 71516,
+      "sha256": "e4d43bcba44969711d157b799eeb6b47d20f3a15b288157ea8666d065997fa89"
+    },
+    {
+      "path": "docs/kestenijada-2026/dusk.json",
+      "bytes": 2552,
+      "sha256": "c8f18f1a14a4aec4655f6146deb30369491590bec19384f588e82a12a494684a"
+    },
+    {
+      "path": "docs/kestenijada-2026/dusk.png",
+      "bytes": 99859,
+      "sha256": "3719b321f2980949951910919f1851f5aa20bd70bd283c4106887bdb65a15b89"
+    },
+    {
+      "path": "docs/kestenijada-2026/mobile-low.json",
+      "bytes": 2552,
+      "sha256": "7442a2a7b4c0a09e456eb62e901b71cc6ef4312de6c1a11d3fb17498d6dcb53c"
+    },
+    {
+      "path": "docs/kestenijada-2026/mobile-low.png",
+      "bytes": 42682,
+      "sha256": "21f3e80b1e4ede789204e1f50585d159c77bcd80944b93390f8832dad1d9d454"
+    },
+    {
+      "path": "docs/kestenijada-2026/night.json",
+      "bytes": 2552,
+      "sha256": "c8f18f1a14a4aec4655f6146deb30369491590bec19384f588e82a12a494684a"
+    },
+    {
+      "path": "docs/kestenijada-2026/night.png",
+      "bytes": 77188,
+      "sha256": "4293de055920e694e884d0046988fc7d1024d95bd5749e763c0c038f81f2fe87"
+    },
+    {
+      "path": "packages/game/scripts/record-kestenijada-evidence.mjs",
+      "bytes": 7243,
+      "sha256": "6a0bbe0d996f451518a9cb8fa4c790c2650722a2fa1bdae79049ac524d36d53d"
+    },
+    {
+      "path": "packages/game/src/controls/GameCameraRig.tsx",
+      "bytes": 45143,
+      "sha256": "c8b4ccd27215e952b9429a9eb4241fa615b29c50d87692e23611beb8cad1eff5"
+    },
+    {
+      "path": "packages/game/src/controls/orthographicCameraFit.ts",
+      "bytes": 687,
+      "sha256": "1f5902a439848a1ae5271cca31ea6a2b7ffac8cdc9802d3a8bcd9e5f5df4db94"
+    },
+    {
+      "path": "packages/game/src/data/gameAssetModels.generated.ts",
+      "bytes": 22506,
+      "sha256": "c36273e4dcd24aed6834b944408f82bd99b977d11f9bdd700654719bb74f323e"
+    },
+    {
+      "path": "packages/game/src/entities/AutumnBlanketBench.tsx",
+      "bytes": 2375,
+      "sha256": "f4d6d78dc81a7ffa38d5a891613e183b3294105389eb247023ff3dfcaf1de354"
+    },
+    {
+      "path": "packages/game/src/entities/BlockGrass.tsx",
+      "bytes": 1952,
+      "sha256": "1a096cad524d08ba9daa40a5de62d7295455db6c42d4d095a1bd29ca2c5fd099"
+    },
+    {
+      "path": "packages/game/src/entities/ChestnutRoastingCart.tsx",
+      "bytes": 3558,
+      "sha256": "9eb8772cfd8159315b14d4967b63056f4008a76549459cdf66b030043f19d60d"
+    },
+    {
+      "path": "packages/game/src/entities/EntityFactory.tsx",
+      "bytes": 5180,
+      "sha256": "cef0bb630cc10034fecbf1c7d9216e22413cb0d53224eef3da7956a8411d19a8"
+    },
+    {
+      "path": "packages/game/src/entities/EntityInstances.tsx",
+      "bytes": 31162,
+      "sha256": "5bd8d386e95da5bad2d207b4cdd2bfe54a468c231eb305634cf24ecbd6cc19d4"
+    },
+    {
+      "path": "packages/game/src/entities/GardenTeaTable.tsx",
+      "bytes": 2429,
+      "sha256": "8569495c1d0ebb37311a20b0f950859cc90431df0ddece9920a2c5d9e7a59601"
+    },
+    {
+      "path": "packages/game/src/entities/HarvestCrate.tsx",
+      "bytes": 1624,
+      "sha256": "a2a75435a576f07e57649760982860a67473567e0726da659a9a3fde4161bbec"
+    },
+    {
+      "path": "packages/game/src/entities/RetainedEntityChunks.tsx",
+      "bytes": 659,
+      "sha256": "561ce79bd4d1b76310700f332c696fc2b968b9d33b3198f85d77c8032b22629a"
+    },
+    {
+      "path": "packages/game/src/entities/StoneWalkway.tsx",
+      "bytes": 1966,
+      "sha256": "a10e67814378fe80d894b2e308804b70c146dc938326eaa86a498dd1daee1006"
+    },
+    {
+      "path": "packages/game/src/entities/WoodenHandLantern.tsx",
+      "bytes": 3727,
+      "sha256": "4230717a60a89d8d5a603ad736d67af7c3dd1168a8b8ad2f89f034ce6462c4ed"
+    },
+    {
+      "path": "packages/game/src/entities/entityNameMap.ts",
+      "bytes": 13520,
+      "sha256": "a5afced89a89b0dcfe5b624a0ea09eca7a1cf0187aa877eefd8a985854c0e110"
+    },
+    {
+      "path": "packages/game/src/entities/helpers/EntityPreviewContext.ts",
+      "bytes": 187,
+      "sha256": "d8c0baff5bc19d5c7a0ee2c8e5560678d85ecc466b5f3cf593426124bc1e3cb6"
+    },
+    {
+      "path": "packages/game/src/entities/helpers/GardenNightLight.tsx",
+      "bytes": 2550,
+      "sha256": "9295ed5f3d020de021902d48956517d865bb009f69f3e4956ed483c0f7a7fc9a"
+    },
+    {
+      "path": "packages/game/src/entities/helpers/PumpkinLightOverrideContext.ts",
+      "bytes": 298,
+      "sha256": "8058e8355f022f42a18f68856ee5b78db947e4b2c26b027222d0dfd329ba2f0f"
+    },
+    {
+      "path": "packages/game/src/entities/helpers/WeatheredEntityPart.tsx",
+      "bytes": 2261,
+      "sha256": "f5ed6fe3210284ea65c4cef6b9c7e91ecae6514a85fdc4ec1bcb7c099d10b92f"
+    },
+    {
+      "path": "packages/game/src/entities/helpers/groundPatchMaterial.ts",
+      "bytes": 19731,
+      "sha256": "b9dbb491d91941ea1f5e07fa49c46ff6066c1c9ba0cfab5bb02155b19bb97fa2"
+    },
+    {
+      "path": "packages/game/src/entities/helpers/nightGardenLight.ts",
+      "bytes": 2071,
+      "sha256": "8810a4076baee9dc07d6c3db70aefd9a235be0578d1dfad890d0a5ce758edd8f"
+    },
+    {
+      "path": "packages/game/src/entities/helpers/useAnimatedEntityRotation.ts",
+      "bytes": 430,
+      "sha256": "98a631d2bcb1a722524379c61cc14a321ff3700f682b0f489762a23a08d4a342"
+    },
+    {
+      "path": "packages/game/src/kestenijada/KestenijadaViewer.tsx",
+      "bytes": 17408,
+      "sha256": "39e11a21a2fa03e0ce0701f9deba0a20d540b9d2c7a011f3cf44198396a1e582"
+    },
+    {
+      "path": "packages/game/src/kestenijada/kestenijadaCollection.ts",
+      "bytes": 1931,
+      "sha256": "acdf6d10041bf13ef999adf7f12c797e86684afac5daca9611a96bfe8afa775e"
+    },
+    {
+      "path": "packages/game/src/kestenijada/kestenijadaScene.ts",
+      "bytes": 1263,
+      "sha256": "e7f4df4b459c49455bf2776a72121de540895095881497fdbc9d6503896e83be"
+    },
+    {
+      "path": "packages/game/src/localSandboxBlockData.ts",
+      "bytes": 31868,
+      "sha256": "323ee3506cc34605dca9374c0ccf5831287d3792414dd42327daabdd08dae01d"
+    },
+    {
+      "path": "packages/game/src/scene/Environment.tsx",
+      "bytes": 43587,
+      "sha256": "e45f224b836ba55dad371255bae7bc67f8bf38df2148b861de927f084318e6ec"
+    },
+    {
+      "path": "packages/game/src/scene/GardenLightProvider.tsx",
+      "bytes": 5960,
+      "sha256": "ccadf96a8a911d490e59f9a40e6ba8fdd6f931c70a752b515a0b6c35a3fef2d3"
+    },
+    {
+      "path": "packages/game/src/scene/Scene.tsx",
+      "bytes": 15818,
+      "sha256": "dd303a06cdb5a4cc7ee0910ce3940efed10eea422f6d2ac7af933b84fabc0dac"
+    },
+    {
+      "path": "packages/game/src/scene/gameQuality.ts",
+      "bytes": 9446,
+      "sha256": "80cf6a53c07f63c8aa82c914fcc6d2e21cf545333bc2a10b648df4c2d0329aa2"
+    },
+    {
+      "path": "packages/game/src/useGameState.ts",
+      "bytes": 52459,
+      "sha256": "2197a8ef0ea7fda327faba5be442b9c5cb52614ba11fcc2114cbbc0af6ecbed4"
+    },
+    {
+      "path": "packages/game/src/utils/configureGameGLTFMaterials.ts",
+      "bytes": 1178,
+      "sha256": "cf25f07c1978d81c033faefad74edd605ed989183bd7056e5efa51c0f74f3347"
+    },
+    {
+      "path": "packages/game/src/utils/stackHeightCore.ts",
+      "bytes": 2117,
+      "sha256": "72f42ec63afad2a6eda5f53be29c504a81da06ec7383eb3cfbb76a77e984a603"
+    },
+    {
+      "path": "packages/game/src/utils/timeOfDay.ts",
+      "bytes": 8088,
+      "sha256": "572787e758ca5cd29de1765a49f72967389eedce4b9e075e2411344e432e40a8"
+    },
+    {
+      "path": "packages/game/src/utils/useGameGLTF.ts",
+      "bytes": 1628,
+      "sha256": "0a950d810e5af14de7f6ad6dd005b793eab52690b348e36245911067fe8be57a"
+    },
+    {
+      "path": "packages/game/src/viewers/PublicGardenCaptureProbe.tsx",
+      "bytes": 30115,
+      "sha256": "a31b4f38a9597410517c1070fa5543096e41fd452e62fff6b0ce36b34ddb4384"
+    },
+    {
+      "path": "packages/game/src/viewers/PublicGardenViewer.tsx",
+      "bytes": 55654,
+      "sha256": "6902111c2141030386ab8f52002b329d9afbb1ebf5fa59c45150d93fbe744b5d"
+    },
+    {
+      "path": "packages/game/tests/KestenijadaFixture.tsx",
+      "bytes": 3999,
+      "sha256": "2c619f3be38d7a26580ab996f53f0b635fb7775041daf75e0085594ef3d1b8b8"
+    },
+    {
+      "path": "packages/js/src/autumnBlanketBench/index.ts",
+      "bytes": 1024,
+      "sha256": "f2ea8c57455f4ae07dc5ecc0d11aaf852a4cffe2211c444863da437edf678c49"
+    },
+    {
+      "path": "packages/js/src/chestnutRoastingCart/index.ts",
+      "bytes": 1511,
+      "sha256": "53139953a15f17e3dec39dc246bd3a8a86668b02d44aa6762135cb8e01146b61"
+    },
+    {
+      "path": "packages/js/src/gardenTeaTable/index.ts",
+      "bytes": 1319,
+      "sha256": "00371804bba753c64ba88235e2ca9bba285c5dce78f0b1fb1d41f3de2c0e0744"
+    },
+    {
+      "path": "packages/js/src/harvestCrates/index.ts",
+      "bytes": 1568,
+      "sha256": "bb8ac7d497e04c2bd9baf68017a9ef84a3939ed6d1939707cc8efb0918e875cc"
+    },
+    {
+      "path": "packages/js/src/kestenijada/index.ts",
+      "bytes": 8870,
+      "sha256": "da25197fe2a113f5883284d6e27080ffc0a83256db4399bf903b71bac7846ad4"
+    }
+  ]
+}

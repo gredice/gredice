@@ -1,0 +1,2364 @@
+{
+    "harvest-corner": {
+        "sourceCommit": "c48974bd2e21316ae5c3034b9d305350aa479cd4",
+        "captureSha256": "d32f55ad5e618814061716bb4eb69482e9a5329a1876f3752680baf3f67e228d",
+        "included": [
+            {
+                "entityName": "HarvestPumpkinGroupOrange",
+                "quantity": 1
+            },
+            {
+                "entityName": "HarvestPumpkinSquatCream",
+                "quantity": 1
+            },
+            {
+                "entityName": "HarvestCrateOrchard",
+                "quantity": 1
+            },
+            {
+                "entityName": "GardenScarecrow",
+                "quantity": 1
+            }
+        ],
+        "scenery": [
+            {
+                "entityName": "Block_Grass",
+                "quantity": 16
+            },
+            {
+                "entityName": "Tree",
+                "quantity": 1
+            },
+            {
+                "entityName": "Pine",
+                "quantity": 1
+            },
+            {
+                "entityName": "StoneWalkway",
+                "quantity": 3
+            }
+        ],
+        "placements": [
+            {
+                "id": "HarvestPumpkinGroupOrange",
+                "entityName": "HarvestPumpkinGroupOrange",
+                "x": 0,
+                "z": 1,
+                "rotation": 0,
+                "role": "included",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 0,
+                        "z": 1
+                    }
+                ]
+            },
+            {
+                "id": "HarvestPumpkinSquatCream",
+                "entityName": "HarvestPumpkinSquatCream",
+                "x": 0,
+                "z": 3,
+                "rotation": 0,
+                "role": "included",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 0,
+                        "z": 3
+                    }
+                ]
+            },
+            {
+                "id": "HarvestCrateOrchard",
+                "entityName": "HarvestCrateOrchard",
+                "x": 1,
+                "z": 2,
+                "rotation": 0,
+                "role": "included",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 1,
+                        "z": 2
+                    }
+                ]
+            },
+            {
+                "id": "GardenScarecrow",
+                "entityName": "GardenScarecrow",
+                "x": 1,
+                "z": 3,
+                "rotation": 0,
+                "role": "included",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 1,
+                        "z": 3
+                    }
+                ]
+            },
+            {
+                "id": "ground:0",
+                "entityName": "Block_Grass",
+                "x": 0,
+                "z": 0,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 0,
+                        "z": 0
+                    }
+                ]
+            },
+            {
+                "id": "ground:1",
+                "entityName": "Block_Grass",
+                "x": 1,
+                "z": 0,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 1,
+                        "z": 0
+                    }
+                ]
+            },
+            {
+                "id": "ground:2",
+                "entityName": "Block_Grass",
+                "x": 2,
+                "z": 0,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 2,
+                        "z": 0
+                    }
+                ]
+            },
+            {
+                "id": "ground:3",
+                "entityName": "Block_Grass",
+                "x": 3,
+                "z": 0,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 3,
+                        "z": 0
+                    }
+                ]
+            },
+            {
+                "id": "ground:4",
+                "entityName": "Block_Grass",
+                "x": 0,
+                "z": 1,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 0,
+                        "z": 1
+                    }
+                ]
+            },
+            {
+                "id": "ground:5",
+                "entityName": "Block_Grass",
+                "x": 1,
+                "z": 1,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 1,
+                        "z": 1
+                    }
+                ]
+            },
+            {
+                "id": "ground:6",
+                "entityName": "Block_Grass",
+                "x": 2,
+                "z": 1,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 2,
+                        "z": 1
+                    }
+                ]
+            },
+            {
+                "id": "ground:7",
+                "entityName": "Block_Grass",
+                "x": 3,
+                "z": 1,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 3,
+                        "z": 1
+                    }
+                ]
+            },
+            {
+                "id": "ground:8",
+                "entityName": "Block_Grass",
+                "x": 0,
+                "z": 2,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 0,
+                        "z": 2
+                    }
+                ]
+            },
+            {
+                "id": "ground:9",
+                "entityName": "Block_Grass",
+                "x": 1,
+                "z": 2,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 1,
+                        "z": 2
+                    }
+                ]
+            },
+            {
+                "id": "ground:10",
+                "entityName": "Block_Grass",
+                "x": 2,
+                "z": 2,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 2,
+                        "z": 2
+                    }
+                ]
+            },
+            {
+                "id": "ground:11",
+                "entityName": "Block_Grass",
+                "x": 3,
+                "z": 2,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 3,
+                        "z": 2
+                    }
+                ]
+            },
+            {
+                "id": "ground:12",
+                "entityName": "Block_Grass",
+                "x": 0,
+                "z": 3,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 0,
+                        "z": 3
+                    }
+                ]
+            },
+            {
+                "id": "ground:13",
+                "entityName": "Block_Grass",
+                "x": 1,
+                "z": 3,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 1,
+                        "z": 3
+                    }
+                ]
+            },
+            {
+                "id": "ground:14",
+                "entityName": "Block_Grass",
+                "x": 2,
+                "z": 3,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 2,
+                        "z": 3
+                    }
+                ]
+            },
+            {
+                "id": "ground:15",
+                "entityName": "Block_Grass",
+                "x": 3,
+                "z": 3,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 3,
+                        "z": 3
+                    }
+                ]
+            },
+            {
+                "id": "tree",
+                "entityName": "Tree",
+                "x": 2,
+                "z": 3,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 2,
+                        "z": 3
+                    }
+                ]
+            },
+            {
+                "id": "pine",
+                "entityName": "Pine",
+                "x": 3,
+                "z": 3,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 3,
+                        "z": 3
+                    }
+                ]
+            },
+            {
+                "id": "path:0",
+                "entityName": "StoneWalkway",
+                "x": 2,
+                "z": 0,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 2,
+                        "z": 0
+                    }
+                ]
+            },
+            {
+                "id": "path:1",
+                "entityName": "StoneWalkway",
+                "x": 2,
+                "z": 1,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 2,
+                        "z": 1
+                    }
+                ]
+            },
+            {
+                "id": "path:2",
+                "entityName": "StoneWalkway",
+                "x": 2,
+                "z": 2,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 2,
+                        "z": 2
+                    }
+                ]
+            }
+        ],
+        "previewSha256": "ed1b245678a3613a093026ecdfadd3a416a3332972f926ab9aa3a552bb95c2e2",
+        "models": [
+            {
+                "entityName": "HarvestPumpkinGroupOrange",
+                "component": "HarvestPumpkin",
+                "asset": "HarvestPumpkinGroup",
+                "configuration": "harvestPumpkins"
+            },
+            {
+                "entityName": "HarvestPumpkinSquatCream",
+                "component": "HarvestPumpkin",
+                "asset": "HarvestPumpkinSquat",
+                "configuration": "harvestPumpkins"
+            },
+            {
+                "entityName": "HarvestCrateOrchard",
+                "component": "HarvestCrate",
+                "asset": "HarvestCrateOrchard",
+                "configuration": "harvestCrates"
+            },
+            {
+                "entityName": "GardenScarecrow",
+                "component": "GardenScarecrow",
+                "asset": "GardenScarecrow"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Tree",
+                "component": "Tree",
+                "asset": "Tree"
+            },
+            {
+                "entityName": "Pine",
+                "component": "Pine",
+                "asset": "Pine"
+            },
+            {
+                "entityName": "StoneWalkway",
+                "component": "StoneWalkway",
+                "asset": "StoneWalkway"
+            },
+            {
+                "entityName": "StoneWalkway",
+                "component": "StoneWalkway",
+                "asset": "StoneWalkway"
+            },
+            {
+                "entityName": "StoneWalkway",
+                "component": "StoneWalkway",
+                "asset": "StoneWalkway"
+            }
+        ],
+        "files": [
+            {
+                "path": "apps/garden/public/assets/models/BlockGrass.glb",
+                "sha256": "c63b0a39f94243d337caec4cb786c5b2f5f856dc915f910fb349bc12508feacd"
+            },
+            {
+                "path": "apps/garden/public/assets/models/GardenScarecrow.glb",
+                "sha256": "0992b65228bd35bd25e80f47a2b9ec76bdbe158ea09667e900bef631e8a6a7ee"
+            },
+            {
+                "path": "apps/garden/public/assets/models/HarvestCrateOrchard.glb",
+                "sha256": "715049a6ea1338c9a5fdabfee8cda99b0e67d769d62ca7794e62ffba5f60e4ae"
+            },
+            {
+                "path": "apps/garden/public/assets/models/HarvestPumpkinGroup.glb",
+                "sha256": "bdeb4f10688cf139e74be1f1c217bbdd07ec693ac497bbb4cb7ac6fa681b3f5b"
+            },
+            {
+                "path": "apps/garden/public/assets/models/HarvestPumpkinSquat.glb",
+                "sha256": "0f247954af35585f3d318da7360d1147b62572421f56e4ea80df7cb5cc117593"
+            },
+            {
+                "path": "apps/garden/public/assets/models/Pine.glb",
+                "sha256": "dbadec6170f1a314e38292f378c9acddaff36f541e9668179f1a04c3facf7b06"
+            },
+            {
+                "path": "apps/garden/public/assets/models/StoneWalkway.glb",
+                "sha256": "075166e1440880725dbac2cdf3dbca648512373feaae677265cefc66dd3f322b"
+            },
+            {
+                "path": "apps/garden/public/assets/models/Tree.glb",
+                "sha256": "55fe59850d8f365d750754b0d6edd3af991f7d2e28963e688b5ce47ee7e96450"
+            },
+            {
+                "path": "assets/game-assets/BlockGrass.blend",
+                "sha256": "c200bc3c4035cdc400e469302f756f90ebe746f17a43286b3d0a53fe0921f452"
+            },
+            {
+                "path": "assets/game-assets/GardenScarecrow.blend",
+                "sha256": "fe7be8713c111a35f9f7b43427538d06755f6d509d2eac3a2e66bc72c4f1ce80"
+            },
+            {
+                "path": "assets/game-assets/HarvestCrateOrchard.blend",
+                "sha256": "49e138e1f0a8dedd21fc1ca30895ea728598324807f850e689c947c0ca81d066"
+            },
+            {
+                "path": "assets/game-assets/HarvestPumpkinGroup.blend",
+                "sha256": "bf515e1c80e12450c36386f69ce00768cf417f2696d08187f6b50a61b749b835"
+            },
+            {
+                "path": "assets/game-assets/HarvestPumpkinSquat.blend",
+                "sha256": "daba6c9b2da6396ad97807da72f7907caa9c665dca6f75b79e5823bb49730357"
+            },
+            {
+                "path": "assets/game-assets/Pine.blend",
+                "sha256": "33890e9fd7b4e52ed7457e9871af5a31bb862811d63de8e23fa23cdb96193c0e"
+            },
+            {
+                "path": "assets/game-assets/StoneWalkway.blend",
+                "sha256": "fa59878a9ecdf8f157838ea03482d2393e4e40953f8c8ed12440008444781874"
+            },
+            {
+                "path": "assets/game-assets/Tree.blend",
+                "sha256": "94466dada84f27d863dd64b8973a80070a96063cf62be1304755257bd2ffffed"
+            },
+            {
+                "path": "packages/game/src/data/gameAssetModels.generated.ts",
+                "sha256": "c36273e4dcd24aed6834b944408f82bd99b977d11f9bdd700654719bb74f323e"
+            },
+            {
+                "path": "packages/game/src/entities/BlockGrass.tsx",
+                "sha256": "1a096cad524d08ba9daa40a5de62d7295455db6c42d4d095a1bd29ca2c5fd099"
+            },
+            {
+                "path": "packages/game/src/entities/EntityFactory.tsx",
+                "sha256": "cef0bb630cc10034fecbf1c7d9216e22413cb0d53224eef3da7956a8411d19a8"
+            },
+            {
+                "path": "packages/game/src/entities/GardenScarecrow.tsx",
+                "sha256": "8b68c2adfd45df93ece102a4ed14168226def09c263b9f3dc940e75db35e3403"
+            },
+            {
+                "path": "packages/game/src/entities/HarvestCrate.tsx",
+                "sha256": "a2a75435a576f07e57649760982860a67473567e0726da659a9a3fde4161bbec"
+            },
+            {
+                "path": "packages/game/src/entities/HarvestPumpkin.tsx",
+                "sha256": "20c14c629db9b8cab249c95f057dcb99235f760eaed144fe2eda4a7902c6a1c4"
+            },
+            {
+                "path": "packages/game/src/entities/Pine.tsx",
+                "sha256": "f4e139f271eb003aba068f8d67a6c0d156f13fb658b5a69f5af37bec4c204c23"
+            },
+            {
+                "path": "packages/game/src/entities/StoneWalkway.tsx",
+                "sha256": "a10e67814378fe80d894b2e308804b70c146dc938326eaa86a498dd1daee1006"
+            },
+            {
+                "path": "packages/game/src/entities/Tree.tsx",
+                "sha256": "a75781a8c5ea86ef1114d6e8818fa18dcfe91d1e43715fd214676761da858283"
+            },
+            {
+                "path": "packages/game/src/entities/entityNameMap.ts",
+                "sha256": "a5afced89a89b0dcfe5b624a0ea09eca7a1cf0187aa877eefd8a985854c0e110"
+            },
+            {
+                "path": "packages/game/src/entities/helpers/GardenNightLight.tsx",
+                "sha256": "115e59d62737891f3c7292fa7f0340a916e52970047331977726c275eacc3541"
+            },
+            {
+                "path": "packages/game/src/entities/helpers/WeatheredEntityPart.tsx",
+                "sha256": "f5ed6fe3210284ea65c4cef6b9c7e91ecae6514a85fdc4ec1bcb7c099d10b92f"
+            },
+            {
+                "path": "packages/game/src/entities/helpers/WindWeatheredEntityPart.tsx",
+                "sha256": "00678b802ff3f99651867cb607df11e2d269d610ed539f3ce0595c4074adb542"
+            },
+            {
+                "path": "packages/game/src/entities/helpers/timeDrivenMaterialAnimation.ts",
+                "sha256": "28dcf390a243f63c224255f0eb11651081dcd991fecaeb5863602e4353574db5"
+            },
+            {
+                "path": "packages/game/src/entities/helpers/useAnimatedEntityRotation.ts",
+                "sha256": "98a631d2bcb1a722524379c61cc14a321ff3700f682b0f489762a23a08d4a342"
+            },
+            {
+                "path": "packages/game/src/entities/walkwayPlacement.ts",
+                "sha256": "d206bf0f2aa2e886b02fd7265d1f52f656b69b989135ca7fd6161bf3dd1e6838"
+            },
+            {
+                "path": "packages/game/src/hooks/useAutumnFoliageGeometry.ts",
+                "sha256": "b9974e3aef35fb8ae8080225c824826ccadfd0b28f27103bee44e1476cb5de7a"
+            },
+            {
+                "path": "packages/game/src/hooks/useAutumnState.ts",
+                "sha256": "50e3d935c35ca7d798709146e528b69d3a7d868c4fc1cdcac27d517d385642e8"
+            },
+            {
+                "path": "packages/game/src/rain/RainWetOverlay.tsx",
+                "sha256": "5936bd2ac52183b4cb2a0c6ac7b494beddfc30add8ed1dabc2c606179e81cd5a"
+            },
+            {
+                "path": "packages/game/src/scene/SteamEmitter.tsx",
+                "sha256": "89e796792b757e06192243929f51d94c9b8eba5901d4628bc0d8e7bb12ac0f05"
+            },
+            {
+                "path": "packages/game/src/scene/autumnCanopy.ts",
+                "sha256": "ba9db903f45aafd5f585c682d9bf0c2897a400c01489be67da73d37616145154"
+            },
+            {
+                "path": "packages/game/src/scene/autumnPalette.ts",
+                "sha256": "4cee69fb04ac8ea7191d12b7c8ebed05b10d9a5808a59ff4b82b71cf69080dce"
+            },
+            {
+                "path": "packages/game/src/snow/SnowOverlay.tsx",
+                "sha256": "c2a09eda9067fa8373afd9ed093469fa533e459791732328edb45822d43623de"
+            },
+            {
+                "path": "packages/game/src/snow/snowPresets.ts",
+                "sha256": "1ffc976a1ab7c77479a00ff59630c613faaff88933c54a90b303770185eda9e0"
+            },
+            {
+                "path": "packages/game/src/utils/configureGameGLTFMaterials.ts",
+                "sha256": "cf25f07c1978d81c033faefad74edd605ed989183bd7056e5efa51c0f74f3347"
+            },
+            {
+                "path": "packages/game/src/utils/getStackHeight.ts",
+                "sha256": "6dd3a7b10a0ec1f0079afd1c41b04e8066b5f5a407c42bf951d80f65eda37d85"
+            },
+            {
+                "path": "packages/game/src/utils/useGameGLTF.ts",
+                "sha256": "cecb0cda7acb92a2c8bb41e8c7ef84e25843d04c1fc1d8c27d48d84642afa0b0"
+            },
+            {
+                "path": "packages/game/tests/AutumnArrangementFixture.tsx",
+                "sha256": "5b94d9cf7a9ac7ed44d9b202fabf261a14d125bd6c121518fa8ede4400700033"
+            },
+            {
+                "path": "packages/game/tests/AutumnArrangementProbe.tsx",
+                "sha256": "b00d64fb10f17245f775fff569a46c047c45cef83a10ac3f44bb0b8e55da9e0b"
+            },
+            {
+                "path": "packages/js/src/gardenBlocks/index.ts",
+                "sha256": "48716a80b03d5242ab31ba48f75db6a2ee9b69774ebde1b1e21f8efe3d561a73"
+            },
+            {
+                "path": "packages/js/src/harvestCrates/index.ts",
+                "sha256": "bb8ac7d497e04c2bd9baf68017a9ef84a3939ed6d1939707cc8efb0918e875cc"
+            },
+            {
+                "path": "packages/js/src/harvestPumpkins/index.ts",
+                "sha256": "c5b0d9331754c40a42c2b81499c0bc64236542779fac2fd698fc8b994f14ca62"
+            },
+            {
+                "path": "packages/game/src/entities/helpers/EntityPreviewContext.ts",
+                "sha256": "d8c0baff5bc19d5c7a0ee2c8e5560678d85ecc466b5f3cf593426124bc1e3cb6"
+            }
+        ],
+        "captureRecordCommit": "deca1575e69ddc52eb2f3ff89ca3333b714239fd",
+        "recapture": {
+            "source": {
+                "commit": "61fd90f03d0f738917acdc6ba20f75582ca9e95f",
+                "tree": "814b97fdba2bfd48b31495e4a307dab7b1cc8d38",
+                "status": ""
+            },
+            "previousCaptureSha256": "38c485b660fd703b0375fc418cb2204f122dcf06df157eda9462c8a9757b187f",
+            "previousPreviewSha256": "ed1b245678a3613a093026ecdfadd3a416a3332972f926ab9aa3a552bb95c2e2"
+        }
+    },
+    "woodland-path": {
+        "sourceCommit": "c48974bd2e21316ae5c3034b9d305350aa479cd4",
+        "captureSha256": "ef392c712140d91aff3d972da0f9143318c72c639e506b81b0c5d0da09172c01",
+        "included": [
+            {
+                "entityName": "WoodlandMushrooms",
+                "quantity": 1
+            },
+            {
+                "entityName": "StoneMedium",
+                "quantity": 1
+            },
+            {
+                "entityName": "AutumnLeafPileCrescent",
+                "quantity": 1
+            },
+            {
+                "entityName": "FallenLog",
+                "quantity": 1
+            }
+        ],
+        "scenery": [
+            {
+                "entityName": "Block_Grass",
+                "quantity": 16
+            },
+            {
+                "entityName": "Tree",
+                "quantity": 1
+            },
+            {
+                "entityName": "Pine",
+                "quantity": 1
+            },
+            {
+                "entityName": "StoneWalkway",
+                "quantity": 3
+            }
+        ],
+        "placements": [
+            {
+                "id": "WoodlandMushrooms",
+                "entityName": "WoodlandMushrooms",
+                "x": 0,
+                "z": 1,
+                "rotation": 0,
+                "role": "included",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 0,
+                        "z": 1
+                    }
+                ]
+            },
+            {
+                "id": "StoneMedium",
+                "entityName": "StoneMedium",
+                "x": 0,
+                "z": 2,
+                "rotation": 0,
+                "role": "included",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 0,
+                        "z": 2
+                    }
+                ]
+            },
+            {
+                "id": "AutumnLeafPileCrescent",
+                "entityName": "AutumnLeafPileCrescent",
+                "x": 1,
+                "z": 2,
+                "rotation": 0,
+                "role": "included",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 1,
+                        "z": 2
+                    }
+                ]
+            },
+            {
+                "id": "FallenLog",
+                "entityName": "FallenLog",
+                "x": 0,
+                "z": 3,
+                "rotation": 0,
+                "role": "included",
+                "width": 2,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 0,
+                        "z": 3
+                    },
+                    {
+                        "x": 1,
+                        "z": 3
+                    }
+                ]
+            },
+            {
+                "id": "ground:0",
+                "entityName": "Block_Grass",
+                "x": 0,
+                "z": 0,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 0,
+                        "z": 0
+                    }
+                ]
+            },
+            {
+                "id": "ground:1",
+                "entityName": "Block_Grass",
+                "x": 1,
+                "z": 0,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 1,
+                        "z": 0
+                    }
+                ]
+            },
+            {
+                "id": "ground:2",
+                "entityName": "Block_Grass",
+                "x": 2,
+                "z": 0,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 2,
+                        "z": 0
+                    }
+                ]
+            },
+            {
+                "id": "ground:3",
+                "entityName": "Block_Grass",
+                "x": 3,
+                "z": 0,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 3,
+                        "z": 0
+                    }
+                ]
+            },
+            {
+                "id": "ground:4",
+                "entityName": "Block_Grass",
+                "x": 0,
+                "z": 1,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 0,
+                        "z": 1
+                    }
+                ]
+            },
+            {
+                "id": "ground:5",
+                "entityName": "Block_Grass",
+                "x": 1,
+                "z": 1,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 1,
+                        "z": 1
+                    }
+                ]
+            },
+            {
+                "id": "ground:6",
+                "entityName": "Block_Grass",
+                "x": 2,
+                "z": 1,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 2,
+                        "z": 1
+                    }
+                ]
+            },
+            {
+                "id": "ground:7",
+                "entityName": "Block_Grass",
+                "x": 3,
+                "z": 1,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 3,
+                        "z": 1
+                    }
+                ]
+            },
+            {
+                "id": "ground:8",
+                "entityName": "Block_Grass",
+                "x": 0,
+                "z": 2,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 0,
+                        "z": 2
+                    }
+                ]
+            },
+            {
+                "id": "ground:9",
+                "entityName": "Block_Grass",
+                "x": 1,
+                "z": 2,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 1,
+                        "z": 2
+                    }
+                ]
+            },
+            {
+                "id": "ground:10",
+                "entityName": "Block_Grass",
+                "x": 2,
+                "z": 2,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 2,
+                        "z": 2
+                    }
+                ]
+            },
+            {
+                "id": "ground:11",
+                "entityName": "Block_Grass",
+                "x": 3,
+                "z": 2,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 3,
+                        "z": 2
+                    }
+                ]
+            },
+            {
+                "id": "ground:12",
+                "entityName": "Block_Grass",
+                "x": 0,
+                "z": 3,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 0,
+                        "z": 3
+                    }
+                ]
+            },
+            {
+                "id": "ground:13",
+                "entityName": "Block_Grass",
+                "x": 1,
+                "z": 3,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 1,
+                        "z": 3
+                    }
+                ]
+            },
+            {
+                "id": "ground:14",
+                "entityName": "Block_Grass",
+                "x": 2,
+                "z": 3,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 2,
+                        "z": 3
+                    }
+                ]
+            },
+            {
+                "id": "ground:15",
+                "entityName": "Block_Grass",
+                "x": 3,
+                "z": 3,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 3,
+                        "z": 3
+                    }
+                ]
+            },
+            {
+                "id": "tree",
+                "entityName": "Tree",
+                "x": 2,
+                "z": 3,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 2,
+                        "z": 3
+                    }
+                ]
+            },
+            {
+                "id": "pine",
+                "entityName": "Pine",
+                "x": 3,
+                "z": 3,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 3,
+                        "z": 3
+                    }
+                ]
+            },
+            {
+                "id": "path:0",
+                "entityName": "StoneWalkway",
+                "x": 2,
+                "z": 0,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 2,
+                        "z": 0
+                    }
+                ]
+            },
+            {
+                "id": "path:1",
+                "entityName": "StoneWalkway",
+                "x": 2,
+                "z": 1,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 2,
+                        "z": 1
+                    }
+                ]
+            },
+            {
+                "id": "path:2",
+                "entityName": "StoneWalkway",
+                "x": 2,
+                "z": 2,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 2,
+                        "z": 2
+                    }
+                ]
+            }
+        ],
+        "previewSha256": "2f21c98172611d2e3d37d71d4fd5c5c7685c044239f406a271a09d5e775c5e55",
+        "models": [
+            {
+                "entityName": "WoodlandMushrooms",
+                "component": "WoodlandMushrooms",
+                "asset": "WoodlandMushrooms"
+            },
+            {
+                "entityName": "StoneMedium",
+                "component": "StoneMedium",
+                "asset": "StoneMedium"
+            },
+            {
+                "entityName": "AutumnLeafPileCrescent",
+                "component": "AutumnLeafPile",
+                "asset": "AutumnLeafPileCrescent",
+                "configuration": "autumnLeafPiles"
+            },
+            {
+                "entityName": "FallenLog",
+                "component": "FallenLog",
+                "asset": "FallenLog",
+                "configuration": "fallenLog"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Tree",
+                "component": "Tree",
+                "asset": "Tree"
+            },
+            {
+                "entityName": "Pine",
+                "component": "Pine",
+                "asset": "Pine"
+            },
+            {
+                "entityName": "StoneWalkway",
+                "component": "StoneWalkway",
+                "asset": "StoneWalkway"
+            },
+            {
+                "entityName": "StoneWalkway",
+                "component": "StoneWalkway",
+                "asset": "StoneWalkway"
+            },
+            {
+                "entityName": "StoneWalkway",
+                "component": "StoneWalkway",
+                "asset": "StoneWalkway"
+            }
+        ],
+        "files": [
+            {
+                "path": "apps/garden/public/assets/models/AutumnLeafPileCrescent.glb",
+                "sha256": "b99b88c2b61a409e6b669b54b2d2c36adc48d6a38054c3c14b83461446cfa498"
+            },
+            {
+                "path": "apps/garden/public/assets/models/BlockGrass.glb",
+                "sha256": "c63b0a39f94243d337caec4cb786c5b2f5f856dc915f910fb349bc12508feacd"
+            },
+            {
+                "path": "apps/garden/public/assets/models/FallenLog.glb",
+                "sha256": "dd66f61eb3e5755e5ae696a72ca6cd3041fa531ec2203aa77cd5aeef899c15a3"
+            },
+            {
+                "path": "apps/garden/public/assets/models/Pine.glb",
+                "sha256": "dbadec6170f1a314e38292f378c9acddaff36f541e9668179f1a04c3facf7b06"
+            },
+            {
+                "path": "apps/garden/public/assets/models/StoneMedium.glb",
+                "sha256": "8fe24b65423aa4fb217869b2ec7de575614eac4f9f29035050034616f4e5b00e"
+            },
+            {
+                "path": "apps/garden/public/assets/models/StoneWalkway.glb",
+                "sha256": "075166e1440880725dbac2cdf3dbca648512373feaae677265cefc66dd3f322b"
+            },
+            {
+                "path": "apps/garden/public/assets/models/Tree.glb",
+                "sha256": "55fe59850d8f365d750754b0d6edd3af991f7d2e28963e688b5ce47ee7e96450"
+            },
+            {
+                "path": "apps/garden/public/assets/models/WoodlandMushrooms.glb",
+                "sha256": "a8a6b03f7e3886e395b8c59d7413c2d2f9c54f24b4ab18b69267f6595da2e1f7"
+            },
+            {
+                "path": "assets/game-assets/AutumnLeafPileCrescent.blend",
+                "sha256": "1f49a98d53bc55f3d0a542dc2c3c2c75bd9c4efbd1b86c0c8962e05fccb1364e"
+            },
+            {
+                "path": "assets/game-assets/BlockGrass.blend",
+                "sha256": "c200bc3c4035cdc400e469302f756f90ebe746f17a43286b3d0a53fe0921f452"
+            },
+            {
+                "path": "assets/game-assets/FallenLog.blend",
+                "sha256": "4a37fa9a8dbf052591a108f28f225b75fd50af3f118e1768d96ff56e5b3d0d0a"
+            },
+            {
+                "path": "assets/game-assets/Pine.blend",
+                "sha256": "33890e9fd7b4e52ed7457e9871af5a31bb862811d63de8e23fa23cdb96193c0e"
+            },
+            {
+                "path": "assets/game-assets/StoneMedium.blend",
+                "sha256": "cc5eea0841783f9d2f08026711639b5a6d574d7b951421fca15c4a68307b0e4a"
+            },
+            {
+                "path": "assets/game-assets/StoneWalkway.blend",
+                "sha256": "fa59878a9ecdf8f157838ea03482d2393e4e40953f8c8ed12440008444781874"
+            },
+            {
+                "path": "assets/game-assets/Tree.blend",
+                "sha256": "94466dada84f27d863dd64b8973a80070a96063cf62be1304755257bd2ffffed"
+            },
+            {
+                "path": "assets/game-assets/WoodlandMushrooms.blend",
+                "sha256": "54e12e9d7d7e40d77fd8c9d7a96e2f5e282ccbd7d6f5301652a17d29cdcc5006"
+            },
+            {
+                "path": "packages/game/src/data/gameAssetModels.generated.ts",
+                "sha256": "c36273e4dcd24aed6834b944408f82bd99b977d11f9bdd700654719bb74f323e"
+            },
+            {
+                "path": "packages/game/src/entities/AutumnLeafPile.tsx",
+                "sha256": "3a1e95f816d3c2960c5f7126af7347617993324c706df3a0c4bbd5acb88bf6bc"
+            },
+            {
+                "path": "packages/game/src/entities/BlockGrass.tsx",
+                "sha256": "1a096cad524d08ba9daa40a5de62d7295455db6c42d4d095a1bd29ca2c5fd099"
+            },
+            {
+                "path": "packages/game/src/entities/EntityFactory.tsx",
+                "sha256": "cef0bb630cc10034fecbf1c7d9216e22413cb0d53224eef3da7956a8411d19a8"
+            },
+            {
+                "path": "packages/game/src/entities/FallenLog.tsx",
+                "sha256": "977d33e5808d6f5cc77c7b05875d9a9cf06324332972b9e5fd693fe725b639ac"
+            },
+            {
+                "path": "packages/game/src/entities/Pine.tsx",
+                "sha256": "f4e139f271eb003aba068f8d67a6c0d156f13fb658b5a69f5af37bec4c204c23"
+            },
+            {
+                "path": "packages/game/src/entities/StoneMedium.tsx",
+                "sha256": "9ec50d9e3202e129e88336d5e0c7f9ee6fe69cb22f91da5361fac6a875c16510"
+            },
+            {
+                "path": "packages/game/src/entities/StoneWalkway.tsx",
+                "sha256": "a10e67814378fe80d894b2e308804b70c146dc938326eaa86a498dd1daee1006"
+            },
+            {
+                "path": "packages/game/src/entities/Tree.tsx",
+                "sha256": "a75781a8c5ea86ef1114d6e8818fa18dcfe91d1e43715fd214676761da858283"
+            },
+            {
+                "path": "packages/game/src/entities/WoodlandMushrooms.tsx",
+                "sha256": "89161b0de9afc4b080e8788f5e7b00e382d9df4788464841cc222a3d796fb53e"
+            },
+            {
+                "path": "packages/game/src/entities/entityNameMap.ts",
+                "sha256": "a5afced89a89b0dcfe5b624a0ea09eca7a1cf0187aa877eefd8a985854c0e110"
+            },
+            {
+                "path": "packages/game/src/entities/helpers/GardenNightLight.tsx",
+                "sha256": "115e59d62737891f3c7292fa7f0340a916e52970047331977726c275eacc3541"
+            },
+            {
+                "path": "packages/game/src/entities/helpers/WeatheredEntityPart.tsx",
+                "sha256": "f5ed6fe3210284ea65c4cef6b9c7e91ecae6514a85fdc4ec1bcb7c099d10b92f"
+            },
+            {
+                "path": "packages/game/src/entities/helpers/WindWeatheredEntityPart.tsx",
+                "sha256": "00678b802ff3f99651867cb607df11e2d269d610ed539f3ce0595c4074adb542"
+            },
+            {
+                "path": "packages/game/src/entities/helpers/timeDrivenMaterialAnimation.ts",
+                "sha256": "28dcf390a243f63c224255f0eb11651081dcd991fecaeb5863602e4353574db5"
+            },
+            {
+                "path": "packages/game/src/entities/helpers/useAnimatedEntityRotation.ts",
+                "sha256": "98a631d2bcb1a722524379c61cc14a321ff3700f682b0f489762a23a08d4a342"
+            },
+            {
+                "path": "packages/game/src/entities/walkwayPlacement.ts",
+                "sha256": "d206bf0f2aa2e886b02fd7265d1f52f656b69b989135ca7fd6161bf3dd1e6838"
+            },
+            {
+                "path": "packages/game/src/hooks/useAutumnFoliageGeometry.ts",
+                "sha256": "b9974e3aef35fb8ae8080225c824826ccadfd0b28f27103bee44e1476cb5de7a"
+            },
+            {
+                "path": "packages/game/src/hooks/useAutumnState.ts",
+                "sha256": "50e3d935c35ca7d798709146e528b69d3a7d868c4fc1cdcac27d517d385642e8"
+            },
+            {
+                "path": "packages/game/src/rain/RainWetOverlay.tsx",
+                "sha256": "5936bd2ac52183b4cb2a0c6ac7b494beddfc30add8ed1dabc2c606179e81cd5a"
+            },
+            {
+                "path": "packages/game/src/scene/SteamEmitter.tsx",
+                "sha256": "89e796792b757e06192243929f51d94c9b8eba5901d4628bc0d8e7bb12ac0f05"
+            },
+            {
+                "path": "packages/game/src/scene/autumnCanopy.ts",
+                "sha256": "ba9db903f45aafd5f585c682d9bf0c2897a400c01489be67da73d37616145154"
+            },
+            {
+                "path": "packages/game/src/scene/autumnPalette.ts",
+                "sha256": "4cee69fb04ac8ea7191d12b7c8ebed05b10d9a5808a59ff4b82b71cf69080dce"
+            },
+            {
+                "path": "packages/game/src/snow/SnowOverlay.tsx",
+                "sha256": "c2a09eda9067fa8373afd9ed093469fa533e459791732328edb45822d43623de"
+            },
+            {
+                "path": "packages/game/src/snow/snowPresets.ts",
+                "sha256": "1ffc976a1ab7c77479a00ff59630c613faaff88933c54a90b303770185eda9e0"
+            },
+            {
+                "path": "packages/game/src/utils/configureGameGLTFMaterials.ts",
+                "sha256": "cf25f07c1978d81c033faefad74edd605ed989183bd7056e5efa51c0f74f3347"
+            },
+            {
+                "path": "packages/game/src/utils/getStackHeight.ts",
+                "sha256": "6dd3a7b10a0ec1f0079afd1c41b04e8066b5f5a407c42bf951d80f65eda37d85"
+            },
+            {
+                "path": "packages/game/src/utils/useGameGLTF.ts",
+                "sha256": "cecb0cda7acb92a2c8bb41e8c7ef84e25843d04c1fc1d8c27d48d84642afa0b0"
+            },
+            {
+                "path": "packages/game/tests/AutumnArrangementFixture.tsx",
+                "sha256": "5b94d9cf7a9ac7ed44d9b202fabf261a14d125bd6c121518fa8ede4400700033"
+            },
+            {
+                "path": "packages/game/tests/AutumnArrangementProbe.tsx",
+                "sha256": "b00d64fb10f17245f775fff569a46c047c45cef83a10ac3f44bb0b8e55da9e0b"
+            },
+            {
+                "path": "packages/js/src/autumnLeafPiles/index.ts",
+                "sha256": "520670fddd7f7d1a24f92cef5079f0f79a4911e2fc7093de51cf73e1255ba6f5"
+            },
+            {
+                "path": "packages/js/src/fallenLog/index.ts",
+                "sha256": "7ab60e6af039b415af52932c8643daf2ad946ff2802a692c2dd983204655cf47"
+            },
+            {
+                "path": "packages/js/src/gardenBlocks/index.ts",
+                "sha256": "48716a80b03d5242ab31ba48f75db6a2ee9b69774ebde1b1e21f8efe3d561a73"
+            },
+            {
+                "path": "packages/game/src/entities/helpers/EntityPreviewContext.ts",
+                "sha256": "d8c0baff5bc19d5c7a0ee2c8e5560678d85ecc466b5f3cf593426124bc1e3cb6"
+            }
+        ],
+        "captureRecordCommit": "deca1575e69ddc52eb2f3ff89ca3333b714239fd",
+        "recapture": {
+            "source": {
+                "commit": "61fd90f03d0f738917acdc6ba20f75582ca9e95f",
+                "tree": "814b97fdba2bfd48b31495e4a307dab7b1cc8d38",
+                "status": ""
+            },
+            "previousCaptureSha256": "786b7689381e7847bbf738d6b542a98ec0ba27cd47942f7118d38b5153619265",
+            "previousPreviewSha256": "2f21c98172611d2e3d37d71d4fd5c5c7685c044239f406a271a09d5e775c5e55"
+        }
+    },
+    "evening-seat": {
+        "sourceCommit": "c48974bd2e21316ae5c3034b9d305350aa479cd4",
+        "captureSha256": "1e565534ceb1c40a255744cbadcb81963ece1c4503e5fef318ad1c43ce4667e8",
+        "included": [
+            {
+                "entityName": "AutumnBlanketBench",
+                "quantity": 1
+            },
+            {
+                "entityName": "GardenTeaTable",
+                "quantity": 1
+            },
+            {
+                "entityName": "EnamelGardenLamp",
+                "quantity": 1
+            },
+            {
+                "entityName": "AutumnAsterPotMauve",
+                "quantity": 1
+            }
+        ],
+        "scenery": [
+            {
+                "entityName": "Block_Grass",
+                "quantity": 16
+            },
+            {
+                "entityName": "Tree",
+                "quantity": 1
+            },
+            {
+                "entityName": "Pine",
+                "quantity": 1
+            },
+            {
+                "entityName": "StoneWalkway",
+                "quantity": 3
+            }
+        ],
+        "placements": [
+            {
+                "id": "AutumnBlanketBench",
+                "entityName": "AutumnBlanketBench",
+                "x": 0,
+                "z": 3,
+                "rotation": 0,
+                "role": "included",
+                "width": 2,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 0,
+                        "z": 3
+                    },
+                    {
+                        "x": 1,
+                        "z": 3
+                    }
+                ]
+            },
+            {
+                "id": "GardenTeaTable",
+                "entityName": "GardenTeaTable",
+                "x": 0,
+                "z": 1,
+                "rotation": 0,
+                "role": "included",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 0,
+                        "z": 1
+                    }
+                ]
+            },
+            {
+                "id": "EnamelGardenLamp",
+                "entityName": "EnamelGardenLamp",
+                "x": 0,
+                "z": 2,
+                "rotation": 0,
+                "role": "included",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 0,
+                        "z": 2
+                    }
+                ]
+            },
+            {
+                "id": "AutumnAsterPotMauve",
+                "entityName": "AutumnAsterPotMauve",
+                "x": 1,
+                "z": 1,
+                "rotation": 0,
+                "role": "included",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 1,
+                        "z": 1
+                    }
+                ]
+            },
+            {
+                "id": "ground:0",
+                "entityName": "Block_Grass",
+                "x": 0,
+                "z": 0,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 0,
+                        "z": 0
+                    }
+                ]
+            },
+            {
+                "id": "ground:1",
+                "entityName": "Block_Grass",
+                "x": 1,
+                "z": 0,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 1,
+                        "z": 0
+                    }
+                ]
+            },
+            {
+                "id": "ground:2",
+                "entityName": "Block_Grass",
+                "x": 2,
+                "z": 0,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 2,
+                        "z": 0
+                    }
+                ]
+            },
+            {
+                "id": "ground:3",
+                "entityName": "Block_Grass",
+                "x": 3,
+                "z": 0,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 3,
+                        "z": 0
+                    }
+                ]
+            },
+            {
+                "id": "ground:4",
+                "entityName": "Block_Grass",
+                "x": 0,
+                "z": 1,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 0,
+                        "z": 1
+                    }
+                ]
+            },
+            {
+                "id": "ground:5",
+                "entityName": "Block_Grass",
+                "x": 1,
+                "z": 1,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 1,
+                        "z": 1
+                    }
+                ]
+            },
+            {
+                "id": "ground:6",
+                "entityName": "Block_Grass",
+                "x": 2,
+                "z": 1,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 2,
+                        "z": 1
+                    }
+                ]
+            },
+            {
+                "id": "ground:7",
+                "entityName": "Block_Grass",
+                "x": 3,
+                "z": 1,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 3,
+                        "z": 1
+                    }
+                ]
+            },
+            {
+                "id": "ground:8",
+                "entityName": "Block_Grass",
+                "x": 0,
+                "z": 2,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 0,
+                        "z": 2
+                    }
+                ]
+            },
+            {
+                "id": "ground:9",
+                "entityName": "Block_Grass",
+                "x": 1,
+                "z": 2,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 1,
+                        "z": 2
+                    }
+                ]
+            },
+            {
+                "id": "ground:10",
+                "entityName": "Block_Grass",
+                "x": 2,
+                "z": 2,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 2,
+                        "z": 2
+                    }
+                ]
+            },
+            {
+                "id": "ground:11",
+                "entityName": "Block_Grass",
+                "x": 3,
+                "z": 2,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 3,
+                        "z": 2
+                    }
+                ]
+            },
+            {
+                "id": "ground:12",
+                "entityName": "Block_Grass",
+                "x": 0,
+                "z": 3,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 0,
+                        "z": 3
+                    }
+                ]
+            },
+            {
+                "id": "ground:13",
+                "entityName": "Block_Grass",
+                "x": 1,
+                "z": 3,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 1,
+                        "z": 3
+                    }
+                ]
+            },
+            {
+                "id": "ground:14",
+                "entityName": "Block_Grass",
+                "x": 2,
+                "z": 3,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 2,
+                        "z": 3
+                    }
+                ]
+            },
+            {
+                "id": "ground:15",
+                "entityName": "Block_Grass",
+                "x": 3,
+                "z": 3,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 3,
+                        "z": 3
+                    }
+                ]
+            },
+            {
+                "id": "tree",
+                "entityName": "Tree",
+                "x": 2,
+                "z": 3,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 2,
+                        "z": 3
+                    }
+                ]
+            },
+            {
+                "id": "pine",
+                "entityName": "Pine",
+                "x": 3,
+                "z": 3,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 3,
+                        "z": 3
+                    }
+                ]
+            },
+            {
+                "id": "path:0",
+                "entityName": "StoneWalkway",
+                "x": 2,
+                "z": 0,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 2,
+                        "z": 0
+                    }
+                ]
+            },
+            {
+                "id": "path:1",
+                "entityName": "StoneWalkway",
+                "x": 2,
+                "z": 1,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 2,
+                        "z": 1
+                    }
+                ]
+            },
+            {
+                "id": "path:2",
+                "entityName": "StoneWalkway",
+                "x": 2,
+                "z": 2,
+                "rotation": 0,
+                "role": "scenery",
+                "width": 1,
+                "depth": 1,
+                "cells": [
+                    {
+                        "x": 2,
+                        "z": 2
+                    }
+                ]
+            }
+        ],
+        "previewSha256": "48325aa58a719dafebafa403c3b3f51565d3128d9bbbac9ce80d93e539d434d7",
+        "models": [
+            {
+                "entityName": "AutumnBlanketBench",
+                "component": "AutumnBlanketBench",
+                "asset": "AutumnBlanketBench",
+                "configuration": "autumnBlanketBench"
+            },
+            {
+                "entityName": "GardenTeaTable",
+                "component": "GardenTeaTable",
+                "asset": "GardenTeaTable",
+                "configuration": "gardenTeaTable"
+            },
+            {
+                "entityName": "EnamelGardenLamp",
+                "component": "EnamelGardenLamp",
+                "asset": "EnamelGardenLamp"
+            },
+            {
+                "entityName": "AutumnAsterPotMauve",
+                "component": "AutumnAsterPot",
+                "asset": "AutumnAsterPot",
+                "configuration": "autumnAsterPots"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Block_Grass",
+                "component": "BlockGrass",
+                "asset": "BlockGrass"
+            },
+            {
+                "entityName": "Tree",
+                "component": "Tree",
+                "asset": "Tree"
+            },
+            {
+                "entityName": "Pine",
+                "component": "Pine",
+                "asset": "Pine"
+            },
+            {
+                "entityName": "StoneWalkway",
+                "component": "StoneWalkway",
+                "asset": "StoneWalkway"
+            },
+            {
+                "entityName": "StoneWalkway",
+                "component": "StoneWalkway",
+                "asset": "StoneWalkway"
+            },
+            {
+                "entityName": "StoneWalkway",
+                "component": "StoneWalkway",
+                "asset": "StoneWalkway"
+            }
+        ],
+        "files": [
+            {
+                "path": "apps/garden/public/assets/models/AutumnAsterPot.glb",
+                "sha256": "f6a6dc858dbb4d186770b80d0fcc1e6391fa14b7a1c7cf572894d144fe2641a5"
+            },
+            {
+                "path": "apps/garden/public/assets/models/AutumnBlanketBench.glb",
+                "sha256": "6bc5acbeff925d7f5a5bf255f4b2b0b48d3cec11e6b85dd15ca019fe6ec50851"
+            },
+            {
+                "path": "apps/garden/public/assets/models/BlockGrass.glb",
+                "sha256": "c63b0a39f94243d337caec4cb786c5b2f5f856dc915f910fb349bc12508feacd"
+            },
+            {
+                "path": "apps/garden/public/assets/models/EnamelGardenLamp.glb",
+                "sha256": "c945af2c019864ee8644d6bcee80bbb0a8c428c321f8f26b71f251d23fabd7c3"
+            },
+            {
+                "path": "apps/garden/public/assets/models/GardenTeaTable.glb",
+                "sha256": "36d8a3e3ed2db49ceb6fc75983dc306462112f6d90bd763674d84c93941ad1bc"
+            },
+            {
+                "path": "apps/garden/public/assets/models/Pine.glb",
+                "sha256": "dbadec6170f1a314e38292f378c9acddaff36f541e9668179f1a04c3facf7b06"
+            },
+            {
+                "path": "apps/garden/public/assets/models/StoneWalkway.glb",
+                "sha256": "075166e1440880725dbac2cdf3dbca648512373feaae677265cefc66dd3f322b"
+            },
+            {
+                "path": "apps/garden/public/assets/models/Tree.glb",
+                "sha256": "55fe59850d8f365d750754b0d6edd3af991f7d2e28963e688b5ce47ee7e96450"
+            },
+            {
+                "path": "assets/game-assets/AutumnAsterPot.blend",
+                "sha256": "02536e550fb25285149923f330da63be1eb37f81db2d2b8cea7ed3cfcd475a81"
+            },
+            {
+                "path": "assets/game-assets/AutumnBlanketBench.blend",
+                "sha256": "178aa87386cad7040e1c98931bce63e3560003131bfe563164de5738e5c13479"
+            },
+            {
+                "path": "assets/game-assets/BlockGrass.blend",
+                "sha256": "c200bc3c4035cdc400e469302f756f90ebe746f17a43286b3d0a53fe0921f452"
+            },
+            {
+                "path": "assets/game-assets/EnamelGardenLamp.blend",
+                "sha256": "27081a50ee24907d1096375774bde2e09cfd01e78be79e219f05f6c699855d9f"
+            },
+            {
+                "path": "assets/game-assets/GardenTeaTable.blend",
+                "sha256": "267062eb1a59ded238b21dcb3e8644a9ee99b5469eb47bd4bd0452b7781fdc34"
+            },
+            {
+                "path": "assets/game-assets/Pine.blend",
+                "sha256": "33890e9fd7b4e52ed7457e9871af5a31bb862811d63de8e23fa23cdb96193c0e"
+            },
+            {
+                "path": "assets/game-assets/StoneWalkway.blend",
+                "sha256": "fa59878a9ecdf8f157838ea03482d2393e4e40953f8c8ed12440008444781874"
+            },
+            {
+                "path": "assets/game-assets/Tree.blend",
+                "sha256": "94466dada84f27d863dd64b8973a80070a96063cf62be1304755257bd2ffffed"
+            },
+            {
+                "path": "packages/game/src/data/gameAssetModels.generated.ts",
+                "sha256": "c36273e4dcd24aed6834b944408f82bd99b977d11f9bdd700654719bb74f323e"
+            },
+            {
+                "path": "packages/game/src/entities/AutumnAsterPot.tsx",
+                "sha256": "3de529a909c3d83fa7ae46ceeb87ec7fb0f0765e5dee2ec4f1518b8a3699a2ba"
+            },
+            {
+                "path": "packages/game/src/entities/AutumnBlanketBench.tsx",
+                "sha256": "f4d6d78dc81a7ffa38d5a891613e183b3294105389eb247023ff3dfcaf1de354"
+            },
+            {
+                "path": "packages/game/src/entities/BlockGrass.tsx",
+                "sha256": "1a096cad524d08ba9daa40a5de62d7295455db6c42d4d095a1bd29ca2c5fd099"
+            },
+            {
+                "path": "packages/game/src/entities/EnamelGardenLamp.tsx",
+                "sha256": "445218fd7221acfe5f560bf3f118f3cc88bc20767e1ab73858017cc056a5df1e"
+            },
+            {
+                "path": "packages/game/src/entities/EntityFactory.tsx",
+                "sha256": "cef0bb630cc10034fecbf1c7d9216e22413cb0d53224eef3da7956a8411d19a8"
+            },
+            {
+                "path": "packages/game/src/entities/GardenTeaTable.tsx",
+                "sha256": "8569495c1d0ebb37311a20b0f950859cc90431df0ddece9920a2c5d9e7a59601"
+            },
+            {
+                "path": "packages/game/src/entities/Pine.tsx",
+                "sha256": "f4e139f271eb003aba068f8d67a6c0d156f13fb658b5a69f5af37bec4c204c23"
+            },
+            {
+                "path": "packages/game/src/entities/StoneWalkway.tsx",
+                "sha256": "a10e67814378fe80d894b2e308804b70c146dc938326eaa86a498dd1daee1006"
+            },
+            {
+                "path": "packages/game/src/entities/Tree.tsx",
+                "sha256": "a75781a8c5ea86ef1114d6e8818fa18dcfe91d1e43715fd214676761da858283"
+            },
+            {
+                "path": "packages/game/src/entities/entityNameMap.ts",
+                "sha256": "a5afced89a89b0dcfe5b624a0ea09eca7a1cf0187aa877eefd8a985854c0e110"
+            },
+            {
+                "path": "packages/game/src/entities/helpers/GardenNightLight.tsx",
+                "sha256": "115e59d62737891f3c7292fa7f0340a916e52970047331977726c275eacc3541"
+            },
+            {
+                "path": "packages/game/src/entities/helpers/WeatheredEntityPart.tsx",
+                "sha256": "f5ed6fe3210284ea65c4cef6b9c7e91ecae6514a85fdc4ec1bcb7c099d10b92f"
+            },
+            {
+                "path": "packages/game/src/entities/helpers/WindWeatheredEntityPart.tsx",
+                "sha256": "00678b802ff3f99651867cb607df11e2d269d610ed539f3ce0595c4074adb542"
+            },
+            {
+                "path": "packages/game/src/entities/helpers/timeDrivenMaterialAnimation.ts",
+                "sha256": "28dcf390a243f63c224255f0eb11651081dcd991fecaeb5863602e4353574db5"
+            },
+            {
+                "path": "packages/game/src/entities/helpers/useAnimatedEntityRotation.ts",
+                "sha256": "98a631d2bcb1a722524379c61cc14a321ff3700f682b0f489762a23a08d4a342"
+            },
+            {
+                "path": "packages/game/src/entities/walkwayPlacement.ts",
+                "sha256": "d206bf0f2aa2e886b02fd7265d1f52f656b69b989135ca7fd6161bf3dd1e6838"
+            },
+            {
+                "path": "packages/game/src/hooks/useAutumnFoliageGeometry.ts",
+                "sha256": "b9974e3aef35fb8ae8080225c824826ccadfd0b28f27103bee44e1476cb5de7a"
+            },
+            {
+                "path": "packages/game/src/hooks/useAutumnState.ts",
+                "sha256": "50e3d935c35ca7d798709146e528b69d3a7d868c4fc1cdcac27d517d385642e8"
+            },
+            {
+                "path": "packages/game/src/rain/RainWetOverlay.tsx",
+                "sha256": "5936bd2ac52183b4cb2a0c6ac7b494beddfc30add8ed1dabc2c606179e81cd5a"
+            },
+            {
+                "path": "packages/game/src/scene/SteamEmitter.tsx",
+                "sha256": "89e796792b757e06192243929f51d94c9b8eba5901d4628bc0d8e7bb12ac0f05"
+            },
+            {
+                "path": "packages/game/src/scene/autumnCanopy.ts",
+                "sha256": "ba9db903f45aafd5f585c682d9bf0c2897a400c01489be67da73d37616145154"
+            },
+            {
+                "path": "packages/game/src/scene/autumnPalette.ts",
+                "sha256": "4cee69fb04ac8ea7191d12b7c8ebed05b10d9a5808a59ff4b82b71cf69080dce"
+            },
+            {
+                "path": "packages/game/src/snow/SnowOverlay.tsx",
+                "sha256": "c2a09eda9067fa8373afd9ed093469fa533e459791732328edb45822d43623de"
+            },
+            {
+                "path": "packages/game/src/snow/snowPresets.ts",
+                "sha256": "1ffc976a1ab7c77479a00ff59630c613faaff88933c54a90b303770185eda9e0"
+            },
+            {
+                "path": "packages/game/src/utils/configureGameGLTFMaterials.ts",
+                "sha256": "cf25f07c1978d81c033faefad74edd605ed989183bd7056e5efa51c0f74f3347"
+            },
+            {
+                "path": "packages/game/src/utils/getStackHeight.ts",
+                "sha256": "6dd3a7b10a0ec1f0079afd1c41b04e8066b5f5a407c42bf951d80f65eda37d85"
+            },
+            {
+                "path": "packages/game/src/utils/useGameGLTF.ts",
+                "sha256": "cecb0cda7acb92a2c8bb41e8c7ef84e25843d04c1fc1d8c27d48d84642afa0b0"
+            },
+            {
+                "path": "packages/game/tests/AutumnArrangementFixture.tsx",
+                "sha256": "5b94d9cf7a9ac7ed44d9b202fabf261a14d125bd6c121518fa8ede4400700033"
+            },
+            {
+                "path": "packages/game/tests/AutumnArrangementProbe.tsx",
+                "sha256": "b00d64fb10f17245f775fff569a46c047c45cef83a10ac3f44bb0b8e55da9e0b"
+            },
+            {
+                "path": "packages/js/src/autumnAsterPots/index.ts",
+                "sha256": "89931a56cfe4b66a96ed0ad141143a0ac5413e4cc6b9e6da436207fdf3d1ad67"
+            },
+            {
+                "path": "packages/js/src/autumnBlanketBench/index.ts",
+                "sha256": "f2ea8c57455f4ae07dc5ecc0d11aaf852a4cffe2211c444863da437edf678c49"
+            },
+            {
+                "path": "packages/js/src/gardenBlocks/index.ts",
+                "sha256": "48716a80b03d5242ab31ba48f75db6a2ee9b69774ebde1b1e21f8efe3d561a73"
+            },
+            {
+                "path": "packages/js/src/gardenTeaTable/index.ts",
+                "sha256": "00371804bba753c64ba88235e2ca9bba285c5dce78f0b1fb1d41f3de2c0e0744"
+            },
+            {
+                "path": "packages/game/src/entities/helpers/EntityPreviewContext.ts",
+                "sha256": "d8c0baff5bc19d5c7a0ee2c8e5560678d85ecc466b5f3cf593426124bc1e3cb6"
+            }
+        ],
+        "captureRecordCommit": "deca1575e69ddc52eb2f3ff89ca3333b714239fd",
+        "recapture": {
+            "source": {
+                "commit": "61fd90f03d0f738917acdc6ba20f75582ca9e95f",
+                "tree": "814b97fdba2bfd48b31495e4a307dab7b1cc8d38",
+                "status": ""
+            },
+            "previousCaptureSha256": "b1ed300c31ae0835b5a684b80b6f6c1f273798671f9c8c7eaa966df1c8628572",
+            "previousPreviewSha256": "48325aa58a719dafebafa403c3b3f51565d3128d9bbbac9ce80d93e539d434d7"
+        }
+    }
+}
