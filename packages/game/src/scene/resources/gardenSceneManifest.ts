@@ -235,6 +235,7 @@ export const blockAssetRequirements: {
     LeafRake: assets('LeafRake'),
     AutumnBlanketBench: assets('AutumnBlanketBench'),
     GardenTeaTable: assets('GardenTeaTable'),
+    ChestnutRoastingCart: assets('ChestnutRoastingCart'),
     PotLowBowl: assets('PotLowBowl'),
     PotRoundedBowl: assets('PotRoundedBowl'),
     PotBulbousNeck: assets('PotBulbousNeck'),
