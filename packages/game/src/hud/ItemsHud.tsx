@@ -5,6 +5,7 @@ import {
     type HorseAppearanceVariant,
     horseAppearanceVariants,
 } from '@gredice/js/entityAppearanceVariants';
+import { fallenLog } from '@gredice/js/fallenLog';
 import { gardenScarecrow } from '@gredice/js/gardenScarecrow';
 import { harvestCrateNames } from '@gredice/js/harvestCrates';
 import { harvestPumpkinNames } from '@gredice/js/harvestPumpkins';
@@ -358,6 +359,7 @@ const items: HudItem[] = [
             { type: 'entity', name: gardenScarecrow.name },
             { type: 'entity', name: autumnShrub.name },
             { type: 'entity', name: woodlandMushrooms.name },
+            { type: 'entity', name: fallenLog.name },
             {
                 type: 'entity',
                 name: harvestWheelbarrow.name,
