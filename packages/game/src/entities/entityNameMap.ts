@@ -105,6 +105,7 @@ import { MulchWood } from './raisedBed/MulchWood';
 import { Seed } from './raisedBed/Seed';
 import { Stick } from './raisedBed/Stick';
 import { SandcastleSmallA } from './SandcastleSmall';
+import { SeasonalMaple } from './SeasonalMaple';
 import { SeedDryingRack } from './SeedDryingRack';
 import { Shade } from './Shade';
 import { Sheep } from './Sheep';
@@ -210,6 +211,7 @@ export const entityNameMap = {
     AutumnAsterPotGold: AutumnAsterPot,
     HarvestWheelbarrow,
     AutumnShrub,
+    SeasonalMaple,
     WoodlandMushrooms,
     FallenLog,
     AutumnBlanketBench,
