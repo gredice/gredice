@@ -3,6 +3,7 @@ import { autumnAsterPotNames } from '@gredice/js/autumnAsterPots';
 import { autumnBlanketBench } from '@gredice/js/autumnBlanketBench';
 import { autumnLeafPileNames } from '@gredice/js/autumnLeafPiles';
 import { autumnShrub } from '@gredice/js/autumnShrub';
+import { chestnutRoastingCart } from '@gredice/js/chestnutRoastingCart';
 import {
     type HorseAppearanceVariant,
     horseAppearanceVariants,
@@ -366,6 +367,11 @@ const items: HudItem[] = [
             { type: 'entity', name: leafRake.name },
             { type: 'entity', name: gardenTeaTable.name },
             { type: 'entity', name: fallenLog.name },
+            {
+                type: 'entity',
+                name: chestnutRoastingCart.name,
+                footprintLabel: '2 × 1',
+            },
             {
                 type: 'entity',
                 name: autumnBlanketBench.name,
