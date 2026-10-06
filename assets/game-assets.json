@@ -3,6 +3,36 @@
     "outputDirectory": "../apps/garden/public/assets/models",
     "assets": [
         {
+            "name": "WoodlandAcorns",
+            "source": "WoodlandAcorns.blend",
+            "output": "WoodlandAcorns.glb",
+            "version": "5605282113fa",
+            "preload": "lazy",
+            "objects": [
+                "WoodlandAcorns_Arrangement"
+            ]
+        },
+        {
+            "name": "WoodlandConkers",
+            "source": "WoodlandConkers.blend",
+            "output": "WoodlandConkers.glb",
+            "version": "0a6640399bf3",
+            "preload": "lazy",
+            "objects": [
+                "WoodlandConkers_Arrangement"
+            ]
+        },
+        {
+            "name": "WoodlandMushroomBasket",
+            "source": "WoodlandMushroomBasket.blend",
+            "output": "WoodlandMushroomBasket.glb",
+            "version": "9e12d7b0f61f",
+            "preload": "lazy",
+            "objects": [
+                "WoodlandMushroomBasket_Arrangement"
+            ]
+        },
+        {
             "name": "SeedDryingRack",
             "source": "SeedDryingRack.blend",
             "output": "SeedDryingRack.glb",
