@@ -11,6 +11,7 @@ import { gardenScarecrow } from '@gredice/js/gardenScarecrow';
 import { harvestCrateNames } from '@gredice/js/harvestCrates';
 import { harvestPumpkinNames } from '@gredice/js/harvestPumpkins';
 import { harvestWheelbarrow } from '@gredice/js/harvestWheelbarrow';
+import { leafRake } from '@gredice/js/leafRake';
 import { woodlandMushrooms } from '@gredice/js/woodlandMushrooms';
 import { BlockImage, getBlockImageUrl } from '@gredice/ui/BlockImage';
 import { Button } from '@gredice/ui/Button';
@@ -360,6 +361,7 @@ const items: HudItem[] = [
             { type: 'entity', name: gardenScarecrow.name },
             { type: 'entity', name: autumnShrub.name },
             { type: 'entity', name: woodlandMushrooms.name },
+            { type: 'entity', name: leafRake.name },
             { type: 'entity', name: fallenLog.name },
             ...autumnLeafPileNames.map(
                 (name) => ({ type: 'entity', name }) satisfies HudItemEntity,
