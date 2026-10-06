@@ -3,6 +3,26 @@
     "outputDirectory": "../apps/garden/public/assets/models",
     "assets": [
         {
+            "name": "FriendlyGhost",
+            "source": "FriendlyGhost.blend",
+            "output": "FriendlyGhost.glb",
+            "version": "533808c57054",
+            "preload": "lazy",
+            "objects": [
+                "FriendlyGhost_Arrangement"
+            ]
+        },
+        {
+            "name": "SupportedCobweb",
+            "source": "SupportedCobweb.blend",
+            "output": "SupportedCobweb.glb",
+            "version": "db82dafef4be",
+            "preload": "lazy",
+            "objects": [
+                "SupportedCobweb_Arrangement"
+            ]
+        },
+        {
             "name": "PumpkinLanternSmile",
             "source": "PumpkinLanternSmile.blend",
             "output": "PumpkinLanternSmile.glb",
