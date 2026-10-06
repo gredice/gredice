@@ -59,6 +59,7 @@ import { FishingBoat } from './FishingBoat';
 import { Goat } from './farmAnimals/FarmAnimals';
 import { GardenBox } from './GardenBox';
 import { GardenScarecrow } from './GardenScarecrow';
+import { GardenTeaTable } from './GardenTeaTable';
 import { GiftBoxBlueWhite } from './GiftBoxBlueWhite';
 import { GiftBoxGoldRed } from './GiftBoxGoldRed';
 import { GiftBoxGreenGold } from './GiftBoxGreenGold';
@@ -206,6 +207,7 @@ export const entityNameMap = {
     FallenLog,
     AutumnBlanketBench,
     LeafRake,
+    GardenTeaTable,
     AutumnLeafPileMound: AutumnLeafPile,
     AutumnLeafPileCrescent: AutumnLeafPile,
     HarvestCrateOrchard: HarvestCrate,
