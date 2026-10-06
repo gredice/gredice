@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { BlockData } from '@gredice/directory-types';
+import { seedDryingRack } from '@gredice/js/seedDryingRack';
 import {
     GardenMutationOperationConflictError,
     type GardenMutationOperationJson,
@@ -404,6 +405,35 @@ function makeHarness(options: HarnessOptions = {}) {
 }
 
 describe('purchaseGardenBlock', () => {
+    it('purchases the decorative seed rack through ordinary block placement without a crop or resource reward', async () => {
+        const harness = makeHarness({
+            blockName: seedDryingRack.name,
+            directoryPrice: seedDryingRack.sunflowers,
+        });
+        const result = await harness.service(harness.command());
+        assert.equal(result.ok, true);
+        assert.deepEqual(harness.calls, [
+            'directory',
+            'sunflower-lock',
+            'deletion-fence',
+            'garden-lock',
+            'authority',
+            'operation-receipt',
+            'snapshot',
+            'location',
+            'create-block',
+            'update-stack',
+            'debit',
+            'transaction-committed',
+        ]);
+        const state = harness.state();
+        assert.equal(state.blocks.at(-1)?.name, seedDryingRack.name);
+        assert.equal(state.balance, 1000 - seedDryingRack.sunflowers);
+        assert.deepEqual(state.raisedBeds, []);
+        assert.equal(state.debits.length, 1);
+        assert.deepEqual(state.stacks[0].blocks, ['ground-1', 'placed-1']);
+    });
+
     it('uses the global lock order and commits placement, raised-bed projection, debit, and receipt atomically', async () => {
         const harness = makeHarness({ blockName: 'Raised_Bed' });
 
