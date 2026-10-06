@@ -1,6 +1,7 @@
 'use client';
 
 import type { BlockData } from '@gredice/client';
+import { getGardenBlockSpan } from '@gredice/js/gardenBlocks';
 import { useMemo } from 'react';
 import { useBlockData } from '../../hooks/useBlockData';
 import type { Stack } from '../../types/Stack';
@@ -91,6 +92,10 @@ export function resolvePlacementGroundingShadowDescriptors({
         const receiverY =
             matched.stack.position.y +
             getStackHeight(blockData, matched.stack, matched.block);
+        const span =
+            entity?.information.name === 'FallenLog'
+                ? getGardenBlockSpan(entity, matched.block.rotation)
+                : { width: 1, depth: 1 };
         descriptors.push({
             id: `placement:${animation.renderId}`,
             profile: resolvePlacementGroundingShadowProfile(entity),
@@ -98,9 +103,9 @@ export function resolvePlacementGroundingShadowDescriptors({
                 actorY: receiverY,
                 receiverY,
                 visible: true,
-                x: matched.stack.position.x,
+                x: matched.stack.position.x + (span.width - 1) / 2,
                 yaw: matched.block.rotation * (Math.PI / 2),
-                z: matched.stack.position.z,
+                z: matched.stack.position.z + (span.depth - 1) / 2,
             },
         });
     }
