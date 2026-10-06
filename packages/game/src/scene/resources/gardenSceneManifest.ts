@@ -253,6 +253,10 @@ export const blockAssetRequirements: {
     PumpkinLanternWink: assets('PumpkinLanternWink'),
     FriendlyGhost: assets('FriendlyGhost'),
     SupportedCobweb: assets('SupportedCobweb'),
+    HedgehogShelter: {
+        assets: ['HedgehogShelter'],
+        optionalAssets: ['Hedgehog'],
+    },
     PotLowBowl: assets('PotLowBowl'),
     PotRoundedBowl: assets('PotRoundedBowl'),
     PotBulbousNeck: assets('PotBulbousNeck'),
