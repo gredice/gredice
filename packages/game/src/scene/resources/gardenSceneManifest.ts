@@ -223,6 +223,7 @@ export const blockAssetRequirements: {
     GardenScarecrow: assets('GardenScarecrow'),
     HarvestCrate: assets('HarvestCrate'),
     HarvestCrateOrchard: assets('HarvestCrateOrchard'),
+    HarvestWheelbarrow: assets('HarvestWheelbarrow'),
     PotLowBowl: assets('PotLowBowl'),
     PotRoundedBowl: assets('PotRoundedBowl'),
     PotBulbousNeck: assets('PotBulbousNeck'),
