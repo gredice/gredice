@@ -11,15 +11,23 @@ export function getAutumnCanopyShadowKey(
                 stack.blocks
                     .filter(
                         (block) =>
-                            block.name === 'Tree' || block.name === 'Bush',
+                            block.name === 'Tree' ||
+                            block.name === 'Bush' ||
+                            block.name === 'AutumnShrub',
                     )
                     .map(
                         (block) =>
-                            `${block.id}:${getAutumnCanopyStage(retention, block.id)}`,
+                            `${block.id}:${block.name === 'AutumnShrub' ? getAutumnShrubCanopyStage(retention, block.id) : getAutumnCanopyStage(retention, block.id)}`,
                     ),
             )
             .join('|') ?? ''
     );
+}
+
+/** This deciduous shrub loses its last leaves; the existing Tree stays sparse. */
+export function getAutumnShrubCanopyStage(retention: number, blockId: string) {
+    if (Number.isFinite(retention) && retention <= 0.1) return 'bare';
+    return getAutumnCanopyStage(retention, blockId);
 }
 
 /** Stable, bounded per-tree timing; fully grown and winter endpoints are exact. */
