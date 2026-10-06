@@ -1,4 +1,5 @@
 import { gardenTeaTableMugAnchors } from '@gredice/js/gardenTeaTable';
+import { SteamEmitter } from '../scene/SteamEmitter';
 import { animated } from '../scene/sceneSpring';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useGameState } from '../useGameState';
@@ -27,10 +28,12 @@ export function GardenTeaTable({
             rotation-y={animatedRotation?.to((_, y) => y)}
         >
             {gardenTeaTableMugAnchors.map((anchor) => (
-                <group
+                <SteamEmitter
                     key={anchor.id}
-                    name={`GardenTeaTable:mug:${anchor.id}:${block.id}`}
+                    id={`GardenTeaTable:mug:${anchor.id}:${block.id}`}
                     position={anchor.position}
+                    radius={anchor.radius}
+                    enabled={!disabled}
                 />
             ))}
             <WeatheredEntityPart
