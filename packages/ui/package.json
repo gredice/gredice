@@ -19,7 +19,7 @@
         "@biomejs/biome": "2.5.15",
         "@tailwindcss/postcss": "4.3.3",
         "@tailwindcss/typography": "0.5.20",
-        "@types/node": "24.19.0",
+        "@types/node": "24.19.1",
         "@types/react": "19.2.18",
         "@types/react-dom": "19.2.4",
         "@types/sanitize-html": "2.16.2",
