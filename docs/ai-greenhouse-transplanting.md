@@ -7,6 +7,11 @@ growing in the greenhouse. The tool already returns `active`, `sowingLocation`,
 receives the same lifecycle context with `currentLocation` and elapsed days
 relative to the image analysis date.
 
+Flowering, fruiting, and harvest readiness do not move a plant out of the
+greenhouse. Location remains greenhouse until verified transplanting changes
+`sowingLocation` to `direct`; photo analysis preserves that distinction for
+later lifecycle stages too.
+
 Both system prompts explicitly consider greenhouse transplanting during care
 advice and planning. Chat fetches relevant beds and fields, current weather,
 forecast, existing operations, and available plant/sort guidance. Advice uses
