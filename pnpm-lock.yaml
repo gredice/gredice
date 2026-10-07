@@ -1392,8 +1392,8 @@ importers:
         specifier: 0.0.1
         version: 0.0.1
       soap:
-        specifier: 1.13.1
-        version: 1.13.1(supports-color@8.1.1)
+        specifier: 1.13.2
+        version: 1.13.2(supports-color@8.1.1)
       undici:
         specifier: 8.11.2
         version: 8.11.2
@@ -9903,8 +9903,8 @@ packages:
   sisteransi@1.0.5:
     resolution: {integrity: sha512-bLGGlR1QxBcynn2d5YmDX4MGjlZvy2MRBDRNHLJ8VI6l6+9FUiyTFNJ0IveOSP0bcXgVDPRcfGqA0pjaqUpfVg==}
 
-  soap@1.13.1:
-    resolution: {integrity: sha512-DcIv2QsfkOla+TaDggQtuX2n7g1ShWBSItSeA4rviXllVUjaYguFKAZB6rnePsqcrzU7DlclkHpmQ4QT9Nfe+Q==}
+  soap@1.13.2:
+    resolution: {integrity: sha512-awiUYn5KQgjOez/M5PaiRFfLskuGOPgIufGPfgwy5W7SkY++COb7OSfy5hlcRIsDl2aCCLrsOJf7n+1sh6F/Fw==}
     engines: {node: '>=20.19.0'}
 
   socket.io-adapter@2.5.8:
@@ -19973,7 +19973,7 @@ snapshots:
 
   sisteransi@1.0.5: {}
 
-  soap@1.13.1(supports-color@8.1.1):
+  soap@1.13.2(supports-color@8.1.1):
     dependencies:
       axios: 1.20.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
       axios-ntlm: 1.4.6(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
@@ -20808,7 +20808,7 @@ snapshots:
       camelcase: 6.3.0
       chalk: 4.1.2
       sanitize-filename: 1.6.4
-      soap: 1.13.1(supports-color@8.1.1)
+      soap: 1.13.2(supports-color@8.1.1)
       supports-color: 8.1.1
       ts-morph: 23.0.0
       yargs: 17.7.3
