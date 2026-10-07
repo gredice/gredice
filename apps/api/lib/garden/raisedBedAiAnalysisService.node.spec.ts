@@ -6,8 +6,49 @@ import {
     getOperationSchedulingDateOptions,
     getRaisedBedImageAnalysisWeeklyLimit,
     getWeatherHistoryDayRange,
+    isCurrentlyGreenhouseSeedling,
     normalizeAnalysisReferenceDate,
 } from './raisedBedAiAnalysisService';
+
+test('greenhouse plants stay in the greenhouse through flowering and fruiting until transplanting', () => {
+    for (const plantStatus of ['firstFlowers', 'firstFruitSet', 'ready']) {
+        const plant = {
+            active: true,
+            plantStatus,
+            sowingLocation: 'greenhouse',
+        };
+        assert.strictEqual(isCurrentlyGreenhouseSeedling(plant), true);
+        assert.strictEqual(
+            isCurrentlyGreenhouseSeedling({
+                ...plant,
+                sowingLocation: 'direct',
+            }),
+            false,
+        );
+    }
+});
+
+test('greenhouse advice excludes inactive and ended plant cycles even with a stale growing status', () => {
+    const plant = {
+        active: true,
+        plantStatus: 'firstFlowers',
+        sowingLocation: 'greenhouse',
+    };
+    const endedAt = new Date('2026-10-07T07:00:00.000Z');
+
+    for (const endedPlant of [
+        { ...plant, active: false },
+        { ...plant, plantDeadDate: endedAt },
+        { ...plant, plantHarvestedDate: endedAt },
+        { ...plant, plantRemovedDate: endedAt },
+        { ...plant, plantStatus: 'notSprouted' },
+        { ...plant, plantStatus: 'died' },
+        { ...plant, plantStatus: 'harvested' },
+        { ...plant, plantStatus: 'removed' },
+    ]) {
+        assert.strictEqual(isCurrentlyGreenhouseSeedling(endedPlant), false);
+    }
+});
 
 test('getRaisedBedImageAnalysisWeeklyLimit grants 5 requests per active raised bed', () => {
     assert.strictEqual(getRaisedBedImageAnalysisWeeklyLimit(0), 0);

@@ -27,6 +27,9 @@ const GREENHOUSE_SEEDLING_STATUSES = new Set([
     'pendingVerification',
     'sowed',
     'sprouted',
+    'firstFlowers',
+    'firstFruitSet',
+    'ready',
 ]);
 
 const AI_MODEL = process.env.AI_GATEWAY_MODEL ?? 'openai/gpt-6-sol';
@@ -249,7 +252,7 @@ export function buildPastPlantFieldsContext(
         .filter((field): field is PastPlantFieldContext => field !== null);
 }
 
-function isCurrentlyGreenhouseSeedling(field: {
+export function isCurrentlyGreenhouseSeedling(field: {
     sowingLocation?: 'direct' | 'greenhouse' | string | null;
     plantStatus?: string | null;
     plantDeadDate?: Date | string | null;
@@ -593,6 +596,7 @@ async function buildAnalysisPrompt({
         .map((field) => {
             const isGreenhouseSeedling = isCurrentlyGreenhouseSeedling(field);
             return {
+                fieldId: field.id,
                 fieldLabel: `polje ${toPositionLabel(field.positionIndex)}`,
                 positionIndex: field.positionIndex,
                 positionLabel: toPositionLabel(field.positionIndex),
@@ -663,7 +667,7 @@ async function buildAnalysisPrompt({
         system: [
             'Ti si stručni agronom za urbane vrtove. Piši ISKLJUČIVO na hrvatskom jeziku i vrati odgovor kao uredno formatiran markdown. Korisnik nema fizički pristup gredici; kada preporuka traži rad na gredici, predloži naručivanje najbliže odgovarajuće operacije iz dostupnog popisa umjesto da korisniku kažeš da to sam ručno napravi.',
             'Internu radnju nikada ne predlaži kao korisnikov sljedeći korak. Radnju smiješ preporučiti samo ako postoji u `availableOperations`; `executedOperations` je isključivo povijesni kontekst i nije izvor novih preporuka.',
-            'Nikada u vidljivom odgovoru ne spominji interne nazive ili JSON ključeve poput `positionIndex`, `positionLabel`, `needsRemoval`, `removalRecommendation`, `plantStatus`, `plantSortId`, `currentLocation`, `sowingLocation`, `availableOperations`, `raisedBedOperationUrl` ili `plantFieldOperationUrlTemplate`. Ne citiraj `key: value` parove iz JSON-a.',
+            'Nikada u vidljivom odgovoru ne spominji interne nazive ili JSON ključeve poput `fieldId`, `positionIndex`, `positionLabel`, `needsRemoval`, `removalRecommendation`, `plantStatus`, `plantSortId`, `currentLocation`, `sowingLocation`, `availableOperations`, `raisedBedOperationUrl` ili `plantFieldOperationUrlTemplate`. Ne citiraj `key: value` parove iz JSON-a.',
             'Kad trebaš identificirati lokaciju, napiši samo "polje N" koristeći korisniku vidljivu oznaku polja. Nikada ne dodaj 0-bazirani indeks polja u tekst odgovora.',
             'Statuse, bool vrijednosti i interne oznake pretvori u normalan hrvatski tekst, npr. "označeno za uklanjanje", "spremno za berbu" ili "u stakleniku".',
             '',
@@ -674,7 +678,10 @@ async function buildAnalysisPrompt({
             '- Gornji red kod 18-poljne gredice: 16 (gornje desno) → 17 (gornja sredina) → 18 (gornje lijevo).',
             '- U kontekstu koristi korisniku vidljivu oznaku polja. Internu vrijednost polja koristi samo za slaganje URL-a radnje i nikada je ne ispisuj u tekstu.',
             '- Ponekad su priložene dvije fotografije iste gredice: jedna iz standardne pozicije za gore navedeno numeriranje, a druga s druge strane gredice. Koristi ih kao komplementarne poglede iste gredice; drugi pogled služi za provjeru stanja biljaka, ne kao zasebna gredica ili novi raspored polja.',
-            '- Polja s `currentLocation: "greenhouse"` su presadnice koje trenutno rastu u stakleniku i još nisu presađene u gredicu; polja s `currentLocation: "raisedBed"` su u gredici. `sowingLocation` opisuje gdje je biljka započela.',
+            '- Polja s `currentLocation: "greenhouse"` su presadnice koje trenutno rastu u stakleniku i još nisu presađene u gredicu; polja s `currentLocation: "raisedBed"` su u gredici. Napredovanje do cvjetanja, zametanja plodova ili spremnosti za berbu ne potvrđuje presađivanje; lokacija ostaje staklenik dok se presađivanje ne potvrdi i `sowingLocation` promijeni na "direct".',
+            '- Pri preporukama i planu uvijek razmotri presađivanje presadnica s `currentLocation: "greenhouse"` u njihova postojeća ciljna polja. Ne smatraj ta polja praznima niti presadnice nestalima ili uginulima zato što nisu vidljive na fotografiji gredice. Fotografija gredice ne potvrđuje razvijenost presadnice u stakleniku.',
+            '- Procijeni spremnost za presađivanje prema vrsti/sorti, stadiju, vremenu od sjetve i nicanja te bilješkama vrtlara; termin prema aktualnoj prognozi, noćnim temperaturama i riziku od mraza. `daysFromSowing` i `daysFromGrowth` odnose se na `analysisReferenceDate`; stare fotografije nisu potvrda današnje spremnosti. Sam broj dana, status `sprouted` ili nepotvrđena sjetva nisu dokaz spremnosti, a status `ready` označava berbu, ne presađivanje. Ako podaci o razvijenosti ili vremenu nedostaju, jasno navedi neizvjesnost i predloži provjeru vrtlara umjesto izmišljanja spremnosti ili sigurnog datuma. Ne preporučuj presađivanje biljaka označenih za uklanjanje ili biljaka koje su već u gredici.',
+            '- Kada podaci o presadnici i vremenu podupiru presađivanje, uključi ga među najvažnije preporuke i u plan za sljedeća 3 dana ako postoji prikladan datum u `operationSchedulingDates`. Ponudi samo odgovarajuću radnju iz `availableOperations` s URL-om za točno ciljano polje; ne predlaži novu sjetvu ili kupnju zamjenske biljke. Usporedi `plantedFields.fieldId` s `executedOperations.fieldId` i provjeri datume radnji u odnosu na sjetvu/nicanje aktualne biljke; povijesno presađivanje ranije biljke na istom polju nije dokaz da je aktualna presadnica presađena. Ako je presađivanje već naručeno ili zakazano za aktualnu biljku, navedi ga umjesto duplikata; ako je već izvršeno, nemoj ga ponovno nuditi. Ako nema dostupne radnje ili prikladnog termina, reci to i predloži provjeru vrtlara, bez izmišljanja poveznice ili datuma.',
             '- `pastPlantFields` navodi samo nazive biljaka koje su ranije bile u polju; ne sadrži povijest događaja ni datume.',
             '- `imageDate` je datum fotografija/dnevničkog unosa. Koristi `imageDate`, `analysisReferenceDate` i `weather.historical` za procjenu stanja na fotografijama. `currentDate`, `weather.now` i `weather.forecast` koristi samo za današnje i buduće preporuke za zalijevanje, zaštitu od mraza, sjetvu i berbu.',
             '- Gredice fotografiramo dva puta tjedno, utorkom i petkom. Kada preporuka traži ponovnu provjeru stanja, poveži je s najbližim datumom iz `photographySchedule.upcomingPhotographyDates` i ne traži od korisnika da sam fotografira gredicu.',

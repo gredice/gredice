@@ -509,7 +509,7 @@ function buildTools({
 
     const raisedBedDetailsTool = tool({
         description:
-            'Dohvati detalje jedne gredice: polja, nazive biljaka i njihov životni ciklus.',
+            'Dohvati detalje jedne gredice: polja, nazive biljaka, životni ciklus, datume sjetve/nicanja i sowingLocation. Uključuje presadnice u stakleniku vezane uz ciljna polja; koristi i za procjenu presađivanja.',
         inputSchema: z.object({
             gardenId: z.number().int().positive().optional(),
             raisedBedId: z.number().int().positive().optional(),
