@@ -76,7 +76,7 @@
         "@gredice/js": "workspace:*",
         "@neondatabase/serverless": "1.1.0",
         "@upstash/redis": "1.39.0",
-        "ai": "7.0.126",
+        "ai": "7.0.127",
         "dotenv": "18.0.5",
         "drizzle-kit": "0.31.11",
         "drizzle-orm": "0.45.3",
