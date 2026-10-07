@@ -20,7 +20,7 @@
     },
     "devDependencies": {
         "@biomejs/biome": "2.5.15",
-        "@types/node": "24.19.0",
+        "@types/node": "24.19.1",
         "next": "16.3.8",
         "typescript": "7.0.2"
     },
