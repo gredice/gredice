@@ -38,6 +38,16 @@
                 "@playwright/experimental-ct-react"
             ],
             "allowedVersions": "1.62.1"
+        },
+        {
+            "description": "Axe accepts Page objects from the legacy component-test runner; keep its core override aligned until those suites migrate to stories.",
+            "matchFileNames": [
+                "pnpm-workspace.yaml"
+            ],
+            "matchDepNames": [
+                "@axe-core/playwright>playwright-core"
+            ],
+            "allowedVersions": "1.62.1"
         }
     ],
     "dependencyDashboard": true,
