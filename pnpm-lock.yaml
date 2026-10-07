@@ -1775,8 +1775,8 @@ importers:
         specifier: 19.2.8
         version: 19.2.8
       stripe:
-        specifier: 22.6.2
-        version: 22.6.2(@types/node@24.19.1)
+        specifier: 23.0.0
+        version: 23.0.0(@types/node@24.19.1)
     devDependencies:
       '@biomejs/biome':
         specifier: 2.5.15
@@ -10052,11 +10052,11 @@ packages:
     resolution: {integrity: sha512-SlyRoSkdh1dYP0PzclLE7r0M9sgbFKKMFXpFRUMNuKhQSbC6VQIGzq3E0qsfvGJaUFJPGv6Ws1NZ/haTAjfbMA==}
     engines: {node: '>=12'}
 
-  stripe@22.6.2:
-    resolution: {integrity: sha512-PwRE2scocvXqDKPiskMa5vRJEAEkq46W69XyUYmAwrNSLr675lQnfqLwnsndAWizwgihOWw/irLmoFRo3ez7ew==}
-    engines: {node: '>=18'}
+  stripe@23.0.0:
+    resolution: {integrity: sha512-MDE2A5ZVVluYURORaZEVghSmnLJc3w6aHAlZSxDQMsOjOb3V0O6ro/CiaeFlJS4N7uIVmsg98ocRsPmUK6YfyA==}
+    engines: {node: '>=20'}
     peerDependencies:
-      '@types/node': '>=18'
+      '@types/node': '>=20'
     peerDependenciesMeta:
       '@types/node':
         optional: true
@@ -20178,7 +20178,7 @@ snapshots:
 
   strip-indent@4.1.1: {}
 
-  stripe@22.6.2(@types/node@24.19.1):
+  stripe@23.0.0(@types/node@24.19.1):
     optionalDependencies:
       '@types/node': 24.19.1
 

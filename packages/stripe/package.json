@@ -25,6 +25,6 @@
         "@gredice/js": "workspace:*",
         "@stripe/stripe-js": "9.17.0",
         "react": "19.2.8",
-        "stripe": "22.6.2"
+        "stripe": "23.0.0"
     }
 }
