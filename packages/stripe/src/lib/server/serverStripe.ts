@@ -458,7 +458,8 @@ export function buildStripeCheckoutSessionCreateParams({
         })),
         allow_promotion_codes: data.allowPromotionCodes ?? true,
         mode: 'payment',
-        payment_method_types: ['card'],
+        // Filter Stripe's eligible methods so delayed payments cannot be offered.
+        allowed_payment_method_types: ['card'],
         locale: 'hr',
         cancel_url: returnUrls.cancel,
         success_url: returnUrls.success,
