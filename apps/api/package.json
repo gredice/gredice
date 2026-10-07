@@ -55,7 +55,7 @@
         "react": "19.2.8",
         "react-dom": "19.2.8",
         "server-only": "0.0.1",
-        "suncalc": "2.0.2",
+        "suncalc": "2.1.0",
         "valibot": "1.5.0",
         "web-push": "3.6.7",
         "xml2js": "0.6.2",
