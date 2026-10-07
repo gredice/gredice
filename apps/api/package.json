@@ -35,7 +35,7 @@
         "@opentelemetry/resources": "2.11.0",
         "@opentelemetry/sdk-logs": "0.222.0",
         "@posthog/next": "0.9.0",
-        "@scalar/api-reference-react": "0.9.76",
+        "@scalar/api-reference-react": "0.9.77",
         "@standard-community/standard-json": "0.3.6",
         "@standard-community/standard-openapi": "0.2.10",
         "@upstash/redis": "1.39.0",
