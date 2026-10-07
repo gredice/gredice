@@ -63,7 +63,7 @@
         "react-dom": "19.2.8",
         "react-markdown": "10.1.0",
         "recharts": "3.10.1",
-        "suncalc": "2.0.2",
+        "suncalc": "2.1.0",
         "tailwindcss": "4.3.3",
         "tailwindcss-animate": "1.0.7",
         "three": "0.186.1",
