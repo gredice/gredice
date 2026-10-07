@@ -84,7 +84,7 @@
         "tailwindcss-animate": ">=1"
     },
     "dependencies": {
-        "@ai-sdk/react": "4.0.129",
+        "@ai-sdk/react": "4.0.130",
         "@vvo/tzdb": "6.198.0",
         "ai": "7.0.127",
         "nuqs": "2.10.1"
