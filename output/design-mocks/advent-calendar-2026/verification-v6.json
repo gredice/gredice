@@ -1,0 +1,613 @@
+{
+  "iteration": 6,
+  "scope": "Targeted decorative curved-snow refinement only. This run does not repeat the V5 full contrast sweep, raster audit or full interaction suite.",
+  "unchangedExceptSnowAndVersionLabels": true,
+  "cssIdentical": true,
+  "sourceStarMarkupIdentical": true,
+  "assetIntegrity": {
+    "archive": "index-v5.html",
+    "v5Resources": 8,
+    "v6Resources": 8,
+    "exactlyEqual": true,
+    "sha256": [
+      "d3618a3751f4c48b0e54975e06beb4b0e6e236c6665a300a928b1aa7b9ade520",
+      "441754e0b4076de518612189270edae3b88b77e5015a7ff1f73fc8b681a7c960",
+      "efeefed9ea56c32110e7b1ce62579fd92303064824632a2d8552a7dff863f385",
+      "bbc4cc094e6a4c9d87398d02559c0a4142edd84b1f7aa90cacb92cb2b3a31d1c",
+      "3d81374da2db4a20199596db089a90ad9887c0c1673c2efee83e572a2870f87e",
+      "18a4db7f70dd17b47a1129dd62e71a1a5f6d4ec43b675e565e79d731fc555f1a",
+      "d066c9e4c93482a7fdbf8f9aad80ff99f07911fe6f2b75342533420c05c79957",
+      "3c45e3cf7c76bea4ee84a9a337e337020c015ec5092b4cb9adee17bcbb1944f5"
+    ]
+  },
+  "shape": {
+    "ridgeAndBodyRoof": "Unchanged shared SVG path and transform",
+    "lumps": 7,
+    "drips": 4,
+    "lumpRx": [
+      4.5,
+      5.8,
+      3.8,
+      6.2,
+      4.7,
+      3.6,
+      4.2
+    ],
+    "lumpRy": [
+      2.3,
+      2.9,
+      2,
+      3.2,
+      2.5,
+      2,
+      2.4
+    ],
+    "dripHalfWidths": [
+      2.1,
+      2.7,
+      1.8,
+      2.4
+    ],
+    "dripDepths": [
+      6.6,
+      7.8,
+      6.1,
+      7.2
+    ],
+    "baseRidgeStroke": 8,
+    "dripVisibleExtensionBeyondBaseRidge": [
+      2.6,
+      3.8,
+      2.1,
+      3.2
+    ]
+  },
+  "samples": [
+    {
+      "theme": "day",
+      "width": 390,
+      "scrollWidth": 390,
+      "card15Width": 70.75,
+      "days": 24,
+      "opened": 9,
+      "openedSnow": 0,
+      "tornLabels": 9,
+      "snowyCards": 15,
+      "roofs": [
+        {
+          "day": 3,
+          "state": "opened",
+          "sharedBodyRoof": true,
+          "ridgeHref": null,
+          "matrixDifference": null,
+          "lumps": 0,
+          "drips": 0,
+          "minDripAndShadowToIconGap": null
+        },
+        {
+          "day": 6,
+          "state": "opened",
+          "sharedBodyRoof": true,
+          "ridgeHref": null,
+          "matrixDifference": null,
+          "lumps": 0,
+          "drips": 0,
+          "minDripAndShadowToIconGap": null
+        },
+        {
+          "day": 9,
+          "state": "opened",
+          "sharedBodyRoof": true,
+          "ridgeHref": null,
+          "matrixDifference": null,
+          "lumps": 0,
+          "drips": 0,
+          "minDripAndShadowToIconGap": null
+        },
+        {
+          "day": 12,
+          "state": "today",
+          "sharedBodyRoof": true,
+          "ridgeHref": "#shared-roof-12",
+          "matrixDifference": 0,
+          "lumps": 7,
+          "drips": 4,
+          "minDripAndShadowToIconGap": 7.491021228227459
+        },
+        {
+          "day": 15,
+          "state": "future",
+          "sharedBodyRoof": true,
+          "ridgeHref": "#shared-roof-15",
+          "matrixDifference": 0,
+          "lumps": 7,
+          "drips": 4,
+          "minDripAndShadowToIconGap": 8.429131579789958
+        },
+        {
+          "day": 18,
+          "state": "future",
+          "sharedBodyRoof": true,
+          "ridgeHref": "#shared-roof-18",
+          "matrixDifference": 0,
+          "lumps": 7,
+          "drips": 4,
+          "minDripAndShadowToIconGap": 7.960015368852459
+        },
+        {
+          "day": 21,
+          "state": "future",
+          "sharedBodyRoof": true,
+          "ridgeHref": "#shared-roof-21",
+          "matrixDifference": 0,
+          "lumps": 7,
+          "drips": 4,
+          "minDripAndShadowToIconGap": 8.820000720414958
+        }
+      ]
+    },
+    {
+      "theme": "day",
+      "width": 712,
+      "scrollWidth": 712,
+      "card15Width": 125.25,
+      "days": 24,
+      "opened": 9,
+      "openedSnow": 0,
+      "tornLabels": 9,
+      "snowyCards": 15,
+      "roofs": [
+        {
+          "day": 3,
+          "state": "opened",
+          "sharedBodyRoof": true,
+          "ridgeHref": null,
+          "matrixDifference": null,
+          "lumps": 0,
+          "drips": 0,
+          "minDripAndShadowToIconGap": null
+        },
+        {
+          "day": 6,
+          "state": "opened",
+          "sharedBodyRoof": true,
+          "ridgeHref": null,
+          "matrixDifference": null,
+          "lumps": 0,
+          "drips": 0,
+          "minDripAndShadowToIconGap": null
+        },
+        {
+          "day": 9,
+          "state": "opened",
+          "sharedBodyRoof": true,
+          "ridgeHref": null,
+          "matrixDifference": null,
+          "lumps": 0,
+          "drips": 0,
+          "minDripAndShadowToIconGap": null
+        },
+        {
+          "day": 12,
+          "state": "today",
+          "sharedBodyRoof": true,
+          "ridgeHref": "#shared-roof-12",
+          "matrixDifference": 0,
+          "lumps": 7,
+          "drips": 4,
+          "minDripAndShadowToIconGap": 7.490960193071209
+        },
+        {
+          "day": 15,
+          "state": "future",
+          "sharedBodyRoof": true,
+          "ridgeHref": "#shared-roof-15",
+          "matrixDifference": 0,
+          "lumps": 7,
+          "drips": 4,
+          "minDripAndShadowToIconGap": 8.429131579789958
+        },
+        {
+          "day": 18,
+          "state": "future",
+          "sharedBodyRoof": true,
+          "ridgeHref": "#shared-roof-18",
+          "matrixDifference": 0,
+          "lumps": 7,
+          "drips": 4,
+          "minDripAndShadowToIconGap": 7.960015368852459
+        },
+        {
+          "day": 21,
+          "state": "future",
+          "sharedBodyRoof": true,
+          "ridgeHref": "#shared-roof-21",
+          "matrixDifference": 0,
+          "lumps": 7,
+          "drips": 4,
+          "minDripAndShadowToIconGap": 8.820000720414958
+        }
+      ]
+    },
+    {
+      "theme": "day",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "card15Width": 155.828125,
+      "days": 24,
+      "opened": 9,
+      "openedSnow": 0,
+      "tornLabels": 9,
+      "snowyCards": 15,
+      "roofs": [
+        {
+          "day": 3,
+          "state": "opened",
+          "sharedBodyRoof": true,
+          "ridgeHref": null,
+          "matrixDifference": null,
+          "lumps": 0,
+          "drips": 0,
+          "minDripAndShadowToIconGap": null
+        },
+        {
+          "day": 6,
+          "state": "opened",
+          "sharedBodyRoof": true,
+          "ridgeHref": null,
+          "matrixDifference": null,
+          "lumps": 0,
+          "drips": 0,
+          "minDripAndShadowToIconGap": null
+        },
+        {
+          "day": 9,
+          "state": "opened",
+          "sharedBodyRoof": true,
+          "ridgeHref": null,
+          "matrixDifference": null,
+          "lumps": 0,
+          "drips": 0,
+          "minDripAndShadowToIconGap": null
+        },
+        {
+          "day": 12,
+          "state": "today",
+          "sharedBodyRoof": true,
+          "ridgeHref": "#shared-roof-12",
+          "matrixDifference": 0,
+          "lumps": 7,
+          "drips": 4,
+          "minDripAndShadowToIconGap": 7.74331554975666
+        },
+        {
+          "day": 15,
+          "state": "future",
+          "sharedBodyRoof": true,
+          "ridgeHref": "#shared-roof-15",
+          "matrixDifference": 0,
+          "lumps": 7,
+          "drips": 4,
+          "minDripAndShadowToIconGap": 8.89962658491291
+        },
+        {
+          "day": 18,
+          "state": "future",
+          "sharedBodyRoof": true,
+          "ridgeHref": "#shared-roof-18",
+          "matrixDifference": 0,
+          "lumps": 7,
+          "drips": 4,
+          "minDripAndShadowToIconGap": 8.32144054975666
+        },
+        {
+          "day": 21,
+          "state": "future",
+          "sharedBodyRoof": true,
+          "ridgeHref": "#shared-roof-21",
+          "matrixDifference": 0,
+          "lumps": 7,
+          "drips": 4,
+          "minDripAndShadowToIconGap": 9.38143810835041
+        }
+      ]
+    },
+    {
+      "theme": "night",
+      "width": 390,
+      "scrollWidth": 390,
+      "card15Width": 70.75,
+      "days": 24,
+      "opened": 9,
+      "openedSnow": 0,
+      "tornLabels": 9,
+      "snowyCards": 15,
+      "roofs": [
+        {
+          "day": 3,
+          "state": "opened",
+          "sharedBodyRoof": true,
+          "ridgeHref": null,
+          "matrixDifference": null,
+          "lumps": 0,
+          "drips": 0,
+          "minDripAndShadowToIconGap": null
+        },
+        {
+          "day": 6,
+          "state": "opened",
+          "sharedBodyRoof": true,
+          "ridgeHref": null,
+          "matrixDifference": null,
+          "lumps": 0,
+          "drips": 0,
+          "minDripAndShadowToIconGap": null
+        },
+        {
+          "day": 9,
+          "state": "opened",
+          "sharedBodyRoof": true,
+          "ridgeHref": null,
+          "matrixDifference": null,
+          "lumps": 0,
+          "drips": 0,
+          "minDripAndShadowToIconGap": null
+        },
+        {
+          "day": 12,
+          "state": "today",
+          "sharedBodyRoof": true,
+          "ridgeHref": "#shared-roof-12",
+          "matrixDifference": 0,
+          "lumps": 7,
+          "drips": 4,
+          "minDripAndShadowToIconGap": 7.491021228227459
+        },
+        {
+          "day": 15,
+          "state": "future",
+          "sharedBodyRoof": true,
+          "ridgeHref": "#shared-roof-15",
+          "matrixDifference": 0,
+          "lumps": 7,
+          "drips": 4,
+          "minDripAndShadowToIconGap": 8.429131579789958
+        },
+        {
+          "day": 18,
+          "state": "future",
+          "sharedBodyRoof": true,
+          "ridgeHref": "#shared-roof-18",
+          "matrixDifference": 0,
+          "lumps": 7,
+          "drips": 4,
+          "minDripAndShadowToIconGap": 7.960015368852459
+        },
+        {
+          "day": 21,
+          "state": "future",
+          "sharedBodyRoof": true,
+          "ridgeHref": "#shared-roof-21",
+          "matrixDifference": 0,
+          "lumps": 7,
+          "drips": 4,
+          "minDripAndShadowToIconGap": 8.820000720414958
+        }
+      ]
+    },
+    {
+      "theme": "night",
+      "width": 712,
+      "scrollWidth": 712,
+      "card15Width": 125.25,
+      "days": 24,
+      "opened": 9,
+      "openedSnow": 0,
+      "tornLabels": 9,
+      "snowyCards": 15,
+      "roofs": [
+        {
+          "day": 3,
+          "state": "opened",
+          "sharedBodyRoof": true,
+          "ridgeHref": null,
+          "matrixDifference": null,
+          "lumps": 0,
+          "drips": 0,
+          "minDripAndShadowToIconGap": null
+        },
+        {
+          "day": 6,
+          "state": "opened",
+          "sharedBodyRoof": true,
+          "ridgeHref": null,
+          "matrixDifference": null,
+          "lumps": 0,
+          "drips": 0,
+          "minDripAndShadowToIconGap": null
+        },
+        {
+          "day": 9,
+          "state": "opened",
+          "sharedBodyRoof": true,
+          "ridgeHref": null,
+          "matrixDifference": null,
+          "lumps": 0,
+          "drips": 0,
+          "minDripAndShadowToIconGap": null
+        },
+        {
+          "day": 12,
+          "state": "today",
+          "sharedBodyRoof": true,
+          "ridgeHref": "#shared-roof-12",
+          "matrixDifference": 0,
+          "lumps": 7,
+          "drips": 4,
+          "minDripAndShadowToIconGap": 7.490960193071209
+        },
+        {
+          "day": 15,
+          "state": "future",
+          "sharedBodyRoof": true,
+          "ridgeHref": "#shared-roof-15",
+          "matrixDifference": 0,
+          "lumps": 7,
+          "drips": 4,
+          "minDripAndShadowToIconGap": 8.429131579789958
+        },
+        {
+          "day": 18,
+          "state": "future",
+          "sharedBodyRoof": true,
+          "ridgeHref": "#shared-roof-18",
+          "matrixDifference": 0,
+          "lumps": 7,
+          "drips": 4,
+          "minDripAndShadowToIconGap": 7.960015368852459
+        },
+        {
+          "day": 21,
+          "state": "future",
+          "sharedBodyRoof": true,
+          "ridgeHref": "#shared-roof-21",
+          "matrixDifference": 0,
+          "lumps": 7,
+          "drips": 4,
+          "minDripAndShadowToIconGap": 8.820000720414958
+        }
+      ]
+    },
+    {
+      "theme": "night",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "card15Width": 155.828125,
+      "days": 24,
+      "opened": 9,
+      "openedSnow": 0,
+      "tornLabels": 9,
+      "snowyCards": 15,
+      "roofs": [
+        {
+          "day": 3,
+          "state": "opened",
+          "sharedBodyRoof": true,
+          "ridgeHref": null,
+          "matrixDifference": null,
+          "lumps": 0,
+          "drips": 0,
+          "minDripAndShadowToIconGap": null
+        },
+        {
+          "day": 6,
+          "state": "opened",
+          "sharedBodyRoof": true,
+          "ridgeHref": null,
+          "matrixDifference": null,
+          "lumps": 0,
+          "drips": 0,
+          "minDripAndShadowToIconGap": null
+        },
+        {
+          "day": 9,
+          "state": "opened",
+          "sharedBodyRoof": true,
+          "ridgeHref": null,
+          "matrixDifference": null,
+          "lumps": 0,
+          "drips": 0,
+          "minDripAndShadowToIconGap": null
+        },
+        {
+          "day": 12,
+          "state": "today",
+          "sharedBodyRoof": true,
+          "ridgeHref": "#shared-roof-12",
+          "matrixDifference": 0,
+          "lumps": 7,
+          "drips": 4,
+          "minDripAndShadowToIconGap": 7.74331554975666
+        },
+        {
+          "day": 15,
+          "state": "future",
+          "sharedBodyRoof": true,
+          "ridgeHref": "#shared-roof-15",
+          "matrixDifference": 0,
+          "lumps": 7,
+          "drips": 4,
+          "minDripAndShadowToIconGap": 8.89962658491291
+        },
+        {
+          "day": 18,
+          "state": "future",
+          "sharedBodyRoof": true,
+          "ridgeHref": "#shared-roof-18",
+          "matrixDifference": 0,
+          "lumps": 7,
+          "drips": 4,
+          "minDripAndShadowToIconGap": 8.32144054975666
+        },
+        {
+          "day": 21,
+          "state": "future",
+          "sharedBodyRoof": true,
+          "ridgeHref": "#shared-roof-21",
+          "matrixDifference": 0,
+          "lumps": 7,
+          "drips": 4,
+          "minDripAndShadowToIconGap": 9.38143810835041
+        }
+      ]
+    }
+  ],
+  "inheritedV5": {
+    "source": "verification-v5.json",
+    "basis": "All CSS, star markup, embedded resources and behavior code remain byte-identical after excluding only curvedSnow() and visible version labels. V5 evidence is historical baseline, not a new V6 run.",
+    "failureCount": 0,
+    "pageErrorCount": 0,
+    "contrastSteps": 1001,
+    "contrastTargets": 64,
+    "overallContrastMinimum": 4.5828749828203925,
+    "tornDigitContrastMinimum": 7.682657920772366,
+    "fullInteractionStates": [
+      {
+        "theme": "day",
+        "openedPhysical": {
+          "torn": 1,
+          "pieces": 2,
+          "snow": 0,
+          "status": null,
+          "label": "12. prosinca, Otvoreno, pogledaj nagradu"
+        },
+        "missed": true,
+        "future": true,
+        "opened": true,
+        "loading": true,
+        "errorRetryByCardEnter": true,
+        "reward": true,
+        "focusRestored": true
+      },
+      {
+        "theme": "night",
+        "openedPhysical": {
+          "torn": 1,
+          "pieces": 2,
+          "snow": 0,
+          "status": null,
+          "label": "12. prosinca, Otvoreno, pogledaj nagradu"
+        },
+        "missed": true,
+        "future": true,
+        "opened": true,
+        "loading": true,
+        "errorRetryByCardEnter": true,
+        "reward": true,
+        "focusRestored": true
+      }
+    ]
+  },
+  "pageErrors": [],
+  "failures": []
+}

@@ -1,0 +1,957 @@
+{
+  "iteration": 3,
+  "responsive": [
+    {
+      "theme": "day",
+      "width": 320,
+      "viewport": 320,
+      "scroll": 320,
+      "days": 24,
+      "chronological": true,
+      "minWidth": 53.25,
+      "minHeight": 88,
+      "clippedStatus": false,
+      "snowCaps": 24,
+      "ticketMask": true,
+      "removed": true
+    },
+    {
+      "theme": "day",
+      "width": 390,
+      "viewport": 390,
+      "scroll": 390,
+      "days": 24,
+      "chronological": true,
+      "minWidth": 70.75,
+      "minHeight": 88,
+      "clippedStatus": false,
+      "snowCaps": 24,
+      "ticketMask": true,
+      "removed": true
+    },
+    {
+      "theme": "day",
+      "width": 691,
+      "viewport": 691,
+      "scroll": 691,
+      "days": 24,
+      "chronological": true,
+      "minWidth": 84.65625,
+      "minHeight": 108,
+      "clippedStatus": false,
+      "snowCaps": 24,
+      "ticketMask": true,
+      "removed": true
+    },
+    {
+      "theme": "day",
+      "width": 768,
+      "viewport": 768,
+      "scroll": 768,
+      "days": 24,
+      "chronological": true,
+      "minWidth": 139.25,
+      "minHeight": 88,
+      "clippedStatus": false,
+      "snowCaps": 24,
+      "ticketMask": true,
+      "removed": true
+    },
+    {
+      "theme": "day",
+      "width": 1440,
+      "viewport": 1440,
+      "scroll": 1440,
+      "days": 24,
+      "chronological": true,
+      "minWidth": 155.828125,
+      "minHeight": 108,
+      "clippedStatus": false,
+      "snowCaps": 24,
+      "ticketMask": true,
+      "removed": true
+    },
+    {
+      "theme": "night",
+      "width": 320,
+      "viewport": 320,
+      "scroll": 320,
+      "days": 24,
+      "chronological": true,
+      "minWidth": 53.25,
+      "minHeight": 88,
+      "clippedStatus": false,
+      "snowCaps": 24,
+      "ticketMask": true,
+      "removed": true
+    },
+    {
+      "theme": "night",
+      "width": 390,
+      "viewport": 390,
+      "scroll": 390,
+      "days": 24,
+      "chronological": true,
+      "minWidth": 70.75,
+      "minHeight": 88,
+      "clippedStatus": false,
+      "snowCaps": 24,
+      "ticketMask": true,
+      "removed": true
+    },
+    {
+      "theme": "night",
+      "width": 691,
+      "viewport": 691,
+      "scroll": 691,
+      "days": 24,
+      "chronological": true,
+      "minWidth": 84.65625,
+      "minHeight": 108,
+      "clippedStatus": false,
+      "snowCaps": 24,
+      "ticketMask": true,
+      "removed": true
+    },
+    {
+      "theme": "night",
+      "width": 768,
+      "viewport": 768,
+      "scroll": 768,
+      "days": 24,
+      "chronological": true,
+      "minWidth": 139.25,
+      "minHeight": 88,
+      "clippedStatus": false,
+      "snowCaps": 24,
+      "ticketMask": true,
+      "removed": true
+    },
+    {
+      "theme": "night",
+      "width": 1440,
+      "viewport": 1440,
+      "scroll": 1440,
+      "days": 24,
+      "chronological": true,
+      "minWidth": 155.828125,
+      "minHeight": 108,
+      "clippedStatus": false,
+      "snowCaps": 24,
+      "ticketMask": true,
+      "removed": true
+    }
+  ],
+  "states": [
+    {
+      "theme": "day",
+      "missed": true,
+      "future": true,
+      "opened": true,
+      "loading": true,
+      "errorRetryByCardEnter": true,
+      "reward": true,
+      "focusRestored": true
+    },
+    {
+      "theme": "night",
+      "missed": true,
+      "future": true,
+      "opened": true,
+      "loading": true,
+      "errorRetryByCardEnter": true,
+      "reward": true,
+      "focusRestored": true
+    }
+  ],
+  "contrastSweep": {
+    "steps": 1001,
+    "step": 0.001,
+    "targetCount": 80,
+    "minima": {
+      "header": {
+        "ratio": 4.6352626592067345,
+        "time": 0.209,
+        "target": "appbar-label",
+        "foreground": "rgb(0, 0, 0)",
+        "background": "color(srgb 0.408553 0.475546 0.50083)"
+      },
+      "scene": {
+        "ratio": 4.644659675018439,
+        "time": 0.229,
+        "target": "scene-time",
+        "foreground": "rgb(23, 61, 50)",
+        "background": "color(srgb 0.571678 0.644855 0.673143)"
+      },
+      "board": {
+        "ratio": 4.587070266222803,
+        "time": 0.209,
+        "target": "SPAN",
+        "foreground": "rgb(255, 255, 255)",
+        "background": "color(srgb 0.392127 0.47374 0.494035)"
+      },
+      "numbers": {
+        "ratio": 4.5828749828203925,
+        "time": 0.207,
+        "target": "13",
+        "foreground": "rgb(0, 0, 0)",
+        "background": "color(srgb 0.402156 0.475403 0.470298)"
+      },
+      "statuses": {
+        "ratio": 6.4367552707800275,
+        "time": 0,
+        "target": "4",
+        "foreground": "rgb(58, 87, 76)",
+        "background": "rgb(228, 233, 225)"
+      },
+      "icons": {
+        "ratio": 6.4367552707800275,
+        "time": 0,
+        "target": "4",
+        "foreground": "rgb(58, 87, 76)",
+        "background": "rgb(228, 233, 225)"
+      }
+    },
+    "failures": [],
+    "failureCount": 0,
+    "transparentBackgroundCount": 0,
+    "scope": "Rendered computed CSS colors against the actual opaque supporting surface for header, scene, board, each number window, each status and each state icon. No mixed foreground colors; no gradient or translucent supporting surface under these text groups."
+  },
+  "rasterCorroboration": {
+    "method": "Compare normal render against same render with text made transparent; evaluate original computed foreground against underlying rendered RGB only at classified glyph pixels (>=8 channel difference, foreground-over-background coverage alpha0.025..1.02, maximum RGB compositing residual4). Every target must have visible classified glyph pixels; absent coverage fails. Tiny rendering differences that cannot result from the target glyph color are excluded and counted. Includes actual borders, snow, ornaments, SVG ticket and other compositing wherever beneath glyphs. Device scale1; no claim of a complete WCAG audit.",
+    "samples": [
+      {
+        "width": 390,
+        "time": 0,
+        "glyphPixels": 15230,
+        "nonGlyphDifferences": 0,
+        "coveredTargets": 80,
+        "totalTargets": 80,
+        "missingTargets": [],
+        "minimum": {
+          "ratio": 6.4367552707800275,
+          "selector": ".day-status",
+          "day": "4",
+          "pixel": {
+            "x": 276,
+            "y": 423
+          },
+          "fg": [
+            58,
+            87,
+            76
+          ],
+          "background": [
+            228,
+            233,
+            225
+          ]
+        }
+      },
+      {
+        "width": 390,
+        "time": 0.16,
+        "glyphPixels": 15230,
+        "nonGlyphDifferences": 0,
+        "coveredTargets": 80,
+        "totalTargets": 80,
+        "missingTargets": [],
+        "minimum": {
+          "ratio": 6.4367552707800275,
+          "selector": ".day-status",
+          "day": "4",
+          "pixel": {
+            "x": 276,
+            "y": 423
+          },
+          "fg": [
+            58,
+            87,
+            76
+          ],
+          "background": [
+            228,
+            233,
+            225
+          ]
+        }
+      },
+      {
+        "width": 390,
+        "time": 0.2,
+        "glyphPixels": 15257,
+        "nonGlyphDifferences": 0,
+        "coveredTargets": 80,
+        "totalTargets": 80,
+        "missingTargets": [],
+        "minimum": {
+          "ratio": 4.726385692108549,
+          "selector": ".day-number",
+          "day": "4",
+          "pixel": {
+            "x": 292,
+            "y": 387
+          },
+          "fg": [
+            255,
+            255,
+            255
+          ],
+          "background": [
+            97,
+            119,
+            125
+          ]
+        }
+      },
+      {
+        "width": 390,
+        "time": 0.207,
+        "glyphPixels": 15124,
+        "nonGlyphDifferences": 0,
+        "coveredTargets": 80,
+        "totalTargets": 80,
+        "missingTargets": [],
+        "minimum": {
+          "ratio": 4.5828749828203925,
+          "selector": ".day-number",
+          "day": "13",
+          "pixel": {
+            "x": 49,
+            "y": 723
+          },
+          "fg": [
+            0,
+            0,
+            0
+          ],
+          "background": [
+            103,
+            121,
+            120
+          ]
+        }
+      },
+      {
+        "width": 390,
+        "time": 0.209,
+        "glyphPixels": 15077,
+        "nonGlyphDifferences": 0,
+        "coveredTargets": 80,
+        "totalTargets": 80,
+        "missingTargets": [],
+        "minimum": {
+          "ratio": 4.587070266222803,
+          "selector": ".board-title span",
+          "day": null,
+          "pixel": {
+            "x": 18,
+            "y": 320
+          },
+          "fg": [
+            255,
+            255,
+            255
+          ],
+          "background": [
+            100,
+            121,
+            126
+          ]
+        }
+      },
+      {
+        "width": 390,
+        "time": 0.22,
+        "glyphPixels": 14961,
+        "nonGlyphDifferences": 0,
+        "coveredTargets": 80,
+        "totalTargets": 80,
+        "missingTargets": [],
+        "minimum": {
+          "ratio": 6.2245747205951805,
+          "selector": ".scene-time",
+          "day": null,
+          "pixel": {
+            "x": 32,
+            "y": 90
+          },
+          "fg": [
+            0,
+            0,
+            0
+          ],
+          "background": [
+            123,
+            143,
+            152
+          ]
+        }
+      },
+      {
+        "width": 390,
+        "time": 0.229,
+        "glyphPixels": 14945,
+        "nonGlyphDifferences": 0,
+        "coveredTargets": 80,
+        "totalTargets": 80,
+        "missingTargets": [],
+        "minimum": {
+          "ratio": 4.644659675018439,
+          "selector": ".scene-time",
+          "day": null,
+          "pixel": {
+            "x": 23,
+            "y": 91
+          },
+          "fg": [
+            23,
+            61,
+            50
+          ],
+          "background": [
+            146,
+            164,
+            172
+          ]
+        }
+      },
+      {
+        "width": 390,
+        "time": 0.24,
+        "glyphPixels": 15042,
+        "nonGlyphDifferences": 0,
+        "coveredTargets": 80,
+        "totalTargets": 80,
+        "missingTargets": [],
+        "minimum": {
+          "ratio": 6.178433541709317,
+          "selector": ".scene-time",
+          "day": null,
+          "pixel": {
+            "x": 23,
+            "y": 91
+          },
+          "fg": [
+            23,
+            61,
+            50
+          ],
+          "background": [
+            172,
+            189,
+            194
+          ]
+        }
+      },
+      {
+        "width": 390,
+        "time": 0.5,
+        "glyphPixels": 15115,
+        "nonGlyphDifferences": 0,
+        "coveredTargets": 80,
+        "totalTargets": 80,
+        "missingTargets": [],
+        "minimum": {
+          "ratio": 6.4367552707800275,
+          "selector": ".day-status",
+          "day": "4",
+          "pixel": {
+            "x": 276,
+            "y": 423
+          },
+          "fg": [
+            58,
+            87,
+            76
+          ],
+          "background": [
+            228,
+            233,
+            225
+          ]
+        }
+      },
+      {
+        "width": 390,
+        "time": 0.82,
+        "glyphPixels": 15125,
+        "nonGlyphDifferences": 0,
+        "coveredTargets": 80,
+        "totalTargets": 80,
+        "missingTargets": [],
+        "minimum": {
+          "ratio": 6.4367552707800275,
+          "selector": ".day-status",
+          "day": "4",
+          "pixel": {
+            "x": 276,
+            "y": 423
+          },
+          "fg": [
+            58,
+            87,
+            76
+          ],
+          "background": [
+            228,
+            233,
+            225
+          ]
+        }
+      },
+      {
+        "width": 390,
+        "time": 0.84,
+        "glyphPixels": 14979,
+        "nonGlyphDifferences": 0,
+        "coveredTargets": 80,
+        "totalTargets": 80,
+        "missingTargets": [],
+        "minimum": {
+          "ratio": 6.2245747205951805,
+          "selector": ".scene-time",
+          "day": null,
+          "pixel": {
+            "x": 23,
+            "y": 91
+          },
+          "fg": [
+            0,
+            0,
+            0
+          ],
+          "background": [
+            123,
+            143,
+            152
+          ]
+        }
+      },
+      {
+        "width": 390,
+        "time": 0.86,
+        "glyphPixels": 15249,
+        "nonGlyphDifferences": 0,
+        "coveredTargets": 80,
+        "totalTargets": 80,
+        "missingTargets": [],
+        "minimum": {
+          "ratio": 5.996416694323579,
+          "selector": ".day-number",
+          "day": "4",
+          "pixel": {
+            "x": 292,
+            "y": 387
+          },
+          "fg": [
+            255,
+            255,
+            255
+          ],
+          "background": [
+            79,
+            103,
+            111
+          ]
+        }
+      },
+      {
+        "width": 390,
+        "time": 0.88,
+        "glyphPixels": 15230,
+        "nonGlyphDifferences": 0,
+        "coveredTargets": 80,
+        "totalTargets": 80,
+        "missingTargets": [],
+        "minimum": {
+          "ratio": 6.4367552707800275,
+          "selector": ".day-status",
+          "day": "4",
+          "pixel": {
+            "x": 276,
+            "y": 423
+          },
+          "fg": [
+            58,
+            87,
+            76
+          ],
+          "background": [
+            228,
+            233,
+            225
+          ]
+        }
+      },
+      {
+        "width": 1440,
+        "time": 0,
+        "glyphPixels": 20480,
+        "nonGlyphDifferences": 0,
+        "coveredTargets": 80,
+        "totalTargets": 80,
+        "missingTargets": [],
+        "minimum": {
+          "ratio": 6.4367552707800275,
+          "selector": ".day-status",
+          "day": "4",
+          "pixel": {
+            "x": 628,
+            "y": 453
+          },
+          "fg": [
+            58,
+            87,
+            76
+          ],
+          "background": [
+            228,
+            233,
+            225
+          ]
+        }
+      },
+      {
+        "width": 1440,
+        "time": 0.16,
+        "glyphPixels": 20480,
+        "nonGlyphDifferences": 28,
+        "coveredTargets": 80,
+        "totalTargets": 80,
+        "missingTargets": [],
+        "minimum": {
+          "ratio": 6.4367552707800275,
+          "selector": ".day-status",
+          "day": "4",
+          "pixel": {
+            "x": 628,
+            "y": 453
+          },
+          "fg": [
+            58,
+            87,
+            76
+          ],
+          "background": [
+            228,
+            233,
+            225
+          ]
+        }
+      },
+      {
+        "width": 1440,
+        "time": 0.2,
+        "glyphPixels": 20513,
+        "nonGlyphDifferences": 0,
+        "coveredTargets": 80,
+        "totalTargets": 80,
+        "missingTargets": [],
+        "minimum": {
+          "ratio": 4.726385692108549,
+          "selector": ".day-number",
+          "day": "4",
+          "pixel": {
+            "x": 619,
+            "y": 412
+          },
+          "fg": [
+            255,
+            255,
+            255
+          ],
+          "background": [
+            97,
+            119,
+            125
+          ]
+        }
+      },
+      {
+        "width": 1440,
+        "time": 0.207,
+        "glyphPixels": 20363,
+        "nonGlyphDifferences": 0,
+        "coveredTargets": 80,
+        "totalTargets": 80,
+        "missingTargets": [],
+        "minimum": {
+          "ratio": 4.5828749828203925,
+          "selector": ".day-number",
+          "day": "13",
+          "pixel": {
+            "x": 112,
+            "y": 678
+          },
+          "fg": [
+            0,
+            0,
+            0
+          ],
+          "background": [
+            103,
+            121,
+            120
+          ]
+        }
+      },
+      {
+        "width": 1440,
+        "time": 0.209,
+        "glyphPixels": 20313,
+        "nonGlyphDifferences": 0,
+        "coveredTargets": 80,
+        "totalTargets": 80,
+        "missingTargets": [],
+        "minimum": {
+          "ratio": 4.587070266222803,
+          "selector": ".board-title span",
+          "day": null,
+          "pixel": {
+            "x": 48,
+            "y": 332
+          },
+          "fg": [
+            255,
+            255,
+            255
+          ],
+          "background": [
+            100,
+            121,
+            126
+          ]
+        }
+      },
+      {
+        "width": 1440,
+        "time": 0.22,
+        "glyphPixels": 20191,
+        "nonGlyphDifferences": 0,
+        "coveredTargets": 80,
+        "totalTargets": 80,
+        "missingTargets": [],
+        "minimum": {
+          "ratio": 6.2245747205951805,
+          "selector": ".scene-time",
+          "day": null,
+          "pixel": {
+            "x": 32,
+            "y": 101
+          },
+          "fg": [
+            0,
+            0,
+            0
+          ],
+          "background": [
+            123,
+            143,
+            152
+          ]
+        }
+      },
+      {
+        "width": 1440,
+        "time": 0.229,
+        "glyphPixels": 20125,
+        "nonGlyphDifferences": 0,
+        "coveredTargets": 80,
+        "totalTargets": 80,
+        "missingTargets": [],
+        "minimum": {
+          "ratio": 4.644659675018439,
+          "selector": ".scene-time",
+          "day": null,
+          "pixel": {
+            "x": 34,
+            "y": 101
+          },
+          "fg": [
+            23,
+            61,
+            50
+          ],
+          "background": [
+            146,
+            164,
+            172
+          ]
+        }
+      },
+      {
+        "width": 1440,
+        "time": 0.24,
+        "glyphPixels": 20248,
+        "nonGlyphDifferences": 0,
+        "coveredTargets": 80,
+        "totalTargets": 80,
+        "missingTargets": [],
+        "minimum": {
+          "ratio": 6.178433541709317,
+          "selector": ".scene-time",
+          "day": null,
+          "pixel": {
+            "x": 34,
+            "y": 101
+          },
+          "fg": [
+            23,
+            61,
+            50
+          ],
+          "background": [
+            172,
+            189,
+            194
+          ]
+        }
+      },
+      {
+        "width": 1440,
+        "time": 0.5,
+        "glyphPixels": 20347,
+        "nonGlyphDifferences": 0,
+        "coveredTargets": 80,
+        "totalTargets": 80,
+        "missingTargets": [],
+        "minimum": {
+          "ratio": 6.4367552707800275,
+          "selector": ".day-status",
+          "day": "4",
+          "pixel": {
+            "x": 628,
+            "y": 453
+          },
+          "fg": [
+            58,
+            87,
+            76
+          ],
+          "background": [
+            228,
+            233,
+            225
+          ]
+        }
+      },
+      {
+        "width": 1440,
+        "time": 0.82,
+        "glyphPixels": 20353,
+        "nonGlyphDifferences": 0,
+        "coveredTargets": 80,
+        "totalTargets": 80,
+        "missingTargets": [],
+        "minimum": {
+          "ratio": 6.4367552707800275,
+          "selector": ".day-status",
+          "day": "4",
+          "pixel": {
+            "x": 628,
+            "y": 453
+          },
+          "fg": [
+            58,
+            87,
+            76
+          ],
+          "background": [
+            228,
+            233,
+            225
+          ]
+        }
+      },
+      {
+        "width": 1440,
+        "time": 0.84,
+        "glyphPixels": 20208,
+        "nonGlyphDifferences": 0,
+        "coveredTargets": 80,
+        "totalTargets": 80,
+        "missingTargets": [],
+        "minimum": {
+          "ratio": 6.2245747205951805,
+          "selector": ".scene-time",
+          "day": null,
+          "pixel": {
+            "x": 34,
+            "y": 101
+          },
+          "fg": [
+            0,
+            0,
+            0
+          ],
+          "background": [
+            123,
+            143,
+            152
+          ]
+        }
+      },
+      {
+        "width": 1440,
+        "time": 0.86,
+        "glyphPixels": 20491,
+        "nonGlyphDifferences": 0,
+        "coveredTargets": 80,
+        "totalTargets": 80,
+        "missingTargets": [],
+        "minimum": {
+          "ratio": 5.996416694323579,
+          "selector": ".day-number",
+          "day": "4",
+          "pixel": {
+            "x": 619,
+            "y": 412
+          },
+          "fg": [
+            255,
+            255,
+            255
+          ],
+          "background": [
+            79,
+            103,
+            111
+          ]
+        }
+      },
+      {
+        "width": 1440,
+        "time": 0.88,
+        "glyphPixels": 20480,
+        "nonGlyphDifferences": 0,
+        "coveredTargets": 80,
+        "totalTargets": 80,
+        "missingTargets": [],
+        "minimum": {
+          "ratio": 6.4367552707800275,
+          "selector": ".day-status",
+          "day": "4",
+          "pixel": {
+            "x": 628,
+            "y": 453
+          },
+          "fg": [
+            58,
+            87,
+            76
+          ],
+          "background": [
+            228,
+            233,
+            225
+          ]
+        }
+      }
+    ]
+  },
+  "keyboardSequentialFocus": "12",
+  "reducedMotion": "0s",
+  "pageErrors": [],
+  "failures": []
+}

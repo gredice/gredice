@@ -1,0 +1,207 @@
+{
+  "iteration": 2,
+  "defaultConcept": "winter",
+  "responsive": [
+    {
+      "theme": "day",
+      "width": 320,
+      "viewport": 320,
+      "scroll": 320,
+      "days": 24,
+      "chronological": true,
+      "snowCaps": 24,
+      "snowVariants": 6,
+      "variants": 6,
+      "minWidth": 53.25,
+      "minHeight": 88,
+      "gift24": true,
+      "clippedStatus": false,
+      "palette": "day"
+    },
+    {
+      "theme": "day",
+      "width": 390,
+      "viewport": 390,
+      "scroll": 390,
+      "days": 24,
+      "chronological": true,
+      "snowCaps": 24,
+      "snowVariants": 6,
+      "variants": 6,
+      "minWidth": 70.75,
+      "minHeight": 88,
+      "gift24": true,
+      "clippedStatus": false,
+      "palette": "day"
+    },
+    {
+      "theme": "day",
+      "width": 768,
+      "viewport": 768,
+      "scroll": 768,
+      "days": 24,
+      "chronological": true,
+      "snowCaps": 24,
+      "snowVariants": 6,
+      "variants": 6,
+      "minWidth": 135.25,
+      "minHeight": 88,
+      "gift24": true,
+      "clippedStatus": false,
+      "palette": "day"
+    },
+    {
+      "theme": "day",
+      "width": 1440,
+      "viewport": 1440,
+      "scroll": 1440,
+      "days": 24,
+      "chronological": true,
+      "snowCaps": 24,
+      "snowVariants": 6,
+      "variants": 6,
+      "minWidth": 155.828125,
+      "minHeight": 108,
+      "gift24": true,
+      "clippedStatus": false,
+      "palette": "day"
+    },
+    {
+      "theme": "night",
+      "width": 320,
+      "viewport": 320,
+      "scroll": 320,
+      "days": 24,
+      "chronological": true,
+      "snowCaps": 24,
+      "snowVariants": 6,
+      "variants": 6,
+      "minWidth": 53.25,
+      "minHeight": 88,
+      "gift24": true,
+      "clippedStatus": false,
+      "palette": "night"
+    },
+    {
+      "theme": "night",
+      "width": 390,
+      "viewport": 390,
+      "scroll": 390,
+      "days": 24,
+      "chronological": true,
+      "snowCaps": 24,
+      "snowVariants": 6,
+      "variants": 6,
+      "minWidth": 70.75,
+      "minHeight": 88,
+      "gift24": true,
+      "clippedStatus": false,
+      "palette": "night"
+    },
+    {
+      "theme": "night",
+      "width": 768,
+      "viewport": 768,
+      "scroll": 768,
+      "days": 24,
+      "chronological": true,
+      "snowCaps": 24,
+      "snowVariants": 6,
+      "variants": 6,
+      "minWidth": 135.25,
+      "minHeight": 88,
+      "gift24": true,
+      "clippedStatus": false,
+      "palette": "night"
+    },
+    {
+      "theme": "night",
+      "width": 1440,
+      "viewport": 1440,
+      "scroll": 1440,
+      "days": 24,
+      "chronological": true,
+      "snowCaps": 24,
+      "snowVariants": 6,
+      "variants": 6,
+      "minWidth": 155.828125,
+      "minHeight": 108,
+      "gift24": true,
+      "clippedStatus": false,
+      "palette": "night"
+    }
+  ],
+  "states": [
+    {
+      "theme": "day",
+      "missed": true,
+      "future": true,
+      "opened": true,
+      "loading": true,
+      "errorRetry": true,
+      "reward": true,
+      "focusRestored": true
+    },
+    {
+      "theme": "night",
+      "missed": true,
+      "future": true,
+      "opened": true,
+      "loading": true,
+      "errorRetry": true,
+      "reward": true,
+      "focusRestored": true
+    }
+  ],
+  "auto": [
+    {
+      "timeOfDay": 0,
+      "daylight": 0,
+      "night": 1
+    },
+    {
+      "timeOfDay": 0.16,
+      "daylight": 0,
+      "night": 0.896
+    },
+    {
+      "timeOfDay": 0.22,
+      "daylight": 0.5,
+      "night": 0.104
+    },
+    {
+      "timeOfDay": 0.28,
+      "daylight": 1,
+      "night": 0
+    },
+    {
+      "timeOfDay": 0.5,
+      "daylight": 1,
+      "night": 0
+    },
+    {
+      "timeOfDay": 0.8,
+      "daylight": 1,
+      "night": 0
+    },
+    {
+      "timeOfDay": 0.84,
+      "daylight": 0.5,
+      "night": 0.2593
+    },
+    {
+      "timeOfDay": 0.88,
+      "daylight": 0,
+      "night": 1
+    },
+    {
+      "timeOfDay": 0.98,
+      "daylight": 0,
+      "night": 1
+    }
+  ],
+  "keyboardConceptTabs": true,
+  "reducedMotion": "0s",
+  "pageErrors": [],
+  "failures": []
+}
