@@ -212,6 +212,7 @@ export type NotificationRolloutDiagnostics = {
 };
 
 export type CreateNotificationOptions = {
+    db?: TransactionClient;
     compatibleExistingClassifications?: readonly {
         category: string;
         type: string;
@@ -1555,6 +1556,18 @@ export async function createNotificationWithOutcome(
               .update(normalizedIdempotencyKey)
               .digest('hex')}`
         : randomUUID();
+
+    if (options.db) {
+        if (normalizedIdempotencyKey) {
+            await acquireNotificationDeliveryLock(options.db, notificationId);
+        }
+        return createNotificationWithDatabase(
+            options.db,
+            notification,
+            options,
+            notificationId,
+        );
+    }
 
     if (!normalizedIdempotencyKey) {
         return await createNotificationWithDatabase(

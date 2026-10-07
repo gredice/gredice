@@ -2,7 +2,9 @@ import { client } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { handleOptimisticUpdate } from '../helpers/queryHelpers';
 import { useGameState } from '../useGameState';
+import { currentAccountKeys } from './useCurrentAccount';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
+import { notificationsQueryKey } from './useNotifications';
 import { tutorialChecklistKeys } from './useTutorialChecklist';
 
 const mutationKey = ['gardens', 'current', 'raisedBedFieldUpdateStatus'];
@@ -125,6 +127,12 @@ export function useRaisedBedFieldUpdateStatus() {
                 });
                 await queryClient.invalidateQueries({
                     queryKey: tutorialChecklistKeys,
+                });
+                await queryClient.invalidateQueries({
+                    queryKey: currentAccountKeys,
+                });
+                await queryClient.invalidateQueries({
+                    queryKey: notificationsQueryKey,
                 });
             }
         },

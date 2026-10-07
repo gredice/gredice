@@ -9,7 +9,7 @@ import { KnownPages } from '../../src/KnownPages';
 export const metadata = createPublicMetadata({
     title: 'Povrat novca',
     description:
-        'Informacije o povratu novca, suncokretima, otkazivanjima i korekcijama Gredice salda.',
+        'Puni povrat sadnje u suncokretima za biljke koje nisu proklijale nakon 15 dana te pravila ostalih povrata i korekcija salda.',
     path: KnownPages.Refunds,
     eyebrow: 'Povrati',
 });
@@ -21,9 +21,15 @@ export default function RefundsPage() {
                 <PageHeader
                     padded
                     header="Povrat novca"
-                    subHeader="Ako usluga ili proizvod ne ispuni tvoja očekivanja, možeš zatražiti povrat novca u roku od 30 dana."
+                    subHeader="Za biljku koja nije proklijala nakon 15 dana vraćamo puni plaćeni iznos sadnje u suncokretima. Ostale reklamacije možeš zatražiti unutar 30 dana od kupnje."
                 />
                 <StyledHtml>
+                    <h2>Puni povrat za biljku koja nije proklijala</h2>
+                    <p>{notSproutedRefundPolicy}</p>
+                    <p>
+                        Povrat dobivaš automatski u suncokretima, bez zahtjeva
+                        podršci. Obavijest u vrtu potvrđuje iznos povrata.
+                    </p>
                     <h2>Naša politika</h2>
                     <p>
                         Reklamacije su moguće za biljke i radnje unutar{' '}
@@ -56,10 +62,10 @@ export default function RefundsPage() {
                         saldo kao povrat.
                     </p>
                     <p>
-                        Nakon što je akcija izvršena, eventualni povrat ili
-                        korekcija rješava se kroz korisničku podršku. Bonus
-                        suncokreti iz paketa ne predstavljaju zaseban novčani
-                        iznos i ne obećavaju automatski gotovinski povrat.
+                        Za ostale izvršene akcije povrat ili korekcija rješava
+                        se kroz korisničku podršku. Bonus suncokreti iz paketa
+                        ne predstavljaju zaseban novčani iznos i ne obećavaju
+                        automatski gotovinski povrat.
                     </p>
                     <h2>Kako zatražiti povrat</h2>
                     <p>
@@ -77,8 +83,8 @@ export default function RefundsPage() {
                         tržištu Hrvatske (HR).
                     </p>
                     <p>
-                        Povrat je moguć isključivo kroz korisničku podršku i
-                        odobrenje povrata novca/suncokreta.
+                        Ostale zahtjeve za povrat provjerava i odobrava
+                        korisnička podrška.
                     </p>
                     <hr />
                     <p>
@@ -93,3 +99,5 @@ export default function RefundsPage() {
         </Container>
     );
 }
+
+import { notSproutedRefundPolicy } from '@gredice/js/plants';
