@@ -527,8 +527,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui
       '@mdxeditor/editor':
-        specifier: 4.3.1
-        version: 4.3.1(@codemirror/language@6.12.4)(@lezer/highlight@1.2.3)(@types/react-dom@19.2.7(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(supports-color@10.2.2)(typescript@7.0.2)(yjs@13.6.27)
+        specifier: 4.3.2
+        version: 4.3.2(@codemirror/language@6.12.4)(@lezer/highlight@1.2.3)(@types/react-dom@19.2.7(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(supports-color@10.2.2)(typescript@7.0.2)(yjs@13.6.27)
       '@playwright/experimental-ct-react':
         specifier: 1.62.1
         version: 1.62.1(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.104.1)(tsx@4.23.15)(vite@8.3.2(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.104.1)(tsx@4.23.15)(yaml@2.9.1))(yaml@2.9.1)
@@ -1113,8 +1113,8 @@ importers:
         specifier: 2.1.3
         version: 2.1.3
       '@mdxeditor/editor':
-        specifier: 4.3.1
-        version: 4.3.1(@codemirror/language@6.12.4)(@lezer/highlight@1.2.3)(@types/react-dom@19.2.7(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(supports-color@10.2.2)(typescript@7.0.2)(yjs@13.6.27)
+        specifier: 4.3.2
+        version: 4.3.2(@codemirror/language@6.12.4)(@lezer/highlight@1.2.3)(@types/react-dom@19.2.7(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(supports-color@10.2.2)(typescript@7.0.2)(yjs@13.6.27)
       '@opentelemetry/api-logs':
         specifier: 0.222.0
         version: 0.222.0
@@ -3699,8 +3699,8 @@ packages:
       '@types/react': 19.2.18
       react: 19.2.8
 
-  '@mdxeditor/editor@4.3.1':
-    resolution: {integrity: sha512-oFWFusqx167eivpAl3Fs32LLR1HaJveb3w2ewoVP6vsFb/rd95ShoiPoew3Sa2KIYkpjvMgVgFlauB4Re1FADg==}
+  '@mdxeditor/editor@4.3.2':
+    resolution: {integrity: sha512-nIFzhxcsTP6p9z2yPzZEItyVWuxOPZMbhZm5VNTVAc1OPeiPb7e7QgIwJZmlwWFpjsbmjU5ouafXbThDiGhv2A==}
     engines: {node: '>=16'}
     peerDependencies:
       react: 19.2.8
@@ -12844,7 +12844,7 @@ snapshots:
       '@types/react': 19.2.18
       react: 19.2.8
 
-  '@mdxeditor/editor@4.3.1(@codemirror/language@6.12.4)(@lezer/highlight@1.2.3)(@types/react-dom@19.2.7(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(supports-color@10.2.2)(typescript@7.0.2)(yjs@13.6.27)':
+  '@mdxeditor/editor@4.3.2(@codemirror/language@6.12.4)(@lezer/highlight@1.2.3)(@types/react-dom@19.2.7(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(supports-color@10.2.2)(typescript@7.0.2)(yjs@13.6.27)':
     dependencies:
       '@codemirror/commands': 6.11.1
       '@codemirror/lang-markdown': 6.5.2
@@ -18102,7 +18102,7 @@ snapshots:
       ccount: 2.0.1
       devlop: 1.1.0
       mdast-util-from-markdown: 2.0.3(supports-color@10.2.2)
-      mdast-util-to-markdown: 2.1.2
+      mdast-util-to-markdown: 2.1.3
       parse-entities: 4.0.2
       stringify-entities: 4.0.4
       unist-util-visit-parents: 6.0.2
@@ -18139,7 +18139,7 @@ snapshots:
       devlop: 1.1.0
       escape-string-regexp: 5.0.0
       mdast-util-from-markdown: 2.0.3(supports-color@10.2.2)
-      mdast-util-to-markdown: 2.1.2
+      mdast-util-to-markdown: 2.1.3
       micromark-extension-frontmatter: 2.0.0
     transitivePeerDependencies:
       - supports-color
@@ -18174,7 +18174,7 @@ snapshots:
     dependencies:
       '@types/mdast': 4.0.4
       mdast-util-from-markdown: 2.0.3(supports-color@10.2.2)
-      mdast-util-to-markdown: 2.1.2
+      mdast-util-to-markdown: 2.1.3
     transitivePeerDependencies:
       - supports-color
 
@@ -18220,7 +18220,7 @@ snapshots:
       '@types/mdast': 4.0.4
       devlop: 1.1.0
       mdast-util-from-markdown: 2.0.3(supports-color@10.2.2)
-      mdast-util-to-markdown: 2.1.2
+      mdast-util-to-markdown: 2.1.3
     transitivePeerDependencies:
       - supports-color
 
@@ -18233,7 +18233,7 @@ snapshots:
       ccount: 2.0.1
       devlop: 1.1.0
       mdast-util-from-markdown: 2.0.3(supports-color@10.2.2)
-      mdast-util-to-markdown: 2.1.2
+      mdast-util-to-markdown: 2.1.3
       parse-entities: 4.0.2
       stringify-entities: 4.0.4
       unist-util-stringify-position: 4.0.0
@@ -18247,7 +18247,7 @@ snapshots:
       mdast-util-mdx-expression: 2.0.1(supports-color@10.2.2)
       mdast-util-mdx-jsx: 3.2.0(supports-color@10.2.2)
       mdast-util-mdxjs-esm: 2.0.1(supports-color@10.2.2)
-      mdast-util-to-markdown: 2.1.2
+      mdast-util-to-markdown: 2.1.3
     transitivePeerDependencies:
       - supports-color
 
@@ -18258,7 +18258,7 @@ snapshots:
       '@types/mdast': 4.0.4
       devlop: 1.1.0
       mdast-util-from-markdown: 2.0.3(supports-color@10.2.2)
-      mdast-util-to-markdown: 2.1.2
+      mdast-util-to-markdown: 2.1.3
     transitivePeerDependencies:
       - supports-color
 
