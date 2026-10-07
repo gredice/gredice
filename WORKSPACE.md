@@ -29,6 +29,20 @@ Use this guide for repo layout, setup, commands, package boundaries, and local d
 - Browser tests: Playwright.
 - Node tests: Node's built-in test runner through `node --test` with `tsx` where needed.
 
+### Playwright runner compatibility
+
+The component-test apps (`app`, `delivery`, `farm`, `garden`, and `www`) keep
+`@playwright/test` and `@playwright/experimental-ct-react` on `1.62.1`, the final
+experimental React component-test release. WWW and Farm accessibility tests pass
+that runner's `Page` objects to Axe, so the scoped
+`@axe-core/playwright>playwright-core` override must stay on `1.62.1` too. Renovate
+protects both the app manifests and that workspace override until the component
+suites migrate to stories. Update these compatibility rules together when
+removing the legacy runner.
+
+`apps/api` uses `@playwright/test` `1.63.0` independently. Do not apply a global
+Playwright core override or downgrade the API runner to align component tests.
+
 ## Package boundaries
 
 - Use `workspace:*` versions for internal dependencies.

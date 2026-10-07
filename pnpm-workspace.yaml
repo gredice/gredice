@@ -25,7 +25,8 @@ packageExtensions:
     dependencies:
       '@typescript/typescript6': '6.0.2'
 overrides:
-  # The accessibility suites use the legacy CT runner; align Axe's broad core peer with it.
+  # Axe consumes the legacy CT runner's Page; this pin is also protected in renovate.json.
+  # Keep the API's newer @playwright/test runner independent of this scoped override.
   '@axe-core/playwright>playwright-core': '1.62.1'
   '@types/react': 19.2.18
   '@types/react-dom': 19.2.7
