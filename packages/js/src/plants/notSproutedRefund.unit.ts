@@ -40,3 +40,13 @@ test('not-sprouted refund requires 15 complete days from actual sowing', () => {
         /neće vratiti suncokrete/,
     );
 });
+
+test('recorded growth prevents the refund and explains the denial', () => {
+    const sowed = '2026-09-01T10:00:00Z';
+    const changedAt = '2026-09-20T10:00:00Z';
+    assert.equal(isNotSproutedRefundEligible(sowed, changedAt, true), false);
+    assert.match(
+        notSproutedRefundConfirmation(sowed, changedAt, true),
+        /već proklijala.*neće vratiti suncokrete/,
+    );
+});

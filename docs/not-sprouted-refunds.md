@@ -7,6 +7,12 @@ qualify. Euro purchases use the existing 1 cent = 10 sunflowers conversion;
 inventory purchases have no refundable charge. Legacy purchases use the existing
 cart/payment lookup when the placement event has no purchase metadata.
 
+The planting's entire cycle history must contain no recorded sprout or later
+growth stage, using the same `plantCycleHasSprouted` check as plant removal.
+Resetting the current status does not erase that history. Such corrections
+create neither an account credit nor a farmer payout deduction; in-game
+confirmation and the status notification explain why no refund is issued.
+
 The shared event writer handles legacy field and selected planting lifecycle
 events from customer, admin and approved farmer requests. Status, settlement,
 account credit and refund notification share a transaction. One durable

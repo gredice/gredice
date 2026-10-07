@@ -73,6 +73,56 @@ for (const sowDays of [3, 20]) {
     });
 }
 
+test('not sprouted confirmation refuses a refund after recorded growth', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(MOBILE_VIEWPORT);
+    await mount(
+        <RaisedBedFieldHudStory
+            scenario={{
+                fields: [
+                    {
+                        positionIndex: 0,
+                        plantSortId: testSorts.tomato.id,
+                        plantStatus: 'sowed',
+                        plantSowDate: new Date(
+                            Date.now() - 20 * 24 * 60 * 60 * 1000,
+                        ).toISOString(),
+                        statusChanges: [
+                            {
+                                status: 'sprouted',
+                                occurredAt: new Date(
+                                    Date.now() - 10 * 24 * 60 * 60 * 1000,
+                                ).toISOString(),
+                            },
+                            {
+                                status: 'sowed',
+                                occurredAt: new Date().toISOString(),
+                            },
+                        ],
+                    },
+                ],
+            }}
+            positionIndex={0}
+        />,
+    );
+    await page.getByRole('button').first().click();
+    await page
+        .getByRole('button', { name: 'Promijeni stanje biljke: Posijana' })
+        .click();
+    await page
+        .getByRole('button', { name: 'Nije proklijala', exact: true })
+        .click();
+    const confirmation = page.getByRole('alertdialog', {
+        name: 'Potvrda promjene stanja',
+    });
+    await expect(confirmation).toContainText('već proklijala');
+    await expect(confirmation).toContainText(
+        'Ova promjena stanja neće vratiti suncokrete',
+    );
+});
+
 async function expectRenderedGameIcon(icon: Locator, label?: string) {
     if (label) await expect(icon.locator('title')).toHaveText(label);
     const artwork = icon.locator('image');

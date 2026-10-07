@@ -1,5 +1,7 @@
 import {
     notSproutedRefundConfirmation,
+    type PlantStatusChangeLike,
+    plantCycleHasSprouted,
     plantFieldStatusLabel,
     userAllowedPlantStatusTransitions,
 } from '@gredice/js/plants';
@@ -34,6 +36,7 @@ export function RaisedBedFieldStatusChange({
     positionIndex,
     currentStatus,
     sowedAt,
+    statusChanges,
     trigger,
 }: {
     expectedPlantCycleEventId: number;
@@ -43,6 +46,7 @@ export function RaisedBedFieldStatusChange({
     positionIndex: number;
     currentStatus: string | undefined;
     sowedAt?: Date | string | null;
+    statusChanges?: readonly PlantStatusChangeLike[] | null;
     trigger: ReactNode;
 }) {
     const updateStatusMutation = useRaisedBedFieldUpdateStatus();
@@ -266,6 +270,10 @@ export function RaisedBedFieldStatusChange({
                             {notSproutedRefundConfirmation(
                                 sowedAt,
                                 statusChangeDate,
+                                plantCycleHasSprouted({
+                                    plantStatus: currentStatus,
+                                    statusChanges,
+                                }),
                             )}
                         </Typography>
                     )}

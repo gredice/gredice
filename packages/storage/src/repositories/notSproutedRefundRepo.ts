@@ -1,5 +1,8 @@
 import 'server-only';
-import { isNotSproutedRefundEligible } from '@gredice/js/plants';
+import {
+    isNotSproutedRefundEligible,
+    plantCycleHasSprouted,
+} from '@gredice/js/plants';
 import { getRaisedBedCloseupUrl } from '@gredice/js/urls';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import {
@@ -52,6 +55,9 @@ async function refundTarget(
             key: `legacy:${cycle.plantPlaceEventId}`,
             startedAt: cycle.startedAt,
             sowedAt: cycle.plantSowDate,
+            hasSprouted: plantCycleHasSprouted({
+                statusChanges: cycle.statusChanges,
+            }),
             sowingLocation: cycle.sowingLocation,
             purchase: cycle.purchase,
         };
@@ -89,6 +95,9 @@ async function refundTarget(
                 change.status === 'pendingVerification' ||
                 change.status === 'sowed',
         )?.occurredAt,
+        hasSprouted: plantCycleHasSprouted({
+            statusChanges: projection.statusChanges,
+        }),
         sowingLocation: projection.task.initialSowingLocation,
         purchase: projection.task.purchase,
     };
@@ -119,7 +128,11 @@ export async function settleNotSproutedPlanting(
         typeof effectiveValue === 'string'
             ? new Date(effectiveValue)
             : event.createdAt;
-    const eligible = isNotSproutedRefundEligible(target.sowedAt, changedAt);
+    const eligible = isNotSproutedRefundEligible(
+        target.sowedAt,
+        changedAt,
+        target.hasSprouted,
+    );
     const settlementKey = `not-sprouted:${target.key}`;
     // Plantings retain this identity when moved to another physical field.
     await db.execute(
@@ -184,11 +197,13 @@ export async function settleNotSproutedPlanting(
     }
     const refundMessage = previous
         ? 'Povrat za ovu sadnju već je obrađen. Ponovna promjena stanja ne donosi dodatni povrat.'
-        : refundAmount > 0
-          ? `Puni plaćeni iznos sadnje, ${refundAmount} 🌻, vraćen je na tvoj saldo.`
-          : eligible
-            ? 'Za ovu sadnju nije evidentiran plaćeni iznos za povrat. Ako nedostaje podatak o plaćanju, javi se podršci.'
-            : 'Na odabrani datum nije prošlo najmanje 15 dana od evidentiranog sijanja, pa suncokreti nisu vraćeni.';
+        : target.hasSprouted
+          ? 'U povijesti ove sadnje evidentirano je da je biljka već proklijala ili dosegla kasniju fazu razvoja, pa suncokreti nisu vraćeni.'
+          : refundAmount > 0
+            ? `Puni plaćeni iznos sadnje, ${refundAmount} 🌻, vraćen je na tvoj saldo.`
+            : eligible
+              ? 'Za ovu sadnju nije evidentiran plaćeni iznos za povrat. Ako nedostaje podatak o plaćanju, javi se podršci.'
+              : 'Na odabrani datum nije prošlo najmanje 15 dana od evidentiranog sijanja, pa suncokreti nisu vraćeni.';
     await createNotification(
         {
             accountId: bed.accountId,

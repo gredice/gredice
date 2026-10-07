@@ -1,4 +1,5 @@
 import {
+    getActivePlantCycleStatusChanges,
     plantFieldStatusLabel,
     userAllowedPlantStatusTransitions,
 } from '@gredice/js/plants';
@@ -676,6 +677,9 @@ export function RaisedBedFieldItemPlanted({
                                             currentPlantIdentity ? (
                                                 <RaisedBedFieldStatusChange
                                                     sowedAt={field.plantSowDate}
+                                                    statusChanges={getActivePlantCycleStatusChanges(
+                                                        field.plantCycles,
+                                                    )}
                                                     expectedPlantCycleEventId={
                                                         currentPlantIdentity.plantPlaceEventId
                                                     }

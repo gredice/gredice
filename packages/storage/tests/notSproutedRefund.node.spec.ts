@@ -156,6 +156,46 @@ test('concurrent retries and later corrections credit and deduct only once', asy
     assert.equal(settlements.length, 1);
 });
 
+test('recorded growth prevents refunds and payout deductions after status corrections', async (t) => {
+    for (const status of [
+        'sprouted',
+        'firstFlowers',
+        'firstFruitSet',
+        'ready',
+        'harvested',
+        'died',
+    ]) {
+        await t.test(status, async () => {
+            const f = await fixture();
+            await createEvent(
+                knownEvents.raisedBedFields.plantUpdateV1(f.aggregateId, {
+                    status,
+                }),
+            );
+            // Resetting the current status must not erase recorded growth.
+            await createEvent(
+                knownEvents.raisedBedFields.plantUpdateV1(f.aggregateId, {
+                    status: 'sowed',
+                }),
+            );
+            await f.change(new Date());
+            assert.equal(await getSunflowers(f.accountId), f.initialBalance);
+            const balance = await getFarmerBalance('', f.farmId);
+            assert.equal(balance.availableBalance, 4);
+            assert.equal(
+                balance.earningsByType.some(
+                    (earning) => earning.entityTypeName === 'sowingNotSprouted',
+                ),
+                false,
+            );
+            const notice = await storage().query.notifications.findFirst({
+                where: eq(notifications.accountId, f.accountId),
+            });
+            assert.match(notice?.content ?? '', /već proklijala/);
+        });
+    }
+});
+
 test('missing sowing date and sandbox planting do not issue refunds', async () => {
     const missing = await fixture();
     await storage()
@@ -303,4 +343,45 @@ test('selected multi-field planting refunds once for the whole planting', async 
         notices.filter((notice) => notice.content?.includes('4321 🌻')).length,
         1,
     );
+});
+
+test('selected planting with a recorded sprout has no refund or payout deduction', async () => {
+    const f = await createSelectedTaskFixture({
+        multiField: true,
+        sunflowerAmount: 4321,
+    });
+    const initialBalance = await getSunflowers(f.accountId);
+    const sowed = await completeSelectedRaisedBedPlantingTask({
+        ...f.task.identity,
+        commandId: randomUUID(),
+        actor: { role: 'admin', userId: f.adminId },
+    });
+    await storage()
+        .update(events)
+        .set({ createdAt: new Date(Date.now() - 20 * day) })
+        .where(eq(events.aggregateId, f.aggregateId));
+    await upsertOperationPrice({
+        farmId: f.farmId,
+        entityTypeName: 'sowing',
+        pricePerUnit: '6.00',
+        currency: 'eur',
+    });
+    const sprouted = await updateSelectedRaisedBedPlantingLifecycleStatus({
+        ...sowed.task.identity,
+        commandId: randomUUID(),
+        actor: { role: 'admin', userId: f.adminId },
+        status: 'sprouted',
+    });
+    await updateSelectedRaisedBedPlantingLifecycleStatus({
+        ...sprouted.task.identity,
+        commandId: randomUUID(),
+        actor: { role: 'admin', userId: f.adminId },
+        status: 'notSprouted',
+    });
+    assert.equal(await getSunflowers(f.accountId), initialBalance);
+    assert.equal((await getFarmerBalance('', f.farmId)).availableBalance, 6);
+    const notice = await storage().query.notifications.findFirst({
+        where: eq(notifications.accountId, f.accountId),
+    });
+    assert.match(notice?.content ?? '', /već proklijala/);
 });
