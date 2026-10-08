@@ -15,7 +15,7 @@ const expectedManifest = {
     display: 'standalone',
     display_override: ['standalone', 'browser'],
     background_color: '#f8fbf8',
-    theme_color: '#166534',
+    theme_color: '#2e6f40',
     orientation: 'portrait',
     handle_links: 'preferred',
     prefer_related_applications: false,
@@ -38,6 +38,12 @@ const expectedManifest = {
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any',
+        },
+        {
+            src: '/web-app-manifest-maskable-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
         },
     ],
 } as const;

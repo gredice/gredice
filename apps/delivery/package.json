@@ -4,6 +4,7 @@
     "private": true,
     "type": "module",
     "scripts": {
+        "icons:generate": "node scripts/generate-icons.mjs",
         "clean": "rimraf .next .turbo dist build out coverage .vercel",
         "lint": "biome check --write",
         "lint:migrate": "biome migrate --write",
@@ -48,6 +49,7 @@
         "@vercel/analytics": "2.0.1",
         "@zxing/library": "0.23.0",
         "postcss": "8.5.28",
+        "sharp": "0.35.5",
         "tailwindcss": "4.3.3",
         "tsx": "4.23.15",
         "typescript": "7.0.2"
