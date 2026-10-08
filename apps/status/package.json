@@ -19,8 +19,8 @@
     "dependencies": {
         "next": "16.3.8",
         "pg": "8.23.1",
-        "react": "19.2.8",
-        "react-dom": "19.2.8",
+        "react": "19.3.0",
+        "react-dom": "19.3.0",
         "server-only": "0.0.1"
     },
     "devDependencies": {
@@ -29,8 +29,8 @@
         "@tailwindcss/postcss": "4.3.3",
         "@types/node": "24.19.1",
         "@types/pg": "8.23.1",
-        "@types/react": "19.2.18",
-        "@types/react-dom": "19.2.4",
+        "@types/react": "19.3.0",
+        "@types/react-dom": "19.3.0",
         "postcss": "8.5.28",
         "tailwindcss": "4.3.3",
         "tsx": "4.23.15",
