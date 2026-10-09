@@ -107,6 +107,7 @@ export const localSandboxBlockNames = [
     'DeadTreeStump',
     'Tulip',
     'Sunflower',
+    'Rose',
     'CactusBarrel',
     'CactusColumnCluster',
     'CactusPricklyPear',
@@ -161,6 +162,12 @@ const localSandboxBlockMetadata: Partial<
         }
     >
 > = {
+    Rose: {
+        label: 'Ruža',
+        shortDescription: 'Rascvjetani grm crvene ruže za mirisni kutak vrta.',
+        fullDescription:
+            'Kompaktan grm ruže s bogatim crvenim cvjetovima i svježim zelenim lišćem. Postavi ga uz stazu, ogradu ili omiljeno mjesto za odmor.',
+    },
     ChickenCoop: {
         label: 'Kokošinjac',
         shortDescription:
@@ -525,6 +532,7 @@ const localSandboxStackHeights: Partial<Record<LocalSandboxBlockName, number>> =
         Raised_Bed: 0.35,
         Snowman: 0.5,
         Sunflower: 1,
+        Rose: 1,
     };
 
 type LocalSandboxHitboxAttributes = Partial<

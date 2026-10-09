@@ -419,6 +419,7 @@ const items: HudItem[] = [
             { type: 'entity', name: 'Bush' },
             { type: 'entity', name: 'Tulip' },
             { type: 'entity', name: 'Sunflower' },
+            { type: 'entity', name: 'Rose' },
             { type: 'entity', name: 'CactusBarrel' },
             { type: 'entity', name: 'CactusColumnCluster' },
             { type: 'entity', name: 'CactusPricklyPear' },

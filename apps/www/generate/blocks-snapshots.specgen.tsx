@@ -129,6 +129,7 @@ const CLOSEUP_ENTITIES = new Set<string>([
     'LiquidPreparationBottleVoleControl',
     'LiquidPreparationBottleBeetleControl',
     'Tulip',
+    'Rose',
     'SummerHat',
     'BeachBall',
     'SandcastleSmallA',
