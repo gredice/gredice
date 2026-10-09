@@ -1368,6 +1368,11 @@ export type GLTFResult = GLTF & {
         RoofTileLantern_Glow: THREE.Mesh;
         RoofTileLantern_LimestoneCore: THREE.Mesh;
         RoofTileLantern_Tiles: THREE.Mesh;
+        Rose_Centers: THREE.Mesh;
+        Rose_Leaves: THREE.Mesh;
+        Rose_Petals_Inner: THREE.Mesh;
+        Rose_Petals_Outer: THREE.Mesh;
+        Rose_Stems: THREE.Mesh;
         SandcastleSmallA_CentralCrenel01: THREE.Mesh;
         SandcastleSmallA_CentralCrenel02: THREE.Mesh;
         SandcastleSmallA_CentralCrenel03: THREE.Mesh;
@@ -2130,6 +2135,11 @@ export type GLTFResult = GLTF & {
         pink_dark: THREE.MeshStandardMaterial;
         ribbon: THREE.MeshStandardMaterial;
         ribbon_dark: THREE.MeshStandardMaterial;
+        Rose_Center_Material: THREE.MeshStandardMaterial;
+        Rose_Leaf_Material: THREE.MeshStandardMaterial;
+        Rose_Petal_Inner_Material: THREE.MeshStandardMaterial;
+        Rose_Petal_Outer_Material: THREE.MeshStandardMaterial;
+        Rose_Stem_Material: THREE.MeshStandardMaterial;
         SandcastleSmallA_Flag: THREE.MeshStandardMaterial;
         SandcastleSmallA_Pole: THREE.MeshStandardMaterial;
         SandcastleSmallA_SandDeep: THREE.MeshStandardMaterial;

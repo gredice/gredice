@@ -207,6 +207,7 @@ export const blockAssetRequirements: {
     Snowman: assets('Snowman'),
     Tulip: assets('Tulip'),
     Sunflower: assets('Sunflower'),
+    Rose: assets('Rose'),
     CactusBarrel: assets('CactusBarrel', 'GardenFlower'),
     CactusColumnCluster: assets('CactusColumnCluster', 'GardenFlower'),
     CactusPricklyPear: assets('CactusPricklyPear', 'GardenFlower'),

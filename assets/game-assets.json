@@ -2680,6 +2680,19 @@
             ]
         },
         {
+            "name": "Rose",
+            "source": "Rose.blend",
+            "output": "Rose.glb",
+            "preload": "lazy",
+            "objects": [
+                "Rose_Stems",
+                "Rose_Leaves",
+                "Rose_Petals_Outer",
+                "Rose_Petals_Inner",
+                "Rose_Centers"
+            ]
+        },
+        {
             "name": "CactusBarrel",
             "source": "CactusBarrel.blend",
             "output": "CactusBarrel.glb",
