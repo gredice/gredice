@@ -2,6 +2,17 @@
 
 Date: 2026-09-26. Repository baseline: `c5a42da459d5c68b1a89a9e002ac00ece7e35cef`.
 
+The measurements, source counts, and architecture audit below describe that
+baseline. They are historical evidence; rerunning the harness on newer commits
+does not update the retained September results.
+
+Revalidated on 2026-10-09 against `main` baseline
+`1bc741c70`: the desktop, shadow-free bundle, and mobile-emulation quick runs
+passed backend, scene/population, pixel-parity, and applicable Wasm checks.
+Screenshots were inspected, retained campaign hashes matched the local raw
+captures, and scoped Biome and Node syntax checks passed. These smoke runs
+do not replace the September measurements or establish physical-device results.
+
 ## Recommendation
 
 Keep the current Three.js renderer for now. A migration is technically possible,
