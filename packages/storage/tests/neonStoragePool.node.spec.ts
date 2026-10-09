@@ -179,37 +179,51 @@ test('transient read retry is bounded and keeps diagnostics sanitized', async (t
     assert.doesNotMatch(JSON.stringify(errors.mock.calls), /secret|private/);
 });
 
-test('production Neon pool handles background errors and preserves database failures', () => {
-    // The normal storage runner preloads storage.ts with TEST_ENV=1. Use a fresh
-    // process to exercise the production singleton, with no real credentials.
-    const env = { ...process.env };
-    delete env.NODE_TEST_CONTEXT;
-    delete env.NODE_OPTIONS;
-    const result = spawnSync(
-        process.execPath,
-        [
-            '--import',
-            'tsx',
-            '--test',
-            '--test-reporter=tap',
-            '--test-timeout=10000',
-            '--conditions=react-server',
-            fileURLToPath(
-                new URL('./fixtures/neonStoragePool.ts', import.meta.url),
-            ),
-        ],
-        {
-            env: {
-                ...env,
-                TEST_ENV: '0',
-                POSTGRES_URL: 'postgresql://test:secret@database.invalid/test',
+for (const fixture of [
+    {
+        name: 'production Neon pool handles background errors and preserves database failures',
+        file: 'neonStoragePool.ts',
+        tests: 8,
+    },
+    {
+        name: 'production Neon transport avoids idle teardown errors and propagates real failures',
+        file: 'neonStorageTransport.ts',
+        tests: 5,
+    },
+]) {
+    test(fixture.name, () => {
+        // The normal storage runner preloads storage.ts with TEST_ENV=1. Use a fresh
+        // process to exercise the production singleton, with no real credentials.
+        const env = { ...process.env };
+        delete env.NODE_TEST_CONTEXT;
+        delete env.NODE_OPTIONS;
+        const result = spawnSync(
+            process.execPath,
+            [
+                '--import',
+                'tsx',
+                '--test',
+                '--test-reporter=tap',
+                '--test-timeout=10000',
+                '--conditions=react-server',
+                fileURLToPath(
+                    new URL(`./fixtures/${fixture.file}`, import.meta.url),
+                ),
+            ],
+            {
+                env: {
+                    ...env,
+                    TEST_ENV: '0',
+                    POSTGRES_URL:
+                        'postgresql://test:secret@database.invalid/test',
+                },
+                encoding: 'utf8',
+                timeout: 30_000,
             },
-            encoding: 'utf8',
-            timeout: 30_000,
-        },
-    );
-    assert.ifError(result.error);
-    assert.equal(result.status, 0, result.stdout + result.stderr);
-    assert.match(result.stdout, /# tests 8\b/);
-    assert.match(result.stdout, /# fail 0\b/);
-});
+        );
+        assert.ifError(result.error);
+        assert.equal(result.status, 0, result.stdout + result.stderr);
+        assert.match(result.stdout, new RegExp(`# tests ${fixture.tests}\\b`));
+        assert.match(result.stdout, /# fail 0\b/);
+    });
+}

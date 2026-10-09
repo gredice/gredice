@@ -1727,6 +1727,9 @@ importers:
       '@neondatabase/serverless':
         specifier: 1.2.0
         version: 1.2.0
+      '@types/ws':
+        specifier: 8.18.1
+        version: 8.18.1
       '@upstash/redis':
         specifier: 1.39.0
         version: 1.39.0
@@ -1763,6 +1766,9 @@ importers:
       uuid:
         specifier: 14.0.2
         version: 14.0.2
+      ws:
+        specifier: 8.21.3
+        version: 8.21.3
       zod:
         specifier: 4.6.5
         version: 4.6.5
