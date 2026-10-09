@@ -1,0 +1,2388 @@
+{
+    "capturedAt": "2026-09-26T11:45:44.267Z",
+    "sourceCommit": "c5a42da459d5c68b1a89a9e002ac00ece7e35cef",
+    "sourceStatus": "M docs/game-scene-performance.md\n?? docs/game-engine-migration-investigation.md\n?? packages/game/experiments/",
+    "experimentSourceSha256": "2d11cde258786e68e10df56aea4d1a299a31a965284a8e54eb874f1aed377ac3",
+    "bundleSha256": "47dd30bd6ed851b4213cdeb593eee40ceed27bb1b0ea9c6c51707407ab391197",
+    "wasmSha256": "d199c0e68ef3fc1fe71d0ecf4075cfebf5e0efbea71deb01c7d1aec86f7c257f",
+    "bundleBytes": 1230404,
+    "bundleGzipBytes": 328885,
+    "wasmBytes": 312,
+    "node": "v24.15.0",
+    "platform": "darwin 27.2.0 arm64",
+    "cpuModel": "Apple M4 Pro",
+    "memoryBytes": 25769803776,
+    "browser": "151.0.7922.34",
+    "browserEngine": "Chromium",
+    "deviceEmulation": {
+        "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Mobile/15E148 Safari/604.1",
+        "viewport": {
+            "width": 390,
+            "height": 664
+        },
+        "screen": {
+            "width": 390,
+            "height": 844
+        },
+        "deviceScaleFactor": 3,
+        "isMobile": true,
+        "hasTouch": true,
+        "defaultBrowserType": "webkit"
+    },
+    "cpuThrottleNote": "CDP slowdown relative to this host CPU; not calibrated to an iPhone A15. GPU is not throttled.",
+    "headless": true,
+    "browserArgs": [
+        "--disable-background-timer-throttling",
+        "--disable-backgrounding-occluded-windows",
+        "--disable-renderer-backgrounding",
+        "--use-gl=angle",
+        "--use-angle=metal"
+    ],
+    "gpu": [
+        {
+            "vendorId": 4203,
+            "deviceId": 0,
+            "vendorString": "Google Inc. (Apple)",
+            "deviceString": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Version 27.2 (Build 26B5091g))",
+            "driverVendor": "Apple",
+            "driverVersion": "27.2"
+        }
+    ],
+    "measurements": [
+        {
+            "scenario": "phone-garden-native",
+            "repeat": 0,
+            "cpuSlowdown": 1,
+            "warnings": [],
+            "meta": {
+                "backend": "webgl",
+                "actualBackend": "WebGL2",
+                "side": 16,
+                "dpr": 3,
+                "shadows": true,
+                "layout": "batched",
+                "width": 390,
+                "height": 664,
+                "backingWidth": 1170,
+                "backingHeight": 1992,
+                "devicePreset": "iPhone 14",
+                "viewport": {
+                    "width": 390,
+                    "height": 664
+                },
+                "screen": {
+                    "width": 390,
+                    "height": 844
+                },
+                "maxTouchPoints": 1,
+                "trees": 16,
+                "boxes": 16,
+                "terrainCells": 256,
+                "objects": 20,
+                "sceneTriangles": 42208,
+                "outputPassTriangles": 0,
+                "rendererInitMs": 6.275000000372529,
+                "readyMs": 54.31000000052154,
+                "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Mobile/15E148 Safari/604.1",
+                "reportedDpr": 3,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": false,
+                "glRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+                "adapter": null
+            },
+            "elapsedMs": 4000.6200000001118,
+            "deliveredFps": 59.99070144127493,
+            "cpuMs": {
+                "samples": 240,
+                "median": 0.25,
+                "p95": 0.7400000002235174,
+                "min": 0.14500000048428774,
+                "max": 0.9900000002235174
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.669999999999163,
+                "p95": 17.654999999999745,
+                "min": 15.650000000000546,
+                "max": 17.715000000000146
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 0.522041,
+                "p95": 1.624749,
+                "min": 0.292541,
+                "max": 9.302749
+            },
+            "draws": {
+                "samples": 240,
+                "median": 40,
+                "p95": 40,
+                "min": 40,
+                "max": 40
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 84416,
+                "p95": 84416,
+                "min": 84416,
+                "max": 84416
+            },
+            "longTasks": [],
+            "heapBytes": 10000000
+        },
+        {
+            "scenario": "phone-garden-native",
+            "repeat": 0,
+            "cpuSlowdown": 1,
+            "warnings": [],
+            "meta": {
+                "backend": "webgpu",
+                "actualBackend": "WebGPU",
+                "side": 16,
+                "dpr": 3,
+                "shadows": true,
+                "layout": "batched",
+                "width": 390,
+                "height": 664,
+                "backingWidth": 1170,
+                "backingHeight": 1992,
+                "devicePreset": "iPhone 14",
+                "viewport": {
+                    "width": 390,
+                    "height": 664
+                },
+                "screen": {
+                    "width": 390,
+                    "height": 844
+                },
+                "maxTouchPoints": 1,
+                "trees": 16,
+                "boxes": 16,
+                "terrainCells": 256,
+                "objects": 20,
+                "sceneTriangles": 42208,
+                "outputPassTriangles": 1,
+                "rendererInitMs": 2.459999999962747,
+                "readyMs": 112.88999999966472,
+                "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Mobile/15E148 Safari/604.1",
+                "reportedDpr": 3,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": true,
+                "glRenderer": null,
+                "adapter": {
+                    "vendor": "apple",
+                    "architecture": "metal-3",
+                    "device": "",
+                    "description": ""
+                }
+            },
+            "elapsedMs": 4001.6299999998882,
+            "deliveredFps": 59.975559959318254,
+            "cpuMs": {
+                "samples": 240,
+                "median": 0.9599999999627471,
+                "p95": 1.5499999998137355,
+                "min": 0.29500000085681677,
+                "max": 1.7300000004470348
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.664999999999964,
+                "p95": 17.644999999999527,
+                "min": 15.66000000000031,
+                "max": 17.6850000000004
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 3.2767999999999997,
+                "p95": 15.532032000000001,
+                "min": 0.262144,
+                "max": 24.838144
+            },
+            "draws": {
+                "samples": 240,
+                "median": 41,
+                "p95": 41,
+                "min": 41,
+                "max": 41
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 84417,
+                "p95": 84417,
+                "min": 84417,
+                "max": 84417
+            },
+            "longTasks": [],
+            "heapBytes": 10000000
+        },
+        {
+            "scenario": "phone-garden-4x",
+            "repeat": 0,
+            "cpuSlowdown": 4,
+            "warnings": [],
+            "meta": {
+                "backend": "webgl",
+                "actualBackend": "WebGL2",
+                "side": 16,
+                "dpr": 3,
+                "shadows": true,
+                "layout": "batched",
+                "width": 390,
+                "height": 664,
+                "backingWidth": 1170,
+                "backingHeight": 1992,
+                "devicePreset": "iPhone 14",
+                "viewport": {
+                    "width": 390,
+                    "height": 664
+                },
+                "screen": {
+                    "width": 390,
+                    "height": 844
+                },
+                "maxTouchPoints": 1,
+                "trees": 16,
+                "boxes": 16,
+                "terrainCells": 256,
+                "objects": 20,
+                "sceneTriangles": 42208,
+                "outputPassTriangles": 0,
+                "rendererInitMs": 19.50499999988824,
+                "readyMs": 167.07499999925494,
+                "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Mobile/15E148 Safari/604.1",
+                "reportedDpr": 3,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": false,
+                "glRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+                "adapter": null
+            },
+            "elapsedMs": 4001.0149999996647,
+            "deliveredFps": 59.9847788623687,
+            "cpuMs": {
+                "samples": 240,
+                "median": 0.6850000005215406,
+                "p95": 1.0449999999254942,
+                "min": 0.11000000033527613,
+                "max": 1.834999999962747
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.664999999999964,
+                "p95": 17.63000000000011,
+                "min": 15.689999999999827,
+                "max": 17.649999999999636
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 0.594874,
+                "p95": 8.454249,
+                "min": 0.294333,
+                "max": 10.01075
+            },
+            "draws": {
+                "samples": 240,
+                "median": 40,
+                "p95": 40,
+                "min": 40,
+                "max": 40
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 84416,
+                "p95": 84416,
+                "min": 84416,
+                "max": 84416
+            },
+            "longTasks": [],
+            "heapBytes": 10000000
+        },
+        {
+            "scenario": "phone-garden-4x",
+            "repeat": 0,
+            "cpuSlowdown": 4,
+            "warnings": [],
+            "meta": {
+                "backend": "webgpu",
+                "actualBackend": "WebGPU",
+                "side": 16,
+                "dpr": 3,
+                "shadows": true,
+                "layout": "batched",
+                "width": 390,
+                "height": 664,
+                "backingWidth": 1170,
+                "backingHeight": 1992,
+                "devicePreset": "iPhone 14",
+                "viewport": {
+                    "width": 390,
+                    "height": 664
+                },
+                "screen": {
+                    "width": 390,
+                    "height": 844
+                },
+                "maxTouchPoints": 1,
+                "trees": 16,
+                "boxes": 16,
+                "terrainCells": 256,
+                "objects": 20,
+                "sceneTriangles": 42208,
+                "outputPassTriangles": 1,
+                "rendererInitMs": 6.985000000335276,
+                "readyMs": 425.20000000018626,
+                "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Mobile/15E148 Safari/604.1",
+                "reportedDpr": 3,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": true,
+                "glRenderer": null,
+                "adapter": {
+                    "vendor": "apple",
+                    "architecture": "metal-3",
+                    "device": "",
+                    "description": ""
+                }
+            },
+            "elapsedMs": 4000.7900000000373,
+            "deliveredFps": 59.98815233991231,
+            "cpuMs": {
+                "samples": 240,
+                "median": 1.4199999999254942,
+                "p95": 2.150000000372529,
+                "min": 0.25,
+                "max": 2.580000000074506
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.670000000000073,
+                "p95": 17.625,
+                "min": 15.680000000000064,
+                "max": 17.659999999999854
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 0.589824,
+                "p95": 9.043968,
+                "min": 0.262144,
+                "max": 29.229056
+            },
+            "draws": {
+                "samples": 240,
+                "median": 41,
+                "p95": 41,
+                "min": 41,
+                "max": 41
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 84417,
+                "p95": 84417,
+                "min": 84417,
+                "max": 84417
+            },
+            "longTasks": [],
+            "heapBytes": 12700000
+        },
+        {
+            "scenario": "phone-large-4x",
+            "repeat": 0,
+            "cpuSlowdown": 4,
+            "warnings": [],
+            "meta": {
+                "backend": "webgl",
+                "actualBackend": "WebGL2",
+                "side": 32,
+                "dpr": 3,
+                "shadows": true,
+                "layout": "batched",
+                "width": 390,
+                "height": 664,
+                "backingWidth": 1170,
+                "backingHeight": 1992,
+                "devicePreset": "iPhone 14",
+                "viewport": {
+                    "width": 390,
+                    "height": 664
+                },
+                "screen": {
+                    "width": 390,
+                    "height": 844
+                },
+                "maxTouchPoints": 1,
+                "trees": 64,
+                "boxes": 64,
+                "terrainCells": 1024,
+                "objects": 80,
+                "sceneTriangles": 168832,
+                "outputPassTriangles": 0,
+                "rendererInitMs": 20.40500000026077,
+                "readyMs": 192.8850000007078,
+                "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Mobile/15E148 Safari/604.1",
+                "reportedDpr": 3,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": false,
+                "glRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+                "adapter": null
+            },
+            "elapsedMs": 4001.214999999851,
+            "deliveredFps": 59.98178053416498,
+            "cpuMs": {
+                "samples": 240,
+                "median": 1.0700000002980232,
+                "p95": 1.559999999590218,
+                "min": 0.19000000040978193,
+                "max": 1.9050000002607703
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.670000000000073,
+                "p95": 17.58999999999969,
+                "min": 15.675000000000182,
+                "max": 17.659999999999854
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 4.357291,
+                "p95": 12.135291,
+                "min": 0.521333,
+                "max": 13.225916
+            },
+            "draws": {
+                "samples": 240,
+                "median": 160,
+                "p95": 160,
+                "min": 160,
+                "max": 160
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 337664,
+                "p95": 337664,
+                "min": 337664,
+                "max": 337664
+            },
+            "longTasks": [],
+            "heapBytes": 10000000
+        },
+        {
+            "scenario": "phone-large-4x",
+            "repeat": 0,
+            "cpuSlowdown": 4,
+            "warnings": [],
+            "meta": {
+                "backend": "webgpu",
+                "actualBackend": "WebGPU",
+                "side": 32,
+                "dpr": 3,
+                "shadows": true,
+                "layout": "batched",
+                "width": 390,
+                "height": 664,
+                "backingWidth": 1170,
+                "backingHeight": 1992,
+                "devicePreset": "iPhone 14",
+                "viewport": {
+                    "width": 390,
+                    "height": 664
+                },
+                "screen": {
+                    "width": 390,
+                    "height": 844
+                },
+                "maxTouchPoints": 1,
+                "trees": 64,
+                "boxes": 64,
+                "terrainCells": 1024,
+                "objects": 80,
+                "sceneTriangles": 168832,
+                "outputPassTriangles": 1,
+                "rendererInitMs": 7.564999999478459,
+                "readyMs": 1097.9399999994785,
+                "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Mobile/15E148 Safari/604.1",
+                "reportedDpr": 3,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": true,
+                "glRenderer": null,
+                "adapter": {
+                    "vendor": "apple",
+                    "architecture": "metal-3",
+                    "device": "",
+                    "description": ""
+                }
+            },
+            "elapsedMs": 4002.3250000001863,
+            "deliveredFps": 59.96514525931523,
+            "cpuMs": {
+                "samples": 240,
+                "median": 2.550000000745058,
+                "p95": 3.2299999995157123,
+                "min": 1.3149999994784594,
+                "max": 3.6349999997764826
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.664999999999964,
+                "p95": 17.529999999999745,
+                "min": 15.684999999999945,
+                "max": 17.6299999999992
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 6.1603840000000005,
+                "p95": 14.352384,
+                "min": 0.589824,
+                "max": 18.284544000000004
+            },
+            "draws": {
+                "samples": 240,
+                "median": 161,
+                "p95": 161,
+                "min": 161,
+                "max": 161
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 337665,
+                "p95": 337665,
+                "min": 337665,
+                "max": 337665
+            },
+            "longTasks": [],
+            "heapBytes": 37300000
+        },
+        {
+            "scenario": "phone-large-4x-capped",
+            "repeat": 0,
+            "cpuSlowdown": 4,
+            "warnings": [],
+            "meta": {
+                "backend": "webgl",
+                "actualBackend": "WebGL2",
+                "side": 32,
+                "dpr": 1.5,
+                "shadows": true,
+                "layout": "batched",
+                "width": 390,
+                "height": 664,
+                "backingWidth": 585,
+                "backingHeight": 996,
+                "devicePreset": "iPhone 14",
+                "viewport": {
+                    "width": 390,
+                    "height": 664
+                },
+                "screen": {
+                    "width": 390,
+                    "height": 844
+                },
+                "maxTouchPoints": 1,
+                "trees": 64,
+                "boxes": 64,
+                "terrainCells": 1024,
+                "objects": 80,
+                "sceneTriangles": 168832,
+                "outputPassTriangles": 0,
+                "rendererInitMs": 21.235000000335276,
+                "readyMs": 207.78000000026077,
+                "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Mobile/15E148 Safari/604.1",
+                "reportedDpr": 3,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": false,
+                "glRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+                "adapter": null
+            },
+            "elapsedMs": 4001.3849999997765,
+            "deliveredFps": 59.97923219085727,
+            "cpuMs": {
+                "samples": 240,
+                "median": 1.1950000002980232,
+                "p95": 1.6450000004842877,
+                "min": 0.4699999997392297,
+                "max": 2.315000000409782
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.664999999999964,
+                "p95": 17.55500000000029,
+                "min": 15.664999999999964,
+                "max": 17.659999999999854
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 3.4025,
+                "p95": 8.24425,
+                "min": 0.449999,
+                "max": 13.507874
+            },
+            "draws": {
+                "samples": 240,
+                "median": 160,
+                "p95": 160,
+                "min": 160,
+                "max": 160
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 337664,
+                "p95": 337664,
+                "min": 337664,
+                "max": 337664
+            },
+            "longTasks": [],
+            "heapBytes": 12700000
+        },
+        {
+            "scenario": "phone-large-4x-capped",
+            "repeat": 0,
+            "cpuSlowdown": 4,
+            "warnings": [],
+            "meta": {
+                "backend": "webgpu",
+                "actualBackend": "WebGPU",
+                "side": 32,
+                "dpr": 1.5,
+                "shadows": true,
+                "layout": "batched",
+                "width": 390,
+                "height": 664,
+                "backingWidth": 585,
+                "backingHeight": 996,
+                "devicePreset": "iPhone 14",
+                "viewport": {
+                    "width": 390,
+                    "height": 664
+                },
+                "screen": {
+                    "width": 390,
+                    "height": 844
+                },
+                "maxTouchPoints": 1,
+                "trees": 64,
+                "boxes": 64,
+                "terrainCells": 1024,
+                "objects": 80,
+                "sceneTriangles": 168832,
+                "outputPassTriangles": 1,
+                "rendererInitMs": 25.12999999988824,
+                "readyMs": 1178.339999999851,
+                "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Mobile/15E148 Safari/604.1",
+                "reportedDpr": 3,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": true,
+                "glRenderer": null,
+                "adapter": {
+                    "vendor": "apple",
+                    "architecture": "metal-3",
+                    "device": "",
+                    "description": ""
+                }
+            },
+            "elapsedMs": 4003.510000000708,
+            "deliveredFps": 59.94739615985912,
+            "cpuMs": {
+                "samples": 240,
+                "median": 3.4900000002235174,
+                "p95": 4.4500000001862645,
+                "min": 1.9399999994784594,
+                "max": 4.989999999292195
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.664999999999964,
+                "p95": 17.590000000000146,
+                "min": 15.670000000000073,
+                "max": 17.664999999999964
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 1.179648,
+                "p95": 1.2451839999999998,
+                "min": 0.9175040000000001,
+                "max": 1.245184
+            },
+            "draws": {
+                "samples": 240,
+                "median": 161,
+                "p95": 161,
+                "min": 161,
+                "max": 161
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 337665,
+                "p95": 337665,
+                "min": 337665,
+                "max": 337665
+            },
+            "longTasks": [],
+            "heapBytes": 19300000
+        },
+        {
+            "scenario": "phone-garden-native",
+            "repeat": 1,
+            "cpuSlowdown": 1,
+            "warnings": [],
+            "meta": {
+                "backend": "webgpu",
+                "actualBackend": "WebGPU",
+                "side": 16,
+                "dpr": 3,
+                "shadows": true,
+                "layout": "batched",
+                "width": 390,
+                "height": 664,
+                "backingWidth": 1170,
+                "backingHeight": 1992,
+                "devicePreset": "iPhone 14",
+                "viewport": {
+                    "width": 390,
+                    "height": 664
+                },
+                "screen": {
+                    "width": 390,
+                    "height": 844
+                },
+                "maxTouchPoints": 1,
+                "trees": 16,
+                "boxes": 16,
+                "terrainCells": 256,
+                "objects": 20,
+                "sceneTriangles": 42208,
+                "outputPassTriangles": 1,
+                "rendererInitMs": 3.5549999997019768,
+                "readyMs": 129.04000000003725,
+                "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Mobile/15E148 Safari/604.1",
+                "reportedDpr": 3,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": true,
+                "glRenderer": null,
+                "adapter": {
+                    "vendor": "apple",
+                    "architecture": "metal-3",
+                    "device": "",
+                    "description": ""
+                }
+            },
+            "elapsedMs": 4000.4199999999255,
+            "deliveredFps": 59.99370066143167,
+            "cpuMs": {
+                "samples": 240,
+                "median": 0.39999999944120646,
+                "p95": 0.5,
+                "min": 0.28499999921768904,
+                "max": 0.5899999998509884
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.664999999999964,
+                "p95": 17.590000000000146,
+                "min": 15.675000000000182,
+                "max": 17.625
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 0.589824,
+                "p95": 1.245184,
+                "min": 0.32767999999999997,
+                "max": 1.572864
+            },
+            "draws": {
+                "samples": 240,
+                "median": 41,
+                "p95": 41,
+                "min": 41,
+                "max": 41
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 84417,
+                "p95": 84417,
+                "min": 84417,
+                "max": 84417
+            },
+            "longTasks": [],
+            "heapBytes": 13400000
+        },
+        {
+            "scenario": "phone-garden-native",
+            "repeat": 1,
+            "cpuSlowdown": 1,
+            "warnings": [],
+            "meta": {
+                "backend": "webgl",
+                "actualBackend": "WebGL2",
+                "side": 16,
+                "dpr": 3,
+                "shadows": true,
+                "layout": "batched",
+                "width": 390,
+                "height": 664,
+                "backingWidth": 1170,
+                "backingHeight": 1992,
+                "devicePreset": "iPhone 14",
+                "viewport": {
+                    "width": 390,
+                    "height": 664
+                },
+                "screen": {
+                    "width": 390,
+                    "height": 844
+                },
+                "maxTouchPoints": 1,
+                "trees": 16,
+                "boxes": 16,
+                "terrainCells": 256,
+                "objects": 20,
+                "sceneTriangles": 42208,
+                "outputPassTriangles": 0,
+                "rendererInitMs": 7.584999999962747,
+                "readyMs": 55.66500000003725,
+                "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Mobile/15E148 Safari/604.1",
+                "reportedDpr": 3,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": false,
+                "glRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+                "adapter": null
+            },
+            "elapsedMs": 4000.3549999995157,
+            "deliveredFps": 59.994675472559074,
+            "cpuMs": {
+                "samples": 240,
+                "median": 0.2099999999627471,
+                "p95": 0.25,
+                "min": 0.14000000059604645,
+                "max": 0.2850000001490116
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.664999999999964,
+                "p95": 17.585000000000036,
+                "min": 15.674999999999727,
+                "max": 17.675000000000182
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 0.580666,
+                "p95": 0.909791,
+                "min": 0.479374,
+                "max": 1.650916
+            },
+            "draws": {
+                "samples": 240,
+                "median": 40,
+                "p95": 40,
+                "min": 40,
+                "max": 40
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 84416,
+                "p95": 84416,
+                "min": 84416,
+                "max": 84416
+            },
+            "longTasks": [],
+            "heapBytes": 10000000
+        },
+        {
+            "scenario": "phone-garden-4x",
+            "repeat": 1,
+            "cpuSlowdown": 4,
+            "warnings": [],
+            "meta": {
+                "backend": "webgpu",
+                "actualBackend": "WebGPU",
+                "side": 16,
+                "dpr": 3,
+                "shadows": true,
+                "layout": "batched",
+                "width": 390,
+                "height": 664,
+                "backingWidth": 1170,
+                "backingHeight": 1992,
+                "devicePreset": "iPhone 14",
+                "viewport": {
+                    "width": 390,
+                    "height": 664
+                },
+                "screen": {
+                    "width": 390,
+                    "height": 844
+                },
+                "maxTouchPoints": 1,
+                "trees": 16,
+                "boxes": 16,
+                "terrainCells": 256,
+                "objects": 20,
+                "sceneTriangles": 42208,
+                "outputPassTriangles": 1,
+                "rendererInitMs": 26.115000000223517,
+                "readyMs": 541.785000000149,
+                "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Mobile/15E148 Safari/604.1",
+                "reportedDpr": 3,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": true,
+                "glRenderer": null,
+                "adapter": {
+                    "vendor": "apple",
+                    "architecture": "metal-3",
+                    "device": "",
+                    "description": ""
+                }
+            },
+            "elapsedMs": 4001.7599999997765,
+            "deliveredFps": 59.97361161089456,
+            "cpuMs": {
+                "samples": 240,
+                "median": 1.6150000002235174,
+                "p95": 2.3849999997764826,
+                "min": 0.5350000001490116,
+                "max": 3.169999999925494
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.664999999999964,
+                "p95": 17.585000000000036,
+                "min": 15.659999999999854,
+                "max": 17.66000000000031
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 0.9830399999999999,
+                "p95": 14.417919999999999,
+                "min": 0.32767999999999997,
+                "max": 16.515072
+            },
+            "draws": {
+                "samples": 240,
+                "median": 41,
+                "p95": 41,
+                "min": 41,
+                "max": 41
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 84417,
+                "p95": 84417,
+                "min": 84417,
+                "max": 84417
+            },
+            "longTasks": [],
+            "heapBytes": 11900000
+        },
+        {
+            "scenario": "phone-garden-4x",
+            "repeat": 1,
+            "cpuSlowdown": 4,
+            "warnings": [],
+            "meta": {
+                "backend": "webgl",
+                "actualBackend": "WebGL2",
+                "side": 16,
+                "dpr": 3,
+                "shadows": true,
+                "layout": "batched",
+                "width": 390,
+                "height": 664,
+                "backingWidth": 1170,
+                "backingHeight": 1992,
+                "devicePreset": "iPhone 14",
+                "viewport": {
+                    "width": 390,
+                    "height": 664
+                },
+                "screen": {
+                    "width": 390,
+                    "height": 844
+                },
+                "maxTouchPoints": 1,
+                "trees": 16,
+                "boxes": 16,
+                "terrainCells": 256,
+                "objects": 20,
+                "sceneTriangles": 42208,
+                "outputPassTriangles": 0,
+                "rendererInitMs": 20.96999999973923,
+                "readyMs": 174,
+                "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Mobile/15E148 Safari/604.1",
+                "reportedDpr": 3,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": false,
+                "glRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+                "adapter": null
+            },
+            "elapsedMs": 3999.3650000002235,
+            "deliveredFps": 60.00952651233048,
+            "cpuMs": {
+                "samples": 240,
+                "median": 0.7000000001862645,
+                "p95": 1.0700000002980232,
+                "min": 0.125,
+                "max": 1.3100000005215406
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.664999999999964,
+                "p95": 17.56999999999971,
+                "min": 15.674999999999727,
+                "max": 17.684999999999945
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 2.277749,
+                "p95": 8.9535,
+                "min": 0.29725,
+                "max": 13.881208
+            },
+            "draws": {
+                "samples": 240,
+                "median": 40,
+                "p95": 40,
+                "min": 40,
+                "max": 40
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 84416,
+                "p95": 84416,
+                "min": 84416,
+                "max": 84416
+            },
+            "longTasks": [],
+            "heapBytes": 10000000
+        },
+        {
+            "scenario": "phone-large-4x",
+            "repeat": 1,
+            "cpuSlowdown": 4,
+            "warnings": [],
+            "meta": {
+                "backend": "webgpu",
+                "actualBackend": "WebGPU",
+                "side": 32,
+                "dpr": 3,
+                "shadows": true,
+                "layout": "batched",
+                "width": 390,
+                "height": 664,
+                "backingWidth": 1170,
+                "backingHeight": 1992,
+                "devicePreset": "iPhone 14",
+                "viewport": {
+                    "width": 390,
+                    "height": 664
+                },
+                "screen": {
+                    "width": 390,
+                    "height": 844
+                },
+                "maxTouchPoints": 1,
+                "trees": 64,
+                "boxes": 64,
+                "terrainCells": 1024,
+                "objects": 80,
+                "sceneTriangles": 168832,
+                "outputPassTriangles": 1,
+                "rendererInitMs": 7.4249999998137355,
+                "readyMs": 1173.1550000002608,
+                "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Mobile/15E148 Safari/604.1",
+                "reportedDpr": 3,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": true,
+                "glRenderer": null,
+                "adapter": {
+                    "vendor": "apple",
+                    "architecture": "metal-3",
+                    "device": "",
+                    "description": ""
+                }
+            },
+            "elapsedMs": 4003.55999999959,
+            "deliveredFps": 59.94664748374561,
+            "cpuMs": {
+                "samples": 240,
+                "median": 2.8500000005587935,
+                "p95": 3.684999999590218,
+                "min": 1.3849999997764826,
+                "max": 4.685000000521541
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.670000000000073,
+                "p95": 17.514999999999418,
+                "min": 15.674999999999727,
+                "max": 17.655000000000655
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 10.81344,
+                "p95": 20.512768,
+                "min": 0.524288,
+                "max": 27.19744
+            },
+            "draws": {
+                "samples": 240,
+                "median": 161,
+                "p95": 161,
+                "min": 161,
+                "max": 161
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 337665,
+                "p95": 337665,
+                "min": 337665,
+                "max": 337665
+            },
+            "longTasks": [],
+            "heapBytes": 37300000
+        },
+        {
+            "scenario": "phone-large-4x",
+            "repeat": 1,
+            "cpuSlowdown": 4,
+            "warnings": [],
+            "meta": {
+                "backend": "webgl",
+                "actualBackend": "WebGL2",
+                "side": 32,
+                "dpr": 3,
+                "shadows": true,
+                "layout": "batched",
+                "width": 390,
+                "height": 664,
+                "backingWidth": 1170,
+                "backingHeight": 1992,
+                "devicePreset": "iPhone 14",
+                "viewport": {
+                    "width": 390,
+                    "height": 664
+                },
+                "screen": {
+                    "width": 390,
+                    "height": 844
+                },
+                "maxTouchPoints": 1,
+                "trees": 64,
+                "boxes": 64,
+                "terrainCells": 1024,
+                "objects": 80,
+                "sceneTriangles": 168832,
+                "outputPassTriangles": 0,
+                "rendererInitMs": 18.950000000186265,
+                "readyMs": 186.43999999947846,
+                "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Mobile/15E148 Safari/604.1",
+                "reportedDpr": 3,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": false,
+                "glRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+                "adapter": null
+            },
+            "elapsedMs": 4000.1699999999255,
+            "deliveredFps": 59.99745010837151,
+            "cpuMs": {
+                "samples": 240,
+                "median": 1.084999999962747,
+                "p95": 1.5800000000745058,
+                "min": 0.2050000000745058,
+                "max": 1.9500000001862645
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.659999999999854,
+                "p95": 17.590000000000146,
+                "min": 15.659999999999854,
+                "max": 17.655000000000655
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 4.023125,
+                "p95": 9.63725,
+                "min": 0.532375,
+                "max": 13.769541
+            },
+            "draws": {
+                "samples": 240,
+                "median": 160,
+                "p95": 160,
+                "min": 160,
+                "max": 160
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 337664,
+                "p95": 337664,
+                "min": 337664,
+                "max": 337664
+            },
+            "longTasks": [],
+            "heapBytes": 11900000
+        },
+        {
+            "scenario": "phone-large-4x-capped",
+            "repeat": 1,
+            "cpuSlowdown": 4,
+            "warnings": [],
+            "meta": {
+                "backend": "webgpu",
+                "actualBackend": "WebGPU",
+                "side": 32,
+                "dpr": 1.5,
+                "shadows": true,
+                "layout": "batched",
+                "width": 390,
+                "height": 664,
+                "backingWidth": 585,
+                "backingHeight": 996,
+                "devicePreset": "iPhone 14",
+                "viewport": {
+                    "width": 390,
+                    "height": 664
+                },
+                "screen": {
+                    "width": 390,
+                    "height": 844
+                },
+                "maxTouchPoints": 1,
+                "trees": 64,
+                "boxes": 64,
+                "terrainCells": 1024,
+                "objects": 80,
+                "sceneTriangles": 168832,
+                "outputPassTriangles": 1,
+                "rendererInitMs": 22.794999999925494,
+                "readyMs": 1149.2099999999627,
+                "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Mobile/15E148 Safari/604.1",
+                "reportedDpr": 3,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": true,
+                "glRenderer": null,
+                "adapter": {
+                    "vendor": "apple",
+                    "architecture": "metal-3",
+                    "device": "",
+                    "description": ""
+                }
+            },
+            "elapsedMs": 4001.429999999702,
+            "deliveredFps": 59.978557665639,
+            "cpuMs": {
+                "samples": 240,
+                "median": 2.6200000001117587,
+                "p95": 3.580000000074506,
+                "min": 1.1049999995157123,
+                "max": 4.564999999478459
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.664999999999964,
+                "p95": 17.554999999999836,
+                "min": 15.674999999999272,
+                "max": 17.664999999999964
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 7.077888,
+                "p95": 21.037056,
+                "min": 0.39321599999999995,
+                "max": 22.544384
+            },
+            "draws": {
+                "samples": 240,
+                "median": 161,
+                "p95": 161,
+                "min": 161,
+                "max": 161
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 337665,
+                "p95": 337665,
+                "min": 337665,
+                "max": 337665
+            },
+            "longTasks": [],
+            "heapBytes": 20500000
+        },
+        {
+            "scenario": "phone-large-4x-capped",
+            "repeat": 1,
+            "cpuSlowdown": 4,
+            "warnings": [],
+            "meta": {
+                "backend": "webgl",
+                "actualBackend": "WebGL2",
+                "side": 32,
+                "dpr": 1.5,
+                "shadows": true,
+                "layout": "batched",
+                "width": 390,
+                "height": 664,
+                "backingWidth": 585,
+                "backingHeight": 996,
+                "devicePreset": "iPhone 14",
+                "viewport": {
+                    "width": 390,
+                    "height": 664
+                },
+                "screen": {
+                    "width": 390,
+                    "height": 844
+                },
+                "maxTouchPoints": 1,
+                "trees": 64,
+                "boxes": 64,
+                "terrainCells": 1024,
+                "objects": 80,
+                "sceneTriangles": 168832,
+                "outputPassTriangles": 0,
+                "rendererInitMs": 21.395000000484288,
+                "readyMs": 192.71999999973923,
+                "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Mobile/15E148 Safari/604.1",
+                "reportedDpr": 3,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": false,
+                "glRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+                "adapter": null
+            },
+            "elapsedMs": 4001.4550000000745,
+            "deliveredFps": 59.97818293595593,
+            "cpuMs": {
+                "samples": 240,
+                "median": 1.0350000001490116,
+                "p95": 1.4249999998137355,
+                "min": 0.2050000000745058,
+                "max": 1.6100000003352761
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.664999999999964,
+                "p95": 17.539999999999964,
+                "min": 15.684999999999945,
+                "max": 17.659999999999854
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 4.144541,
+                "p95": 9.835833,
+                "min": 0.389249,
+                "max": 13.573125
+            },
+            "draws": {
+                "samples": 240,
+                "median": 160,
+                "p95": 160,
+                "min": 160,
+                "max": 160
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 337664,
+                "p95": 337664,
+                "min": 337664,
+                "max": 337664
+            },
+            "longTasks": [],
+            "heapBytes": 11900000
+        },
+        {
+            "scenario": "phone-garden-native",
+            "repeat": 2,
+            "cpuSlowdown": 1,
+            "warnings": [],
+            "meta": {
+                "backend": "webgl",
+                "actualBackend": "WebGL2",
+                "side": 16,
+                "dpr": 3,
+                "shadows": true,
+                "layout": "batched",
+                "width": 390,
+                "height": 664,
+                "backingWidth": 1170,
+                "backingHeight": 1992,
+                "devicePreset": "iPhone 14",
+                "viewport": {
+                    "width": 390,
+                    "height": 664
+                },
+                "screen": {
+                    "width": 390,
+                    "height": 844
+                },
+                "maxTouchPoints": 1,
+                "trees": 16,
+                "boxes": 16,
+                "terrainCells": 256,
+                "objects": 20,
+                "sceneTriangles": 42208,
+                "outputPassTriangles": 0,
+                "rendererInitMs": 6.084999999962747,
+                "readyMs": 54.74500000011176,
+                "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Mobile/15E148 Safari/604.1",
+                "reportedDpr": 3,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": false,
+                "glRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+                "adapter": null
+            },
+            "elapsedMs": 4000.140000000596,
+            "deliveredFps": 59.99790007348849,
+            "cpuMs": {
+                "samples": 240,
+                "median": 0.625,
+                "p95": 0.8300000000745058,
+                "min": 0.1650000000372529,
+                "max": 1.0950000006705523
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.664999999999964,
+                "p95": 17.545000000000073,
+                "min": 15.724999999999909,
+                "max": 17.639999999999418
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 0.500208,
+                "p95": 3.388249,
+                "min": 0.290416,
+                "max": 12.118499
+            },
+            "draws": {
+                "samples": 240,
+                "median": 40,
+                "p95": 40,
+                "min": 40,
+                "max": 40
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 84416,
+                "p95": 84416,
+                "min": 84416,
+                "max": 84416
+            },
+            "longTasks": [],
+            "heapBytes": 10000000
+        },
+        {
+            "scenario": "phone-garden-native",
+            "repeat": 2,
+            "cpuSlowdown": 1,
+            "warnings": [],
+            "meta": {
+                "backend": "webgpu",
+                "actualBackend": "WebGPU",
+                "side": 16,
+                "dpr": 3,
+                "shadows": true,
+                "layout": "batched",
+                "width": 390,
+                "height": 664,
+                "backingWidth": 1170,
+                "backingHeight": 1992,
+                "devicePreset": "iPhone 14",
+                "viewport": {
+                    "width": 390,
+                    "height": 664
+                },
+                "screen": {
+                    "width": 390,
+                    "height": 844
+                },
+                "maxTouchPoints": 1,
+                "trees": 16,
+                "boxes": 16,
+                "terrainCells": 256,
+                "objects": 20,
+                "sceneTriangles": 42208,
+                "outputPassTriangles": 1,
+                "rendererInitMs": 2.610000000335276,
+                "readyMs": 116.61500000022352,
+                "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Mobile/15E148 Safari/604.1",
+                "reportedDpr": 3,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": true,
+                "glRenderer": null,
+                "adapter": {
+                    "vendor": "apple",
+                    "architecture": "metal-3",
+                    "device": "",
+                    "description": ""
+                }
+            },
+            "elapsedMs": 4001.0800000000745,
+            "deliveredFps": 59.98380437281822,
+            "cpuMs": {
+                "samples": 240,
+                "median": 1.0350000001490116,
+                "p95": 1.5600000005215406,
+                "min": 0.3049999997019768,
+                "max": 1.8449999997392297
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.664999999999964,
+                "p95": 17.659999999999854,
+                "min": 15.654999999999745,
+                "max": 17.67999999999938
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 0.589824,
+                "p95": 1.6384,
+                "min": 0.32767999999999997,
+                "max": 7.667712
+            },
+            "draws": {
+                "samples": 240,
+                "median": 41,
+                "p95": 41,
+                "min": 41,
+                "max": 41
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 84417,
+                "p95": 84417,
+                "min": 84417,
+                "max": 84417
+            },
+            "longTasks": [],
+            "heapBytes": 10600000
+        },
+        {
+            "scenario": "phone-garden-4x",
+            "repeat": 2,
+            "cpuSlowdown": 4,
+            "warnings": [],
+            "meta": {
+                "backend": "webgl",
+                "actualBackend": "WebGL2",
+                "side": 16,
+                "dpr": 3,
+                "shadows": true,
+                "layout": "batched",
+                "width": 390,
+                "height": 664,
+                "backingWidth": 1170,
+                "backingHeight": 1992,
+                "devicePreset": "iPhone 14",
+                "viewport": {
+                    "width": 390,
+                    "height": 664
+                },
+                "screen": {
+                    "width": 390,
+                    "height": 844
+                },
+                "maxTouchPoints": 1,
+                "trees": 16,
+                "boxes": 16,
+                "terrainCells": 256,
+                "objects": 20,
+                "sceneTriangles": 42208,
+                "outputPassTriangles": 0,
+                "rendererInitMs": 20.984999999403954,
+                "readyMs": 174.6149999992922,
+                "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Mobile/15E148 Safari/604.1",
+                "reportedDpr": 3,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": false,
+                "glRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+                "adapter": null
+            },
+            "elapsedMs": 4001.75,
+            "deliveredFps": 59.97376147935278,
+            "cpuMs": {
+                "samples": 240,
+                "median": 0.8799999998882413,
+                "p95": 1.4699999997392297,
+                "min": 0.13499999977648258,
+                "max": 2.2049999991431832
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.664999999999964,
+                "p95": 17.57000000000062,
+                "min": 15.674999999999727,
+                "max": 17.659999999999854
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 0.537458,
+                "p95": 10.638875,
+                "min": 0.483625,
+                "max": 13.641666
+            },
+            "draws": {
+                "samples": 240,
+                "median": 40,
+                "p95": 40,
+                "min": 40,
+                "max": 40
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 84416,
+                "p95": 84416,
+                "min": 84416,
+                "max": 84416
+            },
+            "longTasks": [],
+            "heapBytes": 10000000
+        },
+        {
+            "scenario": "phone-garden-4x",
+            "repeat": 2,
+            "cpuSlowdown": 4,
+            "warnings": [],
+            "meta": {
+                "backend": "webgpu",
+                "actualBackend": "WebGPU",
+                "side": 16,
+                "dpr": 3,
+                "shadows": true,
+                "layout": "batched",
+                "width": 390,
+                "height": 664,
+                "backingWidth": 1170,
+                "backingHeight": 1992,
+                "devicePreset": "iPhone 14",
+                "viewport": {
+                    "width": 390,
+                    "height": 664
+                },
+                "screen": {
+                    "width": 390,
+                    "height": 844
+                },
+                "maxTouchPoints": 1,
+                "trees": 16,
+                "boxes": 16,
+                "terrainCells": 256,
+                "objects": 20,
+                "sceneTriangles": 42208,
+                "outputPassTriangles": 1,
+                "rendererInitMs": 26.190000000409782,
+                "readyMs": 564.2400000002235,
+                "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Mobile/15E148 Safari/604.1",
+                "reportedDpr": 3,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": true,
+                "glRenderer": null,
+                "adapter": {
+                    "vendor": "apple",
+                    "architecture": "metal-3",
+                    "device": "",
+                    "description": ""
+                }
+            },
+            "elapsedMs": 4002.8300000000745,
+            "deliveredFps": 59.95758001214029,
+            "cpuMs": {
+                "samples": 240,
+                "median": 2.1349999997764826,
+                "p95": 2.75,
+                "min": 0.4199999999254942,
+                "max": 3.150000000372529
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.664999999999964,
+                "p95": 17.574999999999818,
+                "min": 15.664999999999964,
+                "max": 17.659999999999854
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 0.6553599999999999,
+                "p95": 8.454144,
+                "min": 0.393216,
+                "max": 10.747904
+            },
+            "draws": {
+                "samples": 240,
+                "median": 41,
+                "p95": 41,
+                "min": 41,
+                "max": 41
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 84417,
+                "p95": 84417,
+                "min": 84417,
+                "max": 84417
+            },
+            "longTasks": [],
+            "heapBytes": 12700000
+        },
+        {
+            "scenario": "phone-large-4x",
+            "repeat": 2,
+            "cpuSlowdown": 4,
+            "warnings": [],
+            "meta": {
+                "backend": "webgl",
+                "actualBackend": "WebGL2",
+                "side": 32,
+                "dpr": 3,
+                "shadows": true,
+                "layout": "batched",
+                "width": 390,
+                "height": 664,
+                "backingWidth": 1170,
+                "backingHeight": 1992,
+                "devicePreset": "iPhone 14",
+                "viewport": {
+                    "width": 390,
+                    "height": 664
+                },
+                "screen": {
+                    "width": 390,
+                    "height": 844
+                },
+                "maxTouchPoints": 1,
+                "trees": 64,
+                "boxes": 64,
+                "terrainCells": 1024,
+                "objects": 80,
+                "sceneTriangles": 168832,
+                "outputPassTriangles": 0,
+                "rendererInitMs": 24.794999999925494,
+                "readyMs": 224.53999999910593,
+                "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Mobile/15E148 Safari/604.1",
+                "reportedDpr": 3,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": false,
+                "glRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+                "adapter": null
+            },
+            "elapsedMs": 4001.774999999441,
+            "deliveredFps": 59.97338680961161,
+            "cpuMs": {
+                "samples": 240,
+                "median": 1.4550000000745058,
+                "p95": 2.025000000372529,
+                "min": 0.7749999994412065,
+                "max": 2.360000000335276
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.664999999999964,
+                "p95": 17.50500000000011,
+                "min": 15.670000000000073,
+                "max": 17.6299999999992
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 1.696375,
+                "p95": 8.556499,
+                "min": 0.854875,
+                "max": 10.437916
+            },
+            "draws": {
+                "samples": 240,
+                "median": 160,
+                "p95": 160,
+                "min": 160,
+                "max": 160
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 337664,
+                "p95": 337664,
+                "min": 337664,
+                "max": 337664
+            },
+            "longTasks": [],
+            "heapBytes": 12700000
+        },
+        {
+            "scenario": "phone-large-4x",
+            "repeat": 2,
+            "cpuSlowdown": 4,
+            "warnings": [],
+            "meta": {
+                "backend": "webgpu",
+                "actualBackend": "WebGPU",
+                "side": 32,
+                "dpr": 3,
+                "shadows": true,
+                "layout": "batched",
+                "width": 390,
+                "height": 664,
+                "backingWidth": 1170,
+                "backingHeight": 1992,
+                "devicePreset": "iPhone 14",
+                "viewport": {
+                    "width": 390,
+                    "height": 664
+                },
+                "screen": {
+                    "width": 390,
+                    "height": 844
+                },
+                "maxTouchPoints": 1,
+                "trees": 64,
+                "boxes": 64,
+                "terrainCells": 1024,
+                "objects": 80,
+                "sceneTriangles": 168832,
+                "outputPassTriangles": 1,
+                "rendererInitMs": 22.600000000558794,
+                "readyMs": 1252.2450000001118,
+                "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Mobile/15E148 Safari/604.1",
+                "reportedDpr": 3,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": true,
+                "glRenderer": null,
+                "adapter": {
+                    "vendor": "apple",
+                    "architecture": "metal-3",
+                    "device": "",
+                    "description": ""
+                }
+            },
+            "elapsedMs": 4002.605000000447,
+            "deliveredFps": 59.9609504310251,
+            "cpuMs": {
+                "samples": 240,
+                "median": 2.9799999995157123,
+                "p95": 3.775000000372529,
+                "min": 1.849999999627471,
+                "max": 4.25
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.664999999999964,
+                "p95": 17.535000000000764,
+                "min": 15.680000000000291,
+                "max": 17.664999999999964
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 8.781824,
+                "p95": 19.070976,
+                "min": 1.048576,
+                "max": 20.054016
+            },
+            "draws": {
+                "samples": 240,
+                "median": 161,
+                "p95": 161,
+                "min": 161,
+                "max": 161
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 337665,
+                "p95": 337665,
+                "min": 337665,
+                "max": 337665
+            },
+            "longTasks": [],
+            "heapBytes": 37300000
+        },
+        {
+            "scenario": "phone-large-4x-capped",
+            "repeat": 2,
+            "cpuSlowdown": 4,
+            "warnings": [],
+            "meta": {
+                "backend": "webgl",
+                "actualBackend": "WebGL2",
+                "side": 32,
+                "dpr": 1.5,
+                "shadows": true,
+                "layout": "batched",
+                "width": 390,
+                "height": 664,
+                "backingWidth": 585,
+                "backingHeight": 996,
+                "devicePreset": "iPhone 14",
+                "viewport": {
+                    "width": 390,
+                    "height": 664
+                },
+                "screen": {
+                    "width": 390,
+                    "height": 844
+                },
+                "maxTouchPoints": 1,
+                "trees": 64,
+                "boxes": 64,
+                "terrainCells": 1024,
+                "objects": 80,
+                "sceneTriangles": 168832,
+                "outputPassTriangles": 0,
+                "rendererInitMs": 19.15000000037253,
+                "readyMs": 188.38499999977648,
+                "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Mobile/15E148 Safari/604.1",
+                "reportedDpr": 3,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": false,
+                "glRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+                "adapter": null
+            },
+            "elapsedMs": 4001.4599999999627,
+            "deliveredFps": 59.97810799058399,
+            "cpuMs": {
+                "samples": 240,
+                "median": 1.125,
+                "p95": 1.5750000001862645,
+                "min": 0.2099999999627471,
+                "max": 2.110000000335276
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.66000000000031,
+                "p95": 17.565000000000055,
+                "min": 15.69000000000051,
+                "max": 17.655000000000655
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 1.470374,
+                "p95": 6.420791,
+                "min": 0.498375,
+                "max": 8.438666
+            },
+            "draws": {
+                "samples": 240,
+                "median": 160,
+                "p95": 160,
+                "min": 160,
+                "max": 160
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 337664,
+                "p95": 337664,
+                "min": 337664,
+                "max": 337664
+            },
+            "longTasks": [],
+            "heapBytes": 10000000
+        },
+        {
+            "scenario": "phone-large-4x-capped",
+            "repeat": 2,
+            "cpuSlowdown": 4,
+            "warnings": [],
+            "meta": {
+                "backend": "webgpu",
+                "actualBackend": "WebGPU",
+                "side": 32,
+                "dpr": 1.5,
+                "shadows": true,
+                "layout": "batched",
+                "width": 390,
+                "height": 664,
+                "backingWidth": 585,
+                "backingHeight": 996,
+                "devicePreset": "iPhone 14",
+                "viewport": {
+                    "width": 390,
+                    "height": 664
+                },
+                "screen": {
+                    "width": 390,
+                    "height": 844
+                },
+                "maxTouchPoints": 1,
+                "trees": 64,
+                "boxes": 64,
+                "terrainCells": 1024,
+                "objects": 80,
+                "sceneTriangles": 168832,
+                "outputPassTriangles": 1,
+                "rendererInitMs": 8.120000000111759,
+                "readyMs": 1198.1550000002608,
+                "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Mobile/15E148 Safari/604.1",
+                "reportedDpr": 3,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": true,
+                "glRenderer": null,
+                "adapter": {
+                    "vendor": "apple",
+                    "architecture": "metal-3",
+                    "device": "",
+                    "description": ""
+                }
+            },
+            "elapsedMs": 4003.0750000001863,
+            "deliveredFps": 59.95391043135311,
+            "cpuMs": {
+                "samples": 240,
+                "median": 3.074999999254942,
+                "p95": 4.245000000111759,
+                "min": 1.9249999998137355,
+                "max": 4.790000000037253
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.664999999999964,
+                "p95": 17.484999999999673,
+                "min": 15.679999999999836,
+                "max": 17.670000000000073
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 6.5536,
+                "p95": 16.384,
+                "min": 0.589824,
+                "max": 17.03936
+            },
+            "draws": {
+                "samples": 240,
+                "median": 161,
+                "p95": 161,
+                "min": 161,
+                "max": 161
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 337665,
+                "p95": 337665,
+                "min": 337665,
+                "max": 337665
+            },
+            "longTasks": [],
+            "heapBytes": 24500000
+        }
+    ],
+    "cpu": [],
+    "visualComparisons": [
+        {
+            "scenario": "phone-garden-native",
+            "repeat": 0,
+            "backend": "webgpu",
+            "meanAbsoluteChannelError": 0.10757817595166992,
+            "fractionChannelsOver10": 0.000006579022643279672
+        },
+        {
+            "scenario": "phone-garden-4x",
+            "repeat": 0,
+            "backend": "webgpu",
+            "meanAbsoluteChannelError": 0.10757817595166992,
+            "fractionChannelsOver10": 0.000006579022643279672
+        },
+        {
+            "scenario": "phone-large-4x",
+            "repeat": 0,
+            "backend": "webgpu",
+            "meanAbsoluteChannelError": 0.1067567992768796,
+            "fractionChannelsOver10": 0.0000062929781805283815
+        },
+        {
+            "scenario": "phone-large-4x-capped",
+            "repeat": 0,
+            "backend": "webgpu",
+            "meanAbsoluteChannelError": 0.09730917973889862,
+            "fractionChannelsOver10": 0.0000015732445451320954
+        },
+        {
+            "scenario": "phone-garden-native",
+            "repeat": 1,
+            "backend": "webgpu",
+            "meanAbsoluteChannelError": 0.10757817595166992,
+            "fractionChannelsOver10": 0.000006579022643279672
+        },
+        {
+            "scenario": "phone-garden-4x",
+            "repeat": 1,
+            "backend": "webgpu",
+            "meanAbsoluteChannelError": 0.10757817595166992,
+            "fractionChannelsOver10": 0.000006579022643279672
+        },
+        {
+            "scenario": "phone-large-4x",
+            "repeat": 1,
+            "backend": "webgpu",
+            "meanAbsoluteChannelError": 0.1067567992768796,
+            "fractionChannelsOver10": 0.0000062929781805283815
+        },
+        {
+            "scenario": "phone-large-4x-capped",
+            "repeat": 1,
+            "backend": "webgpu",
+            "meanAbsoluteChannelError": 0.09730917973889862,
+            "fractionChannelsOver10": 0.0000015732445451320954
+        },
+        {
+            "scenario": "phone-garden-native",
+            "repeat": 2,
+            "backend": "webgpu",
+            "meanAbsoluteChannelError": 0.10757817595166992,
+            "fractionChannelsOver10": 0.000006579022643279672
+        },
+        {
+            "scenario": "phone-garden-4x",
+            "repeat": 2,
+            "backend": "webgpu",
+            "meanAbsoluteChannelError": 0.10757817595166992,
+            "fractionChannelsOver10": 0.000006579022643279672
+        },
+        {
+            "scenario": "phone-large-4x",
+            "repeat": 2,
+            "backend": "webgpu",
+            "meanAbsoluteChannelError": 0.1067567992768796,
+            "fractionChannelsOver10": 0.0000062929781805283815
+        },
+        {
+            "scenario": "phone-large-4x-capped",
+            "repeat": 2,
+            "backend": "webgpu",
+            "meanAbsoluteChannelError": 0.09730917973889862,
+            "fractionChannelsOver10": 0.0000015732445451320954
+        }
+    ],
+    "BlockGrassSha256": "c63b0a39f94243d337caec4cb786c5b2f5f856dc915f910fb349bc12508feacd",
+    "TreeSha256": "55fe59850d8f365d750754b0d6edd3af991f7d2e28963e688b5ce47ee7e96450",
+    "GardenBoxSha256": "c007d6f4b67133e61365dbd9377edf7437f53711d026e29fe4a8093eeee88675",
+    "completedAt": "2026-09-26T11:48:38.339Z",
+    "rawResultsPath": "packages/game/experiments/engine-migration/.output/2026-09-26T11-45-43-965Z/results.json",
+    "rawResultsSha256": "93b5eae530874e0aa5e28227d712dd5990a5bc057361cd7208131545b61994ca",
+    "supplementalValidation": {
+        "capturedAt": "2026-09-26T11:57:22.942Z",
+        "profile": {
+            "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Mobile/15E148 Safari/604.1",
+            "viewport": {
+                "width": 390,
+                "height": 664
+            },
+            "screen": {
+                "width": 390,
+                "height": 844
+            },
+            "deviceScaleFactor": 3,
+            "isMobile": true,
+            "hasTouch": true,
+            "defaultBrowserType": "webkit"
+        },
+        "touch": [
+            {
+                "backend": "webgl",
+                "dragChangedChannels": 764376,
+                "pinchChangedChannels": 1926873,
+                "state": {
+                    "scrollY": 0,
+                    "scale": 1,
+                    "touch": 1,
+                    "width": 390,
+                    "height": 664,
+                    "dpr": 3
+                },
+                "errors": []
+            },
+            {
+                "backend": "webgpu",
+                "dragChangedChannels": 764243,
+                "pinchChangedChannels": 1926560,
+                "state": {
+                    "scrollY": 0,
+                    "scale": 1,
+                    "touch": 1,
+                    "width": 390,
+                    "height": 664,
+                    "dpr": 3
+                },
+                "errors": []
+            }
+        ],
+        "webkit": [
+            {
+                "backend": "webgl",
+                "meta": {
+                    "backend": "webgl",
+                    "actualBackend": "WebGL2",
+                    "side": 16,
+                    "dpr": 3,
+                    "shadows": true,
+                    "layout": "batched",
+                    "width": 390,
+                    "height": 664,
+                    "backingWidth": 1170,
+                    "backingHeight": 1992,
+                    "devicePreset": "iPhone 14",
+                    "viewport": {
+                        "width": 390,
+                        "height": 664
+                    },
+                    "screen": {
+                        "width": 390,
+                        "height": 844
+                    },
+                    "maxTouchPoints": 0,
+                    "trees": 16,
+                    "boxes": 16,
+                    "terrainCells": 256,
+                    "objects": 20,
+                    "sceneTriangles": 42208,
+                    "outputPassTriangles": 0,
+                    "rendererInitMs": 15.940000000000005,
+                    "readyMs": 61.42000000000001,
+                    "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Mobile/15E148 Safari/604.1",
+                    "reportedDpr": 3,
+                    "crossOriginIsolated": true,
+                    "gpuTimestampSupported": false,
+                    "glRenderer": "Apple GPU",
+                    "adapter": null
+                },
+                "error": null,
+                "captureChecks": [
+                    {
+                        "attempt": 1,
+                        "nonblank": true,
+                        "stdev": [
+                            36.623693868560416, 43.53621167226289,
+                            64.43681880842365, 0
+                        ]
+                    },
+                    {
+                        "attempt": 2,
+                        "nonblank": true,
+                        "stdev": [
+                            36.623693868560416, 43.53621167226289,
+                            64.43681880842365, 0
+                        ]
+                    }
+                ],
+                "errors": []
+            },
+            {
+                "backend": "webgpu",
+                "meta": {
+                    "backend": "webgpu",
+                    "actualBackend": "WebGPU",
+                    "side": 16,
+                    "dpr": 3,
+                    "shadows": true,
+                    "layout": "batched",
+                    "width": 390,
+                    "height": 664,
+                    "backingWidth": 1170,
+                    "backingHeight": 1992,
+                    "devicePreset": "iPhone 14",
+                    "viewport": {
+                        "width": 390,
+                        "height": 664
+                    },
+                    "screen": {
+                        "width": 390,
+                        "height": 844
+                    },
+                    "maxTouchPoints": 0,
+                    "trees": 16,
+                    "boxes": 16,
+                    "terrainCells": 256,
+                    "objects": 20,
+                    "sceneTriangles": 42208,
+                    "outputPassTriangles": 1,
+                    "rendererInitMs": 5.440000000000005,
+                    "readyMs": 2912.86,
+                    "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Mobile/15E148 Safari/604.1",
+                    "reportedDpr": 3,
+                    "crossOriginIsolated": true,
+                    "gpuTimestampSupported": true,
+                    "glRenderer": null,
+                    "adapter": {
+                        "vendor": "apple",
+                        "architecture": "apple",
+                        "device": "apple",
+                        "description": "apple"
+                    }
+                },
+                "error": null,
+                "captureChecks": [
+                    {
+                        "attempt": 1,
+                        "nonblank": true,
+                        "stdev": [
+                            36.383613988717535, 43.307675818436664,
+                            64.43768371907578, 0
+                        ]
+                    },
+                    {
+                        "attempt": 2,
+                        "nonblank": true,
+                        "stdev": [
+                            36.383613988717535, 43.307675818436664,
+                            64.43768371907578, 0
+                        ]
+                    }
+                ],
+                "errors": []
+            }
+        ],
+        "navigation": "Renderer preserves phone; resolution cap applies; desktop resets render DPR",
+        "webkitVersion": "26.5",
+        "scope": "Input/navigation on Chromium; desktop WebKit live-preview capture probe, separate from performance campaign. Earlier idle WebGPU captures in WebKit were unreliable; interactive preview retains continuous rendering.",
+        "earlierIdleWebkitProbe": {
+            "browser": "26.5",
+            "state": {
+                "meta": {
+                    "backend": "webgpu",
+                    "actualBackend": "WebGPU",
+                    "side": 16,
+                    "dpr": 3,
+                    "shadows": true,
+                    "layout": "batched",
+                    "width": 390,
+                    "height": 664,
+                    "backingWidth": 1170,
+                    "backingHeight": 1992,
+                    "devicePreset": "iPhone 14",
+                    "viewport": {
+                        "width": 390,
+                        "height": 664
+                    },
+                    "screen": {
+                        "width": 390,
+                        "height": 844
+                    },
+                    "maxTouchPoints": 0,
+                    "trees": 16,
+                    "boxes": 16,
+                    "terrainCells": 256,
+                    "objects": 20,
+                    "sceneTriangles": 42208,
+                    "outputPassTriangles": 1,
+                    "rendererInitMs": 3.8600000000000065,
+                    "readyMs": 2903.64,
+                    "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Mobile/15E148 Safari/604.1",
+                    "reportedDpr": 3,
+                    "crossOriginIsolated": true,
+                    "gpuTimestampSupported": true,
+                    "glRenderer": null,
+                    "adapter": {
+                        "vendor": "apple",
+                        "architecture": "apple",
+                        "device": "apple",
+                        "description": "apple"
+                    }
+                }
+            },
+            "phases": [
+                {
+                    "phase": "initial",
+                    "stdev": [0, 0, 0, 0]
+                },
+                {
+                    "phase": "after-frames",
+                    "stdev": [
+                        35.67917734756955, 42.59240807357042, 64.0984894188776,
+                        0
+                    ]
+                }
+            ],
+            "errors": []
+        },
+        "validationScriptSha256": "1b7596cb28e4218832bb44398d854511c2b1e412ea9720778a1fdafe9789f61d",
+        "bundleSha256": "348cb32d57382601eb95175ed619a4f101d85daf0b7df24a7dfe8fc430a52ea1"
+    }
+}

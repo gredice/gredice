@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gredice renderer experiment</title>
+<style>
+  body { margin: 0; background: #18231c; color: #eff4e8; font: 15px system-ui; }
+  header { padding: 14px 22px; }
+  h1 { font-size: 20px; margin: 0 0 8px; }
+  a { color: #c8e6a1; display: inline-block; margin-right: 14px; padding: 6px 0; }
+  p { margin: 8px 0; }
+  canvas { display: block; max-width: 100%; height: auto; touch-action: none; }
+  [data-device="iphone14"] #preview { width: 390px; max-width: 100%; margin: 20px auto; box-shadow: 0 0 0 8px #090e0b; border-radius: 24px; overflow: hidden; }
+  [data-automation="true"] header { display: none; }
+  [data-automation="true"] #preview { margin: 0; box-shadow: none; border-radius: 0; }
+  pre { white-space: pre-wrap; font-size: 12px; }
+</style>
+<header>
+  <h1>Gredice renderer experiment</h1>
+  <p>Shipped assets, retained terrain chunks, instanced props. Drag to orbit; pinch or scroll to zoom.</p>
+  <nav aria-label="Renderer">
+    <a href="?backend=webgl">Three WebGL</a>
+    <a href="?backend=webgpu">Three WebGPU</a>
+    <a href="?backend=webgpu-bundle&amp;shadows=0">WebGPU bundles (no shadows)</a>
+    <a href="?backend=webgpu-gl">New renderer / WebGL fallback</a>
+  </nav>
+  <nav aria-label="Device preview">
+    <a href="?device=desktop">Desktop</a>
+    <a href="?device=iphone14">iPhone 14</a>
+    <a href="?dpr=3">3× render scale</a>
+    <a href="?dpr=1.5">1.5× render scale</a>
+  </nav>
+  <p id="device-note"></p>
+  <p id="status">Loading…</p>
+</header>
+<main id="preview">
+<canvas id="scene" aria-label="Garden renderer comparison"></canvas>
+</main>
+<script type="module" src="/client.js"></script>
+</html>
