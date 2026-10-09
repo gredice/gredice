@@ -67,6 +67,15 @@ entitlement is inferred from arbitrary existing operation dates.
 
 ## Logging
 
+Production storage selects the `ws` WebSocket constructor on each Neon client,
+without changing the global WebSocket or other pools. Node's native transport
+emits a code-less `ErrorEvent` when TCP ends without a WebSocket close handshake,
+including after the pool intentionally removes an idle client and sends Postgres
+Terminate. `ws` lets the driver treat intentional teardown as normal while
+unexpected idle disconnects still emit pool errors and active failures still
+reject their queries. See [the transport investigation](./docs/neon-pool-disconnect-investigation.md)
+for production evidence, the loopback reproduction, and its limits.
+
 The production Neon pool reports background connection errors with the stable
 `storage.neon.pool.error` event, error kind, safe SQLSTATE/transport code when
 available, and total/idle/waiting pool counts. Every event is logged at error

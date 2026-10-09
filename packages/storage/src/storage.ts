@@ -1,7 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createRequire } from 'node:module';
 import type { PGlite, Transaction } from '@electric-sql/pglite';
-import { Pool } from '@neondatabase/serverless';
+import { Client, Pool } from '@neondatabase/serverless';
 import {
     type NeonDatabase,
     drizzle as neonDrizzle,
@@ -17,6 +17,7 @@ import type { PgQueryResultHKT } from 'drizzle-orm/pg-core/session';
 import type { PgliteDatabase } from 'drizzle-orm/pglite';
 // @ts-expect-error Type definitions for 'pg' ESM entry may not be resolved under NodeNext; runtime is fine for tests
 import { Pool as PgPool } from 'pg';
+import WebSocket from 'ws';
 import { withDueWorkCommitSignals } from './dueWork';
 import { neonPoolErrorDetails } from './neonPoolError';
 import * as schema from './schema';
@@ -166,11 +167,23 @@ function nodePgStorage() {
     return nodeClient;
 }
 
+class NeonStorageClient extends Client {
+    constructor(config?: ConstructorParameters<typeof Client>[0]) {
+        super(config);
+        // Node's native WebSocket emits a code-less ErrorEvent when a peer
+        // ends TCP without a close handshake, even after our idle eviction.
+        // ws lets the driver distinguish intentional end from unexpected loss.
+        this.neonConfig.webSocketConstructor = WebSocket;
+    }
+}
+
 function neonStorage() {
     if (!pool) {
         const neonPool = new Pool({
             connectionString: getDbConnectionString(),
         });
+        // Neon overrides the PoolConfig Client option in its constructor.
+        neonPool.Client = NeonStorageClient;
         // The driver removes a failed idle client before emitting this event.
         // Handle it before first use so background disconnects cannot become
         // uncaught errors. Query/transaction rejections still reach their callers.
