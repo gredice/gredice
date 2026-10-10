@@ -224,13 +224,13 @@ importers:
         version: link:../../packages/ui
       '@hono/mcp':
         specifier: 0.3.2
-        version: 0.3.2(@modelcontextprotocol/sdk@1.32.0(supports-color@10.2.2)(zod@4.6.5))(hono-rate-limiter@0.5.4(hono@4.13.13))(hono@4.13.13)(zod@4.6.5)
+        version: 0.3.2(@modelcontextprotocol/sdk@1.32.1(supports-color@10.2.2)(zod@4.6.5))(hono-rate-limiter@0.5.4(hono@4.13.13))(hono@4.13.13)(zod@4.6.5)
       '@hono/standard-validator':
         specifier: 0.4.0
         version: 0.4.0(@standard-schema/spec@1.1.0)(hono@4.13.13)
       '@modelcontextprotocol/sdk':
-        specifier: 1.32.0
-        version: 1.32.0(supports-color@10.2.2)(zod@4.6.5)
+        specifier: 1.32.1
+        version: 1.32.1(supports-color@10.2.2)(zod@4.6.5)
       '@opentelemetry/api-logs':
         specifier: 0.222.0
         version: 0.222.0
@@ -3734,8 +3734,8 @@ packages:
   '@mmote/niimbluelib@0.47.0':
     resolution: {integrity: sha512-mcJco+GypEk7uCJWgqJYU73nAmMlpQ2fPD4pgvOdED9X1ypjTXizjuk5/EofThGcXrKZoTDGtThAqXEHh5BKLA==}
 
-  '@modelcontextprotocol/sdk@1.32.0':
-    resolution: {integrity: sha512-8BviX/hK4Gd2eL1KdTwm0gfl4d3wdoErW0Jd00h6nomUAtk6IJk5vwQJc6kfWtJTzN5OEV/lgIiJKI8fiDGAlA==}
+  '@modelcontextprotocol/sdk@1.32.1':
+    resolution: {integrity: sha512-2DdE+SJDtzLEEWzY1ZjY7Q+VcPhcV1KisD3zI4u0XZyktsjHum1mwbMI+JaulUBi2OZk+KJAi2uPXzxichPkdw==}
     engines: {node: '>=18'}
     peerDependencies:
       '@cfworker/json-schema': ^4.1.1
@@ -12257,9 +12257,9 @@ snapshots:
       '@tanstack/vue-virtual': 3.13.39(vue@3.5.43(typescript@7.0.2))
       vue: 3.5.43(typescript@7.0.2)
 
-  '@hono/mcp@0.3.2(@modelcontextprotocol/sdk@1.32.0(supports-color@10.2.2)(zod@4.6.5))(hono-rate-limiter@0.5.4(hono@4.13.13))(hono@4.13.13)(zod@4.6.5)':
+  '@hono/mcp@0.3.2(@modelcontextprotocol/sdk@1.32.1(supports-color@10.2.2)(zod@4.6.5))(hono-rate-limiter@0.5.4(hono@4.13.13))(hono@4.13.13)(zod@4.6.5)':
     dependencies:
-      '@modelcontextprotocol/sdk': 1.32.0(supports-color@10.2.2)(zod@4.6.5)
+      '@modelcontextprotocol/sdk': 1.32.1(supports-color@10.2.2)(zod@4.6.5)
       hono: 4.13.13
       hono-rate-limiter: 0.5.4(hono@4.13.13)
       pkce-challenge: 5.0.1
@@ -12882,7 +12882,7 @@ snapshots:
       crc-32: 1.2.2
       eventemitter3: 5.0.4
 
-  '@modelcontextprotocol/sdk@1.32.0(supports-color@10.2.2)(zod@4.6.5)':
+  '@modelcontextprotocol/sdk@1.32.1(supports-color@10.2.2)(zod@4.6.5)':
     dependencies:
       '@hono/node-server': 2.1.3(hono@4.13.13)
       ajv: 8.20.0
