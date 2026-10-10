@@ -72,7 +72,7 @@
         "@types/react-dom": "19.3.0",
         "@vercel/analytics": "2.0.1",
         "@zxing/library": "0.23.0",
-        "postcss": "8.5.28",
+        "postcss": "8.5.29",
         "tailwindcss": "4.3.3",
         "tsx": "4.23.15",
         "typescript": "7.0.2"
