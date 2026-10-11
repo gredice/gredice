@@ -1,7 +1,10 @@
+import { autumnAsterPots } from '@gredice/js/autumnAsterPots';
+import { autumnShrub } from '@gredice/js/autumnShrub';
 import { gardenScarecrow } from '@gredice/js/gardenScarecrow';
 import { harvestCrates } from '@gredice/js/harvestCrates';
 import { harvestPumpkins } from '@gredice/js/harvestPumpkins';
 import { harvestWheelbarrow } from '@gredice/js/harvestWheelbarrow';
+import { woodlandMushrooms } from '@gredice/js/woodlandMushrooms';
 import { expect, test } from '@playwright/experimental-ct-react';
 import type { Locator, Page } from '@playwright/test';
 import {
@@ -25,6 +28,21 @@ const TABLET_VIEWPORT = { width: 820, height: 1180 };
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
 const SHORT_MOBILE_VIEWPORT = { width: 414, height: 420 };
 const newBlockCatalogItems = [
+    {
+        label: woodlandMushrooms.information.label,
+        price: woodlandMushrooms.sunflowers,
+        picker: 'Dekoracija',
+    },
+    {
+        label: autumnShrub.information.label,
+        price: autumnShrub.sunflowers,
+        picker: 'Dekoracija',
+    },
+    ...autumnAsterPots.map((item) => ({
+        label: item.information.label,
+        price: item.sunflowers,
+        picker: 'Dekoracija',
+    })),
     {
         label: harvestWheelbarrow.information.label,
         price: harvestWheelbarrow.sunflowers,
@@ -1662,5 +1680,167 @@ test('wheelbarrow drag keeps the catalogue identity', async ({
     await page.mouse.up();
     await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
         'HarvestWheelbarrow:drop',
+    );
+});
+
+test('autumn asters stay hidden before catalogue publication', async ({
+    mount,
+    page,
+}) => {
+    await mount(<ItemsHudAlignmentStory includeAutumnAsterPots={false} />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    for (const item of autumnAsterPots) {
+        await expect(
+            page.getByRole('button', {
+                name: item.information.label,
+                exact: true,
+            }),
+        ).toHaveCount(0);
+    }
+});
+
+test('autumn asters each appear once in the local sandbox', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<LocalSandboxItemsHudStory />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    for (const item of autumnAsterPots) {
+        await expect(
+            page.getByRole('button', {
+                name: item.information.label,
+                exact: true,
+            }),
+        ).toHaveCount(1);
+    }
+});
+
+for (const item of autumnAsterPots) {
+    test(`autumn aster drag keeps ${item.name} identity`, async ({
+        mount,
+        page,
+    }) => {
+        await page.setViewportSize(TABLET_VIEWPORT);
+        await mount(<ItemsHudDragStateStory accountSunflowers={100} />);
+        await page.getByRole('button', { name: 'Dekoracija' }).click();
+        await dragLocatorByMouse(
+            page,
+            page.getByRole('button', {
+                name: item.information.label,
+                exact: true,
+            }),
+        );
+        await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
+            `${item.name}:drag`,
+        );
+        await page.mouse.up();
+        await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
+            `${item.name}:drop`,
+        );
+    });
+}
+
+test('autumn shrub stays hidden before catalogue publication', async ({
+    mount,
+    page,
+}) => {
+    await mount(<ItemsHudAlignmentStory includeAutumnShrub={false} />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await expect(
+        page.getByRole('button', {
+            name: 'Listopadni ukrasni grm',
+            exact: true,
+        }),
+    ).toHaveCount(0);
+});
+
+test('autumn shrub appears once in the local sandbox', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<LocalSandboxItemsHudStory />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await expect(
+        page.getByRole('button', {
+            name: 'Listopadni ukrasni grm',
+            exact: true,
+        }),
+    ).toHaveCount(1);
+});
+
+test('autumn shrub drag keeps the catalogue identity', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<ItemsHudDragStateStory accountSunflowers={150} />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await dragLocatorByMouse(
+        page,
+        page.getByRole('button', {
+            name: 'Listopadni ukrasni grm',
+            exact: true,
+        }),
+    );
+    await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
+        'AutumnShrub:drag',
+    );
+    await page.mouse.up();
+    await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
+        'AutumnShrub:drop',
+    );
+});
+
+test('woodland mushrooms stays hidden before catalogue publication', async ({
+    mount,
+    page,
+}) => {
+    await mount(<ItemsHudAlignmentStory includeWoodlandMushrooms={false} />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await expect(
+        page.getByRole('button', {
+            name: 'Ukrasne šumske gljive',
+            exact: true,
+        }),
+    ).toHaveCount(0);
+});
+
+test('woodland mushrooms appears once in the local sandbox', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<LocalSandboxItemsHudStory />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await expect(
+        page.getByRole('button', {
+            name: 'Ukrasne šumske gljive',
+            exact: true,
+        }),
+    ).toHaveCount(1);
+});
+
+test('woodland mushrooms drag keeps the catalogue identity', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<ItemsHudDragStateStory accountSunflowers={150} />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await dragLocatorByMouse(
+        page,
+        page.getByRole('button', {
+            name: 'Ukrasne šumske gljive',
+            exact: true,
+        }),
+    );
+    await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
+        'WoodlandMushrooms:drag',
+    );
+    await page.mouse.up();
+    await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
+        'WoodlandMushrooms:drop',
     );
 });

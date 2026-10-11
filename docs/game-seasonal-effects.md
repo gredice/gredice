@@ -97,6 +97,16 @@ for the green swatch, so the core can turn gold/brown while summer and disabled
 weather preserve its original appearance. Both individual previews and garden
 batches colour the core and sprigs using the core's local height range.
 
+`AutumnShrub` explicitly opts into the same shared colour/retention state with
+its own gold/russet palette and full, thinning, sparse and bare geometry stages.
+It becomes bare at retention ≤0.1; spring buds and regrowth use fresh green.
+Per-instance materials leave cached GLTF materials and the existing `Bush`
+unchanged. Per-entity or global weather disablement restores full green foliage
+and suppresses that shrub's rain/snow overlays. Shrub stage changes invalidate
+cached shadows alongside trees. It does not register as a source for falling
+leaves, settled leaves, gusts or rustle; those ambient systems remain tree-only.
+See the [shrub review and release record](autumn-shrub-2026.md).
+
 ## Canopy retention
 
 `Tree.blend` retains its original summer mesh and adds named thinning/sparse

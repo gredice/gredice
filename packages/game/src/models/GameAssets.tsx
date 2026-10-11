@@ -578,6 +578,18 @@ export type GLTFResult = GLTF & {
         ArrowSign_Arrow: THREE.Mesh;
         ArrowSign_Fastener: THREE.Mesh;
         ArrowSign_Post: THREE.Mesh;
+        AutumnAsterPot_Centers: THREE.Mesh;
+        AutumnAsterPot_Foliage: THREE.Mesh;
+        AutumnAsterPot_Petals: THREE.Mesh;
+        AutumnAsterPot_Pot: THREE.Mesh;
+        AutumnAsterPot_Soil: THREE.Mesh;
+        AutumnShrub_FullGold: THREE.Mesh;
+        AutumnShrub_FullRusset: THREE.Mesh;
+        AutumnShrub_SparseGold: THREE.Mesh;
+        AutumnShrub_SparseRusset: THREE.Mesh;
+        AutumnShrub_ThinningGold: THREE.Mesh;
+        AutumnShrub_ThinningRusset: THREE.Mesh;
+        AutumnShrub_Wood: THREE.Mesh;
         BaleHey: THREE.Mesh;
         BeachBall_Cap: THREE.Mesh;
         BeachBall_ContactPatch: THREE.Mesh;
@@ -1657,6 +1669,7 @@ export type GLTFResult = GLTF & {
         WoodenWalkway_Pegs: THREE.Mesh;
         WoodenWalkway_PlanksLight: THREE.Mesh;
         WoodenWalkway_PlanksWarm: THREE.Mesh;
+        WoodlandMushrooms_Cluster: THREE.Mesh;
         X_Half: THREE.Mesh;
     };
     materials: {
@@ -1714,6 +1727,14 @@ export type GLTFResult = GLTF & {
         'Material.ArrowSign.Color': THREE.MeshStandardMaterial;
         'Material.ArrowSign.DeepWood': THREE.MeshStandardMaterial;
         'Material.ArrowSign.WarmWood': THREE.MeshStandardMaterial;
+        'Material.AutumnAster.Centers': THREE.MeshStandardMaterial;
+        'Material.AutumnAster.Foliage': THREE.MeshStandardMaterial;
+        'Material.AutumnAster.Petals': THREE.MeshStandardMaterial;
+        'Material.AutumnAster.Soil': THREE.MeshStandardMaterial;
+        'Material.AutumnAster.Terracotta': THREE.MeshStandardMaterial;
+        'Material.AutumnShrub.Gold': THREE.MeshStandardMaterial;
+        'Material.AutumnShrub.Russet': THREE.MeshStandardMaterial;
+        'Material.AutumnShrub.Wood': THREE.MeshStandardMaterial;
         'Material.BasketInner': THREE.MeshStandardMaterial;
         'Material.BasketPin': THREE.MeshStandardMaterial;
         'Material.BasketRim': THREE.MeshStandardMaterial;
@@ -2154,6 +2175,7 @@ export type GLTFResult = GLTF & {
         'Material.WoodenWalkway.LightWood': THREE.MeshStandardMaterial;
         'Material.WoodenWalkway.Pegs': THREE.MeshStandardMaterial;
         'Material.WoodenWalkway.WarmWood': THREE.MeshStandardMaterial;
+        'Material.WoodlandMushrooms.Palette': THREE.MeshStandardMaterial;
         metal: THREE.MeshStandardMaterial;
         mint: THREE.MeshStandardMaterial;
         PalmTree_Coconut: THREE.MeshStandardMaterial;

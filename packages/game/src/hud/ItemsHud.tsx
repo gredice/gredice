@@ -1,4 +1,6 @@
 import type { BlockData } from '@gredice/client';
+import { autumnAsterPotNames } from '@gredice/js/autumnAsterPots';
+import { autumnShrub } from '@gredice/js/autumnShrub';
 import {
     type HorseAppearanceVariant,
     horseAppearanceVariants,
@@ -7,6 +9,7 @@ import { gardenScarecrow } from '@gredice/js/gardenScarecrow';
 import { harvestCrateNames } from '@gredice/js/harvestCrates';
 import { harvestPumpkinNames } from '@gredice/js/harvestPumpkins';
 import { harvestWheelbarrow } from '@gredice/js/harvestWheelbarrow';
+import { woodlandMushrooms } from '@gredice/js/woodlandMushrooms';
 import { BlockImage, getBlockImageUrl } from '@gredice/ui/BlockImage';
 import { Button } from '@gredice/ui/Button';
 import { Divider } from '@gredice/ui/Divider';
@@ -353,11 +356,16 @@ const items: HudItem[] = [
         imageSrc: getBlockImageUrl('Tree'),
         items: [
             { type: 'entity', name: gardenScarecrow.name },
+            { type: 'entity', name: autumnShrub.name },
+            { type: 'entity', name: woodlandMushrooms.name },
             {
                 type: 'entity',
                 name: harvestWheelbarrow.name,
                 footprintLabel: '2 × 1',
             },
+            ...autumnAsterPotNames.map(
+                (name): HudItem => ({ type: 'entity', name }),
+            ),
             ...harvestCrateNames.map(
                 (name): HudItem => ({ type: 'entity', name }),
             ),

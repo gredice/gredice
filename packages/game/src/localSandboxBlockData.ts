@@ -1,4 +1,9 @@
 import type { BlockData } from '@gredice/client';
+import {
+    autumnAsterPotNames,
+    getAutumnAsterPot,
+} from '@gredice/js/autumnAsterPots';
+import { autumnShrub } from '@gredice/js/autumnShrub';
 import { gardenScarecrow } from '@gredice/js/gardenScarecrow';
 import { getHarvestCrate, harvestCrateNames } from '@gredice/js/harvestCrates';
 import {
@@ -6,6 +11,7 @@ import {
     harvestPumpkinNames,
 } from '@gredice/js/harvestPumpkins';
 import { harvestWheelbarrow } from '@gredice/js/harvestWheelbarrow';
+import { woodlandMushrooms } from '@gredice/js/woodlandMushrooms';
 import {
     type ArrowSignDirection,
     arrowSignConfigs,
@@ -70,9 +76,12 @@ export const localSandboxBlockNames = [
     'IceCreamCart',
     'SummerHat',
     ...harvestPumpkinNames,
+    ...autumnAsterPotNames,
     gardenScarecrow.name,
     ...harvestCrateNames,
     harvestWheelbarrow.name,
+    autumnShrub.name,
+    woodlandMushrooms.name,
     'BeachTowelStriped',
     'InflatablePoolSmall',
     'BeachChair',
@@ -900,11 +909,17 @@ function createLocalSandboxBlockData(
     const isRaisedBed = name === 'Raised_Bed';
     const isOutletDisplayTable = name === 'OutletDisplayTable';
     const decoration =
-        name === gardenScarecrow.name
-            ? gardenScarecrow
-            : name === harvestWheelbarrow.name
-              ? harvestWheelbarrow
-              : (getHarvestCrate(name) ?? getHarvestPumpkin(name));
+        name === woodlandMushrooms.name
+            ? woodlandMushrooms
+            : name === autumnShrub.name
+              ? autumnShrub
+              : name === gardenScarecrow.name
+                ? gardenScarecrow
+                : name === harvestWheelbarrow.name
+                  ? harvestWheelbarrow
+                  : (getAutumnAsterPot(name) ??
+                    getHarvestCrate(name) ??
+                    getHarvestPumpkin(name));
     const metadata = decoration?.information ?? localSandboxBlockMetadata[name];
     return {
         id: index + 1,
