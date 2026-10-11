@@ -543,8 +543,8 @@ importers:
         specifier: 0.5.20
         version: 0.5.20(tailwindcss@4.3.3)
       '@tanstack/react-query':
-        specifier: 5.104.0
-        version: 5.104.0(react@19.3.0)
+        specifier: 5.104.1
+        version: 5.104.1(react@19.3.0)
       '@types/node':
         specifier: 24.19.1
         version: 24.19.1
@@ -631,8 +631,8 @@ importers:
         specifier: 0.5.20
         version: 0.5.20(tailwindcss@4.3.3)
       '@tanstack/react-query':
-        specifier: 5.104.0
-        version: 5.104.0(react@19.3.0)
+        specifier: 5.104.1
+        version: 5.104.1(react@19.3.0)
       '@types/google.maps':
         specifier: 3.66.5
         version: 3.66.5
@@ -775,8 +775,8 @@ importers:
         specifier: 0.5.20
         version: 0.5.20(tailwindcss@4.3.3)
       '@tanstack/react-query':
-        specifier: 5.104.0
-        version: 5.104.0(react@19.3.0)
+        specifier: 5.104.1
+        version: 5.104.1(react@19.3.0)
       '@types/node':
         specifier: 24.19.1
         version: 24.19.1
@@ -875,8 +875,8 @@ importers:
         specifier: 0.5.20
         version: 0.5.20(tailwindcss@4.3.3)
       '@tanstack/react-query':
-        specifier: 5.104.0
-        version: 5.104.0(react@19.3.0)
+        specifier: 5.104.1
+        version: 5.104.1(react@19.3.0)
       '@types/node':
         specifier: 24.19.1
         version: 24.19.1
@@ -1044,8 +1044,8 @@ importers:
         specifier: 0.5.20
         version: 0.5.20(tailwindcss@4.3.3)
       '@tanstack/react-query':
-        specifier: 5.104.0
-        version: 5.104.0(react@19.3.0)
+        specifier: 5.104.1
+        version: 5.104.1(react@19.3.0)
       '@vercel/analytics':
         specifier: 2.0.1
         version: 2.0.1(next@16.3.8(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@types/node@24.19.1)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(sass@1.105.1))(react@19.3.0)(vue@3.5.43(typescript@7.0.2))
@@ -1202,8 +1202,8 @@ importers:
         specifier: 0.5.20
         version: 0.5.20(tailwindcss@4.3.3)
       '@tanstack/react-query':
-        specifier: 5.104.0
-        version: 5.104.0(react@19.3.0)
+        specifier: 5.104.1
+        version: 5.104.1(react@19.3.0)
       '@types/google.maps':
         specifier: 3.66.5
         version: 3.66.5
@@ -1508,8 +1508,8 @@ importers:
         specifier: 0.5.20
         version: 0.5.20(tailwindcss@4.3.3)
       '@tanstack/react-query':
-        specifier: 5.104.0
-        version: 5.104.0(react@19.3.0)
+        specifier: 5.104.1
+        version: 5.104.1(react@19.3.0)
       '@types/chroma-js':
         specifier: 3.1.2
         version: 3.1.2
@@ -1862,8 +1862,8 @@ importers:
         specifier: 0.3.1
         version: 0.3.1(@types/react@19.3.0)(react@19.3.0)
       '@tanstack/react-query':
-        specifier: 5.104.0
-        version: 5.104.0(react@19.3.0)
+        specifier: 5.104.1
+        version: 5.104.1(react@19.3.0)
       class-variance-authority:
         specifier: 0.7.1
         version: 0.7.1
@@ -5665,11 +5665,11 @@ packages:
     peerDependencies:
       tailwindcss: '>=3.0.0 || >=4.0.0 || insiders'
 
-  '@tanstack/query-core@5.104.0':
-    resolution: {integrity: sha512-JrC2r/JQlXt7khBSdUpsgxNvybzOg+aITa+ARRMlP2AFo93Y8vIqz077rp+e61mJetSZ0T6AJbwW1JHer1vrPQ==}
+  '@tanstack/query-core@5.104.1':
+    resolution: {integrity: sha512-TiRghcrGkUTE+M4JBxvpPSpBhxvIzQairw+cksrHYGr+2uwC77yW1SY9nYxnYRYOppvucf8rEg6b5byoz4rTpw==}
 
-  '@tanstack/react-query@5.104.0':
-    resolution: {integrity: sha512-e1TZmDCQnWIfiDVryIHeA6Idj+Lfx1hORLOhXS/l5wcgvtVD4yYqbTDl378sGQKIi2cSgb0TEMC9cKK8GGoJEw==}
+  '@tanstack/react-query@5.104.1':
+    resolution: {integrity: sha512-Zz70EgjahNI7aCz8BZxM3vUGU44ycxEAzMuCUjLeA7SVhhOkg3ZgPjPJPvHjs6Rmky/dtmnu1WzjGHNHmhCoZQ==}
     peerDependencies:
       react: 19.3.0
 
@@ -14803,11 +14803,11 @@ snapshots:
       postcss-selector-parser: 6.0.10
       tailwindcss: 4.3.3
 
-  '@tanstack/query-core@5.104.0': {}
+  '@tanstack/query-core@5.104.1': {}
 
-  '@tanstack/react-query@5.104.0(react@19.3.0)':
+  '@tanstack/react-query@5.104.1(react@19.3.0)':
     dependencies:
-      '@tanstack/query-core': 5.104.0
+      '@tanstack/query-core': 5.104.1
       react: 19.3.0
 
   '@tanstack/virtual-core@3.17.11': {}
