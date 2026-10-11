@@ -122,6 +122,9 @@ jobs:
           echo "COREPACK_HOME=$RUNNER_TEMP/gredice-corepack" >> "$GITHUB_ENV"
           COREPACK_HOME="$RUNNER_TEMP/gredice-corepack" pnpm exec corepack pnpm --version
 
+      - name: 🔎 Verify installed Playwright versions
+        run: node scripts/check-playwright-versions.mjs '${{ inputs.path }}'
+
       - name: 🔎 Check Playwright dependency
         id: playwright
         run: |

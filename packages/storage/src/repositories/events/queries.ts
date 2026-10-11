@@ -506,9 +506,28 @@ export async function countAiRequestEventsSince({
 }
 
 export async function createEvent(
-    { type, version, aggregateId, data, createdAt }: Event,
-    db: DatabaseClient = storage(),
-) {
+    input: Event,
+    database?: DatabaseClient,
+): Promise<typeof events.$inferSelect> {
+    const { type, version, aggregateId, data, createdAt } = input;
+    const settlesNotSprouted =
+        version === 1 &&
+        (type === knownEventTypes.raisedBedFields.plantUpdate ||
+            type ===
+                knownEventTypes.raisedBedPlantings.lifecycleStatusChanged) &&
+        typeof data === 'object' &&
+        data !== null &&
+        'status' in data &&
+        data.status === 'notSprouted';
+    const db = database ?? storage();
+    if (settlesNotSprouted && !('rollback' in db)) {
+        return db.transaction((tx) => createEvent(input, tx));
+    }
+    if (settlesNotSprouted) {
+        await db.execute(
+            sql`select pg_advisory_xact_lock(hashtext(${`not-sprouted:${aggregateId}`}));`,
+        );
+    }
     const [event] = await signalAutomationEventWrite(
         db
             .insert(events)
@@ -523,6 +542,13 @@ export async function createEvent(
     );
     if (!event) {
         throw new Error('Failed to create event.');
+    }
+
+    if (settlesNotSprouted && 'rollback' in db) {
+        const { settleNotSproutedPlanting } = await import(
+            '../notSproutedRefundRepo'
+        );
+        await settleNotSproutedPlanting(event, db);
     }
 
     await enqueueAutomationRunsForEvent(event, { db });

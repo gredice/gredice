@@ -205,6 +205,12 @@ export type RaisedBedCreatePayload = {
     blockId: string;
 };
 
+export type SeasonalSowingOfferGrantedPayload = {
+    seasonKey: string;
+    referenceDate: string;
+    operationIds: number[];
+};
+
 export type RaisedBedAbandonPayload = {
     status: 'abandoned';
     reason?: 'inactivity' | 'user';

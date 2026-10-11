@@ -364,16 +364,19 @@ export default function McpTestPage() {
                                 <code> apps/api/.env.local</code>. Generate a
                                 base64 signing secret, set
                                 <code> GREDICE_JWT_SIGN_SECRET</code>, then mint
-                                an account-bound token for a local user and
-                                account that exist in the development database.
+                                an access token for a local user that exists in
+                                the development database. Select an authorized
+                                account with the{' '}
+                                <code>x-gredice-account-id</code> request
+                                header.
                             </p>
                         </div>
                         <pre className="mt-4 overflow-auto rounded-md border border-border bg-slate-950 p-3 text-xs leading-relaxed text-slate-50">
                             <code>{`node -e "console.log(require('node:crypto').randomBytes(32).toString('base64'))"
 
 cd apps/api
-GREDICE_TEST_USER_ID=user_id GREDICE_TEST_ACCOUNT_ID=account_id \\
-node --conditions=react-server --env-file=.env.local --import tsx -e "import { createJwt } from './lib/auth/auth.ts'; const sub = process.env.GREDICE_TEST_USER_ID; const accountId = process.env.GREDICE_TEST_ACCOUNT_ID; if (!sub || !accountId) throw new Error('Missing test ids'); console.log(await createJwt({ sub, accountId }, '72h'));"`}</code>
+GREDICE_TEST_USER_ID=user_id \\
+node --conditions=react-server --env-file=.env.local --import tsx -e "import { createMcpAccessJwt } from './lib/auth/auth.ts'; const sub = process.env.GREDICE_TEST_USER_ID; if (!sub) throw new Error('Missing test user id'); console.log(await createMcpAccessJwt(sub));"`}</code>
                         </pre>
                     </div>
 

@@ -19,8 +19,8 @@
         "qrcode": "1.5.4"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.5.14",
-        "@types/node": "24.19.0",
+        "@biomejs/biome": "2.5.15",
+        "@types/node": "24.19.1",
         "@types/qrcode": "1.5.6",
         "typescript": "7.0.2"
     }

@@ -7,12 +7,13 @@ import {
     clearCookie,
     createJwt,
     setCookie,
+    verifyAccessJwt,
     verifyJwt,
 } from './baseAuth';
 import { accountCookieName } from './sessionConfig';
 import { refreshSessionIfNeeded } from './sessionRefresh';
 
-export { clearCookie, createJwt, setCookie, verifyJwt };
+export { clearCookie, createJwt, setCookie, verifyAccessJwt, verifyJwt };
 
 type AuthUser = {
     id: string;
@@ -90,7 +91,7 @@ async function interruptExpectedAuthError(error: unknown): Promise<never> {
 }
 
 async function authFromToken(token: string, roles: string[]) {
-    const { result, error } = await verifyJwt(token);
+    const { result, error } = await verifyAccessJwt(token);
     const payload = result?.payload as TokenClaims | undefined;
     const userId = payload?.sub;
     if (error || typeof userId !== 'string' || userId.length === 0) {

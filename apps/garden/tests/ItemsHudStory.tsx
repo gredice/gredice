@@ -697,6 +697,7 @@ const blockNames = [
     'ShovelSmall',
     'Tulip',
     'Sunflower',
+    'Rose',
     'CactusBarrel',
     'CactusColumnCluster',
     'CactusPricklyPear',

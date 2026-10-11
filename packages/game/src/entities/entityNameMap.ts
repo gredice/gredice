@@ -102,6 +102,7 @@ import {
 } from './persistentPets/PersistentPetHomeModels';
 import { RaisedBed } from './RaisedBed';
 import { RoofTileLantern } from './RoofTileLantern';
+import { Rose } from './Rose';
 import { Rabbit } from './rabbits/Rabbit';
 import { MulchCoconut } from './raisedBed/MulchCoconut';
 import { MulchHey } from './raisedBed/MulchHey';
@@ -327,6 +328,7 @@ export const entityNameMap = {
     Snowman: Snowman,
     Tulip: Tulip,
     Sunflower: Sunflower,
+    Rose: Rose,
     CactusBarrel: Cactus,
     CactusColumnCluster: Cactus,
     CactusPricklyPear: Cactus,

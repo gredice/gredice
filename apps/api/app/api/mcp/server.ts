@@ -3,7 +3,7 @@ import { getUser } from '@gredice/storage';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { verifyJwt } from '../../../lib/auth/auth';
+import { verifyAccessJwt } from '../../../lib/auth/auth';
 import { accountCookieName } from '../../../lib/auth/sessionConfig';
 import { resolveMcpAccountId } from '../../../lib/mcp/accountSelection';
 import { mcpPublicDocumentationUrl } from '../../../lib/mcp/publicMetadata';
@@ -247,7 +247,7 @@ async function authenticateMcpRequest(
         return { ok: false as const, response: unauthorizedResponse(request) };
     }
 
-    const verified = await verifyJwt(token).catch(() => null);
+    const verified = await verifyAccessJwt(token).catch(() => null);
     if (!verified) {
         return { ok: false as const, response: unauthorizedResponse(request) };
     }

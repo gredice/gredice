@@ -22,6 +22,19 @@ To exercise the car UI, install `app/build/outputs/apk/debug/app-debug.apk`, ena
 
 The complete packaging, signing, Digital Asset Links, Play-track, and recovery procedure is in [`docs/android-play-release.md`](../../docs/android-play-release.md).
 
+## App icon
+
+The Delivery mark is a rounded **D** for Dostava. Its three horizontal lines echo
+the garden beds in the Gredice mark and suggest forward movement. It uses the
+Gredice brand green (`#2e6f40`) and white, with no separate leaf motif.
+
+Edit [`apps/delivery/app/icon.svg`](../delivery/app/icon.svg), then run
+`pnpm --filter delivery icons:generate` from the repository root. This regenerates
+the PWA, Apple touch, Play Store, Android launcher, themed monochrome, and splash
+assets from the same path. The PWA maskable, Apple, and Play exports have opaque,
+square backgrounds so the host can apply its own mask. The Android foreground
+keeps the whole mark inside the adaptive icon safe area.
+
 ## Web trust and authentication
 
 The Play-delivered phone surface is associated with `https://dostava.gredice.com` through the Play app-signing certificate in `apps/delivery/public/.well-known/assetlinks.json`. `node scripts/validate-delivery-car-contract.mjs` keeps that association aligned with the Android package and verified host. Directly installed debug or upload-key-signed builds are not Play-association evidence and may use the Custom Tab fallback.

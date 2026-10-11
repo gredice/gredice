@@ -53,7 +53,7 @@ import {
 } from '../../../lib/ai/suncokretModels';
 import { buildSuncokretUsageStatus } from '../../../lib/ai/suncokretUsage';
 import { scheduleSuncokretUsageSettlement } from '../../../lib/ai/suncokretUsageSettlement';
-import { createJwt } from '../../../lib/auth/auth';
+import { createMcpAccessJwt } from '../../../lib/auth/auth';
 import { authSecurity } from '../../../lib/docs/security';
 import {
     type AuthVariables,
@@ -277,10 +277,6 @@ async function validateGardenContext({
         garden,
         raisedBed,
     };
-}
-
-async function mcpToken(userId: string, accountId: string) {
-    return createJwt({ sub: userId, accountId }, '72h');
 }
 
 async function callMcpTool({
@@ -513,7 +509,7 @@ function buildTools({
 
     const raisedBedDetailsTool = tool({
         description:
-            'Dohvati detalje jedne gredice: polja, nazive biljaka i njihov životni ciklus.',
+            'Dohvati detalje jedne gredice: polja, nazive biljaka, životni ciklus, datume sjetve/nicanja i sowingLocation. Uključuje presadnice u stakleniku vezane uz ciljna polja; koristi i za procjenu presađivanja.',
         inputSchema: z.object({
             gardenId: z.number().int().positive().optional(),
             raisedBedId: z.number().int().positive().optional(),
@@ -1204,7 +1200,7 @@ const app = new Hono<{ Variables: ChatVariables }>()
                       return fallbackSuncokretConversationTitle(body.messages);
                   })
                 : null;
-            const token = await mcpToken(auth.userId, auth.accountId);
+            const token = await createMcpAccessJwt(auth.userId);
             const origin = new URL(context.req.url).origin;
             let usageSettlementScheduled = false;
             let finishMetadata: Record<string, unknown> | null = null;

@@ -28,6 +28,15 @@ Use this guide for database, storage, background jobs, payments, notifications, 
 - Log enough context to diagnose failures without logging secrets or unnecessary personal data.
 - Keep partial failure behavior explicit: skipped, retryable, failed, or completed.
 
+Seasonal sowing waterings commit a `raisedBed.seasonalSowingOffer.granted` event
+with their operations in one transaction under the raised-bed advisory lock.
+The event records the originating UTC year/season, reference date, and newly
+created operation IDs. Retries and later sowings in that season cannot mint a
+second batch; rescheduling or execution dates crossing a boundary do not change
+the entitlement. Historical waterings without a grant marker retain per-day
+deduplication; their entitlement is recorded when this writer next runs. No
+entitlement is inferred from arbitrary existing operation dates.
+
 ## Background and cron work
 
 - Cron routes live in app route handlers and Vercel config where applicable.
@@ -57,6 +66,15 @@ Use this guide for database, storage, background jobs, payments, notifications, 
 - Use logs for operational diagnostics, not user-facing control flow.
 
 ## Logging
+
+Production storage selects the `ws` WebSocket constructor on each Neon client,
+without changing the global WebSocket or other pools. Node's native transport
+emits a code-less `ErrorEvent` when TCP ends without a WebSocket close handshake,
+including after the pool intentionally removes an idle client and sends Postgres
+Terminate. `ws` lets the driver treat intentional teardown as normal while
+unexpected idle disconnects still emit pool errors and active failures still
+reject their queries. See [the transport investigation](./docs/neon-pool-disconnect-investigation.md)
+for production evidence, the loopback reproduction, and its limits.
 
 The production Neon pool reports background connection errors with the stable
 `storage.neon.pool.error` event, error kind, safe SQLSTATE/transport code when

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Client, Pool } from '@neondatabase/serverless';
 import { sql } from 'drizzle-orm';
+import WebSocket from 'ws';
 import { withTransientDatabaseReadRetry } from '../../src/databaseReadRetry';
 import { closeStorage, storage } from '../../src/storage';
 
@@ -77,6 +78,9 @@ test('production pool lifecycle using the installed Neon driver', async (t) => {
         assert.equal(pool.listenerCount('error'), 1);
         assert.equal(pool.totalCount, 0);
         await db.execute(sql`select 1`);
+        const client = await pool.connect();
+        assert.equal(client.neonConfig.webSocketConstructor, WebSocket);
+        client.release();
     });
 
     await t.test(

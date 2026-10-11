@@ -1,3 +1,4 @@
+import type { RaisedBedObservationTarget } from '@gredice/js/operations';
 import { resolveRaisedBedAddons } from '@gredice/js/operations';
 import {
     buildRaisedBedPlantingReadModels,
@@ -37,6 +38,7 @@ import {
     getSelectedPlantStateRequestIdentity,
 } from './plantStatusRequests';
 import { RaisedBedDetailHeader } from './RaisedBedDetailHeader';
+import { RaisedBedObservationForm } from './RaisedBedObservationForm';
 
 export const dynamic = 'force-dynamic';
 
@@ -194,6 +196,42 @@ async function RaisedBedDetailPageContent({
                 raisedBedId={raisedBed.id}
                 physicalId={raisedBed.physicalId}
                 imageUrls={photoPreviews[0]?.imageUrls ?? []}
+            />
+            <RaisedBedObservationForm
+                raisedBedId={raisedBed.id}
+                userId={userId}
+                disabled={raisedBed.status === 'abandoned'}
+                plants={occupants.flatMap((plant) => {
+                    let target: RaisedBedObservationTarget;
+                    if (plant.planting?.lifecycleVersionEventId) {
+                        target = {
+                            kind: 'planting',
+                            raisedBedId,
+                            plantingId: plant.planting.id,
+                            expectedLifecycleVersionEventId:
+                                plant.planting.lifecycleVersionEventId,
+                            expectedPlantSortId: plant.plantSortId,
+                        };
+                    } else {
+                        const cycle = plant.legacyField?.plantCycles.find(
+                            (cycle) => cycle.active,
+                        );
+                        if (!cycle) return [];
+                        target = {
+                            kind: 'field',
+                            raisedBedId,
+                            positionIndex: plant.positionIndex,
+                            plantCycleEventId: cycle.plantPlaceEventId,
+                            expectedPlantSortId: plant.plantSortId,
+                        };
+                    }
+                    return [
+                        {
+                            label: `Polje ${plant.positionNumbers.join(', ')} · ${resolvePlantName(plant.plantSortId, plantSortsById.get(plant.plantSortId))}`,
+                            target,
+                        },
+                    ];
+                })}
             />
 
             <RaisedBedAddons

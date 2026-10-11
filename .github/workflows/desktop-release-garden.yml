@@ -69,16 +69,6 @@ jobs:
     needs: resolve_version
     runs-on: macos-latest
     timeout-minutes: 45
-    env:
-      APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-      APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
-      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-      APPLE_ID: ${{ secrets.APPLE_ID }}
-      APPLE_KEYCHAIN: ${{ secrets.APPLE_KEYCHAIN }}
-      APPLE_KEYCHAIN_PROFILE: ${{ secrets.APPLE_KEYCHAIN_PROFILE }}
-      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-      CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-      CSC_LINK: ${{ secrets.CSC_LINK }}
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -120,12 +110,30 @@ jobs:
 
       - name: 🔐 Prepare macOS signing and notarization
         env:
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
           APPLE_API_KEY_CONTENT: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_KEYCHAIN: ${{ secrets.APPLE_KEYCHAIN }}
+          APPLE_KEYCHAIN_PROFILE: ${{ secrets.APPLE_KEYCHAIN_PROFILE }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
         working-directory: apps/desktop
         run: node scripts/prepare-macos-signing-env.mjs
 
       - name: 🛠️ Build Gredice Garden desktop DMG (arm64)
         env:
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_KEYCHAIN: ${{ secrets.APPLE_KEYCHAIN }}
+          APPLE_KEYCHAIN_PROFILE: ${{ secrets.APPLE_KEYCHAIN_PROFILE }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
           GREDICE_DESKTOP_VERSION: ${{ needs.resolve_version.outputs.version }}
         working-directory: apps/desktop
         run: pnpm dist:garden --mac --arm64

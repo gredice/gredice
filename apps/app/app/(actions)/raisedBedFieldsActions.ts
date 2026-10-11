@@ -295,8 +295,8 @@ async function applyRaisedBedFieldPlantUpdate({
                 header = `🌱 Proklijala je biljka ${sortData.information?.name}!`;
                 content = `U gredici **${raisedBed.name}** na poziciji **${positionIndex + 1}** proklijala je biljka **${sortData.information?.name}**.`;
             } else if (status === 'notSprouted') {
-                header = `😢 Biljka ${sortData.information?.name} nije proklijala!`;
-                content = `U gredici **${raisedBed.name}** na poziciji **${positionIndex + 1}** biljka **${sortData.information?.name}** nije proklijala. Polje je spremno za nove biljke.`;
+                // The transactional status writer sends the refund outcome.
+                header = null;
             } else if (status === 'died') {
                 header = `😢 Biljka ${sortData.information?.name} nije uspjela!`;
                 content = `U gredici **${raisedBed.name}** na poziciji **${positionIndex + 1}** biljka **${sortData.information?.name}** nije uspjela. Veselimo se novim biljkama koje će rasti na ovom mestu.`;

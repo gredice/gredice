@@ -1258,7 +1258,9 @@ test('guest Outlet garden preserves its deep link through reload and context los
 test('3D Outlet opens the normal garden in a fresh renderer document', async ({
     page,
 }) => {
-    test.setTimeout(60_000);
+    // Two document navigations plus Back initialize four software WebGL scenes.
+    // Keep the full journey within the same budget as other multi-scene tests.
+    test.setTimeout(180_000);
     const runtimeErrors: string[] = [];
     page.on('pageerror', (error) => runtimeErrors.push(error.message));
     const outletApi = await mockOutletGardenApi(page);

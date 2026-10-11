@@ -29,6 +29,20 @@ Use this guide for repo layout, setup, commands, package boundaries, and local d
 - Browser tests: Playwright.
 - Node tests: Node's built-in test runner through `node --test` with `tsx` where needed.
 
+### Playwright runner compatibility
+
+The component-test apps (`app`, `delivery`, `farm`, `garden`, and `www`) keep
+`@playwright/test` and `@playwright/experimental-ct-react` on `1.62.1`, the final
+experimental React component-test release. WWW and Farm accessibility tests pass
+that runner's `Page` objects to Axe, so the scoped
+`@axe-core/playwright>playwright-core` override must stay on `1.62.1` too. Renovate
+protects both the app manifests and that workspace override until the component
+suites migrate to stories. Update these compatibility rules together when
+removing the legacy runner.
+
+`apps/api` uses `@playwright/test` `1.63.0` independently. Do not apply a global
+Playwright core override or downgrade the API runner to align component tests.
+
 ## Package boundaries
 
 - Use `workspace:*` versions for internal dependencies.
@@ -186,7 +200,7 @@ pnpm env:pull
 Turbo build/test results are cached remotely through Vercel for the `gredice` team, which speeds up cold builds locally and in CI.
 
 - Local and worktrees: `pnpm bootstrap` runs `pnpm turbo link --yes --scope=gredice`, which writes `.turbo/config.json` for the current worktree. The link relies on Vercel CLI auth, so run `vercel login` first if it has not been done on the machine. Each linked worktree gets its own `.turbo/config.json` (the `.turbo` directory is gitignored).
-- CI: the `TURBO_TOKEN` (set to `VERCEL_TOKEN`) and `TURBO_TEAM=gredice` environment variables are wired in `.github/workflows/ci.yml` and `.github/workflows/nextjs_ci_reusable.yml`. No per-repo link file is needed.
+- CI: only `TURBO_TEAM=gredice` is set in workflows by default. `TURBO_TOKEN` is intentionally not exported workflow-wide to avoid exposing secrets to pull-request code; remote cache auth must be provided only in tightly scoped trusted contexts.
 
 `pnpm doctor` reports the link status under the optional "Turbo remote cache" check.
 

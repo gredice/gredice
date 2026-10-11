@@ -5,6 +5,11 @@ questions on public pages, and referenced CMS FAQ sections. Edit an answer in
 the directory to update every placement. Keep the `information.name` stable:
 it determines the public slug used by references.
 
+The `request-refund` answer is the exception for the current product refund
+policy: WWW's FAQ loader overlays the shared not-sprouted refund rule until an
+editorial directory rollout, so older published copy cannot contradict the
+automatic refund. See [not-sprouted refunds](./not-sprouted-refunds.md).
+
 The main FAQ orders eight categories by the customer journey: service, pricing,
 planting, maintenance, harvest, delivery, safety, and account/support. Category
 anchors use stable directory names. `apps/www/components/faq/faqPlacements.ts`
