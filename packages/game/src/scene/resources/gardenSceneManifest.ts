@@ -222,6 +222,8 @@ export const blockAssetRequirements: {
     HarvestPumpkinGroupCream: assets('HarvestPumpkinGroup'),
     HarvestPumpkinGroupGreen: assets('HarvestPumpkinGroup'),
     GardenScarecrow: assets('GardenScarecrow'),
+    HarvestCrate: assets('HarvestCrate'),
+    HarvestCrateOrchard: assets('HarvestCrateOrchard'),
     PotLowBowl: assets('PotLowBowl'),
     PotRoundedBowl: assets('PotRoundedBowl'),
     PotBulbousNeck: assets('PotBulbousNeck'),
