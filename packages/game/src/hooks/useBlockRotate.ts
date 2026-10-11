@@ -86,7 +86,9 @@ export function useBlockRotate() {
                 })
             ) {
                 throw new Error(
-                    'Za okretanje kolica potrebna su dva slobodna polja na istoj visini.',
+                    blockData
+                        ? 'Za okretanje kolica potrebna su dva slobodna polja na istoj visini.'
+                        : 'Podaci o predmetima još se učitavaju. Pokušaj ponovno.',
                 );
             }
             const updatedStacks = rotateBlocksInStacks({
