@@ -50,6 +50,8 @@ export function parseBlockSnapshotCameraView(
 }
 
 export function getStandardBlockSnapshotBaseRotation(entityName: string) {
+    // Show both the wheel and handles in the standard catalogue cover.
+    if (entityName === 'HarvestWheelbarrow') return 1;
     return reversedStandardSnapshotEntities.has(entityName) ? 2 : 0;
 }
 
