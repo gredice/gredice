@@ -1,5 +1,6 @@
 import { autumnAsterPots } from '@gredice/js/autumnAsterPots';
 import { autumnShrub } from '@gredice/js/autumnShrub';
+import { fallenLog } from '@gredice/js/fallenLog';
 import { gardenScarecrow } from '@gredice/js/gardenScarecrow';
 import { harvestCrates } from '@gredice/js/harvestCrates';
 import { harvestPumpkins } from '@gredice/js/harvestPumpkins';
@@ -28,6 +29,11 @@ const TABLET_VIEWPORT = { width: 820, height: 1180 };
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
 const SHORT_MOBILE_VIEWPORT = { width: 414, height: 420 };
 const newBlockCatalogItems = [
+    {
+        label: fallenLog.information.label,
+        price: fallenLog.sunflowers,
+        picker: 'Dekoracija',
+    },
     {
         label: woodlandMushrooms.information.label,
         price: woodlandMushrooms.sunflowers,
@@ -1842,5 +1848,57 @@ test('woodland mushrooms drag keeps the catalogue identity', async ({
     await page.mouse.up();
     await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
         'WoodlandMushrooms:drop',
+    );
+});
+
+test('fallen log stays hidden before catalogue publication', async ({
+    mount,
+    page,
+}) => {
+    await mount(<ItemsHudAlignmentStory includeFallenLog={false} />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await expect(
+        page.getByRole('button', {
+            name: 'Palo deblo s mahovinom',
+            exact: true,
+        }),
+    ).toHaveCount(0);
+});
+
+test('fallen log appears once in the local sandbox', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<LocalSandboxItemsHudStory />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await expect(
+        page.getByRole('button', {
+            name: 'Palo deblo s mahovinom',
+            exact: true,
+        }),
+    ).toHaveCount(1);
+});
+
+test('fallen log drag keeps the catalogue identity', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<ItemsHudDragStateStory accountSunflowers={150} />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await dragLocatorByMouse(
+        page,
+        page.getByRole('button', {
+            name: 'Palo deblo s mahovinom',
+            exact: true,
+        }),
+    );
+    await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
+        'FallenLog:drag',
+    );
+    await page.mouse.up();
+    await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
+        'FallenLog:drop',
     );
 });

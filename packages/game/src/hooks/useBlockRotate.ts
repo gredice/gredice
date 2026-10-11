@@ -1,6 +1,6 @@
 import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { canRotateHarvestWheelbarrows } from '../entities/harvestWheelbarrowPlacement';
+import { canRotateSpanningDecorations } from '../entities/spanningDecorationPlacement';
 import { handleOptimisticUpdate } from '../helpers/queryHelpers';
 import { persistLocalSandboxGarden } from '../localSandboxGarden';
 import { useGameState } from '../useGameState';
@@ -78,7 +78,7 @@ export function useBlockRotate() {
                 blockIds?.length ? blockIds : [blockId],
             );
             if (
-                !canRotateHarvestWheelbarrows({
+                !canRotateSpanningDecorations({
                     blockData,
                     blockIds: targetBlockIds,
                     rotation,
@@ -87,7 +87,7 @@ export function useBlockRotate() {
             ) {
                 throw new Error(
                     blockData
-                        ? 'Za okretanje kolica potrebna su dva slobodna polja na istoj visini.'
+                        ? 'Za okretanje predmeta potrebna su dva slobodna polja na istoj visini.'
                         : 'Podaci o predmetima još se učitavaju. Pokušaj ponovno.',
                 );
             }

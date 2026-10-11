@@ -4,6 +4,7 @@ import {
     getAutumnAsterPot,
 } from '@gredice/js/autumnAsterPots';
 import { autumnShrub } from '@gredice/js/autumnShrub';
+import { fallenLog } from '@gredice/js/fallenLog';
 import { gardenScarecrow } from '@gredice/js/gardenScarecrow';
 import { getHarvestCrate, harvestCrateNames } from '@gredice/js/harvestCrates';
 import {
@@ -455,17 +456,19 @@ const blockFixtures: Record<
 
 function createBlockData(name: string, index: number) {
     const decoration =
-        name === woodlandMushrooms.name
-            ? woodlandMushrooms
-            : name === autumnShrub.name
-              ? autumnShrub
-              : name === gardenScarecrow.name
-                ? gardenScarecrow
-                : name === harvestWheelbarrow.name
-                  ? harvestWheelbarrow
-                  : (getAutumnAsterPot(name) ??
-                    getHarvestCrate(name) ??
-                    getHarvestPumpkin(name));
+        name === fallenLog.name
+            ? fallenLog
+            : name === woodlandMushrooms.name
+              ? woodlandMushrooms
+              : name === autumnShrub.name
+                ? autumnShrub
+                : name === gardenScarecrow.name
+                  ? gardenScarecrow
+                  : name === harvestWheelbarrow.name
+                    ? harvestWheelbarrow
+                    : (getAutumnAsterPot(name) ??
+                      getHarvestCrate(name) ??
+                      getHarvestPumpkin(name));
     const fixture = decoration
         ? {
               ...decoration.information,
@@ -537,6 +540,7 @@ const blockNames = [
     harvestWheelbarrow.name,
     autumnShrub.name,
     woodlandMushrooms.name,
+    fallenLog.name,
     'Raised_Bed',
     'Bucket',
     'WateringCan',
@@ -674,6 +678,7 @@ type ItemsHudStoryOptions = {
     includeHarvestWheelbarrow?: boolean;
     includeAutumnShrub?: boolean;
     includeWoodlandMushrooms?: boolean;
+    includeFallenLog?: boolean;
     accountSunflowers?: number;
     cameraTarget?: [x: number, y: number, z: number];
     closeup?: boolean;
@@ -692,6 +697,7 @@ function createItemsHudQueryClient({
     includeHarvestWheelbarrow = true,
     includeAutumnShrub = true,
     includeWoodlandMushrooms = true,
+    includeFallenLog = true,
     isSandbox = false,
 }: ItemsHudStoryOptions) {
     const queryClient = new ReactQuery.QueryClient({
@@ -703,6 +709,7 @@ function createItemsHudQueryClient({
     queryClient.setQueryData(
         ['blocks'],
         blockNames
+            .filter((name) => includeFallenLog || name !== fallenLog.name)
             .filter(
                 (name) =>
                     includeWoodlandMushrooms || name !== woodlandMushrooms.name,
@@ -756,6 +763,7 @@ function ItemsHudTestProviders({
     includeHarvestWheelbarrow = true,
     includeAutumnShrub = true,
     includeWoodlandMushrooms = true,
+    includeFallenLog = true,
     children,
     accountSunflowers,
     cameraTarget,
@@ -777,6 +785,7 @@ function ItemsHudTestProviders({
                 includeHarvestWheelbarrow,
                 includeAutumnShrub,
                 includeWoodlandMushrooms,
+                includeFallenLog,
             }),
         [
             accountSunflowers,
@@ -788,6 +797,7 @@ function ItemsHudTestProviders({
             includeHarvestWheelbarrow,
             includeAutumnShrub,
             includeWoodlandMushrooms,
+            includeFallenLog,
         ],
     );
     const gameStore = useMemo(() => {
@@ -888,6 +898,7 @@ export function ItemsHudAlignmentStory({
     includeHarvestWheelbarrow = true,
     includeAutumnShrub = true,
     includeWoodlandMushrooms = true,
+    includeFallenLog = true,
 }: {
     includeHarvestPumpkins?: boolean;
     includeGardenScarecrow?: boolean;
@@ -896,6 +907,7 @@ export function ItemsHudAlignmentStory({
     includeHarvestWheelbarrow?: boolean;
     includeAutumnShrub?: boolean;
     includeWoodlandMushrooms?: boolean;
+    includeFallenLog?: boolean;
 }) {
     return (
         <ItemsHudTestProviders
@@ -906,6 +918,7 @@ export function ItemsHudAlignmentStory({
             includeHarvestWheelbarrow={includeHarvestWheelbarrow}
             includeAutumnShrub={includeAutumnShrub}
             includeWoodlandMushrooms={includeWoodlandMushrooms}
+            includeFallenLog={includeFallenLog}
         >
             <div className="relative h-screen w-screen overflow-hidden">
                 <div

@@ -6,7 +6,7 @@ import { Vector3 } from 'three';
 import { resolvePickupPlacementPreviewForRelative } from '../controls/PickupPlacementResolver';
 import { getLocalSandboxBlockData } from '../localSandboxBlockData';
 import type { Stack } from '../types/Stack';
-import { canRotateHarvestWheelbarrows } from './harvestWheelbarrowPlacement';
+import { canRotateSpanningDecorations } from './spanningDecorationPlacement';
 
 const blockData = getLocalSandboxBlockData();
 const candidate = { name: harvestWheelbarrow.name, id: 'barrow', rotation: 0 };
@@ -80,7 +80,7 @@ describe('HarvestWheelbarrow placement', () => {
                 })),
             );
             const canRotate = (stacks: Stack[]) =>
-                canRotateHarvestWheelbarrows({
+                canRotateSpanningDecorations({
                     blockData,
                     blockIds: new Set(['barrow']),
                     rotation,
@@ -115,7 +115,7 @@ describe('HarvestWheelbarrow placement', () => {
     it('fails closed for missing wheelbarrow metadata and preserves unrelated rotations', () => {
         const stack = { position: new Vector3(), blocks: [candidate] };
         assert.equal(
-            canRotateHarvestWheelbarrows({
+            canRotateSpanningDecorations({
                 blockData: undefined,
                 blockIds: new Set(['barrow']),
                 rotation: 1,
@@ -124,7 +124,7 @@ describe('HarvestWheelbarrow placement', () => {
             false,
         );
         assert.equal(
-            canRotateHarvestWheelbarrows({
+            canRotateSpanningDecorations({
                 blockData: undefined,
                 blockIds: new Set(['other']),
                 rotation: 1,

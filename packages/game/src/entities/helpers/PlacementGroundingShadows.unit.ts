@@ -59,6 +59,43 @@ describe('placement grounding-shadow projection', () => {
         assert.equal(descriptor.state.yaw, Math.PI / 2);
     });
 
+    for (const rotation of [0, 1, 2, 3]) {
+        it(`centers a fallen log's placement shadow at rotation ${rotation}`, () => {
+            const [descriptor] = resolvePlacementGroundingShadowDescriptors({
+                animations: {
+                    log: {
+                        createdAt: 1,
+                        mutationConfirmed: false,
+                        particlesSpawned: false,
+                        renderId: 42,
+                        sequence: 1,
+                        sourceBlockId: 'log',
+                        visualComplete: false,
+                        visualStarted: true,
+                    },
+                },
+                blockData: getLocalSandboxBlockData(),
+                stacks: [
+                    {
+                        blocks: [{ id: 'log', name: 'FallenLog', rotation }],
+                        position: new Vector3(3, 2, -4),
+                    },
+                ],
+            });
+            assert.ok(descriptor);
+            assert.equal(
+                descriptor.state.x,
+                3 + (rotation % 2 === 0 ? 0.5 : 0),
+            );
+            assert.equal(
+                descriptor.state.z,
+                -4 + (rotation % 2 === 1 ? 0.5 : 0),
+            );
+            assert.equal(descriptor.state.receiverY, 2);
+            assert.equal(descriptor.state.yaw, (rotation * Math.PI) / 2);
+        });
+    }
+
     it('does not project a placement before its visual renderer commits', () => {
         const blockData = getLocalSandboxBlockData();
         const animations = {
