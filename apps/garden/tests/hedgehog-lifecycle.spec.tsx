@@ -4,6 +4,7 @@ import { HedgehogShelterFixture } from '../../../packages/game/tests/HedgehogShe
 
 const expect = baseExpect.configure({ timeout: 15_000 });
 test.setTimeout(90_000);
+test.use({ timezoneId: 'Europe/Zagreb' });
 
 async function report(fixture: Locator) {
     return JSON.parse(
