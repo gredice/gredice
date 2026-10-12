@@ -280,8 +280,8 @@ importers:
         specifier: 4.13.13
         version: 4.13.13
       hono-openapi:
-        specifier: 1.3.3
-        version: 1.3.3(@valibot/to-json-schema@1.8.0(valibot@1.5.0(typescript@7.0.2)))(hono@4.13.13)(valibot@1.5.0(typescript@7.0.2))(zod-openapi@6.0.2(zod@4.6.5))(zod-to-json-schema@3.25.2(zod@4.6.5))(zod@4.6.5)
+        specifier: 1.3.4
+        version: 1.3.4(@valibot/to-json-schema@1.8.0(valibot@1.5.0(typescript@7.0.2)))(hono@4.13.13)(valibot@1.5.0(typescript@7.0.2))(zod-openapi@6.0.2(zod@4.6.5))(zod-to-json-schema@3.25.2(zod@4.6.5))(zod@4.6.5)
       hono-rate-limiter:
         specifier: 0.5.4
         version: 0.5.4(hono@4.13.13)
@@ -7808,8 +7808,8 @@ packages:
   hls.js@1.7.3:
     resolution: {integrity: sha512-MsPlx6yVW4Qv4C7mEVou4/gk/5cN2dVxOTnrNjPSmyH2f0Ln+/UkG10Ax1PE6OvrmTVPKgQYozTtBaPOuCzq7A==}
 
-  hono-openapi@1.3.3:
-    resolution: {integrity: sha512-+LVFPQEc4eDrXr/Rd0QQkRh/DbEZRXnm1RZU4bVaoqmWiWgspT4nNHIQMgi44X+D9/8k1eGzHvR0KLNPJ/0xaQ==}
+  hono-openapi@1.3.4:
+    resolution: {integrity: sha512-/uLYTEfjNdvyom7PkwrUhgYacHHrpL/iMgdHzTfQW2woe8CGiazYz63QXufYMy3vmgOv9fWO9lAPyOzlSWKI2g==}
     peerDependencies:
       hono: ^4.11.2
 
@@ -17030,7 +17030,7 @@ snapshots:
 
   hls.js@1.7.3: {}
 
-  hono-openapi@1.3.3(@valibot/to-json-schema@1.8.0(valibot@1.5.0(typescript@7.0.2)))(hono@4.13.13)(valibot@1.5.0(typescript@7.0.2))(zod-openapi@6.0.2(zod@4.6.5))(zod-to-json-schema@3.25.2(zod@4.6.5))(zod@4.6.5):
+  hono-openapi@1.3.4(@valibot/to-json-schema@1.8.0(valibot@1.5.0(typescript@7.0.2)))(hono@4.13.13)(valibot@1.5.0(typescript@7.0.2))(zod-openapi@6.0.2(zod@4.6.5))(zod-to-json-schema@3.25.2(zod@4.6.5))(zod@4.6.5):
     dependencies:
       '@hono/standard-validator': 0.4.0(@standard-schema/spec@1.1.0)(hono@4.13.13)
       '@standard-community/standard-json': 0.3.6(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(@valibot/to-json-schema@1.8.0(valibot@1.5.0(typescript@7.0.2)))(valibot@1.5.0(typescript@7.0.2))(zod-to-json-schema@3.25.2(zod@4.6.5))(zod@4.6.5)
