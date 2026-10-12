@@ -31,7 +31,7 @@ export const autumnStarterPackRecipes = [
         productId: 'autumn-evening',
         name: 'Topla večer',
         previewSha256:
-            '48325aa58a719dafebafa403c3b3f51565d3128d9bbbac9ce80d93e539d434d7',
+            'e3eccaa634461ae5f76792283c481e253ba43b964389c26fc7c71a6cb4942cd0',
     },
 ];
 const identitySchema = z

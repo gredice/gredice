@@ -222,7 +222,7 @@
   "sourceInputs": [
     {
       "path": "apps/api/lib/garden/autumnStarterPackEvidence.reviewed.json",
-      "sha256": "931b07a15223ef60d53b80c81c63653cf0e08afad5fa9c6427161ef14f267a96"
+      "sha256": "48b1309bc6969fa84478bd569977fb40bc7c37aa66dbd6c2bbfa0a8b5d03f4df"
     },
     {
       "path": "apps/api/lib/garden/autumnStarterPackEvidence.ts",
@@ -230,7 +230,7 @@
     },
     {
       "path": "apps/api/lib/garden/autumnStarterPackPreparation.ts",
-      "sha256": "e017df6c5aba37981460e8890951c49c448ae5270ed078109547b442cb65868e"
+      "sha256": "c4d7863774edd4aa5cafd900b9aead8e0b05e276b08fa107f719d800b3738061"
     },
     {
       "path": "apps/api/lib/garden/gardenPackCatalogue.ts",
@@ -242,19 +242,19 @@
     },
     {
       "path": "assets/game-assets.json",
-      "sha256": "43e3ecc705f04ade794ee868ea9244f93ac089a21b0a1ee86c19da1d7fa64685"
+      "sha256": "6dbc580063f261a37fde4c02b2a66bf954ec7c9ffb94442ae5722ec2c37e613c"
     },
     {
       "path": "docs/autumn-arrangements-2026/evening-seat.json",
-      "sha256": "59de1448b3c9888297a565f3b6b3bb8c1a63a2207bd7a66beba446c56ade3ad4"
+      "sha256": "ea0036dd1cf2cb5610de56800adc0d7a1b4326a9842ac853305b81ac14a1df83"
     },
     {
       "path": "docs/autumn-arrangements-2026/harvest-corner.json",
-      "sha256": "fd5da939da6318cab25e83200dcb3a7aa66f5203e3b1f9443149078bce6a7f64"
+      "sha256": "34f58a91831cd713cc219342ddad022d21b6ce58f6d39f855a0c5e37b14390f8"
     },
     {
       "path": "docs/autumn-arrangements-2026/woodland-path.json",
-      "sha256": "45250e85d7ed1dedb8d7b25c0bb121c17924454fb116f7fa1ba42a2c1925ac50"
+      "sha256": "d4fac46954d3dd6d0fdd0d5ae81d02f2264a82dcb6bdd8f463c42323369465e8"
     },
     {
       "path": "docs/autumn-aster-pots-2026/release-manifest.json",
@@ -310,7 +310,7 @@
     },
     {
       "path": "packages/game/src/data/gameAssetModels.generated.ts",
-      "sha256": "c36273e4dcd24aed6834b944408f82bd99b977d11f9bdd700654719bb74f323e"
+      "sha256": "4f8e86bca3d8e0768ef7f0997d88a0f4e85b392106eb88c316694444184f861a"
     },
     {
       "path": "packages/game/src/entities/AutumnAsterPot.tsx",
@@ -342,7 +342,7 @@
     },
     {
       "path": "packages/game/src/entities/entityNameMap.ts",
-      "sha256": "a5afced89a89b0dcfe5b624a0ea09eca7a1cf0187aa877eefd8a985854c0e110"
+      "sha256": "cd1470a5af8561c81fcd8b0cdfbc8195e69b3272141a9e93df0476026682f50b"
     },
     {
       "path": "packages/game/src/entities/FallenLog.tsx",
@@ -442,7 +442,7 @@
     },
     {
       "path": "packages/game/src/hud/ItemsHud.tsx",
-      "sha256": "a7873469f753023b3e6ae80f30d3fa28d3394ff7690908ab501925122f39a9ca"
+      "sha256": "5dfe2573176a496a57bd554d68057545d5426a3247de1125145b6ab85ec121b1"
     },
     {
       "path": "packages/game/src/internalSceneBlockData.ts",
@@ -450,7 +450,7 @@
     },
     {
       "path": "packages/game/src/localSandboxBlockData.ts",
-      "sha256": "323ee3506cc34605dca9374c0ccf5831287d3792414dd42327daabdd08dae01d"
+      "sha256": "5a0cd54552cf40296e1db904e898c8b336410db953c17525c3b2661eb0818975"
     },
     {
       "path": "packages/game/src/rain/RainWetOverlay.tsx",

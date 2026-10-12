@@ -1,7 +1,7 @@
 {
     "harvest-corner": {
         "sourceCommit": "c48974bd2e21316ae5c3034b9d305350aa479cd4",
-        "captureSha256": "fd5da939da6318cab25e83200dcb3a7aa66f5203e3b1f9443149078bce6a7f64",
+        "captureSha256": "34f58a91831cd713cc219342ddad022d21b6ce58f6d39f855a0c5e37b14390f8",
         "included": [
             {
                 "entityName": "HarvestPumpkinGroupOrange",
@@ -642,7 +642,7 @@
             },
             {
                 "path": "packages/game/src/data/gameAssetModels.generated.ts",
-                "sha256": "c36273e4dcd24aed6834b944408f82bd99b977d11f9bdd700654719bb74f323e"
+                "sha256": "4f8e86bca3d8e0768ef7f0997d88a0f4e85b392106eb88c316694444184f861a"
             },
             {
                 "path": "packages/game/src/entities/BlockGrass.tsx",
@@ -678,7 +678,7 @@
             },
             {
                 "path": "packages/game/src/entities/entityNameMap.ts",
-                "sha256": "a5afced89a89b0dcfe5b624a0ea09eca7a1cf0187aa877eefd8a985854c0e110"
+                "sha256": "cd1470a5af8561c81fcd8b0cdfbc8195e69b3272141a9e93df0476026682f50b"
             },
             {
                 "path": "packages/game/src/entities/helpers/EntityPreviewContext.ts",
@@ -726,7 +726,7 @@
             },
             {
                 "path": "packages/game/src/localSandboxBlockData.ts",
-                "sha256": "323ee3506cc34605dca9374c0ccf5831287d3792414dd42327daabdd08dae01d"
+                "sha256": "5a0cd54552cf40296e1db904e898c8b336410db953c17525c3b2661eb0818975"
             },
             {
                 "path": "packages/game/src/rain/RainWetOverlay.tsx",
@@ -824,17 +824,17 @@
         "captureRecordCommit": "deca1575e69ddc52eb2f3ff89ca3333b714239fd",
         "recapture": {
             "source": {
-                "commit": "c525984cb92f191a68d9b434db96b10619c92d83",
-                "tree": "87f32cb44dd0ced6abfe96126602a6c3bef5e007",
+                "commit": "7d5f2d878d6a88fe6618168a3f16ca27348f374e",
+                "tree": "5b27798caca6f4f1d35447326f8915d9378efa2b",
                 "status": ""
             },
-            "previousCaptureSha256": "5f342081c539d52e6a14ce2f183cfddabc1997aeec28cf49c9e72f7d63306480",
+            "previousCaptureSha256": "fd5da939da6318cab25e83200dcb3a7aa66f5203e3b1f9443149078bce6a7f64",
             "previousPreviewSha256": "ed1b245678a3613a093026ecdfadd3a416a3332972f926ab9aa3a552bb95c2e2"
         }
     },
     "woodland-path": {
         "sourceCommit": "c48974bd2e21316ae5c3034b9d305350aa479cd4",
-        "captureSha256": "45250e85d7ed1dedb8d7b25c0bb121c17924454fb116f7fa1ba42a2c1925ac50",
+        "captureSha256": "d4fac46954d3dd6d0fdd0d5ae81d02f2264a82dcb6bdd8f463c42323369465e8",
         "included": [
             {
                 "entityName": "WoodlandMushrooms",
@@ -1478,7 +1478,7 @@
             },
             {
                 "path": "packages/game/src/data/gameAssetModels.generated.ts",
-                "sha256": "c36273e4dcd24aed6834b944408f82bd99b977d11f9bdd700654719bb74f323e"
+                "sha256": "4f8e86bca3d8e0768ef7f0997d88a0f4e85b392106eb88c316694444184f861a"
             },
             {
                 "path": "packages/game/src/entities/AutumnLeafPile.tsx",
@@ -1518,7 +1518,7 @@
             },
             {
                 "path": "packages/game/src/entities/entityNameMap.ts",
-                "sha256": "a5afced89a89b0dcfe5b624a0ea09eca7a1cf0187aa877eefd8a985854c0e110"
+                "sha256": "cd1470a5af8561c81fcd8b0cdfbc8195e69b3272141a9e93df0476026682f50b"
             },
             {
                 "path": "packages/game/src/entities/helpers/EntityPreviewContext.ts",
@@ -1566,7 +1566,7 @@
             },
             {
                 "path": "packages/game/src/localSandboxBlockData.ts",
-                "sha256": "323ee3506cc34605dca9374c0ccf5831287d3792414dd42327daabdd08dae01d"
+                "sha256": "5a0cd54552cf40296e1db904e898c8b336410db953c17525c3b2661eb0818975"
             },
             {
                 "path": "packages/game/src/rain/RainWetOverlay.tsx",
@@ -1664,17 +1664,17 @@
         "captureRecordCommit": "deca1575e69ddc52eb2f3ff89ca3333b714239fd",
         "recapture": {
             "source": {
-                "commit": "c525984cb92f191a68d9b434db96b10619c92d83",
-                "tree": "87f32cb44dd0ced6abfe96126602a6c3bef5e007",
+                "commit": "7d5f2d878d6a88fe6618168a3f16ca27348f374e",
+                "tree": "5b27798caca6f4f1d35447326f8915d9378efa2b",
                 "status": ""
             },
-            "previousCaptureSha256": "325531d479340a4c0f80ab45c1affecaad4649384b86f73024935e2fb4a5da2e",
+            "previousCaptureSha256": "45250e85d7ed1dedb8d7b25c0bb121c17924454fb116f7fa1ba42a2c1925ac50",
             "previousPreviewSha256": "2f21c98172611d2e3d37d71d4fd5c5c7685c044239f406a271a09d5e775c5e55"
         }
     },
     "evening-seat": {
         "sourceCommit": "c48974bd2e21316ae5c3034b9d305350aa479cd4",
-        "captureSha256": "59de1448b3c9888297a565f3b6b3bb8c1a63a2207bd7a66beba446c56ade3ad4",
+        "captureSha256": "ea0036dd1cf2cb5610de56800adc0d7a1b4326a9842ac853305b81ac14a1df83",
         "included": [
             {
                 "entityName": "AutumnBlanketBench",
@@ -2117,7 +2117,7 @@
                 ]
             }
         ],
-        "previewSha256": "48325aa58a719dafebafa403c3b3f51565d3128d9bbbac9ce80d93e539d434d7",
+        "previewSha256": "e3eccaa634461ae5f76792283c481e253ba43b964389c26fc7c71a6cb4942cd0",
         "models": [
             {
                 "entityName": "AutumnBlanketBench",
@@ -2319,7 +2319,7 @@
             },
             {
                 "path": "packages/game/src/data/gameAssetModels.generated.ts",
-                "sha256": "c36273e4dcd24aed6834b944408f82bd99b977d11f9bdd700654719bb74f323e"
+                "sha256": "4f8e86bca3d8e0768ef7f0997d88a0f4e85b392106eb88c316694444184f861a"
             },
             {
                 "path": "packages/game/src/entities/AutumnAsterPot.tsx",
@@ -2359,7 +2359,7 @@
             },
             {
                 "path": "packages/game/src/entities/entityNameMap.ts",
-                "sha256": "a5afced89a89b0dcfe5b624a0ea09eca7a1cf0187aa877eefd8a985854c0e110"
+                "sha256": "cd1470a5af8561c81fcd8b0cdfbc8195e69b3272141a9e93df0476026682f50b"
             },
             {
                 "path": "packages/game/src/entities/helpers/EntityPreviewContext.ts",
@@ -2407,7 +2407,7 @@
             },
             {
                 "path": "packages/game/src/localSandboxBlockData.ts",
-                "sha256": "323ee3506cc34605dca9374c0ccf5831287d3792414dd42327daabdd08dae01d"
+                "sha256": "5a0cd54552cf40296e1db904e898c8b336410db953c17525c3b2661eb0818975"
             },
             {
                 "path": "packages/game/src/rain/RainWetOverlay.tsx",
@@ -2509,11 +2509,11 @@
         "captureRecordCommit": "deca1575e69ddc52eb2f3ff89ca3333b714239fd",
         "recapture": {
             "source": {
-                "commit": "c525984cb92f191a68d9b434db96b10619c92d83",
-                "tree": "87f32cb44dd0ced6abfe96126602a6c3bef5e007",
+                "commit": "7d5f2d878d6a88fe6618168a3f16ca27348f374e",
+                "tree": "5b27798caca6f4f1d35447326f8915d9378efa2b",
                 "status": ""
             },
-            "previousCaptureSha256": "7cdd43bab41e43e05bb334fd5952b09d9a8956ab84022bc1161aeb899c3a3992",
+            "previousCaptureSha256": "59de1448b3c9888297a565f3b6b3bb8c1a63a2207bd7a66beba446c56ade3ad4",
             "previousPreviewSha256": "48325aa58a719dafebafa403c3b3f51565d3128d9bbbac9ce80d93e539d434d7"
         }
     }
