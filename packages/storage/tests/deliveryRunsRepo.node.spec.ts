@@ -2186,9 +2186,14 @@ test('[legacy] active run rejects source address and slot mutations while keepin
     });
     assert.equal(run.stops[0]?.formattedAddress, snapshotAddress);
 
+    // Start each mutation when assert.rejects can handle its rejection.
     for (const mutation of [
-        updateDeliveryAddress({ id: addressId, street1: 'Nova 2' }, accountId),
-        changeDeliveryRequestSlot(requestId, newSlot.id),
+        () =>
+            updateDeliveryAddress(
+                { id: addressId, street1: 'Nova 2' },
+                accountId,
+            ),
+        () => changeDeliveryRequestSlot(requestId, newSlot.id),
     ]) {
         await assert.rejects(
             mutation,
