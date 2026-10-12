@@ -227,7 +227,7 @@ jobs:
             release-artifacts/${{ steps.stage.outputs.artifact_prefix }}.apk
 
       - name: 📤 Upload Play handoff artifact
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: ${{ steps.stage.outputs.artifact_prefix }}-play-handoff
           path: release-artifacts/*

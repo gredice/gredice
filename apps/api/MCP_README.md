@@ -104,11 +104,22 @@ quantity zero removes an item.
 | `commerce/get-product` | public read | Get one published product. |
 | `commerce/get-cart` | authenticated read | Read the selected account cart. |
 | `commerce/add-to-cart` | authenticated mutation | Add a product to the cart. |
+| `commerce/add-operation-to-cart` | authenticated mutation | Add an applicable gardening operation to an owned bed or planted field. |
 | `commerce/update-cart-item` | authenticated mutation | Change quantity or remove a cart item. |
 
 Cart tools derive ownership from the bearer token. Clients must not send or ask
 users for account or user IDs. The catalog exposes only identifiers needed to
 select products, gardens, beds, fields, or existing cart items.
+
+If a plant operation is not applicable to the selected field's plant,
+`commerce/add-operation-to-cart` returns HTTP 200 with an MCP tool result
+containing `isError: true` and a text explanation. The cart is not created or
+changed. This business rejection is reported as `mcp.request.rejected` with
+`errorType: operation_not_applicable`; the diagnostic contains correlation,
+tool, timing and category fields, without arguments or personal identifiers.
+Authentication and account ownership are checked before applicability.
+Invalid parameters and unexpected tool failures retain their protocol error
+responses. MCP logs are flushed after each request using Vercel `waitUntil`.
 
 ## Resources
 
