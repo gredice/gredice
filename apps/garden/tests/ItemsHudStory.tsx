@@ -3,19 +3,41 @@ import {
     autumnAsterPotNames,
     getAutumnAsterPot,
 } from '@gredice/js/autumnAsterPots';
+import { autumnBlanketBench } from '@gredice/js/autumnBlanketBench';
+import {
+    autumnEntranceNames,
+    getAutumnEntrance,
+} from '@gredice/js/autumnEntrances';
+import { autumnGrassNames, getAutumnGrass } from '@gredice/js/autumnGrasses';
 import {
     autumnLeafPileNames,
     getAutumnLeafPile,
 } from '@gredice/js/autumnLeafPiles';
 import { autumnShrub } from '@gredice/js/autumnShrub';
+import { birdFeeder } from '@gredice/js/birdFeeder';
+import { chestnutRoastingCart } from '@gredice/js/chestnutRoastingCart';
 import { fallenLog } from '@gredice/js/fallenLog';
+import { gardenBrazier } from '@gredice/js/gardenBrazier';
 import { gardenScarecrow } from '@gredice/js/gardenScarecrow';
+import { gardenTeaTable } from '@gredice/js/gardenTeaTable';
 import { getHarvestCrate, harvestCrateNames } from '@gredice/js/harvestCrates';
 import {
     getHarvestPumpkin,
     harvestPumpkinNames,
 } from '@gredice/js/harvestPumpkins';
 import { harvestWheelbarrow } from '@gredice/js/harvestWheelbarrow';
+import { leafRake } from '@gredice/js/leafRake';
+import {
+    getPumpkinLantern,
+    pumpkinLanternNames,
+} from '@gredice/js/pumpkinLanterns';
+import { seasonalMaple } from '@gredice/js/seasonalMaple';
+import { seedDryingRack } from '@gredice/js/seedDryingRack';
+import { stackedFirewood } from '@gredice/js/stackedFirewood';
+import {
+    getWoodlandArrangement,
+    woodlandArrangementNames,
+} from '@gredice/js/woodlandArrangements';
 import { woodlandMushrooms } from '@gredice/js/woodlandMushrooms';
 import { cx } from '@gredice/ui/utils';
 import * as ReactQuery from '@tanstack/react-query';
@@ -460,20 +482,42 @@ const blockFixtures: Record<
 
 function createBlockData(name: string, index: number) {
     const decoration =
+        getAutumnEntrance(name) ??
+        getPumpkinLantern(name) ??
+        getWoodlandArrangement(name) ??
+        getAutumnGrass(name) ??
         getAutumnLeafPile(name) ??
-        (name === fallenLog.name
-            ? fallenLog
-            : name === woodlandMushrooms.name
-              ? woodlandMushrooms
-              : name === autumnShrub.name
-                ? autumnShrub
-                : name === gardenScarecrow.name
-                  ? gardenScarecrow
-                  : name === harvestWheelbarrow.name
-                    ? harvestWheelbarrow
-                    : (getAutumnAsterPot(name) ??
-                      getHarvestCrate(name) ??
-                      getHarvestPumpkin(name)));
+        (name === gardenBrazier.name
+            ? gardenBrazier
+            : name === birdFeeder.name
+              ? birdFeeder
+              : name === seedDryingRack.name
+                ? seedDryingRack
+                : name === stackedFirewood.name
+                  ? stackedFirewood
+                  : name === chestnutRoastingCart.name
+                    ? chestnutRoastingCart
+                    : name === gardenTeaTable.name
+                      ? gardenTeaTable
+                      : name === autumnBlanketBench.name
+                        ? autumnBlanketBench
+                        : name === leafRake.name
+                          ? leafRake
+                          : name === fallenLog.name
+                            ? fallenLog
+                            : name === woodlandMushrooms.name
+                              ? woodlandMushrooms
+                              : name === seasonalMaple.name
+                                ? seasonalMaple
+                                : name === autumnShrub.name
+                                  ? autumnShrub
+                                  : name === gardenScarecrow.name
+                                    ? gardenScarecrow
+                                    : name === harvestWheelbarrow.name
+                                      ? harvestWheelbarrow
+                                      : (getAutumnAsterPot(name) ??
+                                        getHarvestCrate(name) ??
+                                        getHarvestPumpkin(name)));
     const fixture = decoration
         ? {
               ...decoration.information,
@@ -544,9 +588,22 @@ const blockNames = [
     ...harvestCrateNames,
     harvestWheelbarrow.name,
     autumnShrub.name,
+    seasonalMaple.name,
     woodlandMushrooms.name,
+    leafRake.name,
+    stackedFirewood.name,
+    seedDryingRack.name,
+    birdFeeder.name,
+    gardenBrazier.name,
+    gardenTeaTable.name,
     fallenLog.name,
+    autumnBlanketBench.name,
+    chestnutRoastingCart.name,
     ...autumnLeafPileNames,
+    ...autumnGrassNames,
+    ...woodlandArrangementNames,
+    ...pumpkinLanternNames,
+    ...autumnEntranceNames,
     'Raised_Bed',
     'Bucket',
     'WateringCan',
@@ -683,9 +740,22 @@ type ItemsHudStoryOptions = {
     includeAutumnAsterPots?: boolean;
     includeHarvestWheelbarrow?: boolean;
     includeAutumnShrub?: boolean;
+    includeSeasonalMaple?: boolean;
     includeWoodlandMushrooms?: boolean;
     includeFallenLog?: boolean;
+    includeAutumnBlanketBench?: boolean;
+    includeLeafRake?: boolean;
+    includeStackedFirewood?: boolean;
+    includeSeedDryingRack?: boolean;
+    includeBirdFeeder?: boolean;
+    includeGardenBrazier?: boolean;
+    includeGardenTeaTable?: boolean;
+    includeChestnutRoastingCart?: boolean;
     includeAutumnLeafPiles?: boolean;
+    includeAutumnGrasses?: boolean;
+    includeWoodlandArrangements?: boolean;
+    includePumpkinLanterns?: boolean;
+    includeAutumnEntrances?: boolean;
     accountSunflowers?: number;
     cameraTarget?: [x: number, y: number, z: number];
     closeup?: boolean;
@@ -703,9 +773,22 @@ function createItemsHudQueryClient({
     includeAutumnAsterPots = true,
     includeHarvestWheelbarrow = true,
     includeAutumnShrub = true,
+    includeSeasonalMaple = true,
     includeWoodlandMushrooms = true,
     includeFallenLog = true,
+    includeAutumnBlanketBench = true,
+    includeLeafRake = true,
+    includeStackedFirewood = true,
+    includeSeedDryingRack = true,
+    includeBirdFeeder = true,
+    includeGardenBrazier = true,
+    includeGardenTeaTable = true,
+    includeChestnutRoastingCart = true,
     includeAutumnLeafPiles = true,
+    includeAutumnGrasses = true,
+    includeWoodlandArrangements = true,
+    includePumpkinLanterns = true,
+    includeAutumnEntrances = true,
     isSandbox = false,
 }: ItemsHudStoryOptions) {
     const queryClient = new ReactQuery.QueryClient({
@@ -717,6 +800,46 @@ function createItemsHudQueryClient({
     queryClient.setQueryData(
         ['blocks'],
         blockNames
+            .filter(
+                (name) => includePumpkinLanterns || !getPumpkinLantern(name),
+            )
+            .filter((name) => includeBirdFeeder || name !== birdFeeder.name)
+            .filter(
+                (name) => includeSeasonalMaple || name !== seasonalMaple.name,
+            )
+            .filter(
+                (name) => includeAutumnEntrances || !getAutumnEntrance(name),
+            )
+            .filter(
+                (name) =>
+                    includeWoodlandArrangements ||
+                    !getWoodlandArrangement(name),
+            )
+            .filter(
+                (name) => includeSeedDryingRack || name !== seedDryingRack.name,
+            )
+            .filter((name) => includeAutumnGrasses || !getAutumnGrass(name))
+            .filter(
+                (name) => includeGardenBrazier || name !== gardenBrazier.name,
+            )
+            .filter(
+                (name) =>
+                    includeStackedFirewood || name !== stackedFirewood.name,
+            )
+            .filter(
+                (name) =>
+                    includeChestnutRoastingCart ||
+                    name !== chestnutRoastingCart.name,
+            )
+            .filter(
+                (name) => includeGardenTeaTable || name !== gardenTeaTable.name,
+            )
+            .filter(
+                (name) =>
+                    includeAutumnBlanketBench ||
+                    name !== autumnBlanketBench.name,
+            )
+            .filter((name) => includeLeafRake || name !== leafRake.name)
             .filter(
                 (name) => includeAutumnLeafPiles || !getAutumnLeafPile(name),
             )
@@ -773,9 +896,22 @@ function ItemsHudTestProviders({
     includeAutumnAsterPots = true,
     includeHarvestWheelbarrow = true,
     includeAutumnShrub = true,
+    includeSeasonalMaple = true,
     includeWoodlandMushrooms = true,
     includeFallenLog = true,
+    includeAutumnBlanketBench = true,
+    includeLeafRake = true,
+    includeStackedFirewood = true,
+    includeSeedDryingRack = true,
+    includeBirdFeeder = true,
+    includeGardenBrazier = true,
+    includeGardenTeaTable = true,
+    includeChestnutRoastingCart = true,
     includeAutumnLeafPiles = true,
+    includeAutumnGrasses = true,
+    includeWoodlandArrangements = true,
+    includePumpkinLanterns = true,
+    includeAutumnEntrances = true,
     children,
     accountSunflowers,
     cameraTarget,
@@ -796,9 +932,22 @@ function ItemsHudTestProviders({
                 includeAutumnAsterPots,
                 includeHarvestWheelbarrow,
                 includeAutumnShrub,
+                includeSeasonalMaple,
                 includeWoodlandMushrooms,
                 includeFallenLog,
+                includeAutumnBlanketBench,
+                includeLeafRake,
+                includeStackedFirewood,
+                includeSeedDryingRack,
+                includeBirdFeeder,
+                includeGardenBrazier,
+                includeGardenTeaTable,
+                includeChestnutRoastingCart,
                 includeAutumnLeafPiles,
+                includeAutumnGrasses,
+                includeWoodlandArrangements,
+                includePumpkinLanterns,
+                includeAutumnEntrances,
             }),
         [
             accountSunflowers,
@@ -809,9 +958,22 @@ function ItemsHudTestProviders({
             includeAutumnAsterPots,
             includeHarvestWheelbarrow,
             includeAutumnShrub,
+            includeSeasonalMaple,
             includeWoodlandMushrooms,
             includeFallenLog,
+            includeAutumnBlanketBench,
+            includeLeafRake,
+            includeStackedFirewood,
+            includeSeedDryingRack,
+            includeBirdFeeder,
+            includeGardenBrazier,
+            includeGardenTeaTable,
+            includeChestnutRoastingCart,
             includeAutumnLeafPiles,
+            includeAutumnGrasses,
+            includeWoodlandArrangements,
+            includePumpkinLanterns,
+            includeAutumnEntrances,
         ],
     );
     const gameStore = useMemo(() => {
@@ -911,9 +1073,22 @@ export function ItemsHudAlignmentStory({
     includeAutumnAsterPots = true,
     includeHarvestWheelbarrow = true,
     includeAutumnShrub = true,
+    includeSeasonalMaple = true,
     includeWoodlandMushrooms = true,
     includeFallenLog = true,
+    includeAutumnBlanketBench = true,
+    includeLeafRake = true,
+    includeStackedFirewood = true,
+    includeSeedDryingRack = true,
+    includeBirdFeeder = true,
+    includeGardenBrazier = true,
+    includeGardenTeaTable = true,
+    includeChestnutRoastingCart = true,
     includeAutumnLeafPiles = true,
+    includeAutumnGrasses = true,
+    includeWoodlandArrangements = true,
+    includePumpkinLanterns = true,
+    includeAutumnEntrances = true,
 }: {
     includeHarvestPumpkins?: boolean;
     includeGardenScarecrow?: boolean;
@@ -921,9 +1096,22 @@ export function ItemsHudAlignmentStory({
     includeAutumnAsterPots?: boolean;
     includeHarvestWheelbarrow?: boolean;
     includeAutumnShrub?: boolean;
+    includeSeasonalMaple?: boolean;
     includeWoodlandMushrooms?: boolean;
     includeFallenLog?: boolean;
+    includeAutumnBlanketBench?: boolean;
+    includeLeafRake?: boolean;
+    includeStackedFirewood?: boolean;
+    includeSeedDryingRack?: boolean;
+    includeBirdFeeder?: boolean;
+    includeGardenBrazier?: boolean;
+    includeGardenTeaTable?: boolean;
+    includeChestnutRoastingCart?: boolean;
     includeAutumnLeafPiles?: boolean;
+    includeAutumnGrasses?: boolean;
+    includeWoodlandArrangements?: boolean;
+    includePumpkinLanterns?: boolean;
+    includeAutumnEntrances?: boolean;
 }) {
     return (
         <ItemsHudTestProviders
@@ -933,9 +1121,22 @@ export function ItemsHudAlignmentStory({
             includeAutumnAsterPots={includeAutumnAsterPots}
             includeHarvestWheelbarrow={includeHarvestWheelbarrow}
             includeAutumnShrub={includeAutumnShrub}
+            includeSeasonalMaple={includeSeasonalMaple}
             includeWoodlandMushrooms={includeWoodlandMushrooms}
             includeFallenLog={includeFallenLog}
+            includeAutumnBlanketBench={includeAutumnBlanketBench}
+            includeLeafRake={includeLeafRake}
+            includeStackedFirewood={includeStackedFirewood}
+            includeSeedDryingRack={includeSeedDryingRack}
+            includeBirdFeeder={includeBirdFeeder}
+            includeGardenBrazier={includeGardenBrazier}
+            includeGardenTeaTable={includeGardenTeaTable}
+            includeChestnutRoastingCart={includeChestnutRoastingCart}
             includeAutumnLeafPiles={includeAutumnLeafPiles}
+            includeAutumnGrasses={includeAutumnGrasses}
+            includeWoodlandArrangements={includeWoodlandArrangements}
+            includePumpkinLanterns={includePumpkinLanterns}
+            includeAutumnEntrances={includeAutumnEntrances}
         >
             <div className="relative h-screen w-screen overflow-hidden">
                 <div

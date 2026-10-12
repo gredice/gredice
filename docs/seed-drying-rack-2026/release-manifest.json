@@ -1,0 +1,103 @@
+{
+  "state": "unpublished",
+  "publicationIssue": 5000,
+  "snapshotDate": "2026-10-22T12:00:00+02:00",
+  "source": {
+    "path": "assets/game-assets/SeedDryingRack.blend",
+    "bytes": 110633,
+    "sha256": "908047ee578878f2cd46cc524502ed90067506ed8ebb9a5f7c0cc52560fa5d17"
+  },
+  "models": [
+    {
+      "name": "SeedDryingRack",
+      "path": "apps/garden/public/assets/models/SeedDryingRack.glb",
+      "bytes": 145780,
+      "sha256": "87d42acc7817cce025bb1433998fa0d0affe7a62ccfa5983789f3d4d85a9c64c",
+      "url": "https://vrt.gredice.com/assets/models/SeedDryingRack.glb?v=87d42acc7817",
+      "triangles": 1452,
+      "trianglesByMesh": {
+        "SeedDryingRack_Arrangement": 1452
+      },
+      "meshCount": 1,
+      "materialCount": 1
+    }
+  ],
+  "items": [
+    {
+      "name": "SeedDryingRack",
+      "information": {
+        "label": "Ukrasni stalak za sušenje sjemena",
+        "shortDescription": "Mali drveni stalak s dvije plitice i širokim visećim klasovima.",
+        "fullDescription": "Drveni stalak s pliticama i suhim klasovima ukrašava jedno polje vrta. Predmet je samo ukras: ne pohranjuje, ne suši i ne daje sjeme, ne mijenja zalihu sjemena i ne donosi nagrade. Na njega se ne slažu drugi predmeti."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 1,
+        "hitboxHeight": 1,
+        "hitboxWidth": 0.9,
+        "hitboxDepth": 0.9,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 60,
+      "catalogueId": null,
+      "cover": "https://www.gredice.com/assets/blocks/SeedDryingRack.webp",
+      "topDown": "https://vrt.gredice.com/assets/blocks/top-down/SeedDryingRack.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/SeedDryingRack.webp",
+          "bytes": 12576,
+          "sha256": "1a8838c690c756fb92343ecb2c1e52bad3d5df420eaf0168a75588c6c4022116"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/SeedDryingRack_1.webp",
+          "bytes": 12576,
+          "sha256": "1a8838c690c756fb92343ecb2c1e52bad3d5df420eaf0168a75588c6c4022116"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/SeedDryingRack_2.webp",
+          "bytes": 12700,
+          "sha256": "fd65d4018d0fe4516cd08653d94a3293ad37ca32e0e9105d5b0ab1b511b90230"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/SeedDryingRack_3.webp",
+          "bytes": 12750,
+          "sha256": "0bf1da2c45750040c1acb6dcee402b82c2b82589056cfdeac51d1b373d703819"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/SeedDryingRack_4.webp",
+          "bytes": 12642,
+          "sha256": "53d4c68b3599978a69ba433fd6e2563674f6164877c35a07efd895ddc78db3e2"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/SeedDryingRack.webp",
+          "bytes": 2516,
+          "sha256": "80c1e11634b6cfb03c45f0faa819f58bb8d1df1f43825f865cb751a16b9d86d7"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/SeedDryingRack_1.webp",
+          "bytes": 2516,
+          "sha256": "80c1e11634b6cfb03c45f0faa819f58bb8d1df1f43825f865cb751a16b9d86d7"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/SeedDryingRack_2.webp",
+          "bytes": 2498,
+          "sha256": "63e3b066cd18cd52bf10b4355329630cc1e5389ef4796d96e0a97b0c28d66846"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/SeedDryingRack_3.webp",
+          "bytes": 2564,
+          "sha256": "7c8bc98ce4eee5100fb4cb41f3361dd82c3bdeafb54d23c047a0b8baca0b2ea8"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/SeedDryingRack_4.webp",
+          "bytes": 2302,
+          "sha256": "edd2799b3745ddcbf70500bee5e5c60c9f6e208e90b160c912962274d8d194ef"
+        }
+      ]
+    }
+  ]
+}

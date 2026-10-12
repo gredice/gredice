@@ -1,0 +1,284 @@
+{
+  "state": "unpublished",
+  "snapshotDate": "2026-10-22T12:00:00+02:00",
+  "publicationIssue": 5000,
+  "sources": [
+    {
+      "path": "assets/game-assets/AutumnWreathPost.blend",
+      "bytes": 105828,
+      "sha256": "93e3d7acabe11ab299936fe7098fe8439df5bc16ba35803e02e74d7cf33e2c51"
+    },
+    {
+      "path": "assets/game-assets/AutumnGarland.blend",
+      "bytes": 102486,
+      "sha256": "c0c9cfee278c7a1e3a6e5826dff5a7148904e30d6915929a16e82fa09abad9f9"
+    },
+    {
+      "path": "assets/game-assets/AutumnFenceGate.blend",
+      "bytes": 118768,
+      "sha256": "c48bf5792a630918feec45855edfaec191be2612f7df1e7b12669257be7a1885"
+    }
+  ],
+  "models": [
+    {
+      "name": "AutumnWreathPost",
+      "path": "apps/garden/public/assets/models/AutumnWreathPost.glb",
+      "bytes": 83200,
+      "sha256": "3f647ea3a7e4fa410fc2d1d7a52bece31023e95db162883c80f8c908e0116667",
+      "url": "https://vrt.gredice.com/assets/models/AutumnWreathPost.glb?v=3f647ea3a7e4",
+      "triangles": 920,
+      "meshCount": 2,
+      "materialCount": 2
+    },
+    {
+      "name": "AutumnGarland",
+      "path": "apps/garden/public/assets/models/AutumnGarland.glb",
+      "bytes": 65340,
+      "sha256": "a8563cbfee9adf2d4ea03c7ef8d4406e4ae4c4d12d835d92205c868844588c3b",
+      "url": "https://vrt.gredice.com/assets/models/AutumnGarland.glb?v=a8563cbfee9a",
+      "triangles": 696,
+      "meshCount": 2,
+      "materialCount": 2
+    },
+    {
+      "name": "AutumnFenceGate",
+      "path": "apps/garden/public/assets/models/AutumnFenceGate.glb",
+      "bytes": 149908,
+      "sha256": "71388daaed2d6eb4a2930bc703695a16f91efbe89956de4cb7dd02f26e37479a",
+      "url": "https://vrt.gredice.com/assets/models/AutumnFenceGate.glb?v=71388daaed2d",
+      "triangles": 1972,
+      "meshCount": 3,
+      "materialCount": 3
+    }
+  ],
+  "items": [
+    {
+      "name": "AutumnWreathPost",
+      "information": {
+        "label": "Jesenski ulaz – vijenac na stupu",
+        "shortDescription": "Jesenski ukras na vlastitim drvenim nosačima.",
+        "fullDescription": "Jesenski detalj s vlastitim nosačima zauzima jedno polje. Vijenac i girlanda služe kao ukras, a vrata s bundevama otvaraju se dodirom i povezuju s ogradom. Ukrasi ne daju resurse ni nagrade. Na njih se ne slažu drugi predmeti."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 1.05,
+        "hitboxHeight": 1.05,
+        "hitboxWidth": 0.9,
+        "hitboxDepth": 0.9,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 45,
+      "catalogueId": null,
+      "cover": "https://www.gredice.com/assets/blocks/AutumnWreathPost.webp",
+      "topDown": "https://vrt.gredice.com/assets/blocks/top-down/AutumnWreathPost.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/AutumnWreathPost.webp",
+          "bytes": 8644,
+          "sha256": "5c15ef49a0ce1d3ab6cce07b0a9da4da60cebfe8cb2b4f842cf5f6d32f89fbdb"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnWreathPost_1.webp",
+          "bytes": 8644,
+          "sha256": "5c15ef49a0ce1d3ab6cce07b0a9da4da60cebfe8cb2b4f842cf5f6d32f89fbdb"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnWreathPost_2.webp",
+          "bytes": 8678,
+          "sha256": "2bd2fdae8f0f70f85a057394af5705479341dc573cdc27f64574425d0a9bb59c"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnWreathPost_3.webp",
+          "bytes": 7950,
+          "sha256": "69ce1dc6a23c0e18b4ad4be2056862fed5e712446ca4428fd4a5155a3e08a1d2"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnWreathPost_4.webp",
+          "bytes": 7846,
+          "sha256": "7d06cee1aa02213271e8be1ab4e0bc044ad804e70c0a06b418fe82ed185e38bc"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnWreathPost.webp",
+          "bytes": 1870,
+          "sha256": "e3eb9542295e22c69adaa66206ae5f3c3d332a610ce60493884efc1b97b73fc4"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnWreathPost_1.webp",
+          "bytes": 1870,
+          "sha256": "e3eb9542295e22c69adaa66206ae5f3c3d332a610ce60493884efc1b97b73fc4"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnWreathPost_2.webp",
+          "bytes": 1364,
+          "sha256": "2d318b9333299b1ff00751dfaa51bb3fd4cb603175defd5d5ae61abc16cfe006"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnWreathPost_3.webp",
+          "bytes": 1798,
+          "sha256": "2b3fe6a215be19494b35ce6210b2b269fe7d05383f6cc90d5be6ab28aa833c39"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnWreathPost_4.webp",
+          "bytes": 1388,
+          "sha256": "6446722fb1d656674eae65c5e8963ca1bc027f689f5e04d428fe8a96df911bc9"
+        }
+      ]
+    },
+    {
+      "name": "AutumnGarland",
+      "information": {
+        "label": "Jesenski ulaz – girlanda na nosačima",
+        "shortDescription": "Jesenski ukras na vlastitim drvenim nosačima.",
+        "fullDescription": "Jesenski detalj s vlastitim nosačima zauzima jedno polje. Vijenac i girlanda služe kao ukras, a vrata s bundevama otvaraju se dodirom i povezuju s ogradom. Ukrasi ne daju resurse ni nagrade. Na njih se ne slažu drugi predmeti."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 0.95,
+        "hitboxHeight": 0.95,
+        "hitboxWidth": 0.9,
+        "hitboxDepth": 0.9,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 55,
+      "catalogueId": null,
+      "cover": "https://www.gredice.com/assets/blocks/AutumnGarland.webp",
+      "topDown": "https://vrt.gredice.com/assets/blocks/top-down/AutumnGarland.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/AutumnGarland.webp",
+          "bytes": 7088,
+          "sha256": "59e88157c0828061ec6cdbaac67b6add694e2f8c3548cdc9d95538a561a65729"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnGarland_1.webp",
+          "bytes": 7088,
+          "sha256": "59e88157c0828061ec6cdbaac67b6add694e2f8c3548cdc9d95538a561a65729"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnGarland_2.webp",
+          "bytes": 6780,
+          "sha256": "686d24fed88ded5bed230415124078514f5f883ff5cc363e9e229fa62d21de05"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnGarland_3.webp",
+          "bytes": 6584,
+          "sha256": "cc5c3e330cce9b282b8d731c26b214973e3c318bcaa3701b4957e9499fd12737"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnGarland_4.webp",
+          "bytes": 6620,
+          "sha256": "80017cda4b7e52a045243f384b91f1d33166731dcd7d5cb8668bca3b36654fa7"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnGarland.webp",
+          "bytes": 1828,
+          "sha256": "71f426644dcdbdad14cd3537464756224e624c07ae722bd6b4dc98ad46c42965"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnGarland_1.webp",
+          "bytes": 1828,
+          "sha256": "71f426644dcdbdad14cd3537464756224e624c07ae722bd6b4dc98ad46c42965"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnGarland_2.webp",
+          "bytes": 1768,
+          "sha256": "41806583028f3196ff5779cc363388780bb321b3f8114cb79e4eb420c6e1f858"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnGarland_3.webp",
+          "bytes": 1754,
+          "sha256": "779b366849e680ad81d3b83c7d085db0244ce7279855721027225c6d4e9db71c"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnGarland_4.webp",
+          "bytes": 1728,
+          "sha256": "394f298785125fc61eacde4de8618381d75c00e67d7086fb784d8c9d5d4ef7f5"
+        }
+      ]
+    },
+    {
+      "name": "AutumnFenceGate",
+      "information": {
+        "label": "Jesenski ulaz – vrata s bundevama",
+        "shortDescription": "Jesenski ukras na vlastitim drvenim nosačima.",
+        "fullDescription": "Jesenski detalj s vlastitim nosačima zauzima jedno polje. Vijenac i girlanda služe kao ukras, a vrata s bundevama otvaraju se dodirom i povezuju s ogradom. Ukrasi ne daju resurse ni nagrade. Na njih se ne slažu drugi predmeti."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 0.8,
+        "hitboxHeight": 0.8,
+        "hitboxWidth": 1.05,
+        "hitboxDepth": 1.05,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 75,
+      "catalogueId": null,
+      "cover": "https://www.gredice.com/assets/blocks/AutumnFenceGate.webp",
+      "topDown": "https://vrt.gredice.com/assets/blocks/top-down/AutumnFenceGate.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/AutumnFenceGate.webp",
+          "bytes": 7380,
+          "sha256": "7c311d43552716aa0045305fe1d6df79d1a667dfd1c8284a65cac72f56ffe2bd"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnFenceGate_1.webp",
+          "bytes": 7380,
+          "sha256": "7c311d43552716aa0045305fe1d6df79d1a667dfd1c8284a65cac72f56ffe2bd"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnFenceGate_2.webp",
+          "bytes": 7692,
+          "sha256": "1e3eebfffd4808cdc086cc3c1b3ce96ab3cb93bb5ae4b2cf9a9fc1643fbfd6a8"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnFenceGate_3.webp",
+          "bytes": 7334,
+          "sha256": "eee18f3441f36ff293b8a807a06b7ae668ba78dda6f24a5a16c06bcde24ab6b5"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnFenceGate_4.webp",
+          "bytes": 7582,
+          "sha256": "71c829574065b76b74c1b72aba63f302da1c027fe9c1a487951d7916a2e4ab45"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnFenceGate.webp",
+          "bytes": 1874,
+          "sha256": "de37612f8f0f9e2526bdc03f10e4543dab55073636396c693257e98d63fd4f13"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnFenceGate_1.webp",
+          "bytes": 1874,
+          "sha256": "de37612f8f0f9e2526bdc03f10e4543dab55073636396c693257e98d63fd4f13"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnFenceGate_2.webp",
+          "bytes": 1882,
+          "sha256": "33980bf027df0f2e5f647621108a7cb9bec7441fc8d1c1a2104a4b67cb8bd4bd"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnFenceGate_3.webp",
+          "bytes": 1824,
+          "sha256": "e2c593ac5949a669feb706284bfc9994cd37e205af5d9616a31fbdba31b61dbe"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnFenceGate_4.webp",
+          "bytes": 1846,
+          "sha256": "0ad21b6d14ed11b610bf0f18872c36bf3e4efe2d4d66c706dee7d775d02dfe3c"
+        }
+      ]
+    }
+  ]
+}

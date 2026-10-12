@@ -94,3 +94,42 @@ describe('fence connection state', () => {
         );
     });
 });
+
+it('keeps decorated gate connections identical to the plain gate in every orientation and neighboring fence family', () => {
+    for (const rotation of [0, 1, 2, 3]) {
+        for (const fenceName of [
+            'Fence',
+            'WhiteFence',
+            'StoneFence',
+            'PolishedStoneFence',
+        ]) {
+            const fenceBlock = block('fence', fenceName);
+            const fenceStack = {
+                blocks: [fenceBlock],
+                position: {
+                    x: Math.round(Math.cos((rotation * Math.PI) / 2)),
+                    y: 0,
+                    z: -Math.round(Math.sin((rotation * Math.PI) / 2)),
+                },
+            };
+            const connection = (name: string) => {
+                const gateBlock = { ...block('gate', name), rotation };
+                const gateStack = {
+                    blocks: [gateBlock],
+                    position: { x: 0, y: 0, z: 0 },
+                };
+                return resolveFenceConnectionState(
+                    [fenceStack, gateStack],
+                    fenceStack,
+                    fenceBlock,
+                    0,
+                );
+            };
+            const decorated = connection('AutumnFenceGate');
+            assert.deepEqual(decorated, connection('FenceGate'));
+            assert.equal(decorated.connection.shape, 'Single');
+            assert.equal(decorated.hasAdjacentFence, true);
+            assert.deepEqual(decorated.extensionRotations, []);
+        }
+    }
+});

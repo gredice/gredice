@@ -583,8 +583,20 @@ export type GLTFResult = GLTF & {
         AutumnAsterPot_Petals: THREE.Mesh;
         AutumnAsterPot_Pot: THREE.Mesh;
         AutumnAsterPot_Soil: THREE.Mesh;
+        AutumnBlanketBench_Textile: THREE.Mesh;
+        AutumnBlanketBench_Timber: THREE.Mesh;
+        AutumnFenceGate_Decor: THREE.Mesh;
+        AutumnFenceGate_Leaf_Mesh: THREE.Mesh;
+        AutumnFenceGate_Leaf_Mesh_1: THREE.Mesh;
+        AutumnFenceGate_Posts: THREE.Mesh;
+        AutumnGarland_Foliage: THREE.Mesh;
+        AutumnGarland_Support: THREE.Mesh;
+        AutumnGrassTuft_Base: THREE.Mesh;
+        AutumnGrassTuft_Foliage: THREE.Mesh;
         AutumnLeafPileCrescent_Leaves: THREE.Mesh;
         AutumnLeafPileMound_Leaves: THREE.Mesh;
+        AutumnSeedHeads_Base: THREE.Mesh;
+        AutumnSeedHeads_Foliage: THREE.Mesh;
         AutumnShrub_FullGold: THREE.Mesh;
         AutumnShrub_FullRusset: THREE.Mesh;
         AutumnShrub_SparseGold: THREE.Mesh;
@@ -592,6 +604,8 @@ export type GLTFResult = GLTF & {
         AutumnShrub_ThinningGold: THREE.Mesh;
         AutumnShrub_ThinningRusset: THREE.Mesh;
         AutumnShrub_Wood: THREE.Mesh;
+        AutumnWreathPost_Foliage: THREE.Mesh;
+        AutumnWreathPost_Support: THREE.Mesh;
         BaleHey: THREE.Mesh;
         BeachBall_Cap: THREE.Mesh;
         BeachBall_ContactPatch: THREE.Mesh;
@@ -671,6 +685,7 @@ export type GLTFResult = GLTF & {
         BeachUmbrella_Pole: THREE.Mesh;
         BeachUmbrella_Ribs: THREE.Mesh;
         BeachUmbrella_Stake: THREE.Mesh;
+        BirdFeeder_Arrangement: THREE.Mesh;
         Birdhouse_Angled_Supports: THREE.Mesh;
         Birdhouse_Cabin_Walls: THREE.Mesh;
         Birdhouse_Center_Post: THREE.Mesh;
@@ -744,6 +759,8 @@ export type GLTFResult = GLTF & {
         CameraPhone_Screen: THREE.Mesh;
         CatPillow_Cushion: THREE.Mesh;
         CatPillow_Seam: THREE.Mesh;
+        ChestnutRoastingCart_Cart: THREE.Mesh;
+        ChestnutRoastingCart_Roaster: THREE.Mesh;
         ChickenCoop_Bowl: THREE.Mesh;
         ChickenCoop_Entrance: THREE.Mesh;
         ChickenCoop_Roof: THREE.Mesh;
@@ -861,6 +878,8 @@ export type GLTFResult = GLTF & {
         FishingBoat_Rope: THREE.Mesh;
         GardenBox_Body_Planks: THREE.Mesh;
         GardenBox_Lid_HingeOrigin: THREE.Mesh;
+        GardenBrazier_Embers: THREE.Mesh;
+        GardenBrazier_Metal: THREE.Mesh;
         GardenFlower_Center: THREE.Mesh;
         GardenFlower_Leaves: THREE.Mesh;
         GardenFlower_Petals: THREE.Mesh;
@@ -880,6 +899,8 @@ export type GLTFResult = GLTF & {
         GardenScissors_Pivot_Slot: THREE.Mesh;
         GardenScissors_Tang_L: THREE.Mesh;
         GardenScissors_Tang_R: THREE.Mesh;
+        GardenTeaTable_TeaSet: THREE.Mesh;
+        GardenTeaTable_Timber: THREE.Mesh;
         GiftBox_Bow: THREE.Mesh;
         GiftBox_Box: THREE.Mesh;
         GiftBox_Strip: THREE.Mesh;
@@ -1058,6 +1079,7 @@ export type GLTFResult = GLTF & {
         InflatablePoolSmall_OuterRingMiddle: THREE.Mesh;
         InflatablePoolSmall_OuterRingTop: THREE.Mesh;
         InflatablePoolSmall_Water: THREE.Mesh;
+        LeafRake_Arrangement: THREE.Mesh;
         LemonadeStand_awning_front_valance: THREE.Mesh;
         LemonadeStand_awning_scallop_1: THREE.Mesh;
         LemonadeStand_awning_scallop_2: THREE.Mesh;
@@ -1379,6 +1401,12 @@ export type GLTFResult = GLTF & {
         PotVariant_Soil_08: THREE.Mesh;
         PotVariant_Soil_09: THREE.Mesh;
         PotVariant_Soil_10: THREE.Mesh;
+        PumpkinLanternSmile_Body: THREE.Mesh;
+        PumpkinLanternSmile_Glow: THREE.Mesh;
+        PumpkinLanternSmile_Stem: THREE.Mesh;
+        PumpkinLanternWink_Body: THREE.Mesh;
+        PumpkinLanternWink_Glow: THREE.Mesh;
+        PumpkinLanternWink_Stem: THREE.Mesh;
         RabbitHutch_EntranceRamp_1: THREE.Mesh;
         RabbitHutch_EntranceRamp_2: THREE.Mesh;
         RabbitHutch_Oak: THREE.Mesh;
@@ -1444,7 +1472,12 @@ export type GLTFResult = GLTF & {
         SandcastleSmallA_SandBlock05: THREE.Mesh;
         SandcastleSmallA_SandBlock06: THREE.Mesh;
         SandcastleSmallA_UpperWindowRecess: THREE.Mesh;
+        SeasonalMaple_Full: THREE.Mesh;
+        SeasonalMaple_Sparse: THREE.Mesh;
+        SeasonalMaple_Thinning: THREE.Mesh;
+        SeasonalMaple_Wood: THREE.Mesh;
         Seed: THREE.Mesh;
+        SeedDryingRack_Arrangement: THREE.Mesh;
         SensorStakeMeter_Display_Back: THREE.Mesh;
         SensorStakeMeter_Display_Face: THREE.Mesh;
         SensorStakeMeter_Display_Screen: THREE.Mesh;
@@ -1469,6 +1502,7 @@ export type GLTFResult = GLTF & {
         SmallWoodenBridge_PlanksWarm: THREE.Mesh;
         SmallWoodenBridge_Stringers: THREE.Mesh;
         Snowman: THREE.Mesh;
+        StackedFirewood_Timber: THREE.Mesh;
         Stick: THREE.Mesh;
         Stone_Large: THREE.Mesh;
         Stone_Medium: THREE.Mesh;
@@ -1672,6 +1706,9 @@ export type GLTFResult = GLTF & {
         WoodenWalkway_Pegs: THREE.Mesh;
         WoodenWalkway_PlanksLight: THREE.Mesh;
         WoodenWalkway_PlanksWarm: THREE.Mesh;
+        WoodlandAcorns_Arrangement: THREE.Mesh;
+        WoodlandConkers_Arrangement: THREE.Mesh;
+        WoodlandMushroomBasket_Arrangement: THREE.Mesh;
         WoodlandMushrooms_Cluster: THREE.Mesh;
         X_Half: THREE.Mesh;
     };
@@ -1735,6 +1772,13 @@ export type GLTFResult = GLTF & {
         'Material.AutumnAster.Petals': THREE.MeshStandardMaterial;
         'Material.AutumnAster.Soil': THREE.MeshStandardMaterial;
         'Material.AutumnAster.Terracotta': THREE.MeshStandardMaterial;
+        'Material.AutumnBlanketBench.Textile': THREE.MeshStandardMaterial;
+        'Material.AutumnBlanketBench.Timber': THREE.MeshStandardMaterial;
+        'Material.AutumnEntrance.Leaves': THREE.MeshStandardMaterial;
+        'Material.AutumnEntrance.Pumpkins': THREE.MeshStandardMaterial;
+        'Material.AutumnEntrance.Timber': THREE.MeshStandardMaterial;
+        'Material.AutumnGrasses.Blades': THREE.MeshStandardMaterial;
+        'Material.AutumnGrasses.Gravel': THREE.MeshStandardMaterial;
         'Material.AutumnLeafPileCrescent.Palette': THREE.MeshStandardMaterial;
         'Material.AutumnLeafPileMound.Palette': THREE.MeshStandardMaterial;
         'Material.AutumnShrub.Gold': THREE.MeshStandardMaterial;
@@ -1764,6 +1808,7 @@ export type GLTFResult = GLTF & {
         'Material.Bee.Gold': THREE.MeshStandardMaterial;
         'Material.Bee.Wing': THREE.MeshStandardMaterial;
         'Material.Bee.Yellow': THREE.MeshStandardMaterial;
+        'Material.BirdFeeder.Timber': THREE.MeshStandardMaterial;
         'Material.BirdSmall.Beak': THREE.MeshStandardMaterial;
         'Material.BirdSmall.Belly': THREE.MeshStandardMaterial;
         'Material.BirdSmall.Body': THREE.MeshStandardMaterial;
@@ -1805,6 +1850,8 @@ export type GLTFResult = GLTF & {
         'Material.Cat.Whisker': THREE.MeshStandardMaterial;
         'Material.Cat.WhiteFur': THREE.MeshStandardMaterial;
         'Material.Cat.WhiteFurShadow': THREE.MeshStandardMaterial;
+        'Material.ChestnutRoastingCart.Roaster': THREE.MeshStandardMaterial;
+        'Material.ChestnutRoastingCart.WoodPaper': THREE.MeshStandardMaterial;
         'Material.Chicken.Charcoal': THREE.MeshStandardMaterial;
         'Material.Chicken.Cream': THREE.MeshStandardMaterial;
         'Material.Chicken.CreamDark': THREE.MeshStandardMaterial;
@@ -1918,6 +1965,8 @@ export type GLTFResult = GLTF & {
         'Material.Frog.MossGreen': THREE.MeshStandardMaterial;
         'Material.Frog.MossLight': THREE.MeshStandardMaterial;
         'Material.Frog.ThroatGold': THREE.MeshStandardMaterial;
+        'Material.GardenBrazier.Embers': THREE.MeshStandardMaterial;
+        'Material.GardenBrazier.Metal': THREE.MeshStandardMaterial;
         'Material.GardenFlower.Center': THREE.MeshStandardMaterial;
         'Material.GardenFlower.Leaf': THREE.MeshStandardMaterial;
         'Material.GardenFlower.PetalGradient': THREE.MeshStandardMaterial;
@@ -1933,6 +1982,9 @@ export type GLTFResult = GLTF & {
         'Material.GardenScissors.PivotBrass': THREE.MeshStandardMaterial;
         'Material.GardenScissors.Steel': THREE.MeshStandardMaterial;
         'Material.GardenScissors.SteelEdge': THREE.MeshStandardMaterial;
+        'Material.GardenTeaTable.Enamel': THREE.MeshStandardMaterial;
+        'Material.GardenTeaTable.SeedDryingRack.Timber': THREE.MeshStandardMaterial;
+        'Material.GardenTeaTable.Timber': THREE.MeshStandardMaterial;
         'Material.Goat.Charcoal': THREE.MeshStandardMaterial;
         'Material.Goat.Collar': THREE.MeshStandardMaterial;
         'Material.Goat.Cream': THREE.MeshStandardMaterial;
@@ -1994,6 +2046,7 @@ export type GLTFResult = GLTF & {
         'Material.Ladybug.ShellRed': THREE.MeshStandardMaterial;
         'Material.Ladybug.UnderwingAmber': THREE.MeshStandardMaterial;
         'Material.Ladybug.WarmBlack': THREE.MeshStandardMaterial;
+        'Material.LeafRake.Palette': THREE.MeshStandardMaterial;
         'Material.Leaves': THREE.MeshStandardMaterial;
         'Material.LiquidPreparationBottleAphidControl.BaseShadow': THREE.MeshStandardMaterial;
         'Material.LiquidPreparationBottleAphidControl.Body': THREE.MeshStandardMaterial;
@@ -2088,6 +2141,9 @@ export type GLTFResult = GLTF & {
         'Material.PlantTieLoop.Twine': THREE.MeshStandardMaterial;
         'Material.PlantTieLoop.TwineLight': THREE.MeshStandardMaterial;
         'Material.PolishedStoneFence.Surface': THREE.MeshStandardMaterial;
+        'Material.PumpkinLantern.Glow': THREE.MeshStandardMaterial;
+        'Material.PumpkinLantern.Skin': THREE.MeshStandardMaterial;
+        'Material.PumpkinLantern.Stem': THREE.MeshStandardMaterial;
         'Material.Rabbit.Charcoal': THREE.MeshStandardMaterial;
         'Material.Rabbit.EyeGlint': THREE.MeshStandardMaterial;
         'Material.Rabbit.FurPrimary': THREE.MeshStandardMaterial;
@@ -2104,6 +2160,8 @@ export type GLTFResult = GLTF & {
         'Material.RoofTileLantern.Terracotta': THREE.MeshStandardMaterial;
         'Material.Sand': THREE.MeshStandardMaterial;
         'Material.Sand.001': THREE.MeshStandardMaterial;
+        'Material.SeasonalMaple.Leaves': THREE.MeshStandardMaterial;
+        'Material.SeasonalMaple.Wood': THREE.MeshStandardMaterial;
         'Material.SensorStakeMeter.Charcoal': THREE.MeshStandardMaterial;
         'Material.SensorStakeMeter.FaceCream': THREE.MeshStandardMaterial;
         'Material.SensorStakeMeter.ScreenBlue': THREE.MeshStandardMaterial;
@@ -2138,6 +2196,7 @@ export type GLTFResult = GLTF & {
         'Material.Squirrel.RustFur': THREE.MeshStandardMaterial;
         'Material.Squirrel.ShadowFur': THREE.MeshStandardMaterial;
         'Material.Squirrel.WarmFur': THREE.MeshStandardMaterial;
+        'Material.StackedFirewood.Timber': THREE.MeshStandardMaterial;
         'Material.Stone': THREE.MeshStandardMaterial;
         'Material.Stone.001': THREE.MeshStandardMaterial;
         'Material.Stone.002': THREE.MeshStandardMaterial;
@@ -2181,6 +2240,7 @@ export type GLTFResult = GLTF & {
         'Material.WoodenWalkway.LightWood': THREE.MeshStandardMaterial;
         'Material.WoodenWalkway.Pegs': THREE.MeshStandardMaterial;
         'Material.WoodenWalkway.WarmWood': THREE.MeshStandardMaterial;
+        'Material.Woodland.Arrangement': THREE.MeshStandardMaterial;
         'Material.WoodlandMushrooms.Palette': THREE.MeshStandardMaterial;
         metal: THREE.MeshStandardMaterial;
         mint: THREE.MeshStandardMaterial;

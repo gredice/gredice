@@ -1,16 +1,29 @@
 import type { BlockData } from '@gredice/client';
 import { autumnAsterPotNames } from '@gredice/js/autumnAsterPots';
+import { autumnBlanketBench } from '@gredice/js/autumnBlanketBench';
+import { autumnEntranceNames } from '@gredice/js/autumnEntrances';
+import { autumnGrassNames } from '@gredice/js/autumnGrasses';
 import { autumnLeafPileNames } from '@gredice/js/autumnLeafPiles';
 import { autumnShrub } from '@gredice/js/autumnShrub';
+import { birdFeeder } from '@gredice/js/birdFeeder';
+import { chestnutRoastingCart } from '@gredice/js/chestnutRoastingCart';
 import {
     type HorseAppearanceVariant,
     horseAppearanceVariants,
 } from '@gredice/js/entityAppearanceVariants';
 import { fallenLog } from '@gredice/js/fallenLog';
+import { gardenBrazier } from '@gredice/js/gardenBrazier';
 import { gardenScarecrow } from '@gredice/js/gardenScarecrow';
+import { gardenTeaTable } from '@gredice/js/gardenTeaTable';
 import { harvestCrateNames } from '@gredice/js/harvestCrates';
 import { harvestPumpkinNames } from '@gredice/js/harvestPumpkins';
 import { harvestWheelbarrow } from '@gredice/js/harvestWheelbarrow';
+import { leafRake } from '@gredice/js/leafRake';
+import { pumpkinLanternNames } from '@gredice/js/pumpkinLanterns';
+import { seasonalMaple } from '@gredice/js/seasonalMaple';
+import { seedDryingRack } from '@gredice/js/seedDryingRack';
+import { stackedFirewood } from '@gredice/js/stackedFirewood';
+import { woodlandArrangementNames } from '@gredice/js/woodlandArrangements';
 import { woodlandMushrooms } from '@gredice/js/woodlandMushrooms';
 import { BlockImage, getBlockImageUrl } from '@gredice/ui/BlockImage';
 import { Button } from '@gredice/ui/Button';
@@ -359,8 +372,37 @@ const items: HudItem[] = [
         items: [
             { type: 'entity', name: gardenScarecrow.name },
             { type: 'entity', name: autumnShrub.name },
+            { type: 'entity', name: seasonalMaple.name },
             { type: 'entity', name: woodlandMushrooms.name },
+            { type: 'entity', name: leafRake.name },
+            { type: 'entity', name: stackedFirewood.name },
+            { type: 'entity', name: seedDryingRack.name },
+            { type: 'entity', name: birdFeeder.name },
+            { type: 'entity', name: gardenBrazier.name },
+            { type: 'entity', name: gardenTeaTable.name },
             { type: 'entity', name: fallenLog.name },
+            {
+                type: 'entity',
+                name: chestnutRoastingCart.name,
+                footprintLabel: '2 × 1',
+            },
+            {
+                type: 'entity',
+                name: autumnBlanketBench.name,
+                footprintLabel: '2 × 1',
+            },
+            ...autumnEntranceNames.map(
+                (name) => ({ type: 'entity', name }) satisfies HudItemEntity,
+            ),
+            ...pumpkinLanternNames.map(
+                (name) => ({ type: 'entity', name }) satisfies HudItemEntity,
+            ),
+            ...woodlandArrangementNames.map(
+                (name) => ({ type: 'entity', name }) satisfies HudItemEntity,
+            ),
+            ...autumnGrassNames.map(
+                (name) => ({ type: 'entity', name }) satisfies HudItemEntity,
+            ),
             ...autumnLeafPileNames.map(
                 (name) => ({ type: 'entity', name }) satisfies HudItemEntity,
             ),

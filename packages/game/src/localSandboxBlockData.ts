@@ -3,19 +3,41 @@ import {
     autumnAsterPotNames,
     getAutumnAsterPot,
 } from '@gredice/js/autumnAsterPots';
+import { autumnBlanketBench } from '@gredice/js/autumnBlanketBench';
+import {
+    autumnEntranceNames,
+    getAutumnEntrance,
+} from '@gredice/js/autumnEntrances';
+import { autumnGrassNames, getAutumnGrass } from '@gredice/js/autumnGrasses';
 import {
     autumnLeafPileNames,
     getAutumnLeafPile,
 } from '@gredice/js/autumnLeafPiles';
 import { autumnShrub } from '@gredice/js/autumnShrub';
+import { birdFeeder } from '@gredice/js/birdFeeder';
+import { chestnutRoastingCart } from '@gredice/js/chestnutRoastingCart';
 import { fallenLog } from '@gredice/js/fallenLog';
+import { gardenBrazier } from '@gredice/js/gardenBrazier';
 import { gardenScarecrow } from '@gredice/js/gardenScarecrow';
+import { gardenTeaTable } from '@gredice/js/gardenTeaTable';
 import { getHarvestCrate, harvestCrateNames } from '@gredice/js/harvestCrates';
 import {
     getHarvestPumpkin,
     harvestPumpkinNames,
 } from '@gredice/js/harvestPumpkins';
 import { harvestWheelbarrow } from '@gredice/js/harvestWheelbarrow';
+import { leafRake } from '@gredice/js/leafRake';
+import {
+    getPumpkinLantern,
+    pumpkinLanternNames,
+} from '@gredice/js/pumpkinLanterns';
+import { seasonalMaple } from '@gredice/js/seasonalMaple';
+import { seedDryingRack } from '@gredice/js/seedDryingRack';
+import { stackedFirewood } from '@gredice/js/stackedFirewood';
+import {
+    getWoodlandArrangement,
+    woodlandArrangementNames,
+} from '@gredice/js/woodlandArrangements';
 import { woodlandMushrooms } from '@gredice/js/woodlandMushrooms';
 import {
     type ArrowSignDirection,
@@ -86,9 +108,22 @@ export const localSandboxBlockNames = [
     ...harvestCrateNames,
     harvestWheelbarrow.name,
     autumnShrub.name,
+    seasonalMaple.name,
     woodlandMushrooms.name,
+    leafRake.name,
+    stackedFirewood.name,
+    seedDryingRack.name,
+    birdFeeder.name,
+    gardenBrazier.name,
+    gardenTeaTable.name,
     fallenLog.name,
+    autumnBlanketBench.name,
+    chestnutRoastingCart.name,
     ...autumnLeafPileNames,
+    ...autumnGrassNames,
+    ...woodlandArrangementNames,
+    ...pumpkinLanternNames,
+    ...autumnEntranceNames,
     'BeachTowelStriped',
     'InflatablePoolSmall',
     'BeachChair',
@@ -916,20 +951,42 @@ function createLocalSandboxBlockData(
     const isRaisedBed = name === 'Raised_Bed';
     const isOutletDisplayTable = name === 'OutletDisplayTable';
     const decoration =
+        getAutumnEntrance(name) ??
+        getPumpkinLantern(name) ??
+        getWoodlandArrangement(name) ??
+        getAutumnGrass(name) ??
         getAutumnLeafPile(name) ??
-        (name === fallenLog.name
-            ? fallenLog
-            : name === woodlandMushrooms.name
-              ? woodlandMushrooms
-              : name === autumnShrub.name
-                ? autumnShrub
-                : name === gardenScarecrow.name
-                  ? gardenScarecrow
-                  : name === harvestWheelbarrow.name
-                    ? harvestWheelbarrow
-                    : (getAutumnAsterPot(name) ??
-                      getHarvestCrate(name) ??
-                      getHarvestPumpkin(name)));
+        (name === gardenBrazier.name
+            ? gardenBrazier
+            : name === birdFeeder.name
+              ? birdFeeder
+              : name === seedDryingRack.name
+                ? seedDryingRack
+                : name === stackedFirewood.name
+                  ? stackedFirewood
+                  : name === chestnutRoastingCart.name
+                    ? chestnutRoastingCart
+                    : name === gardenTeaTable.name
+                      ? gardenTeaTable
+                      : name === autumnBlanketBench.name
+                        ? autumnBlanketBench
+                        : name === leafRake.name
+                          ? leafRake
+                          : name === fallenLog.name
+                            ? fallenLog
+                            : name === woodlandMushrooms.name
+                              ? woodlandMushrooms
+                              : name === seasonalMaple.name
+                                ? seasonalMaple
+                                : name === autumnShrub.name
+                                  ? autumnShrub
+                                  : name === gardenScarecrow.name
+                                    ? gardenScarecrow
+                                    : name === harvestWheelbarrow.name
+                                      ? harvestWheelbarrow
+                                      : (getAutumnAsterPot(name) ??
+                                        getHarvestCrate(name) ??
+                                        getHarvestPumpkin(name)));
     const metadata = decoration?.information ?? localSandboxBlockMetadata[name];
     return {
         id: index + 1,

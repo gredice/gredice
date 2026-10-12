@@ -1,0 +1,193 @@
+{
+  "state": "unpublished",
+  "snapshotDate": "2026-10-22T12:00:00+02:00",
+  "publicationIssue": 5000,
+  "sources": [
+    {
+      "path": "assets/game-assets/AutumnGrassTuft.blend",
+      "bytes": 108955,
+      "sha256": "f718ab3d6d82205ae199f1d626f2f68e49a5dcbc54e4964960bd8bd425016f78"
+    },
+    {
+      "path": "assets/game-assets/AutumnSeedHeads.blend",
+      "bytes": 115304,
+      "sha256": "6a1e4df5a10448c174db144981ba3f38241f1456e746c4659bbe81cf44997026"
+    }
+  ],
+  "models": [
+    {
+      "name": "AutumnGrassTuft",
+      "path": "apps/garden/public/assets/models/AutumnGrassTuft.glb",
+      "bytes": 79260,
+      "sha256": "f7689621d760e72e361a5f654d99ed6db9b5ef55bee2cdbcf40221d9b77b25b6",
+      "url": "https://vrt.gredice.com/assets/models/AutumnGrassTuft.glb?v=f7689621d760",
+      "triangles": 1020,
+      "meshCount": 2,
+      "materialCount": 2
+    },
+    {
+      "name": "AutumnSeedHeads",
+      "path": "apps/garden/public/assets/models/AutumnSeedHeads.glb",
+      "bytes": 111016,
+      "sha256": "ce09d670c42c0be5338f5e47a76bb764f8f19baf9b359be6ed0097dc265c21d3",
+      "url": "https://vrt.gredice.com/assets/models/AutumnSeedHeads.glb?v=ce09d670c42c",
+      "triangles": 1440,
+      "meshCount": 2,
+      "materialCount": 2
+    }
+  ],
+  "items": [
+    {
+      "name": "AutumnGrassTuft",
+      "information": {
+        "label": "Ukrasne jesenske trave – niski zlatni busen",
+        "shortDescription": "Skupina zlatnih ukrasnih trava na maloj šljunčanoj podlozi.",
+        "fullDescription": "Uredno oblikovan busen ukrasnih trava zauzima jedno polje i ostaje zlatne boje tijekom cijele godine. Nije korov, usjev ni znak stanja biljaka. Ne mijenja rast ni izgled usjeva i ne daje sjeme. Na njega se ne slažu drugi predmeti."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 0.35,
+        "hitboxHeight": 0.35,
+        "hitboxWidth": 0.9,
+        "hitboxDepth": 0.9,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 30,
+      "catalogueId": null,
+      "cover": "https://www.gredice.com/assets/blocks/AutumnGrassTuft.webp",
+      "topDown": "https://vrt.gredice.com/assets/blocks/top-down/AutumnGrassTuft.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/AutumnGrassTuft.webp",
+          "bytes": 7264,
+          "sha256": "660219e419db218a89d05d846c9f5211c0b11923bbf6aa750e343812de4fafad"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnGrassTuft_1.webp",
+          "bytes": 7264,
+          "sha256": "660219e419db218a89d05d846c9f5211c0b11923bbf6aa750e343812de4fafad"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnGrassTuft_2.webp",
+          "bytes": 7192,
+          "sha256": "46c6509b4c269b739bdbff584ab43be154840b29056e69c4554033f5a0c4e830"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnGrassTuft_3.webp",
+          "bytes": 7356,
+          "sha256": "0aa44de31f7b118f178d93aa947196dc911ac3927b9ede483bae67b43389fa1c"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnGrassTuft_4.webp",
+          "bytes": 7098,
+          "sha256": "868b224d4b0d9a021ede440dd661fdeda5c4bcc29b1b08ab9d404c185a66bb39"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnGrassTuft.webp",
+          "bytes": 2614,
+          "sha256": "99a70b3f49cc25232594871bc1e98cf8dbbf21bbcfb5880a924b555b0653a372"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnGrassTuft_1.webp",
+          "bytes": 2614,
+          "sha256": "99a70b3f49cc25232594871bc1e98cf8dbbf21bbcfb5880a924b555b0653a372"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnGrassTuft_2.webp",
+          "bytes": 2552,
+          "sha256": "670858415f490868d76f6ed1cc763363111d670832d5b88d41f67fde7695b5a0"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnGrassTuft_3.webp",
+          "bytes": 2586,
+          "sha256": "a0f65110018735b2a337b01184d7122e2ba3ad41e8a62cfeb71e0e9ff25cd359"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnGrassTuft_4.webp",
+          "bytes": 2708,
+          "sha256": "de17e187f1477630d518103873e6bde4d6231f496ec150dfc79e8cbcfd83e666"
+        }
+      ]
+    },
+    {
+      "name": "AutumnSeedHeads",
+      "information": {
+        "label": "Ukrasne jesenske trave – klasovi",
+        "shortDescription": "Skupina zlatnih ukrasnih trava na maloj šljunčanoj podlozi.",
+        "fullDescription": "Uredno oblikovan busen ukrasnih trava zauzima jedno polje i ostaje zlatne boje tijekom cijele godine. Nije korov, usjev ni znak stanja biljaka. Ne mijenja rast ni izgled usjeva i ne daje sjeme. Na njega se ne slažu drugi predmeti."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 0.7,
+        "hitboxHeight": 0.7,
+        "hitboxWidth": 0.9,
+        "hitboxDepth": 0.9,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 40,
+      "catalogueId": null,
+      "cover": "https://www.gredice.com/assets/blocks/AutumnSeedHeads.webp",
+      "topDown": "https://vrt.gredice.com/assets/blocks/top-down/AutumnSeedHeads.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/AutumnSeedHeads.webp",
+          "bytes": 8246,
+          "sha256": "b856694430f0fcf45304910e29ac4175aeb314f5629730e83f3d0b3e0fe77e67"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnSeedHeads_1.webp",
+          "bytes": 8246,
+          "sha256": "b856694430f0fcf45304910e29ac4175aeb314f5629730e83f3d0b3e0fe77e67"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnSeedHeads_2.webp",
+          "bytes": 7850,
+          "sha256": "b9f52f9adc492f91c0ac01652a3b8bc56b7fff614bfc99b9107a27dd4210f8ae"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnSeedHeads_3.webp",
+          "bytes": 8464,
+          "sha256": "c14b3fe592fd019468f7b8d977dc52b8564a05b2be17ab9af5742b622ea5051a"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnSeedHeads_4.webp",
+          "bytes": 7540,
+          "sha256": "ceab410aef69bcaaa51f6d40acc8f328161d64455d41fbcad6e7d553f3fc6579"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnSeedHeads.webp",
+          "bytes": 2586,
+          "sha256": "89476f64f24293f98d29cd24dc23d38bde5073eddac98721bc9b091ad46e1a35"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnSeedHeads_1.webp",
+          "bytes": 2586,
+          "sha256": "89476f64f24293f98d29cd24dc23d38bde5073eddac98721bc9b091ad46e1a35"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnSeedHeads_2.webp",
+          "bytes": 2666,
+          "sha256": "424c6740f4d475ef47507516591924c81d07dc8c14defc22ea5028e69cd24862"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnSeedHeads_3.webp",
+          "bytes": 2434,
+          "sha256": "77c671547b5b74d1c1f18614c50d16d1767910569aac3450d533ac2d98d67055"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnSeedHeads_4.webp",
+          "bytes": 2756,
+          "sha256": "e760a1db5b9a8afeb4e9a2fc7b79e59c67e6aad57693fd5e395e9377be53f96c"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,103 @@
+{
+  "state": "unpublished",
+  "publicationIssue": 5000,
+  "snapshotDate": "2026-10-22T12:00:00+02:00",
+  "source": {
+    "path": "assets/game-assets/LeafRake.blend",
+    "bytes": 100554,
+    "sha256": "377492d89d16839bfd9392f73b6fea09991ee3993015f673cc4170d31ab61b19"
+  },
+  "models": [
+    {
+      "name": "LeafRake",
+      "path": "apps/garden/public/assets/models/LeafRake.glb",
+      "bytes": 47928,
+      "sha256": "bb43d60ed1ff0ff7e6833798ab9fee584adaf3abfb6c6ac09b01fbe8531e355e",
+      "url": "https://vrt.gredice.com/assets/models/LeafRake.glb?v=bb43d60ed1ff",
+      "triangles": 590,
+      "trianglesByMesh": {
+        "LeafRake_Arrangement": 590
+      },
+      "meshCount": 1,
+      "materialCount": 1
+    }
+  ],
+  "items": [
+    {
+      "name": "LeafRake",
+      "information": {
+        "label": "Grablje s hrpom lišća",
+        "shortDescription": "Drvene grablje s tamnom lepezastom glavom naslonjene na malu hrpu lišća.",
+        "fullDescription": "Ukrasne grablje i hrpa jesenskog lišća čine jedan predmet koji zauzima jedno polje. Ostaju na mjestu tijekom cijele godine. Postavljanje ne naručuje niti potvrđuje obavljene radove u vrtu, ne utječe na biljke i ne donosi nagrade. Na predmet se ne mogu slagati drugi blokovi."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 1.1,
+        "hitboxHeight": 1.1,
+        "hitboxWidth": 0.9,
+        "hitboxDepth": 0.9,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 45,
+      "catalogueId": null,
+      "cover": "https://www.gredice.com/assets/blocks/LeafRake.webp",
+      "topDown": "https://vrt.gredice.com/assets/blocks/top-down/LeafRake.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/LeafRake.webp",
+          "bytes": 9612,
+          "sha256": "3db521459d82c91639c31e7c401c9b4802c0ae3e7a3eb18e24f9718933ece5d9"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/LeafRake_1.webp",
+          "bytes": 9612,
+          "sha256": "3db521459d82c91639c31e7c401c9b4802c0ae3e7a3eb18e24f9718933ece5d9"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/LeafRake_2.webp",
+          "bytes": 8594,
+          "sha256": "f2634ad56ce703bbf57f32bdbfa00197add7bb3b5af9b06e9c192c06c776310d"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/LeafRake_3.webp",
+          "bytes": 10452,
+          "sha256": "24fe47f18732250637dd6a84035bd75604ea2c27211a33800e04f683ab1f0744"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/LeafRake_4.webp",
+          "bytes": 10764,
+          "sha256": "bece6efe19cdbe6e2571c95c0ee3b4574c5522c178e1e4c6c3f4f29eff5a215a"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/LeafRake.webp",
+          "bytes": 5832,
+          "sha256": "f43ac168a8523285bbc498f9f95c5b50ce94dc3d855354ecc2334d0c5d065a6b"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/LeafRake_1.webp",
+          "bytes": 5832,
+          "sha256": "f43ac168a8523285bbc498f9f95c5b50ce94dc3d855354ecc2334d0c5d065a6b"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/LeafRake_2.webp",
+          "bytes": 5818,
+          "sha256": "bf134914e5fd6ce864074adeb04efcdbc5a3cc8d2e5fe5d36cbfb47d53d99cd7"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/LeafRake_3.webp",
+          "bytes": 5548,
+          "sha256": "f31253d69295077cb65c1ec671994e4cf9a8e9bcd87144bf48f2f8c6f96a3fde"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/LeafRake_4.webp",
+          "bytes": 6080,
+          "sha256": "0f5cb086f33384054c0c87886e6bb5267240ac087e9cd3f3f43192eb0b1842ce"
+        }
+      ]
+    }
+  ]
+}

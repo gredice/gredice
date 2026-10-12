@@ -1,0 +1,103 @@
+{
+  "state": "unpublished",
+  "publicationIssue": 5000,
+  "snapshotDate": "2026-10-22T12:00:00+02:00",
+  "source": {
+    "path": "assets/game-assets/BirdFeeder.blend",
+    "bytes": 98309,
+    "sha256": "774881f7c350e33537abdf7b1b491d65fc01eb38ff66ede04ab0e40ad5effd87"
+  },
+  "models": [
+    {
+      "name": "BirdFeeder",
+      "path": "apps/garden/public/assets/models/BirdFeeder.glb",
+      "bytes": 47608,
+      "sha256": "2669061f01f9542289048127eeed39ccd85d4b74e108decca7ef58a6153c462a",
+      "url": "https://vrt.gredice.com/assets/models/BirdFeeder.glb?v=2669061f01f9",
+      "triangles": 496,
+      "trianglesByMesh": {
+        "BirdFeeder_Arrangement": 496
+      },
+      "meshCount": 1,
+      "materialCount": 1
+    }
+  ],
+  "items": [
+    {
+      "name": "BirdFeeder",
+      "information": {
+        "label": "Ukrasna hranilica za ptice",
+        "shortDescription": "Otvorena osmerokutna plitica na čvrstom drvenom postolju.",
+        "fullDescription": "Mala otvorena hranilica zauzima jedno polje. Plitica i prečke razlikuju je od zatvorene kućice za ptice. Predmet je samo ukras: ne privlači niti stvara ptice, ne troši hranu i ne daje resurse. Na njega se ne slažu drugi predmeti."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 0.85,
+        "hitboxHeight": 0.85,
+        "hitboxWidth": 0.9,
+        "hitboxDepth": 0.9,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 45,
+      "catalogueId": null,
+      "cover": "https://www.gredice.com/assets/blocks/BirdFeeder.webp",
+      "topDown": "https://vrt.gredice.com/assets/blocks/top-down/BirdFeeder.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/BirdFeeder.webp",
+          "bytes": 8012,
+          "sha256": "25126d9311b499d11f7622041338a4bef1c53cabbba4143e3407cad81cad091e"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/BirdFeeder_1.webp",
+          "bytes": 8012,
+          "sha256": "25126d9311b499d11f7622041338a4bef1c53cabbba4143e3407cad81cad091e"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/BirdFeeder_2.webp",
+          "bytes": 8082,
+          "sha256": "896fb27aa9c1bb73a4fdb0982b3cc0ebe1c374108c6b15f238810b7b41333f75"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/BirdFeeder_3.webp",
+          "bytes": 7990,
+          "sha256": "4b751bfb94368d0598abf99741a120f220e75520d37e57d94832799e90f25f26"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/BirdFeeder_4.webp",
+          "bytes": 8058,
+          "sha256": "cb22245f45874cb11868cbd00c7770497a3d6c2b796a7f5a6dcfe5490d77d39c"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/BirdFeeder.webp",
+          "bytes": 3278,
+          "sha256": "0255821e1f35e7ee31cbd476507ed588f8ba6e1865e4dad77e01c11c86193e43"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/BirdFeeder_1.webp",
+          "bytes": 3278,
+          "sha256": "0255821e1f35e7ee31cbd476507ed588f8ba6e1865e4dad77e01c11c86193e43"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/BirdFeeder_2.webp",
+          "bytes": 3250,
+          "sha256": "d8b135a45cb2e5a7c9065e8bb60f8efa30f165f68a3f865a1183e1e760065c7f"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/BirdFeeder_3.webp",
+          "bytes": 3266,
+          "sha256": "4df7fa700929d39be0bab8f48ff85ccd733c1864396861e6c3f4bb44e8f41258"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/BirdFeeder_4.webp",
+          "bytes": 3284,
+          "sha256": "32ba9f001d7611b61c4eb4c56d247dc1f43f755158497fafa96e41ca617a7853"
+        }
+      ]
+    }
+  ]
+}
