@@ -88,6 +88,8 @@ export class GardenPacketNativeProgramWitness {
             const [camera, , geometry, material, object] = args;
             const calls = renderer.info.render.calls;
             render.apply(renderer, args);
+            // Renderer counters can advance after loss without a native submission.
+            if (context.isContextLost()) return;
             if (renderer.info.render.calls <= calls) return;
             const kind = this.kind(object);
             if (!kind) return;
