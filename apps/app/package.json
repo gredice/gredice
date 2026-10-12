@@ -42,7 +42,7 @@
         "qrcode": "1.5.4",
         "react": "19.3.0",
         "react-dom": "19.3.0",
-        "react-email": "6.11.0",
+        "react-email": "6.11.1",
         "recharts": "3.10.1",
         "server-only": "0.0.1",
         "sharp": "0.35.5"
