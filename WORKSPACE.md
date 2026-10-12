@@ -195,6 +195,10 @@ pnpm env:pull
 
 `pnpm env:pull` runs `vercel env pull .env` in every app with a Vercel project in `scripts/app-registry.ts`, including `apps/www`, `apps/news`, `apps/garden`, `apps/farm`, `apps/delivery`, `apps/app`, `apps/storybook`, `apps/api`, and `apps/status`.
 
+For a preview that fails with `git_info_fail` before build logs, use the
+[Git retrieval recovery runbook](./docs/vercel-preview-git-recovery.md) to verify
+the current PR head and retry its existing Git deployment.
+
 ### Turborepo remote cache
 
 Turbo build/test results are cached remotely through Vercel for the `gredice` team, which speeds up cold builds locally and in CI.

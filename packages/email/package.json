@@ -30,6 +30,6 @@
         "@azure/core-rest-pipeline": "1.25.0",
         "@gredice/storage": "workspace:*",
         "react": "19.3.0",
-        "react-email": "6.11.0"
+        "react-email": "6.11.1"
     }
 }

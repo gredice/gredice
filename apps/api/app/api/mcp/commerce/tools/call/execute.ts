@@ -20,6 +20,7 @@ import {
     assertOperationCartTarget,
     resolveOperationCartTarget,
 } from '../../../../../../lib/mcp/operationCartTarget';
+import { McpOperationNotApplicableError } from '../../../../../../lib/mcp/toolErrors';
 
 type McpAuthContext = {
     accountId: string;
@@ -299,9 +300,7 @@ async function validateOperationTarget({
         linkedOperationNames(plantSort),
     );
     if (!applicable) {
-        throw new Error(
-            'Operation is not applicable to the plant in this field',
-        );
+        throw new McpOperationNotApplicableError();
     }
 }
 

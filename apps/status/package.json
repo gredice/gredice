@@ -17,7 +17,7 @@
         "typecheck": "next typegen && tsc --noEmit --pretty false"
     },
     "dependencies": {
-        "next": "16.3.8",
+        "next": "16.4.0",
         "pg": "8.23.1",
         "react": "19.3.0",
         "react-dom": "19.3.0",
