@@ -3,6 +3,10 @@ import {
     autumnAsterPotNames,
     getAutumnAsterPot,
 } from '@gredice/js/autumnAsterPots';
+import {
+    autumnLeafPileNames,
+    getAutumnLeafPile,
+} from '@gredice/js/autumnLeafPiles';
 import { autumnShrub } from '@gredice/js/autumnShrub';
 import { fallenLog } from '@gredice/js/fallenLog';
 import { gardenScarecrow } from '@gredice/js/gardenScarecrow';
@@ -456,7 +460,8 @@ const blockFixtures: Record<
 
 function createBlockData(name: string, index: number) {
     const decoration =
-        name === fallenLog.name
+        getAutumnLeafPile(name) ??
+        (name === fallenLog.name
             ? fallenLog
             : name === woodlandMushrooms.name
               ? woodlandMushrooms
@@ -468,7 +473,7 @@ function createBlockData(name: string, index: number) {
                     ? harvestWheelbarrow
                     : (getAutumnAsterPot(name) ??
                       getHarvestCrate(name) ??
-                      getHarvestPumpkin(name));
+                      getHarvestPumpkin(name)));
     const fixture = decoration
         ? {
               ...decoration.information,
@@ -541,6 +546,7 @@ const blockNames = [
     autumnShrub.name,
     woodlandMushrooms.name,
     fallenLog.name,
+    ...autumnLeafPileNames,
     'Raised_Bed',
     'Bucket',
     'WateringCan',
@@ -679,6 +685,7 @@ type ItemsHudStoryOptions = {
     includeAutumnShrub?: boolean;
     includeWoodlandMushrooms?: boolean;
     includeFallenLog?: boolean;
+    includeAutumnLeafPiles?: boolean;
     accountSunflowers?: number;
     cameraTarget?: [x: number, y: number, z: number];
     closeup?: boolean;
@@ -698,6 +705,7 @@ function createItemsHudQueryClient({
     includeAutumnShrub = true,
     includeWoodlandMushrooms = true,
     includeFallenLog = true,
+    includeAutumnLeafPiles = true,
     isSandbox = false,
 }: ItemsHudStoryOptions) {
     const queryClient = new ReactQuery.QueryClient({
@@ -709,6 +717,9 @@ function createItemsHudQueryClient({
     queryClient.setQueryData(
         ['blocks'],
         blockNames
+            .filter(
+                (name) => includeAutumnLeafPiles || !getAutumnLeafPile(name),
+            )
             .filter((name) => includeFallenLog || name !== fallenLog.name)
             .filter(
                 (name) =>
@@ -764,6 +775,7 @@ function ItemsHudTestProviders({
     includeAutumnShrub = true,
     includeWoodlandMushrooms = true,
     includeFallenLog = true,
+    includeAutumnLeafPiles = true,
     children,
     accountSunflowers,
     cameraTarget,
@@ -786,6 +798,7 @@ function ItemsHudTestProviders({
                 includeAutumnShrub,
                 includeWoodlandMushrooms,
                 includeFallenLog,
+                includeAutumnLeafPiles,
             }),
         [
             accountSunflowers,
@@ -798,6 +811,7 @@ function ItemsHudTestProviders({
             includeAutumnShrub,
             includeWoodlandMushrooms,
             includeFallenLog,
+            includeAutumnLeafPiles,
         ],
     );
     const gameStore = useMemo(() => {
@@ -899,6 +913,7 @@ export function ItemsHudAlignmentStory({
     includeAutumnShrub = true,
     includeWoodlandMushrooms = true,
     includeFallenLog = true,
+    includeAutumnLeafPiles = true,
 }: {
     includeHarvestPumpkins?: boolean;
     includeGardenScarecrow?: boolean;
@@ -908,6 +923,7 @@ export function ItemsHudAlignmentStory({
     includeAutumnShrub?: boolean;
     includeWoodlandMushrooms?: boolean;
     includeFallenLog?: boolean;
+    includeAutumnLeafPiles?: boolean;
 }) {
     return (
         <ItemsHudTestProviders
@@ -919,6 +935,7 @@ export function ItemsHudAlignmentStory({
             includeAutumnShrub={includeAutumnShrub}
             includeWoodlandMushrooms={includeWoodlandMushrooms}
             includeFallenLog={includeFallenLog}
+            includeAutumnLeafPiles={includeAutumnLeafPiles}
         >
             <div className="relative h-screen w-screen overflow-hidden">
                 <div

@@ -1,0 +1,193 @@
+{
+  "state": "unpublished",
+  "snapshotDate": "2026-10-22T12:00:00+02:00",
+  "publicationIssue": 5000,
+  "sources": [
+    {
+      "path": "assets/game-assets/AutumnLeafPileMound.blend",
+      "bytes": 94179,
+      "sha256": "1560501a9bbef3fc598639628d62f1731e87947b8714b09d4b968e78601c6f66"
+    },
+    {
+      "path": "assets/game-assets/AutumnLeafPileCrescent.blend",
+      "bytes": 95042,
+      "sha256": "1f49a98d53bc55f3d0a542dc2c3c2c75bd9c4efbd1b86c0c8962e05fccb1364e"
+    }
+  ],
+  "models": [
+    {
+      "name": "AutumnLeafPileMound",
+      "path": "apps/garden/public/assets/models/AutumnLeafPileMound.glb",
+      "bytes": 20536,
+      "sha256": "d2133ce5768a551a1d7132d0b7177e1f395ad6bbd47217703cbf8c6cb1b5c5a3",
+      "url": "https://vrt.gredice.com/assets/models/AutumnLeafPileMound.glb?v=d2133ce5768a",
+      "triangles": 198,
+      "meshCount": 1,
+      "materialCount": 1
+    },
+    {
+      "name": "AutumnLeafPileCrescent",
+      "path": "apps/garden/public/assets/models/AutumnLeafPileCrescent.glb",
+      "bytes": 24864,
+      "sha256": "b99b88c2b61a409e6b669b54b2d2c36adc48d6a38054c3c14b83461446cfa498",
+      "url": "https://vrt.gredice.com/assets/models/AutumnLeafPileCrescent.glb?v=b99b88c2b61a",
+      "triangles": 248,
+      "meshCount": 1,
+      "materialCount": 1
+    }
+  ],
+  "items": [
+    {
+      "name": "AutumnLeafPileMound",
+      "information": {
+        "label": "Ukrasno jesensko lišće – niska hrpa",
+        "shortDescription": "Nizak ukras od širokih bakrenih, zlatnih i smeđih listova.",
+        "fullDescription": "Ukrasna hrpa lišća zauzima jedno polje i ostaje na odabranom mjestu tijekom svih godišnjih doba. Kiša je može potamniti, a snijeg prekriti, ali je ne uklanjaju. Nije prirodno nakupljeno lišće i ne naručuje radove u vrtu. Na nju se ne mogu slagati drugi predmeti."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 0.18,
+        "hitboxHeight": 0.18,
+        "hitboxWidth": 0.9,
+        "hitboxDepth": 0.9,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 25,
+      "catalogueId": null,
+      "cover": "https://www.gredice.com/assets/blocks/AutumnLeafPileMound.webp",
+      "topDown": "https://vrt.gredice.com/assets/blocks/top-down/AutumnLeafPileMound.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/AutumnLeafPileMound.webp",
+          "bytes": 7204,
+          "sha256": "f3ba65c78049d2a768435c32bf4675d59fd8a6dbf0ed175f1935c9c0791ef285"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnLeafPileMound_1.webp",
+          "bytes": 7204,
+          "sha256": "f3ba65c78049d2a768435c32bf4675d59fd8a6dbf0ed175f1935c9c0791ef285"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnLeafPileMound_2.webp",
+          "bytes": 7192,
+          "sha256": "881610194a5c4c493d46cb7f15dfe9bc0cd55af5d79bc4627cdae17f9d68ff6b"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnLeafPileMound_3.webp",
+          "bytes": 7302,
+          "sha256": "053bb63986401dcacb71c34192e009a6052ef3a908fd988d884153b3dd4b7304"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnLeafPileMound_4.webp",
+          "bytes": 7446,
+          "sha256": "d28e2a8d7f44fd5ca5e0ac65770a51aed652c2355a3741ef040ffb2cd3e0365b"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnLeafPileMound.webp",
+          "bytes": 5022,
+          "sha256": "26a68de23a61a8d96f7adb40398bd62a4c73838fb7a05a835dfc897171da2763"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnLeafPileMound_1.webp",
+          "bytes": 5022,
+          "sha256": "26a68de23a61a8d96f7adb40398bd62a4c73838fb7a05a835dfc897171da2763"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnLeafPileMound_2.webp",
+          "bytes": 5396,
+          "sha256": "10ea796d489c710894d28bf670abfa9915305489351d3aa34bea3359687ddab1"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnLeafPileMound_3.webp",
+          "bytes": 5140,
+          "sha256": "f167a375aadce0ae5d8b2800dc260304ae801a27de84b8184512de8852c225b6"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnLeafPileMound_4.webp",
+          "bytes": 5378,
+          "sha256": "6928a788b5ef8130e1d8425191ae745819896f71c6138d5b5f85863276af564b"
+        }
+      ]
+    },
+    {
+      "name": "AutumnLeafPileCrescent",
+      "information": {
+        "label": "Ukrasno jesensko lišće – pometeni polumjesec",
+        "shortDescription": "Nizak ukras od širokih bakrenih, zlatnih i smeđih listova.",
+        "fullDescription": "Ukrasna hrpa lišća zauzima jedno polje i ostaje na odabranom mjestu tijekom svih godišnjih doba. Kiša je može potamniti, a snijeg prekriti, ali je ne uklanjaju. Nije prirodno nakupljeno lišće i ne naručuje radove u vrtu. Na nju se ne mogu slagati drugi predmeti."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 0.18,
+        "hitboxHeight": 0.18,
+        "hitboxWidth": 0.9,
+        "hitboxDepth": 0.9,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 30,
+      "catalogueId": null,
+      "cover": "https://www.gredice.com/assets/blocks/AutumnLeafPileCrescent.webp",
+      "topDown": "https://vrt.gredice.com/assets/blocks/top-down/AutumnLeafPileCrescent.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/AutumnLeafPileCrescent.webp",
+          "bytes": 5944,
+          "sha256": "8a6c5a6c745675a79403c71e38c6e9a4f5455f157267129910fe780d4bd899f7"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnLeafPileCrescent_1.webp",
+          "bytes": 5944,
+          "sha256": "8a6c5a6c745675a79403c71e38c6e9a4f5455f157267129910fe780d4bd899f7"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnLeafPileCrescent_2.webp",
+          "bytes": 5976,
+          "sha256": "16cfd10596693daff8902b64eebb6f795736c7a089da858fa7c3e33abedb7af5"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnLeafPileCrescent_3.webp",
+          "bytes": 6052,
+          "sha256": "a550e4f5276e894b44f24affba070e45f172c9810dc04826122c19e4d33c919c"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnLeafPileCrescent_4.webp",
+          "bytes": 5974,
+          "sha256": "355f3061a90f7d3af3a9de1332a489be88be15742773b56f6757c2ed02bf05ad"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnLeafPileCrescent.webp",
+          "bytes": 4104,
+          "sha256": "2c34486644f545be62c1398bd7eafe65559b2b8a32173dca3fe4fe98b5697df2"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnLeafPileCrescent_1.webp",
+          "bytes": 4104,
+          "sha256": "2c34486644f545be62c1398bd7eafe65559b2b8a32173dca3fe4fe98b5697df2"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnLeafPileCrescent_2.webp",
+          "bytes": 4126,
+          "sha256": "0a5b938a50f78495a35e0bda120e464d25fbefa1b58b851ace3f479bebfa1fa7"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnLeafPileCrescent_3.webp",
+          "bytes": 4098,
+          "sha256": "b106062dccc21c207680b94bff9da26cd83146b843808fdc9433a54f8193e73d"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnLeafPileCrescent_4.webp",
+          "bytes": 4130,
+          "sha256": "26cc659170380fd636a3c6092d5eacec03d8c85ec16b662f09f72712da9b1ed1"
+        }
+      ]
+    }
+  ]
+}
