@@ -50,11 +50,16 @@ Use existing authenticated GitHub and Vercel sessions. These commands target
 the Gredice team and Farm project explicitly; they do not need environment
 files or credentials copied into the repository.
 
+Replace the two placeholders below with the current PR number and failed Farm
+preview ID from the current review or the PR's `Vercel – farm` status URL.
+The October 12 identifiers in the incident record are historical; use those
+only when investigating that incident.
+
 ```sh
-pr_number=5327
+pr_number='<current-pr-number>'
+deployment_id='<failed-farm-preview-id>'
 team_id=team_QBex7AXLs3YNeyYGdMEPim4S
 project_id=prj_fbD4Gez7mfI7brm5QgzEjFY8idX4
-deployment_id=dpl_8yMh1SapdqWGTfUnkcyidKyz3eEG
 
 gh pr view "$pr_number" --json state,headRefName,headRefOid,statusCheckRollup
 
@@ -112,12 +117,20 @@ directory. Confirm `vercel project inspect --non-interactive` reports
 `gredice/farm` before the request:
 
 ```sh
+preview_response=$(mktemp)
 vercel curl / --deployment <replacement-url> \
-  -- --silent --show-error --output /dev/null --write-out '%{http_code}\n'
+  -- --silent --show-error --max-time 45 \
+  --output "$preview_response" --write-out '%{http_code}\n'
+rg --only-matching \
+  '<title>Gredice Farm</title>|farm-email-login-trigger|Google prijava|Facebook prijava|Dobrodošli' \
+  "$preview_response"
 ```
 
-Inspect the response to confirm Farm serves its expected sign-in UI or redirect,
-and distinguish application authentication from Vercel deployment protection.
+Inspect the saved response to confirm Farm serves its expected sign-in UI or
+redirect, and distinguish application authentication from Vercel deployment
+protection. For the sign-in page, confirm the Farm title and all three sign-in
+controls; HTTP 200 alone is insufficient. Remove the temporary response with
+`rm "$preview_response"` after inspection.
 This smoke check does not establish authenticated farmer workflow acceptance.
 
 If retrieval fails again before build events, retain the current head, failed
