@@ -265,8 +265,8 @@ importers:
         specifier: 3.9.11
         version: 3.9.11(@aws-sdk/credential-provider-web-identity@3.972.78)(ws@8.21.3)
       '@vercel/sandbox':
-        specifier: 3.5.1
-        version: 3.5.1
+        specifier: 3.6.0
+        version: 3.6.0
       ai:
         specifier: 7.0.127
         version: 7.0.127(zod@4.6.5)
@@ -6147,8 +6147,8 @@ packages:
     resolution: {integrity: sha512-ko6ATeRUlHZMB5hLFdC7+/Q1dI2f3NX3gZHxtpALdkxurwjD5HFHGWYF+4o+4SF0E47jg6KzcHknmRpHcKgJ5A==}
     engines: {node: '>= 20'}
 
-  '@vercel/sandbox@3.5.1':
-    resolution: {integrity: sha512-VHItQtcv4FkSXET29b088p87MNPAIhRscF3ifrup2KkC8ix4hy4NpgCO9F3GI4yOsztgGtuV7bDx29Iufun2hQ==}
+  '@vercel/sandbox@3.6.0':
+    resolution: {integrity: sha512-rJarw1B+CIV8YOEjhFfKclas2cTwwcwv7S+cSWkw5tNBh5WaG8xogAqeAJ74C1hPsZk/QyGRVGz8rLg4Yt0KBw==}
 
   '@vercel/toolbar@0.2.7':
     resolution: {integrity: sha512-RWb26CjjHwO9fBma6HfTDM6WECpWzSurxJeuH8zD0G/yVsEKYEHdjaImb0DE6mbsd87zm7ga73e6VTGE5J0yDw==}
@@ -15154,7 +15154,7 @@ snapshots:
       '@vercel/cli-exec': 1.0.1
       jose: 5.10.0
 
-  '@vercel/sandbox@3.5.1':
+  '@vercel/sandbox@3.6.0':
     dependencies:
       '@vercel/detect-agent': 1.2.5
       '@vercel/oidc': 3.2.0
