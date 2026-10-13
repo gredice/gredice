@@ -166,7 +166,7 @@ overrides:
   '@axe-core/playwright>playwright-core': 1.62.1
   '@types/react': 19.3.0
   '@types/react-dom': 19.3.0
-  '@hono/node-server': 2.1.3
+  '@hono/node-server': 2.1.4
   '@joshwooding/vite-plugin-react-docgen-typescript@0.7.0>typescript': '-'
   '@neondatabase/serverless': 1.2.0
   next>@playwright/test: '-'
@@ -3094,11 +3094,11 @@ packages:
       hono-rate-limiter: ^0.5.3
       zod: ^3.25.0 || ^4.0.0
 
-  '@hono/node-server@2.1.3':
-    resolution: {integrity: sha512-TA//nWMqPhbfdfneACk6t5a9eqbS9lABEPyKn0/xZTah3H3U2XaVg85rJFl0/Fyit0I552YDHgXGVSf3GwqbUw==}
+  '@hono/node-server@2.1.4':
+    resolution: {integrity: sha512-2g1qeHl4BduwDn6L8nkAvDrPUWPMlkQ//a5NhP/zIyaXKMjZNRV+cG9Csu+BiJFf6+68pqzjf4Hi5sJGKHuS1g==}
     engines: {node: '>=20'}
     peerDependencies:
-      hono: ^4
+      hono: ^4 || ^5.0.0-0
 
   '@hono/standard-validator@0.4.0':
     resolution: {integrity: sha512-MxOm1asDh9j7c1D0KiWwppSbFgAQxTRO4YEhjMrJn3lF1BIcXenPdgjSGKDRfQmZdaTaMA8slQLETgVOKyJxFw==}
@@ -12066,7 +12066,7 @@ snapshots:
       pkce-challenge: 5.0.1
       zod: 4.6.5
 
-  '@hono/node-server@2.1.3(hono@4.13.13)':
+  '@hono/node-server@2.1.4(hono@4.13.13)':
     dependencies:
       hono: 4.13.13
 
@@ -12685,7 +12685,7 @@ snapshots:
 
   '@modelcontextprotocol/sdk@1.32.1(supports-color@10.2.2)(zod@4.6.5)':
     dependencies:
-      '@hono/node-server': 2.1.3(hono@4.13.13)
+      '@hono/node-server': 2.1.4(hono@4.13.13)
       ajv: 8.20.0
       ajv-formats: 3.0.1
       content-type: 1.0.5
