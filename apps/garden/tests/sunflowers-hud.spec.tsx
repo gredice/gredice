@@ -88,6 +88,105 @@ test.describe('Sunflowers HUD', () => {
         await expect(page.getByText('Nepoznato')).toHaveCount(0);
     });
 
+    for (const reason of [
+        'refund:raisedBedField:1:0:100',
+        'refund:selectedRaisedBedPlanting:1',
+    ]) {
+        test(`describes five canceled sowing refunds for ${reason}`, async ({
+            mount,
+            page,
+        }) => {
+            await page.setViewportSize({ width: 500, height: 1280 });
+            await mount(
+                <SunflowersPendingDetailsStory
+                    cartSunflowers={0}
+                    history={Array.from({ length: 5 }, (_, index) => ({
+                        amount: 2990,
+                        createdAt: '2026-10-13T08:00:00.000Z',
+                        id: index + 1,
+                        reason: `${reason}${index}`,
+                    }))}
+                />,
+            );
+
+            await expect(
+                page.getByText('Povrat za otkazano sijanje', { exact: true }),
+            ).toBeVisible();
+            await expect(page.getByText('x5', { exact: true })).toBeVisible();
+            await expect(
+                page.getByText('+14.950', { exact: true }),
+            ).toBeVisible();
+            await expect(page.getByText('Nepoznato')).toHaveCount(0);
+            await expect(page.locator('image[href*="refund"]')).toHaveCount(1);
+        });
+    }
+
+    test('keeps equal-value refunds for different reasons in separate groups', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <SunflowersPendingDetailsStory
+                cartSunflowers={0}
+                history={[
+                    'refund:raisedBedField:1:0:100',
+                    'refund:raisedBedField:1:1:101',
+                    'refund:selectedRaisedBedPlanting:1',
+                    'refund:selectedRaisedBedPlanting:2',
+                    'refund:operation:1',
+                    'refund:not-sprouted:planting:1',
+                ].map((reason, index) => ({
+                    amount: 200,
+                    createdAt: '2026-10-13T08:00:00.000Z',
+                    id: index + 1,
+                    reason,
+                }))}
+            />,
+        );
+
+        await expect(page.getByText('Povrat za otkazano sijanje')).toHaveCount(
+            2,
+        );
+        await expect(
+            page.getByText('Povrat sredstava za radnju'),
+        ).toBeVisible();
+        await expect(
+            page.getByText('Povrat za neproklijalu biljku'),
+        ).toBeVisible();
+        await expect(page.getByText('x2', { exact: true })).toHaveCount(2);
+        await expect(page.getByText('+400', { exact: true })).toHaveCount(2);
+        await expect(page.getByText('+200', { exact: true })).toHaveCount(2);
+        await expect(page.getByText('Nepoznato')).toHaveCount(0);
+        await expect(page.locator('image[href*="refund"]')).toHaveCount(4);
+    });
+
+    for (const reason of ['refund', 'refund:other:1']) {
+        test(`identifies an unrecognized refund as a refund for ${reason}`, async ({
+            mount,
+            page,
+        }) => {
+            await mount(
+                <SunflowersPendingDetailsStory
+                    cartSunflowers={0}
+                    history={[
+                        {
+                            amount: 200,
+                            createdAt: '2026-10-13T08:00:00.000Z',
+                            id: 1,
+                            reason,
+                        },
+                    ]}
+                />,
+            );
+
+            await expect(
+                page.getByText('Povrat sredstava', { exact: true }),
+            ).toBeVisible();
+            await expect(page.getByText('Nepoznato')).toHaveCount(0);
+            await expect(page.locator('image[href*="refund"]')).toHaveCount(1);
+        });
+    }
+
     test('keeps grouped spending and earned amounts beside the new artwork', async ({
         mount,
         page,
