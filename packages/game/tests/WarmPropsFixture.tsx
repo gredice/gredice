@@ -17,6 +17,7 @@ import {
     gameQualityProfiles,
 } from '../src/scene/gameQuality';
 import { Scene } from '../src/scene/Scene';
+import { SceneBlockDataBoundary } from '../src/scene/SceneBlockDataBoundary';
 import { getSeasonDebugDates } from '../src/scene/seasonDebugDates';
 import {
     createGameState,
@@ -179,81 +180,86 @@ export function WarmPropsFixture({
                     data-selected={selected}
                     style={{ width: 680, height: 520 }}
                 >
-                    <Scene
-                        position={[10, 12, 15]}
-                        zoom={57}
-                        quality={gameQualityProfiles.low}
-                        fixedTimeSeconds={live ? undefined : fixedTime}
-                        animateSprings={false}
-                        profileStats
-                    >
-                        <color attach="background" args={['#becbd3']} />
-                        <ambientLight intensity={1.2} />
-                        <directionalLight
-                            position={[4, 8, 2]}
-                            intensity={1.5}
-                        />
-                        <Suspense fallback={null}>
-                            <EntityInstances
-                                stacks={stacks}
-                                quality={gameQualityProfiles[tier]}
-                                weather={{ windSpeed: 1, windDirection: 90 }}
+                    <SceneBlockDataBoundary>
+                        <Scene
+                            position={[10, 12, 15]}
+                            zoom={57}
+                            quality={gameQualityProfiles.low}
+                            fixedTimeSeconds={live ? undefined : fixedTime}
+                            animateSprings={false}
+                            profileStats
+                        >
+                            <color attach="background" args={['#becbd3']} />
+                            <ambientLight intensity={1.2} />
+                            <directionalLight
+                                position={[4, 8, 2]}
+                                intensity={1.5}
                             />
-                            <AutumnLeaves
-                                stacks={stacks}
-                                tier={tier}
-                                gardenId={7}
-                                windSpeed={1}
-                                enabled
-                            />
-                            {props.map(({ block, stack }) => (
-                                // biome-ignore lint/a11y/noStaticElementInteractions: Three.js selection target.
-                                <group
-                                    key={block.id}
-                                    onClick={(event) => {
-                                        event.stopPropagation();
-                                        setSelected(block.id);
+                            <Suspense fallback={null}>
+                                <EntityInstances
+                                    stacks={stacks}
+                                    quality={gameQualityProfiles[tier]}
+                                    weather={{
+                                        windSpeed: 1,
+                                        windDirection: 90,
                                     }}
-                                >
-                                    {stack.blocks
-                                        .filter(
-                                            (item) =>
-                                                item.name ===
-                                                'OutletDisplayTable',
-                                        )
-                                        .map((support) => (
-                                            <EntityFactory
-                                                key={support.id}
-                                                name={support.name}
-                                                block={support}
-                                                stack={stack}
-                                                rotation={0}
-                                                noControl
-                                            />
-                                        ))}
-                                    <EntityFactory
-                                        name={block.name}
-                                        block={block}
-                                        stack={stack}
-                                        rotation={rotation}
-                                        noControl
-                                    />
-                                </group>
-                            ))}
-                            {mounted && (
-                                <WarmProps
-                                    tier={tier}
-                                    enabled={enabled}
-                                    soundEnabled={sound}
-                                    rain={rain}
-                                    snow={snow}
-                                    windSpeed={1}
-                                    windDirection={90}
                                 />
-                            )}
-                            <WarmPropsProbe onSample={report} />
-                        </Suspense>
-                    </Scene>
+                                <AutumnLeaves
+                                    stacks={stacks}
+                                    tier={tier}
+                                    gardenId={7}
+                                    windSpeed={1}
+                                    enabled
+                                />
+                                {props.map(({ block, stack }) => (
+                                    // biome-ignore lint/a11y/noStaticElementInteractions: Three.js selection target.
+                                    <group
+                                        key={block.id}
+                                        onClick={(event) => {
+                                            event.stopPropagation();
+                                            setSelected(block.id);
+                                        }}
+                                    >
+                                        {stack.blocks
+                                            .filter(
+                                                (item) =>
+                                                    item.name ===
+                                                    'OutletDisplayTable',
+                                            )
+                                            .map((support) => (
+                                                <EntityFactory
+                                                    key={support.id}
+                                                    name={support.name}
+                                                    block={support}
+                                                    stack={stack}
+                                                    rotation={0}
+                                                    noControl
+                                                />
+                                            ))}
+                                        <EntityFactory
+                                            name={block.name}
+                                            block={block}
+                                            stack={stack}
+                                            rotation={rotation}
+                                            noControl
+                                        />
+                                    </group>
+                                ))}
+                                {mounted && (
+                                    <WarmProps
+                                        tier={tier}
+                                        enabled={enabled}
+                                        soundEnabled={sound}
+                                        rain={rain}
+                                        snow={snow}
+                                        windSpeed={1}
+                                        windDirection={90}
+                                    />
+                                )}
+                                <WarmPropsProbe onSample={report} />
+                            </Suspense>
+                        </Scene>
+                    </SceneBlockDataBoundary>
                 </div>
             </GameStateContext.Provider>
         </QueryClientProvider>
