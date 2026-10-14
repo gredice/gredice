@@ -133,7 +133,9 @@ for (const light of ['cloudy', 'dusk', 'rain', 'snow'] satisfies (
                 path: `../../docs/pumpkin-lanterns-2026/${light}.png`,
             });
         } else {
-            await expect(fixture).toHaveScreenshot(`${light}.png`, { maxDiffPixels: 250 });
+            await expect(fixture).toHaveScreenshot(`${light}.png`, {
+                maxDiffPixels: 250,
+            });
         }
     });
 }
