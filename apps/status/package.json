@@ -27,7 +27,7 @@
         "@biomejs/biome": "2.5.15",
         "@gredice/ui": "workspace:*",
         "@tailwindcss/postcss": "4.3.3",
-        "@types/node": "24.19.1",
+        "@types/node": "24.19.2",
         "@types/pg": "8.23.1",
         "@types/react": "19.3.0",
         "@types/react-dom": "19.3.0",
