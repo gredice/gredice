@@ -1,7 +1,7 @@
 import { Html } from '@react-three/drei';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NuqsAdapter } from 'nuqs/adapters/react';
-import { Suspense, useMemo, useState } from 'react';
+import { Fragment, Suspense, useMemo, useState } from 'react';
 import { Vector3 } from 'three';
 import { EntityFactory } from '../src/entities/EntityFactory';
 import { EntityInstances } from '../src/entities/EntityInstances';
@@ -12,26 +12,44 @@ import { getLocalSandboxBlockData } from '../src/localSandboxBlockData';
 import { Environment } from '../src/scene/Environment';
 import { gameQualityProfiles } from '../src/scene/gameQuality';
 import { Scene } from '../src/scene/Scene';
+import { SteamSourcesProvider } from '../src/scene/SteamSources';
 import {
     createGameState,
     GameStateContext,
     useDisposeGameStateStore,
 } from '../src/useGameState';
 import { createDateForGameTimeOfDay } from '../src/utils/timeOfDay';
-
 import { ChestnutRoastingCartProbe } from './ChestnutRoastingCartProbe';
+import { SteamProbe } from './SteamProbe';
 
 export function ChestnutRoastingCartFixture({
     rotation,
     light = 'day',
     small = false,
     raised = false,
+    steamProbe = false,
+    disabled = false,
+    entityDisabled = false,
+    globalDisabled = false,
+    date = '2026-09-23',
+    fixedTimeSeconds = 12,
+    windSpeed = 0,
 }: {
     rotation: number;
     light?: 'day' | 'night' | 'dusk' | 'cloudy' | 'rain' | 'snow';
     small?: boolean;
     raised?: boolean;
+    steamProbe?: boolean;
+    disabled?: boolean;
+    entityDisabled?: boolean;
+    globalDisabled?: boolean;
+    date?: string;
+    fixedTimeSeconds?: number;
+    windSpeed?: number;
 }) {
+    const [steam, setSteam] = useState('');
+    // Static asset captures deliberately exclude later ambient steam.
+    const SteamScope = steamProbe ? Fragment : SteamSourcesProvider;
     const [ready, setReady] = useState('');
     const [hit, setHit] = useState('');
     const [plantClicks, setPlantClicks] = useState(0);
@@ -110,28 +128,28 @@ export function ChestnutRoastingCartFixture({
         queryClient.setQueryData(['currentUser'], null);
         return queryClient;
     }, [stacks]);
-    const store = useMemo(
-        () =>
-            createGameState({
-                appBaseUrl: '',
-                isMock: true,
-                authenticatedGardenQueriesEnabled: false,
-                winterMode: 'summer',
-                freezeTime:
-                    light === 'dusk'
-                        ? createDateForGameTimeOfDay(
-                              new Date('2026-09-23T12:00:00+02:00'),
-                              0.8,
-                          )
-                        : new Date(
-                              light === 'night'
-                                  ? '2026-09-23T22:30:00+02:00'
-                                  : '2026-09-23T12:00:00+02:00',
-                          ),
-                dayNightCycleDisabled: false,
-            }),
-        [light],
-    );
+    const store = useMemo(() => {
+        const state = createGameState({
+            appBaseUrl: '',
+            isMock: true,
+            authenticatedGardenQueriesEnabled: false,
+            winterMode: 'summer',
+            freezeTime:
+                light === 'dusk'
+                    ? createDateForGameTimeOfDay(
+                          new Date(`${date}T12:00:00+02:00`),
+                          0.8,
+                      )
+                    : new Date(
+                          light === 'night'
+                              ? `${date}T22:30:00+02:00`
+                              : `${date}T12:00:00+02:00`,
+                      ),
+            dayNightCycleDisabled: false,
+        });
+        state.setState({ weatherVisualizationDisabled: globalDisabled });
+        return state;
+    }, [light, date, globalDisabled]);
     useDisposeGameStateStore(store);
     const quality = gameQualityProfiles[small ? 'low' : 'high'];
     const weather = {
@@ -140,7 +158,7 @@ export function ChestnutRoastingCartFixture({
         rainy: light === 'rain' ? 2 : 0,
         snowy: light === 'snow' ? 1 : 0,
         snowAccumulation: light === 'snow' ? 12 : 0,
-        windSpeed: 0,
+        windSpeed,
         windDirection: 0,
     };
     return (
@@ -150,6 +168,7 @@ export function ChestnutRoastingCartFixture({
                     <div
                         data-testid="chestnut-cart"
                         data-ready={ready}
+                        data-steam={steam}
                         data-hit={hit}
                         data-plant-clicks={plantClicks}
                         style={{
@@ -163,84 +182,92 @@ export function ChestnutRoastingCartFixture({
                             zoom={small ? 57 : 90}
                             quality={quality}
                             pixelRatio={1}
-                            fixedTimeSeconds={12}
+                            fixedTimeSeconds={fixedTimeSeconds}
                             frameloop="always"
                             animateSprings={false}
                             style={{ width: '100%', height: '100%' }}
                         >
                             <Environment
+                                noWarmProps
                                 quality={quality}
                                 weather={weather}
                                 noSound
+                                noWeather={disabled}
                             />
-                            <Suspense fallback={null}>
-                                <EntityInstances
-                                    stacks={stacks}
-                                    quality={quality}
-                                    weather={weather}
-                                />
-                                {stacks.flatMap((stack) =>
-                                    stack.blocks.slice(1).map((block) => (
-                                        // biome-ignore lint/a11y/noStaticElementInteractions: Three.js ray-selection target, not a DOM control.
-                                        <group
-                                            key={block.id}
-                                            name={`review:${block.id}`}
-                                            onClick={(event) => {
-                                                event.stopPropagation();
-                                                setHit(block.id);
-                                            }}
-                                        >
-                                            <EntityFactory
-                                                name={block.name}
-                                                block={block}
-                                                stack={stack}
-                                                rotation={block.rotation}
-                                                noControl
+                            {steamProbe && <SteamProbe onSample={setSteam} />}
+                            <SteamScope>
+                                <Suspense fallback={null}>
+                                    <EntityInstances
+                                        stacks={stacks}
+                                        quality={quality}
+                                        weather={weather}
+                                    />
+                                    {stacks.flatMap((stack) =>
+                                        stack.blocks.slice(1).map((block) => (
+                                            // biome-ignore lint/a11y/noStaticElementInteractions: Three.js ray-selection target, not a DOM control.
+                                            <group
+                                                key={block.id}
+                                                name={`review:${block.id}`}
+                                                onClick={(event) => {
+                                                    event.stopPropagation();
+                                                    setHit(block.id);
+                                                }}
+                                            >
+                                                <EntityFactory
+                                                    name={block.name}
+                                                    block={block}
+                                                    stack={stack}
+                                                    rotation={block.rotation}
+                                                    noControl
+                                                    weatherDisabled={
+                                                        entityDisabled
+                                                    }
+                                                />
+                                            </group>
+                                        )),
+                                    )}
+                                    <group
+                                        name="review-crops"
+                                        position={[0, 1.4, -0.95]}
+                                    >
+                                        {[0, 4, 8].map((positionIndex) => (
+                                            <RaisedBedPlantField
+                                                key={positionIndex}
+                                                blockIndex={0}
+                                                orientation="vertical"
+                                                field={{
+                                                    positionIndex,
+                                                    plantSortId: 337,
+                                                    plantStatus: 'ready',
+                                                    plantSowDate:
+                                                        '2026-06-01T12:00:00Z',
+                                                }}
                                             />
-                                        </group>
-                                    )),
-                                )}
-                                <group
-                                    name="review-crops"
-                                    position={[0, 1.4, -0.95]}
-                                >
-                                    {[0, 4, 8].map((positionIndex) => (
-                                        <RaisedBedPlantField
-                                            key={positionIndex}
-                                            blockIndex={0}
-                                            orientation="vertical"
-                                            field={{
-                                                positionIndex,
-                                                plantSortId: 337,
-                                                plantStatus: 'ready',
-                                                plantSowDate:
-                                                    '2026-06-01T12:00:00Z',
-                                            }}
-                                        />
-                                    ))}
-                                </group>
-                                {/* Use the production field-button component at a representative crop anchor.
+                                        ))}
+                                    </group>
+                                    {/* Use the production field-button component at a representative crop anchor.
                         The full close-up HUD is DOM above the scene and has separate app tests. */}
-                                <Html position={[0, 0.95, -1.2]} center>
-                                    <div style={{ width: 58, height: 44 }}>
-                                        <RaisedBedFieldItemButton
-                                            aria-label="Pregledaj rajčicu"
-                                            positionIndex={0}
-                                            onClick={() =>
-                                                setPlantClicks(
-                                                    (count) => count + 1,
-                                                )
-                                            }
-                                        >
-                                            Rajčica
-                                        </RaisedBedFieldItemButton>
-                                    </div>
-                                </Html>
-                                <ChestnutRoastingCartProbe
-                                    onReady={setReady}
-                                    weather={light}
-                                />
-                            </Suspense>
+                                    <Html position={[0, 0.95, -1.2]} center>
+                                        <div style={{ width: 58, height: 44 }}>
+                                            <RaisedBedFieldItemButton
+                                                aria-label="Pregledaj rajčicu"
+                                                positionIndex={0}
+                                                onClick={() =>
+                                                    setPlantClicks(
+                                                        (count) => count + 1,
+                                                    )
+                                                }
+                                            >
+                                                Rajčica
+                                            </RaisedBedFieldItemButton>
+                                        </div>
+                                    </Html>
+                                    <ChestnutRoastingCartProbe
+                                        onReady={setReady}
+                                        weather={light}
+                                    />
+                                </Suspense>
+                            </SteamScope>
                         </Scene>
                     </div>
                 </GameStateContext.Provider>

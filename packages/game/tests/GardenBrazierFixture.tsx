@@ -171,6 +171,7 @@ export function GardenBrazierFixture({
                             style={{ width: '100%', height: '100%' }}
                         >
                             <Environment
+                                noWarmProps
                                 quality={quality}
                                 weather={weather}
                                 noSound

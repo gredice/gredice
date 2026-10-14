@@ -12,8 +12,10 @@ import { useSceneAfterFrame } from '../src/scene/useSceneAfterFrame';
 export function SteamProfileProbe({
     enabled,
     onReport,
+    expectedSources = 8,
 }: {
     enabled: boolean;
+    expectedSources?: number;
     onReport: (value: string) => void;
 }) {
     const { sources } = useSteamSources();
@@ -48,7 +50,7 @@ export function SteamProfileProbe({
         };
     }, [enabled, sources, requestRender]);
     useSceneAfterFrame(() => {
-        if (sources.length !== 8) return;
+        if (sources.length !== expectedSources) return;
         const state = sample.current;
         if (state.frames >= 180) return;
         const now = performance.now();
@@ -70,6 +72,10 @@ export function SteamProfileProbe({
                     triangles: state.triangles / intervals.length,
                     p95FrameMs: intervals[Math.floor(intervals.length * 0.95)],
                     steam: metadata?.steamParticleCount,
+                    emitters: metadata?.steamEmitterCount,
+                    warmProps: metadata?.warmPropCount,
+                    warmSmoke: metadata?.warmPropSmokeCount,
+                    sourceIds: sources.map((source) => source.id),
                     falling: metadata?.autumnLeafCount,
                     ground: metadata?.autumnGroundLeafClusters,
                     entity: metadata?.autumnEntityLeafClusters,

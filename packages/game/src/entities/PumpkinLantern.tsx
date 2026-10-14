@@ -1,5 +1,5 @@
 import { getPumpkinLantern } from '@gredice/js/pumpkinLanterns';
-import { useMemo, useRef } from 'react';
+import { useContext, useMemo, useRef } from 'react';
 import type { MeshStandardMaterial } from 'three';
 import { animated } from '../scene/sceneSpring';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
@@ -7,6 +7,7 @@ import { useGameState } from '../useGameState';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { GardenNightLight } from './helpers/GardenNightLight';
+import { PumpkinLightOverrideContext } from './helpers/PumpkinLightOverrideContext';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 import { WeatheredEntityPart } from './helpers/WeatheredEntityPart';
 
@@ -16,6 +17,9 @@ export function PumpkinLantern({
     rotation,
     weatherDisabled,
 }: EntityInstanceProps) {
+    const trail = useContext(PumpkinLightOverrideContext);
+    const override = trail?.lights.get(block.id);
+    const select = trail?.lights.has(block.id) ? trail.onSelect : undefined;
     const model = getPumpkinLantern(block.name)?.name ?? 'PumpkinLanternSmile';
     const { nodes } = useGameGLTF(model);
     const body =
@@ -41,6 +45,14 @@ export function PumpkinLantern({
     return (
         <animated.group
             name={`PumpkinLantern:${block.id}`}
+            onClick={
+                select
+                    ? (event) => {
+                          event.stopPropagation();
+                          select(block.id);
+                      }
+                    : undefined
+            }
             position={stack.position.clone().setY(height)}
             rotation-y={animatedRotation?.to((_, y) => y)}
         >
@@ -67,6 +79,9 @@ export function PumpkinLantern({
                 />
             </mesh>
             <GardenNightLight
+                glowAmountOverride={
+                    override === undefined ? undefined : override ? 1 : 0
+                }
                 color="#ffad32"
                 distance={2}
                 lightIntensity={0.6}

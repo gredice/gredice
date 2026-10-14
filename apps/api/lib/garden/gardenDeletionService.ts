@@ -2,13 +2,17 @@ import {
     AccountDeletionInProgressError,
     AccountNotFoundError,
     bustScheduleCache,
+    GardenPackLifecyclePendingError,
     type GardenPlacementTransaction,
     getGardenDeletionTargetForUpdate,
     getGardenPlacementSnapshotForUpdate,
     listGardenRaisedBedMetadataForUpdate,
+    lockGardenPackUnitsForGardenDeletion,
+    recycleGardenPackUnitsForGardenDeletion,
     softDeleteGardenOnce,
     withAccountDeletionFenceTransaction,
     withGardenPlacementTransaction,
+    withSunflowerAccountTransaction,
 } from '@gredice/storage';
 
 const maximumGardenIdentifier = 2_147_483_647;
@@ -64,6 +68,7 @@ type GardenDeletionDependencies<Transaction> = Readonly<{
         gardenId: number,
         callback: (transaction: Transaction) => Promise<Result>,
         transaction: Transaction,
+        accountId: string,
     ) => Promise<Result>;
 }>;
 
@@ -77,6 +82,7 @@ export type DeleteRealGardenResult =
     | Readonly<{
           ok: false;
           code:
+              | 'PACK_LIFECYCLE_PENDING'
               | 'ACCOUNT_DELETION_IN_PROGRESS'
               | 'ACTIVE_RAISED_BEDS'
               | 'GARDEN_NOT_FOUND'
@@ -191,6 +197,7 @@ export function createGardenDeletionService<Transaction>(
                                 return { ok: true, deleted: true } as const;
                             },
                             accountTransaction,
+                            command.accountId,
                         ),
                 );
 
@@ -206,6 +213,13 @@ export function createGardenDeletionService<Transaction>(
             }
             return result;
         } catch (error) {
+            if (error instanceof GardenPackLifecyclePendingError)
+                return {
+                    ok: false,
+                    code: 'PACK_LIFECYCLE_PENDING',
+                    error: 'Pohrana, recikliranje i promjena izgleda predmeta iz paketa još nisu dostupni. Vrt s tim predmetima trenutačno nije moguće obrisati.',
+                    status: 409,
+                };
             if (error instanceof AccountDeletionInProgressError) {
                 return {
                     ok: false,
@@ -232,7 +246,27 @@ export const deleteRealGardenForAccount = createGardenDeletionService({
     getGardenDeletionTargetForUpdate,
     getGardenPlacementSnapshotForUpdate,
     listGardenRaisedBedMetadataForUpdate,
-    softDeleteGardenOnce,
-    withAccountDeletionFenceTransaction,
-    withGardenPlacementTransaction,
+    softDeleteGardenOnce: async (gardenId, tx) => {
+        const target = await getGardenDeletionTargetForUpdate(gardenId, tx);
+        if (target && !target.isDeleted)
+            await recycleGardenPackUnitsForGardenDeletion(
+                target.accountId,
+                gardenId,
+                tx,
+            );
+        return softDeleteGardenOnce(gardenId, tx);
+    },
+    withAccountDeletionFenceTransaction: (accountId, callback) =>
+        withSunflowerAccountTransaction(accountId, (tx) =>
+            withAccountDeletionFenceTransaction(accountId, callback, tx),
+        ),
+    withGardenPlacementTransaction: async (
+        gardenId,
+        callback,
+        tx,
+        accountId,
+    ) => {
+        await lockGardenPackUnitsForGardenDeletion(accountId, gardenId, tx);
+        return withGardenPlacementTransaction(gardenId, callback, tx);
+    },
 } satisfies GardenDeletionDependencies<GardenPlacementTransaction>);

@@ -1,5 +1,6 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useContext, useLayoutEffect, useRef } from 'react';
 import type { Group } from 'three';
+import { EntityPreviewContext } from '../entities/helpers/EntityPreviewContext';
 import { useSteamSources } from './SteamSources';
 
 /** Attach only at an authored, unobstructed hot-surface anchor. */
@@ -14,11 +15,12 @@ export function SteamEmitter({
     radius: number;
     enabled?: boolean;
 }) {
+    const preview = useContext(EntityPreviewContext);
     const ref = useRef<Group>(null);
     const { register } = useSteamSources();
     useLayoutEffect(() => {
-        if (enabled && ref.current)
+        if (enabled && !preview && ref.current)
             return register({ id, object: ref.current, radius });
-    }, [enabled, id, radius, register]);
+    }, [enabled, preview, id, radius, register]);
     return <group ref={ref} name={id} position={position} />;
 }

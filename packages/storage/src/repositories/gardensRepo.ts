@@ -1,3 +1,4 @@
+import { assertGardenPackLifecycleAllowed } from './gardenPackPlacementRepo';
 import 'server-only';
 import { userIdToPublicId } from '@gredice/js/publicId';
 import { safeUserDisplayName } from '@gredice/js/userDisplayName';
@@ -958,6 +959,7 @@ export async function updateGarden(garden: UpdateGarden) {
 
 export async function deleteGarden(gardenId: number) {
     await storage().transaction(async (tx) => {
+        await assertGardenPackLifecycleAllowed({ gardenId }, tx);
         await tx
             .update(gardens)
             .set({ isDeleted: true })
@@ -1008,6 +1010,7 @@ export async function softDeleteGardenOnce(
     gardenId: number,
     db: TransactionClient,
 ): Promise<SoftDeleteGardenResult> {
+    await assertGardenPackLifecycleAllowed({ gardenId }, db);
     const garden = (
         await db
             .select({ id: gardens.id, isDeleted: gardens.isDeleted })
@@ -1044,6 +1047,7 @@ export async function softDeleteGardenOnce(
 export async function deleteGardenIfNoActiveRaisedBeds(gardenId: number) {
     let deleted = false;
     const activeRaisedBedCount = await storage().transaction(async (tx) => {
+        await assertGardenPackLifecycleAllowed({ gardenId }, tx);
         const activeCount = await countActiveRaisedBedsForGarden(gardenId, tx);
         if (activeCount > 0) {
             return activeCount;
@@ -1210,6 +1214,8 @@ export async function updateGardenBlock(
     { id, ...values }: UpdateGardenBlock,
     db: DatabaseClient = storage(),
 ) {
+    if (values.variant !== undefined)
+        await assertGardenPackLifecycleAllowed({ blockId: id }, db);
     const updatedBlocks = await db
         .update(gardenBlocks)
         .set({
@@ -1232,6 +1238,7 @@ export async function deleteGardenBlock(
     blockId: string,
     db: DatabaseClient = storage(),
 ) {
+    await assertGardenPackLifecycleAllowed({ blockId }, db);
     await db
         .update(gardenBlocks)
         .set({ isDeleted: true })
@@ -1264,6 +1271,7 @@ export async function softDeleteGardenBlockOnce(
     blockId: string,
     db: TransactionClient,
 ): Promise<SoftDeleteGardenBlockResult> {
+    await assertGardenPackLifecycleAllowed({ blockId }, db);
     const block = await getGardenBlockForUpdate(
         { blockId, gardenId, includeDeleted: true },
         db,

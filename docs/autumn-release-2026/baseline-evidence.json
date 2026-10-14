@@ -1,0 +1,326 @@
+{
+  "observedAt": "2026-10-02T18:28:09Z",
+  "baselineCommit": "047d73c46840954757a28bb43c039c05a02c1386",
+  "releaseStatus": "blocked",
+  "scope": "Autumn A/B pilot preparation; optional C and Later excluded",
+  "publicDirectory": {
+    "url": "https://api.gredice.com/api/directories/entities/block",
+    "observedAt": "2026-10-02T18:28:09Z",
+    "httpStatus": 200,
+    "rowCount": 144,
+    "sha256": "8c4fff1ebe0a5ac9f90f9ba52436d263c70b16f9cb5a85f1cc018b4674c88cde",
+    "headers": {
+      "Access-Control-Allow-Credentials": "true",
+      "Age": "108",
+      "Cache-Control": "public, max-age=3600",
+      "Content-Type": "application/json",
+      "Date": "Fri, 02 Oct 2026 18:26:21 GMT",
+      "Server": "Vercel",
+      "Strict-Transport-Security": "max-age=63072000",
+      "Vary": "Origin",
+      "X-Matched-Path": "/api/[...route]",
+      "X-Vercel-Cache": "HIT",
+      "X-Vercel-Id": "fra1::fra1::skmnm-1790965689039-32f876b554e6",
+      "Connection": "close",
+      "Transfer-Encoding": "chunked"
+    },
+    "includedMatches": [
+      {
+        "modelName": "HarvestPumpkinGroupOrange",
+        "rows": []
+      },
+      {
+        "modelName": "HarvestPumpkinSquatCream",
+        "rows": []
+      },
+      {
+        "modelName": "HarvestCrateOrchard",
+        "rows": []
+      },
+      {
+        "modelName": "GardenScarecrow",
+        "rows": []
+      },
+      {
+        "modelName": "WoodlandMushrooms",
+        "rows": []
+      },
+      {
+        "modelName": "StoneMedium",
+        "rows": [
+          {
+            "id": 140,
+            "entityType": {
+              "id": 8,
+              "name": "block",
+              "label": "Blok"
+            },
+            "attributes": {
+              "height": 0.322,
+              "type": "decoration",
+              "hitboxWidth": 0.24,
+              "hitboxHeight": 0.14,
+              "hitboxDepth": 0.22,
+              "stackable": false,
+              "nightOnlyPurchase": false,
+              "placeableOnWater": false,
+              "spanWidth": 1,
+              "spanDepth": 1
+            },
+            "prices": {
+              "sunflowers": 5
+            },
+            "functions": {
+              "raisedBed": false,
+              "recycler": false
+            }
+          }
+        ]
+      },
+      {
+        "modelName": "AutumnLeafPileCrescent",
+        "rows": []
+      },
+      {
+        "modelName": "FallenLog",
+        "rows": []
+      },
+      {
+        "modelName": "AutumnBlanketBench",
+        "rows": []
+      },
+      {
+        "modelName": "GardenTeaTable",
+        "rows": []
+      },
+      {
+        "modelName": "EnamelGardenLamp",
+        "rows": [
+          {
+            "id": 758,
+            "entityType": {
+              "id": 8,
+              "name": "block",
+              "label": "Blok"
+            },
+            "attributes": {
+              "height": 1.45,
+              "hitboxDepth": 0.46,
+              "hitboxHeight": 1.45,
+              "hitboxWidth": 0.52,
+              "nightOnlyPurchase": false,
+              "placeableOnWater": false,
+              "spanDepth": 1,
+              "spanWidth": 1,
+              "stackable": false,
+              "type": "decoration"
+            },
+            "prices": {
+              "sunflowers": 80
+            },
+            "functions": {
+              "raisedBed": false,
+              "recycler": false
+            }
+          }
+        ]
+      },
+      {
+        "modelName": "AutumnAsterPotMauve",
+        "rows": []
+      }
+    ]
+  },
+  "headlessArrangementEvidence": [
+    {
+      "path": "docs/autumn-arrangements-2026/harvest-corner.json",
+      "sha256": "0752f6d6c819bc9f47d9aca039477edf73717c903c649a85df94de50746c24d8",
+      "sourceCommit": "c48974bd2e21316ae5c3034b9d305350aa479cd4",
+      "quality": "high",
+      "viewport": {
+        "width": 780,
+        "height": 600,
+        "dpr": 1
+      },
+      "reducedMotion": false,
+      "sceneCount": 12
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/harvest-corner-low-static.json",
+      "sha256": "970f763551dc8c24030f2da9df07e0f1ceb89fefba10cc70473ebc9f7f0f6002",
+      "sourceCommit": "c48974bd2e21316ae5c3034b9d305350aa479cd4",
+      "quality": "low",
+      "viewport": {
+        "width": 390,
+        "height": 440,
+        "dpr": 1
+      },
+      "reducedMotion": true,
+      "sceneCount": 12
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/woodland-path.json",
+      "sha256": "075c39bf1a386029e7f2469474f13bd26ad5e5cd86b7c53b949d78c533a2a10d",
+      "sourceCommit": "c48974bd2e21316ae5c3034b9d305350aa479cd4",
+      "quality": "high",
+      "viewport": {
+        "width": 780,
+        "height": 600,
+        "dpr": 1
+      },
+      "reducedMotion": false,
+      "sceneCount": 12
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/woodland-path-low-static.json",
+      "sha256": "845ea31aa1134ee692e41005022f4b79984155358695ade088db3e77f1119828",
+      "sourceCommit": "c48974bd2e21316ae5c3034b9d305350aa479cd4",
+      "quality": "low",
+      "viewport": {
+        "width": 390,
+        "height": 440,
+        "dpr": 1
+      },
+      "reducedMotion": true,
+      "sceneCount": 12
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/evening-seat.json",
+      "sha256": "8226d4cac4522767dbe51872399c41859902f9f5cdfe724fce133e4db4d42c78",
+      "sourceCommit": "c48974bd2e21316ae5c3034b9d305350aa479cd4",
+      "quality": "high",
+      "viewport": {
+        "width": 780,
+        "height": 600,
+        "dpr": 1
+      },
+      "reducedMotion": false,
+      "sceneCount": 12
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/evening-seat-low-static.json",
+      "sha256": "562e4f833a2260f3adf3db3eca0933c3998e36ebb7b43568c589734def530dc6",
+      "sourceCommit": "c48974bd2e21316ae5c3034b9d305350aa479cd4",
+      "quality": "low",
+      "viewport": {
+        "width": 390,
+        "height": 440,
+        "dpr": 1
+      },
+      "reducedMotion": true,
+      "sceneCount": 12
+    }
+  ],
+  "checks": {
+    "apiNode": {
+      "passed": 807,
+      "failed": 0,
+      "existingSkipped": 14
+    },
+    "gameUnit": {
+      "passed": 2072,
+      "failed": 0
+    },
+    "jsUnit": {
+      "passed": 177,
+      "failed": 0
+    },
+    "storefrontBrowser": {
+      "passed": 16,
+      "failed": 0
+    },
+    "ownedInventoryBrowser": {
+      "passed": 21,
+      "failed": 0
+    },
+    "purchaseDisposablePostgres": {
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0
+    },
+    "placementLifecycleDisposablePostgres": {
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0
+    },
+    "storageTypecheck": {
+      "existingDiagnostics": 42,
+      "addedDiagnostics": 0
+    }
+  },
+  "ci": {
+    "run": "https://github.com/gredice/gredice/actions/runs/37024405052",
+    "gameJs": "https://github.com/gredice/gredice/actions/runs/37024405052/job/110896115633",
+    "api": "https://github.com/gredice/gredice/actions/runs/37024405052/job/110896115908",
+    "cancelledWebgl": "https://github.com/gredice/gredice/actions/runs/37024405052/job/110896116165",
+    "parentWebgl": "https://github.com/gredice/gredice/actions/runs/36949951067/job/110671441706",
+    "runConclusion": "cancelled",
+    "aggregateGateConclusion": "failure"
+  },
+  "notVerified": [
+    "Final ordered migration and guard rollout",
+    "Published pilot products and model/image byte readback",
+    "Authenticated live pilot purchase and placement",
+    "Combined final-head autumn production profile",
+    "Physical mobile touch, audio, sustained frame time and thermal observations"
+  ],
+  "continuedImplementationChecks": {
+    "sourceCommit": "3914255e78e24dc0490e5d2ab7e59e9adeb68276",
+    "checkedAt": "2026-10-02T18:48:00Z",
+    "pullRequests": {
+      "starterPackPreparation": 5117,
+      "privatePhotoPrompts": 5119
+    },
+    "api": {
+      "passed": 814,
+      "failed": 0,
+      "existingSkipped": 14
+    },
+    "game": {
+      "passed": 2075,
+      "failed": 0
+    },
+    "js": {
+      "passed": 178,
+      "failed": 0,
+      "note": "Isolated complete rerun passed. An unchanged OTLP timeout case failed during the parallel local run; both telemetry source and test were unchanged from baseline."
+    },
+    "photoBrowser": {
+      "passed": 4,
+      "failed": 0
+    },
+    "storefrontBrowser": {
+      "passed": 19,
+      "failed": 0
+    },
+    "typecheck": {
+      "tasksPassed": 7,
+      "tasksTotal": 7,
+      "consumers": [
+        "api",
+        "@gredice/game",
+        "garden",
+        "www"
+      ]
+    },
+    "preparation": {
+      "domainCases": 6,
+      "isolatedRecipeCases": 3,
+      "sourceArchiveWithoutGitVerified": true,
+      "publicMissingModels": 10,
+      "publicDraftCatalogueEmitted": false,
+      "syntheticDraftProducts": 3,
+      "allSalesDisabled": true
+    },
+    "localLogsSha256": {
+      "api": "69196c195a6e758a820a8c406a02f734b6ce44fed4e5c9bc8e8626fbcd047ce5",
+      "game": "eb646d7f61d91e7ad39a8d6e72c1cb1e0ced58ce1e6a1ee320dbfa6d9b336a48",
+      "jsIsolatedRerun": "5ac8e9ebb83d72c1c6648c53dc0eae58b53d4f016ae8f3a0acaa692a0d3f1de7",
+      "jsParallelFailure": "f4c99c24ddd4a8c0202689e7520eac2e50551939ffaa4df0c511f3da189ef679",
+      "photoBrowser": "29be346a38ebf2615d94c9c121f49afe09ded732ab7ecdb6fc22763559f2df8f",
+      "storefrontBrowser": "af1906b7497bea1d7f42d5745118afc928cf96232bfa741831d9c81d8cf6b556",
+      "typechecks": "d66562576a853df35d5ad02d102b7849f25e751e626f0257a64190b483cd6aac"
+    },
+    "livePublicationOrPhysicalDeviceVerified": false
+  }
+}

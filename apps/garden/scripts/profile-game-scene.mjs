@@ -1263,6 +1263,73 @@ const autumnScenarios = ['low', 'medium', 'high'].map((tier) => ({
     budget: tier === 'low' ? 'gameDenseWeatherMobile' : 'gameDenseWeather',
 }));
 
+// Selected A/B launch identities plus exact starter recipes; no optional C/later props.
+const autumnLaunchDevices = [
+    {
+        key: 'low',
+        quality: 'low',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gameDenseWeatherMobile',
+    },
+    {
+        key: 'constrained',
+        quality: 'auto',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gameDenseWeatherMobile',
+        ...constrainedAutoQualityDevice,
+    },
+    {
+        key: 'high',
+        quality: 'high',
+        viewport: { width: 1440, height: 1000 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameDenseWeather',
+    },
+];
+const autumnLaunchCases = [
+    { size: 'small', mode: 'baseline', date: '2026-09-18', label: 'early-sun' },
+    { size: 'medium', mode: 'cloudy', date: '2026-10-22', label: 'mid-cloud' },
+    { size: 'dense', mode: 'windy', date: '2026-11-21', label: 'late-wind' },
+    { size: 'medium', mode: 'rain', date: '2026-10-22', label: 'mid-rain' },
+    { size: 'dense', mode: 'snow', date: '2026-12-21', label: 'winter-snow' },
+];
+const autumnLaunchScenarios = autumnLaunchCases.flatMap((fixture) =>
+    autumnLaunchDevices.map(({ key, quality, ...device }) => ({
+        ...device,
+        name: `game-autumn-launch-${fixture.size}-${fixture.label}-${key}`,
+        path: `/debug/profile/game?autumnLaunch=${fixture.size}&mode=${fixture.mode}&quality=${quality}&date=${fixture.date}&details=1&hud=0&debugHud=0&avatar=0`,
+        autumnLaunchProfile: true,
+        screenshotWitness: true,
+        timezoneId: 'Europe/Zagreb',
+    })),
+);
+autumnLaunchScenarios.push(
+    ...autumnLaunchDevices
+        .filter(({ key }) => key !== 'constrained')
+        .map(({ key, quality, ...device }) => ({
+            ...device,
+            name: `game-autumn-launch-small-mid-night-${key}`,
+            path: `/debug/profile/game?autumnLaunch=small&mode=night&quality=${quality}&date=2026-10-22&details=1&hud=0&debugHud=0&avatar=0`,
+            autumnLaunchProfile: true,
+            screenshotWitness: true,
+            timezoneId: 'Europe/Zagreb',
+        })),
+    {
+        ...autumnLaunchScenarios.find(
+            (scenario) =>
+                scenario.name ===
+                'game-autumn-launch-dense-late-wind-constrained',
+        ),
+        name: 'game-autumn-launch-dense-late-wind-constrained-reduced-motion',
+        reducedMotion: 'reduce',
+    },
+);
+
 const rainRippleScenarios = autumnScenarios.map((scenario) => ({
     ...scenario,
     name: scenario.name.replace('autumn-accumulation', 'rain-ripples'),
@@ -1281,6 +1348,7 @@ const morningMistScenarios = autumnScenarios.map((scenario) => ({
 
 const scenarioSets = {
     ...staticCacheClearanceScenarioSets,
+    'autumn-launch': autumnLaunchScenarios,
     'morning-mist': morningMistScenarios,
     'rain-ripples': rainRippleScenarios,
     autumn: autumnScenarios,
@@ -1851,7 +1919,7 @@ function printHelp(options) {
             '  --warmup-ms <ms>       Warmup wait after canvas appears. Default: 5000',
             '  --soak-ms <ms>         Run the scene before sampling. Default: 0',
             '  --sample-ms <ms>       requestAnimationFrame sample window. Default: 5000',
-            `  --scenario-set <set>    core, cross-tier, dense, dense-mobile, fauna, garden-switch, lifecycle, lifecycle-live, runtime-owners, static-idle, static-cache-clearance, static-cache-visuals, static-cache-depth, static-cache-lifecycle, static-cache-soak, static-cache-layers, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
+            `  --scenario-set <set>    core, cross-tier, dense, dense-mobile, fauna, garden-switch, lifecycle, lifecycle-live, runtime-owners, static-idle, static-cache-clearance, static-cache-visuals, static-cache-depth, static-cache-lifecycle, static-cache-soak, static-cache-layers, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. autumn-launch, autumn, rain-ripples, morning-mist. Current: ${options.scenarioSet}`,
             '  --scenario <name>       Profile exact scenario name(s). Repeat or use commas.',
             '  --screenshots           Save a PNG screenshot for each scenario.',
             '  --fail-on-budget       Exit non-zero when a budget or report-comparability check fails.',
@@ -4039,15 +4107,20 @@ function runPackageScript(script, environment = {}) {
 function startServer(baseUrl) {
     const port = resolveServerPort(baseUrl);
     let stopping = false;
-    const child = spawn('pnpm', ['start'], {
-        cwd: appRoot,
-        env: {
-            ...process.env,
-            GREDICE_GARDEN_START_PORT: port,
-            PORT: port,
+    const child = spawn(
+        process.execPath,
+        [resolve(appRoot, '../../scripts/run-app-command.mjs'), 'start'],
+        {
+            cwd: appRoot,
+            env: {
+                ...process.env,
+                GREDICE_GARDEN_START_PORT: port,
+                GREDICE_DETACH_CHILD_PROCESS: 'false',
+                PORT: port,
+            },
+            stdio: ['ignore', 'pipe', 'pipe'],
         },
-        stdio: ['ignore', 'pipe', 'pipe'],
-    });
+    );
 
     const logs = [];
     const collect = (chunk) => {
@@ -9000,12 +9073,27 @@ async function waitForStaticCacheClearanceDecision(page, requestedMode) {
 
 async function measureScenario(browser, baseUrl, scenario, options) {
     const context = await browser.newContext({
+        reducedMotion: scenario.reducedMotion ?? 'no-preference',
+        timezoneId: scenario.timezoneId,
         deviceScaleFactor: scenario.dpr,
         hasTouch: scenario.isMobile,
         isMobile: scenario.isMobile,
         viewport: scenario.viewport,
     });
     const page = await context.newPage();
+    if (scenario.autumnLaunchProfile === true) {
+        // Launch fixtures use only local models and authored sandbox rows, with no live auth/data.
+        await page.route('**/*', (route) => {
+            const url = new URL(route.request().url());
+            if (url.origin !== new URL(baseUrl).origin) return route.abort();
+            if (
+                url.pathname.startsWith('/api/') ||
+                url.pathname.startsWith('/ingest')
+            )
+                return route.fulfill({ status: 401, json: {} });
+            return route.continue();
+        });
+    }
     const cdp = await context.newCDPSession(page);
     const apiErrors = [];
     const consoleMessages = [];
@@ -9428,6 +9516,36 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 );
             }
         }
+    }
+    let autumnLaunchFixture = null;
+    if (scenario.autumnLaunchProfile === true) {
+        autumnLaunchFixture = await page.evaluate(() => {
+            const encoded = document
+                .querySelector('[data-game-profile-autumn-launch]')
+                ?.getAttribute('data-game-profile-autumn-launch');
+            return encoded ? JSON.parse(encoded) : null;
+        });
+        if (
+            !autumnLaunchFixture ||
+            !Number.isSafeInteger(autumnLaunchFixture.blockCount) ||
+            autumnLaunchFixture.firstWaveIdentityCount !== 24
+        )
+            throw new Error(
+                'Missing exact selected autumn launch fixture identity',
+            );
+        await page.waitForFunction(
+            (fixture) => {
+                const profile = globalThis.__grediceGameProfile;
+                return (
+                    profile?.profileGardenBlockCount === fixture.blockCount &&
+                    profile.profileGardenStackCount === fixture.stackCount &&
+                    JSON.stringify(profile.profileGardenBlockCountsByName) ===
+                        JSON.stringify(fixture.blockCountsByName)
+                );
+            },
+            autumnLaunchFixture,
+            { timeout: 60000 },
+        );
     }
     const adaptiveHighProfileControlStarted = scenario.profileControl
         ? await startAdaptiveHighProfileControl(page)
@@ -11264,6 +11382,10 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 typeof metadata.groundDecorationChunkCount === 'number'
                     ? metadata.groundDecorationChunkCount
                     : null,
+            warmPropCount: numberOrNull(metadata.warmPropCount),
+            warmPropSmokeCount: numberOrNull(metadata.warmPropSmokeCount),
+            warmPropCapacity: numberOrNull(metadata.warmPropCapacity),
+            warmPropCrackleGain: numberOrNull(metadata.warmPropCrackleGain),
             rainRippleCount: numberOrNull(metadata.rainRippleCount),
             rainRippleCapacity: numberOrNull(metadata.rainRippleCapacity),
             autumnLeafCount:
@@ -11936,6 +12058,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         );
         runtime = { ...runtime, ...staticCacheEvidence.witnesses.at(-1) };
     }
+    assertAutumnLaunchVisibleGeometry(scenario, sample);
     const memory = await collectScenarioMemoryEvidence(cdp);
     await context.close();
 
@@ -11947,6 +12070,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
     const requested = {
         adaptiveHigh: profileMetadata?.adaptiveHigh ?? request.adaptiveHigh,
         avatar: profileMetadata?.avatar ?? request.avatar,
+        autumnLaunchFixture,
+        reducedMotion: scenario.reducedMotion ?? 'no-preference',
         autoQualityDeviceClass:
             scenario.autoQualityDeviceClass ?? 'unspecified',
         autoQualityMetrics: profileMetadata?.autoQualityMetrics ?? null,
@@ -19974,7 +20099,20 @@ async function main() {
     }
 }
 
+function assertAutumnLaunchVisibleGeometry(scenario, sample) {
+    if (
+        scenario.autumnLaunchProfile === true &&
+        (!Number.isFinite(sample.trianglesPerRenderedFrame) ||
+            sample.trianglesPerRenderedFrame < 5000)
+    ) {
+        throw new Error(
+            'Launch fixture contains no meaningful visible scene geometry at the standard camera; reject sky-only measurements.',
+        );
+    }
+}
+
 export {
+    assertAutumnLaunchVisibleGeometry,
     beginGardenSwitchProfileSample,
     beginInteractiveProfileSample,
     buildAdaptiveHighComparisons,

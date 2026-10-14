@@ -1,0 +1,55 @@
+{
+  "kind": "offline-preflight-checkpoint",
+  "headCommit": "22e48526d2b5f7e03386cb6540733386296c92db",
+  "headTree": "5e3bcb19b148f0ffbc767c2a4cad426082c53050",
+  "command": "pnpm preflight:autumn-release /tmp/gredice-autumn-preflight-clean-22e48526d --catalogue /tmp/gredice-autumn-preflight-public-directory.json",
+  "expectedExitCode": 1,
+  "exitMeaning": "Release remains blocked; source checks passed.",
+  "publicExportObservation": "../current-directory-observation.json",
+  "artifacts": [
+    {
+      "path": "manifest.json",
+      "sha256": "15c1279c8fa52ecfff94efb0c186b4b032fffe535fce1d21d9d21304d496b20e"
+    },
+    {
+      "path": "report.json",
+      "sha256": "06ed962b34458927b50eab7625d896f6eee02d38aa065ae596f47b8f913dd269"
+    }
+  ],
+  "validation": [
+    {
+      "logName": "gredice-autumn-preflight-final-cli.log",
+      "sha256": "d264787ddbba947f1ecc7356ec70b0be751aee4721fa56f4fcc61a7a9fc6162f"
+    },
+    {
+      "logName": "gredice-autumn-preflight-tests.log",
+      "sha256": "76a6d5bdc55c179b9b10c13f6884cb8d193341597f2051da2de5675d2b9b09d0"
+    },
+    {
+      "logName": "gredice-autumn-preflight-types.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "logName": "gredice-autumn-preflight-lint.log",
+      "sha256": "26fd477a233f3fa407359939b6c55e2a7993d701c959ada66345e460ba47e230"
+    },
+    {
+      "logName": "gredice-autumn-preflight-api-only-install.log",
+      "sha256": "707443bef64dfdfed9f2e670901c1bd50bbaf84df25f94d9fcbf152b74d6d6ff"
+    },
+    {
+      "logName": "gredice-autumn-preflight-api-only-tests.log",
+      "sha256": "63417c254b3c2ccd9f81c7abe447a164e78ddbcb5d5e5bf8589e9330217d268e"
+    },
+    {
+      "logName": "gredice-garden-clean-incremental-check.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "logName": "gredice-autumn-final-profile-ci-check.log",
+      "sha256": "d34b907f85fe63561bbc2255df650c4e5db167e7e70991596eefa97e5555145d",
+      "result": "457 existing profile/preparation tests plus2 selected-fixture cases passed; fixture tests are registered in normal Garden CI preparation."
+    }
+  ],
+  "limits": "Exact local byte/structural identities and dated public-export reconciliation. No release readiness, publication, deployment, physical-device or live-commerce clearance."
+}

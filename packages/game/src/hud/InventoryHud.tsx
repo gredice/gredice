@@ -19,7 +19,9 @@ import {
     getGardenBoxInventoryCapacity,
 } from '../gardenBoxInventoryLimits';
 import { useBlockData } from '../hooks/useBlockData';
+import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useGardenBoxPlaceBlock } from '../hooks/useGardenBoxPlaceBlock';
+import { useGardenPackInventory } from '../hooks/useGardenPackInventory';
 import { useInventory } from '../hooks/useInventory';
 import { useOperations } from '../hooks/useOperations';
 import { useSorts } from '../hooks/usePlantSorts';
@@ -31,6 +33,8 @@ import {
     useBackpackTabParam,
 } from '../useUrlState';
 import { HudCard } from './components/HudCard';
+import { GardenPackInventory } from './GardenPackInventory';
+import type { GardenPackInventoryPlacement } from './ownedGardenPackInventory';
 
 const BACKPACK_GRID_SIZE = 24;
 const inventoryBackpackIconSrc = '/assets/hud/inventory-backpack.webp';
@@ -39,6 +43,7 @@ type InventoryItemData = {
     entityTypeName: string;
     entityId: string;
     amount: number;
+    packUnit?: { purchaseId: string; lineId: string; unitOrdinal: number };
     name?: string;
     image?: string;
 };
@@ -157,6 +162,16 @@ function InventoryItemCell({
         <button
             type="button"
             onClick={onClick}
+            aria-label={
+                item.packUnit
+                    ? `${displayName}, predmet iz paketa ${item.packUnit.unitOrdinal}`
+                    : undefined
+            }
+            data-stored-pack-unit={
+                item.packUnit
+                    ? `${item.packUnit.purchaseId}:${item.packUnit.lineId}:${item.packUnit.unitOrdinal}`
+                    : undefined
+            }
             className="relative aspect-square overflow-visible rounded-lg border bg-card p-0.5 transition-all hover:bg-primary/10"
         >
             {sortData ? (
@@ -239,7 +254,7 @@ function InventoryItemsGrid({
         <div className="grid grid-cols-6 gap-1">
             {gridItems.map((item, index) => {
                 const key = item
-                    ? `${keyPrefix}-${inventoryItemKey(item)}`
+                    ? `${keyPrefix}-${inventoryItemKey(item)}-${item.packUnit ? `${item.packUnit.purchaseId}:${item.packUnit.lineId}:${item.packUnit.unitOrdinal}` : 'ordinary'}`
                     : `${keyPrefix}-empty-${index}`;
                 const itemSortData =
                     item?.entityTypeName === 'plantSort'
@@ -289,6 +304,10 @@ function InventoryItemModal({
     onClose: () => void;
 }) {
     const placeGardenBoxBlock = useGardenBoxPlaceBlock();
+    const { data: currentGarden } = useCurrentGarden();
+    const wrongPackGarden = Boolean(
+        item.packUnit && gardenBox?.gardenId !== currentGarden?.id,
+    );
     const blockImageName = resolveBlockImageName(item);
     const isGardenBoxBlock =
         source === 'gardenBox' && item.entityTypeName === 'block';
@@ -311,16 +330,21 @@ function InventoryItemModal({
             : null;
 
     async function handlePlaceGardenBoxBlock() {
-        if (!gardenBox) {
+        if (!gardenBox || wrongPackGarden) {
             return;
         }
 
-        await placeGardenBoxBlock.mutateAsync({
-            gardenId: gardenBox.gardenId,
-            gardenBoxBlockId: gardenBox.blockId,
-            entityId: item.entityId,
-        });
-        onClose();
+        try {
+            await placeGardenBoxBlock.mutateAsync({
+                gardenId: gardenBox.gardenId,
+                gardenBoxBlockId: gardenBox.blockId,
+                entityId: item.entityId,
+                packUnit: item.packUnit,
+            });
+            onClose();
+        } catch {
+            return;
+        }
     }
 
     return (
@@ -427,12 +451,20 @@ function InventoryItemModal({
                             startDecorator={<Add className="size-4" />}
                             loading={placeGardenBoxBlock.isPending}
                             disabled={
-                                !gardenBox || placeGardenBoxBlock.isPending
+                                !gardenBox ||
+                                wrongPackGarden ||
+                                placeGardenBoxBlock.isPending
                             }
                             onClick={handlePlaceGardenBoxBlock}
                         >
                             Dodaj u vrt
                         </Button>
+                        {wrongPackGarden && (
+                            <Typography level="body3">
+                                Prije postavljanja odaberi vrt u kojem je ova
+                                kutija.
+                            </Typography>
+                        )}
                         {placeGardenBoxBlockError && (
                             <Typography level="body3" className="text-red-600">
                                 {placeGardenBoxBlockError}
@@ -507,18 +539,28 @@ function GardenBoxInventoryGroup({
 
 export function InventoryHud({
     hideTrigger = false,
+    packPlacement,
+    previewLayouts = true,
 }: {
     // The avatar walk-through opens garden boxes straight from the world, so
     // the modal is mounted without its HUD shell and backpack button.
     hideTrigger?: boolean;
+    packPlacement?: GardenPackInventoryPlacement;
+    previewLayouts?: boolean;
 } = {}) {
     const { data: inventory } = useInventory();
     const { data: operations } = useOperations();
-    const { data: blockData } = useBlockData();
+    const blockCatalogue = useBlockData();
+    const { data: blockData } = blockCatalogue;
     const { track } = useGameAnalytics();
     const [isOpen, setIsOpen] = useBackpackOpenParam();
+    const packs = useGardenPackInventory(isOpen);
     const [backpackTabParam, setBackpackTabParam] = useBackpackTabParam();
-    const backpackTab = normalizeBackpackTab(backpackTabParam);
+    const requestedTab = normalizeBackpackTab(backpackTabParam);
+    const backpackTab =
+        requestedTab === 'gardenPacks' && !packs.visible
+            ? 'backpack'
+            : requestedTab;
     const openGardenBoxBlockId = useGameState(
         (state) => state.openGardenBoxBlockId,
     );
@@ -702,7 +744,7 @@ export function InventoryHud({
                     onValueChange={handleTabChange}
                     className="flex flex-col"
                 >
-                    <TabsList className="self-start bg-muted-foreground/10">
+                    <TabsList className="w-full bg-muted-foreground/10">
                         <TabsTrigger value="backpack">
                             <Row spacing={2} alignItems="center">
                                 <BackpackIcon className="size-4 shrink-0" />
@@ -727,7 +769,31 @@ export function InventoryHud({
                                 </span>
                             </Row>
                         </TabsTrigger>
+                        {packs.visible && (
+                            <TabsTrigger value="gardenPacks">
+                                <Row spacing={1} alignItems="center">
+                                    <BackpackIcon className="size-4 shrink-0" />
+                                    <Typography>Paketi</Typography>
+                                    <span className={tabCountClassName}>
+                                        {packs.purchases.length}
+                                        {packs.hasNextPage ? '+' : ''}
+                                    </span>
+                                </Row>
+                            </TabsTrigger>
+                        )}
                     </TabsList>
+                    {packs.visible && (
+                        <TabsContent value="gardenPacks" className="mt-4">
+                            <GardenPackInventory
+                                inventory={packs}
+                                blockData={blockData}
+                                catalogue={blockCatalogue}
+                                placement={packPlacement}
+                                previewLayouts={previewLayouts}
+                                onPlaced={() => handleOpenChange(false)}
+                            />
+                        </TabsContent>
+                    )}
                     <TabsContent value="backpack" className="mt-4">
                         <Stack spacing={4}>
                             <Stack>

@@ -32,6 +32,7 @@ export type GardenEmissiveMaterialRef =
     RefObject<GardenEmissiveMaterial | null>;
 
 export type GardenLightRegistration = {
+    glowAmountOverride?: 0 | 1;
     emissiveBaseIntensity: number;
     emissiveMaterialRefs: readonly GardenEmissiveMaterialRef[];
     emissivePeakIntensity: number;
@@ -92,11 +93,20 @@ export function GardenLightProvider({
     useFrame(() => {
         const registrations = registrationsRef.current.getEntries();
         const nightAmount = getNightGardenGlowAmount(timeOfDay);
-        const cameraFrame = nightAmount > 0 ? readCameraFrame() : null;
+        const cameraFrame =
+            nightAmount > 0 ||
+            registrations.some(
+                ({ registration }) => registration.glowAmountOverride === 1,
+            )
+                ? readCameraFrame()
+                : null;
         const candidates = cameraFrame
             ? registrations.flatMap(({ instanceKey, registration }) => {
                   const light = registration.lightRef.current;
-                  if (!light) {
+                  if (
+                      !light ||
+                      (registration.glowAmountOverride ?? nightAmount) <= 0
+                  ) {
                       return [];
                   }
 
@@ -130,6 +140,7 @@ export function GardenLightProvider({
 
         for (const { instanceKey, registration } of registrations) {
             const frame = resolveNightGardenLightFrame({
+                glowAmountOverride: registration.glowAmountOverride,
                 emissiveBaseIntensity: registration.emissiveBaseIntensity,
                 emissivePeakIntensity: registration.emissivePeakIntensity,
                 lightIntensity: registration.lightIntensity,

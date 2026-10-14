@@ -4,7 +4,7 @@ import { GardenTeaTableFixture } from '../../../packages/game/tests/GardenTeaTab
 import { SteamLifecycleFixture } from '../../../packages/game/tests/SteamLifecycleFixture';
 import { SteamProfileFixture } from '../../../packages/game/tests/SteamProfileFixture';
 
-// Functional fixtures keep their existing budget; dense rendered-frame profiles need longer.
+// Functional cases run in regular CI; long profiles use the dedicated steam config.
 test.setTimeout(120_000);
 const expect = baseExpect.configure({ timeout: 60_000 });
 
@@ -17,7 +17,7 @@ for (const tier of ['low', 'medium', 'high'] satisfies (
     | 'medium'
     | 'high'
 )[]) {
-    test(`profile steam with dense autumn layers on ${tier}`, async ({
+    test(`profile steam with dense autumn layers on ${tier} @profile`, async ({
         mount,
     }, testInfo) => {
         testInfo.setTimeout(600_000);

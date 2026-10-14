@@ -17,6 +17,7 @@ import {
 } from '../../../packages/game/src/scene/gameProfileMetadata.ts';
 import { assertSafeGameProfileOutputDirectory } from './game-profile-output.mjs';
 import {
+    assertAutumnLaunchVisibleGeometry,
     beginGardenSwitchProfileSample,
     beginInteractiveProfileSample,
     buildAdaptiveHighComparisons,
@@ -12767,5 +12768,73 @@ test('cache clearance supplements preserve canonical all/scenario contract and r
             'legacy:5',
             'cache:5',
         ],
+    );
+});
+
+test('autumn launch scenarios cover exact bounded A/B fixture sizes, quality classes and seasonal weather without new budgets', () => {
+    const scenarios = resolveScenarios('autumn-launch');
+    assert.equal(scenarios.length, 18);
+    assert.equal(new Set(scenarios.map((s) => s.name)).size, 18);
+    for (const size of ['small', 'medium', 'dense']) {
+        for (const key of ['low', 'constrained', 'high']) {
+            assert.ok(
+                scenarios.some(
+                    (s) =>
+                        s.name.startsWith(`game-autumn-launch-${size}-`) &&
+                        s.name.endsWith(`-${key}`),
+                ),
+            );
+        }
+    }
+    assert.ok(
+        scenarios.some(
+            (s) =>
+                s.path.includes('mode=snow') &&
+                s.path.includes('date=2026-12-21'),
+        ),
+    );
+    assert.ok(scenarios.some((s) => s.path.includes('mode=rain')));
+    assert.ok(scenarios.some((s) => s.path.includes('mode=night')));
+    assert.ok(scenarios.some((s) => s.reducedMotion === 'reduce'));
+    for (const scenario of scenarios) {
+        assert.equal(scenario.autumnLaunchProfile, true);
+        assert.equal(scenario.screenshotWitness, true);
+        assert.ok(
+            ['gameDenseWeather', 'gameDenseWeatherMobile'].includes(
+                scenario.budget,
+            ),
+        );
+        assert.equal(scenario.timezoneId, 'Europe/Zagreb');
+        assert.ok(scenario.path.includes('avatar=0'));
+    }
+});
+
+test('launch scene witness rejects sky-only and missing metrics without changing other scenarios', () => {
+    for (const trianglesPerRenderedFrame of [
+        1248,
+        1380,
+        Number.NaN,
+        undefined,
+    ]) {
+        assert.throws(
+            () =>
+                assertAutumnLaunchVisibleGeometry(
+                    { autumnLaunchProfile: true },
+                    { trianglesPerRenderedFrame },
+                ),
+            /reject sky-only/,
+        );
+    }
+    assert.doesNotThrow(() =>
+        assertAutumnLaunchVisibleGeometry(
+            { autumnLaunchProfile: true },
+            { trianglesPerRenderedFrame: 5000 },
+        ),
+    );
+    assert.doesNotThrow(() =>
+        assertAutumnLaunchVisibleGeometry(
+            {},
+            { trianglesPerRenderedFrame: 100 },
+        ),
     );
 });

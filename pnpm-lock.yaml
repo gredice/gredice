@@ -328,6 +328,9 @@ importers:
       '@biomejs/biome':
         specifier: 2.5.15
         version: 2.5.15
+      '@electric-sql/pglite':
+        specifier: 0.5.8
+        version: 0.5.8
       '@gredice/auth':
         specifier: workspace:*
         version: link:../../packages/auth
@@ -1301,6 +1304,9 @@ importers:
       '@gredice/directory-types':
         specifier: workspace:*
         version: link:../directory-types
+      '@gredice/storage':
+        specifier: workspace:*
+        version: link:../storage
       openapi-fetch:
         specifier: 0.17.0
         version: 0.17.0

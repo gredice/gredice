@@ -1,6 +1,6 @@
 'use client';
 
-import type { PublicGardenResponse } from '@gredice/client';
+import type { BlockData, PublicGardenResponse } from '@gredice/client';
 import {
     defaultGameBackgroundPaletteKey,
     isGameBackgroundPaletteKey,
@@ -153,12 +153,17 @@ export type PublicGardenCapture = {
     output?: PublicGardenCaptureOutput;
     phase?: PublicGardenCapturePhase;
     transparent?: boolean;
+    dayNightCycleDisabled?: boolean;
+    winterMode?: 'summer' | 'winter' | 'holiday';
 };
 
 export type PublicGardenSelectedBlockFocus = GameCameraCloseupFocus;
 
 export type PublicGardenViewerProps = HTMLAttributes<HTMLDivElement> & {
     garden?: PublicGardenDetail;
+    /** Static display metadata in this viewer’s isolated cache; never commerce or ownership data. */
+    renderOnlyBlockData?: BlockData[];
+    qualityOverride?: GameQualityProfile;
     stacks?: PublicGardenStack[];
     appBaseUrl?: string;
     spriteBaseUrl?: string;
@@ -486,7 +491,9 @@ function PublicGardenScene({
     sceneChildren,
     selectedBlockFocus,
     visitorPresence,
+    qualityOverride,
 }: {
+    qualityOverride?: GameQualityProfile;
     cameraMinZoom?: number;
     capture?: PublicGardenViewerProps['capture'];
     initialView: PublicGardenInitialView;
@@ -531,8 +538,8 @@ function PublicGardenScene({
                 ? publicGardenWallpaperCaptureQuality
                 : capture
                   ? publicGardenCaptureQuality
-                  : resolveGameQualityProfile(),
-        [capture],
+                  : (qualityOverride ?? resolveGameQualityProfile()),
+        [capture, qualityOverride],
     );
     const renderLivingDetails = renderDetails && gardenCacheReady;
     const renderTransientDetails = renderLivingDetails && !capture;
@@ -902,7 +909,9 @@ function PublicGardenScene({
                                 <PublicGardenCaptureProbe
                                     key={capture.key}
                                     enabled={
-                                        renderLivingDetails && plantSortsLoaded
+                                        gardenCacheReady &&
+                                        blockDataLoaded &&
+                                        plantSortsLoaded
                                     }
                                     fitSceneObjectName={
                                         capture.fitGarden
@@ -966,11 +975,13 @@ function SeedPublicGardenQueryCache({
     children,
     client,
     garden,
+    winterMode = 'summer',
 }: {
     cacheKey: string;
     children: (gardenCacheReady: boolean) => ReactNode;
     client: QueryClient;
     garden?: ReturnType<typeof publicGardenForGameState>;
+    winterMode?: PublicGardenCapture['winterMode'];
 }) {
     const [seededCacheKey, setSeededCacheKey] = useState<string | null>(
         garden ? null : cacheKey,
@@ -991,11 +1002,11 @@ function SeedPublicGardenQueryCache({
             },
         ]);
         client.setQueryData(
-            currentGardenKeys('summer', garden.id, undefined, undefined),
+            currentGardenKeys(winterMode, garden.id, undefined, undefined),
             garden,
         );
         setSeededCacheKey(cacheKey);
-    }, [cacheKey, client, garden]);
+    }, [cacheKey, client, garden, winterMode]);
 
     return children(seededCacheKey === cacheKey);
 }
@@ -1008,6 +1019,8 @@ export function PublicGardenViewer({
     deferDetails = true,
     fixedTime,
     garden,
+    renderOnlyBlockData,
+    qualityOverride,
     initialView: initialViewOverride,
     interactiveBlockIds,
     localVisitorActivationRequest,
@@ -1038,7 +1051,9 @@ export function PublicGardenViewer({
             appBaseUrl: resolvedAppBaseUrl,
             authenticatedGardenQueriesEnabled: false,
             spriteBaseUrl: resolvedSpriteBaseUrl,
-            dayNightCycleDisabled: capture?.phase ? false : undefined,
+            dayNightCycleDisabled:
+                capture?.dayNightCycleDisabled ??
+                (capture?.phase ? false : undefined),
             freezeTime:
                 fixedTime ??
                 (capture
@@ -1051,7 +1066,7 @@ export function PublicGardenViewer({
                     : null),
             isMock: false,
             timeLocation: initialTimeLocation,
-            winterMode: 'summer',
+            winterMode: capture?.winterMode ?? 'summer',
         });
     }
     useDisposeGameStateStore(storeRef.current);
@@ -1059,6 +1074,16 @@ export function PublicGardenViewer({
     const clientRef = useRef<QueryClient>(null);
     if (!clientRef.current) {
         clientRef.current = new QueryClient();
+        if (!garden && renderOnlyBlockData) {
+            // The display snapshot remains local even after a long-lived tab becomes stale.
+            clientRef.current.setQueryDefaults(['blocks'], { enabled: false });
+            clientRef.current.setQueryData(['blocks'], renderOnlyBlockData);
+            clientRef.current.setQueryData(['sorts'], []);
+            clientRef.current.setQueryDefaults(['operations'], {
+                enabled: false,
+            });
+            clientRef.current.setQueryData(['operations'], []);
+        }
     }
     useEffect(() => {
         const client = clientRef.current;
@@ -1125,7 +1150,10 @@ export function PublicGardenViewer({
     ]);
     const deferredRenderDetails = useDeferredSceneDetails(deferDetails);
     const renderDetails = renderDetailsOverride ?? deferredRenderDetails;
-    const loadPlantSorts = renderDetailsOverride !== false || Boolean(capture);
+    const loadPlantSorts =
+        !garden && renderOnlyBlockData
+            ? false
+            : renderDetailsOverride !== false || Boolean(capture);
     const cacheKey = getPublicGardenCacheKey(garden);
     const [selectedRaisedBedId, setSelectedRaisedBedId] = useState<
         number | null
@@ -1254,6 +1282,7 @@ export function PublicGardenViewer({
                     }}
                 >
                     <SeedPublicGardenQueryCache
+                        winterMode={capture?.winterMode}
                         cacheKey={cacheKey}
                         client={clientRef.current}
                         garden={gameGarden}
@@ -1266,6 +1295,7 @@ export function PublicGardenViewer({
                                 )}
                             >
                                 <PublicGardenScene
+                                    qualityOverride={qualityOverride}
                                     cameraMinZoom={cameraMinZoom}
                                     capture={capture}
                                     className="size-full"

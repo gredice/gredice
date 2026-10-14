@@ -2,6 +2,8 @@
 
 import { GameScene, type GameSceneProps } from '@gredice/game';
 import { useEffect, useMemo, useState } from 'react';
+import { normalizePublicGardenStacks } from '../../../../../../packages/game/src/viewers/PublicGardenViewer';
+import { createAutumnLaunchFixture } from './profileAutumnLaunch';
 import { restoreGameProfileDate } from './profileDate';
 import { resolveGameProfileControllerEnabled } from './profileFlags';
 import {
@@ -19,16 +21,27 @@ type ProfileGameSceneProps = Omit<GameSceneProps, 'freezeTime'> & {
     freezeTime?: string;
     gardenSwitchEnabled?: boolean;
     cacheClearanceWitnessMode?: string;
+    autumnLaunchSize?: 'small' | 'medium' | 'dense';
 };
 
 export function ProfileGameScene({
     gardenSwitchEnabled = false,
     cacheClearanceWitnessMode,
+    autumnLaunchSize,
     freezeTime,
     mockGardenProfile: initialMockGardenProfile,
     weather: initialWeather,
     ...gameSceneProps
 }: ProfileGameSceneProps) {
+    const launchStacks = useMemo(
+        () =>
+            autumnLaunchSize
+                ? normalizePublicGardenStacks(
+                      createAutumnLaunchFixture(autumnLaunchSize).stacks,
+                  )
+                : undefined,
+        [autumnLaunchSize],
+    );
     const date = useMemo(
         () => restoreGameProfileDate(freezeTime),
         [freezeTime],
@@ -105,6 +118,12 @@ export function ProfileGameScene({
                 gameSceneProps.enableGameProfileController,
                 cacheClearanceWitnessMode,
             )}
+            localSandboxStorageKey={
+                autumnLaunchSize
+                    ? `gredice.debug.autumn-launch.v1.${autumnLaunchSize}`
+                    : undefined
+            }
+            localSandboxInitialStacks={launchStacks}
             freezeTime={date}
             mockGardenProfile={mockGardenProfile}
             weather={weather}

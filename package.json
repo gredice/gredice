@@ -32,7 +32,9 @@
     "doctor": "node ./scripts/worktree-health.mjs doctor",
     "bootstrap": "node ./scripts/worktree-health.mjs setup",
     "dev:all": "node ./scripts/dev-with-proxy.mjs --all-apps",
-    "vercel:alias-preview": "node ./scripts/alias-preview.mjs"
+    "vercel:alias-preview": "node ./scripts/alias-preview.mjs",
+    "preflight:autumn-release": "pnpm --filter api exec node --import tsx --conditions=react-server ../../scripts/autumn-release-preflight.ts",
+    "plan:autumn-publication": "pnpm --filter api exec node --import tsx --conditions=react-server ../../scripts/autumn-publication-plan.ts"
   },
   "devDependencies": {
     "rimraf": "6.1.3",

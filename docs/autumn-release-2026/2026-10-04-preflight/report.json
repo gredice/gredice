@@ -1,0 +1,304 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-04T00:28:29.924Z",
+  "headCommit": "22e48526d2b5f7e03386cb6540733386296c92db",
+  "headTree": "5e3bcb19b148f0ffbc767c2a4cad426082c53050",
+  "workingTreeStatus": "",
+  "gitProvenanceNote": "HEAD identifies the base checkout, not necessarily inspected working bytes. Selected byte fingerprint is authoritative; dirty status is preserved. Archives may have null Git provenance.",
+  "sourceFingerprint": "a106eaa5e7707984700fc8c927fe273a74894439699c129312daa5785496aa3f",
+  "sourceStatus": "source-ready",
+  "releaseStatus": "release-blocked",
+  "counts": {
+    "families": 12,
+    "itemIdentities": 24,
+    "modelAssets": 16,
+    "inspectedFiles": 394,
+    "recipeProducts": 3,
+    "recipeItems": 12
+  },
+  "suppliedInputs": [
+    {
+      "kind": "catalogue",
+      "path": "/tmp/gredice-autumn-preflight-public-directory.json",
+      "sha256": "8c4fff1ebe0a5ac9f90f9ba52436d263c70b16f9cb5a85f1cc018b4674c88cde",
+      "bytes": 138280
+    }
+  ],
+  "recipePreflight": {
+    "ready": false,
+    "errors": [
+      "Missing published model: HarvestPumpkinGroupOrange",
+      "Missing published model: HarvestPumpkinSquatCream",
+      "Missing published model: HarvestCrateOrchard",
+      "Missing published model: GardenScarecrow",
+      "Missing published model: WoodlandMushrooms",
+      "Missing published model: AutumnLeafPileCrescent",
+      "Missing published model: FallenLog",
+      "Missing published model: AutumnBlanketBench",
+      "Missing published model: GardenTeaTable",
+      "Missing published model: AutumnAsterPotMauve"
+    ]
+  },
+  "inspectedArtifacts": [],
+  "blockers": [
+    {
+      "gate": "catalogue",
+      "code": "MISSING_PUBLISHED_ITEM",
+      "subject": "HarvestPumpkinSquatOrange",
+      "detail": "Publish reviewed family #4948 after runtime byte readback; no ID/price guessed"
+    },
+    {
+      "gate": "catalogue",
+      "code": "MISSING_PUBLISHED_ITEM",
+      "subject": "HarvestPumpkinSquatCream",
+      "detail": "Publish reviewed family #4948 after runtime byte readback; no ID/price guessed"
+    },
+    {
+      "gate": "catalogue",
+      "code": "MISSING_PUBLISHED_ITEM",
+      "subject": "HarvestPumpkinSquatGreen",
+      "detail": "Publish reviewed family #4948 after runtime byte readback; no ID/price guessed"
+    },
+    {
+      "gate": "catalogue",
+      "code": "MISSING_PUBLISHED_ITEM",
+      "subject": "HarvestPumpkinGourdOrange",
+      "detail": "Publish reviewed family #4948 after runtime byte readback; no ID/price guessed"
+    },
+    {
+      "gate": "catalogue",
+      "code": "MISSING_PUBLISHED_ITEM",
+      "subject": "HarvestPumpkinGourdCream",
+      "detail": "Publish reviewed family #4948 after runtime byte readback; no ID/price guessed"
+    },
+    {
+      "gate": "catalogue",
+      "code": "MISSING_PUBLISHED_ITEM",
+      "subject": "HarvestPumpkinGourdGreen",
+      "detail": "Publish reviewed family #4948 after runtime byte readback; no ID/price guessed"
+    },
+    {
+      "gate": "catalogue",
+      "code": "MISSING_PUBLISHED_ITEM",
+      "subject": "HarvestPumpkinGroupOrange",
+      "detail": "Publish reviewed family #4948 after runtime byte readback; no ID/price guessed"
+    },
+    {
+      "gate": "catalogue",
+      "code": "MISSING_PUBLISHED_ITEM",
+      "subject": "HarvestPumpkinGroupCream",
+      "detail": "Publish reviewed family #4948 after runtime byte readback; no ID/price guessed"
+    },
+    {
+      "gate": "catalogue",
+      "code": "MISSING_PUBLISHED_ITEM",
+      "subject": "HarvestPumpkinGroupGreen",
+      "detail": "Publish reviewed family #4948 after runtime byte readback; no ID/price guessed"
+    },
+    {
+      "gate": "catalogue",
+      "code": "MISSING_PUBLISHED_ITEM",
+      "subject": "GardenScarecrow",
+      "detail": "Publish reviewed family #4949 after runtime byte readback; no ID/price guessed"
+    },
+    {
+      "gate": "catalogue",
+      "code": "MISSING_PUBLISHED_ITEM",
+      "subject": "HarvestCrate",
+      "detail": "Publish reviewed family #4950 after runtime byte readback; no ID/price guessed"
+    },
+    {
+      "gate": "catalogue",
+      "code": "MISSING_PUBLISHED_ITEM",
+      "subject": "HarvestCrateOrchard",
+      "detail": "Publish reviewed family #4950 after runtime byte readback; no ID/price guessed"
+    },
+    {
+      "gate": "catalogue",
+      "code": "MISSING_PUBLISHED_ITEM",
+      "subject": "HarvestWheelbarrow",
+      "detail": "Publish reviewed family #4951 after runtime byte readback; no ID/price guessed"
+    },
+    {
+      "gate": "catalogue",
+      "code": "MISSING_PUBLISHED_ITEM",
+      "subject": "AutumnAsterPotMauve",
+      "detail": "Publish reviewed family #4952 after runtime byte readback; no ID/price guessed"
+    },
+    {
+      "gate": "catalogue",
+      "code": "MISSING_PUBLISHED_ITEM",
+      "subject": "AutumnAsterPotCream",
+      "detail": "Publish reviewed family #4952 after runtime byte readback; no ID/price guessed"
+    },
+    {
+      "gate": "catalogue",
+      "code": "MISSING_PUBLISHED_ITEM",
+      "subject": "AutumnAsterPotGold",
+      "detail": "Publish reviewed family #4952 after runtime byte readback; no ID/price guessed"
+    },
+    {
+      "gate": "catalogue",
+      "code": "MISSING_PUBLISHED_ITEM",
+      "subject": "AutumnShrub",
+      "detail": "Publish reviewed family #4953 after runtime byte readback; no ID/price guessed"
+    },
+    {
+      "gate": "catalogue",
+      "code": "MISSING_PUBLISHED_ITEM",
+      "subject": "WoodlandMushrooms",
+      "detail": "Publish reviewed family #4954 after runtime byte readback; no ID/price guessed"
+    },
+    {
+      "gate": "catalogue",
+      "code": "MISSING_PUBLISHED_ITEM",
+      "subject": "FallenLog",
+      "detail": "Publish reviewed family #4955 after runtime byte readback; no ID/price guessed"
+    },
+    {
+      "gate": "catalogue",
+      "code": "MISSING_PUBLISHED_ITEM",
+      "subject": "AutumnLeafPileMound",
+      "detail": "Publish reviewed family #4956 after runtime byte readback; no ID/price guessed"
+    },
+    {
+      "gate": "catalogue",
+      "code": "MISSING_PUBLISHED_ITEM",
+      "subject": "AutumnLeafPileCrescent",
+      "detail": "Publish reviewed family #4956 after runtime byte readback; no ID/price guessed"
+    },
+    {
+      "gate": "catalogue",
+      "code": "MISSING_PUBLISHED_ITEM",
+      "subject": "LeafRake",
+      "detail": "Publish reviewed family #4957 after runtime byte readback; no ID/price guessed"
+    },
+    {
+      "gate": "catalogue",
+      "code": "MISSING_PUBLISHED_ITEM",
+      "subject": "AutumnBlanketBench",
+      "detail": "Publish reviewed family #4958 after runtime byte readback; no ID/price guessed"
+    },
+    {
+      "gate": "catalogue",
+      "code": "MISSING_PUBLISHED_ITEM",
+      "subject": "GardenTeaTable",
+      "detail": "Publish reviewed family #4959 after runtime byte readback; no ID/price guessed"
+    },
+    {
+      "gate": "products",
+      "code": "RECIPE_PREFLIGHT_BLOCKED",
+      "subject": "three starter products",
+      "detail": "Missing published model: HarvestPumpkinGroupOrange"
+    },
+    {
+      "gate": "products",
+      "code": "RECIPE_PREFLIGHT_BLOCKED",
+      "subject": "three starter products",
+      "detail": "Missing published model: HarvestPumpkinSquatCream"
+    },
+    {
+      "gate": "products",
+      "code": "RECIPE_PREFLIGHT_BLOCKED",
+      "subject": "three starter products",
+      "detail": "Missing published model: HarvestCrateOrchard"
+    },
+    {
+      "gate": "products",
+      "code": "RECIPE_PREFLIGHT_BLOCKED",
+      "subject": "three starter products",
+      "detail": "Missing published model: GardenScarecrow"
+    },
+    {
+      "gate": "products",
+      "code": "RECIPE_PREFLIGHT_BLOCKED",
+      "subject": "three starter products",
+      "detail": "Missing published model: WoodlandMushrooms"
+    },
+    {
+      "gate": "products",
+      "code": "RECIPE_PREFLIGHT_BLOCKED",
+      "subject": "three starter products",
+      "detail": "Missing published model: AutumnLeafPileCrescent"
+    },
+    {
+      "gate": "products",
+      "code": "RECIPE_PREFLIGHT_BLOCKED",
+      "subject": "three starter products",
+      "detail": "Missing published model: FallenLog"
+    },
+    {
+      "gate": "products",
+      "code": "RECIPE_PREFLIGHT_BLOCKED",
+      "subject": "three starter products",
+      "detail": "Missing published model: AutumnBlanketBench"
+    },
+    {
+      "gate": "products",
+      "code": "RECIPE_PREFLIGHT_BLOCKED",
+      "subject": "three starter products",
+      "detail": "Missing published model: GardenTeaTable"
+    },
+    {
+      "gate": "products",
+      "code": "RECIPE_PREFLIGHT_BLOCKED",
+      "subject": "three starter products",
+      "detail": "Missing published model: AutumnAsterPotMauve"
+    },
+    {
+      "gate": "products",
+      "code": "NO_REVIEWED_PRODUCT",
+      "subject": "autumn-harvest",
+      "detail": "Supply exact reviewed offers only after published-directory and immutable-version preflight; never use fixture IDs"
+    },
+    {
+      "gate": "products",
+      "code": "NO_REVIEWED_PRODUCT",
+      "subject": "autumn-woodland",
+      "detail": "Supply exact reviewed offers only after published-directory and immutable-version preflight; never use fixture IDs"
+    },
+    {
+      "gate": "products",
+      "code": "NO_REVIEWED_PRODUCT",
+      "subject": "autumn-evening",
+      "detail": "Supply exact reviewed offers only after published-directory and immutable-version preflight; never use fixture IDs"
+    },
+    {
+      "gate": "deployment",
+      "code": "EXTERNAL_REVIEW_REQUIRED",
+      "subject": "release candidate",
+      "detail": "Independently read back the exact deployed Garden/WWW asset bytes, runtime SHA and catalogue identities before publication. Offline files cannot certify live URLs."
+    },
+    {
+      "gate": "storage-rollout",
+      "code": "EXTERNAL_REVIEW_REQUIRED",
+      "subject": "release candidate",
+      "detail": "Review/apply ordered generated DDL plus exact source-owned pack integrity/provenance guards through the authorized release process; verify real readiness."
+    },
+    {
+      "gate": "combined-qa",
+      "code": "EXTERNAL_REVIEW_REQUIRED",
+      "subject": "release candidate",
+      "detail": "Review final-candidate CI and small/medium/dense seasonal/weather/quality/2D/audio/cleanup matrix against the selected launch scope."
+    },
+    {
+      "gate": "physical-device",
+      "code": "EXTERNAL_REVIEW_REQUIRED",
+      "subject": "release candidate",
+      "detail": "Independent physical touch/audio/sustained-frame/thermal review is required; local artifacts or self-attested booleans cannot clear it."
+    },
+    {
+      "gate": "live-acceptance",
+      "code": "EXTERNAL_REVIEW_REQUIRED",
+      "subject": "release candidate",
+      "detail": "Authorized individual purchase and pack purchase/partial placement/reload/repeat/refund/store/retrieve/withdrawal readback remains required."
+    },
+    {
+      "gate": "publication",
+      "code": "EXTERNAL_REVIEW_REQUIRED",
+      "subject": "release candidate",
+      "detail": "Review final manifest, catalogue/product publication, configuration, Croatian release copy and rollback; all emitted offer sales stay disabled."
+    }
+  ],
+  "trustBoundary": "Offline structural/byte checks only. No network, database, environment changes, publication or independent hardware/live verification. A hashed artifact is not proof of its assertions. Release readiness can never be obtained from this command."
+}

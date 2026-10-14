@@ -7,7 +7,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { VercelToolbar } from '@vercel/toolbar/next';
 import { Montserrat } from 'next/font/google';
-import type { ReactNode } from 'react';
+import { type ReactNode, Suspense } from 'react';
 import { ClientAppProvider } from '../components/providers/ClientAppProvider';
 
 const montserrat = Montserrat({
@@ -53,10 +53,12 @@ export default function RootLayout({
         process.env.NEXT_PUBLIC_POSTHOG_HOST;
     const content = (
         <>
-            <ClientAppProvider>
-                <ImpersonationBanner />
-                {children}
-            </ClientAppProvider>
+            <Suspense fallback={null}>
+                <ClientAppProvider>
+                    <ImpersonationBanner />
+                    {children}
+                </ClientAppProvider>
+            </Suspense>
             {injectVercelAnalytics && <Analytics />}
             {shouldInjectToolbar && <VercelToolbar />}
         </>

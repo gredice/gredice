@@ -43,6 +43,15 @@ async function GardenOverview() {
             <SignedIn>
                 <GardenOverview2DWithAnalytics
                     flags={flags}
+                    autumnActivityEnabled={
+                        process.env
+                            .NEXT_PUBLIC_GREDICE_AUTUMN_ACTIVITY_ENABLED ===
+                        'true'
+                    }
+                    gardenPacksEnabled={
+                        process.env.NEXT_PUBLIC_GREDICE_GARDEN_PACKS_ENABLED ===
+                        'true'
+                    }
                     suppressOpeningHud={suppressOpeningHud}
                 />
             </SignedIn>

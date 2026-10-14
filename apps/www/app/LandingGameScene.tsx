@@ -208,6 +208,11 @@ export function LandingGameScene() {
                     <GameScene
                         key={isLoggedIn ? 'user-garden' : 'landing-mock'}
                         appBaseUrl="https://vrt.gredice.com"
+                        gardenPacksEnabled={
+                            process.env
+                                .NEXT_PUBLIC_GREDICE_GARDEN_PACKS_ENABLED ===
+                            'true'
+                        }
                         spriteBaseUrl=""
                         deferDetails
                         quality={interactiveMounted ? undefined : 'high'}
