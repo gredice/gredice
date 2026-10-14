@@ -42,7 +42,7 @@ export function HedgehogShelterProbe({
                 !(mesh instanceof Mesh) ||
                 !(mesh.material instanceof MeshStandardMaterial)
             )
-                throw new Error('Missing bird feeder geometry/material');
+                throw new Error('Missing hedgehog shelter geometry/material');
             const bounds = new Box3().setFromObject(root);
             // The solid centre of the shallow tray is a stable real-geometry ray target in every rotation.
             const point = root
