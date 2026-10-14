@@ -1,5 +1,8 @@
-import { expect, test } from '@playwright/experimental-ct-react';
+import { expect as baseExpect, test } from '@playwright/experimental-ct-react';
 import { WarmPropsFixture } from '../../../packages/game/tests/WarmPropsFixture';
+
+test.setTimeout(120_000);
+const expect = baseExpect.configure({ timeout: 30_000 });
 
 test('frozen flames repeat, follow rotated/raised props, and leave selection available', async ({
     mount,

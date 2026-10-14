@@ -105,7 +105,9 @@ test('keyboard start, any-order repeats, actual partial/completed lights and fre
     );
     expect(
         requests.filter((u) =>
-            /auth\/|accounts\/|gardens\/|presence|directories|weather/.test(u),
+            /(?:^|\/)(?:api|auth|accounts|gardens|presence|directories|weather)(?:\/|$)/.test(
+                new URL(u).pathname,
+            ),
         ),
     ).toEqual([]);
     await fixture.unmount();
