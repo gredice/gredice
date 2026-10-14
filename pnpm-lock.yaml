@@ -703,7 +703,7 @@ importers:
         version: 0.9.0(@types/react@19.3.0)(@vercel/functions@3.9.11(@aws-sdk/credential-provider-web-identity@3.972.78)(ws@8.21.3))(next@16.4.0(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@types/node@24.19.1)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(sass@1.105.1))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@posthog/react':
         specifier: 1.11.3
-        version: 1.11.3(@types/react@19.3.0)(posthog-js@1.438.2(@types/react@19.3.0)(react@19.3.0))(react@19.3.0)
+        version: 1.11.3(@types/react@19.3.0)(posthog-js@1.438.3(@types/react@19.3.0)(react@19.3.0))(react@19.3.0)
       '@vercel/blob':
         specifier: 2.8.1
         version: 2.8.1
@@ -723,8 +723,8 @@ importers:
         specifier: 8.23.1
         version: 8.23.1
       posthog-js:
-        specifier: 1.438.2
-        version: 1.438.2(@types/react@19.3.0)(react@19.3.0)
+        specifier: 1.438.3
+        version: 1.438.3(@types/react@19.3.0)(react@19.3.0)
       react:
         specifier: 19.3.0
         version: 19.3.0
@@ -9207,8 +9207,8 @@ packages:
       react:
         optional: true
 
-  posthog-js@1.438.2:
-    resolution: {integrity: sha512-4AbEQ0lJp4WupgA+y5fiBnepSril+qA1rAYuFy9oKQ0xd8yg19p5XNKDgZW/nGwJF2KVx/joy4vKWhyuJNoCVw==}
+  posthog-js@1.438.3:
+    resolution: {integrity: sha512-3G+Dq/9iUgLMYK6R16Czi4IK+qzWXwqapVvyj65lieRJbO67Y0FDCWnz+1j3Tu9EFJ24Nl2dV+pYVLjI4tp4ZQ==}
     peerDependencies:
       '@types/react': 19.3.0
       react: 19.3.0
@@ -13176,9 +13176,9 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.3.0
 
-  '@posthog/react@1.11.3(@types/react@19.3.0)(posthog-js@1.438.2(@types/react@19.3.0)(react@19.3.0))(react@19.3.0)':
+  '@posthog/react@1.11.3(@types/react@19.3.0)(posthog-js@1.438.3(@types/react@19.3.0)(react@19.3.0))(react@19.3.0)':
     dependencies:
-      posthog-js: 1.438.2(@types/react@19.3.0)(react@19.3.0)
+      posthog-js: 1.438.3(@types/react@19.3.0)(react@19.3.0)
       react: 19.3.0
     optionalDependencies:
       '@types/react': 19.3.0
@@ -18660,7 +18660,7 @@ snapshots:
     transitivePeerDependencies:
       - preact-render-to-string
 
-  posthog-js@1.438.2(@types/react@19.3.0)(react@19.3.0):
+  posthog-js@1.438.3(@types/react@19.3.0)(react@19.3.0):
     dependencies:
       '@posthog/browser-common': 0.9.4
       '@posthog/core': 1.57.4
