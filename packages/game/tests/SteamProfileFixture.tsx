@@ -16,6 +16,7 @@ import {
     gameQualityProfiles,
 } from '../src/scene/gameQuality';
 import { Scene } from '../src/scene/Scene';
+import { SceneBlockDataBoundary } from '../src/scene/SceneBlockDataBoundary';
 import {
     createGameState,
     GameStateContext,
@@ -109,52 +110,56 @@ export function SteamProfileFixture({
                         data-report={report}
                         style={{ width: 680, height: 520 }}
                     >
-                        <Scene
-                            position={[-100, 100, -100]}
-                            zoom={25}
-                            quality={quality}
-                            pixelRatio={1}
-                            frameloop="always"
-                            animateSprings={false}
-                        >
-                            <Environment
+                        <SceneBlockDataBoundary>
+                            <Scene
+                                position={[-100, 100, -100]}
+                                zoom={25}
                                 quality={quality}
-                                weather={weather}
-                                noSound
-                            />
-                            <ParticleSystemProvider>
-                                <Suspense fallback={null}>
-                                    <EntityInstances
-                                        stacks={stacks}
-                                        quality={quality}
-                                        weather={weather}
-                                    />
-                                    {stacks.flatMap((stack) =>
-                                        stack.blocks
-                                            .filter(
-                                                (block) =>
-                                                    !instancedBlockNames.includes(
-                                                        block.name,
-                                                    ),
-                                            )
-                                            .map((block) => (
-                                                <EntityFactory
-                                                    key={block.id}
-                                                    name={block.name}
-                                                    block={block}
-                                                    stack={stack}
-                                                    rotation={block.rotation}
-                                                    noControl
-                                                />
-                                            )),
-                                    )}
-                                </Suspense>
-                            </ParticleSystemProvider>
-                            <SteamProfileProbe
-                                enabled={steam}
-                                onReport={setReport}
-                            />
-                        </Scene>
+                                pixelRatio={1}
+                                frameloop="always"
+                                animateSprings={false}
+                            >
+                                <Environment
+                                    quality={quality}
+                                    weather={weather}
+                                    noSound
+                                />
+                                <ParticleSystemProvider>
+                                    <Suspense fallback={null}>
+                                        <EntityInstances
+                                            stacks={stacks}
+                                            quality={quality}
+                                            weather={weather}
+                                        />
+                                        {stacks.flatMap((stack) =>
+                                            stack.blocks
+                                                .filter(
+                                                    (block) =>
+                                                        !instancedBlockNames.includes(
+                                                            block.name,
+                                                        ),
+                                                )
+                                                .map((block) => (
+                                                    <EntityFactory
+                                                        key={block.id}
+                                                        name={block.name}
+                                                        block={block}
+                                                        stack={stack}
+                                                        rotation={
+                                                            block.rotation
+                                                        }
+                                                        noControl
+                                                    />
+                                                )),
+                                        )}
+                                    </Suspense>
+                                </ParticleSystemProvider>
+                                <SteamProfileProbe
+                                    enabled={steam}
+                                    onReport={setReport}
+                                />
+                            </Scene>
+                        </SceneBlockDataBoundary>
                     </div>
                 </GameStateContext.Provider>
             </QueryClientProvider>
