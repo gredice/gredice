@@ -28,6 +28,12 @@ bash ./tests/migrateTestDb.sh
 # cross-spec fixtures from racing through global farm and event state.
 NODE_TEST_ARGS=(--import tsx --import ./tests/testSetup.ts --test --test-concurrency=1 --env-file=.env.test --conditions=react-server)
 
+# Node 24 can abort while collecting PGlite's released WASM import wrappers.
+# Keep this workaround test-only until https://github.com/nodejs/node/issues/66366 is fixed.
+if [[ "$(node -p 'process.versions.node.split(".")[0]')" == "24" ]]; then
+    NODE_TEST_ARGS+=(--no-wasm-code-gc)
+fi
+
 TEST_FILES=("$@")
 if [[ ${#TEST_FILES[@]} -eq 0 ]]; then
     TEST_FILES=("./tests/**/*.node.spec.ts")
