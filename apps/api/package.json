@@ -42,7 +42,7 @@
         "@valibot/to-json-schema": "1.8.0",
         "@vercel/blob": "2.8.1",
         "@vercel/functions": "3.9.11",
-        "@vercel/sandbox": "3.6.0",
+        "@vercel/sandbox": "3.6.1",
         "ai": "7.0.127",
         "date-fns": "4.4.0",
         "drizzle-orm": "0.45.4",
