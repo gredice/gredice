@@ -30,11 +30,10 @@ test('keyboard start, any-order repeats, actual partial/completed lights and fre
     const requests: string[] = [];
     page.on('request', (r) => requests.push(r.url()));
     const fixture = await mount(<PumpkinTrailFixture />);
+    const canvas = page.locator('canvas');
     const clickLantern = async (index: number) => {
-        const bounds = await page.locator('canvas').boundingBox();
-        if (!bounds) throw new Error('Canvas absent');
         const point = (await report(fixture)).lanterns[index].screen;
-        await page.mouse.click(bounds.x + point.x, bounds.y + point.y);
+        await canvas.click({ position: { x: point.x, y: point.y } });
     };
     await expect.poll(() => litCount(fixture)).toBe(0);
     const data = await report(fixture);
@@ -59,16 +58,18 @@ test('keyboard start, any-order repeats, actual partial/completed lights and fre
         page.getByRole('button', { name: 'Bundeva 1', exact: true }),
     ).toBeFocused();
     await page.keyboard.press('Space');
-    // Keyboard focus may scroll the viewport; resolve the canvas position anew.
+    // The locator scrolls the projected canvas position into view after keyboard focus.
     await clickLantern(3);
     await expect.poll(() => litCount(fixture)).toBe(2);
     await clickLantern(3);
-    const canvasBounds = await page.locator('canvas').boundingBox();
+    const canvasBounds = await canvas.boundingBox();
     if (!canvasBounds) throw new Error('Canvas absent');
-    await page.mouse.click(
-        canvasBounds.x + canvasBounds.width / 2,
-        canvasBounds.y + canvasBounds.height / 2,
-    );
+    await canvas.click({
+        position: {
+            x: canvasBounds.width / 2,
+            y: canvasBounds.height / 2,
+        },
+    });
     await expect.poll(() => litCount(fixture)).toBe(2);
     expect((await report(fixture)).camera).toEqual(data.camera);
     await expect(page.locator('[data-pumpkin-trail-status]')).toHaveText(
