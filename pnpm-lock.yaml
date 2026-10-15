@@ -292,8 +292,8 @@ importers:
         specifier: 8.23.1
         version: 8.23.1
       prettier:
-        specifier: 3.9.9
-        version: 3.9.9
+        specifier: 3.9.10
+        version: 3.9.10
       react:
         specifier: 19.3.0
         version: 19.3.0
@@ -470,8 +470,8 @@ importers:
         specifier: 8.23.1
         version: 8.23.1
       prettier:
-        specifier: 3.9.9
-        version: 3.9.9
+        specifier: 3.9.10
+        version: 3.9.10
       qrcode:
         specifier: 1.5.4
         version: 1.5.4
@@ -9255,6 +9255,11 @@ packages:
     peerDependenciesMeta:
       preact-render-to-string:
         optional: true
+
+  prettier@3.9.10:
+    resolution: {integrity: sha512-skGHTH1Yb9QvaTC4hWnRTzEYtCpApF0UMBPz+t/0ZPzP8ihefo/btKd+QA7pUE0fEwA1SbS/NmhyEcstdXOIdA==}
+    engines: {node: '>=14'}
+    hasBin: true
 
   prettier@3.9.9:
     resolution: {integrity: sha512-Z/CJHIkdujO/OtN7nXUii0Rf3VT5SRuhjBA82Xvu2XhBUgX3nhP67T0LHceBdQLex7OOFGTox+Q5Yg8Jk2Qivg==}
@@ -18712,6 +18717,8 @@ snapshots:
   potpack@1.0.2: {}
 
   preact@10.29.8: {}
+
+  prettier@3.9.10: {}
 
   prettier@3.9.9: {}
 
