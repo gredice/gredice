@@ -52,7 +52,7 @@
         "hono-rate-limiter": "0.5.4",
         "next": "16.4.0",
         "pg": "8.23.1",
-        "prettier": "3.9.9",
+        "prettier": "3.9.10",
         "react": "19.3.0",
         "react-dom": "19.3.0",
         "server-only": "0.0.1",
