@@ -73,6 +73,7 @@ function mockRequests(
         signal: AbortSignal;
         path: string;
         traceId: string | null;
+        headers: Headers;
     }[] = [];
     const fetchMock: typeof fetch = async (input, init) => {
         const path = new URL(input instanceof Request ? input.url : input)
@@ -89,6 +90,7 @@ function mockRequests(
             signal: init.signal,
             path,
             traceId: new Headers(init.headers).get('x-gredice-featured-trace'),
+            headers: new Headers(init.headers),
         });
         return respond(gardenId, init.signal, path);
     };
@@ -131,6 +133,7 @@ test('uses one compact summary request, preserves server order and caps the caro
 
 for (const failure of [
     'http',
+    'forbidden',
     'older-api',
     'network',
     'json',
@@ -141,6 +144,8 @@ for (const failure of [
     test(`retains the empty landing fallback after a ${failure} response without full-scene requests`, async (t) => {
         const { requests } = mockRequests(t, (_id, signal) => {
             if (failure === 'http') return new Response(null, { status: 503 });
+            if (failure === 'forbidden')
+                return new Response(null, { status: 403 });
             if (failure === 'older-api')
                 return new Response(null, { status: 404 });
             if (failure === 'network') throw new TypeError('Connection reset');
@@ -212,6 +217,90 @@ test('reports slow summary headers and API timing', async (t) => {
         listBodyMs: 0,
         traceId: requests[0]?.traceId,
     });
+});
+
+test('a rejection records safe platform and handler evidence without retrying or reading its body', async (t) => {
+    const body = new Response('private rejection body', {
+        status: 403,
+        headers: {
+            'content-type': 'text/html; charset=utf-8',
+            'x-vercel-id': 'fra1::rejected-request',
+            'x-vercel-error': 'TRUSTED_SOURCES_ENVIRONMENT_MISMATCH',
+            'x-vercel-mitigated': 'challenge',
+            'set-cookie': 'private-cookie=value',
+            'x-vercel-challenge-token': 'private-challenge',
+            location: 'https://private.example/login?token=private-token',
+        },
+    });
+    const { requests, errors } = mockRequests(t, () => body);
+    assert.deepEqual(await getLandingFeaturedGardens(), []);
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0]?.headers.has('authorization'), false);
+    assert.equal(requests[0]?.headers.has('cookie'), false);
+    assert.equal(requests[0]?.headers.has('x-vercel-protection-bypass'), false);
+    assert.equal(
+        requests[0]?.headers.has('x-vercel-trusted-oidc-idp-token'),
+        false,
+    );
+    assert.equal(body.bodyUsed, false);
+    assert.partialDeepStrictEqual(errors.mock.calls[0]?.arguments[1], {
+        status: 403,
+        apiHost: 'api.gredice.com',
+        apiRequestId: 'fra1::rejected-request',
+        apiContentType: 'text/html',
+        apiErrorCode: 'TRUSTED_SOURCES_ENVIRONMENT_MISMATCH',
+        apiMitigation: 'challenge',
+        apiTraceMatched: false,
+        apiRedirected: false,
+    });
+    assert.doesNotMatch(JSON.stringify(errors.mock.calls), /private/u);
+});
+
+test('a handler rejection is correlated without attributing it to platform protection', async (t) => {
+    const { errors, requests } = mockRequests(
+        t,
+        () =>
+            new Response(null, {
+                status: 403,
+                headers: {
+                    'x-gredice-featured-trace': requests[0]?.traceId ?? '',
+                    'content-type': 'application/json',
+                    'server-timing': 'featured-summaries;dur=1.0',
+                },
+            }),
+    );
+    assert.deepEqual(await getLandingFeaturedGardens(), []);
+    assert.partialDeepStrictEqual(errors.mock.calls[0]?.arguments[1], {
+        apiTraceMatched: true,
+        apiErrorCode: null,
+        apiMitigation: null,
+        apiContentType: 'application/json',
+    });
+    assert.equal(requests.length, 1);
+});
+
+test('unrecognized response metadata is not copied into diagnostics', async (t) => {
+    const { errors } = mockRequests(
+        t,
+        () =>
+            new Response(null, {
+                status: 403,
+                headers: {
+                    'content-type': 'private/secret',
+                    'x-vercel-error': 'private-token',
+                    'x-vercel-mitigated': 'private-token',
+                    'x-gredice-featured-trace': 'private-token',
+                },
+            }),
+    );
+    assert.deepEqual(await getLandingFeaturedGardens(), []);
+    assert.partialDeepStrictEqual(errors.mock.calls[0]?.arguments[1], {
+        apiErrorCode: null,
+        apiMitigation: null,
+        apiContentType: 'other',
+        apiTraceMatched: false,
+    });
+    assert.doesNotMatch(JSON.stringify(errors.mock.calls), /private/u);
 });
 
 test('the Playwright fixture bypasses requests and deadlines', async (t) => {
