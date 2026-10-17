@@ -60,7 +60,7 @@
         "valibot": "1.5.0",
         "web-push": "3.6.7",
         "xml2js": "0.6.2",
-        "zod": "4.6.6",
+        "zod": "4.6.7",
         "zod-openapi": "6.0.2",
         "zod-to-json-schema": "3.25.2"
     },
