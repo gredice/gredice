@@ -3,6 +3,11 @@
 See [Shared garden spatial queries](./game-spatial-queries.md) for indexed picking,
 shared camera frames, diagnostics, and validation of spatial consumers.
 
+See the [2026-09-26 engine migration investigation](./game-engine-migration-investigation.md)
+for an isolated Three WebGL/WebGPU comparison, render-bundle and Wasm experiments,
+and migration effort estimates. Those POC results are separate from full-game
+production profiling and physical-device acceptance.
+
 Date: 2026-04-29
 
 Static inventory refreshed: 2026-08-30
