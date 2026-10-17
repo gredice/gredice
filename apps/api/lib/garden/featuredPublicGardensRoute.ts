@@ -1,10 +1,7 @@
 import { Hono } from 'hono';
 import { describeRoute } from 'hono-openapi';
 import { publicSecurity } from '../docs/security';
-
-const featuredTraceHeader = 'x-gredice-featured-trace';
-const featuredTracePattern =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
+import { parseFeaturedGardenTraceId } from './featuredGardenTrace';
 
 export function featuredPublicGardensRoute(
     getGardens: () => Promise<{ id: number }[]>,
@@ -18,11 +15,9 @@ export function featuredPublicGardensRoute(
         }),
         async (context) => {
             const startedAt = performance.now();
-            const requestedTraceId = context.req.header(featuredTraceHeader);
-            const traceId =
-                requestedTraceId && featuredTracePattern.test(requestedTraceId)
-                    ? requestedTraceId
-                    : null;
+            const traceId = parseFeaturedGardenTraceId(
+                context.req.header('x-gredice-featured-trace'),
+            );
             if (traceId) {
                 console.info('Featured garden list request started', {
                     traceId,

@@ -2,6 +2,7 @@ import type { getFeaturedPublicGardenSummaries } from '@gredice/storage';
 import { Hono } from 'hono';
 import { describeRoute } from 'hono-openapi';
 import { publicSecurity } from '../docs/security';
+import { parseFeaturedGardenTraceId } from './featuredGardenTrace';
 
 export function featuredPublicGardenSummariesRoute(
     getSummaries: typeof getFeaturedPublicGardenSummaries,
@@ -15,15 +16,46 @@ export function featuredPublicGardenSummariesRoute(
         }),
         async (context) => {
             const startedAt = performance.now();
-            const items = await getSummaries();
-            // Shared caching belongs to the ranking/count read model. Do not
-            // cache this visibility-checked response at a browser/CDN layer.
-            context.header('Cache-Control', 'no-store');
-            context.header(
-                'Server-Timing',
-                `featured-summaries;dur=${(performance.now() - startedAt).toFixed(1)}`,
+            const traceId = parseFeaturedGardenTraceId(
+                context.req.header('x-gredice-featured-trace'),
             );
-            return context.json({ items });
+            if (traceId) {
+                context.header('x-gredice-featured-trace', traceId);
+                console.info('Featured garden summaries request started', {
+                    traceId,
+                });
+            }
+            try {
+                const items = await getSummaries();
+                const durationMs = performance.now() - startedAt;
+                if (traceId) {
+                    console.info(
+                        'Featured garden summaries request completed',
+                        {
+                            traceId,
+                            durationMs,
+                        },
+                    );
+                }
+                // Shared caching belongs to the ranking/count read model. Do not
+                // cache this visibility-checked response at a browser/CDN layer.
+                context.header('Cache-Control', 'no-store');
+                context.header(
+                    'Server-Timing',
+                    `featured-summaries;dur=${durationMs.toFixed(1)}`,
+                );
+                return context.json({ items });
+            } catch (error) {
+                if (traceId) {
+                    console.error('Featured garden summaries request failed', {
+                        traceId,
+                        durationMs: performance.now() - startedAt,
+                        errorName:
+                            error instanceof Error ? error.name : 'Unknown',
+                    });
+                }
+                throw error;
+            }
         },
     );
 }

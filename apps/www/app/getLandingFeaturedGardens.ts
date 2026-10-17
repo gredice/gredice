@@ -7,6 +7,39 @@ import {
 
 const landingFeaturedGardensListTimeoutMs = 3_000;
 
+function featuredResponseDiagnostics(traceId: string, response?: Response) {
+    const contentType = response?.headers
+        .get('content-type')
+        ?.split(';')[0]
+        ?.trim()
+        .toLowerCase();
+    const errorCode = response?.headers.get('x-vercel-error');
+    const mitigation = response?.headers.get('x-vercel-mitigated');
+    return {
+        apiTiming: response?.headers.get('server-timing') ?? null,
+        apiRequestId: response?.headers.get('x-vercel-id') ?? null,
+        apiCacheStatus: response?.headers.get('x-vercel-cache') ?? null,
+        apiContentType: contentType
+            ? ['application/json', 'text/html', 'text/plain'].includes(
+                  contentType,
+              )
+                ? contentType
+                : 'other'
+            : null,
+        apiErrorCode:
+            errorCode && /^[A-Z][A-Z0-9_]{0,99}$/u.test(errorCode)
+                ? errorCode
+                : null,
+        apiMitigation:
+            mitigation === 'challenge' || mitigation === 'deny'
+                ? mitigation
+                : null,
+        apiTraceMatched:
+            response?.headers.get('x-gredice-featured-trace') === traceId,
+        apiRedirected: response?.redirected ?? false,
+    };
+}
+
 const playwrightFeaturedGardensFixture: LandingFeaturedGarden[] = [
     {
         garden: {
@@ -32,35 +65,30 @@ export async function getLandingFeaturedGardens(): Promise<
     const listSignal = AbortSignal.timeout(landingFeaturedGardensListTimeoutMs);
     let listPhase = 'headers';
     let listHeadersMs: number | undefined;
-    let apiTiming: string | null = null;
-    let apiRequestId: string | null = null;
-    let apiCacheStatus: string | null = null;
+    let apiHost: string | undefined;
+    let apiDiagnostics = featuredResponseDiagnostics(traceId);
     try {
-        const response =
-            await clientPublic().api.gardens.public.featured.summaries.$get(
-                undefined,
-                {
-                    init: {
-                        signal: listSignal,
-                        cache: 'no-store',
-                        headers: { 'x-gredice-featured-trace': traceId },
-                    },
-                },
-            );
+        const summaries = clientPublic().api.gardens.public.featured.summaries;
+        apiHost = summaries.$url().hostname;
+        const response = await summaries.$get(undefined, {
+            init: {
+                signal: listSignal,
+                cache: 'no-store',
+                headers: { 'x-gredice-featured-trace': traceId },
+            },
+        });
         listHeadersMs = Date.now() - startedAt;
-        apiTiming = response.headers.get('server-timing');
-        apiRequestId = response.headers.get('x-vercel-id');
-        apiCacheStatus = response.headers.get('x-vercel-cache');
+        apiDiagnostics = featuredResponseDiagnostics(traceId, response);
         if (!response.ok) {
-            // Independent WWW/API deployments can briefly expose an older API.
-            // Keep the landing fallback without restoring scene-detail fan-out.
+            // A status alone cannot identify an application, deployment
+            // protection or edge rejection. Keep bounded metadata for
+            // correlation; never log response bodies, cookies or bypass tokens.
             console.error('Failed to fetch featured gardens for landing', {
                 status: response.status,
                 elapsedMs: Date.now() - startedAt,
                 listHeadersMs,
-                apiTiming,
-                apiRequestId,
-                apiCacheStatus,
+                apiHost,
+                ...apiDiagnostics,
                 traceId,
             });
             return [];
@@ -74,9 +102,8 @@ export async function getLandingFeaturedGardens(): Promise<
                 listDurationMs,
                 listHeadersMs,
                 listBodyMs: listDurationMs - listHeadersMs,
-                apiTiming,
-                apiRequestId,
-                apiCacheStatus,
+                apiHost,
+                ...apiDiagnostics,
                 traceId,
             });
         }
@@ -104,9 +131,8 @@ export async function getLandingFeaturedGardens(): Promise<
                 listPhase === 'body' && listHeadersMs !== undefined
                     ? Date.now() - startedAt - listHeadersMs
                     : undefined,
-            apiTiming,
-            apiRequestId,
-            apiCacheStatus,
+            apiHost,
+            ...apiDiagnostics,
             traceId,
             timedOut: listSignal.aborted,
         });
