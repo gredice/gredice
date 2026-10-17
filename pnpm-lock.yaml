@@ -224,13 +224,13 @@ importers:
         version: link:../../packages/ui
       '@hono/mcp':
         specifier: 0.3.2
-        version: 0.3.2(@modelcontextprotocol/sdk@1.32.1(supports-color@10.2.2)(zod@4.6.6))(hono-rate-limiter@0.5.4(hono@4.13.13))(hono@4.13.13)(zod@4.6.6)
+        version: 0.3.2(@modelcontextprotocol/sdk@1.32.1(supports-color@10.2.2)(zod@4.6.7))(hono-rate-limiter@0.5.4(hono@4.13.13))(hono@4.13.13)(zod@4.6.7)
       '@hono/standard-validator':
         specifier: 0.4.0
         version: 0.4.0(@standard-schema/spec@1.1.0)(hono@4.13.13)
       '@modelcontextprotocol/sdk':
         specifier: 1.32.1
-        version: 1.32.1(supports-color@10.2.2)(zod@4.6.6)
+        version: 1.32.1(supports-color@10.2.2)(zod@4.6.7)
       '@opentelemetry/api-logs':
         specifier: 0.223.0
         version: 0.223.0
@@ -245,13 +245,13 @@ importers:
         version: 0.9.0(@types/react@19.3.0)(@vercel/functions@3.9.11(@aws-sdk/credential-provider-web-identity@3.972.80)(ws@8.21.3))(next@16.4.0(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@types/node@24.19.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(sass@1.105.1))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@scalar/api-reference-react':
         specifier: 0.9.80
-        version: 0.9.80(axios@1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2))(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(react@19.3.0)(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)(zod@4.6.6)
+        version: 0.9.80(axios@1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2))(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(react@19.3.0)(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)(zod@4.6.7)
       '@standard-community/standard-json':
         specifier: 0.3.6
-        version: 0.3.6(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(@valibot/to-json-schema@1.8.0(valibot@1.5.0(typescript@7.0.2)))(valibot@1.5.0(typescript@7.0.2))(zod-to-json-schema@3.25.2(zod@4.6.6))(zod@4.6.6)
+        version: 0.3.6(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(@valibot/to-json-schema@1.8.0(valibot@1.5.0(typescript@7.0.2)))(valibot@1.5.0(typescript@7.0.2))(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
       '@standard-community/standard-openapi':
         specifier: 0.2.10
-        version: 0.2.10(@standard-community/standard-json@0.3.6(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(@valibot/to-json-schema@1.8.0(valibot@1.5.0(typescript@7.0.2)))(valibot@1.5.0(typescript@7.0.2))(zod-to-json-schema@3.25.2(zod@4.6.6))(zod@4.6.6))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(valibot@1.5.0(typescript@7.0.2))(zod-openapi@6.0.2(zod@4.6.6))(zod@4.6.6)
+        version: 0.2.10(@standard-community/standard-json@0.3.6(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(@valibot/to-json-schema@1.8.0(valibot@1.5.0(typescript@7.0.2)))(valibot@1.5.0(typescript@7.0.2))(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(valibot@1.5.0(typescript@7.0.2))(zod-openapi@6.0.2(zod@4.6.7))(zod@4.6.7)
       '@upstash/redis':
         specifier: 1.39.0
         version: 1.39.0
@@ -269,7 +269,7 @@ importers:
         version: 3.7.0
       ai:
         specifier: 7.0.127
-        version: 7.0.127(zod@4.6.6)
+        version: 7.0.127(zod@4.6.7)
       date-fns:
         specifier: 4.4.0
         version: 4.4.0
@@ -281,7 +281,7 @@ importers:
         version: 4.13.13
       hono-openapi:
         specifier: 1.3.5
-        version: 1.3.5(@valibot/to-json-schema@1.8.0(valibot@1.5.0(typescript@7.0.2)))(hono@4.13.13)(valibot@1.5.0(typescript@7.0.2))(zod-openapi@6.0.2(zod@4.6.6))(zod-to-json-schema@3.25.2(zod@4.6.6))(zod@4.6.6)
+        version: 1.3.5(@valibot/to-json-schema@1.8.0(valibot@1.5.0(typescript@7.0.2)))(hono@4.13.13)(valibot@1.5.0(typescript@7.0.2))(zod-openapi@6.0.2(zod@4.6.7))(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
       hono-rate-limiter:
         specifier: 0.5.4
         version: 0.5.4(hono@4.13.13)
@@ -316,14 +316,14 @@ importers:
         specifier: 0.6.2
         version: 0.6.2
       zod:
-        specifier: 4.6.6
-        version: 4.6.6
+        specifier: 4.6.7
+        version: 4.6.7
       zod-openapi:
         specifier: 6.0.2
-        version: 6.0.2(zod@4.6.6)
+        version: 6.0.2(zod@4.6.7)
       zod-to-json-schema:
         specifier: 3.25.2
-        version: 3.25.2(zod@4.6.6)
+        version: 3.25.2(zod@4.6.7)
     devDependencies:
       '@biomejs/biome':
         specifier: 2.5.15
@@ -1448,13 +1448,13 @@ importers:
     dependencies:
       '@ai-sdk/react':
         specifier: 4.0.141
-        version: 4.0.141(react@19.3.0)(zod@4.6.6)
+        version: 4.0.141(react@19.3.0)(zod@4.6.7)
       '@vvo/tzdb':
         specifier: 6.201.1
         version: 6.201.1
       ai:
         specifier: 7.0.127
-        version: 7.0.127(zod@4.6.6)
+        version: 7.0.127(zod@4.6.7)
       nuqs:
         specifier: 2.10.2
         version: 2.10.2(next@16.4.0(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@types/node@24.13.6)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(sass@1.105.1))(react@19.3.0)
@@ -1741,7 +1741,7 @@ importers:
         version: 1.39.0
       ai:
         specifier: 7.0.127
-        version: 7.0.127(zod@4.6.6)
+        version: 7.0.127(zod@4.6.7)
       dotenv:
         specifier: 18.0.7
         version: 18.0.7
@@ -1776,8 +1776,8 @@ importers:
         specifier: 8.22.0
         version: 8.22.0
       zod:
-        specifier: 4.6.6
-        version: 4.6.6
+        specifier: 4.6.7
+        version: 4.6.7
 
   packages/stripe:
     dependencies:
@@ -10676,6 +10676,9 @@ packages:
   zod@4.6.6:
     resolution: {integrity: sha512-4UmzQUF5fxvfcYHlbjBmejU+w+hbDnWFx4aS8kBx7nPBHcO2SqPbpAG8snbdg+Xse4pRefR98hgjFgIMCI/UhA==}
 
+  zod@4.6.7:
+    resolution: {integrity: sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==}
+
   zustand@4.5.7:
     resolution: {integrity: sha512-CHOUy7mu3lbD6o6LJLfllpjkzhHXSBlX8B9+qPddUsIfeF5S/UZ5q0kmCsnRqT1UHFQZchNFDDzMbQsuesHWlw==}
     engines: {node: '>=12.7.0'}
@@ -10716,59 +10719,59 @@ snapshots:
 
   '@adobe/css-tools@4.5.0': {}
 
-  '@ai-sdk/gateway@3.0.13(zod@4.6.6)':
+  '@ai-sdk/gateway@3.0.13(zod@4.6.7)':
     dependencies:
       '@ai-sdk/provider': 3.0.2
-      '@ai-sdk/provider-utils': 4.0.5(zod@4.6.6)
+      '@ai-sdk/provider-utils': 4.0.5(zod@4.6.7)
       '@vercel/oidc': 3.1.0
-      zod: 4.6.6
+      zod: 4.6.7
 
-  '@ai-sdk/gateway@4.0.103(zod@4.6.6)':
+  '@ai-sdk/gateway@4.0.103(zod@4.6.7)':
     dependencies:
       '@ai-sdk/provider': 4.0.21
-      '@ai-sdk/provider-utils': 5.0.53(zod@4.6.6)
+      '@ai-sdk/provider-utils': 5.0.53(zod@4.6.7)
       '@vercel/oidc': 3.2.0
-      zod: 4.6.6
+      zod: 4.6.7
 
-  '@ai-sdk/gateway@4.0.111(zod@4.6.6)':
+  '@ai-sdk/gateway@4.0.111(zod@4.6.7)':
     dependencies:
       '@ai-sdk/provider': 4.0.27
-      '@ai-sdk/provider-utils': 5.0.59(zod@4.6.6)
+      '@ai-sdk/provider-utils': 5.0.59(zod@4.6.7)
       '@vercel/oidc': 3.2.0
-      zod: 4.6.6
+      zod: 4.6.7
 
-  '@ai-sdk/mcp@2.0.74(zod@4.6.6)':
+  '@ai-sdk/mcp@2.0.74(zod@4.6.7)':
     dependencies:
       '@ai-sdk/provider': 4.0.27
-      '@ai-sdk/provider-utils': 5.0.59(zod@4.6.6)
+      '@ai-sdk/provider-utils': 5.0.59(zod@4.6.7)
       cross-spawn: 7.0.6
       pkce-challenge: 5.0.1
-      zod: 4.6.6
+      zod: 4.6.7
 
-  '@ai-sdk/provider-utils@4.0.5(zod@4.6.6)':
+  '@ai-sdk/provider-utils@4.0.5(zod@4.6.7)':
     dependencies:
       '@ai-sdk/provider': 3.0.2
       '@standard-schema/spec': 1.1.0
       eventsource-parser: 3.1.1
-      zod: 4.6.6
+      zod: 4.6.7
 
-  '@ai-sdk/provider-utils@5.0.53(zod@4.6.6)':
+  '@ai-sdk/provider-utils@5.0.53(zod@4.6.7)':
     dependencies:
       '@ai-sdk/provider': 4.0.21
       '@standard-schema/spec': 1.1.0
       '@workflow/serde': 4.1.0
       eventsource-parser: 3.1.1
       undici: 7.29.1
-      zod: 4.6.6
+      zod: 4.6.7
 
-  '@ai-sdk/provider-utils@5.0.59(zod@4.6.6)':
+  '@ai-sdk/provider-utils@5.0.59(zod@4.6.7)':
     dependencies:
       '@ai-sdk/provider': 4.0.27
       '@standard-schema/spec': 1.1.0
       '@workflow/serde': 4.1.0
       eventsource-parser: 3.1.1
       undici: 7.29.1
-      zod: 4.6.6
+      zod: 4.6.7
 
   '@ai-sdk/provider@3.0.2':
     dependencies:
@@ -10782,22 +10785,22 @@ snapshots:
     dependencies:
       json-schema: 0.4.0
 
-  '@ai-sdk/react@4.0.141(react@19.3.0)(zod@4.6.6)':
+  '@ai-sdk/react@4.0.141(react@19.3.0)(zod@4.6.7)':
     dependencies:
-      '@ai-sdk/mcp': 2.0.74(zod@4.6.6)
+      '@ai-sdk/mcp': 2.0.74(zod@4.6.7)
       '@ai-sdk/provider': 4.0.27
-      '@ai-sdk/provider-utils': 5.0.59(zod@4.6.6)
-      ai: 7.0.138(zod@4.6.6)
+      '@ai-sdk/provider-utils': 5.0.59(zod@4.6.7)
+      ai: 7.0.138(zod@4.6.7)
       react: 19.3.0
       swr: 2.5.1(react@19.3.0)
       throttleit: 2.1.0
     transitivePeerDependencies:
       - zod
 
-  '@ai-sdk/vue@3.0.33(vue@3.5.43(typescript@7.0.2))(zod@4.6.6)':
+  '@ai-sdk/vue@3.0.33(vue@3.5.43(typescript@7.0.2))(zod@4.6.7)':
     dependencies:
-      '@ai-sdk/provider-utils': 4.0.5(zod@4.6.6)
-      ai: 6.0.33(zod@4.6.6)
+      '@ai-sdk/provider-utils': 4.0.5(zod@4.6.7)
+      ai: 6.0.33(zod@4.6.7)
       swrv: 1.3.0(vue@3.5.43(typescript@7.0.2))
       vue: 3.5.43(typescript@7.0.2)
     transitivePeerDependencies:
@@ -12077,13 +12080,13 @@ snapshots:
       '@tanstack/vue-virtual': 3.13.39(vue@3.5.43(typescript@7.0.2))
       vue: 3.5.43(typescript@7.0.2)
 
-  '@hono/mcp@0.3.2(@modelcontextprotocol/sdk@1.32.1(supports-color@10.2.2)(zod@4.6.6))(hono-rate-limiter@0.5.4(hono@4.13.13))(hono@4.13.13)(zod@4.6.6)':
+  '@hono/mcp@0.3.2(@modelcontextprotocol/sdk@1.32.1(supports-color@10.2.2)(zod@4.6.7))(hono-rate-limiter@0.5.4(hono@4.13.13))(hono@4.13.13)(zod@4.6.7)':
     dependencies:
-      '@modelcontextprotocol/sdk': 1.32.1(supports-color@10.2.2)(zod@4.6.6)
+      '@modelcontextprotocol/sdk': 1.32.1(supports-color@10.2.2)(zod@4.6.7)
       hono: 4.13.13
       hono-rate-limiter: 0.5.4(hono@4.13.13)
       pkce-challenge: 5.0.1
-      zod: 4.6.6
+      zod: 4.6.7
 
   '@hono/node-server@2.1.4(hono@4.13.13)':
     dependencies:
@@ -12702,7 +12705,7 @@ snapshots:
       crc-32: 1.2.2
       eventemitter3: 5.0.4
 
-  '@modelcontextprotocol/sdk@1.32.1(supports-color@10.2.2)(zod@4.6.6)':
+  '@modelcontextprotocol/sdk@1.32.1(supports-color@10.2.2)(zod@4.6.7)':
     dependencies:
       '@hono/node-server': 2.1.4(hono@4.13.13)
       ajv: 8.20.0
@@ -12719,8 +12722,8 @@ snapshots:
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.1
       raw-body: 3.0.2
-      zod: 4.6.6
-      zod-to-json-schema: 3.25.2(zod@4.6.6)
+      zod: 4.6.7
+      zod-to-json-schema: 3.25.2(zod@4.6.7)
     transitivePeerDependencies:
       - supports-color
 
@@ -13963,9 +13966,9 @@ snapshots:
     transitivePeerDependencies:
       - '@types/node'
 
-  '@scalar/agent-chat@0.12.43(axios@1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2))(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)(zod@4.6.6)':
+  '@scalar/agent-chat@0.12.43(axios@1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2))(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)(zod@4.6.7)':
     dependencies:
-      '@ai-sdk/vue': 3.0.33(vue@3.5.43(typescript@7.0.2))(zod@4.6.6)
+      '@ai-sdk/vue': 3.0.33(vue@3.5.43(typescript@7.0.2))(zod@4.6.7)
       '@scalar/api-client': 3.23.0(axios@1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2))(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)
       '@scalar/components': 0.31.1(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)
       '@scalar/helpers': 0.16.3
@@ -13979,7 +13982,7 @@ snapshots:
       '@scalar/validation': 0.6.7
       '@scalar/workspace-store': 0.68.3(typescript@7.0.2)
       '@vueuse/core': 13.9.0(vue@3.5.43(typescript@7.0.2))
-      ai: 6.0.33(zod@4.6.6)
+      ai: 6.0.33(zod@4.6.7)
       js-base64: 3.9.4
       neverpanic: 0.0.8
       truncate-json: 3.0.1
@@ -14051,9 +14054,9 @@ snapshots:
       - typescript
       - universal-cookie
 
-  '@scalar/api-reference-react@0.9.80(axios@1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2))(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(react@19.3.0)(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)(zod@4.6.6)':
+  '@scalar/api-reference-react@0.9.80(axios@1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2))(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(react@19.3.0)(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)(zod@4.6.7)':
     dependencies:
-      '@scalar/api-reference': 1.74.0(axios@1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2))(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)(zod@4.6.6)
+      '@scalar/api-reference': 1.74.0(axios@1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2))(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)(zod@4.6.7)
       '@scalar/types': 0.23.2
       react: 19.3.0
     transitivePeerDependencies:
@@ -14074,10 +14077,10 @@ snapshots:
       - universal-cookie
       - zod
 
-  '@scalar/api-reference@1.74.0(axios@1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2))(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)(zod@4.6.6)':
+  '@scalar/api-reference@1.74.0(axios@1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2))(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)(zod@4.6.7)':
     dependencies:
       '@headlessui/vue': 1.7.23(vue@3.5.43(typescript@7.0.2))
-      '@scalar/agent-chat': 0.12.43(axios@1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2))(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)(zod@4.6.6)
+      '@scalar/agent-chat': 0.12.43(axios@1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2))(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)(zod@4.6.7)
       '@scalar/api-client': 3.23.0(axios@1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2))(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)
       '@scalar/blocks': 0.5.2(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)
       '@scalar/code-highlight': 0.4.9(supports-color@10.2.2)
@@ -14401,7 +14404,7 @@ snapshots:
 
   '@socket.io/component-emitter@3.1.2': {}
 
-  '@standard-community/standard-json@0.3.6(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(@valibot/to-json-schema@1.8.0(valibot@1.5.0(typescript@7.0.2)))(valibot@1.5.0(typescript@7.0.2))(zod-to-json-schema@3.25.2(zod@4.6.6))(zod@4.6.6)':
+  '@standard-community/standard-json@0.3.6(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(@valibot/to-json-schema@1.8.0(valibot@1.5.0(typescript@7.0.2)))(valibot@1.5.0(typescript@7.0.2))(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)':
     dependencies:
       '@standard-schema/spec': 1.1.0
       '@types/json-schema': 7.0.15
@@ -14409,18 +14412,18 @@ snapshots:
     optionalDependencies:
       '@valibot/to-json-schema': 1.8.0(valibot@1.5.0(typescript@7.0.2))
       valibot: 1.5.0(typescript@7.0.2)
-      zod: 4.6.6
-      zod-to-json-schema: 3.25.2(zod@4.6.6)
+      zod: 4.6.7
+      zod-to-json-schema: 3.25.2(zod@4.6.7)
 
-  '@standard-community/standard-openapi@0.2.10(@standard-community/standard-json@0.3.6(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(@valibot/to-json-schema@1.8.0(valibot@1.5.0(typescript@7.0.2)))(valibot@1.5.0(typescript@7.0.2))(zod-to-json-schema@3.25.2(zod@4.6.6))(zod@4.6.6))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(valibot@1.5.0(typescript@7.0.2))(zod-openapi@6.0.2(zod@4.6.6))(zod@4.6.6)':
+  '@standard-community/standard-openapi@0.2.10(@standard-community/standard-json@0.3.6(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(@valibot/to-json-schema@1.8.0(valibot@1.5.0(typescript@7.0.2)))(valibot@1.5.0(typescript@7.0.2))(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(valibot@1.5.0(typescript@7.0.2))(zod-openapi@6.0.2(zod@4.6.7))(zod@4.6.7)':
     dependencies:
-      '@standard-community/standard-json': 0.3.6(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(@valibot/to-json-schema@1.8.0(valibot@1.5.0(typescript@7.0.2)))(valibot@1.5.0(typescript@7.0.2))(zod-to-json-schema@3.25.2(zod@4.6.6))(zod@4.6.6)
+      '@standard-community/standard-json': 0.3.6(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(@valibot/to-json-schema@1.8.0(valibot@1.5.0(typescript@7.0.2)))(valibot@1.5.0(typescript@7.0.2))(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
       '@standard-schema/spec': 1.1.0
       openapi-types: 12.1.3
     optionalDependencies:
       valibot: 1.5.0(typescript@7.0.2)
-      zod: 4.6.6
-      zod-openapi: 6.0.2(zod@4.6.6)
+      zod: 4.6.7
+      zod-openapi: 6.0.2(zod@4.6.7)
 
   '@standard-schema/spec@1.1.0': {}
 
@@ -15202,7 +15205,7 @@ snapshots:
       tar-stream: 3.1.7
       undici: 7.29.1
       xdg-app-paths: 5.1.0
-      zod: 4.6.6
+      zod: 4.6.7
     transitivePeerDependencies:
       - bare-abort-controller
       - react-native-b4a
@@ -15432,27 +15435,27 @@ snapshots:
 
   agent-base@7.1.4: {}
 
-  ai@6.0.33(zod@4.6.6):
+  ai@6.0.33(zod@4.6.7):
     dependencies:
-      '@ai-sdk/gateway': 3.0.13(zod@4.6.6)
+      '@ai-sdk/gateway': 3.0.13(zod@4.6.7)
       '@ai-sdk/provider': 3.0.2
-      '@ai-sdk/provider-utils': 4.0.5(zod@4.6.6)
+      '@ai-sdk/provider-utils': 4.0.5(zod@4.6.7)
       '@opentelemetry/api': 1.9.0
-      zod: 4.6.6
+      zod: 4.6.7
 
-  ai@7.0.127(zod@4.6.6):
+  ai@7.0.127(zod@4.6.7):
     dependencies:
-      '@ai-sdk/gateway': 4.0.103(zod@4.6.6)
+      '@ai-sdk/gateway': 4.0.103(zod@4.6.7)
       '@ai-sdk/provider': 4.0.21
-      '@ai-sdk/provider-utils': 5.0.53(zod@4.6.6)
-      zod: 4.6.6
+      '@ai-sdk/provider-utils': 5.0.53(zod@4.6.7)
+      zod: 4.6.7
 
-  ai@7.0.138(zod@4.6.6):
+  ai@7.0.138(zod@4.6.7):
     dependencies:
-      '@ai-sdk/gateway': 4.0.111(zod@4.6.6)
+      '@ai-sdk/gateway': 4.0.111(zod@4.6.7)
       '@ai-sdk/provider': 4.0.27
-      '@ai-sdk/provider-utils': 5.0.59(zod@4.6.6)
-      zod: 4.6.6
+      '@ai-sdk/provider-utils': 5.0.59(zod@4.6.7)
+      zod: 4.6.7
 
   ajv-draft-04@1.0.0(ajv@8.20.0):
     optionalDependencies:
@@ -17064,11 +17067,11 @@ snapshots:
 
   hls.js@1.7.3: {}
 
-  hono-openapi@1.3.5(@valibot/to-json-schema@1.8.0(valibot@1.5.0(typescript@7.0.2)))(hono@4.13.13)(valibot@1.5.0(typescript@7.0.2))(zod-openapi@6.0.2(zod@4.6.6))(zod-to-json-schema@3.25.2(zod@4.6.6))(zod@4.6.6):
+  hono-openapi@1.3.5(@valibot/to-json-schema@1.8.0(valibot@1.5.0(typescript@7.0.2)))(hono@4.13.13)(valibot@1.5.0(typescript@7.0.2))(zod-openapi@6.0.2(zod@4.6.7))(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7):
     dependencies:
       '@hono/standard-validator': 0.4.0(@standard-schema/spec@1.1.0)(hono@4.13.13)
-      '@standard-community/standard-json': 0.3.6(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(@valibot/to-json-schema@1.8.0(valibot@1.5.0(typescript@7.0.2)))(valibot@1.5.0(typescript@7.0.2))(zod-to-json-schema@3.25.2(zod@4.6.6))(zod@4.6.6)
-      '@standard-community/standard-openapi': 0.2.10(@standard-community/standard-json@0.3.6(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(@valibot/to-json-schema@1.8.0(valibot@1.5.0(typescript@7.0.2)))(valibot@1.5.0(typescript@7.0.2))(zod-to-json-schema@3.25.2(zod@4.6.6))(zod@4.6.6))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(valibot@1.5.0(typescript@7.0.2))(zod-openapi@6.0.2(zod@4.6.6))(zod@4.6.6)
+      '@standard-community/standard-json': 0.3.6(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(@valibot/to-json-schema@1.8.0(valibot@1.5.0(typescript@7.0.2)))(valibot@1.5.0(typescript@7.0.2))(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
+      '@standard-community/standard-openapi': 0.2.10(@standard-community/standard-json@0.3.6(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(@valibot/to-json-schema@1.8.0(valibot@1.5.0(typescript@7.0.2)))(valibot@1.5.0(typescript@7.0.2))(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(valibot@1.5.0(typescript@7.0.2))(zod-openapi@6.0.2(zod@4.6.7))(zod@4.6.7)
       '@standard-schema/spec': 1.1.0
       '@types/json-schema': 7.0.15
       hono: 4.13.13
@@ -20356,17 +20359,19 @@ snapshots:
 
   yoctocolors@2.2.0: {}
 
-  zod-openapi@6.0.2(zod@4.6.6):
+  zod-openapi@6.0.2(zod@4.6.7):
     dependencies:
-      zod: 4.6.6
+      zod: 4.6.7
 
-  zod-to-json-schema@3.25.2(zod@4.6.6):
+  zod-to-json-schema@3.25.2(zod@4.6.7):
     dependencies:
-      zod: 4.6.6
+      zod: 4.6.7
 
   zod@4.1.11: {}
 
   zod@4.6.6: {}
+
+  zod@4.6.7: {}
 
   zustand@4.5.7(@types/react@19.3.0)(immer@11.1.18)(react@19.3.0):
     dependencies:
