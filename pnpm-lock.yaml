@@ -531,8 +531,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui
       '@mdxeditor/editor':
-        specifier: 4.3.2
-        version: 4.3.2(@codemirror/language@6.12.4)(@lezer/highlight@1.2.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@10.2.2)(typescript@7.0.2)(yjs@13.6.27)
+        specifier: 4.3.3
+        version: 4.3.3(@codemirror/language@6.12.4)(@lezer/highlight@1.2.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@10.2.2)(typescript@7.0.2)(yjs@13.6.27)
       '@playwright/experimental-ct-react':
         specifier: 1.62.1
         version: 1.62.1(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.105.1)(tsx@4.23.15)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.105.1)(tsx@4.23.15)(yaml@2.9.1))(yaml@2.9.1)
@@ -1120,8 +1120,8 @@ importers:
         specifier: 2.1.3
         version: 2.1.3
       '@mdxeditor/editor':
-        specifier: 4.3.2
-        version: 4.3.2(@codemirror/language@6.12.4)(@lezer/highlight@1.2.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@10.2.2)(typescript@7.0.2)(yjs@13.6.27)
+        specifier: 4.3.3
+        version: 4.3.3(@codemirror/language@6.12.4)(@lezer/highlight@1.2.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@10.2.2)(typescript@7.0.2)(yjs@13.6.27)
       '@opentelemetry/api-logs':
         specifier: 0.223.0
         version: 0.223.0
@@ -3565,8 +3565,8 @@ packages:
       '@types/react': 19.3.0
       react: 19.3.0
 
-  '@mdxeditor/editor@4.3.2':
-    resolution: {integrity: sha512-nIFzhxcsTP6p9z2yPzZEItyVWuxOPZMbhZm5VNTVAc1OPeiPb7e7QgIwJZmlwWFpjsbmjU5ouafXbThDiGhv2A==}
+  '@mdxeditor/editor@4.3.3':
+    resolution: {integrity: sha512-/RyVGEC66xqxU0smO7pk3Yq0o1IBOUB5OYv3AD+G3TNDQLLnv/mpD6cx1U1O6rfoAAXJ2VwEMhf/NI2PZvIkYw==}
     engines: {node: '>=16'}
     peerDependencies:
       react: 19.3.0
@@ -12586,7 +12586,7 @@ snapshots:
       '@types/react': 19.3.0
       react: 19.3.0
 
-  '@mdxeditor/editor@4.3.2(@codemirror/language@6.12.4)(@lezer/highlight@1.2.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@10.2.2)(typescript@7.0.2)(yjs@13.6.27)':
+  '@mdxeditor/editor@4.3.3(@codemirror/language@6.12.4)(@lezer/highlight@1.2.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@10.2.2)(typescript@7.0.2)(yjs@13.6.27)':
     dependencies:
       '@codemirror/commands': 6.11.1
       '@codemirror/lang-markdown': 6.5.2
