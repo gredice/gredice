@@ -77,7 +77,7 @@
         "@gredice/storage": "workspace:*",
         "@gredice/stripe": "workspace:*",
         "@gredice/transactional": "workspace:*",
-        "@playwright/test": "1.64.0",
+        "@playwright/test": "1.64.1",
         "@tailwindcss/postcss": "4.3.3",
         "@types/jsonwebtoken": "9.0.10",
         "@types/node": "24.19.2",
