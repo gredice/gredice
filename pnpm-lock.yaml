@@ -869,8 +869,8 @@ importers:
         specifier: 1.62.1
         version: 1.62.1
       '@react-three/fiber':
-        specifier: 9.8.1
-        version: 9.8.1(@types/react@19.3.0)(immer@11.1.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.186.1)
+        specifier: 9.8.2
+        version: 9.8.2(@types/react@19.3.0)(immer@11.1.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.186.1)
       '@tailwindcss/postcss':
         specifier: 4.3.3
         version: 4.3.3
@@ -1500,16 +1500,16 @@ importers:
         version: 10.1.2(react@19.3.0)
       '@react-spring/three':
         specifier: 10.1.2
-        version: 10.1.2(@react-three/fiber@9.8.1(@types/react@19.3.0)(immer@11.1.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.186.1))(react@19.3.0)(three@0.186.1)
+        version: 10.1.2(@react-three/fiber@9.8.2(@types/react@19.3.0)(immer@11.1.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.186.1))(react@19.3.0)(three@0.186.1)
       '@react-spring/web':
         specifier: 10.1.2
         version: 10.1.2(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@react-three/drei':
         specifier: 10.7.9
-        version: 10.7.9(@react-three/fiber@9.8.1(@types/react@19.3.0)(immer@11.1.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.186.1))(@types/react@19.3.0)(@types/three@0.186.0)(immer@11.1.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.186.1)
+        version: 10.7.9(@react-three/fiber@9.8.2(@types/react@19.3.0)(immer@11.1.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.186.1))(@types/react@19.3.0)(@types/three@0.186.0)(immer@11.1.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.186.1)
       '@react-three/fiber':
-        specifier: 9.8.1
-        version: 9.8.1(@types/react@19.3.0)(immer@11.1.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.186.1)
+        specifier: 9.8.2
+        version: 9.8.2(@types/react@19.3.0)(immer@11.1.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.186.1)
       '@tailwindcss/typography':
         specifier: 0.5.20
         version: 0.5.20(tailwindcss@4.3.3)
@@ -1572,7 +1572,7 @@ importers:
         version: 0.186.1
       three-custom-shader-material:
         specifier: 6.4.0
-        version: 6.4.0(@react-three/fiber@9.8.1(@types/react@19.3.0)(immer@11.1.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.186.1))(react@19.3.0)(three@0.186.1)
+        version: 6.4.0(@react-three/fiber@9.8.2(@types/react@19.3.0)(immer@11.1.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.186.1))(react@19.3.0)(three@0.186.1)
       three-stdlib:
         specifier: 2.36.1
         version: 2.36.1(three@0.186.1)
@@ -4677,8 +4677,8 @@ packages:
       react-dom:
         optional: true
 
-  '@react-three/fiber@9.8.1':
-    resolution: {integrity: sha512-GbNP4r6F/gpclFKkLGHzXcuwFWAzLyKsmrQGcDuwK3wQnwLH6F1TfGtEYjHy8OQoGsajwT19B9jtVLLjjfH09w==}
+  '@react-three/fiber@9.8.2':
+    resolution: {integrity: sha512-6s0ejw0bT1myQ/aLLugcil8/zBmNnnHw/AISWF1yfDLOxfX3yYaTS+0IkpJITEnm/SSMLtxje6CJDt0i5Wu1Sw==}
     peerDependencies:
       expo: '>=43.0'
       expo-asset: '>=8.4'
@@ -13626,13 +13626,13 @@ snapshots:
       '@react-spring/types': 10.1.2
       react: 19.3.0
 
-  '@react-spring/three@10.1.2(@react-three/fiber@9.8.1(@types/react@19.3.0)(immer@11.1.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.186.1))(react@19.3.0)(three@0.186.1)':
+  '@react-spring/three@10.1.2(@react-three/fiber@9.8.2(@types/react@19.3.0)(immer@11.1.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.186.1))(react@19.3.0)(three@0.186.1)':
     dependencies:
       '@react-spring/animated': 10.1.2(react@19.3.0)
       '@react-spring/core': 10.1.2(react@19.3.0)
       '@react-spring/shared': 10.1.2(react@19.3.0)
       '@react-spring/types': 10.1.2
-      '@react-three/fiber': 9.8.1(@types/react@19.3.0)(immer@11.1.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.186.1)
+      '@react-three/fiber': 9.8.2(@types/react@19.3.0)(immer@11.1.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.186.1)
       react: 19.3.0
       three: 0.186.1
 
@@ -13648,12 +13648,12 @@ snapshots:
       react: 19.3.0
       react-dom: 19.3.0(react@19.3.0)
 
-  '@react-three/drei@10.7.9(@react-three/fiber@9.8.1(@types/react@19.3.0)(immer@11.1.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.186.1))(@types/react@19.3.0)(@types/three@0.186.0)(immer@11.1.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.186.1)':
+  '@react-three/drei@10.7.9(@react-three/fiber@9.8.2(@types/react@19.3.0)(immer@11.1.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.186.1))(@types/react@19.3.0)(@types/three@0.186.0)(immer@11.1.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.186.1)':
     dependencies:
       '@babel/runtime': 7.29.7
       '@mediapipe/tasks-vision': 0.10.17
       '@monogrid/gainmap-js': 3.4.0(three@0.186.1)
-      '@react-three/fiber': 9.8.1(@types/react@19.3.0)(immer@11.1.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.186.1)
+      '@react-three/fiber': 9.8.2(@types/react@19.3.0)(immer@11.1.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.186.1)
       '@use-gesture/react': 10.3.1(react@19.3.0)
       camera-controls: 3.1.2(three@0.186.1)
       cross-env: 7.0.3
@@ -13681,7 +13681,7 @@ snapshots:
       - '@types/three'
       - immer
 
-  '@react-three/fiber@9.8.1(@types/react@19.3.0)(immer@11.1.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.186.1)':
+  '@react-three/fiber@9.8.2(@types/react@19.3.0)(immer@11.1.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.186.1)':
     dependencies:
       '@babel/runtime': 7.29.7
       '@types/webxr': 0.5.24
@@ -19760,11 +19760,11 @@ snapshots:
     transitivePeerDependencies:
       - react-native-b4a
 
-  three-custom-shader-material@6.4.0(@react-three/fiber@9.8.1(@types/react@19.3.0)(immer@11.1.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.186.1))(react@19.3.0)(three@0.186.1):
+  three-custom-shader-material@6.4.0(@react-three/fiber@9.8.2(@types/react@19.3.0)(immer@11.1.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.186.1))(react@19.3.0)(three@0.186.1):
     dependencies:
       three: 0.186.1
     optionalDependencies:
-      '@react-three/fiber': 9.8.1(@types/react@19.3.0)(immer@11.1.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.186.1)
+      '@react-three/fiber': 9.8.2(@types/react@19.3.0)(immer@11.1.18)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.186.1)
       react: 19.3.0
 
   three-mesh-bvh@0.8.3(three@0.186.1):
