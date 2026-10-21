@@ -29,7 +29,7 @@
         "@azure/core-lro": "3.4.1",
         "@azure/core-rest-pipeline": "1.25.0",
         "@gredice/storage": "workspace:*",
-        "react": "19.3.0",
+        "react": "19.3.1",
         "react-email": "6.11.1"
     }
 }
