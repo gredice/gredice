@@ -78,7 +78,7 @@
         "@vercel/analytics": "2.0.1",
         "nuqs": "2.10.2",
         "postcss": "8.5.30",
-        "sass": "1.105.1",
+        "sass": "1.105.2",
         "tailwindcss": "4.3.3",
         "tsx": "4.23.15",
         "typescript": "7.0.2"
