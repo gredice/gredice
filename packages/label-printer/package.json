@@ -15,7 +15,7 @@
         "typecheck": "tsc --noEmit --pretty false"
     },
     "dependencies": {
-        "@mmote/niimbluelib": "0.47.0",
+        "@mmote/niimbluelib": "0.47.1",
         "qrcode": "1.5.4"
     },
     "devDependencies": {
