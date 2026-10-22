@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { appendFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { getLocalSandboxBlockData } from '../../../../packages/game/src/localSandboxBlockData.ts';
 import { kestenijadaItems } from '../../../../packages/js/src/kestenijada/index.ts';
@@ -35,6 +36,8 @@ const apiAddress = server.address();
 if (!apiAddress || typeof apiAddress === 'string')
     throw new Error('Fixture API did not bind');
 const now = Date.now();
+const serverLog = '.next/kestenijada-route-server.log';
+writeFileSync(serverLog, '');
 const child = spawn(
     process.execPath,
     [
@@ -46,7 +49,7 @@ const child = spawn(
         appOrigin.port || '80',
     ],
     {
-        stdio: 'inherit',
+        stdio: ['ignore', 'pipe', 'pipe'],
         env: {
             ...process.env,
             VERCEL_ENV: 'development',
@@ -60,6 +63,12 @@ const child = spawn(
         },
     },
 );
+for (const stream of [child.stdout, child.stderr]) {
+    stream.on('data', (chunk) => {
+        appendFileSync(serverLog, chunk);
+        process.stderr.write(chunk);
+    });
+}
 for (const signal of ['SIGTERM', 'SIGINT'])
     process.on(signal, () => {
         child.kill(signal);

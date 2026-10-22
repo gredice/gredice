@@ -1,5 +1,5 @@
 import { useThree } from '@react-three/fiber';
-import { useLayoutEffect } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import { InstancedMesh, Mesh, MeshStandardMaterial, Vector3 } from 'three';
 import { readGameProfileMetadata } from '../src/scene/gameProfileMetadata';
 import { useSceneTimeInvalidation } from '../src/scene/SceneTime';
@@ -13,6 +13,8 @@ export function WarmPropsProbe({
 }) {
     const { scene, camera, gl, size } = useThree();
     const { materials } = useGameGLTF('GardenBrazier');
+    const observedMeshes = useRef(new WeakSet<InstancedMesh>());
+    const warmCost = useRef({ calls: 0, triangles: 0 });
     useSceneTimeInvalidation('test:warm-props');
     useLayoutEffect(() => {
         camera.lookAt(0, 0.4, 0);
@@ -21,6 +23,29 @@ export function WarmPropsProbe({
     useSceneAfterFrame(() => {
         const fire = scene.getObjectByName('WarmProps:Fire');
         const smoke = scene.getObjectByName('WarmProps:Smoke');
+        const cost = warmCost.current;
+        warmCost.current = { calls: 0, triangles: 0 };
+        for (const mesh of [fire, smoke]) {
+            if (
+                !(mesh instanceof InstancedMesh) ||
+                observedMeshes.current.has(mesh)
+            )
+                continue;
+            observedMeshes.current.add(mesh);
+            let callsBefore = 0;
+            let trianglesBefore = 0;
+            // Count only this effect's actual submissions. Other autumn
+            // batches may finish loading between active and unmounted frames.
+            mesh.onBeforeRender = () => {
+                callsBefore = gl.info.render.calls;
+                trianglesBefore = gl.info.render.triangles;
+            };
+            mesh.onAfterRender = () => {
+                warmCost.current.calls += gl.info.render.calls - callsBefore;
+                warmCost.current.triangles +=
+                    gl.info.render.triangles - trianglesBefore;
+            };
+        }
         const root = scene.getObjectByName('GardenBrazier:warm:0');
         const point = root
             ?.localToWorld(new Vector3(0, 0.35, 0))
@@ -55,6 +80,8 @@ export function WarmPropsProbe({
                         .emissiveIntensity,
                 calls: gl.info.render.calls,
                 triangles: gl.info.render.triangles,
+                warmCalls: cost.calls,
+                warmTriangles: cost.triangles,
                 target: point
                     ? {
                           x: ((point.x + 1) * size.width) / 2,

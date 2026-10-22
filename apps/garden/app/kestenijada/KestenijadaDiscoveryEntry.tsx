@@ -5,12 +5,17 @@ import {
     parseKestenijadaEventConfig,
 } from '@gredice/js/kestenijada';
 import Link from 'next/link';
+import { connection } from 'next/server';
 
 /** Off by default; this entry never creates inventory or modifies a garden. */
 export async function KestenijadaDiscoveryEntry() {
     const window = parseKestenijadaEventConfig(
         process.env.GREDICE_KESTENIJADA_EVENT_CONFIG,
     );
+    if (!window) return null;
+
+    // Evaluate event timing for each request, outside the cached static shell.
+    await connection();
     if (!isKestenijadaEventActive(window, Date.now())) return null;
     try {
         const { data, error } = await directoriesClient().GET(

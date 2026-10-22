@@ -112,15 +112,17 @@ for (const [tier, capacity, draws, triangles] of [
                     .getAttribute('data-sample')) ?? '{}',
             );
         await expect.poll(async () => (await sample()).count).toBe(capacity);
+        await expect.poll(async () => (await sample()).warmCalls).toBe(draws);
         const active = await sample();
         await fixture.update(<WarmPropsFixture tier={tier} mounted={false} />);
         await expect.poll(async () => (await sample()).count).toBe(0);
+        await expect.poll(async () => (await sample()).warmCalls).toBe(0);
         const baseline = await sample();
-        expect(active.calls - baseline.calls).toBe(draws);
-        expect(active.triangles - baseline.triangles).toBeGreaterThan(0);
-        expect(active.triangles - baseline.triangles).toBeLessThanOrEqual(
-            triangles,
-        );
+        expect(active.warmCalls).toBe(draws);
+        expect(active.warmTriangles).toBeGreaterThan(0);
+        expect(active.warmTriangles).toBeLessThanOrEqual(triangles);
+        expect(baseline.warmCalls).toBe(0);
+        expect(baseline.warmTriangles).toBe(0);
         expect(active.leaves).toBeGreaterThan(0);
         expect(active.groundLeaves).toBeGreaterThan(0);
         expect(active.entityLeaves).toBeGreaterThan(0);
