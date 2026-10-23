@@ -1407,8 +1407,8 @@ importers:
         specifier: 8.11.2
         version: 8.11.2
       xml-crypto:
-        specifier: 6.3.2
-        version: 6.3.2(patch_hash=f18cfd914b70a4b6262319dcc65acb114e594f8449f44c484544ca941ca931a8)
+        specifier: 6.4.0
+        version: 6.4.0
       xml2js:
         specifier: 0.6.2
         version: 0.6.2
@@ -10577,6 +10577,10 @@ packages:
 
   xml-crypto@6.3.2:
     resolution: {integrity: sha512-XoUdpErePlpyFdNYVzG2Sfw5ghvqUCQMT3dQ0tAxs0JKzk9gLzwALFkvHZ/D0OyfD/OyxoXsCcYZzbDzgY18RA==}
+    engines: {node: '>=16'}
+
+  xml-crypto@6.4.0:
+    resolution: {integrity: sha512-d21ModhBO/+QWWAmOjyDeQJuHNmsR/HtOxyBchiTbKfGNKuHYwQNd+SlLhwyyrwoAGLp4Qc6BQ7nAtnM47dHSQ==}
     engines: {node: '>=16'}
 
   xml2js@0.6.2:
@@ -20268,6 +20272,12 @@ snapshots:
       os-paths: 4.4.0
 
   xml-crypto@6.3.2(patch_hash=f18cfd914b70a4b6262319dcc65acb114e594f8449f44c484544ca941ca931a8):
+    dependencies:
+      '@xmldom/is-dom-node': 1.0.1
+      '@xmldom/xmldom': 0.9.12
+      xpath: 0.0.33
+
+  xml-crypto@6.4.0:
     dependencies:
       '@xmldom/is-dom-node': 1.0.1
       '@xmldom/xmldom': 0.9.12
