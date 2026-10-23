@@ -74,7 +74,7 @@
         "sharp": "0.35.5"
     },
     "devDependencies": {
-        "@axe-core/playwright": "4.13.0",
+        "@axe-core/playwright": "4.14.0",
         "@biomejs/biome": "2.5.15",
         "@gredice/client": "workspace:*",
         "@gredice/directory-types": "workspace:*",
