@@ -340,3 +340,81 @@ pnpm --filter @gredice/storage stripe-payment-claim:review resolve \
 `resolve` refuses to complete a claim without that transaction and both valid
 output records. Never manually reuse an old claim token or reset the lifetime
 attempt count.
+
+## Durable manual-review operator alerts
+
+Every transition of a checkout processing claim into `manual_review` queues a
+`payment_manual_review_slack` intent in the existing checkout notification
+outbox (`email_messages`, provider `slack`). This includes permanent callback
+failures, exhausted retry failures, and acquisition after the final processing
+lease expires. `CheckoutOperationConflictError` (including invalid operation
+dates and frozen operation/mapping fingerprint conflicts) is permanent with the
+safe code `checkout_operation_conflict`. Arbitrary `TypeError`, database,
+provider, transport, and unknown failures keep their existing bounded retries.
+
+Configure the existing enabled `SlackShoppingChannel` notification setting
+(`integrationType: slack`, `config.channelId`) and `SLACK_BOT_TOKEN`. Alerts
+contain only the numeric claim scheduler ID, numeric review-cycle ID, a fixed
+failure category, and the admin shopping-cart list link. They contain no customer
+contact information, raw provider payloads, error messages, or review notes.
+The failure category is deliberately coarser than the persisted claim reason.
+
+The intent key is `payment-manual-review:<scheduler_id>:<review_cycle_id>`.
+Cycle `0` is the initial cycle; subsequent cycles use the latest **audited
+requeue review row ID**. Settlement deferrals do not start an alert cycle.
+Repeated/concurrent webhooks, cron acquisition, and repair converge on the same
+intent, including when its delivery has already succeeded, failed, or become
+uncertain. A reviewed requeue leaves old intents/history intact; another failure
+into manual review creates exactly one intent for the new cycle. A resolve does
+not start a new cycle. Already queued alerts are retained as incident history
+and may be delivered after an operator has acted; check current claim state
+before taking further action.
+
+The claim transition atomically records a privacy-safe
+`checkout.payment.manualReviewAlert` event as its durable source in the existing
+event store. Claim row locking deduplicates this source; it commits before
+outbox enqueueing. Enqueue failure logs the fixed
+`stripe_payment.manual_review.alert_enqueue_failed` event and signals the checkout
+notification job; it cannot roll back the manual-review state or separately
+committed payment/fulfillment. A process crash in this gap is also repairable. The immutable source
+preserves previous cycles if an operator requeues or resolves before enqueueing
+recovers. Review commands also preserve a source for a current legacy manual
+claim before changing it. Repair includes these sources and current manual
+claims; it does not retrospectively notify historical resolved reviews from
+before rollout.
+The authenticated checkout notification cron repairs up to 20 missing
+cycle intents before running the existing delivery worker. Its aggregate
+`reviewAlertRepair` result reports `failed` and `pending`; either keeps the
+response unhealthy (503). Repair errors still allow existing queued alerts to
+be delivered. The dispatcher's normal recovery scan also discovers gaps after a
+lost hint. Repair only enqueues alerts; it never calls payment or fulfillment.
+
+Missing/disabled channel or missing token keeps this alert queued as a
+configuration failure, without consuming the transport attempt budget. Restore
+configuration and let the notification worker retry. A pre-submission failure or
+explicit retryable provider rejection uses the existing bounded outbox retry
+schedule (three transport attempts). Delivery exhaustion/terminal failure stays
+visible in outbox health. As with other checkout notifications, an ambiguous
+submission (for example a lost response after sending or a provider 5xx) is
+**fenced**, not automatically resent: inspect the configured channel and the
+outbox before using an authorized notification repair workflow. Never replay a
+payment or requeue fulfillment just to retry an alert. Exactly-once intent
+creation does not establish exactly-once delivery at the external provider.
+
+To locate the claim from the alert, use the approved read-only database workflow:
+
+```sql
+select stripe_payment_id, scheduler_id, status, attempt_count,
+       manual_review_reason, manual_review_at
+from stripe_payment_processing_claims
+where scheduler_id = :alert_claim_id;
+```
+
+Inspect the matching outbox by `metadata->>'paymentClaimId'` and
+`metadata->>'reviewCycleId'`; preserve its deterministic `provider_message_id`,
+lease/submission fencing, and delivery history. Missing intent repair is automatic;
+failed/uncertain delivery requires the established authorized notification review.
+For the underlying checkout, establish authoritative evidence and use the audited
+`stripe-payment-claim:review requeue` or `resolve` commands above. Do not reset
+lifetime attempts, reuse claim tokens, modify frozen purchased schedules or
+fingerprints, or use ad hoc operator messages as a recovery substitute.

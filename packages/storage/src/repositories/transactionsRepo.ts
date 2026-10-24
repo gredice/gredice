@@ -12,6 +12,10 @@ import {
 import { storage } from '../storage';
 import { createEvent, knownEvents } from './eventsRepo';
 import { getStripePaymentCompletionOutputs } from './stripePaymentCompletionOutputsRepo';
+import {
+    recordStripePaymentManualReviewAlertSource,
+    tryEnsureStripePaymentManualReviewAlert,
+} from './stripePaymentManualReviewAlertsRepo';
 
 type StorageClient = ReturnType<typeof storage>;
 export type StripePaymentProcessingLockTransaction = Parameters<
@@ -303,7 +307,7 @@ export async function acquireStripePaymentProcessingClaim(
     const claimToken = randomUUID();
     const leaseExpiresAt = addMilliseconds(now, leaseDurationMs);
 
-    return database.transaction(
+    const result = await database.transaction(
         async (tx): Promise<StripePaymentProcessingClaimResult> => {
             let [claim] = await tx
                 .select()
@@ -412,6 +416,11 @@ export async function acquireStripePaymentProcessingClaim(
                             normalizedPaymentId,
                         ),
                     );
+                await recordStripePaymentManualReviewAlertSource(
+                    claim,
+                    'attempt_limit_reached',
+                    tx,
+                );
                 return {
                     attempt: claim.attemptCount,
                     reason: 'attempt_limit_reached',
@@ -446,6 +455,13 @@ export async function acquireStripePaymentProcessingClaim(
             };
         },
     );
+    if (result.status === 'manual_review') {
+        await tryEnsureStripePaymentManualReviewAlert(
+            normalizedPaymentId,
+            database,
+        );
+    }
+    return result;
 }
 
 export async function renewStripePaymentProcessingClaim({
@@ -628,7 +644,7 @@ export async function recordStripePaymentProcessingFailure({
     const normalizedPaymentId = normalizeStripePaymentId(stripePaymentId);
     const normalizedFailureCode = failureCode.trim().slice(0, 120) || 'unknown';
 
-    return database.transaction(async (tx) => {
+    const result = await database.transaction(async (tx) => {
         const [claim] = await tx
             .select()
             .from(stripePaymentProcessingClaims)
@@ -691,6 +707,7 @@ export async function recordStripePaymentProcessingFailure({
             if (!transitioned) {
                 return { status: 'claim_lost' as const };
             }
+            await recordStripePaymentManualReviewAlertSource(claim, reason, tx);
             return {
                 attempt: claim.attemptCount,
                 reason,
@@ -736,6 +753,13 @@ export async function recordStripePaymentProcessingFailure({
             status: 'retryable' as const,
         };
     });
+    if (result.status === 'manual_review') {
+        await tryEnsureStripePaymentManualReviewAlert(
+            normalizedPaymentId,
+            database,
+        );
+    }
+    return result;
 }
 
 export type StripePaymentProcessingClaimRequeueResult =
@@ -800,6 +824,11 @@ export async function requeueStripePaymentProcessingClaim({
             };
         }
 
+        await recordStripePaymentManualReviewAlertSource(
+            claim,
+            claim.manualReviewReason,
+            tx,
+        );
         await tx.insert(stripePaymentProcessingClaimReviews).values({
             action: 'requeued',
             previousAttemptCount: claim.attemptCount,
@@ -914,6 +943,11 @@ export async function resolveStripePaymentProcessingClaim({
             return { status: 'completion_outputs_missing' as const };
         }
 
+        await recordStripePaymentManualReviewAlertSource(
+            claim,
+            claim.manualReviewReason,
+            tx,
+        );
         await tx.insert(stripePaymentProcessingClaimReviews).values({
             action: 'resolved_completed',
             completedTransactionId: transaction.id,
