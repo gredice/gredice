@@ -9,7 +9,7 @@ It intentionally does **not** provide turn-by-turn navigation, request native lo
 ## Requirements and verification
 
 - JDK 17
-- Android SDK Platform 36 and Build Tools 36.0.0
+- Android SDK Platform 37.2 and Build Tools 36.0.0
 - The checked-in Gradle wrapper (Gradle 9.5.1)
 
 From the monorepo root:
