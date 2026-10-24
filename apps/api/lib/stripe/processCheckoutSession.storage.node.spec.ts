@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
@@ -9,11 +12,13 @@ test('checkout partial fulfillment and replay against isolated PostgreSQL', {
 }, async (context) => {
     // Deliberately do not inherit provider credentials or app .env files. The
     // storage runner owns database creation, migrations, marker and cleanup.
+    const directory = await mkdtemp(join(tmpdir(), 'gredice-checkout-test-'));
+    context.after(() => rm(directory, { recursive: true, force: true }));
+    const environmentFile = join(directory, '.env.test');
     const environment: NodeJS.ProcessEnv = {
         NODE_ENV: 'test',
-        DOTENV_CONFIG_PATH: fileURLToPath(
-            new URL('../../../../packages/storage/.env.test', import.meta.url),
-        ),
+        DOTENV_CONFIG_PATH: environmentFile,
+        GREDICE_STORAGE_TEST_ENV_FILE: environmentFile,
         PATH: process.env.PATH,
         HOME: process.env.HOME,
         TMPDIR: process.env.TMPDIR,

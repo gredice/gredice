@@ -3,6 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PACKAGE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+ENV_FILE="${GREDICE_STORAGE_TEST_ENV_FILE:-$PACKAGE_ROOT/.env.test}"
 
 cd "$PACKAGE_ROOT"
 
@@ -26,7 +27,7 @@ bash ./tests/migrateTestDb.sh
 
 # Storage specs share one disposable database, so run files serially to keep
 # cross-spec fixtures from racing through global farm and event state.
-NODE_TEST_ARGS=(--import tsx --import ./tests/testSetup.ts --test --test-concurrency=1 --env-file=.env.test --conditions=react-server)
+NODE_TEST_ARGS=(--import tsx --import ./tests/testSetup.ts --test --test-concurrency=1 --env-file="$ENV_FILE" --conditions=react-server)
 
 # Node 24 can abort while collecting PGlite's released WASM import wrappers.
 # Keep this workaround test-only until https://github.com/nodejs/node/issues/66366 is fixed.

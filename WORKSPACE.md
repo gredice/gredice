@@ -272,6 +272,8 @@ pnpm env:pull
 
 Use Docker or local Postgres when validating behavior that depends on exact Postgres server semantics. The embedded fallback is intended for routine repository tests in service-limited environments.
 
+To run multiple storage-backed suites in one worktree, give each invocation a distinct absolute `GREDICE_STORAGE_TEST_ENV_FILE` path in an existing temporary directory. Database setup, migrations, test execution, and cleanup all use that file. The API checkout integration regression creates its own temporary configuration automatically.
+
 ### Local and test environment examples
 
 Each app now includes a checked-in `.env.example` (or `.env.test.example` where needed) with safe local defaults for smoke tests. Copy the file to `.env` in each app when starting from a fresh worktree.

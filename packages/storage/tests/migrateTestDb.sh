@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PACKAGE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-ENV_FILE="$PACKAGE_ROOT/.env.test"
+ENV_FILE="${GREDICE_STORAGE_TEST_ENV_FILE:-$PACKAGE_ROOT/.env.test}"
 
 cd "$PACKAGE_ROOT"
 
