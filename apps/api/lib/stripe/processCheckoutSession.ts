@@ -3379,12 +3379,13 @@ export async function prepareSelectedPlantingCheckoutOperation(
             plantingTarget,
             requestNote: readOperationRequestNote(item.additionalData),
             paymentCurrency: currency,
-            scheduledDate: stored
-                ? new Date(stored.scheduledDate)
-                : checkoutScheduledDateFromAdditionalData(
-                      item.additionalData,
-                      dependencies,
-                  ),
+            scheduledDate: new Date(
+                stored?.scheduledDate ??
+                    checkoutScheduledDateFromAdditionalData(
+                        item.additionalData,
+                        dependencies,
+                    ),
+            ),
             delivery: stored
                 ? stored.delivery
                 : checkoutDeliveryProvenance(
