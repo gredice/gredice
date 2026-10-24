@@ -43,7 +43,7 @@ assert.equal(
     twaManifest.appVersionCode,
     Number(properties.GREDICE_VERSION_CODE),
 );
-assert.equal(twaManifest.minSdkVersion, 23);
+assert.equal(twaManifest.minSdkVersion, 24);
 assert.equal(twaManifest.features?.locationDelegation?.enabled, false);
 
 const playFingerprint = twaManifest.fingerprints.find(
