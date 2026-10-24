@@ -1,0 +1,1388 @@
+{
+    "capturedAt": "2026-09-26T10:48:44.317Z",
+    "sourceCommit": "c5a42da459d5c68b1a89a9e002ac00ece7e35cef",
+    "sourceStatus": "?? docs/game-engine-migration-investigation.md\n?? packages/game/experiments/",
+    "experimentSourceSha256": "de5711fd31f7ccb526873f1439c455e9c0d8f1abf35ebc91ccd315c6fa4cd46e",
+    "bundleSha256": "ca73c4bf0d2804c0971bef8d238677e36e9e0b20149ffd2fdd91b36b1c6714e3",
+    "wasmSha256": "d199c0e68ef3fc1fe71d0ecf4075cfebf5e0efbea71deb01c7d1aec86f7c257f",
+    "bundleBytes": 1229205,
+    "bundleGzipBytes": 328373,
+    "wasmBytes": 312,
+    "node": "v24.15.0",
+    "platform": "darwin 27.2.0 arm64",
+    "cpuModel": "Apple M4 Pro",
+    "memoryBytes": 25769803776,
+    "browser": "151.0.7922.34",
+    "headless": true,
+    "browserArgs": [
+        "--disable-background-timer-throttling",
+        "--disable-backgrounding-occluded-windows",
+        "--disable-renderer-backgrounding",
+        "--use-gl=angle",
+        "--use-angle=metal"
+    ],
+    "gpu": [
+        {
+            "vendorId": 4203,
+            "deviceId": 0,
+            "vendorString": "Google Inc. (Apple)",
+            "deviceString": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Version 27.2 (Build 26B5091g))",
+            "driverVendor": "Apple",
+            "driverVersion": "27.2"
+        }
+    ],
+    "visualComparisons": [
+        {
+            "scenario": "large-no-shadows",
+            "repeat": 0,
+            "backend": "webgpu",
+            "meanAbsoluteChannelError": 0.23486924913194446,
+            "fractionChannelsOver10": 6.510416666666667e-6
+        },
+        {
+            "scenario": "large-no-shadows",
+            "repeat": 0,
+            "backend": "webgpu-bundle",
+            "meanAbsoluteChannelError": 0.23486924913194446,
+            "fractionChannelsOver10": 6.510416666666667e-6
+        },
+        {
+            "scenario": "draw-stress",
+            "repeat": 0,
+            "backend": "webgpu",
+            "meanAbsoluteChannelError": 0.23482747395833334,
+            "fractionChannelsOver10": 4.8828125e-6
+        },
+        {
+            "scenario": "draw-stress",
+            "repeat": 0,
+            "backend": "webgpu-bundle",
+            "meanAbsoluteChannelError": 0.23482747395833334,
+            "fractionChannelsOver10": 4.8828125e-6
+        },
+        {
+            "scenario": "large-no-shadows",
+            "repeat": 1,
+            "backend": "webgpu",
+            "meanAbsoluteChannelError": 0.23486924913194446,
+            "fractionChannelsOver10": 6.510416666666667e-6
+        },
+        {
+            "scenario": "large-no-shadows",
+            "repeat": 1,
+            "backend": "webgpu-bundle",
+            "meanAbsoluteChannelError": 0.23486924913194446,
+            "fractionChannelsOver10": 6.510416666666667e-6
+        },
+        {
+            "scenario": "draw-stress",
+            "repeat": 1,
+            "backend": "webgpu",
+            "meanAbsoluteChannelError": 0.23482747395833334,
+            "fractionChannelsOver10": 4.8828125e-6
+        },
+        {
+            "scenario": "draw-stress",
+            "repeat": 1,
+            "backend": "webgpu-bundle",
+            "meanAbsoluteChannelError": 0.23482747395833334,
+            "fractionChannelsOver10": 4.8828125e-6
+        },
+        {
+            "scenario": "large-no-shadows",
+            "repeat": 2,
+            "backend": "webgpu",
+            "meanAbsoluteChannelError": 0.23486924913194446,
+            "fractionChannelsOver10": 6.510416666666667e-6
+        },
+        {
+            "scenario": "large-no-shadows",
+            "repeat": 2,
+            "backend": "webgpu-bundle",
+            "meanAbsoluteChannelError": 0.23486924913194446,
+            "fractionChannelsOver10": 6.510416666666667e-6
+        },
+        {
+            "scenario": "draw-stress",
+            "repeat": 2,
+            "backend": "webgpu",
+            "meanAbsoluteChannelError": 0.23482747395833334,
+            "fractionChannelsOver10": 4.8828125e-6
+        },
+        {
+            "scenario": "draw-stress",
+            "repeat": 2,
+            "backend": "webgpu-bundle",
+            "meanAbsoluteChannelError": 0.23482747395833334,
+            "fractionChannelsOver10": 4.8828125e-6
+        }
+    ],
+    "BlockGrassSha256": "c63b0a39f94243d337caec4cb786c5b2f5f856dc915f910fb349bc12508feacd",
+    "TreeSha256": "55fe59850d8f365d750754b0d6edd3af991f7d2e28963e688b5ce47ee7e96450",
+    "GardenBoxSha256": "c007d6f4b67133e61365dbd9377edf7437f53711d026e29fe4a8093eeee88675",
+    "rawReportPath": "packages/game/experiments/engine-migration/.output/2026-09-26T10-48-44-031Z/results.json",
+    "rawReportSha256": "8f792736341d6ea0420bf4b69d83f48f16d00eefba8438bf0a9540f960862c20",
+    "measurements": [
+        {
+            "scenario": "large-no-shadows",
+            "repeat": 0,
+            "warnings": [],
+            "meta": {
+                "backend": "webgl",
+                "actualBackend": "WebGL2",
+                "side": 32,
+                "dpr": 1,
+                "shadows": false,
+                "layout": "batched",
+                "width": 960,
+                "height": 640,
+                "backingWidth": 960,
+                "backingHeight": 640,
+                "trees": 64,
+                "boxes": 64,
+                "terrainCells": 1024,
+                "objects": 80,
+                "sceneTriangles": 168832,
+                "outputPassTriangles": 0,
+                "rendererInitMs": 6.444999999832362,
+                "readyMs": 53.1199999996461,
+                "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36",
+                "reportedDpr": 1,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": false,
+                "glRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+                "adapter": null
+            },
+            "elapsedMs": 3999.364999999758,
+            "deliveredFps": 60.009526512337466,
+            "cpuMs": {
+                "samples": 240,
+                "median": 0.15500000026077032,
+                "p95": 0.5249999999068677,
+                "min": 0.0849999999627471,
+                "max": 0.6600000001490116
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.664999999999964,
+                "p95": 17.484999999999673,
+                "min": 15.675000000000182,
+                "max": 17.625
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 0.807125,
+                "p95": 0.841458,
+                "min": 0.775625,
+                "max": 0.854124
+            },
+            "draws": {
+                "samples": 240,
+                "median": 80,
+                "p95": 80,
+                "min": 80,
+                "max": 80
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 168832,
+                "p95": 168832,
+                "min": 168832,
+                "max": 168832
+            },
+            "longTasks": [],
+            "heapBytes": 10600000
+        },
+        {
+            "scenario": "large-no-shadows",
+            "repeat": 0,
+            "warnings": [],
+            "meta": {
+                "backend": "webgpu",
+                "actualBackend": "WebGPU",
+                "side": 32,
+                "dpr": 1,
+                "shadows": false,
+                "layout": "batched",
+                "width": 960,
+                "height": 640,
+                "backingWidth": 960,
+                "backingHeight": 640,
+                "trees": 64,
+                "boxes": 64,
+                "terrainCells": 1024,
+                "objects": 80,
+                "sceneTriangles": 168832,
+                "outputPassTriangles": 1,
+                "rendererInitMs": 2.5649999999441206,
+                "readyMs": 283.12999999988824,
+                "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36",
+                "reportedDpr": 1,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": true,
+                "glRenderer": null,
+                "adapter": null
+            },
+            "elapsedMs": 4000.404999999795,
+            "deliveredFps": 59.99392561503455,
+            "cpuMs": {
+                "samples": 240,
+                "median": 0.9849999998696148,
+                "p95": 1.625,
+                "min": 0.21999999973922968,
+                "max": 1.9650000003166497
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.664999999999964,
+                "p95": 17.40000000000009,
+                "min": 15.675000000000182,
+                "max": 17.65000000000009
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 0.786432,
+                "p95": 0.786432,
+                "min": 0.6553599999999999,
+                "max": 0.8519680000000001
+            },
+            "draws": {
+                "samples": 240,
+                "median": 81,
+                "p95": 81,
+                "min": 81,
+                "max": 81
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 168833,
+                "p95": 168833,
+                "min": 168833,
+                "max": 168833
+            },
+            "longTasks": [],
+            "heapBytes": 31200000
+        },
+        {
+            "scenario": "large-no-shadows",
+            "repeat": 0,
+            "warnings": [],
+            "meta": {
+                "backend": "webgpu-bundle",
+                "actualBackend": "WebGPU",
+                "side": 32,
+                "dpr": 1,
+                "shadows": false,
+                "layout": "batched",
+                "width": 960,
+                "height": 640,
+                "backingWidth": 960,
+                "backingHeight": 640,
+                "trees": 64,
+                "boxes": 64,
+                "terrainCells": 1024,
+                "objects": 80,
+                "sceneTriangles": 168832,
+                "outputPassTriangles": 1,
+                "rendererInitMs": 2.4299999997019768,
+                "readyMs": 153.73499999986961,
+                "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36",
+                "reportedDpr": 1,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": true,
+                "glRenderer": null,
+                "adapter": null
+            },
+            "elapsedMs": 3999.7599999997765,
+            "deliveredFps": 60.003600216016316,
+            "cpuMs": {
+                "samples": 240,
+                "median": 0.6199999996460974,
+                "p95": 1.2450000001117587,
+                "min": 0.2149999998509884,
+                "max": 1.75
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.670000000000073,
+                "p95": 17.085000000000036,
+                "min": 15.679999999999836,
+                "max": 17.66500000000042
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 0.720896,
+                "p95": 0.786432,
+                "min": 0.6553599999999999,
+                "max": 0.786432
+            },
+            "draws": {
+                "samples": 240,
+                "median": 1,
+                "p95": 1,
+                "min": 1,
+                "max": 1
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 1,
+                "p95": 1,
+                "min": 1,
+                "max": 1
+            },
+            "longTasks": [],
+            "heapBytes": 23100000
+        },
+        {
+            "scenario": "draw-stress",
+            "repeat": 0,
+            "warnings": [],
+            "meta": {
+                "backend": "webgl",
+                "actualBackend": "WebGL2",
+                "side": 32,
+                "dpr": 1,
+                "shadows": false,
+                "layout": "individual",
+                "width": 960,
+                "height": 640,
+                "backingWidth": 960,
+                "backingHeight": 640,
+                "trees": 64,
+                "boxes": 64,
+                "terrainCells": 1024,
+                "objects": 1280,
+                "sceneTriangles": 168832,
+                "outputPassTriangles": 0,
+                "rendererInitMs": 6.6049999999813735,
+                "readyMs": 53.49000000022352,
+                "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36",
+                "reportedDpr": 1,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": false,
+                "glRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+                "adapter": null
+            },
+            "elapsedMs": 4000.9500000001863,
+            "deliveredFps": 59.98575338356861,
+            "cpuMs": {
+                "samples": 240,
+                "median": 2.739999999757856,
+                "p95": 3.569999999832362,
+                "min": 0.7299999999813735,
+                "max": 4.114999999757856
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.669999999999845,
+                "p95": 17.269999999999982,
+                "min": 15.650000000000091,
+                "max": 17.6200000000008
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 0.908666,
+                "p95": 0.969374,
+                "min": 0.870083,
+                "max": 0.99175
+            },
+            "draws": {
+                "samples": 240,
+                "median": 1280,
+                "p95": 1280,
+                "min": 1280,
+                "max": 1280
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 168832,
+                "p95": 168832,
+                "min": 168832,
+                "max": 168832
+            },
+            "longTasks": [],
+            "heapBytes": 11900000
+        },
+        {
+            "scenario": "draw-stress",
+            "repeat": 0,
+            "warnings": [],
+            "meta": {
+                "backend": "webgpu",
+                "actualBackend": "WebGPU",
+                "side": 32,
+                "dpr": 1,
+                "shadows": false,
+                "layout": "individual",
+                "width": 960,
+                "height": 640,
+                "backingWidth": 960,
+                "backingHeight": 640,
+                "trees": 64,
+                "boxes": 64,
+                "terrainCells": 1024,
+                "objects": 1280,
+                "sceneTriangles": 168832,
+                "outputPassTriangles": 1,
+                "rendererInitMs": 2.6300000003539026,
+                "readyMs": 89.45999999996275,
+                "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36",
+                "reportedDpr": 1,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": true,
+                "glRenderer": null,
+                "adapter": null
+            },
+            "elapsedMs": 4002.25,
+            "deliveredFps": 59.96626897370229,
+            "cpuMs": {
+                "samples": 240,
+                "median": 2.2700000000186265,
+                "p95": 3.1199999996460974,
+                "min": 1.1850000000558794,
+                "max": 7.869999999646097
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.664999999999964,
+                "p95": 16.684999999999945,
+                "min": 15.675000000000182,
+                "max": 17.664999999999964
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 0.9175040000000001,
+                "p95": 1.048576,
+                "min": 0.8519680000000001,
+                "max": 1.048576
+            },
+            "draws": {
+                "samples": 240,
+                "median": 1281,
+                "p95": 1281,
+                "min": 1281,
+                "max": 1281
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 168833,
+                "p95": 168833,
+                "min": 168833,
+                "max": 168833
+            },
+            "longTasks": [],
+            "heapBytes": 17100000
+        },
+        {
+            "scenario": "draw-stress",
+            "repeat": 0,
+            "warnings": [],
+            "meta": {
+                "backend": "webgpu-bundle",
+                "actualBackend": "WebGPU",
+                "side": 32,
+                "dpr": 1,
+                "shadows": false,
+                "layout": "individual",
+                "width": 960,
+                "height": 640,
+                "backingWidth": 960,
+                "backingHeight": 640,
+                "trees": 64,
+                "boxes": 64,
+                "terrainCells": 1024,
+                "objects": 1280,
+                "sceneTriangles": 168832,
+                "outputPassTriangles": 1,
+                "rendererInitMs": 2.1799999997019768,
+                "readyMs": 60.31999999983236,
+                "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36",
+                "reportedDpr": 1,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": true,
+                "glRenderer": null,
+                "adapter": null
+            },
+            "elapsedMs": 4000.5,
+            "deliveredFps": 59.99250093738283,
+            "cpuMs": {
+                "samples": 240,
+                "median": 0.5150000001303852,
+                "p95": 2.0249999999068677,
+                "min": 0.27000000001862645,
+                "max": 2.3449999997392297
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.664999999999964,
+                "p95": 16.73999999999978,
+                "min": 15.665000000000418,
+                "max": 17.669999999999618
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 0.8519680000000001,
+                "p95": 0.9175040000000001,
+                "min": 0.786432,
+                "max": 0.9175040000000001
+            },
+            "draws": {
+                "samples": 240,
+                "median": 1,
+                "p95": 1,
+                "min": 1,
+                "max": 1
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 1,
+                "p95": 1,
+                "min": 1,
+                "max": 1
+            },
+            "longTasks": [],
+            "heapBytes": 19300000
+        },
+        {
+            "scenario": "large-no-shadows",
+            "repeat": 1,
+            "warnings": [],
+            "meta": {
+                "backend": "webgpu",
+                "actualBackend": "WebGPU",
+                "side": 32,
+                "dpr": 1,
+                "shadows": false,
+                "layout": "batched",
+                "width": 960,
+                "height": 640,
+                "backingWidth": 960,
+                "backingHeight": 640,
+                "trees": 64,
+                "boxes": 64,
+                "terrainCells": 1024,
+                "objects": 80,
+                "sceneTriangles": 168832,
+                "outputPassTriangles": 1,
+                "rendererInitMs": 2.234999999869615,
+                "readyMs": 217.51499999966472,
+                "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36",
+                "reportedDpr": 1,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": true,
+                "glRenderer": null,
+                "adapter": null
+            },
+            "elapsedMs": 4001.3650000002235,
+            "deliveredFps": 59.97953198470687,
+            "cpuMs": {
+                "samples": 240,
+                "median": 1.5800000000745058,
+                "p95": 1.9900000002235174,
+                "min": 0.30500000016763806,
+                "max": 2.1950000002980232
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.664999999999964,
+                "p95": 16.86999999999989,
+                "min": 15.704999999999927,
+                "max": 17.625
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 0.786432,
+                "p95": 0.917504,
+                "min": 0.6553599999999999,
+                "max": 0.9830399999999999
+            },
+            "draws": {
+                "samples": 240,
+                "median": 81,
+                "p95": 81,
+                "min": 81,
+                "max": 81
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 168833,
+                "p95": 168833,
+                "min": 168833,
+                "max": 168833
+            },
+            "longTasks": [],
+            "heapBytes": 31200000
+        },
+        {
+            "scenario": "large-no-shadows",
+            "repeat": 1,
+            "warnings": [],
+            "meta": {
+                "backend": "webgpu-bundle",
+                "actualBackend": "WebGPU",
+                "side": 32,
+                "dpr": 1,
+                "shadows": false,
+                "layout": "batched",
+                "width": 960,
+                "height": 640,
+                "backingWidth": 960,
+                "backingHeight": 640,
+                "trees": 64,
+                "boxes": 64,
+                "terrainCells": 1024,
+                "objects": 80,
+                "sceneTriangles": 168832,
+                "outputPassTriangles": 1,
+                "rendererInitMs": 2.2450000001117587,
+                "readyMs": 151.67499999981374,
+                "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36",
+                "reportedDpr": 1,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": true,
+                "glRenderer": null,
+                "adapter": null
+            },
+            "elapsedMs": 4001.0499999998137,
+            "deliveredFps": 59.9842541332928,
+            "cpuMs": {
+                "samples": 240,
+                "median": 1,
+                "p95": 1.305000000167638,
+                "min": 0.23999999975785613,
+                "max": 1.6400000001303852
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.669999999999845,
+                "p95": 17.465000000000146,
+                "min": 15.680000000000291,
+                "max": 17.650000000000546
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 0.720896,
+                "p95": 0.786432,
+                "min": 0.6553599999999999,
+                "max": 0.8519680000000001
+            },
+            "draws": {
+                "samples": 240,
+                "median": 1,
+                "p95": 1,
+                "min": 1,
+                "max": 1
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 1,
+                "p95": 1,
+                "min": 1,
+                "max": 1
+            },
+            "longTasks": [],
+            "heapBytes": 23100000
+        },
+        {
+            "scenario": "large-no-shadows",
+            "repeat": 1,
+            "warnings": [],
+            "meta": {
+                "backend": "webgl",
+                "actualBackend": "WebGL2",
+                "side": 32,
+                "dpr": 1,
+                "shadows": false,
+                "layout": "batched",
+                "width": 960,
+                "height": 640,
+                "backingWidth": 960,
+                "backingHeight": 640,
+                "trees": 64,
+                "boxes": 64,
+                "terrainCells": 1024,
+                "objects": 80,
+                "sceneTriangles": 168832,
+                "outputPassTriangles": 0,
+                "rendererInitMs": 6.34000000031665,
+                "readyMs": 47.97500000009313,
+                "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36",
+                "reportedDpr": 1,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": false,
+                "glRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+                "adapter": null
+            },
+            "elapsedMs": 4001.160000000149,
+            "deliveredFps": 59.98260504453485,
+            "cpuMs": {
+                "samples": 240,
+                "median": 0.6200000001117587,
+                "p95": 0.8049999997019768,
+                "min": 0.125,
+                "max": 0.9550000000745058
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.669999999999163,
+                "p95": 16.934999999999945,
+                "min": 15.739999999999782,
+                "max": 17.595000000000255
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 0.836749,
+                "p95": 0.887541,
+                "min": 0.811916,
+                "max": 0.967624
+            },
+            "draws": {
+                "samples": 240,
+                "median": 80,
+                "p95": 80,
+                "min": 80,
+                "max": 80
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 168832,
+                "p95": 168832,
+                "min": 168832,
+                "max": 168832
+            },
+            "longTasks": [],
+            "heapBytes": 11900000
+        },
+        {
+            "scenario": "draw-stress",
+            "repeat": 1,
+            "warnings": [],
+            "meta": {
+                "backend": "webgpu",
+                "actualBackend": "WebGPU",
+                "side": 32,
+                "dpr": 1,
+                "shadows": false,
+                "layout": "individual",
+                "width": 960,
+                "height": 640,
+                "backingWidth": 960,
+                "backingHeight": 640,
+                "trees": 64,
+                "boxes": 64,
+                "terrainCells": 1024,
+                "objects": 1280,
+                "sceneTriangles": 168832,
+                "outputPassTriangles": 1,
+                "rendererInitMs": 2.415000000037253,
+                "readyMs": 82.01500000013039,
+                "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36",
+                "reportedDpr": 1,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": true,
+                "glRenderer": null,
+                "adapter": null
+            },
+            "elapsedMs": 4002.314999999944,
+            "deliveredFps": 59.965295085470125,
+            "cpuMs": {
+                "samples": 240,
+                "median": 2.3849999997764826,
+                "p95": 4.629999999888241,
+                "min": 1.2149999998509884,
+                "max": 7.310000000055879
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.664999999999964,
+                "p95": 16.88000000000011,
+                "min": 15.675000000000182,
+                "max": 17.605000000000473
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 0.9830399999999999,
+                "p95": 0.9830400000000001,
+                "min": 0.786432,
+                "max": 1.048576
+            },
+            "draws": {
+                "samples": 240,
+                "median": 1281,
+                "p95": 1281,
+                "min": 1281,
+                "max": 1281
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 168833,
+                "p95": 168833,
+                "min": 168833,
+                "max": 168833
+            },
+            "longTasks": [],
+            "heapBytes": 17100000
+        },
+        {
+            "scenario": "draw-stress",
+            "repeat": 1,
+            "warnings": [],
+            "meta": {
+                "backend": "webgpu-bundle",
+                "actualBackend": "WebGPU",
+                "side": 32,
+                "dpr": 1,
+                "shadows": false,
+                "layout": "individual",
+                "width": 960,
+                "height": 640,
+                "backingWidth": 960,
+                "backingHeight": 640,
+                "trees": 64,
+                "boxes": 64,
+                "terrainCells": 1024,
+                "objects": 1280,
+                "sceneTriangles": 168832,
+                "outputPassTriangles": 1,
+                "rendererInitMs": 2.1899999999441206,
+                "readyMs": 61.03000000026077,
+                "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36",
+                "reportedDpr": 1,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": true,
+                "glRenderer": null,
+                "adapter": null
+            },
+            "elapsedMs": 4000.404999999795,
+            "deliveredFps": 59.99392561503455,
+            "cpuMs": {
+                "samples": 240,
+                "median": 0.7100000004284084,
+                "p95": 2,
+                "min": 0.2450000001117587,
+                "max": 2.5350000001490116
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.664999999999964,
+                "p95": 17.144999999999527,
+                "min": 15.75,
+                "max": 17.585000000000036
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 0.786432,
+                "p95": 0.8519680000000001,
+                "min": 0.786432,
+                "max": 0.9175040000000001
+            },
+            "draws": {
+                "samples": 240,
+                "median": 1,
+                "p95": 1,
+                "min": 1,
+                "max": 1
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 1,
+                "p95": 1,
+                "min": 1,
+                "max": 1
+            },
+            "longTasks": [],
+            "heapBytes": 19300000
+        },
+        {
+            "scenario": "draw-stress",
+            "repeat": 1,
+            "warnings": [],
+            "meta": {
+                "backend": "webgl",
+                "actualBackend": "WebGL2",
+                "side": 32,
+                "dpr": 1,
+                "shadows": false,
+                "layout": "individual",
+                "width": 960,
+                "height": 640,
+                "backingWidth": 960,
+                "backingHeight": 640,
+                "trees": 64,
+                "boxes": 64,
+                "terrainCells": 1024,
+                "objects": 1280,
+                "sceneTriangles": 168832,
+                "outputPassTriangles": 0,
+                "rendererInitMs": 6.694999999832362,
+                "readyMs": 62.27499999990687,
+                "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36",
+                "reportedDpr": 1,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": false,
+                "glRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+                "adapter": null
+            },
+            "elapsedMs": 4000.8000000002794,
+            "deliveredFps": 59.988002399515906,
+            "cpuMs": {
+                "samples": 240,
+                "median": 0.8199999998323619,
+                "p95": 0.9499999997206032,
+                "min": 0.654999999795109,
+                "max": 1.029999999795109
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.669999999999618,
+                "p95": 17.605000000000018,
+                "min": 15.664999999999964,
+                "max": 17.680000000000064
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 0.895,
+                "p95": 0.939041,
+                "min": 0.8625,
+                "max": 0.952374
+            },
+            "draws": {
+                "samples": 240,
+                "median": 1280,
+                "p95": 1280,
+                "min": 1280,
+                "max": 1280
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 168832,
+                "p95": 168832,
+                "min": 168832,
+                "max": 168832
+            },
+            "longTasks": [],
+            "heapBytes": 14300000
+        },
+        {
+            "scenario": "large-no-shadows",
+            "repeat": 2,
+            "warnings": [],
+            "meta": {
+                "backend": "webgpu-bundle",
+                "actualBackend": "WebGPU",
+                "side": 32,
+                "dpr": 1,
+                "shadows": false,
+                "layout": "batched",
+                "width": 960,
+                "height": 640,
+                "backingWidth": 960,
+                "backingHeight": 640,
+                "trees": 64,
+                "boxes": 64,
+                "terrainCells": 1024,
+                "objects": 80,
+                "sceneTriangles": 168832,
+                "outputPassTriangles": 1,
+                "rendererInitMs": 2.334999999962747,
+                "readyMs": 157.48500000033528,
+                "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36",
+                "reportedDpr": 1,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": true,
+                "glRenderer": null,
+                "adapter": null
+            },
+            "elapsedMs": 4000.2949999999255,
+            "deliveredFps": 59.995575326320804,
+            "cpuMs": {
+                "samples": 240,
+                "median": 0.23499999986961484,
+                "p95": 0.3049999997019768,
+                "min": 0.10500000044703484,
+                "max": 0.36499999975785613
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.664999999999964,
+                "p95": 16.690000000000055,
+                "min": 15.670000000000073,
+                "max": 17.659999999999854
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 0.720896,
+                "p95": 0.8519680000000001,
+                "min": 0.6553599999999999,
+                "max": 0.8519680000000001
+            },
+            "draws": {
+                "samples": 240,
+                "median": 1,
+                "p95": 1,
+                "min": 1,
+                "max": 1
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 1,
+                "p95": 1,
+                "min": 1,
+                "max": 1
+            },
+            "longTasks": [],
+            "heapBytes": 23100000
+        },
+        {
+            "scenario": "large-no-shadows",
+            "repeat": 2,
+            "warnings": [],
+            "meta": {
+                "backend": "webgl",
+                "actualBackend": "WebGL2",
+                "side": 32,
+                "dpr": 1,
+                "shadows": false,
+                "layout": "batched",
+                "width": 960,
+                "height": 640,
+                "backingWidth": 960,
+                "backingHeight": 640,
+                "trees": 64,
+                "boxes": 64,
+                "terrainCells": 1024,
+                "objects": 80,
+                "sceneTriangles": 168832,
+                "outputPassTriangles": 0,
+                "rendererInitMs": 7.2000000001862645,
+                "readyMs": 52.22000000020489,
+                "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36",
+                "reportedDpr": 1,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": false,
+                "glRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+                "adapter": null
+            },
+            "elapsedMs": 4000.2400000002235,
+            "deliveredFps": 59.99640021598369,
+            "cpuMs": {
+                "samples": 240,
+                "median": 0.13500000024214387,
+                "p95": 0.1699999999254942,
+                "min": 0.0849999999627471,
+                "max": 0.18999999994412065
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.664999999999964,
+                "p95": 16.69499999999971,
+                "min": 15.670000000000073,
+                "max": 17.675000000000182
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 0.819791,
+                "p95": 0.864499,
+                "min": 0.778333,
+                "max": 0.883499
+            },
+            "draws": {
+                "samples": 240,
+                "median": 80,
+                "p95": 80,
+                "min": 80,
+                "max": 80
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 168832,
+                "p95": 168832,
+                "min": 168832,
+                "max": 168832
+            },
+            "longTasks": [],
+            "heapBytes": 12700000
+        },
+        {
+            "scenario": "large-no-shadows",
+            "repeat": 2,
+            "warnings": [],
+            "meta": {
+                "backend": "webgpu",
+                "actualBackend": "WebGPU",
+                "side": 32,
+                "dpr": 1,
+                "shadows": false,
+                "layout": "batched",
+                "width": 960,
+                "height": 640,
+                "backingWidth": 960,
+                "backingHeight": 640,
+                "trees": 64,
+                "boxes": 64,
+                "terrainCells": 1024,
+                "objects": 80,
+                "sceneTriangles": 168832,
+                "outputPassTriangles": 1,
+                "rendererInitMs": 2.264999999664724,
+                "readyMs": 230.07999999960884,
+                "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36",
+                "reportedDpr": 1,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": true,
+                "glRenderer": null,
+                "adapter": null
+            },
+            "elapsedMs": 4000.2299999999814,
+            "deliveredFps": 59.99655019836387,
+            "cpuMs": {
+                "samples": 240,
+                "median": 0.39000000013038516,
+                "p95": 1.7999999998137355,
+                "min": 0.23499999986961484,
+                "max": 2.1600000001490116
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.664999999999964,
+                "p95": 16.784999999999854,
+                "min": 15.715000000000146,
+                "max": 17.625
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 0.720896,
+                "p95": 0.8519680000000001,
+                "min": 0.6553599999999999,
+                "max": 0.8519680000000001
+            },
+            "draws": {
+                "samples": 240,
+                "median": 81,
+                "p95": 81,
+                "min": 81,
+                "max": 81
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 168833,
+                "p95": 168833,
+                "min": 168833,
+                "max": 168833
+            },
+            "longTasks": [],
+            "heapBytes": 31200000
+        },
+        {
+            "scenario": "draw-stress",
+            "repeat": 2,
+            "warnings": [],
+            "meta": {
+                "backend": "webgpu-bundle",
+                "actualBackend": "WebGPU",
+                "side": 32,
+                "dpr": 1,
+                "shadows": false,
+                "layout": "individual",
+                "width": 960,
+                "height": 640,
+                "backingWidth": 960,
+                "backingHeight": 640,
+                "trees": 64,
+                "boxes": 64,
+                "terrainCells": 1024,
+                "objects": 1280,
+                "sceneTriangles": 168832,
+                "outputPassTriangles": 1,
+                "rendererInitMs": 2.2450000001117587,
+                "readyMs": 63.15499999979511,
+                "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36",
+                "reportedDpr": 1,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": true,
+                "glRenderer": null,
+                "adapter": null
+            },
+            "elapsedMs": 4000.3600000003353,
+            "deliveredFps": 59.99460048595124,
+            "cpuMs": {
+                "samples": 240,
+                "median": 0.35499999998137355,
+                "p95": 0.40000000037252903,
+                "min": 0.2800000002607703,
+                "max": 0.47500000009313226
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.664999999999964,
+                "p95": 17.190000000000055,
+                "min": 15.699999999999818,
+                "max": 17.649999999999636
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 0.8519680000000001,
+                "p95": 0.9175040000000001,
+                "min": 0.720896,
+                "max": 0.98304
+            },
+            "draws": {
+                "samples": 240,
+                "median": 1,
+                "p95": 1,
+                "min": 1,
+                "max": 1
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 1,
+                "p95": 1,
+                "min": 1,
+                "max": 1
+            },
+            "longTasks": [],
+            "heapBytes": 19300000
+        },
+        {
+            "scenario": "draw-stress",
+            "repeat": 2,
+            "warnings": [],
+            "meta": {
+                "backend": "webgl",
+                "actualBackend": "WebGL2",
+                "side": 32,
+                "dpr": 1,
+                "shadows": false,
+                "layout": "individual",
+                "width": 960,
+                "height": 640,
+                "backingWidth": 960,
+                "backingHeight": 640,
+                "trees": 64,
+                "boxes": 64,
+                "terrainCells": 1024,
+                "objects": 1280,
+                "sceneTriangles": 168832,
+                "outputPassTriangles": 0,
+                "rendererInitMs": 6.78000000026077,
+                "readyMs": 55.9250000002794,
+                "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36",
+                "reportedDpr": 1,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": false,
+                "glRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)",
+                "adapter": null
+            },
+            "elapsedMs": 4000.8900000001304,
+            "deliveredFps": 59.98665296971228,
+            "cpuMs": {
+                "samples": 240,
+                "median": 0.8049999997019768,
+                "p95": 0.9299999997019768,
+                "min": 0.7099999999627471,
+                "max": 1
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.66500000000042,
+                "p95": 16.720000000000027,
+                "min": 15.795000000000073,
+                "max": 17.550000000000182
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 0.895874,
+                "p95": 0.92825,
+                "min": 0.867874,
+                "max": 0.966874
+            },
+            "draws": {
+                "samples": 240,
+                "median": 1280,
+                "p95": 1280,
+                "min": 1280,
+                "max": 1280
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 168832,
+                "p95": 168832,
+                "min": 168832,
+                "max": 168832
+            },
+            "longTasks": [],
+            "heapBytes": 13400000
+        },
+        {
+            "scenario": "draw-stress",
+            "repeat": 2,
+            "warnings": [],
+            "meta": {
+                "backend": "webgpu",
+                "actualBackend": "WebGPU",
+                "side": 32,
+                "dpr": 1,
+                "shadows": false,
+                "layout": "individual",
+                "width": 960,
+                "height": 640,
+                "backingWidth": 960,
+                "backingHeight": 640,
+                "trees": 64,
+                "boxes": 64,
+                "terrainCells": 1024,
+                "objects": 1280,
+                "sceneTriangles": 168832,
+                "outputPassTriangles": 1,
+                "rendererInitMs": 4.055000000167638,
+                "readyMs": 87.95000000018626,
+                "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36",
+                "reportedDpr": 1,
+                "crossOriginIsolated": true,
+                "gpuTimestampSupported": true,
+                "glRenderer": null,
+                "adapter": null
+            },
+            "elapsedMs": 4001.7050000000745,
+            "deliveredFps": 59.97443589669791,
+            "cpuMs": {
+                "samples": 240,
+                "median": 1.599999999627471,
+                "p95": 1.7999999998137355,
+                "min": 1.1099999998696148,
+                "max": 1.8950000000186265
+            },
+            "frameMs": {
+                "samples": 240,
+                "median": 16.66500000000042,
+                "p95": 16.710000000000036,
+                "min": 15.679999999999836,
+                "max": 17.65000000000009
+            },
+            "gpuMs": {
+                "samples": 40,
+                "median": 0.9175040000000001,
+                "p95": 0.9830399999999999,
+                "min": 0.786432,
+                "max": 1.048576
+            },
+            "draws": {
+                "samples": 240,
+                "median": 1281,
+                "p95": 1281,
+                "min": 1281,
+                "max": 1281
+            },
+            "triangles": {
+                "samples": 240,
+                "median": 168833,
+                "p95": 168833,
+                "min": 168833,
+                "max": 168833
+            },
+            "longTasks": [],
+            "heapBytes": 17100000
+        }
+    ],
+    "cpu": []
+}
