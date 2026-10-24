@@ -37,7 +37,7 @@ on:
 jobs:
   lint:
     timeout-minutes: 10
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v7.0.1
@@ -72,7 +72,7 @@ jobs:
         run: pnpm lint --filter=${{ inputs.name }}
   test:
     timeout-minutes: ${{ matrix.shard.timeoutMinutes || 15 }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     if: github.event_name == 'pull_request'
     name: "test${{ matrix.shard.name && format(' ({0})', matrix.shard.name) || (matrix.shard.total != 1 && format(' ({0}/{1})', matrix.shard.index, matrix.shard.total) || '') }}"
     strategy:
