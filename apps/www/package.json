@@ -94,7 +94,7 @@
         "@types/xml2js": "0.4.14",
         "@vercel/analytics": "2.0.1",
         "dotenv": "18.0.8",
-        "motion": "14.2.0",
+        "motion": "14.4.0",
         "postcss": "8.5.31",
         "react-confetti-boom": "2.0.1",
         "react-markdown": "10.1.0",
