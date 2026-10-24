@@ -192,6 +192,7 @@ patchedDependencies:
   tsconfck@3.1.6: 8e77e2162331e3bd628516d51ccbf2a0ce9c5a31d9bad8e22cc42458370bec37
   web-push@3.6.7: 4554572bbbd76721b65fb3004602f11f77b665c8e48f33a4e318a2c47b34a172
   xml-crypto@6.3.2: f18cfd914b70a4b6262319dcc65acb114e594f8449f44c484544ca941ca931a8
+  xml-crypto@6.4.0: 1dbd9be50dfab917ec43d0cb5802eb73ca3672cc572824ff0f8a56d1ecd3e892
 
 importers:
 
@@ -1408,7 +1409,7 @@ importers:
         version: 8.11.2
       xml-crypto:
         specifier: 6.4.0
-        version: 6.4.0
+        version: 6.4.0(patch_hash=1dbd9be50dfab917ec43d0cb5802eb73ca3672cc572824ff0f8a56d1ecd3e892)
       xml2js:
         specifier: 0.6.2
         version: 0.6.2
@@ -20277,7 +20278,7 @@ snapshots:
       '@xmldom/xmldom': 0.9.12
       xpath: 0.0.33
 
-  xml-crypto@6.4.0:
+  xml-crypto@6.4.0(patch_hash=1dbd9be50dfab917ec43d0cb5802eb73ca3672cc572824ff0f8a56d1ecd3e892):
     dependencies:
       '@xmldom/is-dom-node': 1.0.1
       '@xmldom/xmldom': 0.9.12
