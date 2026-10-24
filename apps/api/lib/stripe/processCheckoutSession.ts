@@ -3186,6 +3186,7 @@ function parseAdditionalDataValue(additionalData: unknown) {
 
 export const __testUtils = {
     parseAdditionalDataValue,
+    realDependencies,
 };
 
 function scheduledDateFromAdditionalData(additionalData: unknown) {
