@@ -25,6 +25,12 @@ for (const signedIn of [false, true]) {
         const pageErrors: string[] = [];
         const privateRequests: string[] = [];
         page.on('pageerror', (error) => pageErrors.push(error.message));
+        // The signed-out login dialog makes the background inert. This
+        // prerender check still verifies that the discovery link is painted.
+        const discoveryLink = page.getByRole('link', {
+            name: 'Posjeti Kestenijadu',
+            includeHidden: !signedIn,
+        });
         const user = {
             id: 'prerender-test-user',
             userName: 'prerender-test-user',
@@ -84,9 +90,7 @@ for (const signedIn of [false, true]) {
 
         const response = await page.goto('/');
         expect(response?.status()).toBe(200);
-        await expect(
-            page.getByRole('link', { name: 'Posjeti Kestenijadu' }),
-        ).toBeVisible();
+        await expect(discoveryLink).toBeVisible();
         await expect
             .poll(() =>
                 privateRequests.some((path) =>
@@ -94,7 +98,6 @@ for (const signedIn of [false, true]) {
                 ),
             )
             .toBe(true);
-        await expect(page.locator('canvas')).toBeVisible();
         if (signedIn) {
             await expect(
                 page.getByRole('button', { name: 'Testni vrt', exact: true }),
@@ -123,10 +126,9 @@ for (const signedIn of [false, true]) {
                 page.getByRole('button', { name: 'Testni vrt', exact: true }),
             ).toHaveCount(0);
         }
+        await expect(page.locator('canvas')).toBeVisible();
         await page.reload();
-        await expect(
-            page.getByRole('link', { name: 'Posjeti Kestenijadu' }),
-        ).toBeVisible();
+        await expect(discoveryLink).toBeVisible();
         expect(pageErrors).toEqual([]);
     });
 }
