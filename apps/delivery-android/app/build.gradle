@@ -15,7 +15,7 @@ def releaseSigningConfigured = [
 
 android {
     namespace 'com.gredice.dostava'
-    compileSdk 36
+    compileSdk 37
 
     defaultConfig {
         applicationId 'com.gredice.dostava'
