@@ -7,11 +7,10 @@ set -euo pipefail
 SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/ci-isolated-tests.sh"
 if [[ "${1:-}" != "--inside" ]]; then
     [[ "$(uname -s)" == Linux ]] || { echo 'CI network isolation requires Linux.' >&2; exit 1; }
-    # sudo-rs on newer Ubuntu runners ignores blanket --preserve-env. Name the
-    # exported variables explicitly so HOME and the primed Corepack cache survive
-    # the root namespace setup and subsequent drop back to the runner user.
-    CI_PRESERVED_ENV_NAMES="$(compgen -e | paste -sd, -)"
-    exec sudo --preserve-env="$CI_PRESERVED_ENV_NAMES" env "PATH=$PATH" unshare --net bash -c '
+    # sudo-rs supports named variables but ignores a bare --preserve-env.
+    # Preserve the runner's paths and fixture configuration across both user changes.
+    ci_environment_names=$(node -p 'Object.keys(process.env).filter(name => /^[A-Za-z_][A-Za-z0-9_]*$/.test(name)).join(",")')
+    exec sudo --preserve-env="$ci_environment_names" env "PATH=$PATH" unshare --net bash -c '
         set -e
         ip link set lo up
         # Chromium needs a non-loopback online link for navigator.onLine. This
