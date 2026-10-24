@@ -12,7 +12,9 @@
 
 The illustration is decorative beside a package name. Prices, amounts, bonuses and eligibility always come from the catalogue, never from a flower count or the illustration. Pass `aria-hidden` when the adjacent text names the package. The component otherwise provides its own accessible label and accepts the existing SVG icon props.
 
-`SunflowerMascot3D` is the approved rendered 3D-style mascot. `GameSunflowerIcon` uses the same artwork for currency, rewards and navigation; `sunflowerMascotArtwork` supports Next.js images and DOM payment particles. `SunflowerText` renders currency marks in explicit UI labels while leaving stored text unchanged. This is transparent raster artwork, not a rigged or interactive 3D model.
+`SunflowerMascot3D` is the approved rendered 3D-style mascot. Its `expression` prop supports `happy` (default), `sad` (404, error and empty states), and `gift` (referrals). Each variant is bundled transparent artwork and renders without Next.js image optimization or CDN configuration, including in global error boundaries.
+
+`sunflowerSadMascotArtwork` and `sunflowerGiftMascotArtwork` expose the corresponding static images for image viewers and galleries. `GameSunflowerIcon` keeps the happy artwork for currency, rewards and navigation; `sunflowerMascotArtwork` supports Next.js images and DOM payment particles. `SunflowerText` renders currency marks in explicit UI labels while leaving stored text unchanged. This is transparent raster artwork, not a rigged or interactive 3D model.
 
 ## Provenance
 
@@ -27,11 +29,13 @@ The palette uses teal, green, blue and terracotta, with a golden wheelbarrow for
 ## Previews
 
 - `packages/game/hud/SunflowerEconomy`: real package cards and history with offline fixtures; light, dark and a constrained 400px profile.
-- `packages/ui/Icons/SunflowerVisuals`: each package, unknown-code fallback and previous/current mascot comparison.
+- `packages/ui/Icons/SunflowerVisuals`: each package, unknown-code fallback and happy, sad and gift mascot expressions.
 - `packages/game/icons/InGameIcons`: searchable artwork inventory.
 
 Game earn/spend history reuses basket, calendar, gift, receipt, community, tasks, blocks and ruler artwork, plus new mint refund-arrow and birthday-cake icons. Existing achievement awards and block previews retain their identity.
 
 ## Rollout boundaries
 
-Game HUDs, assistant portraits, reward screens, package totals, checkout, build-mode prices, public pages and admin balances use the approved mascot. Decorative sunflower emojis in authored prose, metadata, email/plain-text notification content remain text. Existing sad/gift illustrations and the physical garden sunflower model are separate expressions/entities. Backend notification artwork uses a stable public copy at `apps/www/public/assets/sunflower-3d.webp`, identical to the shared source.
+Game HUDs, assistant portraits, reward screens, package totals, checkout, build-mode prices, public pages and admin balances use the approved mascot. Decorative sunflower emojis in authored prose, metadata, email/plain-text notification content remain text. Sad/gift illustrations now use the same 3D style in all app and Storybook consumers. The physical garden sunflower model remains a separate entity. Backend notification artwork uses a stable public copy at `apps/www/public/assets/sunflower-3d.webp`, identical to the shared source.
+
+The sad and gift expressions were created in the Game Icons task using the approved happy mascot as the identity and style reference. Exact prompts, source paths and processing are recorded in [assets/expressions-prompts.json](assets/expressions-prompts.json). The legacy 2D SVG reference files are no longer shipped.

@@ -1,5 +1,6 @@
 import type { ComponentPropsWithoutRef } from 'react';
 import { cx } from '../utils';
+import './PaperNote.css';
 
 const tapePlacements = [
     { angle: -8, left: '38%', width: 62, top: -6 },
@@ -33,7 +34,7 @@ export function PaperNote({
             role="note"
             aria-label="Napomena farmera"
             className={cx(
-                'relative isolate mt-2 w-fit min-w-0 max-w-full rounded-sm border border-[#d8bc75] bg-[#fff8cf] bg-[repeating-linear-gradient(to_bottom,transparent_0,transparent_23px,rgba(96,139,168,0.2)_23px,rgba(96,139,168,0.2)_24px)] px-4 py-3 pl-5 text-[#4a3a24] shadow-[2px_3px_0_rgba(79,54,23,0.16)]',
+                'paper-note relative isolate mt-2 w-fit min-w-0 max-w-full rounded-sm border border-[#d8bc75] bg-[#fff8cf] px-4 py-3 pl-5 text-[#4a3a24] shadow-[2px_3px_0_rgba(79,54,23,0.16)]',
                 className,
             )}
             {...rest}
@@ -60,13 +61,9 @@ export function PaperNote({
             />
             <div
                 className={cx(
-                    'relative whitespace-pre-wrap text-[0.95rem] leading-6 [overflow-wrap:anywhere]',
+                    'paper-note-content relative whitespace-pre-wrap [overflow-wrap:anywhere]',
                     preview && 'line-clamp-4',
                 )}
-                style={{
-                    fontFamily:
-                        '"Bradley Hand", "Segoe Print", "Comic Sans MS", cursive',
-                }}
             >
                 {children}
             </div>

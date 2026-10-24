@@ -9,10 +9,12 @@ import {
     createFarm,
     evaluateAchievements,
     events,
+    getAccountAchievementActivity,
     getAccountAchievements,
     knownEvents,
     knownEventTypes,
     storage,
+    updateEntity,
     updateSelectedRaisedBedPlantingLifecycleStatus,
     upsertAttributeValue,
     upsertEntityType,
@@ -21,13 +23,18 @@ import {
 import { and, desc, eq, gt, inArray } from 'drizzle-orm';
 import { mapGardenAchievementCommands } from '../src/helpers/gardenAchievementEvaluation';
 import {
+    accountAchievements,
+    accountUsers,
     attributeDefinitions,
     attributeValues,
+    communityEditRequests,
     entities,
     entityTypes,
     farms,
+    operations,
     raisedBedPlantings,
     raisedBeds,
+    users,
 } from '../src/schema';
 import { closeStorage } from '../src/storage';
 import { createSelectedTaskFixture } from './helpers/selectedPlantingFixture';
@@ -335,6 +342,10 @@ test('counts distinct parent plants, completed cycles, and 2026 seasons', async 
     await evaluateAchievements();
     await evaluateAchievements();
 
+    const activity = await getAccountAchievementActivity(accountId);
+    assert.equal(activity.counts.planting, 4);
+    assert.equal(activity.counts.garden_diversity, 3);
+    assert.equal(activity.counts.seed_to_table, 2);
     const diversity = await awardsByPrefix(accountId, 'garden_diversity_');
     assert.deepEqual(
         diversity.map((award) => [
@@ -385,6 +396,9 @@ test('selected sow-to-harvest earns one seed-to-table cycle and stays idempotent
     assert.equal(cycles.length, 1);
     assert.equal(cycles[0]?.achievementKey, 'seed_to_table_1');
     assert.equal(cycles[0]?.progressValue, 1);
+    const activity = await getAccountAchievementActivity(fixture.accountId);
+    assert.equal(activity.counts.planting, 1);
+    assert.equal(activity.counts.seed_to_table, 1);
 });
 
 test('historical diversity survives deleted catalogue links and uses the latest mapping', async () => {
@@ -494,4 +508,204 @@ test('first evaluation queues historical awards for deleted selected plantings o
         await awardsByPrefix(fixture.accountId, 'seed_to_table_'),
         awards,
     );
+});
+
+test('current progress is account-scoped, read-only, and deduplicates repeated legacy sowing', async () => {
+    const a = await createLegacyGarden();
+    const b = await createLegacyGarden();
+    const sort = await createLinkedSort(await createEntity('plant'));
+    for (const fixture of [a, b])
+        await sowLegacy({
+            raisedBedId: fixture.raisedBedId,
+            positionIndex: 0,
+            plantSortId: sort,
+            sowedAt: new Date('2026-04-01T10:00:00Z'),
+            harvestedAt: new Date('2026-06-01T10:00:00Z'),
+        });
+    await storage()
+        .insert(events)
+        .values(
+            Array.from({ length: 10 }, () => ({
+                ...knownEvents.raisedBedFields.plantUpdateV1(
+                    `${a.raisedBedId}|0`,
+                    { status: 'sowed' },
+                ),
+                createdAt: new Date('2026-06-02T10:00:00Z'),
+            })),
+        );
+    await sowLegacy({
+        raisedBedId: b.raisedBedId,
+        positionIndex: 1,
+        plantSortId: sort,
+        sowedAt: new Date('2026-04-02T10:00:00Z'),
+    });
+    const before = await getAccountAchievements(a.accountId);
+    const beforeEvent = await storage().query.events.findFirst({
+        orderBy: desc(events.id),
+    });
+    const activity = await getAccountAchievementActivity(a.accountId);
+    assert.deepEqual(activity.counts, {
+        planting: 1,
+        watering: 0,
+        harvest: 0,
+        community_editing: 0,
+        garden_diversity: 1,
+        seed_to_table: 1,
+    });
+    assert.ok(Number.isFinite(Date.parse(activity.calculatedAt)));
+    assert.deepEqual(await getAccountAchievements(a.accountId), before);
+    assert.equal(
+        (await storage().query.events.findFirst({ orderBy: desc(events.id) }))
+            ?.id,
+        beforeEvent?.id,
+    );
+    assert.equal(
+        (await getAccountAchievementActivity(b.accountId)).counts.planting,
+        2,
+    );
+    await evaluateAchievements();
+    assert.deepEqual(
+        (await awardsByPrefix(a.accountId, 'planting_')).map(
+            (a) => a.achievementKey,
+        ),
+        ['planting_1'],
+    );
+    // Award snapshots are not treated as current totals.
+    await storage()
+        .update(accountAchievements)
+        .set({ progressValue: 999 })
+        .where(eq(accountAchievements.accountId, a.accountId));
+    assert.equal(
+        (await getAccountAchievementActivity(a.accountId)).counts.planting,
+        1,
+    );
+    const empty = await createAccount();
+    assert.deepEqual((await getAccountAchievementActivity(empty)).counts, {
+        planting: 0,
+        watering: 0,
+        harvest: 0,
+        community_editing: 0,
+        garden_diversity: 0,
+        seed_to_table: 0,
+    });
+});
+
+test('operation progress counts a completed identity once and excludes uncompleted or deleted operations', async () => {
+    const accountId = await createAccount();
+    await upsertEntityType({ name: 'operation', label: 'Radnja' });
+    const definition = await createAttributeDefinition({
+        entityTypeName: 'operation',
+        category: 'information',
+        name: 'name',
+        label: 'Naziv',
+        dataType: 'text',
+    });
+    for (const name of ['WaterPlant', 'HarvestPlant']) {
+        const entityId = await createEntity('operation');
+        await upsertAttributeValue({
+            attributeDefinitionId: definition,
+            entityTypeName: 'operation',
+            entityId,
+            value: name,
+        });
+        await updateEntity({ id: entityId, state: 'published' });
+        const rows = await storage()
+            .insert(operations)
+            .values([
+                { accountId, entityId, entityTypeName: 'operation' },
+                { accountId, entityId, entityTypeName: 'operation' },
+                {
+                    accountId,
+                    entityId,
+                    entityTypeName: 'operation',
+                    isDeleted: true,
+                },
+            ])
+            .returning();
+        for (const row of [rows[0], rows[2]])
+            await storage()
+                .insert(events)
+                .values(
+                    Array.from({ length: 12 }, () => ({
+                        type: knownEventTypes.operations.complete,
+                        version: 1,
+                        aggregateId: String(row.id),
+                        data: {},
+                    })),
+                );
+    }
+    const activity = await getAccountAchievementActivity(accountId);
+    assert.equal(activity.counts.watering, 1);
+    assert.equal(activity.counts.harvest, 1);
+    await evaluateAchievements();
+    assert.deepEqual(
+        (await awardsByPrefix(accountId, 'watering_')).map(
+            (a) => a.achievementKey,
+        ),
+        ['watering_1'],
+    );
+    assert.deepEqual(
+        (await awardsByPrefix(accountId, 'harvest_')).map(
+            (a) => a.achievementKey,
+        ),
+        ['harvest_1'],
+    );
+});
+
+test('community progress uses applied requests on the earliest membership and cannot leak to extra accounts', async () => {
+    const userId = randomUUID();
+    await storage()
+        .insert(users)
+        .values({ id: userId, userName: userId, role: 'user' });
+    const primary = await createAccount();
+    const extra = await createAccount();
+    await storage()
+        .insert(accountUsers)
+        .values([
+            {
+                userId,
+                accountId: primary,
+                createdAt: new Date('2025-01-01T00:00:00Z'),
+            },
+            {
+                userId,
+                accountId: primary,
+                createdAt: new Date('2025-01-02T00:00:00Z'),
+            },
+            {
+                userId,
+                accountId: extra,
+                createdAt: new Date('2025-01-03T00:00:00Z'),
+            },
+        ]);
+    const entityId = await createEntity('plant');
+    await storage()
+        .insert(communityEditRequests)
+        .values(
+            ['applied', 'applied', 'pending', 'approved', 'rejected'].map(
+                (status) => ({
+                    status,
+                    entityId,
+                    entityTypeName: 'plant',
+                    publicPath: '/biljke/test',
+                    submitterUserId: userId,
+                }),
+            ),
+        );
+    assert.equal(
+        (await getAccountAchievementActivity(primary)).counts.community_editing,
+        2,
+    );
+    assert.equal(
+        (await getAccountAchievementActivity(extra)).counts.community_editing,
+        0,
+    );
+    await evaluateAchievements();
+    assert.deepEqual(
+        (await awardsByPrefix(primary, 'community_edit_')).map(
+            (a) => a.achievementKey,
+        ),
+        ['community_edit_1'],
+    );
+    assert.deepEqual(await awardsByPrefix(extra, 'community_edit_'), []);
 });

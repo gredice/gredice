@@ -75,7 +75,7 @@ export function OutletOfferForm({
                             Interne napomene
                         </label>
                         <textarea
-                            className="min-h-24 rounded-md border border-input bg-background px-3 py-2 text-sm outline-hidden ring-offset-background placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                            className="min-h-24 rounded-md border border-input bg-field px-3 py-2 text-sm outline-hidden ring-offset-background placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2"
                             defaultValue={offer?.adminNotes ?? ''}
                             id="outlet-admin-notes"
                             name="adminNotes"

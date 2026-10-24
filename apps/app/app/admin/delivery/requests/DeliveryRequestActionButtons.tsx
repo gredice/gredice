@@ -20,6 +20,7 @@ export function DeliveryRequestActionButtons({
                 variant="plain"
                 size="sm"
                 href={`/admin/operations/${request.operationId}`}
+                prefetch={false}
                 className="aspect-square px-0"
                 aria-label="Otvori povezanu radnju"
                 title="Otvori povezanu radnju"

@@ -836,3 +836,29 @@ for (const width of [320, 375, 390, 430, 1280]) {
         await assertPrimaryTargetsAreTouchable(component);
     });
 }
+
+test('customer request is readable on a narrow schedule card before completion', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize({ width: 360, height: 780 });
+    const requestNote = `Sačuvajte zdrave listove.\n${'gredica'.repeat(60)}`;
+    await mount(
+        <FarmScheduleOperationTaskCard
+            operation={{
+                ...buildOperation(99, 'planned', 'Pregled biljke'),
+                requestNote,
+            }}
+            operationData={buildOperationDefinition(1099)}
+            selectedDateKey={selectedDateKey}
+            userId="farmer-1"
+        />,
+    );
+    await expect(page.getByText('Napomena korisnika')).toBeVisible();
+    await expect(page.getByText(requestNote)).toBeVisible();
+    expect(
+        await page.evaluate(
+            () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+    ).toBe(true);
+});

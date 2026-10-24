@@ -1,0 +1,99 @@
+{
+  "state": "unpublished",
+  "publicationIssue": 5000,
+  "source": {
+    "path": "assets/game-assets/HarvestWheelbarrow.blend",
+    "bytes": 148812,
+    "sha256": "f032dcd2687fb16b425dce617e7212f1c4e01c55e1fb5b969e7384796b090bfa"
+  },
+  "models": [
+    {
+      "name": "HarvestWheelbarrow",
+      "path": "apps/garden/public/assets/models/HarvestWheelbarrow.glb",
+      "bytes": 248256,
+      "sha256": "85ff185c54862e8992892d441356c5a0205d0b0406c52cbe9be04c2f77cde1cd",
+      "url": "https://vrt.gredice.com/assets/models/HarvestWheelbarrow.glb?v=85ff185c5486",
+      "triangles": 3984,
+      "meshCount": 6,
+      "materialCount": 6
+    }
+  ],
+  "items": [
+    {
+      "name": "HarvestWheelbarrow",
+      "information": {
+        "label": "Ukrasna kolica s bundevama",
+        "shortDescription": "Drvena vrtna kolica puna narančastih i krem bundeva.",
+        "fullDescription": "Nagnuta drvena kolica s jednim kotačem, dvjema ručkama i ukrasnim bundevama. Zauzimaju dva susjedna polja na istoj visini. Postavi ih uz rub jesenskog kutka i ostavi slobodan prilaz gredici. Kolica su nepomičan ukras: ne prevoze urod, a bundeve ne prikazuju stvarnu količinu ni dostupnost plodova."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 0.89,
+        "hitboxHeight": 0.89,
+        "hitboxWidth": 1.88,
+        "hitboxDepth": 0.8,
+        "spanWidth": 2,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 120,
+      "catalogueId": null,
+      "cover": "https://www.gredice.com/assets/blocks/HarvestWheelbarrow.webp",
+      "topDown": "https://vrt.gredice.com/assets/blocks/top-down/HarvestWheelbarrow.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/HarvestWheelbarrow.webp",
+          "bytes": 26706,
+          "sha256": "e0a7c003bbcc6812b139e2ce3bd78d8ca0b3880e7e47eb6a3d9254043ec08297"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestWheelbarrow_1.webp",
+          "bytes": 21344,
+          "sha256": "3a5e01eac4d72a1597b92f0ba7a8e7f56e6e16ce56b369dd562d38078a45a7e6"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestWheelbarrow_2.webp",
+          "bytes": 26706,
+          "sha256": "e0a7c003bbcc6812b139e2ce3bd78d8ca0b3880e7e47eb6a3d9254043ec08297"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestWheelbarrow_3.webp",
+          "bytes": 26740,
+          "sha256": "a98be79b21c17ff0b47c1a33f60fadb7b5865fb62f569a4ccc18b5c149e50368"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestWheelbarrow_4.webp",
+          "bytes": 22866,
+          "sha256": "7758dc1d9c3b76740fbe86d321342c38f6c86eba3729f0524781669eec6e852c"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestWheelbarrow.webp",
+          "bytes": 4394,
+          "sha256": "9dee507d7b7c7e8a1a6eeccfe650ea660c0ff16d436742577bb5a2fe426dc8d5"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestWheelbarrow_1.webp",
+          "bytes": 4394,
+          "sha256": "9dee507d7b7c7e8a1a6eeccfe650ea660c0ff16d436742577bb5a2fe426dc8d5"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestWheelbarrow_2.webp",
+          "bytes": 3712,
+          "sha256": "0fd8cb8e1d830a16b5f5edf9a4dd865f5096a25f7712a3c60fa8a1b5b2398085"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestWheelbarrow_3.webp",
+          "bytes": 4352,
+          "sha256": "1dc5cad72f3c1a7d4064f93a688e0b95193d5daf1a323c535b1fdd8956504870"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestWheelbarrow_4.webp",
+          "bytes": 3798,
+          "sha256": "6f7c88c8aae66307294b5752547ecf3387585e69eb199841af0af607cf39d40c"
+        }
+      ]
+    }
+  ]
+}

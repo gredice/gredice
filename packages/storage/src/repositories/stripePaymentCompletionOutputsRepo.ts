@@ -2,6 +2,7 @@ import 'server-only';
 
 import { createHash } from 'node:crypto';
 import { and, eq, gt, ne, or, sql } from 'drizzle-orm';
+import { signalDueWork } from '../dueWork';
 import { emailMessages, stripePaymentProcessingClaims } from '../schema';
 import { storage } from '../storage';
 
@@ -559,6 +560,12 @@ async function ensureOutput({
     if (!created) {
         throw new Error('Failed to create Stripe payment completion output');
     }
+    await signalDueWork(
+        outputKind === 'order_confirmation'
+            ? 'order-confirmation-emails'
+            : 'checkout-notifications',
+        now,
+    );
     return { created: true, id: created.id };
 }
 

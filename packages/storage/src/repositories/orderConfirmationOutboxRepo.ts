@@ -2,6 +2,7 @@ import 'server-only';
 
 import { createHash, randomUUID } from 'node:crypto';
 import { and, asc, eq, or, sql } from 'drizzle-orm';
+import { signalDueWork } from '../dueWork';
 import { emailMessages, shoppingCartItems, shoppingCarts } from '../schema';
 import { storage } from '../storage';
 
@@ -854,6 +855,7 @@ export async function markCartPaidAndEnqueueOrderConfirmation({
         if (!emailMessage) {
             throw new Error('Failed to enqueue order confirmation email');
         }
+        await signalDueWork('order-confirmation-emails', now);
 
         return {
             emailMessageId: emailMessage.id,
@@ -1200,6 +1202,10 @@ export async function markOrderConfirmationEmailFailed({
                     updatedAt: now,
                 })
                 .where(eq(emailMessages.id, emailMessageId));
+            await signalDueWork(
+                'order-confirmation-emails',
+                new Date(now.getTime() + 300_000),
+            );
             return { status: 'fenced' };
         }
 
@@ -1228,6 +1234,7 @@ export async function markOrderConfirmationEmailFailed({
                     updatedAt: now,
                 })
                 .where(eq(emailMessages.id, emailMessageId));
+            await signalDueWork('order-confirmation-emails', nextAttemptAt);
             return { attempt, nextAttemptAt, status: 'retry_scheduled' };
         }
 
@@ -1259,6 +1266,7 @@ export async function markOrderConfirmationEmailFailed({
                     updatedAt: now,
                 })
                 .where(eq(emailMessages.id, emailMessageId));
+            await signalDueWork('order-confirmation-emails', nextAttemptAt);
             return { attempt, nextAttemptAt, status: 'retry_scheduled' };
         }
 
@@ -1593,6 +1601,7 @@ export async function finalizeOrderConfirmationEmailReconciliation({
                 updatedAt: now,
             })
             .where(eq(emailMessages.id, emailMessageId));
+        await signalDueWork('order-confirmation-emails', nextCheckAt);
         return { attempt, nextCheckAt, status: 'pending' };
     });
 }

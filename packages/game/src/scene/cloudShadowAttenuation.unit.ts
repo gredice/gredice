@@ -440,3 +440,156 @@ describe('cloud shadow material integration', () => {
         assert.equal(material.onBeforeCompile, originalOnBeforeCompile);
     });
 });
+
+describe('cached cloud program uniform bindings', () => {
+    function rendererWith(value: unknown) {
+        return {
+            properties: {
+                has: () => true,
+                get: () => value,
+                remove: () => {},
+                update: () => undefined,
+                dispose: () => {},
+            },
+        };
+    }
+    it('refreshes only five owned aliases without changing cached programs, lists, hooks, keys or unrelated uniforms', () => {
+        const material = new MeshStandardMaterial();
+        const originalHook = material.onBeforeCompile,
+            originalKey = material.customProgramCacheKey;
+        const pbr = { value: 0.7 };
+        const table = { roughness: pbr };
+        const programs = new Map([['cached-cloud', { usedTimes: 1 }]]),
+            list = [{}];
+        const properties = { uniforms: table, programs, uniformsList: list };
+        const lease = retainCloudShadowAttenuationMaterial(
+            material,
+            uniforms,
+            rendererWith(properties),
+        );
+        assert.equal(Reflect.get(table, 'grediceCloudShadowMap'), uniforms.map);
+        assert.equal(
+            Reflect.get(table, 'grediceCloudShadowBounds'),
+            uniforms.bounds,
+        );
+        assert.equal(
+            Reflect.get(table, 'grediceCloudShadowProjection'),
+            uniforms.projection,
+        );
+        assert.equal(
+            Reflect.get(table, 'grediceCloudShadowStrength'),
+            uniforms.strength,
+        );
+        assert.equal(
+            Reflect.get(table, 'grediceCloudShadowHardness'),
+            uniforms.hardness,
+        );
+        assert.equal(table.roughness, pbr);
+        assert.deepEqual(
+            Object.keys(table).sort(),
+            [
+                'roughness',
+                'grediceCloudShadowMap',
+                'grediceCloudShadowBounds',
+                'grediceCloudShadowProjection',
+                'grediceCloudShadowStrength',
+                'grediceCloudShadowHardness',
+            ].sort(),
+        );
+        assert.equal(properties.programs, programs);
+        assert.equal(properties.uniformsList, list);
+        assert.deepEqual([...programs.values()], [{ usedTimes: 1 }]);
+        lease.release();
+        assert.equal(material.onBeforeCompile, originalHook);
+        assert.equal(material.customProgramCacheKey, originalKey);
+    });
+    it('ignores missing or malformed renderer and uniform tables without inventing cache state', () => {
+        for (const value of [
+            undefined,
+            null,
+            3,
+            [],
+            { uniforms: undefined },
+            { uniforms: null },
+            { uniforms: 3 },
+            { uniforms: [] },
+        ]) {
+            const material = new MeshStandardMaterial();
+            const lease = retainCloudShadowAttenuationMaterial(
+                material,
+                uniforms,
+                rendererWith(value),
+            );
+            lease.release();
+            if (Array.isArray(value)) assert.equal(value.length, 0);
+        }
+    });
+    it('keeps current provided uniform owners isolated between root-scoped stock candidates', () => {
+        const rootA = new Object3D(),
+            rootB = new Object3D();
+        const a = new MeshStandardMaterial(),
+            b = new MeshStandardMaterial();
+        const aTable = {},
+            bTable = {};
+        const props = new Map([
+            [a, { uniforms: aTable }],
+            [b, { uniforms: bTable }],
+        ]);
+        const renderer = {
+            properties: {
+                has: (object: unknown) =>
+                    props.has(
+                        object instanceof MeshStandardMaterial ? object : a,
+                    ),
+                get: (object: unknown) =>
+                    object instanceof MeshStandardMaterial
+                        ? props.get(object)
+                        : undefined,
+                remove: () => {},
+                update: () => undefined,
+                dispose: () => {},
+            },
+        };
+        const aUniforms = { ...uniforms, strength: { value: 0.2 } },
+            bUniforms = { ...uniforms, strength: { value: 0.8 } };
+        const leasesA: CloudShadowMaterialLeaseMap = new Map(),
+            leasesB: CloudShadowMaterialLeaseMap = new Map();
+        const removeA = registerCloudShadowAttenuationMaterialCandidate(
+                a,
+                rootA,
+            ),
+            removeB = registerCloudShadowAttenuationMaterialCandidate(b, rootB);
+        syncCloudShadowAttenuationMaterials({
+            enabled: true,
+            leases: leasesA,
+            root: rootA,
+            uniforms: aUniforms,
+            renderer,
+        });
+        syncCloudShadowAttenuationMaterials({
+            enabled: true,
+            leases: leasesB,
+            root: rootB,
+            uniforms: bUniforms,
+            renderer,
+        });
+        assert.equal(
+            Reflect.get(aTable, 'grediceCloudShadowStrength'),
+            aUniforms.strength,
+        );
+        assert.equal(
+            Reflect.get(bTable, 'grediceCloudShadowStrength'),
+            bUniforms.strength,
+        );
+        assert.equal(leasesA.has(b.uuid), false);
+        assert.equal(leasesB.has(a.uuid), false);
+        releaseCloudShadowAttenuationMaterials(leasesA);
+        assert.equal(
+            Reflect.get(bTable, 'grediceCloudShadowStrength'),
+            bUniforms.strength,
+        );
+        releaseCloudShadowAttenuationMaterials(leasesB);
+        removeA();
+        removeB();
+    });
+});

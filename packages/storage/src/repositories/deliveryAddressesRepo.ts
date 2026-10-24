@@ -10,6 +10,12 @@ import { storage } from '../storage';
 import { withDeliveryDispatchTransaction } from './deliveryDispatchRepo';
 import { assertDeliveryAddressHasNoActiveAssignment } from './deliveryRunAssignmentsRepo';
 
+type StorageClient = ReturnType<typeof storage>;
+type TransactionClient = Parameters<
+    Parameters<StorageClient['transaction']>[0]
+>[0];
+type DatabaseClient = StorageClient | TransactionClient;
+
 export const DeliveryAddressMutationErrorCodes = {
     NOT_FOUND_OR_FORBIDDEN: 'delivery-address-not-found',
 } as const;
@@ -55,8 +61,9 @@ export function getDeliveryAddresses(
 export function getDeliveryAddress(
     addressId: number,
     accountId: string,
+    db: DatabaseClient = storage(),
 ): Promise<SelectDeliveryAddress | undefined> {
-    return storage().query.deliveryAddresses.findFirst({
+    return db.query.deliveryAddresses.findFirst({
         where: and(
             eq(deliveryAddresses.id, addressId),
             eq(deliveryAddresses.accountId, accountId),

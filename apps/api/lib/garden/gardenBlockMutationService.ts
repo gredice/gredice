@@ -13,10 +13,14 @@ import {
     AccountNotFoundError,
     bustScheduleCache,
     earnSunflowersOnce,
+    GardenPackConflictError,
+    GardenPackLifecyclePendingError,
+    GardenPackNotFoundError,
     type GardenPlacementTransaction,
     getGardenPlacementSnapshotForUpdate,
+    isPurchasedGardenPackBlock,
     listGardenRaisedBedMetadataForUpdate,
-    listGardenStructures,
+    recycleGardenPackUnitForAccount,
     SunflowerEarnAmountConflictError,
     softDeleteGardenBlockOnce,
     softDeleteNewRaisedBedOnce,
@@ -27,34 +31,26 @@ import {
     withGardenPlacementTransaction,
     withSunflowerAccountTransaction,
 } from '@gredice/storage';
+import { z } from 'zod';
 import { getBlockData } from '../blocks/blockDataService';
-import {
-    type GardenOccupancyServiceError,
-    type GardenOccupancyServiceIssue,
-    type GardenOccupancyStorageStructureLike,
-    validatePersistedStructuresAfterBlockMutation,
-} from './gardenOccupancyService';
 import { validateRotatedBlockPlacement } from './rotatedBlockPlacementValidation';
 
 const defaultRecycleRefund = 10;
 const maximumAccountIdentifierLength = 128;
 const maximumBlockIdentifierLength = 128;
-const maximumFailureIssues = 24;
 const minimumStorageInteger = -2_147_483_648;
 const maximumStorageInteger = 2_147_483_647;
 
 type GardenBlockMutationStatus = 400 | 404 | 409 | 503;
 
 export type GardenBlockMutationFailureCode =
+    | 'PACK_LIFECYCLE_PENDING'
     | 'ACCOUNT_UNAVAILABLE'
     | 'ACTIVE_RAISED_BED'
     | 'BLOCK_DIRECTORY_DATA_NOT_FOUND'
     | 'BLOCK_DIRECTORY_UNAVAILABLE'
     | 'BLOCK_NOT_FOUND'
     | 'GARDEN_NOT_FOUND'
-    | 'GARDEN_OCCUPANCY_CONFLICT'
-    | 'GARDEN_OCCUPANCY_INVALID_INPUT'
-    | 'GARDEN_OCCUPANCY_INVALID_STATE'
     | 'GARDEN_STATE_CHANGED'
     | 'GARDEN_STATE_INVALID'
     | 'GARDEN_BOX_NOT_RECYCLABLE'
@@ -69,7 +65,6 @@ export type GardenBlockMutationFailure = Readonly<{
     ok: false;
     code: GardenBlockMutationFailureCode;
     error: string;
-    issues?: readonly GardenOccupancyServiceIssue[];
     status: GardenBlockMutationStatus;
 }>;
 
@@ -142,7 +137,6 @@ export type ValidateRotatedBlockPlacementInput = Readonly<{
     candidateRotation: number | null;
     placement: GardenBlockPlacement;
     snapshot: GardenBlockMutationSnapshot;
-    structures: readonly GardenOccupancyStorageStructureLike[];
 }>;
 
 export type ValidateRotatedBlockPlacementResult =
@@ -151,7 +145,6 @@ export type ValidateRotatedBlockPlacementResult =
           valid: false;
           code: GardenBlockMutationFailureCode;
           error: string;
-          issues?: readonly GardenOccupancyServiceIssue[];
           status: GardenBlockMutationStatus;
       }>;
 
@@ -172,10 +165,6 @@ export type GardenBlockMutationDependencies<Transaction> = Readonly<{
         gardenId: number,
         transaction: Transaction,
     ) => Promise<readonly GardenRaisedBedMutationMetadata[]>;
-    listGardenStructures: (
-        gardenId: number,
-        transaction: Transaction,
-    ) => Promise<readonly GardenOccupancyStorageStructureLike[]>;
     softDeleteGardenBlockOnce: (
         gardenId: number,
         blockId: string,
@@ -209,7 +198,6 @@ export type GardenBlockMutationDependencies<Transaction> = Readonly<{
         orientation: 'horizontal' | 'vertical',
         transaction: Transaction,
     ) => Promise<boolean>;
-    validatePersistedStructuresAfterBlockMutation: typeof validatePersistedStructuresAfterBlockMutation;
     validateRotatedBlockPlacement: (
         input: ValidateRotatedBlockPlacementInput,
     ) => Promise<ValidateRotatedBlockPlacementResult>;
@@ -236,7 +224,6 @@ class GardenBlockMutationError extends Error {
         readonly code: GardenBlockMutationFailureCode,
         readonly status: GardenBlockMutationStatus,
         message: string,
-        readonly issues?: readonly GardenOccupancyServiceIssue[],
     ) {
         super(message);
     }
@@ -246,18 +233,8 @@ function fail(
     code: GardenBlockMutationFailureCode,
     status: GardenBlockMutationStatus,
     message: string,
-    issues?: readonly GardenOccupancyServiceIssue[],
 ): never {
-    throw new GardenBlockMutationError(
-        code,
-        status,
-        message,
-        issues?.slice(0, maximumFailureIssues),
-    );
-}
-
-function failOccupancy(error: GardenOccupancyServiceError): never {
-    fail(error.code, error.status, error.message, error.issues);
+    throw new GardenBlockMutationError(code, status, message);
 }
 
 function assertIdentifier(value: string, maximumLength: number) {
@@ -384,34 +361,6 @@ function findDirectoryBlock(
     return directoryBlock;
 }
 
-function candidateSnapshotAfterRecycle(
-    snapshot: GardenBlockMutationSnapshot,
-    blockId: string,
-) {
-    return {
-        blocks: snapshot.blocks.filter((block) => block.id !== blockId),
-        stacks: snapshot.stacks.map((stack) => ({
-            ...stack,
-            blocks: stack.blocks.filter(
-                (candidateBlockId) => candidateBlockId !== blockId,
-            ),
-        })),
-    };
-}
-
-function candidateSnapshotAfterRotation(
-    snapshot: GardenBlockMutationSnapshot,
-    blockId: string,
-    rotation: number | null,
-) {
-    return {
-        blocks: snapshot.blocks.map((block) =>
-            block.id === blockId ? { ...block, rotation } : block,
-        ),
-        stacks: snapshot.stacks,
-    };
-}
-
 function raisedBedOrientationForRotation(rotation: number | null) {
     const normalizedRotation = ((Math.round(rotation ?? 0) % 2) + 2) % 2;
     return normalizedRotation === 1
@@ -420,12 +369,18 @@ function raisedBedOrientationForRotation(rotation: number | null) {
 }
 
 function failureFrom(error: unknown): GardenBlockMutationFailure | null {
+    if (error instanceof GardenPackLifecyclePendingError)
+        return {
+            ok: false,
+            code: 'PACK_LIFECYCLE_PENDING',
+            error: 'Recikliranje i promjena izgleda predmeta iz paketa još nisu dostupni.',
+            status: 409,
+        };
     if (error instanceof GardenBlockMutationError) {
         return {
             ok: false,
             code: error.code,
             error: error.message,
-            ...(error.issues ? { issues: error.issues } : {}),
             status: error.status,
         };
     }
@@ -469,7 +424,6 @@ async function loadBlockData<Transaction>(
 type LockedMutationContext<Transaction> = Readonly<{
     raisedBeds: readonly GardenRaisedBedMutationMetadata[];
     snapshot: GardenBlockMutationSnapshot;
-    structures: readonly GardenOccupancyStorageStructureLike[];
     transaction: Transaction;
 }>;
 
@@ -512,15 +466,9 @@ export function createGardenBlockMutationService<Transaction>(
                                         command.gardenId,
                                         gardenTransaction,
                                     );
-                                const structures =
-                                    await dependencies.listGardenStructures(
-                                        command.gardenId,
-                                        gardenTransaction,
-                                    );
                                 return mutation({
                                     raisedBeds,
                                     snapshot,
-                                    structures,
                                     transaction: gardenTransaction,
                                 });
                             },
@@ -539,7 +487,7 @@ export function createGardenBlockMutationService<Transaction>(
             const blockData = await loadBlockData(dependencies);
             const committed = await withLockedGarden(
                 command,
-                async ({ raisedBeds, snapshot, structures, transaction }) => {
+                async ({ raisedBeds, snapshot, transaction }) => {
                     const block = snapshot.blocks.find(
                         (candidate) => candidate.id === command.blockId,
                     );
@@ -568,25 +516,6 @@ export function createGardenBlockMutationService<Transaction>(
                             400,
                             'Cannot delete active raised bed',
                         );
-                    }
-
-                    const candidate = candidateSnapshotAfterRecycle(
-                        snapshot,
-                        block.id,
-                    );
-                    const occupancy =
-                        dependencies.validatePersistedStructuresAfterBlockMutation(
-                            {
-                                blockData,
-                                snapshot: {
-                                    blocks: candidate.blocks,
-                                    stacks: candidate.stacks,
-                                    structures,
-                                },
-                            },
-                        );
-                    if (!occupancy.valid) {
-                        failOccupancy(occupancy.error);
                     }
 
                     if (placement) {
@@ -701,7 +630,7 @@ export function createGardenBlockMutationService<Transaction>(
                     : await loadBlockData(dependencies);
             const committed = await withLockedGarden(
                 command,
-                async ({ raisedBeds, snapshot, structures, transaction }) => {
+                async ({ raisedBeds, snapshot, transaction }) => {
                     const block = snapshot.blocks.find(
                         (candidate) => candidate.id === command.blockId,
                     );
@@ -768,35 +697,13 @@ export function createGardenBlockMutationService<Transaction>(
                                 candidateRotation: command.rotation ?? null,
                                 placement,
                                 snapshot,
-                                structures,
                             });
                         if (!rotationValidation.valid) {
                             fail(
                                 rotationValidation.code,
                                 rotationValidation.status,
                                 rotationValidation.error,
-                                rotationValidation.issues,
                             );
-                        }
-
-                        const candidate = candidateSnapshotAfterRotation(
-                            snapshot,
-                            block.id,
-                            command.rotation ?? null,
-                        );
-                        const occupancy =
-                            dependencies.validatePersistedStructuresAfterBlockMutation(
-                                {
-                                    blockData,
-                                    snapshot: {
-                                        blocks: candidate.blocks,
-                                        stacks: candidate.stacks,
-                                        structures,
-                                    },
-                                },
-                            );
-                        if (!occupancy.valid) {
-                            failOccupancy(occupancy.error);
                         }
                     }
 
@@ -896,18 +803,56 @@ const defaultDependencies: GardenBlockMutationDependencies<GardenPlacementTransa
         getBlockData,
         getGardenPlacementSnapshotForUpdate,
         listGardenRaisedBedMetadataForUpdate,
-        listGardenStructures,
         softDeleteGardenBlockOnce,
         softDeleteNewRaisedBedOnce,
         updateGardenBlock,
         updateGardenStack,
         updateRaisedBedOrientation,
-        validatePersistedStructuresAfterBlockMutation,
         validateRotatedBlockPlacement,
         withAccountDeletionFenceTransaction,
         withGardenPlacementTransaction,
         withSunflowerAccountTransaction,
     };
 
-export const { recycleGardenBlockForAccount, updateGardenBlockForAccount } =
-    createGardenBlockMutationService(defaultDependencies);
+const ordinaryMutations = createGardenBlockMutationService(defaultDependencies);
+export const updateGardenBlockForAccount =
+    ordinaryMutations.updateGardenBlockForAccount;
+export async function recycleGardenBlockForAccount(
+    command: RecycleGardenBlockCommand,
+): Promise<RecycleGardenBlockResult> {
+    // A historical pack block remains recognizable after recycling for exact replay.
+    const location = await isPurchasedGardenPackBlock(command.blockId);
+    if (!location)
+        return ordinaryMutations.recycleGardenBlockForAccount(command);
+    try {
+        const response = await recycleGardenPackUnitForAccount(
+            command.accountId,
+            command,
+        );
+        return {
+            ok: true,
+            blockId: command.blockId,
+            refundedSunflowers: z
+                .number()
+                .int()
+                .nonnegative()
+                .parse(response.refundedSunflowers),
+        };
+    } catch (error) {
+        if (error instanceof GardenPackConflictError)
+            return {
+                ok: false,
+                code: 'GARDEN_STATE_CHANGED',
+                error: error.message,
+                status: 409,
+            };
+        if (error instanceof GardenPackNotFoundError)
+            return {
+                ok: false,
+                code: 'BLOCK_NOT_FOUND',
+                error: error.message,
+                status: 404,
+            };
+        throw error;
+    }
+}

@@ -2,6 +2,7 @@ import 'server-only';
 
 import { and, asc, desc, eq, lte, or } from 'drizzle-orm';
 import { storage } from '..';
+import { signalDueWork } from '../dueWork';
 import {
     type SelectSocialPost,
     type SocialPostStatus,
@@ -71,6 +72,14 @@ export async function createSocialPost(
     if (!created) {
         throw new Error('Failed to create social post');
     }
+    if (created.status === 'queued' || created.status === 'scheduled') {
+        await signalDueWork(
+            'social-publishing',
+            created.status === 'queued'
+                ? new Date()
+                : (created.scheduledAt ?? new Date()),
+        );
+    }
 
     return created;
 }
@@ -103,6 +112,15 @@ export async function updateSocialPostStatus(
         .where(eq(socialPosts.id, input.id))
         .returning();
 
+    if (
+        updated &&
+        (updated.status === 'queued' || updated.status === 'scheduled')
+    ) {
+        await signalDueWork(
+            'social-publishing',
+            updated.status === 'queued' ? now : (updated.scheduledAt ?? now),
+        );
+    }
     return updated ?? null;
 }
 

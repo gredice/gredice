@@ -2,6 +2,7 @@ import { BackpackIcon } from '@gredice/ui/BackpackIcon';
 import {
     GameBackpackIcon,
     GameCameraIcon,
+    GameCoinsIcon,
     GameContactIcon,
     GameGardenIcon,
     GameGardenPlanIcon,
@@ -50,6 +51,18 @@ import { RaisedBedSimpleIcon } from '@gredice/ui/RaisedBedSimpleIcon';
 import { ShovelIcon } from '@gredice/ui/ShovelIcon';
 
 export const gameIconComparisons = [
+    {
+        name: 'Cijena sijanja',
+        before: GameSeedlingIcon,
+        after: GameCoinsIcon,
+        usage: 'Plant and plant-sort price cards',
+        legacyName: 'GameSeedlingIcon',
+        componentName: 'GameCoinsIcon',
+        sources: [
+            'packages/ui/src/GameIcons/GameCoinsIcon.tsx',
+            'apps/www/app/biljke/[alias]/PlantPageHeader.tsx',
+        ],
+    },
     {
         name: 'Vrtovi za igru',
         before: Joystick,

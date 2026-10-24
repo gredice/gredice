@@ -5,6 +5,7 @@ import { PLANT_STAGES } from '@gredice/js/plants';
 import {
     accountUsers,
     approveCommunityEditRequest,
+    attributeDefinitions,
     CommunityEditRequestError,
     createAccount,
     createAttributeDefinition,
@@ -27,6 +28,7 @@ import {
     upsertEntityType,
     users,
 } from '@gredice/storage';
+import { eq } from 'drizzle-orm';
 import { createTestDb } from './testDb';
 
 type CommunityEditFixture = {
@@ -929,6 +931,57 @@ test('community entity suggestions store a reviewable new plant sort proposal', 
         reviewer: { id: data.reviewerId, name: 'Community Reviewer' },
     });
     assert.equal(approved.status, 'applied');
+});
+
+test('plant tip suggestions preserve live content and validate their plant context', async () => {
+    const data = await fixture();
+    const plantId = await createPublishedPlant();
+    const before = await getEntityRaw(plantId);
+    const input = {
+        kind: 'plantTip',
+        parentPlantId: plantId,
+        name: 'Zaštita od vjetra',
+        description: 'Visoke biljke po potrebi podupri.',
+        publicPath: '/biljke/bob',
+        submitter: { id: data.submitterId },
+    } satisfies Parameters<typeof createCommunityEntitySuggestion>[0];
+    const request = await createCommunityEntitySuggestion(input);
+    assert.equal(request.status, 'pending');
+    assert.equal(request.sectionKey, 'new-plant-tip');
+    assert.equal(request.entityId, plantId);
+    assert.equal(request.changes.length, 0);
+    assert.deepEqual(parseCommunityEntitySuggestionRequest(request), {
+        format: 'community-entity-suggestion-v1',
+        kind: 'plantTip',
+        parentPlantId: plantId,
+        parentPlantName: `Biljka ${plantId}`,
+        name: input.name,
+        description: input.description,
+    });
+    assert.deepEqual(await getEntityRaw(plantId), before);
+    assert.equal(
+        parseCommunityEntitySuggestionRequest({
+            ...request,
+            sectionKey: 'new-plant-sort',
+        }),
+        null,
+    );
+    assert.equal(
+        parseCommunityEntitySuggestionRequest({
+            ...request,
+            entityId: plantId + 1,
+        }),
+        null,
+    );
+    await assert.rejects(
+        createCommunityEntitySuggestion({ ...input, description: ' ' }),
+        CommunityEditRequestError,
+    );
+    await updateEntity({ id: plantId, state: 'draft' });
+    await assert.rejects(
+        createCommunityEntitySuggestion(input),
+        CommunityEditRequestError,
+    );
 });
 
 test('community entity suggestions store operation context and application', async () => {
@@ -2165,3 +2218,85 @@ test('community edit creation rejects stale base hashes', async () => {
     const request = await getCommunityEditRequest(-1);
     assert.equal(request, undefined);
 });
+
+for (const entityTypeName of ['plantDisease', 'plantPest']) {
+    test(`existing ${entityTypeName} links remain pending until approval and retain other plants`, async (t) => {
+        const data = await fixture();
+        const existingPlantId = await createPublishedPlant();
+        const addedPlantId = await createPublishedPlant();
+        await upsertEntityType({
+            name: entityTypeName,
+            label: 'Biljni problem',
+        });
+        const definitionId = await createAttributeDefinition({
+            entityTypeName,
+            category: 'relationships',
+            name: 'affectedPlants',
+            label: 'Pogođene biljke',
+            dataType: 'ref:plant',
+            multiple: true,
+        });
+        // Storage specs share one database and read-model invalidation follows
+        // every ref definition, including retired ones. Neutralize this
+        // plant reference so later specs do not inherit plant health as a
+        // dependent of plant mutations.
+        t.after(async () => {
+            await storage()
+                .update(attributeDefinitions)
+                .set({ dataType: 'text', isDeleted: true })
+                .where(eq(attributeDefinitions.id, definitionId));
+        });
+        const entityId = await createEntity(entityTypeName);
+        await upsertAttributeValue({
+            entityTypeName,
+            entityId,
+            attributeDefinitionId: definitionId,
+            value: String(existingPlantId),
+            order: '0',
+        });
+        await updateEntity({ id: entityId, state: 'published' });
+        const fields = await getCommunityEditableFieldsForEntity({
+            entityTypeName,
+            entityId,
+            sectionKey: 'relationships',
+        });
+        const field = fields.find(
+            (field) => field.fieldKey === `${entityTypeName}.affected-plants`,
+        );
+        assert.ok(field);
+        const request = await createCommunityEditRequest({
+            entityTypeName,
+            entityId,
+            publicPath: '/biljke/bamija/sorte/clemson',
+            sectionKey: 'relationships',
+            submitter: { id: data.submitterId, name: 'Community Submitter' },
+            changes: [
+                {
+                    fieldKey: field.fieldKey,
+                    baseValueHash: field.baseValueHash,
+                    proposedValue: [
+                        String(existingPlantId),
+                        String(addedPlantId),
+                    ],
+                },
+            ],
+        });
+        assert.equal(request.status, 'pending');
+        const before = await getEntityRaw(entityId);
+        assert.ok(before);
+        assert.deepEqual(attributeValues(before, definitionId), [
+            String(existingPlantId),
+        ]);
+        const applied = await approveCommunityEditRequest({
+            id: request.id,
+            reviewer: { id: data.reviewerId, name: 'Community Reviewer' },
+        });
+        assert.equal(applied.status, 'applied');
+        const after = await getEntityRaw(entityId);
+        assert.ok(after);
+        assert.deepEqual(
+            attributeValues(after, definitionId).sort(),
+            [String(existingPlantId), String(addedPlantId)].sort(),
+        );
+    });
+}

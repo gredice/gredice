@@ -1,0 +1,89 @@
+{
+  "results": [
+    {
+      "concept": "chest",
+      "days": 24,
+      "mobile": {
+        "client": 390,
+        "scroll": 390
+      },
+      "states": "missed/future/opened/loading/error/retry/reward passed"
+    },
+    {
+      "concept": "winter",
+      "days": 24,
+      "mobile": {
+        "client": 390,
+        "scroll": 390
+      },
+      "states": "missed/future/opened/loading/error/retry/reward passed"
+    },
+    {
+      "concept": "herbarium",
+      "days": 24,
+      "mobile": {
+        "client": 390,
+        "scroll": 390
+      },
+      "states": "missed/future/opened/loading/error/retry/reward passed"
+    }
+  ],
+  "responsive": [
+    {
+      "concept": "chest",
+      "width": 320,
+      "scroll": 320,
+      "client": 320,
+      "dayCount": 24,
+      "minDayWidth": 54.75
+    },
+    {
+      "concept": "winter",
+      "width": 320,
+      "scroll": 320,
+      "client": 320,
+      "dayCount": 24,
+      "minDayWidth": 55.5
+    },
+    {
+      "concept": "herbarium",
+      "width": 320,
+      "scroll": 320,
+      "client": 320,
+      "dayCount": 24,
+      "minDayWidth": 54
+    },
+    {
+      "concept": "chest",
+      "width": 768,
+      "scroll": 768,
+      "client": 768,
+      "dayCount": 24,
+      "minDayWidth": 136.75
+    },
+    {
+      "concept": "winter",
+      "width": 768,
+      "scroll": 768,
+      "client": 768,
+      "dayCount": 24,
+      "minDayWidth": 137.5
+    },
+    {
+      "concept": "herbarium",
+      "width": 768,
+      "scroll": 768,
+      "client": 768,
+      "dayCount": 24,
+      "minDayWidth": 136
+    }
+  ],
+  "docOverflow": {
+    "scroll": 390,
+    "client": 390
+  },
+  "keyboardTabs": true,
+  "reducedMotion": true,
+  "pageErrors": [],
+  "failures": []
+}

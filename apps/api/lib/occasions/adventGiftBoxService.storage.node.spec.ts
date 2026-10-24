@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import type { BlockData } from '@gredice/directory-types';
 import {
     addInventoryItem,
     createAccount,
@@ -17,7 +16,6 @@ import {
     getGardenStacks,
     getInventory,
     knownEventTypes,
-    listGardenStructuresForUpdate,
     softDeleteGardenBlockOnce,
     softDeleteGardenOnce,
     updateGardenStack,
@@ -30,7 +28,6 @@ import {
     createTestGarden,
     ensureFarmId,
 } from '../../../../packages/storage/tests/helpers/testHelpers';
-import { validatePersistedStructuresAfterBlockMutation } from '../garden/gardenOccupancyService';
 import {
     type AdventGiftBoxDependencies,
     createAdventGiftBoxService,
@@ -40,39 +37,12 @@ import {
 
 const storageIntegrationEnabled =
     process.env.TEST_ENV === '1' && Boolean(process.env.POSTGRES_URL);
-const timestamp = '2026-08-30T00:00:00.000Z';
 const reward: GiftBoxReward = {
     kind: 'plant',
     entityTypeName: 'plantSort',
     entityId: '42',
     title: 'Rajčica',
 };
-
-function directoryBlock(id: number, name: string): BlockData {
-    return {
-        id,
-        entityType: { id: 8, name: 'block', label: 'Blok' },
-        slug: name.toLowerCase(),
-        information: {
-            name,
-            label: name,
-            shortDescription: name,
-            fullDescription: name,
-        },
-        attributes: {
-            height: 1,
-            stackable: true,
-            type: 'terrain',
-            nightOnlyPurchase: false,
-        },
-        prices: { sunflowers: 0 },
-        functions: { raisedBed: false, recycler: false },
-        createdAt: timestamp,
-        updatedAt: timestamp,
-    };
-}
-
-const blockData = [directoryBlock(1, 'Block_Grass')];
 
 function integrationService({
     failAfterBlockDelete = false,
@@ -83,9 +53,7 @@ function integrationService({
             deleteGardenStack,
             getGardenMutationAuthorityForUpdate,
             getGardenPlacementSnapshotForUpdate,
-            getBlockData: async () => blockData,
             isAdventSeasonOver: () => true,
-            listGardenStructuresForUpdate,
             loadGiftBoxRewardCatalog: async () => ({
                 operations: [],
                 plants: [{ entityId: reward.entityId, title: reward.title }],
@@ -109,7 +77,6 @@ function integrationService({
                 return result;
             },
             updateGardenStack,
-            validatePersistedStructuresAfterBlockMutation,
             withAccountDeletionFenceTransaction,
             withGardenMutationOperation: (input, callback, transaction) =>
                 withGardenMutationOperation(input, callback, transaction),

@@ -23,6 +23,7 @@ import {
 import type { RuntimeFrameLoopProfileTelemetry } from './gameProfileMetadata';
 import { bindRuntimeFrameLoopProfileTelemetry } from './gameProfileMetadata';
 import { SceneSpringAnimationContext } from './SceneSpringContext';
+import { createSceneElapsedTimeReader } from './sceneElapsedTime';
 import {
     createScenePostRenderDispatcher,
     type ScenePostRenderListener,
@@ -73,6 +74,7 @@ type SceneTimeContextValue = {
     subscribeSceneResume: (listener: () => void) => () => void;
     flushScenePostRender: (timestampMs: number) => boolean;
     timeUniform: IUniform<number>;
+    readElapsedTimeSeconds: () => number;
 };
 
 const SceneTimeContext = createContext<SceneTimeContextValue | null>(null);
@@ -121,6 +123,14 @@ export function SceneTimeProvider({
     const timeUniform = useMemo<IUniform<number>>(
         () => ({ value: fixedTime ?? 0 }),
         [fixedTime],
+    );
+    const fixedTimeRef = useRef(fixedTime);
+    fixedTimeRef.current = fixedTime;
+    const [readElapsedTimeSeconds] = useState(() =>
+        createSceneElapsedTimeReader(
+            () => globalThis.performance.now(),
+            () => fixedTimeRef.current,
+        ),
     );
     const rootStore = useStore();
     const rootRuntime = getSceneRootRuntime(rootStore);
@@ -364,6 +374,7 @@ export function SceneTimeProvider({
             subscribeRuntimeVisibility: (listener) =>
                 scheduler.subscribeVisibility(listener),
             timeUniform,
+            readElapsedTimeSeconds,
         }),
         [
             continuousRenderLeasesEnabled,
@@ -373,6 +384,7 @@ export function SceneTimeProvider({
             rootRuntime,
             scheduler,
             timeUniform,
+            readElapsedTimeSeconds,
         ],
     );
 
@@ -397,6 +409,11 @@ function useSceneTimeContext() {
 
 export function useSceneTimeUniform() {
     return useSceneTimeContext().timeUniform;
+}
+
+/** Rare semantic events share provider lifetime time, including idle/hidden elapsed periods. */
+export function useSceneElapsedTimeReader() {
+    return useSceneTimeContext().readElapsedTimeSeconds;
 }
 
 export function useSceneFixedTimeSeconds() {

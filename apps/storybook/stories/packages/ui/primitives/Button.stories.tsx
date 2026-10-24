@@ -87,6 +87,42 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
+export const LinkWithoutPrefetch: Story = {
+    args: {
+        children: 'Otvori povezanu radnju',
+        href: '/admin/operations/1',
+        prefetch: false,
+        size: 'sm',
+        type: undefined,
+        variant: 'plain',
+        endDecorator: <Navigate className="size-4" />,
+    },
+    parameters: {
+        docs: {
+            description: {
+                story: 'Link buttons accept Next Link prefetch options. Admin record actions use prefetch=false to fetch private details when selected; the default for other links is unchanged.',
+            },
+        },
+    },
+};
+
+export const DocumentNavigation: Story = {
+    args: {
+        children: 'Novosti',
+        href: '/novosti',
+        navigation: 'document',
+        type: undefined,
+        variant: 'plain',
+    },
+    parameters: {
+        docs: {
+            description: {
+                story: 'Use navigation="document" for links between Next.js apps, including WWW to News on the same domain. This renders a native anchor with no RSC prefetch and preserves the button styles, loading and disabled behavior. Links within the same app keep the default client navigation.',
+            },
+        },
+    },
+};
+
 export const Variants: Story = {
     parameters: {
         docs: {

@@ -1,8 +1,32 @@
 import type { BlockData } from '@gredice/client';
+import { autumnAsterPotNames } from '@gredice/js/autumnAsterPots';
+import { autumnBlanketBench } from '@gredice/js/autumnBlanketBench';
+import { autumnEntranceNames } from '@gredice/js/autumnEntrances';
+import { autumnGrassNames } from '@gredice/js/autumnGrasses';
+import { autumnLeafPileNames } from '@gredice/js/autumnLeafPiles';
+import { autumnShrub } from '@gredice/js/autumnShrub';
+import { birdFeeder } from '@gredice/js/birdFeeder';
+import { chestnutRoastingCart } from '@gredice/js/chestnutRoastingCart';
 import {
     type HorseAppearanceVariant,
     horseAppearanceVariants,
 } from '@gredice/js/entityAppearanceVariants';
+import { fallenLog } from '@gredice/js/fallenLog';
+import { gardenBrazier } from '@gredice/js/gardenBrazier';
+import { gardenScarecrow } from '@gredice/js/gardenScarecrow';
+import { gardenTeaTable } from '@gredice/js/gardenTeaTable';
+import { halloweenAccentNames } from '@gredice/js/halloweenAccents';
+import { harvestCrateNames } from '@gredice/js/harvestCrates';
+import { harvestPumpkinNames } from '@gredice/js/harvestPumpkins';
+import { harvestWheelbarrow } from '@gredice/js/harvestWheelbarrow';
+import { hedgehogShelterNames } from '@gredice/js/hedgehogShelter';
+import { leafRake } from '@gredice/js/leafRake';
+import { pumpkinLanternNames } from '@gredice/js/pumpkinLanterns';
+import { seasonalMaple } from '@gredice/js/seasonalMaple';
+import { seedDryingRack } from '@gredice/js/seedDryingRack';
+import { stackedFirewood } from '@gredice/js/stackedFirewood';
+import { woodlandArrangementNames } from '@gredice/js/woodlandArrangements';
+import { woodlandMushrooms } from '@gredice/js/woodlandMushrooms';
 import { BlockImage, getBlockImageUrl } from '@gredice/ui/BlockImage';
 import { Button } from '@gredice/ui/Button';
 import { Divider } from '@gredice/ui/Divider';
@@ -39,6 +63,8 @@ import {
 } from '../itemsHudDropTarget';
 import { KnownPages } from '../knownPages';
 import { useGameState } from '../useGameState';
+import { AutumnArrangementPreview } from './AutumnArrangementPreview';
+import { getAutumnItemCollections } from './autumnItemCollections';
 import { HudCard } from './components/HudCard';
 import {
     type HudImagePreload,
@@ -57,6 +83,7 @@ type HudItemEntity = {
 };
 
 type HudItemPicker = {
+    autumnCollectionId?: string;
     type: 'picker';
     label: string;
     imageSrc: string;
@@ -348,6 +375,59 @@ const items: HudItem[] = [
         label: 'Dekoracija',
         imageSrc: getBlockImageUrl('Tree'),
         items: [
+            { type: 'entity', name: gardenScarecrow.name },
+            { type: 'entity', name: autumnShrub.name },
+            { type: 'entity', name: seasonalMaple.name },
+            { type: 'entity', name: woodlandMushrooms.name },
+            { type: 'entity', name: leafRake.name },
+            { type: 'entity', name: stackedFirewood.name },
+            { type: 'entity', name: seedDryingRack.name },
+            { type: 'entity', name: birdFeeder.name },
+            ...hedgehogShelterNames.map(
+                (name) => ({ type: 'entity', name }) satisfies HudItemEntity,
+            ),
+            { type: 'entity', name: gardenBrazier.name },
+            { type: 'entity', name: gardenTeaTable.name },
+            { type: 'entity', name: fallenLog.name },
+            {
+                type: 'entity',
+                name: chestnutRoastingCart.name,
+                footprintLabel: '2 × 1',
+            },
+            {
+                type: 'entity',
+                name: autumnBlanketBench.name,
+                footprintLabel: '2 × 1',
+            },
+            ...autumnEntranceNames.map(
+                (name) => ({ type: 'entity', name }) satisfies HudItemEntity,
+            ),
+            ...halloweenAccentNames.map(
+                (name) => ({ type: 'entity', name }) satisfies HudItemEntity,
+            ),
+            ...pumpkinLanternNames.map(
+                (name) => ({ type: 'entity', name }) satisfies HudItemEntity,
+            ),
+            ...woodlandArrangementNames.map(
+                (name) => ({ type: 'entity', name }) satisfies HudItemEntity,
+            ),
+            ...autumnGrassNames.map(
+                (name) => ({ type: 'entity', name }) satisfies HudItemEntity,
+            ),
+            ...autumnLeafPileNames.map(
+                (name) => ({ type: 'entity', name }) satisfies HudItemEntity,
+            ),
+            {
+                type: 'entity',
+                name: harvestWheelbarrow.name,
+                footprintLabel: '2 × 1',
+            },
+            ...autumnAsterPotNames.map(
+                (name): HudItem => ({ type: 'entity', name }),
+            ),
+            ...harvestCrateNames.map(
+                (name): HudItem => ({ type: 'entity', name }),
+            ),
             {
                 type: 'picker',
                 label: 'Posude',
@@ -416,6 +496,7 @@ const items: HudItem[] = [
             { type: 'entity', name: 'Bush' },
             { type: 'entity', name: 'Tulip' },
             { type: 'entity', name: 'Sunflower' },
+            { type: 'entity', name: 'Rose' },
             { type: 'entity', name: 'CactusBarrel' },
             { type: 'entity', name: 'CactusColumnCluster' },
             { type: 'entity', name: 'CactusPricklyPear' },
@@ -714,7 +795,10 @@ function collectEntityNames(hudItems: HudItem[], names = new Set<string>()) {
     return names;
 }
 
-const defaultHudEntityNames = collectEntityNames(items);
+const defaultHudEntityNames = new Set([
+    ...collectEntityNames(items),
+    ...harvestPumpkinNames,
+]);
 
 function getSandboxExtraItemsByPicker(
     blockData: BlockData[] | null | undefined,
@@ -885,7 +969,78 @@ function getHudItems({
     blockData: BlockData[] | null | undefined;
     isSandbox: boolean;
 }) {
-    const userPlaceableItems = filterUserPlaceableHudItems(items);
+    const autumnCollections = getAutumnItemCollections({
+        blockData,
+        isSandbox,
+    });
+    const autumnPickers: HudItemPicker[] = autumnCollections.map(
+        (collection) => ({
+            type: 'picker',
+            label: collection.label,
+            autumnCollectionId: collection.id,
+            imageSrc: getBlockImageUrl(collection.entityNames[0]),
+            items: collection.entityNames.map((name) => {
+                const block = blockData?.find(
+                    (block) => block.information.name === name,
+                );
+                const width = block?.attributes.spanWidth ?? 1;
+                const depth = block?.attributes.spanDepth ?? 1;
+                return {
+                    type: 'entity',
+                    name,
+                    ...(width > 1 || depth > 1
+                        ? { footprintLabel: `${width} × ${depth}` }
+                        : {}),
+                };
+            }),
+        }),
+    );
+    const seasonalItems = items.flatMap<HudItem>((item) =>
+        item.type === 'picker' &&
+        item.label === 'Dekoracija' &&
+        autumnPickers.length > 0
+            ? [
+                  item,
+                  {
+                      type: 'picker',
+                      label: 'Jesen',
+                      imageSrc: autumnPickers[0].imageSrc,
+                      items: autumnPickers,
+                  },
+              ]
+            : [item],
+    );
+    // Only expose this release's picker when its catalogue rows are available.
+    // Local sandbox data can preview the deployed models without a live sale.
+    const pumpkinItems = harvestPumpkinNames.filter((name) =>
+        blockData?.some(
+            (block) =>
+                block.information.name === name &&
+                !isInternalSceneBlockData(block),
+        ),
+    );
+    const releasedItems = seasonalItems.map<HudItem>((item) =>
+        item.type === 'picker' &&
+        item.label === 'Dekoracija' &&
+        pumpkinItems.length > 0
+            ? {
+                  ...item,
+                  items: [
+                      ...item.items,
+                      {
+                          type: 'picker',
+                          label: 'Ukrasne bundeve',
+                          imageSrc: getBlockImageUrl(pumpkinItems[0]),
+                          items: pumpkinItems.map((name) => ({
+                              type: 'entity',
+                              name,
+                          })),
+                      },
+                  ],
+              }
+            : item,
+    );
+    const userPlaceableItems = filterUserPlaceableHudItems(releasedItems);
 
     if (!isSandbox) {
         return userPlaceableItems;
@@ -1099,7 +1254,7 @@ type EntityItemProps = HudItemEntity & {
     onHudDragStart?: () => void;
 };
 
-function EntityItem({
+export function EntityItem({
     footprintLabel,
     name,
     onHudDragEnd,
@@ -1452,6 +1607,11 @@ function PickerItem({ label, items, imageSrc }: HudItemPicker) {
                 data-items-picker-scroll
                 className="grid gap-1 p-2 grid-cols-4 md:grid-cols-6 overflow-y-auto overscroll-contain"
             >
+                {activeSubPicker?.autumnCollectionId && (
+                    <AutumnArrangementPreview
+                        collectionId={activeSubPicker.autumnCollectionId}
+                    />
+                )}
                 {currentItems.map((item) => {
                     if (item.type === 'entity') {
                         return (
@@ -1558,11 +1718,9 @@ export function ItemsHud() {
                             />
                         );
                     } else if (item.type === 'entity') {
-                        // biome-ignore lint/suspicious/noArrayIndexKey: Allowed
-                        return <EntityItem key={index} {...item} />;
+                        return <EntityItem key={item.name} {...item} />;
                     } else if (item.type === 'picker') {
-                        // biome-ignore lint/suspicious/noArrayIndexKey: Allowed
-                        return <PickerItem key={index} {...item} />;
+                        return <PickerItem key={item.label} {...item} />;
                     } else {
                         return null;
                     }

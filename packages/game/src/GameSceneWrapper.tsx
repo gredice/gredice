@@ -1,15 +1,15 @@
 'use client';
 
 import { useEffect } from 'react';
-import { groundGameAssetNames, primaryGameAssetNames } from './data/models';
 import { resetPlacementAnimationProfileMetrics } from './entities/placementAnimationProfileMetrics';
 import { GameRuntimeProvider } from './GameRuntimeProvider';
 import { GameScene, type GameSceneProps } from './GameScene';
-import { preloadGameAssetModels } from './utils/useGameGLTF';
 
 export function GameSceneWrapper({
     appBaseUrl,
     authenticatedGardenQueriesEnabled,
+    gardenPacksEnabled,
+    autumnActivityEnabled,
     spriteBaseUrl,
     flags,
     freezeTime,
@@ -27,17 +27,8 @@ export function GameSceneWrapper({
         resetPlacementAnimationProfileMetrics();
     }, []);
 
-    const resolvedAppBaseUrl = appBaseUrl ?? '';
-    preloadGameAssetModels(resolvedAppBaseUrl, groundGameAssetNames);
-
-    useEffect(() => {
-        const preloadPrimaryAssets = () => {
-            preloadGameAssetModels(resolvedAppBaseUrl, primaryGameAssetNames);
-        };
-
-        const timeout = window.setTimeout(preloadPrimaryAssets, 0);
-        return () => window.clearTimeout(timeout);
-    }, [resolvedAppBaseUrl]);
+    // Asset loading follows the garden's scene manifest (see
+    // GardenSceneResourceController); no bucket is preloaded up front.
 
     return (
         <GameRuntimeProvider
@@ -45,6 +36,8 @@ export function GameSceneWrapper({
             authenticatedGardenQueriesEnabled={
                 authenticatedGardenQueriesEnabled
             }
+            gardenPacksEnabled={gardenPacksEnabled}
+            autumnActivityEnabled={autumnActivityEnabled}
             dayNightCycleDisabled={dayNightCycleDisabled}
             flags={flags}
             freezeTime={freezeTime}

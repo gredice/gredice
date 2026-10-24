@@ -1,9 +1,15 @@
 import type { ScheduleTaskBlockPayload } from './scheduleTaskBlock';
 
+export type HarvestTraceGroupCreatedPayload = {
+    traceLinkIds: number[];
+    fieldLabel: string;
+};
+
 // ============================================================================
 // Checkout event payload types
 // ============================================================================
 export type CheckoutOperationCreatedPayload = {
+    requestNote?: string;
     operationId: number;
     plantingId?: number | null;
     accountId: string | null;
@@ -197,6 +203,12 @@ export type ReceiptFiscalizePayload = {
 export type RaisedBedCreatePayload = {
     gardenId: number;
     blockId: string;
+};
+
+export type SeasonalSowingOfferGrantedPayload = {
+    seasonKey: string;
+    referenceDate: string;
+    operationIds: number[];
 };
 
 export type RaisedBedAbandonPayload = {
@@ -439,6 +451,7 @@ export type RaisedBedPlantingEventsPayload =
 // Operation event payload types
 // ============================================================================
 export type OperationSchedulePayload = {
+    requestNote?: string;
     scheduledDate: string;
 };
 

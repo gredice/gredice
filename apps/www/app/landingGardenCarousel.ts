@@ -17,32 +17,34 @@ export type LandingGardenCandidate = {
     owner: LandingGardenOwner | null;
 };
 
-export type LandingGarden = LandingGardenCandidate & {
-    source: LandingGardenSource;
+export type LandingFeaturedGarden = {
+    garden: Pick<PublicGardenDetail, 'id' | 'name'>;
+    owner: LandingGardenOwner | null;
+    dayPreviewImageUrl?: string | null;
+    nightPreviewImageUrl?: string | null;
 };
+
+export type LandingGarden =
+    | (LandingGardenCandidate & { source: 'owned' })
+    | (LandingFeaturedGarden & { source: 'featured' });
 
 export function orderLandingGardens(
     ownedGardens: LandingGardenCandidate[],
-    featuredGardens: LandingGardenCandidate[],
+    featuredGardens: LandingFeaturedGarden[],
 ): LandingGarden[] {
     const seenGardenIds = new Set<number>();
-    const appendUniqueGardens = (
-        candidates: LandingGardenCandidate[],
-        source: LandingGardenSource,
-    ) =>
-        candidates.flatMap((candidate) => {
-            if (seenGardenIds.has(candidate.garden.id)) {
-                return [];
-            }
-
-            seenGardenIds.add(candidate.garden.id);
-            return [{ ...candidate, source }];
-        });
-
-    return [
-        ...appendUniqueGardens(ownedGardens, 'owned'),
-        ...appendUniqueGardens(featuredGardens, 'featured'),
-    ];
+    const gardens: LandingGarden[] = [];
+    for (const candidate of ownedGardens) {
+        if (seenGardenIds.has(candidate.garden.id)) continue;
+        seenGardenIds.add(candidate.garden.id);
+        gardens.push({ ...candidate, source: 'owned' });
+    }
+    for (const candidate of featuredGardens) {
+        if (seenGardenIds.has(candidate.garden.id)) continue;
+        seenGardenIds.add(candidate.garden.id);
+        gardens.push({ ...candidate, source: 'featured' });
+    }
+    return gardens;
 }
 
 export function getAdjacentLandingGardenIndex(

@@ -4,12 +4,14 @@ import { Stack } from '@gredice/ui/Stack';
 import { Suspense } from 'react';
 import { AdminPageHeader } from '../../../components/admin/navigation';
 import { auth } from '../../../lib/auth/auth';
+import { ScheduleActionProgress } from './ScheduleActionProgress';
 import { ScheduleDay } from './ScheduleDay';
 import { ScheduleDayDeliveriesSkeleton } from './ScheduleDayDeliveriesSkeleton';
 import { ScheduleDayHeaderSection } from './ScheduleDayHeaderSection';
 import { ScheduleDayHeaderSkeleton } from './ScheduleDayHeaderSkeleton';
 import { ScheduleDayOperationsSkeleton } from './ScheduleDayOperationsSkeleton';
 import { ScheduleDayPlantingsSkeleton } from './ScheduleDayPlantingsSkeleton';
+import { OptimisticScheduleActionsProvider } from './useOptimisticScheduleActions';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,44 +62,47 @@ export default async function AdminSchedulePage({
         navigationDate.toDateString() === today.toDateString();
 
     return (
-        <Stack spacing={4}>
-            <AdminPageHeader
-                heading="Raspored"
-                actions={
-                    <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
-                        <ScheduleDateNavigation
-                            date={navigationDate}
-                            basePath="/admin/schedule"
-                            compact
-                        />
-                        <Suspense
-                            fallback={<ScheduleDayHeaderSkeleton compact />}
-                        >
-                            <ScheduleDayHeaderSection
+        <OptimisticScheduleActionsProvider>
+            <ScheduleActionProgress />
+            <Stack spacing={4}>
+                <AdminPageHeader
+                    heading="Raspored"
+                    actions={
+                        <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
+                            <ScheduleDateNavigation
                                 date={navigationDate}
-                                isToday={isNavigationToday}
+                                basePath="/admin/schedule"
+                                compact
                             />
+                            <Suspense
+                                fallback={<ScheduleDayHeaderSkeleton compact />}
+                            >
+                                <ScheduleDayHeaderSection
+                                    date={navigationDate}
+                                    isToday={isNavigationToday}
+                                />
+                            </Suspense>
+                        </div>
+                    }
+                />
+                <DailySchedule
+                    startDate={startDate}
+                    renderDay={({ date, isToday }) => (
+                        <Suspense
+                            fallback={
+                                <Stack className="grow" spacing={4}>
+                                    <ScheduleDayHeaderSkeleton />
+                                    <ScheduleDayPlantingsSkeleton />
+                                    <ScheduleDayOperationsSkeleton />
+                                    <ScheduleDayDeliveriesSkeleton />
+                                </Stack>
+                            }
+                        >
+                            <ScheduleDay isToday={isToday} date={date} />
                         </Suspense>
-                    </div>
-                }
-            />
-            <DailySchedule
-                startDate={startDate}
-                renderDay={({ date, isToday }) => (
-                    <Suspense
-                        fallback={
-                            <Stack className="grow" spacing={4}>
-                                <ScheduleDayHeaderSkeleton />
-                                <ScheduleDayPlantingsSkeleton />
-                                <ScheduleDayOperationsSkeleton />
-                                <ScheduleDayDeliveriesSkeleton />
-                            </Stack>
-                        }
-                    >
-                        <ScheduleDay isToday={isToday} date={date} />
-                    </Suspense>
-                )}
-            />
-        </Stack>
+                    )}
+                />
+            </Stack>
+        </OptimisticScheduleActionsProvider>
     );
 }

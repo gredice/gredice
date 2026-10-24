@@ -1,0 +1,151 @@
+{
+  "recordedAt": "2026-10-04T00:45:37.106610+00:00",
+  "scope": "Bounded current-source Kestenijada functional CI and four-view byte/geometry parity; no new runtime or physical-device performance acceptance.",
+  "source": {
+    "commit": "6d27794cc6f5c50a95e74916d6c9b5ff5959eff3",
+    "tree": "be3c21454a61edc2659fb1c6fae0882eb513d266",
+    "status": ""
+  },
+  "previousEvidence": {
+    "path": "docs/kestenijada-2026/pre-functional-ci-lifetime/evidence.json",
+    "sha256": "449d9e967abfad5a9b721584d30c84bd5ad4790e9de7e4d13ad215a6a8e121a5",
+    "captureSource": {
+      "commit": "6f7d5700a5426282d78b417908da9ce2ce6b0e00",
+      "tree": "b783e17be5439ee9ebe7dc10dccf87b7653a568d",
+      "status": ""
+    }
+  },
+  "before": {
+    "sourceCommit": "22e48526d2b5f7e03386cb6540733386296c92db",
+    "project": "chromium-webgl",
+    "testLifetimeMs": 10000,
+    "workers": 1,
+    "retries": 0,
+    "failed": 1,
+    "elapsedSeconds": 10.6,
+    "error": "Test timeout of 10000 ms exceeded while waiting for the third fresh capture’s Preuzmi PNG href /^blob:/ at kestenijada.spec.tsx:242. The UI remained Pripremamo fotografiju; the earlier injected encoder failure and held cancellation had completed.",
+    "logPath": "/tmp/gredice-keste-ci-before.log",
+    "logSha256": "5992795a2cd9f335a371c085e6989beb73f8cba1b5fe13488a33959e42d05bfa"
+  },
+  "after": {
+    "project": "chromium-webgl",
+    "testLifetimeMs": 120000,
+    "expectTimeoutMs": 60000,
+    "workers": 1,
+    "retries": 0,
+    "passed": 6,
+    "elapsedSeconds": 29.2,
+    "lastPhotoElapsedSeconds": 10.7,
+    "logPath": "/tmp/gredice-keste-ci-after.log",
+    "logSha256": "788d5610166bf5a7293330ed2464e8eca9ec7f33427bc83e885a7b471fa64cbe"
+  },
+  "recapture": {
+    "config": "playwright.kestenijada.config.ts",
+    "passed": 6,
+    "sceneCaptures": 4,
+    "workers": 1,
+    "retries": 0,
+    "elapsedSeconds": 29.0,
+    "lastPhotoElapsedSeconds": 10.6,
+    "logPath": "/tmp/gredice-keste-ci-recapture.log",
+    "logSha256": "e8140215c0a29bf6de82d01c1842ee2914d8eb13ec2bef6a8bc8775bcac0fb08"
+  },
+  "ciObservation": {
+    "run": 37160264626,
+    "job": 111312124778,
+    "headCommit": "53d041ee15af81901342343a03fd6e0fd46a0dcd",
+    "logPath": "/tmp/gredice-webgl-5151-2.log",
+    "logSha256": "83fed7d543ec6035c89899622fb69a35896ac204533a34b357f7c5b555f6f22b",
+    "details": "Vercel 62.2.0 logged adding an ignore pattern before the four strict capture-source cases failed immediately. Its exact helper appends literal .env* despite existing .env*.local; Garden-only commit 8ec603548 declares the pattern and preserves .env.example. The final two photo cases exhausted the inherited 10-second test lifetime. Cancellation prevented final CI error reports and Garden artifact upload; local before/after reproduces the last photo deadline only."
+  },
+  "views": [
+    {
+      "view": "day",
+      "pngSha256": "e4d43bcba44969711d157b799eeb6b47d20f3a15b288157ea8666d065997fa89",
+      "previousPngSha256": "e4d43bcba44969711d157b799eeb6b47d20f3a15b288157ea8666d065997fa89",
+      "pngByteIdentical": true,
+      "worldAndScreenBoundsIdentical": true,
+      "viewportIdentical": true,
+      "captureJsonSha256": "8f676827ed7d8d533e108c899fe8353ffd799a510f9f1e32bc6e18a4db39d127"
+    },
+    {
+      "view": "dusk",
+      "pngSha256": "3719b321f2980949951910919f1851f5aa20bd70bd283c4106887bdb65a15b89",
+      "previousPngSha256": "3719b321f2980949951910919f1851f5aa20bd70bd283c4106887bdb65a15b89",
+      "pngByteIdentical": true,
+      "worldAndScreenBoundsIdentical": true,
+      "viewportIdentical": true,
+      "captureJsonSha256": "8f676827ed7d8d533e108c899fe8353ffd799a510f9f1e32bc6e18a4db39d127"
+    },
+    {
+      "view": "night",
+      "pngSha256": "4293de055920e694e884d0046988fc7d1024d95bd5749e763c0c038f81f2fe87",
+      "previousPngSha256": "4293de055920e694e884d0046988fc7d1024d95bd5749e763c0c038f81f2fe87",
+      "pngByteIdentical": true,
+      "worldAndScreenBoundsIdentical": true,
+      "viewportIdentical": true,
+      "captureJsonSha256": "8f676827ed7d8d533e108c899fe8353ffd799a510f9f1e32bc6e18a4db39d127"
+    },
+    {
+      "view": "mobile-low",
+      "pngSha256": "21f3e80b1e4ede789204e1f50585d159c77bcd80944b93390f8832dad1d9d454",
+      "previousPngSha256": "21f3e80b1e4ede789204e1f50585d159c77bcd80944b93390f8832dad1d9d454",
+      "pngByteIdentical": true,
+      "worldAndScreenBoundsIdentical": true,
+      "viewportIdentical": true,
+      "captureJsonSha256": "593b718d6e8c274da5250cbd4d496e20d429fb9376daad7c4482310e009f5cb2"
+    }
+  ],
+  "changedSelectedFiles": [
+    {
+      "path": "apps/garden/tests/kestenijada.spec.tsx",
+      "previousSha256": "e7040078e98a18d30770817abb49da537e2a1345b111b07a3f041efb6472dc68",
+      "currentSha256": "9c3ce5f0182a7035a82e8c664b6f38aa5ae2c718dcc3791c194832be6b7ebb5d"
+    },
+    {
+      "path": "docs/kestenijada-2026/day.json",
+      "previousSha256": "8c958af35cfd6f06a30ef994bb416f10f9b2397ade1aae1274afa5530acb8ece",
+      "currentSha256": "8f676827ed7d8d533e108c899fe8353ffd799a510f9f1e32bc6e18a4db39d127"
+    },
+    {
+      "path": "docs/kestenijada-2026/dusk.json",
+      "previousSha256": "8c958af35cfd6f06a30ef994bb416f10f9b2397ade1aae1274afa5530acb8ece",
+      "currentSha256": "8f676827ed7d8d533e108c899fe8353ffd799a510f9f1e32bc6e18a4db39d127"
+    },
+    {
+      "path": "docs/kestenijada-2026/mobile-low.json",
+      "previousSha256": "69e75cb348f6b5c8854a4fca969efe012858a947fe6d815f5c128aa91ac509dd",
+      "currentSha256": "593b718d6e8c274da5250cbd4d496e20d429fb9376daad7c4482310e009f5cb2"
+    },
+    {
+      "path": "docs/kestenijada-2026/night.json",
+      "previousSha256": "8c958af35cfd6f06a30ef994bb416f10f9b2397ade1aae1274afa5530acb8ece",
+      "currentSha256": "8f676827ed7d8d533e108c899fe8353ffd799a510f9f1e32bc6e18a4db39d127"
+    }
+  ],
+  "selectedFiles": 68,
+  "limits": "Local macOS Chromium SwiftShader verification, not a rerun of Ubuntu CI, route, deployment, purchase or physical hardware acceptance. Strict source cleanliness, all scene/privacy/photo assertions, original snapshots and performance budgets remain unchanged.",
+  "checks": {
+    "scopedBiome": "1 file passed",
+    "diffCheck": "passed",
+    "strictProofReader": {
+      "command": "pnpm --filter api exec node --import tsx --conditions=react-server (repositoryReader/inspectArtifacts; independent read-only path/hash/size and source correlation check)",
+      "currentFilePins": 68,
+      "cleanSourceRecords": 4,
+      "archivedProofLinks": 1,
+      "result": "passed",
+      "logPath": "/tmp/gredice-keste-ci-proof-reader.log",
+      "logSha256": "3b2b261f869181905168082587f776e39bc5b14a565e14e2484506d11652596b"
+    },
+    "gardenTypes": {
+      "incrementalCommand": "pnpm --filter garden typecheck",
+      "incrementalResult": "Failed with the same parent stale typed-route diagnostic at app/kestenijada/page.tsx:58 despite /staza-bundeva appearing in generated route declarations. No source changes made.",
+      "incrementalLogPath": "/tmp/gredice-keste-ci-types.log",
+      "incrementalLogSha256": "5d4da64b9ce7eaf82e619ecfca454527b04da2c3c866abca3d70db411e9c7a5b",
+      "cleanCommand": "pnpm --filter garden exec tsc --noEmit --incremental false",
+      "cleanResult": "passed, exit 0",
+      "cleanLogPath": "/tmp/gredice-keste-ci-types-nonincremental.log",
+      "cleanLogSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

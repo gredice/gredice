@@ -46,6 +46,28 @@ When enabling a new field, confirm:
 7. Approving a request applies exact-base changes directly. If a text/markdown base changed, storage replays the stored patch against the current value so non-overlapping requests on the same attribute can both merge.
 8. If the patch no longer matches cleanly, or a non-text value changed after submission, approval marks the request conflicted instead of overwriting.
 
+## Disease and pest suggestions
+
+The disease and pest suggestion dialogs on plant pages, sort pages and the
+health directories offer **Odaberi postojeće** and a new-record mode. Existing
+records use searchable published-directory choices; records already linked to
+all selected plants are omitted. New records retain the existing entity
+suggestion review workflow.
+
+Link suggestions read the selected disease/pest's latest `affected-plants`
+field, preserve every existing plant reference, append the selected plants,
+and submit a normal community edit with its `baseValueHash`. Submission does
+not change live data. Approval uses the existing reference validation,
+conflict detection, revision and public-page revalidation paths. The source
+page is retained as `publicPath`, including when submitted from a sort page.
+Sort pages inherit health information from their parent plant; the dialog
+explicitly states that the relationship applies to the plant and its sorts.
+
+Community text inputs, textareas, native selects and reference pickers use the
+shared styles in `apps/www/components/community-edits/communityControlStyles.ts`
+so enabled controls have a consistent card background. The markdown editor
+already uses the same card surface.
+
 ## Release QA
 
 Run automated checks first:

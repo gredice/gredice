@@ -1,0 +1,104 @@
+{
+  "state": "unpublished",
+  "publicationIssue": 5000,
+  "snapshotDate": "2026-10-22T12:00:00+02:00",
+  "source": {
+    "path": "assets/game-assets/ChestnutRoastingCart.blend",
+    "bytes": 126788,
+    "sha256": "13f81475b998ce0163d90006c9d693c433b1c63a54e4cc3109cd3a24d478a59e"
+  },
+  "models": [
+    {
+      "name": "ChestnutRoastingCart",
+      "path": "apps/garden/public/assets/models/ChestnutRoastingCart.glb",
+      "bytes": 184624,
+      "sha256": "16c0c20649872c4af3b9c4278e70d93e14aecdfd8cdfaedbaa19d2925276a2de",
+      "url": "https://vrt.gredice.com/assets/models/ChestnutRoastingCart.glb?v=16c0c2064987",
+      "triangles": 2016,
+      "trianglesByMesh": {
+        "ChestnutRoastingCart_Cart": 1452,
+        "ChestnutRoastingCart_Roaster": 564
+      },
+      "meshCount": 2,
+      "materialCount": 2
+    }
+  ],
+  "items": [
+    {
+      "name": "ChestnutRoastingCart",
+      "information": {
+        "label": "Kolica s pečenim kestenima",
+        "shortDescription": "Kolica s pečenim kestenima s presavijenom krem dekom i prugama u boji hrđe.",
+        "fullDescription": "Mala kestenijada u vrtu: drvena kolica s pečenim kestenima, dva papirnata tuljca i natpis KESTENI čine jedan ukras. Zauzimaju dva susjedna polja. Ne proizvode hranu, ne griju vrt i ne utječu na biljke. Poslužni detalji ne premještaju se zasebno i na kolica se ne slažu drugi predmeti."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 1.45,
+        "hitboxHeight": 1.45,
+        "hitboxWidth": 1.6,
+        "hitboxDepth": 0.8,
+        "spanWidth": 2,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 110,
+      "catalogueId": null,
+      "cover": "https://www.gredice.com/assets/blocks/ChestnutRoastingCart.webp",
+      "topDown": "https://vrt.gredice.com/assets/blocks/top-down/ChestnutRoastingCart.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/ChestnutRoastingCart.webp",
+          "bytes": 39124,
+          "sha256": "d7fbdbf9b19efdb5b925355d87677e3f31fb86cc1d7819a8d88ec9316af88cd5"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/ChestnutRoastingCart_1.webp",
+          "bytes": 39124,
+          "sha256": "d7fbdbf9b19efdb5b925355d87677e3f31fb86cc1d7819a8d88ec9316af88cd5"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/ChestnutRoastingCart_2.webp",
+          "bytes": 41594,
+          "sha256": "9d5f6b74e9d08f827f8afaca4f6d6421c35c3e264eddc2e7bb856d7f457bdea0"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/ChestnutRoastingCart_3.webp",
+          "bytes": 23282,
+          "sha256": "65c6ff11d6411717fac071ad715315ef2b4e17749eef861768a65a61532711e9"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/ChestnutRoastingCart_4.webp",
+          "bytes": 24684,
+          "sha256": "8e3f09cc84674b2b54d5abbe3a15ad8645238cee1fd3d9a36c6e4d5a310d3821"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/ChestnutRoastingCart.webp",
+          "bytes": 3870,
+          "sha256": "157c0d07102547f8cc14623fb789ae22a8d5a8dc08789bfd3090c52f5d2efb80"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/ChestnutRoastingCart_1.webp",
+          "bytes": 3870,
+          "sha256": "157c0d07102547f8cc14623fb789ae22a8d5a8dc08789bfd3090c52f5d2efb80"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/ChestnutRoastingCart_2.webp",
+          "bytes": 3180,
+          "sha256": "0aca63a2ce30242db53fc64f0a7566c5f5a074dbb3bd1d4c73251411b7f5bc19"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/ChestnutRoastingCart_3.webp",
+          "bytes": 3460,
+          "sha256": "2f692e19e800d514fb0933827b9a7acef6d76ae3ea1bfb735f85eec87fd630f7"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/ChestnutRoastingCart_4.webp",
+          "bytes": 3328,
+          "sha256": "309fa5e7ddf7cf8c3c7790b06dd7237e0394d9606c6faf05e758400c57190f1e"
+        }
+      ]
+    }
+  ]
+}

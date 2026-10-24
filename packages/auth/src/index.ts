@@ -105,6 +105,31 @@ export async function verifyToken<TUser extends UserBase>(
     }
 }
 
+export function isAccessTokenPayload(payload: JWTPayload) {
+    // Existing sessions predate tokenUse. Account-bound deletion links are the
+    // legacy exception and must never become sessions, even without a marker.
+    return (
+        payload.tokenUse === 'access' ||
+        (payload.tokenUse === undefined && !('accountId' in payload))
+    );
+}
+
+export async function verifyAccessToken<TUser extends UserBase>(
+    authConfig: AuthConfigInitialized<TUser>['jwt'],
+    token: string,
+): ReturnType<typeof verifyToken<TUser>> {
+    const verified = await verifyToken(authConfig, token);
+    if (verified.error || !verified.result) {
+        return verified;
+    }
+    if (!isAccessTokenPayload(verified.result.payload)) {
+        return {
+            error: new UnauthorizedError('Unauthorized: Invalid token use'),
+        };
+    }
+    return verified;
+}
+
 export async function ensureAuthUserId<TUser extends UserBase>(
     authConfig: AuthConfigInitialized<TUser>,
 ) {
@@ -121,7 +146,7 @@ export async function ensureAuthUserId<TUser extends UserBase>(
         throw new UnauthorizedError('Unauthorized: No token provided');
     }
 
-    const { error, result } = await verifyToken(authConfig.jwt, token);
+    const { error, result } = await verifyAccessToken(authConfig.jwt, token);
     if (error) {
         console.error('JWT verification error:', error);
         throw new UnauthorizedError('Unauthorized: Invalid token');
@@ -181,7 +206,7 @@ export async function createJwt<TUser extends UserBase>(
     expirationTime?: string | number | Date,
     claims: Omit<JWTPayload, 'aud' | 'exp' | 'iat' | 'iss' | 'sub'> = {},
 ): Promise<string> {
-    return new SignJWT(claims)
+    return new SignJWT({ tokenUse: 'access', ...claims })
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()
         .setIssuer(issuer(config))
@@ -233,6 +258,10 @@ export type initAuthResult<TUser extends UserBase> = {
         overrideConfig?: Partial<AuthConfig<TUser>['jwt']>,
     ) => Promise<string>;
     verifyJwt: (
+        token: string,
+        overrideConfig?: Partial<AuthConfig<TUser>['jwt']>,
+    ) => ReturnType<typeof verifyToken<TUser>>;
+    verifyAccessJwt: (
         token: string,
         overrideConfig?: Partial<AuthConfig<TUser>['jwt']>,
     ) => ReturnType<typeof verifyToken<TUser>>;
@@ -321,6 +350,14 @@ export function initAuth<TUser extends UserBase>(
             ),
         verifyJwt: (token, overrideConfig) =>
             verifyToken(
+                {
+                    ...initializedConfig.jwt,
+                    ...overrideConfig,
+                },
+                token,
+            ),
+        verifyAccessJwt: (token, overrideConfig) =>
+            verifyAccessToken(
                 {
                     ...initializedConfig.jwt,
                     ...overrideConfig,

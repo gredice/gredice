@@ -1,10 +1,9 @@
 import {
     NavUserButton,
     type PublicChromeLinkMode,
+    PublicChromeProvider,
     WinterModeContext,
 } from '@gredice/ui/PublicChrome';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useState } from 'react';
 import { LandingFeaturedGardens } from '../app/LandingFeaturedGardens';
 import type { LandingGardenCandidate } from '../app/landingGardenCarousel';
 
@@ -15,17 +14,8 @@ export function AvatarProfileLinksHarness({
     featuredGardens: LandingGardenCandidate[];
     linkMode?: PublicChromeLinkMode;
 }) {
-    const [queryClient] = useState(
-        () =>
-            new QueryClient({
-                defaultOptions: {
-                    queries: { retry: false, staleTime: Infinity },
-                },
-            }),
-    );
-
     return (
-        <QueryClientProvider client={queryClient}>
+        <PublicChromeProvider>
             <header className="flex justify-end p-4">
                 <NavUserButton
                     href="https://vrt.gredice.com/"
@@ -37,6 +27,6 @@ export function AvatarProfileLinksHarness({
                     <LandingFeaturedGardens featuredGardens={featuredGardens} />
                 </main>
             </WinterModeContext>
-        </QueryClientProvider>
+        </PublicChromeProvider>
     );
 }

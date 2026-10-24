@@ -25,6 +25,7 @@ import {
 import { updateOperationCompletionEvidenceAction } from '../../(actions)/operationActions';
 import { OperationCompletionNotesEditor } from './OperationCompletionNotesEditor';
 import { buildOperationCompletionEvidenceActionArguments } from './operationCompletionEvidenceEditModel';
+import { useOptimisticScheduleActions } from './useOptimisticScheduleActions';
 
 const MAX_COMPLETION_IMAGE_COUNT = 20;
 const MAX_COMPLETION_NOTES_LENGTH = 2000;
@@ -43,6 +44,7 @@ type EditOperationCompletionEvidenceModalBaseProps = {
     completionNotesEdited?: boolean;
     initialImageUrls?: string[] | null;
     notesOnly?: boolean;
+    administration?: boolean;
 };
 
 type EditOperationCompletionEvidenceModalProps =
@@ -78,9 +80,11 @@ export function OperationCompletionEvidenceEditModal({
     completionNotesEdited,
     initialImageUrls,
     notesOnly = false,
+    administration = false,
     trigger,
     renderTrigger,
 }: EditOperationCompletionEvidenceModalProps) {
+    const { runScheduleAction } = useOptimisticScheduleActions();
     const router = useRouter();
     const initialUrls = useMemo(
         () => normalizeImageUrls(initialImageUrls),
@@ -186,14 +190,36 @@ export function OperationCompletionEvidenceEditModal({
                 return;
             }
 
-            const result = await updateOperationCompletionEvidenceAction(
-                ...buildOperationCompletionEvidenceActionArguments({
+            const actionArguments =
+                buildOperationCompletionEvidenceActionArguments({
                     operationId,
                     expectedTaskVersionEventId:
                         openedTaskVersionEventIdRef.current,
                     imageUrls: nextImageUrls,
                     notes: trimmedNotes,
-                }),
+                });
+            const result = await runScheduleAction(
+                [`operation:${operationId}`],
+                (getVersion) => {
+                    const currentArguments =
+                        buildOperationCompletionEvidenceActionArguments({
+                            operationId: actionArguments[0],
+                            expectedTaskVersionEventId: getVersion(
+                                `operation:${operationId}`,
+                                actionArguments[1],
+                            ),
+                            imageUrls: actionArguments[2],
+                            notes: actionArguments[3],
+                        });
+                    return administration
+                        ? updateOperationCompletionEvidenceAction(
+                              ...currentArguments,
+                              true,
+                          )
+                        : updateOperationCompletionEvidenceAction(
+                              ...currentArguments,
+                          );
+                },
             );
             if (!result.success) {
                 setErrorMessage(

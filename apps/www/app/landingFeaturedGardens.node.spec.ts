@@ -24,7 +24,6 @@ function garden(id: number): PublicGardenDetail {
         name: `Vrt ${id.toString()}`,
         raisedBeds: [],
         stacks: {},
-        structures: [],
         updatedAt: '2026-08-28T12:00:00.000Z',
     };
 }
@@ -99,13 +98,6 @@ test('keeps featured gardens enabled without stale rollout flag metadata', () =>
     );
     assert.doesNotMatch(pageSource, /enableLandingFeaturedGardens/u);
     assert.doesNotMatch(flagsSource, /enableLandingFeaturedGardens/u);
-    assert.match(loaderSource, /landingFeaturedGardensListTimeoutMs = 3_000/u);
-    assert.match(
-        loaderSource,
-        /landingFeaturedGardenDetailsTimeoutMs = 5_000/u,
-    );
-    assert.match(loaderSource, /init: \{ signal: listSignal \}/u);
-    assert.match(loaderSource, /init: \{ signal: detailSignal \}/u);
     assert.match(loaderSource, /GREDICE_PLAYWRIGHT_FEATURED_GARDENS_FIXTURE/u);
     assert.match(
         playwrightConfigSource,

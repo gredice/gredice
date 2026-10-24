@@ -20,7 +20,7 @@ Run commands from the repo root. Pick the smallest reliable filtered check:
 ```bash
 pnpm lint --filter <workspace>
 pnpm typecheck --filter <workspace>
-pnpm test --filter <workspace>
+pnpm run test --filter <workspace>
 pnpm build --filter <workspace>
 ```
 

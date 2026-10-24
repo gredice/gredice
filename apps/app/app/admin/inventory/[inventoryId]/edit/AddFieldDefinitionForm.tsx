@@ -127,7 +127,7 @@ export function AddFieldDefinitionForm({
                                     required
                                     rows={4}
                                     placeholder={'new|Novo\nopened|Otvoreno'}
-                                    className="min-h-24 rounded-md border bg-background px-3 py-2 text-sm"
+                                    className="min-h-24 rounded-md border bg-field px-3 py-2 text-sm"
                                 />
                                 <Typography level="body3" secondary>
                                     Jedna opcija po retku u formatu{' '}

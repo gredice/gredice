@@ -109,7 +109,7 @@ export function isGeneratedPlantRaisedBedGroupVisible({
 }: {
     bounds: THREE.Sphere;
     focusActive: boolean;
-    frustum: THREE.Frustum;
+    frustum: Pick<THREE.Frustum, 'intersectsSphere'>;
     isSelectedRaisedBed: boolean;
 }) {
     return (

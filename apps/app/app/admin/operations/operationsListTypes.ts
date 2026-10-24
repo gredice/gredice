@@ -53,6 +53,7 @@ export type OperationsListOperationRow = OperationsListRowBase & {
     entityId: number;
     entityTypeName: string;
     taskVersionEventId: number;
+    requestNote?: string | null;
     completionNotes: string | null;
 };
 

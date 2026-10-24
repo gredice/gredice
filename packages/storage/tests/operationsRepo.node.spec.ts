@@ -10,6 +10,7 @@ import {
     createOperation,
     events,
     getAllOperations,
+    getAppliedRaisedBedOperationSummariesForGarden,
     getAppliedRaisedBedOperations,
     getAppliedRaisedBedOperationsForGarden,
     getAssignableFarmUsersByOperationIds,
@@ -17,6 +18,7 @@ import {
     getOperationById,
     getOperations,
     getOperationsPage,
+    getRaisedBedPhotoPreviews,
     knownEvents,
     knownEventTypes,
     operations,
@@ -514,6 +516,70 @@ test('pending operation completion evidence updates can clear notes and images',
     assert.equal(operation.completionNotesEdited, true);
 });
 
+test('raised bed photo previews use current completion evidence', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createOperationsPageTestContext();
+    const createOperationForBed = () =>
+        createOperation({
+            entityId: 1,
+            entityTypeName: 'operation',
+            accountId,
+            gardenId,
+            raisedBedId,
+        });
+    const complete = (operationId: number, images: string[]) =>
+        createEvent(
+            knownEvents.operations.completedV1(operationId.toString(), {
+                completedBy: randomUUID(),
+                images,
+            }),
+        );
+    const updateEvidence = (operationId: number, images: string[]) =>
+        createEvent(
+            knownEvents.operations.completionEvidenceUpdatedV1(
+                operationId.toString(),
+                { updatedBy: randomUUID(), images, notes: '' },
+            ),
+        );
+
+    const replacedOperationId = await createOperationForBed();
+    await complete(replacedOperationId, [
+        'https://cdn.gredice.com/mistake.jpg',
+    ]);
+    await updateEvidence(replacedOperationId, [
+        'https://cdn.gredice.com/replacement.jpg',
+    ]);
+
+    const clearedOperationId = await createOperationForBed();
+    await complete(clearedOperationId, ['https://cdn.gredice.com/cleared.jpg']);
+    await updateEvidence(clearedOperationId, []);
+
+    const rescheduledOperationId = await createOperationForBed();
+    await complete(rescheduledOperationId, [
+        'https://cdn.gredice.com/rescheduled.jpg',
+    ]);
+    await createEvent(
+        knownEvents.operations.scheduledV1(rescheduledOperationId.toString(), {
+            scheduledDate: '2026-09-16T08:00:00Z',
+        }),
+    );
+
+    const latestOperationId = await createOperationForBed();
+    await complete(latestOperationId, ['https://cdn.gredice.com/latest.jpg']);
+
+    const [preview] = await getRaisedBedPhotoPreviews([raisedBedId], 20);
+
+    assert.deepStrictEqual(preview, {
+        raisedBedId,
+        imageUrls: [
+            'https://cdn.gredice.com/latest.jpg',
+            'https://cdn.gredice.com/replacement.jpg',
+        ],
+        photoCount: 2,
+    });
+});
+
 test('note edit history ignores photo changes, survives text reversion and resets on rescheduling', async () => {
     createTestDb();
     const operationId = await createOperation({
@@ -660,7 +726,7 @@ test('all operations can be filtered by event-derived status', async () => {
     assert.ok(!operationIds.includes(pendingOperationId));
 });
 
-test('getAppliedRaisedBedOperationsForGarden matches the previous in-memory applied raised-bed filter', async () => {
+test('getAppliedRaisedBedOperationsForGarden matches the previous in-memory applied raised-bed filter', async (t) => {
     createTestDb();
 
     const accountId = await createAccount();
@@ -831,6 +897,53 @@ test('getAppliedRaisedBedOperationsForGarden matches the previous in-memory appl
             [completedRaisedBedOperationId, 'completed'],
             [pendingRaisedBedOperationId, 'pendingVerification'],
         ]),
+    );
+    const historyReads = t.mock.method(
+        storage().query.events,
+        'findMany',
+        () => {
+            throw new Error('Summary must not hydrate full event payloads');
+        },
+    );
+    const userReads = t.mock.method(storage().query.users, 'findMany', () => {
+        throw new Error('Scene must not hydrate assigned users');
+    });
+    const summaries = await getAppliedRaisedBedOperationSummariesForGarden(
+        accountId,
+        gardenId,
+    );
+    assert.deepEqual(
+        summaries,
+        appliedOperations.map(
+            ({
+                id,
+                entityId,
+                raisedBedId,
+                raisedBedFieldId,
+                status,
+                createdAt,
+                scheduledDate,
+                completedAt,
+            }) => ({
+                id,
+                entityId,
+                raisedBedId,
+                raisedBedFieldId,
+                status,
+                createdAt,
+                scheduledDate,
+                completedAt,
+            }),
+        ),
+    );
+    assert.equal(historyReads.mock.callCount(), 0);
+    assert.equal(userReads.mock.callCount(), 0);
+    assert.deepEqual(
+        await getAppliedRaisedBedOperationSummariesForGarden(
+            randomUUID(),
+            gardenId,
+        ),
+        [],
     );
     for (const operation of appliedOperations) {
         assert.ok(operation.completedAt instanceof Date);

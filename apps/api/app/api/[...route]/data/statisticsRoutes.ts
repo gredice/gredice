@@ -1,4 +1,9 @@
-import { getEntitiesCount, getPlantPlaceEventsCount } from '@gredice/storage';
+import {
+    getEntitiesCount,
+    getPlantPlaceEventsCount,
+    grediceCached,
+    grediceCacheKeys,
+} from '@gredice/storage';
 import { Hono } from 'hono';
 import { describeRoute } from 'hono-openapi';
 import { publicSecurity } from '../../../../lib/docs/security';
@@ -18,11 +23,16 @@ const app = new Hono().get(
         try {
             // Get counts for published plants, plant sorts, and planted plants
             const [plantsCount, plantSortsCount, plantPlaceCount] =
-                await Promise.all([
-                    getEntitiesCount('plant', 'published'),
-                    getEntitiesCount('plantSort', 'published'),
-                    getPlantPlaceEventsCount(),
-                ]);
+                await grediceCached(
+                    grediceCacheKeys.publicPlantStatistics,
+                    () =>
+                        Promise.all([
+                            getEntitiesCount('plant', 'published'),
+                            getEntitiesCount('plantSort', 'published'),
+                            getPlantPlaceEventsCount(),
+                        ]),
+                    45 * 60,
+                );
 
             return context.json({
                 totalPlants: plantsCount,

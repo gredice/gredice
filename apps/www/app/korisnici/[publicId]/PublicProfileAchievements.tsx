@@ -4,7 +4,9 @@ import {
     AchievementLevelLabel,
 } from '@gredice/ui/AchievementAwards';
 import { GameTrophyIcon } from '@gredice/ui/GameIcons';
+import { Link } from '@gredice/ui/Link';
 import { PublicEmptyState } from '../../../components/shared/placeholders/PublicEmptyState';
+import { KnownPages } from '../../../src/KnownPages';
 import {
     type getPublicProfile,
     getTopPublicAchievements,
@@ -64,6 +66,12 @@ export function PublicProfileAchievements({
                     Još nema otključanih postignuća.
                 </PublicEmptyState>
             )}
+            <Link
+                href={KnownPages.Achievements}
+                className="mt-6 inline-block text-sm font-semibold underline underline-offset-4"
+            >
+                Sva postignuća i kako ih osvojiti
+            </Link>
         </section>
     );
 }

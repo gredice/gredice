@@ -8,6 +8,7 @@ import {
     getCmsPage,
     isCmsPageContentKind,
     isCmsPageState,
+    normalizeCmsPageSlug,
     restoreCmsPageRevision,
     softDeleteCmsPage,
     updateCmsPage,
@@ -16,6 +17,7 @@ import {
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { auth } from '../../../../lib/auth/auth';
+import { revalidatePublicNewsPages } from '../../../../lib/revalidation/publicNewsPages';
 import { KnownPages } from '../../../../src/KnownPages';
 
 const maxCmsMarkdownImageSizeBytes = 10 * 1024 * 1024;
@@ -211,14 +213,17 @@ function revalidateCmsPagePaths(pageId: number) {
     revalidatePath(KnownPages.CmsPageEdit(pageId));
 }
 
-function revalidatePublicCmsPagePaths(slug: string) {
-    revalidatePath(`/${slug}`);
+async function revalidatePublicCmsPagePaths(slugs: string[]) {
+    for (const slug of new Set(slugs)) {
+        revalidatePath(`/${slug}`);
+        revalidatePath(`/api/directories/pages/${slug}`);
+    }
     revalidatePath('/api/directories/pages');
-    revalidatePath(`/api/directories/pages/${slug}`);
     revalidatePath('/api/news/blog');
     revalidatePath('/api/news/changelog');
     revalidatePath('/novosti');
     revalidatePath('/novosti/sto-je-novo');
+    await revalidatePublicNewsPages(slugs);
 }
 
 export async function createCmsPageAction(
@@ -243,7 +248,9 @@ export async function createCmsPageAction(
 
     revalidateCmsPagePaths(pageId);
     if (payload.state === 'published') {
-        revalidatePublicCmsPagePaths(payload.slug);
+        await revalidatePublicCmsPagePaths([
+            normalizeCmsPageSlug(payload.slug),
+        ]);
     }
     redirect(KnownPages.CmsPageEdit(pageId));
 }
@@ -278,12 +285,11 @@ export async function updateCmsPageAction(
 
     revalidateCmsPagePaths(pageId);
     if (payload.state === 'published' || existingPage?.state === 'published') {
-        const publicSlugs = [existingPage?.slug, payload.slug].filter(
-            (slug): slug is string => Boolean(slug),
-        );
-        for (const publicSlug of new Set(publicSlugs)) {
-            revalidatePublicCmsPagePaths(publicSlug);
-        }
+        const publicSlugs = [
+            existingPage?.slug,
+            normalizeCmsPageSlug(payload.slug),
+        ].filter((slug): slug is string => Boolean(slug));
+        await revalidatePublicCmsPagePaths(publicSlugs);
     }
     redirect(KnownPages.CmsPageEdit(pageId));
 }
@@ -317,12 +323,11 @@ export async function autosaveCmsPageAction(
 
     revalidateCmsPagePaths(pageId);
     if (payload.state === 'published' || existingPage?.state === 'published') {
-        const publicSlugs = [existingPage?.slug, payload.slug].filter(
-            (slug): slug is string => Boolean(slug),
-        );
-        for (const publicSlug of new Set(publicSlugs)) {
-            revalidatePublicCmsPagePaths(publicSlug);
-        }
+        const publicSlugs = [
+            existingPage?.slug,
+            normalizeCmsPageSlug(payload.slug),
+        ].filter((slug): slug is string => Boolean(slug));
+        await revalidatePublicCmsPagePaths(publicSlugs);
     }
     return {
         success: true,
@@ -349,7 +354,7 @@ export async function publishCmsPageAction(pageId: number) {
     }
     revalidateCmsPagePaths(pageId);
     if (slug) {
-        revalidatePublicCmsPagePaths(slug);
+        await revalidatePublicCmsPagePaths([slug]);
     }
 }
 
@@ -362,8 +367,8 @@ export async function unpublishCmsPageAction(pageId: number) {
         name: authContext.user.userName,
     });
     revalidateCmsPagePaths(pageId);
-    if (page?.slug) {
-        revalidatePublicCmsPagePaths(page.slug);
+    if (page?.state === 'published') {
+        await revalidatePublicCmsPagePaths([page.slug]);
     }
 }
 
@@ -376,8 +381,8 @@ export async function deleteCmsPageAction(pageId: number) {
         name: authContext.user.userName,
     });
     revalidateCmsPagePaths(pageId);
-    if (page?.slug) {
-        revalidatePublicCmsPagePaths(page.slug);
+    if (page?.state === 'published') {
+        await revalidatePublicCmsPagePaths([page.slug]);
     }
     redirect(KnownPages.CmsPages);
 }
@@ -387,9 +392,21 @@ export async function restoreCmsPageRevisionAction(
     revisionId: number,
 ) {
     const authContext = await auth(['admin']);
+    const existingPage = await getCmsPage(pageId);
     await restoreCmsPageRevision(pageId, revisionId, {
         id: authContext.user.id,
         name: authContext.user.userName,
     });
     revalidateCmsPagePaths(pageId);
+    const restoredPage = await getCmsPage(pageId);
+    if (
+        existingPage?.state === 'published' ||
+        restoredPage?.state === 'published'
+    ) {
+        await revalidatePublicCmsPagePaths(
+            [existingPage?.slug, restoredPage?.slug].filter(
+                (slug): slug is string => Boolean(slug),
+            ),
+        );
+    }
 }

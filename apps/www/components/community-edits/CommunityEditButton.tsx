@@ -5,6 +5,7 @@ import { Button } from '@gredice/ui/Button';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Input } from '@gredice/ui/Input';
 import {
+    Add,
     ArrowDownToLine,
     Check,
     Delete,
@@ -33,6 +34,11 @@ import { type ReactNode, useEffect, useId, useMemo, useState } from 'react';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { InlineLoginDialog } from '../auth/InlineLoginDialog';
 import {
+    inputControlClassName,
+    selectControlClassName,
+    textareaControlClassName,
+} from './communityControlStyles';
+import {
     PlantReferencePicker,
     type ReferencePickerNoun,
 } from './PlantReferencePicker';
@@ -48,6 +54,7 @@ const CommunityMarkdownInput = dynamic(
 );
 
 const communityEditEntityParam = 'communityEditEntity';
+const communityEditFieldParam = 'communityEditField';
 const communityEditSectionParam = 'communityEditSection';
 
 type CommunityEditControlType =
@@ -134,7 +141,7 @@ type SubmitValue =
     | OperationSuggestionSubmitValue
     | null;
 
-type ButtonStyle = 'button' | 'icon';
+type ButtonStyle = 'button' | 'card' | 'icon';
 
 export type CommunityEditButtonProps = {
     entityTypeName:
@@ -147,6 +154,7 @@ export type CommunityEditButtonProps = {
     entityId: number;
     publicPath: string;
     sectionKey?: string;
+    fieldKey?: string;
     label?: string;
     buttonStyle?: ButtonStyle;
     className?: string;
@@ -154,12 +162,6 @@ export type CommunityEditButtonProps = {
 
 const fieldPanelClassName =
     'rounded-lg border border-border/70 bg-muted/30 p-3 shadow-sm';
-const inputControlClassName =
-    'w-full border-border/80 bg-card shadow-sm transition-colors hover:border-primary/40 focus-within:border-primary/50';
-const selectControlClassName =
-    'h-10 w-full rounded-md border border-border/80 bg-card px-3 text-sm text-foreground shadow-sm ring-offset-background transition-colors hover:border-primary/40 focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-muted/70 disabled:text-muted-foreground';
-const textareaControlClassName =
-    'w-full rounded-md border border-border/80 bg-card px-3 py-2 text-sm text-foreground shadow-sm ring-offset-background transition-colors placeholder:text-muted-foreground/70 hover:border-primary/40 focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-muted/70 disabled:text-muted-foreground';
 const attributeIconClassName = 'size-4';
 
 type CommunityEditFieldGroup =
@@ -993,10 +995,12 @@ function isSubmitResponse(value: unknown): value is { requestId: number } {
 function communityEditReturnPath({
     entityKey,
     fallbackPath,
+    fieldKey,
     sectionKey,
 }: {
     entityKey: string;
     fallbackPath: string;
+    fieldKey: string;
     sectionKey: string;
 }) {
     const url =
@@ -1005,6 +1009,11 @@ function communityEditReturnPath({
             : new URL(window.location.href);
 
     url.searchParams.set(communityEditEntityParam, entityKey);
+    if (fieldKey) {
+        url.searchParams.set(communityEditFieldParam, fieldKey);
+    } else {
+        url.searchParams.delete(communityEditFieldParam);
+    }
     if (sectionKey) {
         url.searchParams.set(communityEditSectionParam, sectionKey);
     } else {
@@ -1022,9 +1031,11 @@ function currentCommunityEditReturnRequest() {
     const url = new URL(window.location.href);
     return {
         entityKey: url.searchParams.get(communityEditEntityParam),
+        fieldKey: url.searchParams.get(communityEditFieldParam) ?? '',
         sectionKey: url.searchParams.get(communityEditSectionParam) ?? '',
         clear() {
             url.searchParams.delete(communityEditEntityParam);
+            url.searchParams.delete(communityEditFieldParam);
             url.searchParams.delete(communityEditSectionParam);
             window.history.replaceState(
                 window.history.state,
@@ -1240,6 +1251,7 @@ export function CommunityEditButton({
     className,
     entityId,
     entityTypeName,
+    fieldKey,
     label,
     publicPath,
     sectionKey,
@@ -1259,14 +1271,21 @@ export function CommunityEditButton({
     const { data: user, isLoading: isLoadingUser } = useCurrentUser();
     const communityEditEntityKey = `${entityTypeName}:${entityId}`;
     const communityEditSectionKey = sectionKey ?? '';
+    const communityEditFieldKey = fieldKey ?? '';
     const communityEditReturnTo = useMemo(
         () =>
             communityEditReturnPath({
                 entityKey: communityEditEntityKey,
                 fallbackPath: publicPath,
+                fieldKey: communityEditFieldKey,
                 sectionKey: communityEditSectionKey,
             }),
-        [communityEditEntityKey, communityEditSectionKey, publicPath],
+        [
+            communityEditEntityKey,
+            communityEditFieldKey,
+            communityEditSectionKey,
+            publicPath,
+        ],
     );
 
     useEffect(() => {
@@ -1274,6 +1293,7 @@ export function CommunityEditButton({
         if (
             !returnRequest ||
             returnRequest.entityKey !== communityEditEntityKey ||
+            returnRequest.fieldKey !== communityEditFieldKey ||
             returnRequest.sectionKey !== communityEditSectionKey
         ) {
             return;
@@ -1282,7 +1302,11 @@ export function CommunityEditButton({
         setOpen(true);
         setLoginOpen(false);
         returnRequest.clear();
-    }, [communityEditEntityKey, communityEditSectionKey]);
+    }, [
+        communityEditEntityKey,
+        communityEditFieldKey,
+        communityEditSectionKey,
+    ]);
 
     useEffect(() => {
         if (!open) {
@@ -1325,10 +1349,13 @@ export function CommunityEditButton({
                     return;
                 }
 
-                setFields(data.fields);
+                const editableFields = fieldKey
+                    ? data.fields.filter((field) => field.fieldKey === fieldKey)
+                    : data.fields;
+                setFields(editableFields);
                 setValues(
                     Object.fromEntries(
-                        data.fields.map((field) => [
+                        editableFields.map((field) => [
                             field.fieldKey,
                             initialFieldValue(field),
                         ]),
@@ -1349,7 +1376,7 @@ export function CommunityEditButton({
         return () => {
             isMounted = false;
         };
-    }, [entityId, entityTypeName, open, sectionKey, user]);
+    }, [entityId, entityTypeName, fieldKey, open, sectionKey, user]);
 
     const changedFields = useMemo(
         () =>
@@ -1427,11 +1454,22 @@ export function CommunityEditButton({
 
     const triggerLabel = label ?? 'Predloži izmjenu';
     const trigger =
-        buttonStyle === 'button' ? (
+        buttonStyle !== 'icon' ? (
             <Button
-                className={className}
+                className={cx(
+                    buttonStyle === 'card' &&
+                        'h-auto min-h-12 w-full justify-start gap-2 whitespace-normal rounded-lg border-dashed border-muted-foreground/40 bg-card/40 p-3 text-left font-normal hover:border-muted-foreground/60 hover:bg-card/70',
+                    className,
+                )}
+                color={buttonStyle === 'card' ? 'neutral' : undefined}
                 size="sm"
-                startDecorator={<Edit className="size-4" />}
+                startDecorator={
+                    buttonStyle === 'card' ? (
+                        <Add aria-hidden className="size-4 shrink-0" />
+                    ) : (
+                        <Edit className="size-4" />
+                    )
+                }
                 type="button"
                 variant="outlined"
             >

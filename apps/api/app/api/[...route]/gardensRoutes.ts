@@ -57,8 +57,10 @@ import {
     getAccount,
     getAccountGardensMetadata,
     getAllEvents,
-    getAppliedRaisedBedOperationsForGarden,
+    getAppliedRaisedBedOperationSummariesForGarden,
     getEntityFormatted,
+    getFeaturedPublicGardenSummaries,
+    getFeaturedPublicGardens,
     getGarden,
     getGardenBlocks,
     getGardenLikeCounts,
@@ -77,7 +79,6 @@ import {
     getRaisedBedIdsByAccount,
     getRaisedBedPlanting,
     getRaisedBedSensors,
-    getRaisedBedsForGardens,
     getSandboxGardenDeletionCandidate,
     getSelectedPlantingDiaryEntries,
     getUnreadNotificationsByType,
@@ -87,7 +88,6 @@ import {
     isPlantStatusEffectiveDateAllowed,
     knownEvents,
     knownEventTypes,
-    listGardenStructures,
     maxNotificationReadBatchSize,
     PublicGardenLikeTargetNotFoundError,
     queueGardenPreviewBlobDeletion,
@@ -119,6 +119,8 @@ import {
     buildDetailedRaisedBedInspectionReports,
     detailedInspectionOperationId,
 } from '../../../lib/garden/detailedRaisedBedInspectionReports';
+import { featuredPublicGardenSummariesRoute } from '../../../lib/garden/featuredPublicGardenSummariesRoute';
+import { featuredPublicGardensRoute } from '../../../lib/garden/featuredPublicGardensRoute';
 import {
     recycleGardenBlockForAccount,
     updateGardenBlockForAccount,
@@ -128,7 +130,6 @@ import {
     gardenBlockPurchaseParamSchema,
 } from '../../../lib/garden/gardenBlockPurchaseSchemas';
 import { storeGardenBlockInGardenBoxForAccount } from '../../../lib/garden/gardenBoxBlockStorageService';
-import { getGardenBuildingSystemAvailability } from '../../../lib/garden/gardenBuildingSystemServerFlag';
 import {
     deleteRealGardenForAccount,
     parseGardenDeletionId,
@@ -145,13 +146,10 @@ import {
     processGardenPreviewBlobDeletions,
 } from '../../../lib/garden/gardenPreviewBlobDeletion';
 import { patchGardenStacksForAccount } from '../../../lib/garden/gardenStacksPatchService';
-import { serializeGardenStructures } from '../../../lib/garden/gardenStructureSerialization';
 import {
-    countPublicGardenActivePlants,
     serializePublicRaisedBedField,
     serializeRaisedBedPlantingsForGardenView,
 } from '../../../lib/garden/publicGardenSerialization';
-import { listPublicGardenStructures } from '../../../lib/garden/publicGardenStructuresRead';
 import {
     publicGardenVisitorClientAddress,
     publicGardenVisitorPresenceBodySchema,
@@ -179,7 +177,6 @@ import {
 import { queryBooleanSchema } from '../../../lib/http/queryBoolean';
 import { openAdventGiftBox } from '../../../lib/occasions/adventGiftBox';
 import { getPostHogClient } from '../../../lib/posthog-server';
-import gardenStructuresRoutes from './gardenStructuresRoutes';
 
 const DEFAULT_TIMEZONE = 'Europe/Paris';
 
@@ -249,6 +246,7 @@ const analyzeImageBodySchema = z
 type AnalyzeImageBody = z.infer<typeof analyzeImageBodySchema>;
 
 const storeBlockInGardenBoxBodySchema = z.object({
+    operationId: z.string().min(1).max(96).optional(),
     gardenBoxBlockId: z.string().trim().min(1).max(128),
     entityId: z.string().trim().min(1).max(100).optional(),
     sourcePosition: z.object({
@@ -731,9 +729,8 @@ function serializePublicGardenPreviewImages(
 
 type GardenDetail = NonNullable<Awaited<ReturnType<typeof getGarden>>>;
 type GardenBlocks = Awaited<ReturnType<typeof getGardenBlocks>>;
-type GardenStructures = Awaited<ReturnType<typeof listGardenStructures>>;
 type AppliedGardenOperations = Awaited<
-    ReturnType<typeof getAppliedRaisedBedOperationsForGarden>
+    ReturnType<typeof getAppliedRaisedBedOperationSummariesForGarden>
 >;
 
 function serializeGardenStacks(garden: GardenDetail, blocks: GardenBlocks) {
@@ -805,7 +802,6 @@ async function serializeGardenDetails(
     garden: GardenDetail,
     blocks: GardenBlocks,
     operations: AppliedGardenOperations,
-    structures: GardenStructures,
     options: { publicView?: boolean } = {},
 ) {
     const blockNameById = new Map(
@@ -871,17 +867,6 @@ async function serializeGardenDetails(
         garden.stacks,
         blockNameById,
     );
-    const serializedStructures = serializeGardenStructures(structures, {
-        publicView: options.publicView,
-        onInvalid: ({ code, structureId }) => {
-            console.error('Skipped invalid garden structure serialization', {
-                code,
-                gardenId: garden.id,
-                structureId,
-            });
-        },
-    });
-
     return {
         id: garden.id,
         name: garden.name,
@@ -895,7 +880,6 @@ async function serializeGardenDetails(
         latitude: garden.farm.latitude,
         longitude: garden.farm.longitude,
         stacks: serializeGardenStacks(garden, blocks),
-        structures: serializedStructures,
         raisedBeds: garden.raisedBeds.map((raisedBed) => ({
             id: raisedBed.id,
             name: raisedBed.name,
@@ -951,18 +935,15 @@ async function getAuthorizedGardenPreviewSource(
         return null;
     }
 
-    const [blocks, operations, structures] = await Promise.all([
+    const [blocks, operations] = await Promise.all([
         getGardenBlocks(gardenId),
-        getAppliedRaisedBedOperationsForGarden(garden.accountId, gardenId),
-        listGardenStructures(gardenId),
+        getAppliedRaisedBedOperationSummariesForGarden(
+            garden.accountId,
+            gardenId,
+        ),
     ]);
 
-    const details = await serializeGardenDetails(
-        garden,
-        blocks,
-        operations,
-        structures,
-    );
+    const details = await serializeGardenDetails(garden, blocks, operations);
     return {
         details,
         garden,
@@ -1083,7 +1064,11 @@ async function getGardenQueuedTasks(garden: GardenDetail) {
 }
 
 const app = new Hono<{ Variables: AuthVariables }>()
-    .route('/:gardenId/structures', gardenStructuresRoutes)
+    .route('/', featuredPublicGardensRoute(getFeaturedPublicGardens))
+    .route(
+        '/',
+        featuredPublicGardenSummariesRoute(getFeaturedPublicGardenSummaries),
+    )
     .get(
         '/',
         describeRoute({
@@ -1145,15 +1130,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
         async (context) => {
             const publicGardens = await getPublicGardens();
             const publicGardenIds = publicGardens.map((garden) => garden.id);
-            const raisedBedsByGardenId =
-                await getRaisedBedsForGardens(publicGardenIds);
             const likeCounts = await getGardenLikeCounts(publicGardenIds);
 
             return context.json({
                 items: publicGardens.map((garden) => {
-                    const raisedBeds =
-                        raisedBedsByGardenId.get(garden.id) ?? [];
-
                     return {
                         id: garden.id,
                         name: garden.name,
@@ -1168,8 +1148,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         previewImages: serializePublicGardenPreviewImages(
                             garden.previewImages,
                         ),
-                        activePlantCount:
-                            countPublicGardenActivePlants(raisedBeds),
+                        activePlantCount: garden.activePlantCount,
                         likeCount: likeCounts.get(garden.id) ?? 0,
                         createdAt: garden.createdAt,
                         updatedAt: garden.updatedAt,
@@ -2147,11 +2126,6 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             return context.json({
                 ...source.details,
-                // The managed Garden flag controls discovery, but mutation
-                // authority remains fail-closed in this API deployment.
-                gardenBuildingSystem: getGardenBuildingSystemAvailability(
-                    source.garden.isSandbox,
-                ),
                 previewSourceRevision: source.sourceRevision,
             });
         },
@@ -2184,19 +2158,17 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Garden not found' }, 404);
             }
 
-            const [operations, queuedTasks, structures] = await Promise.all([
-                getAppliedRaisedBedOperationsForGarden(
+            const [operations, queuedTasks] = await Promise.all([
+                getAppliedRaisedBedOperationSummariesForGarden(
                     garden.accountId,
                     gardenIdNumber,
                 ),
                 getGardenQueuedTasks(garden),
-                listPublicGardenStructures(gardenIdNumber),
             ]);
             const gardenDetails = await serializeGardenDetails(
                 garden,
                 blocks,
                 operations,
-                structures,
                 { publicView: true },
             );
             const {
@@ -2361,7 +2333,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/:gardenId',
         describeRoute({
             description:
-                'Delete a garden accessible to the current user. Sandbox gardens are deleted completely, including related blocks, raised beds, notifications, operations, cart rows, transactions, and events. Real gardens are soft-deleted only when they have no active raised beds or structures. Large sandbox deletions may return 202 and should be retried until complete.',
+                'Delete a garden accessible to the current user. Sandbox gardens are deleted completely, including related blocks, raised beds, notifications, operations, cart rows, transactions, and events. Real gardens are soft-deleted only when they have no active raised beds. Large sandbox deletions may return 202 and should be retried until complete.',
             security: authSecurity,
         }),
         zValidator(
@@ -2407,12 +2379,6 @@ const app = new Hono<{ Variables: AuthVariables }>()
                                 : {
                                       activeRaisedBedCount:
                                           result.activeRaisedBedCount,
-                                  }),
-                            ...(result.activeStructureCount === undefined
-                                ? {}
-                                : {
-                                      activeStructureCount:
-                                          result.activeStructureCount,
                                   }),
                         },
                         result.status,
@@ -2563,8 +2529,13 @@ const app = new Hono<{ Variables: AuthVariables }>()
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId, blockId } = context.req.valid('param');
-            const { blockIndex, entityId, gardenBoxBlockId, sourcePosition } =
-                context.req.valid('json');
+            const {
+                blockIndex,
+                entityId,
+                gardenBoxBlockId,
+                sourcePosition,
+                operationId,
+            } = context.req.valid('json');
             const gardenIdNumber = parseInt(gardenId, 10);
             if (Number.isNaN(gardenIdNumber) || gardenIdNumber <= 0) {
                 return context.json({ error: 'Invalid garden ID' }, 400);
@@ -2580,6 +2551,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     gardenBoxBlockId,
                     gardenId: gardenIdNumber,
                     sourcePosition,
+                    operationId,
                 });
                 if (!result.ok) {
                     return context.json(

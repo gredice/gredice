@@ -9,11 +9,16 @@ export default defineConfig({
         'avatar-profile-links.spec.tsx',
         'public-garden-members.spec.tsx',
         'user-leaderboard.spec.tsx',
+        'achievement-catalog.spec.tsx',
+        'experience-guide.spec.tsx',
+        'harvest-trace-group.spec.tsx',
     ],
     testIgnore: [],
     webServer: undefined,
     use: {
         ...config.use,
+        // Keep the stubbed renderer build separate from the real WebGL suite.
+        ctCacheDir: './playwright/.cache/profile',
         ctViteConfig: {
             ...config.use?.ctViteConfig,
             resolve: {

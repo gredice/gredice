@@ -1,3 +1,9 @@
+import {
+    gardenActionPath,
+    gardenActionQueryKeys,
+    readGardenAction,
+} from '@gredice/js/gardenActions';
+
 const MAXIMUM_GARDEN_AUTH_RETURN_LENGTH = 2_048;
 const MAXIMUM_OAUTH_FRAGMENT_VALUE_LENGTH = 8_192;
 const GARDEN_AUTH_RETURN_BASE = 'https://garden.gredice.invalid';
@@ -6,7 +12,11 @@ const supportedCallbackQueryKeys = new Set(['error', 'returnTo']);
 const supportedFragmentKeys = new Set(['refreshToken', 'token']);
 
 export type GardenOAuthProvider = 'facebook' | 'google';
-export type GardenAuthReturnPath = '/' | '/outlet' | `/outlet?${string}`;
+export type GardenAuthReturnPath =
+    | '/'
+    | `/?${string}`
+    | '/outlet'
+    | `/outlet?${string}`;
 
 function containsControlCharacter(value: string) {
     return Array.from(value).some((character) => {
@@ -108,7 +118,14 @@ export function getSafeGardenAuthReturnPath(
     }
 
     if (parsedUrl.pathname === '/') {
-        return '/';
+        const action = readGardenAction(parsedUrl.searchParams);
+        return action &&
+            hasOnlySupportedKeys(
+                parsedUrl.searchParams,
+                new Set(gardenActionQueryKeys),
+            )
+            ? gardenActionPath(action)
+            : '/';
     }
     if (parsedUrl.pathname !== '/outlet') {
         return '/';

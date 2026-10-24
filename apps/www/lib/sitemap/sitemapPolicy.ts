@@ -45,6 +45,7 @@ export const excludedSitemapRoutes = [
     '/development/**',
     // Personalised tracking links and sign-in round trips.
     '/trag/*',
+    '/trag/grupa/*',
     '/prijava/**',
     // Raw CSV exports, the download index and per-snapshot downloads are
     // files and file listings, not content pages.

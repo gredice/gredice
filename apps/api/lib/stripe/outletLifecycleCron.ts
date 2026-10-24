@@ -62,9 +62,10 @@ async function runStripeAttemptReconciliation(
     }
 }
 
-export async function handleOutletLifecycleCron(
+async function handleCron(
     request: Request,
-    dependencies: Partial<OutletLifecycleCronDependencies> = {},
+    mode: 'cleanup' | 'recovery',
+    dependencies: Partial<OutletLifecycleCronDependencies>,
 ) {
     const cronSecret = process.env.CRON_SECRET?.trim();
     const authHeader = request.headers.get('authorization');
@@ -76,13 +77,13 @@ export async function handleOutletLifecycleCron(
     }
 
     const resolved = { ...defaultDependencies, ...dependencies };
-    // Keep the established cleanup job independent from Stripe availability
-    // and from malformed recovery candidates.
-    const cleanup = await runOutletCleanup(resolved.cleanup);
-    const maintenance = resolved.maintenanceEnabled();
-    const reconciliation = maintenance
-        ? null
-        : await runStripeAttemptReconciliation(resolved.reconcile);
+    const cleanup =
+        mode === 'cleanup' ? await runOutletCleanup(resolved.cleanup) : null;
+    const maintenance = mode === 'recovery' && resolved.maintenanceEnabled();
+    const reconciliation =
+        mode === 'recovery' && !maintenance
+            ? await runStripeAttemptReconciliation(resolved.reconcile)
+            : null;
     let stripePaymentProcessingDrained: boolean | null = null;
     let stripePaymentProcessingDrainFailureCategory: string | null = null;
     if (maintenance) {
@@ -99,17 +100,17 @@ export async function handleOutletLifecycleCron(
     }
     const healthy =
         !maintenance &&
-        cleanup.status === 'fulfilled' &&
-        reconciliation !== null &&
-        reconciliation.status === 'fulfilled' &&
-        reconciliation.value.failedCount === 0 &&
-        !reconciliation.value.truncated;
+        (mode === 'cleanup'
+            ? cleanup?.status === 'fulfilled'
+            : reconciliation?.status === 'fulfilled' &&
+              reconciliation.value.failedCount === 0 &&
+              !reconciliation.value.truncated);
 
     if (maintenance) {
         console.warn('stripe_payment.processing.maintenance_active', {
             drained: stripePaymentProcessingDrained,
             drainFailureCategory: stripePaymentProcessingDrainFailureCategory,
-            source: 'outlet_lifecycle',
+            source: 'stripe_checkout_orphan_recovery',
         });
     }
 
@@ -128,15 +129,15 @@ export async function handleOutletLifecycleCron(
                     ? reconciliation.category
                     : null,
             releasedReservationsCount:
-                cleanup.status === 'fulfilled'
+                cleanup?.status === 'fulfilled'
                     ? cleanup.value.releasedReservationIds.length
                     : 0,
             closedOffersCount:
-                cleanup.status === 'fulfilled'
+                cleanup?.status === 'fulfilled'
                     ? cleanup.value.closedOfferIds.length
                     : 0,
             cleanupFailureCategory:
-                cleanup.status === 'rejected' ? cleanup.category : null,
+                cleanup?.status === 'rejected' ? cleanup.category : null,
             timestamp: resolved.now().toISOString(),
         },
         {
@@ -147,4 +148,18 @@ export async function handleOutletLifecycleCron(
             status: healthy ? 200 : 503,
         },
     );
+}
+
+export function handleOutletLifecycleCron(
+    request: Request,
+    dependencies: Partial<OutletLifecycleCronDependencies> = {},
+) {
+    return handleCron(request, 'cleanup', dependencies);
+}
+
+export function handleStripeCheckoutOrphanRecoveryCron(
+    request: Request,
+    dependencies: Partial<OutletLifecycleCronDependencies> = {},
+) {
+    return handleCron(request, 'recovery', dependencies);
 }

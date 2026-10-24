@@ -3,6 +3,393 @@
     "outputDirectory": "../apps/garden/public/assets/models",
     "assets": [
         {
+            "name": "Hedgehog",
+            "source": "Hedgehog.blend",
+            "output": "Hedgehog.glb",
+            "version": "cde12d271bb2",
+            "preload": "lazy",
+            "objects": [
+                "Hedgehog_Root",
+                "Hedgehog_BodyPivot",
+                "Hedgehog_Body",
+                "Hedgehog_HeadPivot",
+                "Hedgehog_Head",
+                "Hedgehog_LegPivot0",
+                "Hedgehog_Foot0",
+                "Hedgehog_LegPivot1",
+                "Hedgehog_Foot1",
+                "Hedgehog_LegPivot2",
+                "Hedgehog_Foot2",
+                "Hedgehog_LegPivot3",
+                "Hedgehog_Foot3"
+            ]
+        },
+        {
+            "name": "HedgehogShelter",
+            "source": "HedgehogShelter.blend",
+            "output": "HedgehogShelter.glb",
+            "version": "c2116bf92e35",
+            "preload": "lazy",
+            "objects": [
+                "HedgehogShelter_Arrangement"
+            ]
+        },
+        {
+            "name": "FriendlyGhost",
+            "source": "FriendlyGhost.blend",
+            "output": "FriendlyGhost.glb",
+            "version": "533808c57054",
+            "preload": "lazy",
+            "objects": [
+                "FriendlyGhost_Arrangement"
+            ]
+        },
+        {
+            "name": "SupportedCobweb",
+            "source": "SupportedCobweb.blend",
+            "output": "SupportedCobweb.glb",
+            "version": "db82dafef4be",
+            "preload": "lazy",
+            "objects": [
+                "SupportedCobweb_Arrangement"
+            ]
+        },
+        {
+            "name": "PumpkinLanternSmile",
+            "source": "PumpkinLanternSmile.blend",
+            "output": "PumpkinLanternSmile.glb",
+            "version": "0daf694271bb",
+            "preload": "lazy",
+            "objects": [
+                "PumpkinLanternSmile_Body",
+                "PumpkinLanternSmile_Stem",
+                "PumpkinLanternSmile_Glow"
+            ]
+        },
+        {
+            "name": "PumpkinLanternWink",
+            "source": "PumpkinLanternWink.blend",
+            "output": "PumpkinLanternWink.glb",
+            "version": "5d9efb1da02b",
+            "preload": "lazy",
+            "objects": [
+                "PumpkinLanternWink_Body",
+                "PumpkinLanternWink_Stem",
+                "PumpkinLanternWink_Glow"
+            ]
+        },
+        {
+            "name": "BirdFeeder",
+            "source": "BirdFeeder.blend",
+            "output": "BirdFeeder.glb",
+            "version": "2669061f01f9",
+            "preload": "lazy",
+            "objects": [
+                "BirdFeeder_Arrangement"
+            ]
+        },
+        {
+            "name": "SeasonalMaple",
+            "source": "SeasonalMaple.blend",
+            "output": "SeasonalMaple.glb",
+            "version": "ee04fd1802d0",
+            "preload": "lazy",
+            "objects": [
+                "SeasonalMaple_Wood",
+                "SeasonalMaple_Full",
+                "SeasonalMaple_Thinning",
+                "SeasonalMaple_Sparse"
+            ]
+        },
+        {
+            "name": "AutumnWreathPost",
+            "source": "AutumnWreathPost.blend",
+            "output": "AutumnWreathPost.glb",
+            "version": "3f647ea3a7e4",
+            "preload": "lazy",
+            "objects": [
+                "AutumnWreathPost_Support",
+                "AutumnWreathPost_Foliage"
+            ]
+        },
+        {
+            "name": "AutumnGarland",
+            "source": "AutumnGarland.blend",
+            "output": "AutumnGarland.glb",
+            "version": "a8563cbfee9a",
+            "preload": "lazy",
+            "objects": [
+                "AutumnGarland_Support",
+                "AutumnGarland_Foliage"
+            ]
+        },
+        {
+            "name": "AutumnFenceGate",
+            "source": "AutumnFenceGate.blend",
+            "output": "AutumnFenceGate.glb",
+            "version": "71388daaed2d",
+            "preload": "lazy",
+            "objects": [
+                "AutumnFenceGate_Posts",
+                "AutumnFenceGate_Leaf",
+                "AutumnFenceGate_Decor"
+            ]
+        },
+        {
+            "name": "WoodlandAcorns",
+            "source": "WoodlandAcorns.blend",
+            "output": "WoodlandAcorns.glb",
+            "version": "5605282113fa",
+            "preload": "lazy",
+            "objects": [
+                "WoodlandAcorns_Arrangement"
+            ]
+        },
+        {
+            "name": "WoodlandConkers",
+            "source": "WoodlandConkers.blend",
+            "output": "WoodlandConkers.glb",
+            "version": "0a6640399bf3",
+            "preload": "lazy",
+            "objects": [
+                "WoodlandConkers_Arrangement"
+            ]
+        },
+        {
+            "name": "WoodlandMushroomBasket",
+            "source": "WoodlandMushroomBasket.blend",
+            "output": "WoodlandMushroomBasket.glb",
+            "version": "9e12d7b0f61f",
+            "preload": "lazy",
+            "objects": [
+                "WoodlandMushroomBasket_Arrangement"
+            ]
+        },
+        {
+            "name": "SeedDryingRack",
+            "source": "SeedDryingRack.blend",
+            "output": "SeedDryingRack.glb",
+            "version": "87d42acc7817",
+            "preload": "lazy",
+            "objects": [
+                "SeedDryingRack_Arrangement"
+            ]
+        },
+        {
+            "name": "AutumnGrassTuft",
+            "source": "AutumnGrassTuft.blend",
+            "output": "AutumnGrassTuft.glb",
+            "version": "f7689621d760",
+            "preload": "lazy",
+            "objects": [
+                "AutumnGrassTuft_Base",
+                "AutumnGrassTuft_Foliage"
+            ]
+        },
+        {
+            "name": "AutumnSeedHeads",
+            "source": "AutumnSeedHeads.blend",
+            "output": "AutumnSeedHeads.glb",
+            "version": "ce09d670c42c",
+            "preload": "lazy",
+            "objects": [
+                "AutumnSeedHeads_Base",
+                "AutumnSeedHeads_Foliage"
+            ]
+        },
+        {
+            "name": "GardenBrazier",
+            "source": "GardenBrazier.blend",
+            "output": "GardenBrazier.glb",
+            "version": "1e7f678336c5",
+            "preload": "lazy",
+            "objects": [
+                "GardenBrazier_Metal",
+                "GardenBrazier_Embers"
+            ]
+        },
+        {
+            "name": "StackedFirewood",
+            "source": "StackedFirewood.blend",
+            "output": "StackedFirewood.glb",
+            "version": "8e3be71b6f23",
+            "preload": "lazy",
+            "objects": [
+                "StackedFirewood_Timber"
+            ]
+        },
+        {
+            "name": "ChestnutRoastingCart",
+            "source": "ChestnutRoastingCart.blend",
+            "output": "ChestnutRoastingCart.glb",
+            "version": "16c0c2064987",
+            "preload": "lazy",
+            "objects": [
+                "ChestnutRoastingCart_Cart",
+                "ChestnutRoastingCart_Roaster"
+            ]
+        },
+        {
+            "name": "GardenTeaTable",
+            "source": "GardenTeaTable.blend",
+            "output": "GardenTeaTable.glb",
+            "version": "36d8a3e3ed2d",
+            "preload": "lazy",
+            "objects": [
+                "GardenTeaTable_Timber",
+                "GardenTeaTable_TeaSet"
+            ]
+        },
+        {
+            "name": "AutumnBlanketBench",
+            "source": "AutumnBlanketBench.blend",
+            "output": "AutumnBlanketBench.glb",
+            "version": "6bc5acbeff92",
+            "preload": "lazy",
+            "objects": [
+                "AutumnBlanketBench_Timber",
+                "AutumnBlanketBench_Textile"
+            ]
+        },
+        {
+            "name": "LeafRake",
+            "source": "LeafRake.blend",
+            "output": "LeafRake.glb",
+            "version": "bb43d60ed1ff",
+            "preload": "lazy",
+            "objects": [
+                "LeafRake_Arrangement"
+            ]
+        },
+        {
+            "name": "AutumnLeafPileMound",
+            "source": "AutumnLeafPileMound.blend",
+            "output": "AutumnLeafPileMound.glb",
+            "version": "d2133ce5768a",
+            "preload": "lazy",
+            "objects": [
+                "AutumnLeafPileMound_Leaves"
+            ]
+        },
+        {
+            "name": "AutumnLeafPileCrescent",
+            "source": "AutumnLeafPileCrescent.blend",
+            "output": "AutumnLeafPileCrescent.glb",
+            "version": "b99b88c2b61a",
+            "preload": "lazy",
+            "objects": [
+                "AutumnLeafPileCrescent_Leaves"
+            ]
+        },
+        {
+            "name": "FallenLog",
+            "source": "FallenLog.blend",
+            "output": "FallenLog.glb",
+            "version": "dd66f61eb3e5",
+            "preload": "lazy",
+            "objects": [
+                "FallenLog_Timber"
+            ]
+        },
+        {
+            "name": "WoodlandMushrooms",
+            "source": "WoodlandMushrooms.blend",
+            "output": "WoodlandMushrooms.glb",
+            "version": "a8a6b03f7e38",
+            "preload": "lazy",
+            "objects": [
+                "WoodlandMushrooms_Cluster"
+            ]
+        },
+        {
+            "name": "AutumnShrub",
+            "source": "AutumnShrub.blend",
+            "output": "AutumnShrub.glb",
+            "version": "a02e38e13da7",
+            "preload": "lazy",
+            "objects": [
+                "AutumnShrub_Wood",
+                "AutumnShrub_FullGold",
+                "AutumnShrub_FullRusset",
+                "AutumnShrub_ThinningGold",
+                "AutumnShrub_ThinningRusset",
+                "AutumnShrub_SparseGold",
+                "AutumnShrub_SparseRusset"
+            ]
+        },
+        {
+            "name": "AutumnAsterPot",
+            "source": "AutumnAsterPot.blend",
+            "output": "AutumnAsterPot.glb",
+            "version": "f6a6dc858dbb",
+            "preload": "lazy",
+            "objects": [
+                "AutumnAsterPot_Pot",
+                "AutumnAsterPot_Soil",
+                "AutumnAsterPot_Foliage",
+                "AutumnAsterPot_Petals",
+                "AutumnAsterPot_Centers"
+            ]
+        },
+        {
+            "name": "HarvestWheelbarrow",
+            "source": "HarvestWheelbarrow.blend",
+            "output": "HarvestWheelbarrow.glb",
+            "version": "85ff185c5486",
+            "preload": "lazy",
+            "objects": [
+                "HarvestWheelbarrow_Timber",
+                "HarvestWheelbarrow_Frame",
+                "HarvestWheelbarrow_Hardware",
+                "HarvestWheelbarrow_Pumpkins",
+                "HarvestWheelbarrow_Cream",
+                "HarvestWheelbarrow_Stems"
+            ]
+        },
+        {
+            "name": "HarvestCrate",
+            "source": "HarvestCrate.blend",
+            "output": "HarvestCrate.glb",
+            "version": "ff4ae49fa93b",
+            "preload": "lazy",
+            "objects": [
+                "HarvestCrate_Timber",
+                "HarvestCrate_Frame",
+                "HarvestCrate_ProducePrimary",
+                "HarvestCrate_ProduceSecondary",
+                "HarvestCrate_Stems"
+            ]
+        },
+        {
+            "name": "HarvestCrateOrchard",
+            "source": "HarvestCrateOrchard.blend",
+            "output": "HarvestCrateOrchard.glb",
+            "version": "715049a6ea13",
+            "preload": "lazy",
+            "objects": [
+                "HarvestCrateOrchard_Timber",
+                "HarvestCrateOrchard_Frame",
+                "HarvestCrateOrchard_ProducePrimary",
+                "HarvestCrateOrchard_ProduceSecondary",
+                "HarvestCrateOrchard_Stems"
+            ]
+        },
+        {
+            "name": "GardenScarecrow",
+            "source": "GardenScarecrow.blend",
+            "output": "GardenScarecrow.glb",
+            "version": "0992b65228bd",
+            "preload": "lazy",
+            "objects": [
+                "GardenScarecrow_Timber",
+                "GardenScarecrow_Straw",
+                "GardenScarecrow_Linen",
+                "GardenScarecrow_Shirt",
+                "GardenScarecrow_Patch",
+                "GardenScarecrow_Face"
+            ]
+        },
+        {
             "name": "BlockGround",
             "source": "BlockGround.blend",
             "output": "BlockGround.glb",
@@ -222,7 +609,8 @@
             "source": "Tree.blend",
             "output": "Tree.glb",
             "preload": "primary",
-            "objects": ["Tree 1"]
+            "version": "autumn-canopy-v1",
+            "objects": ["Tree 1", "Tree_AutumnThinning", "Tree_AutumnSparse", "Tree_AutumnBranches"]
         },
         {
             "name": "Pine",
@@ -262,8 +650,14 @@
             "name": "Bush",
             "source": "Bush.blend",
             "output": "Bush.glb",
+            "version": "56b79aabe4f3",
             "preload": "primary",
-            "objects": ["Bush 1"]
+            "objects": [
+                "Bush 1",
+                "Bush_AutumnThinning",
+                "Bush_AutumnSparse",
+                "Bush_AutumnBranches"
+            ]
         },
         {
             "name": "StoneSmall",
@@ -2658,6 +3052,19 @@
             ]
         },
         {
+            "name": "Rose",
+            "source": "Rose.blend",
+            "output": "Rose.glb",
+            "preload": "lazy",
+            "objects": [
+                "Rose_Stems",
+                "Rose_Leaves",
+                "Rose_Petals_Outer",
+                "Rose_Petals_Inner",
+                "Rose_Centers"
+            ]
+        },
+        {
             "name": "CactusBarrel",
             "source": "CactusBarrel.blend",
             "output": "CactusBarrel.glb",
@@ -2757,6 +3164,39 @@
             "objects": ["PotVariant_10_Wide_Lipped_Cup", "PotVariant_Soil_10"]
         },
         {
+            "name": "HarvestPumpkinSquat",
+            "source": "HarvestPumpkinSquat.blend",
+            "output": "HarvestPumpkinSquat.glb",
+            "version": "0f247954af35",
+            "preload": "lazy",
+            "objects": [
+                "HarvestPumpkinSquat_Body",
+                "HarvestPumpkinSquat_Stem"
+            ]
+        },
+        {
+            "name": "HarvestPumpkinGourd",
+            "source": "HarvestPumpkinGourd.blend",
+            "output": "HarvestPumpkinGourd.glb",
+            "version": "15948c584b77",
+            "preload": "lazy",
+            "objects": [
+                "HarvestPumpkinGourd_Body",
+                "HarvestPumpkinGourd_Stem"
+            ]
+        },
+        {
+            "name": "HarvestPumpkinGroup",
+            "source": "HarvestPumpkinGroup.blend",
+            "output": "HarvestPumpkinGroup.glb",
+            "version": "bdeb4f10688c",
+            "preload": "lazy",
+            "objects": [
+                "HarvestPumpkinGroup_Body",
+                "HarvestPumpkinGroup_Stem"
+            ]
+        },
+        {
             "name": "HarvestBasket",
             "source": "HarvestBasket.blend",
             "output": "HarvestBasket.glb",
@@ -2803,38 +3243,6 @@
                 "WoodenSign_Board",
                 "WoodenSign_Frame",
                 "WoodenSign_Fasteners"
-            ]
-        },
-        {
-            "name": "GardenStructureKitV1",
-            "source": "GardenStructureKitV1.blend",
-            "output": "GardenStructureKitV1.glb",
-            "version": "07365ed157cb",
-            "preload": "lazy",
-            "objects": [
-                "GardenStructureKitV1_FloorLimestone",
-                "GardenStructureKitV1_FloorStone",
-                "GardenStructureKitV1_FloorTimber",
-                "GardenStructureKitV1_WallTimber",
-                "GardenStructureKitV1_WallPlaster",
-                "GardenStructureKitV1_WallGreenhouseFrame",
-                "GardenStructureKitV1_WallGreenhouseGlass",
-                "GardenStructureKitV1_DoorTimberWideOpen",
-                "GardenStructureKitV1_DoorHouseOpen",
-                "GardenStructureKitV1_DoorGreenhouseOpenFrame",
-                "GardenStructureKitV1_DoorGreenhouseOpenGlass",
-                "GardenStructureKitV1_WindowHouseFrame",
-                "GardenStructureKitV1_WindowHouseGlass",
-                "GardenStructureKitV1_RoofGable",
-                "GardenStructureKitV1_RoofShed",
-                "GardenStructureKitV1_RoofGreenhouseGableFrame",
-                "GardenStructureKitV1_RoofGreenhouseGableGlass",
-                "GardenStructureKitV1_PropTable",
-                "GardenStructureKitV1_PropWorkbench",
-                "GardenStructureKitV1_PropPlanter",
-                "GardenStructureKitV1_PropChair",
-                "GardenStructureKitV1_PropShelf",
-                "GardenStructureKitV1_PropCrate"
             ]
         }
     ]

@@ -1,15 +1,33 @@
-import { getAchievementFamilies } from '@gredice/js/achievements';
+import {
+    type AchievementDefinition,
+    getAchievementFamilies,
+} from '@gredice/js/achievements';
 import {
     AchievementAward,
     AchievementLevelLabel,
 } from '@gredice/ui/AchievementAwards';
 
+export function isAdvancedAchievement(definition: AchievementDefinition) {
+    const originalLevels: Partial<
+        Record<AchievementDefinition['familyKey'], number>
+    > = {
+        watering: 9,
+        community_editing: 6,
+        garden_diversity: 5,
+        seed_to_table: 5,
+    };
+    const original = originalLevels[definition.familyKey];
+    return original !== undefined && definition.level > original;
+}
+
 export function AchievementAwardsShowcase({
     dark = false,
     newFamiliesOnly = false,
+    advancedLevelsOnly = false,
 }: {
     dark?: boolean;
     newFamiliesOnly?: boolean;
+    advancedLevelsOnly?: boolean;
 }) {
     const families = getAchievementFamilies([]).filter(
         (family) =>
@@ -18,7 +36,17 @@ export function AchievementAwardsShowcase({
                 family.key,
             ),
     );
-    const awardCount = families.reduce(
+    const displayedFamilies = families
+        .map((family) => ({
+            ...family,
+            totalLevels: family.levels.length,
+            levels: family.levels.filter(
+                ({ definition }) =>
+                    !advancedLevelsOnly || isAdvancedAchievement(definition),
+            ),
+        }))
+        .filter((family) => family.levels.length > 0);
+    const awardCount = displayedFamilies.reduce(
         (total, family) => total + family.levels.length,
         0,
     );
@@ -32,13 +60,14 @@ export function AchievementAwardsShowcase({
                         Achievement awards
                     </h1>
                     <p className="text-foreground/75">
-                        {awardCount} distinct awards across {families.length}{' '}
-                        families. Starter keepsakes grow into garden trophies
-                        with distinct silhouettes and colorful materials.
-                        Compare every level at 32, 64 and 160 pixels.
+                        {awardCount} distinct awards across{' '}
+                        {displayedFamilies.length} families. Starter keepsakes
+                        grow into garden trophies with distinct silhouettes and
+                        colorful materials. Compare every level at 32, 64 and
+                        160 pixels.
                     </p>
                 </header>
-                {families.map((family) => (
+                {displayedFamilies.map((family) => (
                     <section key={family.key} className="space-y-4">
                         <h2 className="text-xl font-semibold">
                             {family.label}
@@ -71,7 +100,7 @@ export function AchievementAwardsShowcase({
                                     </div>
                                     <AchievementLevelLabel
                                         level={definition.level}
-                                        total={family.levels.length}
+                                        total={family.totalLevels}
                                     />
                                     <h3 className="font-semibold">
                                         {definition.title.trim()}

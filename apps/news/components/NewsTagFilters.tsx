@@ -51,7 +51,7 @@ export function NewsTagFilters({
             {dropdownTags.length > 0 ? (
                 <select
                     aria-label="Ostali tagovi"
-                    className="min-h-9 rounded-sm border bg-background px-3 py-1.5 text-sm font-medium text-muted-foreground outline-hidden transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                    className="min-h-9 rounded-sm border bg-field px-3 py-1.5 text-sm font-medium text-muted-foreground outline-hidden transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
                     onChange={(event) => {
                         const selectedTag = event.currentTarget.value;
                         router.push(

@@ -24,3 +24,10 @@ export function isOperationApplicableToPlant(
         linkedOperationNames.has(operation.information.name)
     );
 }
+
+export {
+    normalizeOperationRequestNote,
+    operationRequestNoteMaxLength,
+    readOperationRequestNote,
+} from './operationRequestNote';
+export * from './raisedBedObservation';

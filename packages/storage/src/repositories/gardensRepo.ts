@@ -1,14 +1,22 @@
+import { assertGardenPackLifecycleAllowed } from './gardenPackPlacementRepo';
 import 'server-only';
 import { userIdToPublicId } from '@gredice/js/publicId';
+import { safeUserDisplayName } from '@gredice/js/userDisplayName';
 import { and, asc, count, desc, eq, inArray, max, sql } from 'drizzle-orm';
 import { v4 as uuidV4 } from 'uuid';
 import { storage } from '..';
-import { grediceCached, grediceCacheKeys } from '../cache/grediceCached';
+import {
+    bustFeaturedPublicGardenCache,
+    bustGrediceCached,
+    grediceCached,
+    grediceCacheKeys,
+} from '../cache/grediceCached';
 import { bustScheduleCache } from '../cache/scheduleCache';
 import {
     accountUsers,
     gardenBlocks,
     gardenLikes,
+    gardenPreviews,
     gardenStacks,
     gardens,
     type InsertGarden,
@@ -29,6 +37,7 @@ import {
 } from './gardenPreviewsRepo';
 import {
     createRaisedBed,
+    getGardenActivePlantCounts,
     getRaisedBeds,
     getRaisedBedsForGardens,
 } from './raisedBedsRepo';
@@ -238,19 +247,198 @@ async function getPublicGardenMembersByAccountIds(accountIds: string[]) {
         if (members.some((member) => member.publicId === publicId)) {
             continue;
         }
-        const displayName = membership.displayName?.trim();
         members.push({
             publicId,
             avatarUrl: membership.avatarUrl,
             achievementCount: membership.achievementCount,
-            displayName:
-                displayName && !/\S+@\S+/u.test(displayName)
-                    ? displayName
-                    : 'Korisnik Gredica',
+            displayName: safeUserDisplayName(
+                membership.displayName,
+                'Korisnik Gredica',
+            ),
         });
         membersByAccountId.set(membership.accountId, members);
     }
     return membersByAccountId;
+}
+
+async function getPublicGardenOwnersByAccountIds(accountIds: string[]) {
+    const owners = await storage()
+        .selectDistinctOn([accountUsers.accountId], {
+            accountId: accountUsers.accountId,
+            userId: users.id,
+            avatarUrl: users.avatarUrl,
+            achievementCount: userAchievementCount(users.id),
+            displayName: users.displayName,
+        })
+        .from(accountUsers)
+        .innerJoin(users, eq(accountUsers.userId, users.id))
+        .where(
+            and(
+                inArray(accountUsers.accountId, [...new Set(accountIds)]),
+                eq(users.isTemporary, false),
+            ),
+        )
+        .orderBy(
+            asc(accountUsers.accountId),
+            asc(accountUsers.createdAt),
+            asc(accountUsers.id),
+        );
+    return new Map(
+        owners.map((owner) => [
+            owner.accountId,
+            {
+                publicId: userIdToPublicId(owner.userId),
+                avatarUrl: owner.avatarUrl,
+                achievementCount: owner.achievementCount,
+                displayName: safeUserDisplayName(
+                    owner.displayName,
+                    'Korisnik Gredica',
+                ),
+            },
+        ]),
+    );
+}
+
+async function rankFeaturedPublicGardens(
+    loadPlantCounts = getGardenActivePlantCounts,
+) {
+    const limit = 10;
+    const candidates = await storage()
+        .select({
+            id: gardens.id,
+            likeCount: count(gardenLikes.id),
+            updatedAt: gardens.updatedAt,
+        })
+        .from(gardens)
+        .leftJoin(gardenLikes, eq(gardenLikes.gardenId, gardens.id))
+        .where(and(eq(gardens.isDeleted, false), eq(gardens.isPublic, true)))
+        .groupBy(gardens.id)
+        .orderBy(
+            desc(count(gardenLikes.id)),
+            desc(gardens.updatedAt),
+            asc(gardens.id),
+        );
+
+    // Only ties at or above the tenth garden's like count can enter the list.
+    // Never limit before resolving those ties with the canonical plant count.
+    const minimumLikes = candidates.at(limit - 1)?.likeCount ?? 0;
+    const eligible = candidates.filter(
+        (garden) => garden.likeCount >= minimumLikes,
+    );
+    const plantCounts = await loadPlantCounts(
+        eligible.map((garden) => garden.id),
+    );
+    return eligible
+        .toSorted(
+            (left, right) =>
+                right.likeCount - left.likeCount ||
+                (plantCounts.get(right.id) ?? 0) -
+                    (plantCounts.get(left.id) ?? 0),
+        )
+        .slice(0, limit)
+        .map(({ id }) => ({ id }));
+}
+
+export async function getFeaturedPublicGardens() {
+    return rankFeaturedPublicGardens();
+}
+
+const featuredPublicGardenCacheTtl = 45 * 60;
+
+async function getCachedPublicGardenActivePlantCounts(gardenIds: number[]) {
+    // Persist only count pairs, not field/event graphs. A cold cache uses the
+    // canonical reducer once; warm homepage reads never load field history.
+    const pairs = await grediceCached(
+        grediceCacheKeys.publicGardenActivePlantCounts,
+        async () => {
+            const publicGardens = await storage()
+                .select({ id: gardens.id })
+                .from(gardens)
+                .where(
+                    and(
+                        eq(gardens.isDeleted, false),
+                        eq(gardens.isPublic, true),
+                    ),
+                );
+            return Array.from(
+                await getGardenActivePlantCounts(
+                    publicGardens.map(({ id }) => id),
+                ),
+            );
+        },
+        featuredPublicGardenCacheTtl,
+    );
+    const counts = new Map(pairs);
+    return new Map(gardenIds.map((id) => [id, counts.get(id) ?? 0]));
+}
+
+/** Cached ranking/count read model with current public-only summary metadata. */
+export async function getFeaturedPublicGardenSummaries() {
+    const ranked = await grediceCached(
+        grediceCacheKeys.featuredPublicGardenIds,
+        () => rankFeaturedPublicGardens(getCachedPublicGardenActivePlantCounts),
+        featuredPublicGardenCacheTtl,
+    );
+    const gardenIds = ranked.map(({ id }) => id);
+    if (gardenIds.length === 0) return [];
+
+    // Never put this visibility gate behind Redis or HTTP caches. A stale
+    // ranking, failed invalidation or in-flight cache fill must not disclose a
+    // garden after it is unpublished/deleted. Read current preview rows only.
+    const publicGardens = await storage()
+        .select({
+            id: gardens.id,
+            name: gardens.name,
+            accountId: gardens.accountId,
+        })
+        .from(gardens)
+        .where(
+            and(
+                inArray(gardens.id, gardenIds),
+                eq(gardens.isDeleted, false),
+                eq(gardens.isPublic, true),
+            ),
+        );
+    const visibleIds = publicGardens.map(({ id }) => id);
+    if (visibleIds.length === 0) return [];
+    const [members, previews] = await Promise.all([
+        getPublicGardenOwnersByAccountIds(
+            publicGardens.map(({ accountId }) => accountId),
+        ),
+        storage()
+            .select({
+                gardenId: gardenPreviews.gardenId,
+                phase: gardenPreviews.phase,
+                url: gardenPreviews.imageUrl,
+            })
+            .from(gardenPreviews)
+            .where(inArray(gardenPreviews.gardenId, visibleIds)),
+    ]);
+    const summaries = new Map(
+        publicGardens.map((garden) => [
+            garden.id,
+            {
+                garden: { id: garden.id, name: garden.name },
+                owner: members.get(garden.accountId) ?? null,
+                dayPreviewImageUrl:
+                    previews.find(
+                        (preview) =>
+                            preview.gardenId === garden.id &&
+                            preview.phase === 'day',
+                    )?.url ?? null,
+                nightPreviewImageUrl:
+                    previews.find(
+                        (preview) =>
+                            preview.gardenId === garden.id &&
+                            preview.phase === 'night',
+                    )?.url ?? null,
+            },
+        ]),
+    );
+    return ranked.flatMap(({ id }) => {
+        const summary = summaries.get(id);
+        return summary ? [summary] : [];
+    });
 }
 
 export async function getPublicGardens() {
@@ -258,12 +446,21 @@ export async function getPublicGardens() {
         where: and(eq(gardens.isDeleted, false), eq(gardens.isPublic, true)),
         orderBy: desc(gardens.updatedAt),
     });
-    const [previews, membersByAccountId] = await Promise.all([
-        getGardenPreviewsForGardenIds(publicGardens.map((garden) => garden.id)),
-        getPublicGardenMembersByAccountIds(
-            publicGardens.map((garden) => garden.accountId),
-        ),
-    ]);
+    const [previews, membersByAccountId, activePlantCounts] = await Promise.all(
+        [
+            getGardenPreviewsForGardenIds(
+                publicGardens.map((garden) => garden.id),
+            ),
+            getPublicGardenMembersByAccountIds(
+                publicGardens.map((garden) => garden.accountId),
+            ),
+            publicGardens.length > 0
+                ? getCachedPublicGardenActivePlantCounts(
+                      publicGardens.map(({ id }) => id),
+                  )
+                : Promise.resolve(new Map<number, number>()),
+        ],
+    );
     const previewImagesByGardenId = gardenPreviewImagesByGardenId(previews);
 
     return publicGardens.map((garden) => {
@@ -272,6 +469,7 @@ export async function getPublicGardens() {
         const members = membersByAccountId.get(garden.accountId) ?? [];
         return {
             ...garden,
+            activePlantCount: activePlantCounts.get(garden.id) ?? 0,
             owner: members.at(0) ?? null,
             members,
             previewImage: previewImages.day,
@@ -705,6 +903,7 @@ export async function setGardenLike({
                 ),
             );
 
+        await bustGrediceCached(grediceCacheKeys.featuredPublicGardenIds);
         const likeCounts = await getGardenLikeCounts([gardenId]);
         return {
             liked: false,
@@ -727,6 +926,7 @@ export async function setGardenLike({
             },
         });
 
+    await bustGrediceCached(grediceCacheKeys.featuredPublicGardenIds);
     const likeCounts = await getGardenLikeCounts([gardenId]);
     return {
         liked: true,
@@ -754,11 +954,12 @@ export async function updateGarden(garden: UpdateGarden) {
             }),
         );
     }
-    await bustScheduleCache();
+    await Promise.all([bustScheduleCache(), bustFeaturedPublicGardenCache()]);
 }
 
 export async function deleteGarden(gardenId: number) {
     await storage().transaction(async (tx) => {
+        await assertGardenPackLifecycleAllowed({ gardenId }, tx);
         await tx
             .update(gardens)
             .set({ isDeleted: true })
@@ -809,6 +1010,7 @@ export async function softDeleteGardenOnce(
     gardenId: number,
     db: TransactionClient,
 ): Promise<SoftDeleteGardenResult> {
+    await assertGardenPackLifecycleAllowed({ gardenId }, db);
     const garden = (
         await db
             .select({ id: gardens.id, isDeleted: gardens.isDeleted })
@@ -845,6 +1047,7 @@ export async function softDeleteGardenOnce(
 export async function deleteGardenIfNoActiveRaisedBeds(gardenId: number) {
     let deleted = false;
     const activeRaisedBedCount = await storage().transaction(async (tx) => {
+        await assertGardenPackLifecycleAllowed({ gardenId }, tx);
         const activeCount = await countActiveRaisedBedsForGarden(gardenId, tx);
         if (activeCount > 0) {
             return activeCount;
@@ -1011,6 +1214,8 @@ export async function updateGardenBlock(
     { id, ...values }: UpdateGardenBlock,
     db: DatabaseClient = storage(),
 ) {
+    if (values.variant !== undefined)
+        await assertGardenPackLifecycleAllowed({ blockId: id }, db);
     const updatedBlocks = await db
         .update(gardenBlocks)
         .set({
@@ -1033,6 +1238,7 @@ export async function deleteGardenBlock(
     blockId: string,
     db: DatabaseClient = storage(),
 ) {
+    await assertGardenPackLifecycleAllowed({ blockId }, db);
     await db
         .update(gardenBlocks)
         .set({ isDeleted: true })
@@ -1065,6 +1271,7 @@ export async function softDeleteGardenBlockOnce(
     blockId: string,
     db: TransactionClient,
 ): Promise<SoftDeleteGardenBlockResult> {
+    await assertGardenPackLifecycleAllowed({ blockId }, db);
     const block = await getGardenBlockForUpdate(
         { blockId, gardenId, includeDeleted: true },
         db,

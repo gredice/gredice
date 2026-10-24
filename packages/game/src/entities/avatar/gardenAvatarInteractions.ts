@@ -200,7 +200,7 @@ export function resolveAimedGardenAvatarAnimal({
     ray,
 }: {
     actorPosition: Pick<Vector3, 'x' | 'y' | 'z'>;
-    entries: AnimalPresenceEntry[];
+    entries: readonly AnimalPresenceEntry[];
     now: number;
     ray: Ray;
 }) {

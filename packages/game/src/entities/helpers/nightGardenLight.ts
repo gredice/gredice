@@ -35,19 +35,21 @@ export function getNightGardenGlowAmount(timeOfDay: number) {
 }
 
 export function resolveNightGardenLightFrame({
+    glowAmountOverride,
     emissiveBaseIntensity,
     emissivePeakIntensity,
     lightIntensity,
     physicalLightSelected,
     timeOfDay,
 }: {
+    glowAmountOverride?: 0 | 1;
     emissiveBaseIntensity: number;
     emissivePeakIntensity: number;
     lightIntensity: number;
     physicalLightSelected: boolean;
     timeOfDay: number;
 }) {
-    const amount = getNightGardenGlowAmount(timeOfDay);
+    const amount = glowAmountOverride ?? getNightGardenGlowAmount(timeOfDay);
     const lightVisible = physicalLightSelected && amount > 0.001;
 
     return {

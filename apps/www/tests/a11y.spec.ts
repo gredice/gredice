@@ -40,7 +40,11 @@ test.describe('accessibility axe smoke tests', () => {
                 'Route immediately forwards the browser after an OAuth callback.',
             );
 
+            // Keep the smoke test deterministic while the public sky follows
+            // real time. Night contrast is covered by the pixel contrast suite.
+            await page.clock.setFixedTime(new Date('2026-09-23T11:00:00Z'));
             await page.goto(url, { waitUntil: 'domcontentloaded' });
+            await expect(page.locator('html')).not.toHaveClass(/dark/u);
 
             const results = await new AxeBuilder({ page })
                 .withTags(['wcag2a', 'wcag2aa'])

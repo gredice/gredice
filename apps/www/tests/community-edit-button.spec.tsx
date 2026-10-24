@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/experimental-ct-react';
 import { CommunityEditButtonHarness } from './CommunityEditButtonHarness';
+import { expect, test } from './component-fixtures';
 import '../app/globals.css';
 
 test('prompts anonymous users before editing', async ({ mount, page }) => {
@@ -378,7 +378,10 @@ test('submits multiple reference edits for plant relationships', async ({
     await page
         .getByRole('combobox', { name: 'Dodaj biljku — Dobri susjedi' })
         .click();
-    await page.getByPlaceholder('Pretraži biljke...').fill('mrk');
+    await page
+        .getByRole('dialog', { name: 'Dodaj biljku — Dobri susjedi' })
+        .getByPlaceholder('Pretraži biljke...')
+        .fill('mrk');
     await page.getByRole('option', { name: 'Mrkva' }).click();
 
     await page
@@ -386,7 +389,10 @@ test('submits multiple reference edits for plant relationships', async ({
             name: 'Dodaj biljku — Izbjegavati blizinu',
         })
         .click();
-    await page.getByPlaceholder('Pretraži biljke...').fill('krump');
+    await page
+        .getByRole('dialog', { name: 'Dodaj biljku — Izbjegavati blizinu' })
+        .getByPlaceholder('Pretraži biljke...')
+        .fill('krump');
     await page.getByRole('option', { name: 'Krumpir' }).click();
     await page.getByRole('button', { name: 'Pošalji' }).click();
 
@@ -534,6 +540,14 @@ test('shows storage content and operation suggestions in the edit modal', async 
         .getByLabel('Skladištenje')
         .evaluate((element) => getComputedStyle(element).backgroundColor);
     expect(fieldBackground).not.toBe(dialogBackground);
+    await expect(page.getByLabel('Izvor').locator('..')).toHaveCSS(
+        'background-color',
+        'rgb(255, 255, 255)',
+    );
+    await expect(page.getByRole('combobox', { name: /Radnja/u })).toHaveCSS(
+        'background-color',
+        'rgb(255, 255, 255)',
+    );
 
     await page.getByLabel('Skladištenje').fill('Zamotati u vlažnu krpu.');
     await page.getByRole('combobox', { name: /Radnja/u }).selectOption('987');
@@ -1070,6 +1084,18 @@ test('organizes harvest edit fields into grouped sections with attribute icons',
             ),
         );
     expect(visibleGroups).toEqual(['content', 'attributes', 'operations']);
+    for (const input of await page.getByRole('spinbutton').all()) {
+        await expect(input.locator('..')).toHaveCSS(
+            'background-color',
+            'rgb(255, 255, 255)',
+        );
+    }
+    for (const select of await page.getByRole('combobox').all()) {
+        await expect(select).toHaveCSS(
+            'background-color',
+            'rgb(255, 255, 255)',
+        );
+    }
 
     await expect(
         page.locator(

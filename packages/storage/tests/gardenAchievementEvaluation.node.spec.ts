@@ -140,10 +140,10 @@ test('selected compatibility harvest uses the legacy effective date', () => {
 });
 
 test('first evaluation stores each crossed threshold with its historical date', () => {
-    const cycles = Array.from({ length: 50 }, (_, index) => ({
+    const cycles = Array.from({ length: 300 }, (_, index) => ({
         plantSortId: index + 1,
-        sowedAt: new Date(Date.UTC(2025, 0, index + 1)),
-        harvestedAt: new Date(Date.UTC(2025, 6, index + 1)),
+        sowedAt: new Date(Date.UTC(2025, 0, 1, 0, index)),
+        harvestedAt: new Date(Date.UTC(2025, 6, 1, 0, index)),
     }));
     const plans = gardenFamilyAchievementPlans({
         raisedBedAccountId: new Map([[8, 'acc']]),
@@ -175,7 +175,7 @@ test('first evaluation stores each crossed threshold with its historical date', 
             },
         ]),
     });
-    assert.equal(plans.length, 10);
+    assert.equal(plans.length, 20);
     for (const plan of plans) {
         const threshold = plan.definition.threshold;
         assert.ok(threshold);

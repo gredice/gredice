@@ -16,7 +16,6 @@ import {
     getGardenMutationOperationReceipt,
     getGardenPlacementSnapshotForUpdate,
     getSunflowers,
-    listGardenStructures,
     softDeleteGardenOnce,
     spendSunflowersBatch,
     updateGardenStack,
@@ -30,10 +29,6 @@ import {
     ensureFarmId,
 } from '../../../../packages/storage/tests/helpers/testHelpers';
 import { resolveGardenBlockPlacement } from './blockPlacementService';
-import {
-    createGardenOccupancyIndexFromStorageSnapshot,
-    validatePersistedStructuresAfterBlockMutation,
-} from './gardenOccupancyService';
 import {
     createPurchaseGardenBlockService,
     type PurchaseGardenBlockDependencies,
@@ -79,7 +74,6 @@ function integrationService(controls: { failAfterDebit: boolean }) {
             createAppearanceVariant: () => undefined,
             createGardenBlock: (gardenId, blockName, variant, transaction) =>
                 createGardenBlock(gardenId, blockName, variant, transaction),
-            createGardenOccupancyIndexFromStorageSnapshot,
             createGardenStack,
             createRaisedBedInTransaction: (input, transaction) =>
                 createRaisedBedInTransaction(input, transaction),
@@ -98,12 +92,10 @@ function integrationService(controls: { failAfterDebit: boolean }) {
             getGardenMutationAuthorityForUpdate,
             getGardenPlacementSnapshotForUpdate,
             isBlockPurchaseAvailableNow: () => true,
-            listGardenStructures,
             now: () => new Date('2026-08-30T23:00:00.000Z'),
             random: () => 0.25,
             resolveGardenBlockPlacement,
             updateGardenStack,
-            validatePersistedStructuresAfterBlockMutation,
             withAccountDeletionFenceTransaction,
             withGardenMutationOperation: (input, callback, transaction) =>
                 withGardenMutationOperation(input, callback, transaction),

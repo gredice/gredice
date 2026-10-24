@@ -57,11 +57,13 @@ describe('addressPlacementAnimationChunks', () => {
                 ['1:0', ['b']],
             ],
         );
-        assert.deepEqual(first.addressByBlockId.get('c'), {
-            chunkIndex: 0,
-            instanceIndex: 1,
-            order: 2,
-        });
+        assert.deepEqual(first.addressByBlockId.get('c'), [
+            {
+                chunkIndex: 0,
+                instanceIndex: 1,
+                order: 2,
+            },
+        ]);
 
         const second = addressPlacementAnimationChunks([
             createInstance('c', 1),
@@ -79,11 +81,13 @@ describe('addressPlacementAnimationChunks', () => {
                 ['0:0', ['c', 'a']],
             ],
         );
-        assert.deepEqual(second.addressByBlockId.get('a'), {
-            chunkIndex: 1,
-            instanceIndex: 1,
-            order: 2,
-        });
+        assert.deepEqual(second.addressByBlockId.get('a'), [
+            {
+                chunkIndex: 1,
+                instanceIndex: 1,
+                order: 2,
+            },
+        ]);
         assert.equal(second.addressByBlockId.has('b'), false);
     });
 });
@@ -153,6 +157,66 @@ describe('createPlacementDropAnimationRenderIdsSelector', () => {
 });
 
 describe('localizePlacementDropAnimationChunks', () => {
+    it('animates every cluster of one block across chunks and restores all after landing', () => {
+        const clusters = [
+            createInstance('leaves', 0),
+            createInstance('other', 1),
+            createInstance('leaves', 0.2),
+            createInstance('leaves', 9),
+        ];
+        const addressed = addressPlacementAnimationChunks(clusters);
+        const cache = createPlacementAnimationChunkCache<TestInstance>();
+        const animated = localizePlacementDropAnimationChunks(
+            addressed,
+            new Map([['leaves', 42]]),
+            cache,
+        );
+        assert.deepEqual(
+            animated.animatedInstances.map(({ instance }) => instance),
+            [clusters[0], clusters[2], clusters[3]],
+        );
+        assert.deepEqual(
+            animated.animatedInstances.map(({ partIndex }) => partIndex),
+            [0, 1, 2],
+        );
+        const persisted = clusters.map((instance) => ({
+            ...instance,
+            block: {
+                id:
+                    instance.block.id === 'leaves'
+                        ? 'persisted'
+                        : instance.block.id,
+            },
+        }));
+        const rekeyed = localizePlacementDropAnimationChunks(
+            addressPlacementAnimationChunks(persisted),
+            new Map([['persisted', 42]]),
+            createPlacementAnimationChunkCache(),
+        );
+        assert.deepEqual(
+            rekeyed.animatedInstances.map(({ renderId, partIndex }) => [
+                renderId,
+                partIndex,
+            ]),
+            animated.animatedInstances.map(({ renderId, partIndex }) => [
+                renderId,
+                partIndex,
+            ]),
+        );
+        assert(
+            animated.animatedInstances.every(({ renderId }) => renderId === 42),
+        );
+        assert.deepEqual(
+            animated.chunks.flatMap((chunk) => chunk.instances),
+            [clusters[1]],
+        );
+        assert.equal(
+            localizePlacementDropAnimationChunks(addressed, new Map(), cache)
+                .chunks,
+            addressed.chunks,
+        );
+    });
+
     it('replaces only the owning chunk while preserving unrelated references', () => {
         const addressed = addressPlacementAnimationChunks([
             createInstance('a', 0),

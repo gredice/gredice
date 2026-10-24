@@ -1,9 +1,9 @@
+import { acceptSystemActivity } from '../../../../../lib/live/acceptSystemActivity';
 import {
     parseGithubWebhook,
     parseVercelDrain,
     verifyWebhookSignature,
 } from '../../../../../lib/live/ingestParsers';
-import { storeSystemActivity } from '../../../../../lib/live/storeSystemActivity';
 
 const MAX_BODY_BYTES = 10 * 1024 * 1024;
 
@@ -55,7 +55,7 @@ export async function POST(
             }
 
             const events = parseVercelDrain(rawBody);
-            const result = await storeSystemActivity(
+            const result = await acceptSystemActivity(
                 'vercel',
                 signature,
                 events,
@@ -80,7 +80,7 @@ export async function POST(
         }
 
         const events = parseGithubWebhook(eventName, rawBody);
-        const result = await storeSystemActivity('github', delivery, events);
+        const result = await acceptSystemActivity('github', delivery, events);
         return result === 'unavailable'
             ? noStoreResponse('Source unavailable', 503)
             : noStoreResponse('Accepted', 202);

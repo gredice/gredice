@@ -1,7 +1,7 @@
-import { expect, test } from '@playwright/experimental-ct-react';
 import type { Page } from '@playwright/test';
 import { PlantHealthIssueOperations } from '../components/plant-health/PlantHealthIssueOperations';
 import { CommunityEntitySuggestionButtonHarness } from './CommunityEntitySuggestionButtonHarness';
+import { expect, test } from './component-fixtures';
 import '../app/globals.css';
 
 function mockAuthenticatedUser(page: Page) {
@@ -146,7 +146,8 @@ test('submits a new disease with named affected plants', async ({
         />,
     );
 
-    await page.getByRole('button', { name: 'Predloži novu bolest' }).click();
+    await page.getByRole('button', { name: 'Predloži bolest' }).click();
+    await page.getByRole('radio', { name: 'Predloži novu bolest' }).check();
     await page
         .getByRole('combobox', {
             name: 'Dodaj biljku — Pogođene biljke',

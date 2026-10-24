@@ -4,6 +4,7 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { RelatedFaq } from '../../../../../components/faq/RelatedFaq';
 import { FeedbackModal } from '../../../../../components/shared/feedback/FeedbackModal';
 import { PublicBreadcrumbs } from '../../../../../components/shared/seo/PublicBreadcrumbs';
 import { StructuredDataScript } from '../../../../../components/shared/seo/StructuredDataScript';
@@ -19,6 +20,7 @@ import { GrowthAttributeCards } from '../../GrowthAttributeCards';
 import { getPlantInforationSections } from '../../getPlantInforationSections';
 import { HarvestAttributeCards } from '../../HarvestAttributeCards';
 import { InformationSection } from '../../InformationSection';
+import { PlantFurtherReading } from '../../PlantFurtherReading';
 import { PlantHealthSection } from '../../PlantHealthSection';
 import { PlantPageHeader } from '../../PlantPageHeader';
 import {
@@ -298,10 +300,13 @@ export default async function PlantSortPage(
                             editSectionKey={section.id}
                         />
                     ))}
-                {(basePlantData.information.tip?.length ?? 0) > 0 && (
-                    <PlantTips plant={basePlantData} />
-                )}
-                <PlantHealthSection health={health} />
+                <PlantTips plant={basePlantData} publicPath={sortPath} />
+                <PlantHealthSection
+                    health={health}
+                    plantId={basePlantData.id}
+                    plantName={basePlantData.information.name}
+                    publicPath={sortPath}
+                />
                 <PlantRelationshipsSection
                     editTarget={{
                         entityTypeName: 'plantSort',
@@ -311,6 +316,8 @@ export default async function PlantSortPage(
                     relationships={relationships}
                 />
                 <PlantSortSeedsList plantSortId={sortData.id} />
+                <PlantFurtherReading />
+                <RelatedFaq placement="plant" />
                 <Row spacing={4}>
                     <Typography level="body1">
                         Jesu li ti informacije o ovoj biljci korisne?

@@ -7,6 +7,7 @@ import {
     type AnimalMovementCell,
     type AnimalMovementSurface,
     createAnimalBlockedCells,
+    createAnimalMovementSurfaceQuery,
     createAnimalMovementSurfaces,
     getAnimalMovementSurfaceAt,
     getAnimalMovementYAt,
@@ -325,6 +326,7 @@ export function cowPathStaysOnValidTerrain(
     path: Vector3[],
     surfaces: AnimalMovementSurface[],
 ) {
+    const querySurface = createAnimalMovementSurfaceQuery(surfaces);
     for (let index = 1; index < path.length; index += 1) {
         const from = path[index - 1];
         const to = path[index];
@@ -335,9 +337,7 @@ export function cowPathStaysOnValidTerrain(
         const sampleCount = Math.max(1, Math.ceil(distance / 0.16));
         for (let sample = 0; sample <= sampleCount; sample += 1) {
             const point = from.clone().lerp(to, sample / sampleCount);
-            if (
-                getAnimalMovementSurfaceAt(point, surfaces)?.kind !== 'ground'
-            ) {
+            if (querySurface(point)?.kind !== 'ground') {
                 return false;
             }
         }

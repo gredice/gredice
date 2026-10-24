@@ -11,6 +11,7 @@ import {
     attributeDefinitions,
     attributeValues,
     raisedBedPlantings,
+    raisedBeds,
 } from '../schema';
 import { storage } from '../storage';
 import { isCanonicalSelectedPlantingSowedEvent } from './selectedPlantingSowedEvent';
@@ -324,9 +325,9 @@ export async function getPlantIdBySortId() {
     return plantIdBySortId;
 }
 
-export async function getGardenAchievementPlantings(): Promise<
-    GardenAchievementPlantingRow[]
-> {
+export async function getGardenAchievementPlantings(
+    accountId?: string,
+): Promise<GardenAchievementPlantingRow[]> {
     const rows = await storage()
         .select({
             eventAggregateId: raisedBedPlantings.eventAggregateId,
@@ -335,7 +336,16 @@ export async function getGardenAchievementPlantings(): Promise<
             configurationSource: raisedBedPlantings.configurationSource,
         })
         // Immutable lifecycle events still belong to soft-deleted plantings.
-        .from(raisedBedPlantings);
+        .from(raisedBedPlantings)
+        .innerJoin(
+            raisedBeds,
+            eq(raisedBeds.id, raisedBedPlantings.raisedBedId),
+        )
+        .where(
+            accountId === undefined
+                ? undefined
+                : eq(raisedBeds.accountId, accountId),
+        );
     return rows.map((row) => ({
         ...row,
         configurationSource:
@@ -354,6 +364,12 @@ export function gardenFamilyAchievementPlans(input: {
         commands,
         input.plantIdBySortId,
     );
+    return gardenFamilyAchievementPlansFromProgress(progressByAccount);
+}
+
+export function gardenFamilyAchievementPlansFromProgress(
+    progressByAccount: ReturnType<typeof evaluateGardenAchievementProgress>,
+) {
     const diversityDefinitions = getAchievementDefinitions()
         .filter(
             (definition) =>

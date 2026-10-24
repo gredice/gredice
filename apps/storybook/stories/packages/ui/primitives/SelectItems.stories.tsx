@@ -89,6 +89,20 @@ export const SearchableList: Story = {
     },
 };
 
+export const OpenSearchableList: Story = {
+    args: {
+        label: 'Bolest',
+        placeholder: 'Odaberi bolest',
+        searchable: true,
+        defaultOpen: true,
+        searchPlaceholder: 'Pretraži bolesti...',
+        items: [
+            { value: 'powdery-mildew', label: 'Pepelnica' },
+            { value: 'leaf-spot', label: 'Pjegavost lista' },
+        ],
+    },
+};
+
 export const ForcedCompactList: Story = {
     args: {
         label: 'Biljka bez pretrage',

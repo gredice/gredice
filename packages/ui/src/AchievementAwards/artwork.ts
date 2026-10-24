@@ -7,11 +7,23 @@ import award30 from './assets/community-edit-10.webp';
 import award31 from './assets/community-edit-25.webp';
 import award32 from './assets/community-edit-50.webp';
 import award33 from './assets/community-edit-100.webp';
+import advancedCommunityEdit150 from './assets/community-edit-150.webp';
+import advancedCommunityEdit200 from './assets/community-edit-200.webp';
+import advancedCommunityEdit300 from './assets/community-edit-300.webp';
+import advancedCommunityEdit500 from './assets/community-edit-500.webp';
+import advancedCommunityEdit750 from './assets/community-edit-750.webp';
+import advancedCommunityEdit1000 from './assets/community-edit-1000.webp';
+import advancedCommunityEdit1500 from './assets/community-edit-1500.webp';
 import diversity3 from './assets/garden-diversity-3.webp';
 import diversity5 from './assets/garden-diversity-5.webp';
 import diversity10 from './assets/garden-diversity-10.webp';
 import diversity15 from './assets/garden-diversity-15.webp';
 import diversity20 from './assets/garden-diversity-20.webp';
+import advancedGardenDiversity25 from './assets/garden-diversity-25.webp';
+import advancedGardenDiversity30 from './assets/garden-diversity-30.webp';
+import advancedGardenDiversity35 from './assets/garden-diversity-35.webp';
+import advancedGardenDiversity40 from './assets/garden-diversity-40.webp';
+import advancedGardenDiversity45 from './assets/garden-diversity-45.webp';
 import award19 from './assets/harvest-1.webp';
 import award20 from './assets/harvest-10.webp';
 import award21 from './assets/harvest-20.webp';
@@ -39,6 +51,11 @@ import seedToTable5 from './assets/seed-to-table-5.webp';
 import seedToTable10 from './assets/seed-to-table-10.webp';
 import seedToTable25 from './assets/seed-to-table-25.webp';
 import seedToTable50 from './assets/seed-to-table-50.webp';
+import advancedSeedToTable75 from './assets/seed-to-table-75.webp';
+import advancedSeedToTable100 from './assets/seed-to-table-100.webp';
+import advancedSeedToTable150 from './assets/seed-to-table-150.webp';
+import advancedSeedToTable200 from './assets/seed-to-table-200.webp';
+import advancedSeedToTable300 from './assets/seed-to-table-300.webp';
 import award10 from './assets/watering-1.webp';
 import award11 from './assets/watering-10.webp';
 import award12 from './assets/watering-20.webp';
@@ -48,12 +65,37 @@ import award15 from './assets/watering-150.webp';
 import award16 from './assets/watering-200.webp';
 import award17 from './assets/watering-300.webp';
 import award18 from './assets/watering-500.webp';
+import advancedWatering750 from './assets/watering-750.webp';
+import advancedWatering1000 from './assets/watering-1000.webp';
+import advancedWatering1500 from './assets/watering-1500.webp';
+import advancedWatering2000 from './assets/watering-2000.webp';
 
 export const achievementArtwork: Record<
     AchievementArtworkKey,
     string | StaticImageData
 > = {
     registration: award0,
+    watering_750: advancedWatering750,
+    watering_1000: advancedWatering1000,
+    watering_1500: advancedWatering1500,
+    watering_2000: advancedWatering2000,
+    community_edit_150: advancedCommunityEdit150,
+    community_edit_200: advancedCommunityEdit200,
+    community_edit_300: advancedCommunityEdit300,
+    community_edit_500: advancedCommunityEdit500,
+    community_edit_750: advancedCommunityEdit750,
+    community_edit_1000: advancedCommunityEdit1000,
+    community_edit_1500: advancedCommunityEdit1500,
+    garden_diversity_25: advancedGardenDiversity25,
+    garden_diversity_30: advancedGardenDiversity30,
+    garden_diversity_35: advancedGardenDiversity35,
+    garden_diversity_40: advancedGardenDiversity40,
+    garden_diversity_45: advancedGardenDiversity45,
+    seed_to_table_75: advancedSeedToTable75,
+    seed_to_table_100: advancedSeedToTable100,
+    seed_to_table_150: advancedSeedToTable150,
+    seed_to_table_200: advancedSeedToTable200,
+    seed_to_table_300: advancedSeedToTable300,
     planting_1: award1,
     planting_10: award2,
     planting_20: award3,

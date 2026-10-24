@@ -1,8 +1,9 @@
 import type { OperationData, PlantData } from '@gredice/client';
+import { gardenActionUrl } from '@gredice/js/gardenActions';
 import { calculatePlantsPerField, FIELD_SIZE_LABEL } from '@gredice/js/plants';
 import { slug } from '@gredice/js/slug';
 import { Chip } from '@gredice/ui/Chip';
-import { GameLocationIcon, GameSeedlingIcon } from '@gredice/ui/GameIcons';
+import { GameCoinsIcon, GameLocationIcon } from '@gredice/ui/GameIcons';
 import { PlantGridIcon } from '@gredice/ui/GridIcons';
 import { NavigatingButton } from '@gredice/ui/NavigatingButton';
 import { PageHeader } from '@gredice/ui/PageHeader';
@@ -21,7 +22,6 @@ import { KnownPages } from '../../../src/KnownPages';
 import { getPlantImageViewTransitionName } from '../plantViewTransition';
 import { getPlantInforationSections } from './getPlantInforationSections';
 import { PlantCalendarPicker } from './PlantCalendarPicker';
-import { hasPlantRelationships } from './PlantRelationshipsSection';
 import { VerifiedInformationBadge } from './VerifiedInformationBadge';
 
 type InformationWithAlternativeName = {
@@ -99,12 +99,10 @@ export function PlantPageHeader({
             label: 'Savjeti',
         });
     }
-    if (hasPlantRelationships(sort?.relationships ?? plant.relationships)) {
-        contentLinks.push({
-            href: `#${slug('Biljni susjedi')}`,
-            label: 'Biljni susjedi',
-        });
-    }
+    contentLinks.push({
+        href: `#${slug('Biljni susjedi')}`,
+        label: 'Biljni susjedi',
+    });
 
     const baseLatinName = plant.information.latinName
         ? `lat. ${plant.information.latinName}`
@@ -223,7 +221,11 @@ export function PlantPageHeader({
                         </Stack>
                     )}
                     <NavigatingButton
-                        href={KnownPages.GardenApp}
+                        href={gardenActionUrl(KnownPages.GardenApp, {
+                            type: 'sow',
+                            plantId: plant.id,
+                            sortId: sort?.id,
+                        })}
                         className="bg-green-800 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 text-white"
                     >
                         Moj vrt
@@ -240,7 +242,7 @@ export function PlantPageHeader({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {price && (
                             <PriceAttributeCard
-                                icon={<GameSeedlingIcon aria-hidden />}
+                                icon={<GameCoinsIcon aria-hidden />}
                                 header="Cijena sijanja"
                                 currentPrice={price.currentPrice}
                                 description="Cijena jedne biljke uključuje troškove sjemena, pripreme tla, sjetve i sezonske pogodnosti. Više o samoj sjetvi u gredicama možeš pročitati u nastavku."

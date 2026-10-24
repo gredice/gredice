@@ -11,7 +11,7 @@ test('news pages read CMS data from storage without API fallbacks', () => {
         'utf8',
     );
 
-    assert.match(source, /getCmsPages/u);
+    assert.match(source, /getPublishedCmsNewsSourcePages/u);
     assert.match(source, /unstable_cache/u);
     assert.match(source, /revalidate: 3600/u);
     assert.match(source, /revalidate: 86_400/u);
@@ -21,7 +21,7 @@ test('news pages read CMS data from storage without API fallbacks', () => {
 
 test('the default news archive composes blog posts and weekly changes', () => {
     const source = readFileSync(
-        new URL('../app/page.tsx', import.meta.url),
+        new URL('../components/NewsArchive.tsx', import.meta.url),
         'utf8',
     );
 

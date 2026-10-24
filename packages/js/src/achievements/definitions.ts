@@ -55,6 +55,10 @@ const wateringThresholds: Array<[threshold: number, reward: number]> = [
     [200, 2_000],
     [300, 5_000],
     [500, 10_000],
+    [750, 15_000],
+    [1_000, 20_000],
+    [1_500, 30_000],
+    [2_000, 40_000],
 ];
 
 // TODO: Balance the rewards
@@ -78,6 +82,13 @@ const communityEditingThresholds: Array<[threshold: number, reward: number]> = [
     [25, 1_000],
     [50, 2_000],
     [100, 5_000],
+    [150, 7_500],
+    [200, 10_000],
+    [300, 15_000],
+    [500, 25_000],
+    [750, 37_500],
+    [1_000, 50_000],
+    [1_500, 75_000],
 ];
 
 // TODO: Balance the rewards
@@ -87,6 +98,11 @@ const gardenDiversityThresholds: Array<[threshold: number, reward: number]> = [
     [10, 600],
     [15, 1_200],
     [20, 2_500],
+    [25, 3_500],
+    [30, 4_500],
+    [35, 6_000],
+    [40, 8_000],
+    [45, 10_000],
 ];
 
 // TODO: Balance the rewards
@@ -96,6 +112,11 @@ const seedToTableThresholds: Array<[threshold: number, reward: number]> = [
     [10, 1_000],
     [25, 2_500],
     [50, 8_000],
+    [75, 12_000],
+    [100, 16_000],
+    [150, 24_000],
+    [200, 32_000],
+    [300, 48_000],
 ];
 
 const seasonalAwards: Array<{
@@ -175,8 +196,10 @@ function gardenDiversityTitle(threshold: number) {
             return 'Raznolik vrt';
         case 15:
             return 'Botanička zbirka';
-        default:
+        case 20:
             return 'Živi vrt';
+        default:
+            return `${threshold} različitih vrsta`;
     }
 }
 
@@ -190,8 +213,10 @@ function seedToTableTitle(threshold: number) {
             return 'Vrt na stolu';
         case 25:
             return 'Sezonski stol';
-        default:
+        case 50:
             return 'Majstor uzgoja';
+        default:
+            return `${threshold} punih ciklusa`;
     }
 }
 

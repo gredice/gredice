@@ -339,7 +339,10 @@ export function RaisedBedPhotosModal({
                                 <OperationScheduleModal
                                     gardenId={gardenId}
                                     operation={plantPhotoOperation}
-                                    onConfirm={async (scheduledDate) => {
+                                    onConfirm={async (
+                                        scheduledDate,
+                                        requestNote,
+                                    ) => {
                                         await setShoppingCartItem.mutateAsync({
                                             amount: 1,
                                             entityId:
@@ -351,6 +354,9 @@ export function RaisedBedPhotosModal({
                                             raisedBedId,
                                             positionIndex,
                                             additionalData: JSON.stringify({
+                                                ...(requestNote
+                                                    ? { requestNote }
+                                                    : {}),
                                                 scheduledDate:
                                                     scheduledDate.toISOString(),
                                             }),

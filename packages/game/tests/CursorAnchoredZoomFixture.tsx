@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { Vector3 } from 'three';
 import { GameCameraRig } from '../src/controls/GameCameraRig';
 import { Scene } from '../src/scene/Scene';
@@ -9,11 +9,23 @@ import {
     GameStateContext,
     useGameState,
 } from '../src/useGameState';
+import { CameraRenderedProbe } from './CameraRenderedProbe';
 
 const anchor = new Vector3(1.5, 0, -1.25);
 const initialPosition = new Vector3(-10, 10, -10);
 const initialTarget = new Vector3(0, 0, 0);
 const initialZoom = 100;
+
+function ViewportRefresh({ revision }: { revision: number }) {
+    const get = useThree((state) => state.get);
+    useLayoutEffect(() => {
+        if (revision > 0) {
+            const state = get();
+            state.set({ size: { ...state.size } });
+        }
+    }, [get, revision]);
+    return null;
+}
 
 function CameraProjectionProbe() {
     const gameCamera = useGameState((state) => state.gameCamera);
@@ -56,7 +68,14 @@ function CameraProjectionProbe() {
     );
 }
 
-export function CursorAnchoredZoomFixture() {
+export function CursorAnchoredZoomFixture({
+    baseFramesPerSecond = 0,
+    observeFrames = false,
+}: {
+    baseFramesPerSecond?: number;
+    observeFrames?: boolean;
+}) {
+    const [viewportRevision, setViewportRevision] = useState(0);
     const queryClient = useMemo(
         () =>
             new QueryClient({
@@ -84,11 +103,14 @@ export function CursorAnchoredZoomFixture() {
                         style={{ height: 600, width: 800 }}
                     >
                         <Scene
+                            baseFramesPerSecond={baseFramesPerSecond}
                             pixelRatio={1}
                             position={initialPosition}
+                            profileStats={observeFrames}
                             suspendWhenOffscreen={false}
                             zoom={initialZoom}
                         >
+                            <ViewportRefresh revision={viewportRevision} />
                             <mesh position={anchor}>
                                 <sphereGeometry args={[0.12, 12, 8]} />
                                 <meshBasicMaterial color="#facc15" />
@@ -99,11 +121,67 @@ export function CursorAnchoredZoomFixture() {
                                 initialTarget={initialTarget}
                                 initialZoom={initialZoom}
                             />
+                            {observeFrames && <CameraRenderedProbe />}
                         </Scene>
                         <CameraProjectionProbe />
+                        <button
+                            type="button"
+                            onClick={() =>
+                                setViewportRevision((value) => value + 1)
+                            }
+                        >
+                            Refresh viewport
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() =>
+                                gameStore.getState().worldRotate('cw')
+                            }
+                        >
+                            Rotate camera
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() =>
+                                gameStore
+                                    .getState()
+                                    .gameCamera?.focus(new Vector3(1, 0, 1), {
+                                        immediate: true,
+                                    })
+                            }
+                        >
+                            Focus immediately
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() =>
+                                gameStore
+                                    .getState()
+                                    .gameCamera?.focus(new Vector3(1, 0, 1))
+                            }
+                        >
+                            Animate focus
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() =>
+                                gameStore.getState().gameCamera?.restore(
+                                    {
+                                        position: [-10, 10, -10],
+                                        target: [0, 0, 0],
+                                        zoom: initialZoom,
+                                    },
+                                    { immediate: true },
+                                )
+                            }
+                        >
+                            Restore immediately
+                        </button>
                     </div>
                 </GameStateContext.Provider>
             </QueryClientProvider>
         </NuqsTestingAdapter>
     );
 }
+
+import { useThree } from '@react-three/fiber';

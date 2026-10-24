@@ -3,11 +3,9 @@ import { describe, it } from 'node:test';
 import {
     highTargetOperationVisualHighlightTarget,
     resolveGameProfileAdaptiveHigh,
+    resolveGameProfileControllerEnabled,
     resolveGameProfileFlags,
     resolveGameProfileGardenAvatar,
-    resolveGameProfileGardenBuilding,
-    resolveGameProfileGardenBuildingFixture,
-    resolveGameProfileGardenBuildingFixtureGate,
     resolveGameProfileOperationVisuals,
     resolveGameProfileStaticIdle,
     resolveGameProfileStaticSceneCache,
@@ -41,6 +39,34 @@ describe('resolveGameProfileOperationVisuals', () => {
     });
 });
 
+describe('resolveGameProfileControllerEnabled', () => {
+    it('preserves controller opt-ins when the cache witness is absent', () => {
+        assert.equal(resolveGameProfileControllerEnabled(undefined), false);
+        assert.equal(resolveGameProfileControllerEnabled(false), false);
+        assert.equal(resolveGameProfileControllerEnabled(true), true);
+        assert.equal(resolveGameProfileControllerEnabled(false, ''), false);
+    });
+
+    it('mounts canonical renderer receipts for every cache witness scene without another controller flag', () => {
+        for (const mode of [
+            'details',
+            'cloudy',
+            'rain',
+            'snow',
+            'snow-onset',
+        ]) {
+            assert.equal(
+                resolveGameProfileControllerEnabled(false, mode),
+                true,
+            );
+            assert.equal(
+                resolveGameProfileControllerEnabled(undefined, mode),
+                true,
+            );
+        }
+    });
+});
+
 describe('resolveGameProfileGardenAvatar', () => {
     it('keeps the walkable avatar behind an explicit opt-in', () => {
         assert.equal(resolveGameProfileGardenAvatar(undefined), false);
@@ -50,69 +76,16 @@ describe('resolveGameProfileGardenAvatar', () => {
     });
 });
 
-describe('resolveGameProfileGardenBuilding', () => {
-    it('requires both the profiler query and the exact server fixture gate', () => {
-        assert.equal(resolveGameProfileGardenBuilding(undefined), false);
-        assert.equal(resolveGameProfileGardenBuilding('1'), false);
-        assert.equal(resolveGameProfileGardenBuilding('0', true), false);
-        assert.equal(
-            resolveGameProfileGardenBuilding('unexpected', true),
-            false,
-        );
-        assert.equal(resolveGameProfileGardenBuilding('1', true), true);
-    });
-
-    it('accepts only exact true for the server fixture gate', () => {
-        assert.equal(
-            resolveGameProfileGardenBuildingFixtureGate(undefined),
-            false,
-        );
-        assert.equal(resolveGameProfileGardenBuildingFixtureGate('1'), false);
-        assert.equal(
-            resolveGameProfileGardenBuildingFixtureGate('TRUE'),
-            false,
-        );
-        assert.equal(resolveGameProfileGardenBuildingFixtureGate('true'), true);
-    });
-});
-
-describe('resolveGameProfileGardenBuildingFixture', () => {
-    it('keeps every fixture variant behind the exact server gate', () => {
-        assert.equal(
-            resolveGameProfileGardenBuildingFixture('worst-case'),
-            null,
-        );
-        assert.equal(
-            resolveGameProfileGardenBuildingFixture('worst-case', true),
-            'worst-case',
-        );
-        assert.equal(
-            resolveGameProfileGardenBuildingFixture('blank', true),
-            'blank',
-        );
-        assert.equal(
-            resolveGameProfileGardenBuildingFixture('unexpected', true),
-            'house',
-        );
-        assert.equal(
-            resolveGameProfileGardenBuildingFixture(undefined, true),
-            null,
-        );
-    });
-});
-
 describe('resolveGameProfileFlags', () => {
     it('defaults production-profile weather surfaces to the integrated path', () => {
         assert.deepEqual(resolveGameProfileFlags(undefined), {
             enableDebugHudFlag: true,
             enableGardenAvatarFlag: false,
-            enableGardenBuildingSystemFlag: false,
             enableIntegratedWeatherSurfacesFlag: true,
         });
         assert.deepEqual(resolveGameProfileFlags('integrated'), {
             enableDebugHudFlag: true,
             enableGardenAvatarFlag: false,
-            enableGardenBuildingSystemFlag: false,
             enableIntegratedWeatherSurfacesFlag: true,
         });
     });
@@ -121,7 +94,6 @@ describe('resolveGameProfileFlags', () => {
         assert.deepEqual(resolveGameProfileFlags('legacy'), {
             enableDebugHudFlag: true,
             enableGardenAvatarFlag: false,
-            enableGardenBuildingSystemFlag: false,
             enableIntegratedWeatherSurfacesFlag: false,
         });
     });
@@ -130,39 +102,16 @@ describe('resolveGameProfileFlags', () => {
         assert.deepEqual(resolveGameProfileFlags(undefined, '1'), {
             enableDebugHudFlag: true,
             enableGardenAvatarFlag: true,
-            enableGardenBuildingSystemFlag: false,
             enableIntegratedWeatherSurfacesFlag: true,
         });
     });
 
     it('can disable the Debug HUD feature flag for fauna profiles', () => {
-        assert.deepEqual(
-            resolveGameProfileFlags(
-                undefined,
-                undefined,
-                undefined,
-                false,
-                false,
-            ),
-            {
-                enableDebugHudFlag: false,
-                enableGardenAvatarFlag: false,
-                enableGardenBuildingSystemFlag: false,
-                enableIntegratedWeatherSurfacesFlag: true,
-            },
-        );
-    });
-
-    it('enables only the fixture flag requested by the building profile', () => {
-        assert.deepEqual(
-            resolveGameProfileFlags(undefined, undefined, '1', true),
-            {
-                enableDebugHudFlag: true,
-                enableGardenAvatarFlag: false,
-                enableGardenBuildingSystemFlag: true,
-                enableIntegratedWeatherSurfacesFlag: true,
-            },
-        );
+        assert.deepEqual(resolveGameProfileFlags(undefined, undefined, false), {
+            enableDebugHudFlag: false,
+            enableGardenAvatarFlag: false,
+            enableIntegratedWeatherSurfacesFlag: true,
+        });
     });
 });
 

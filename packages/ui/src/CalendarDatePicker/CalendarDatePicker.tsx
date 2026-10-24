@@ -20,8 +20,8 @@ const displayDateFormatter = new Intl.DateTimeFormat('hr-HR', {
 });
 
 const variantClassNames = {
-    outlined: 'border border-input bg-background',
-    soft: 'border border-transparent bg-muted',
+    outlined: 'border border-input bg-field',
+    soft: 'border border-transparent bg-field',
     plain: 'border border-transparent bg-transparent',
 };
 

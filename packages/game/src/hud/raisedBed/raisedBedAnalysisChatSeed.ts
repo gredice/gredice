@@ -1,5 +1,10 @@
+import { raisedBedAnalysisChatText } from '@gredice/js/ai';
+
+export { getRaisedBedAnalysisConversationId } from '@gredice/js/ai';
+
 import type { SuncokretChatSeed } from '../SuncokretChatProvider';
 import type { SuncokretContextSuggestion } from '../suncokretChatContext';
+import type { PhotoAnalysisAttachment } from './photoAnalysisChat';
 
 const raisedBedAnalysisSuggestions: SuncokretContextSuggestion[] = [
     {
@@ -16,54 +21,41 @@ const raisedBedAnalysisSuggestions: SuncokretContextSuggestion[] = [
     },
 ];
 
-function formatAnalysisDate(value: Date | string | null | undefined) {
-    if (!value) {
-        return null;
-    }
-
-    const date = value instanceof Date ? value : new Date(value);
-    if (Number.isNaN(date.getTime())) {
-        return null;
-    }
-
-    return date.toLocaleDateString('hr-HR', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-    });
-}
-
 /**
  * Turns a finished AI raised bed analysis into a new Suncokret thread that
  * opens with the analysis, so follow-up questions keep its context.
  */
 export function buildRaisedBedAnalysisChatSeed({
     analysisMarkdown,
+    analyzedAt,
+    photoAnalysis,
     id,
     positionIndex,
     referenceDate,
 }: {
     analysisMarkdown: string;
+    analyzedAt?: Date | null;
+    photoAnalysis?: PhotoAnalysisAttachment;
     id: string;
     positionIndex?: number;
     referenceDate?: Date | string | null;
 }): SuncokretChatSeed {
-    const analysisDate = formatAnalysisDate(referenceDate);
-    const scope =
-        typeof positionIndex === 'number'
-            ? `polja ${(positionIndex + 1).toString()}`
-            : 'gredice';
-    const intro = analysisDate
-        ? `Evo moje analize fotografija ${scope} od ${analysisDate}:`
-        : `Evo moje analize fotografija ${scope}:`;
-
     return {
         id,
         title: 'AI analiza fotografija',
         messages: [
             {
                 role: 'assistant',
-                text: `${intro}\n\n${analysisMarkdown}`,
+                photoAnalysis,
+                createdAt:
+                    analyzedAt && !Number.isNaN(analyzedAt.getTime())
+                        ? analyzedAt.toISOString()
+                        : undefined,
+                text: raisedBedAnalysisChatText({
+                    analysisMarkdown,
+                    positionIndex,
+                    referenceDate,
+                }),
             },
         ],
         suggestions: raisedBedAnalysisSuggestions,

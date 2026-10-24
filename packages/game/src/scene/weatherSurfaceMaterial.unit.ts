@@ -624,3 +624,30 @@ test('weather integration accepts only opaque depth-writing standard materials',
         false,
     );
 });
+
+test('frost shares the rain surface program and preserves source materials and geometry', () => {
+    const source = new MeshStandardMaterial();
+    const frost = { value: 0.5 };
+    const material = createIntegratedWeatherSurfaceMaterial(source, {
+        ...options,
+        frostIntensityUniform: frost,
+        snow: { ...options.snow, enabled: false },
+    });
+    const shader = shaderFixture();
+    Reflect.apply(material.onBeforeCompile, material, [shader, undefined]);
+    assert.equal(Reflect.get(shader.uniforms, 'uGrediceFrostIntensity'), frost);
+    assert.match(
+        shader.fragmentShader,
+        /if \(uGrediceFrostIntensity > 0.001\)/,
+    );
+    assert.match(shader.fragmentShader, /1.0 - uGrediceRainWetness/);
+    assert.doesNotMatch(shader.vertexShader, /Frost/);
+    assert.equal(source.userData.grediceWeatherSurface, undefined);
+    frost.value = 0;
+    assert.equal(
+        Reflect.get(shader.uniforms, 'uGrediceFrostIntensity').value,
+        0,
+    );
+    material.dispose();
+    source.dispose();
+});

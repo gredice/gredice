@@ -1,7 +1,12 @@
+import {
+    gardenActionUrl,
+    isGardenOperationApplication,
+} from '@gredice/js/gardenActions';
 import { getHarvestOperationRemovalDisclaimer } from '@gredice/js/plants';
 import { decodeRouteParam } from '@gredice/js/uri';
 import { GameReceiptIcon } from '@gredice/ui/GameIcons';
 import { Markdown } from '@gredice/ui/Markdown';
+import { NavigatingButton } from '@gredice/ui/NavigatingButton';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Row } from '@gredice/ui/Row';
@@ -12,6 +17,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { PriceAttributeCard } from '../../../components/attributes/PriceAttributeCard';
 import { CommunityEditButton } from '../../../components/community-edits/CommunityEditButton';
+import { RelatedFaq } from '../../../components/faq/RelatedFaq';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { PublicBreadcrumbs } from '../../../components/shared/seo/PublicBreadcrumbs';
 import { StructuredDataScript } from '../../../components/shared/seo/StructuredDataScript';
@@ -142,6 +148,22 @@ export default async function OperationPage(
                     }
                     header={operation.information.label}
                     subHeader={operation.information.shortDescription}
+                    headerChildren={
+                        operation.attributes.internal !== true &&
+                        isGardenOperationApplication(
+                            operation.attributes.application,
+                        ) ? (
+                            <NavigatingButton
+                                href={gardenActionUrl(KnownPages.GardenApp, {
+                                    type: 'operation',
+                                    operationId: operation.id,
+                                })}
+                                className="bg-green-800 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 text-white"
+                            >
+                                Moj vrt
+                            </NavigatingButton>
+                        ) : undefined
+                    }
                 >
                     <Stack>
                         <Typography level="h5" component="h2" gutterBottom>
@@ -251,6 +273,7 @@ export default async function OperationPage(
                     Dostupno za
                 </Typography>
                 <OperationApplicationsList operationId={operation.id} />
+                <RelatedFaq placement="operations" />
                 <Row spacing={4}>
                     <Typography level="body1">
                         Jesu li ti informacije o ovoj radnji korisne?

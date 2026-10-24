@@ -51,6 +51,7 @@ import {
 } from '../scene/gameProfileMetadata';
 import { useGameState } from '../useGameState';
 import { clampTimeOfDay, createDateForGameTimeOfDay } from '../utils/timeOfDay';
+import { SeasonDateControl } from './components/SeasonDateControl';
 import { TimeOfDayVisualization } from './components/TimeOfDayVisualization';
 import {
     getSpecialEntityDebugEntries,
@@ -1224,6 +1225,7 @@ export function DebugHud() {
                                 </IconButton>
                             }
                         >
+                            <SeasonDateControl />
                             <TimeOfDayVisualization
                                 interactive
                                 onChange={updateTimeOfDay}

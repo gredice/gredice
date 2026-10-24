@@ -84,3 +84,52 @@ describe('night garden light phase', () => {
         );
     });
 });
+
+it('isolated manual lights stay steady across phases, while omitted overrides retain normal night policy', () => {
+    const input = {
+        emissiveBaseIntensity: 0.025,
+        emissivePeakIntensity: 0.24,
+        lightIntensity: 6,
+        physicalLightSelected: true,
+    };
+    for (const timeOfDay of [0, 0.5, 0.79, 0.94]) {
+        assert.deepEqual(
+            resolveNightGardenLightFrame({
+                ...input,
+                timeOfDay,
+                glowAmountOverride: 1,
+            }),
+            { emissiveIntensity: 0.24, lightIntensity: 6, lightVisible: true },
+        );
+        assert.deepEqual(
+            resolveNightGardenLightFrame({
+                ...input,
+                timeOfDay,
+                glowAmountOverride: 0,
+            }),
+            {
+                emissiveIntensity: 0.025,
+                lightIntensity: 0,
+                lightVisible: false,
+            },
+        );
+    }
+    assert.equal(
+        resolveNightGardenLightFrame({ ...input, timeOfDay: 0.5 }).lightVisible,
+        false,
+    );
+    assert.equal(
+        resolveNightGardenLightFrame({ ...input, timeOfDay: 0.94 })
+            .lightVisible,
+        true,
+    );
+    assert.equal(
+        resolveNightGardenLightFrame({
+            ...input,
+            timeOfDay: 0.94,
+            glowAmountOverride: 1,
+            physicalLightSelected: false,
+        }).emissiveIntensity,
+        0.24,
+    );
+});

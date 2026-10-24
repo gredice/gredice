@@ -1,10 +1,14 @@
+import { useRef } from 'react';
+import type { Mesh } from 'three';
 import type { GLTFResult } from '../models/GameAssets';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
+import { useRegisterAutumnPart } from '../scene/AutumnParts';
 import { animated } from '../scene/sceneSpring';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
+import { autumnPartLeafSurfaces } from './helpers/autumnLeafSurfaces';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
 type WoodenBenchNodeName = Extract<
@@ -33,9 +37,27 @@ const woodenBenchNodeNames = [
     'WoodenBench_PinBackRight',
 ] satisfies WoodenBenchNodeName[];
 
-function WoodenBenchPart({ node }: { node: WoodenBenchNode }) {
+function WoodenBenchPart({
+    node,
+    blockId,
+    covered,
+}: {
+    node: WoodenBenchNode;
+    blockId: string;
+    covered: boolean;
+}) {
+    const ref = useRef<Mesh>(null);
+    useRegisterAutumnPart({
+        blockId,
+        partId: node.name,
+        ref,
+        surfaces: autumnPartLeafSurfaces[node.name] ?? [],
+        covered,
+    });
     return (
         <mesh
+            ref={ref}
+            name={node.name}
             castShadow
             receiveShadow
             geometry={node.geometry}
@@ -65,6 +87,9 @@ export function WoodenBench({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes } = useGameGLTF('WoodenBench');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
+    const covered = stack.blocks
+        .slice(stack.blocks.indexOf(block) + 1)
+        .some((above) => above.name.startsWith('Block_'));
 
     return (
         <animated.group
@@ -73,7 +98,12 @@ export function WoodenBench({ stack, block, rotation }: EntityInstanceProps) {
             scale={woodenBenchScale}
         >
             {woodenBenchNodeNames.map((nodeName) => (
-                <WoodenBenchPart key={nodeName} node={nodes[nodeName]} />
+                <WoodenBenchPart
+                    key={nodeName}
+                    node={nodes[nodeName]}
+                    blockId={block.id}
+                    covered={covered}
+                />
             ))}
         </animated.group>
     );

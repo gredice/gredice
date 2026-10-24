@@ -60,7 +60,11 @@ evaluation without producing a contradictory suppressed-and-sent timeline.
 ## Operational health window
 
 The default health projection measures terminal attempts and explicit retry
-exhaustion over the latest 15 minutes. It first bounds candidate notifications
+exhaustion over the latest 15 minutes for ad hoc diagnostics. The hourly cron
+explicitly requests 135 minutes, covering one missed hourly run plus 15 minutes of
+scheduling jitter. Reported logs use that 135-minute window. Channel severity
+keeps the existing minimum of ten terminal attempts and failure-rate thresholds;
+stale/ambiguous queues retain the ten-minute age threshold. It first bounds candidate notifications
 to the lifecycle contract's 24-hour maximum outbound age, then applies the
 requested attempt or event window. Stale queued-attempt checks use the same
 24-hour horizon and keep `status = queued` in the query predicate. These bounds

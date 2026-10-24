@@ -15,7 +15,6 @@ import {
     isFieldPendingVerification,
 } from './scheduleShared';
 import { buildAdminSelectedPlantingScheduleItem } from './selectedPlantingSchedulePresentation';
-import { OptimisticScheduleActionsProvider } from './useOptimisticScheduleActions';
 
 interface ScheduleDayPlantingsSectionProps {
     isToday: boolean;
@@ -163,89 +162,78 @@ export async function ScheduleDayPlantingsSection({
         });
 
     return (
-        <OptimisticScheduleActionsProvider>
-            <Stack spacing={4}>
-                <Row spacing={2} alignItems="center" className="w-full">
-                    <Typography level="h6" className="grow">
-                        Sijanje
-                    </Typography>
-                    <Row spacing={1} className="ml-auto shrink-0">
-                        <ScheduleDayPlantingsBulkActions
-                            fieldsToApprove={dayFieldsToApprove}
-                            fieldsToAssign={dayFieldsToAssign}
-                            fieldsToCancel={dayFieldsToCancel}
-                        />
-                    </Row>
+        <Stack spacing={4}>
+            <Row spacing={2} alignItems="center" className="w-full">
+                <Typography level="h6" className="grow">
+                    Sijanje
+                </Typography>
+                <Row spacing={1} className="ml-auto shrink-0">
+                    <ScheduleDayPlantingsBulkActions
+                        fieldsToApprove={dayFieldsToApprove}
+                        fieldsToAssign={dayFieldsToAssign}
+                        fieldsToCancel={dayFieldsToCancel}
+                    />
                 </Row>
-                {raisedBedGroups.map(
-                    ({ key, physicalId, raisedBeds: beds }) => {
-                        const bedIds = new Set(beds.map((bed) => bed.id));
-                        const firstBedId = beds.at(0)?.id;
-                        const selectedPlantingItems =
-                            scheduledSelectedPlantings.flatMap(
-                                ({ planting, raisedBedId }) => {
-                                    if (!bedIds.has(raisedBedId)) {
+            </Row>
+            {raisedBedGroups.map(({ key, physicalId, raisedBeds: beds }) => {
+                const bedIds = new Set(beds.map((bed) => bed.id));
+                const firstBedId = beds.at(0)?.id;
+                const selectedPlantingItems =
+                    scheduledSelectedPlantings.flatMap(
+                        ({ planting, raisedBedId }) => {
+                            if (!bedIds.has(raisedBedId)) {
+                                return [];
+                            }
+                            const physicalPositionNumbers =
+                                planting.memberships.flatMap((membership) => {
+                                    if (
+                                        !bedIds.has(
+                                            membership.raisedBedField
+                                                .raisedBedId,
+                                        )
+                                    ) {
                                         return [];
                                     }
-                                    const physicalPositionNumbers =
-                                        planting.memberships.flatMap(
-                                            (membership) => {
-                                                if (
-                                                    !bedIds.has(
-                                                        membership
-                                                            .raisedBedField
-                                                            .raisedBedId,
-                                                    )
-                                                ) {
-                                                    return [];
-                                                }
-                                                return [
-                                                    membership.raisedBedField
-                                                        .positionIndex +
-                                                        (membership
-                                                            .raisedBedField
-                                                            .raisedBedId ===
-                                                        firstBedId
-                                                            ? 1
-                                                            : 10),
-                                                ];
-                                            },
-                                        );
-                                    const plantName = plantSorts?.find(
-                                        (plantSort) =>
-                                            plantSort.id ===
-                                            planting.plantSortId,
-                                    )?.information?.name;
-                                    const item =
-                                        buildAdminSelectedPlantingScheduleItem({
-                                            physicalPositionNumbers,
-                                            planting,
-                                            plantName,
-                                            raisedBedId,
-                                        });
-                                    return item ? [item] : [];
+                                    return [
+                                        membership.raisedBedField
+                                            .positionIndex +
+                                            (membership.raisedBedField
+                                                .raisedBedId === firstBedId
+                                                ? 1
+                                                : 10),
+                                    ];
+                                });
+                            const plantName = plantSorts?.find(
+                                (plantSort) =>
+                                    plantSort.id === planting.plantSortId,
+                            )?.information?.name;
+                            const item = buildAdminSelectedPlantingScheduleItem(
+                                {
+                                    physicalPositionNumbers,
+                                    planting,
+                                    plantName,
+                                    raisedBedId,
                                 },
                             );
-                        return (
-                            <RaisedBedPlantingScheduleSection
-                                key={key}
-                                dateKey={dateKey}
-                                timeZone={timeZone}
-                                physicalId={physicalId}
-                                raisedBeds={beds}
-                                scheduledFields={scheduledFields}
-                                scheduledSelectedPlantings={
-                                    selectedPlantingItems
-                                }
-                                plantSorts={plantSorts}
-                                assignableFarmUsersByRaisedBedFieldId={
-                                    assignableFarmUsersByRaisedBedFieldId
-                                }
-                            />
-                        );
-                    },
-                )}
-            </Stack>
-        </OptimisticScheduleActionsProvider>
+                            return item ? [item] : [];
+                        },
+                    );
+                return (
+                    <RaisedBedPlantingScheduleSection
+                        key={key}
+                        dateKey={dateKey}
+                        timeZone={timeZone}
+                        physicalId={physicalId}
+                        raisedBeds={beds}
+                        scheduledFields={scheduledFields}
+                        scheduledSelectedPlantings={selectedPlantingItems}
+                        plantSorts={plantSorts}
+                        assignableFarmUsersByRaisedBedFieldId={
+                            assignableFarmUsersByRaisedBedFieldId
+                        }
+                    />
+                );
+            })}
+        </Stack>
     );
 }

@@ -11,6 +11,18 @@ test('seed changes revalidate plant-sort pages that render seed cards', () => {
     );
 });
 
+test('plant health changes revalidate plant-sort pages that inherit plant health', () => {
+    for (const entityType of ['plantDisease', 'plantPest'] as const) {
+        assert.ok(
+            collectRevalidationPaths([entityType]).some(
+                ({ path, type }) =>
+                    path === '/biljke/[alias]/sorte/[sortAlias]' &&
+                    type === 'page',
+            ),
+        );
+    }
+});
+
 test('sunflower package changes revalidate package offer pages', () => {
     const paths = collectRevalidationPaths(['sunflowerPackage']);
 

@@ -1,10 +1,12 @@
 import type {
+    AchievementActivity,
     AchievementFamily,
     AchievementRecord,
 } from '@gredice/js/achievements';
 import { Check, Lock, Timer } from '../icons';
 import { AchievementAward } from './AchievementAward';
 import { AchievementLevelLabel } from './AchievementLevelLabel';
+import { AchievementNextProgress } from './AchievementNextProgress';
 
 const stateLabels = {
     locked: 'Još nije ostvareno',
@@ -53,8 +55,10 @@ function RewardDetails({
 
 export function AchievementFamilyDetails({
     family,
+    activity,
 }: {
     family: AchievementFamily;
+    activity?: AchievementActivity;
 }) {
     const featured = family.highestApproved ?? family.levels[0];
     return (
@@ -82,6 +86,7 @@ export function AchievementFamilyDetails({
                 Ostvarene razine: {family.approvedCount} /{' '}
                 {family.levels.length}
             </p>
+            <AchievementNextProgress family={family} activity={activity} />
             <ol className="grid gap-3">
                 {family.levels.map(({ definition, achievement }) => {
                     const state = achievement?.status ?? 'locked';

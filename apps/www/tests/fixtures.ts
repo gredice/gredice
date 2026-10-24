@@ -1,10 +1,13 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { test as base, expect } from '@playwright/test';
+import { blobNetworkGuard } from './blob-network-fixtures';
 
 export type { Locator } from '@playwright/test';
 
-export const test = base.extend({
+export const test = base.extend<{ blobNetworkGuard: undefined }>({
+    serviceWorkers: 'block',
+    blobNetworkGuard,
     page: async ({ page }, use) => {
         await page.route(
             '**/api/gredice/api/auth/current-claims**',
@@ -15,6 +18,24 @@ export const test = base.extend({
                     status: 200,
                 });
             },
+        );
+        await page.route('**/api/gredice/api/gardens/99999/public', (route) =>
+            route.fulfill({
+                json: {
+                    id: 99_999,
+                    name: 'Istaknuti testni vrt',
+                    backgroundPalette: 'current',
+                    farmId: 1,
+                    homeCamera: null,
+                    isPublic: true,
+                    isSandbox: false,
+                    latitude: 45.815,
+                    longitude: 15.982,
+                    raisedBeds: [],
+                    stacks: {},
+                    updatedAt: '2026-08-29T12:00:00.000Z',
+                },
+            }),
         );
         await page.route(
             'https://vrt.gredice.com/assets/models/*.glb',

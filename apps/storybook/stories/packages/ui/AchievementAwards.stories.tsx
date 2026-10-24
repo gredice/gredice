@@ -1,7 +1,10 @@
 import { getAchievementDefinitions } from '@gredice/js/achievements';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { expect } from 'storybook/test';
-import { AchievementAwardsShowcase } from './AchievementAwardsShowcase';
+import {
+    AchievementAwardsShowcase,
+    isAdvancedAchievement,
+} from './AchievementAwardsShowcase';
 
 const meta = {
     title: 'packages/ui/AchievementAwards',
@@ -9,13 +12,19 @@ const meta = {
     tags: ['autodocs'],
     parameters: { layout: 'fullscreen' },
     play: async ({ canvasElement, args }) => {
-        const definitions = getAchievementDefinitions().filter(
-            (definition) =>
-                !args.newFamiliesOnly ||
-                ['garden_diversity', 'seed_to_table', 'seasonal'].includes(
-                    definition.familyKey,
-                ),
-        );
+        const definitions = getAchievementDefinitions()
+            .filter(
+                (definition) =>
+                    !args.newFamiliesOnly ||
+                    ['garden_diversity', 'seed_to_table', 'seasonal'].includes(
+                        definition.familyKey,
+                    ),
+            )
+            .filter(
+                (definition) =>
+                    !args.advancedLevelsOnly ||
+                    isAdvancedAchievement(definition),
+            );
         await expect(
             canvasElement.querySelectorAll('[data-award-example]'),
         ).toHaveLength(definitions.length);
@@ -47,4 +56,9 @@ export const Dark: Story = { args: { dark: true } };
 export const NewFamilies: Story = { args: { newFamiliesOnly: true } };
 export const NewFamiliesDark: Story = {
     args: { newFamiliesOnly: true, dark: true },
+};
+
+export const AdvancedLevels: Story = { args: { advancedLevelsOnly: true } };
+export const AdvancedLevelsDark: Story = {
+    args: { advancedLevelsOnly: true, dark: true },
 };

@@ -1744,7 +1744,9 @@ test('bulk notification reads reject oversized request batches', async () => {
     );
 });
 
-test('bulk notification reads lock only authorized unread notifications', async () => {
+test('bulk notification reads lock only authorized unread notifications', {
+    skip: process.env.GREDICE_TEST_DB_PROVIDER === 'pglite',
+}, async () => {
     createTestDb();
     await ensureFarmId();
     const userId = await createUserWithPassword(

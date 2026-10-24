@@ -216,10 +216,12 @@ type PlantPickerOptions = {
 };
 
 type PlantPickerProps = {
+    defaultOpen?: boolean;
+    onClose?: () => void;
     positionIndex: number;
     gardenId: number;
     raisedBedId: number;
-    trigger: ReactElement;
+    trigger?: ReactElement;
     inShoppingCart?: boolean;
     selectedPlantId?: number | null;
     selectedSortId?: number | null;
@@ -228,6 +230,8 @@ type PlantPickerProps = {
 };
 
 export function PlantPicker({
+    defaultOpen = false,
+    onClose,
     gardenId,
     raisedBedId,
     positionIndex,
@@ -238,7 +242,7 @@ export function PlantPicker({
     selectedPlantOptions: preselectedPlantOptions,
     selectedCartItemId,
 }: PlantPickerProps) {
-    const [open, setOpen] = useState(false);
+    const [open, setOpen] = useState(defaultOpen);
     const { track } = useGameAnalytics();
     const steps = [
         {
@@ -283,7 +287,22 @@ export function PlantPicker({
     const [flyToShoppingCart, setFlyToShoppingCart] = useState(false);
     const [useInventoryItem, setUseInventoryItem] = useState(false);
     const [useOutletOffer, setUseOutletOffer] = useState(false);
-    const [sowInGreenhouse, setSowInGreenhouse] = useState(false);
+    const [sowInGreenhouse, setSowInGreenhouse] = useState(() => {
+        const plant = allSorts?.find((sort) =>
+            preselectedSortId
+                ? sort.id === preselectedSortId
+                : sort.information.plant.id === preselectedPlantId,
+        )?.information.plant;
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        return (
+            defaultOpen &&
+            isGreenhouseSowingRecommended(
+                plant,
+                preselectedPlantOptions?.scheduledDate ?? tomorrow,
+            )
+        );
+    });
     const [selectedOutletOfferId, setSelectedOutletOfferId] = useState<
         number | null
     >(null);
@@ -574,6 +593,7 @@ export function PlantPicker({
             scheduleHideShoppingCartTransientHub();
             setOpen(false);
             setFlyToShoppingCart(false);
+            onClose?.();
         }
     }
 
@@ -587,6 +607,7 @@ export function PlantPicker({
             });
         }
         setOpen(open);
+        if (!open) onClose?.();
         if (open) {
             const selectedAdvancedSowingItem =
                 typeof preselectedSortId === 'number'
@@ -929,6 +950,11 @@ export function PlantPicker({
             open={open}
             onOpenChange={handleOpenChange}
             title={'Sijanje biljke'}
+            headerDescription={
+                defaultOpen
+                    ? `${raisedBed?.name ?? 'Gredica'} · Polje ${positionIndex + 1}`
+                    : undefined
+            }
             modal={false}
             className="md:max-w-2xl"
         >

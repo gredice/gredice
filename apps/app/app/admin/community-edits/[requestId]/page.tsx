@@ -368,6 +368,12 @@ function operationApplicationLabel(
 
 function entitySuggestionLabels(suggestion: CommunityEntitySuggestionValue) {
     switch (suggestion.kind) {
+        case 'plantTip':
+            return {
+                cardTitle: 'Novi savjet za biljku',
+                pageTitle: 'Prijedlog novog savjeta',
+                section: 'Novi savjet',
+            };
         case 'plantSort':
             return {
                 cardTitle: 'Nova sorta biljke',
@@ -413,7 +419,8 @@ function EntitySuggestionBlock({
                         <DetailItem label="Naziv">
                             <Typography>{suggestion.name}</Typography>
                         </DetailItem>
-                        {suggestion.kind === 'plantSort' ? (
+                        {suggestion.kind === 'plantSort' ||
+                        suggestion.kind === 'plantTip' ? (
                             <DetailItem label="Biljka">
                                 <Typography>
                                     {suggestion.parentPlantName} #
@@ -581,7 +588,7 @@ function ReviewNote() {
         <label className="block space-y-1">
             <Typography level="body2">Napomena moderatora</Typography>
             <textarea
-                className="min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="min-h-24 w-full rounded-md border border-input bg-field px-3 py-2 text-sm"
                 name="reviewerNote"
                 placeholder="Interna napomena ili objašnjenje za odbijanje..."
             />

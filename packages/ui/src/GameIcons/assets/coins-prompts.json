@@ -1,0 +1,33 @@
+{
+    "generator": "Built-in image_gen",
+    "createdOn": "2026-09-23",
+    "referenceArtwork": "packages/ui/src/GameIcons/assets/backpack.webp",
+    "referenceSha256": "06fffb0aa3ecf91e54dd2ddbb78e2f2521fe449d759d7cdb5c7892a69db2e127",
+    "subjectReference": "User-provided screenshot of two overlapping coin stacks",
+    "export": {
+        "width": 512,
+        "height": 512,
+        "format": "webp",
+        "quality": 90,
+        "alphaQuality": 100
+    },
+    "assets": [
+        {
+            "filename": "coins.webp",
+            "prompt": "Use case: stylized-concept. Create ONE transparent 3D low-poly Gredice game UI icon for a money price. Image 1 (backpack) is a rendering STYLE reference only: match chunky broad bevels, clearly dimensional faceted volumes, matte tactile toy materials, soft upper-left warm studio light, darker right-facing sides, slightly elevated three-quarter view. Image 2 is a SUBJECT reference only: two small overlapping stacks of coins, shorter in the lower-left foreground and taller upper-right behind it. Create two coherent stacks of thick round gold-colored coins, three coins in the short stack and five in the tall stack. Warm yellow-gold upper faces, ochre sides, distinct broad rims and visible simple divisions between coins. Plain unmarked faces, NO symbols, letters, currency signs, numerals, glitter or gems. Gold is appropriate only as the coin material; no surrounding trophy or ornate base. Strong simple silhouette readable at 20 and 24px, clean large forms, not photoreal, not a flat emoji. Keep stacks touching/overlapping as a single compact icon. Entire icon centered on square canvas with 8 percent empty margins, true transparent alpha background including gaps. NO ground plane, backdrop, external cast shadow, checkerboard, glow, watermark, decorative objects, sprout or leaves. Deliver one standalone icon, not a sheet.",
+            "sourceFile": "exec-063d8b0f-0164-4c57-9d98-337d6264d448.png",
+            "sourceSha256": "a06616956d265b6cd93e0d61e89e1bdd9e258ab39939ce200e2748439c4b82f3",
+            "outputSha256": "0ccda259bfaa5453a302ba7b9cd06cf6fbd4533ce2e2d13a9e46ac59e605cb7e"
+        }
+    ],
+    "postProcessing": "Preserved generated alpha, trimmed fully transparent outer padding, resized the complete icon to fit 464px and centered it within 512px with at least 24px transparent padding. No recoloring or background extraction.",
+    "validation": {
+        "width": 512,
+        "height": 512,
+        "hasAlpha": true,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "transparentBorderPixels": 24,
+        "bytes": 24092
+    }
+}

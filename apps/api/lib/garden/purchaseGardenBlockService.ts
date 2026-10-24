@@ -6,7 +6,6 @@ import {
     requiresExplicitAppearanceVariantSelection,
 } from '@gredice/js/entityAppearanceVariants';
 import type { GardenBlockPlacementResult } from '@gredice/js/gardenBlocks';
-import type { GardenOccupancyIndex } from '@gredice/js/gardenOccupancy';
 import {
     AccountDeletionInProgressError,
     AccountNotFoundError,
@@ -22,7 +21,6 @@ import {
     getGardenPlacementLocation,
     getGardenPlacementSnapshotForUpdate,
     InsufficientSunflowersError,
-    listGardenStructures,
     spendSunflowersBatch,
     updateGardenStack,
     withAccountDeletionFenceTransaction,
@@ -33,12 +31,6 @@ import {
 import { getBlockData } from '../blocks/blockDataService';
 import { resolveGardenBlockPlacement } from './blockPlacementService';
 import { settleGardenEconomicMutationDependency } from './gardenEconomicMutationDependency';
-import {
-    createGardenOccupancyIndexFromStorageSnapshot,
-    type GardenOccupancyServiceError,
-    type GardenOccupancyStorageStructureLike,
-    validatePersistedStructuresAfterBlockMutation,
-} from './gardenOccupancyService';
 import { isBlockPurchaseAvailableNow } from './nightOnlyBlockPurchases';
 
 const blockIdentifierMaxLength = 128;
@@ -75,7 +67,6 @@ export type PurchaseGardenBlockDependencies<Transaction> = Readonly<{
         variant: number | null,
         transaction: Transaction,
     ) => Promise<string>;
-    createGardenOccupancyIndexFromStorageSnapshot: typeof createGardenOccupancyIndexFromStorageSnapshot;
     createGardenStack: (
         gardenId: number,
         position: Readonly<{ x: number; y: number }>,
@@ -120,15 +111,10 @@ export type PurchaseGardenBlockDependencies<Transaction> = Readonly<{
         transaction: Transaction,
     ) => Promise<GardenBlockPurchaseSnapshot | null>;
     isBlockPurchaseAvailableNow: typeof isBlockPurchaseAvailableNow;
-    listGardenStructures: (
-        gardenId: number,
-        transaction: Transaction,
-    ) => Promise<readonly GardenOccupancyStorageStructureLike[]>;
     now: () => Date;
     random: () => number;
     resolveGardenBlockPlacement: (input: {
         blockName: string;
-        blockedCells?: ReadonlySet<string>;
         stacks: {
             positionX: number;
             positionY: number;
@@ -144,7 +130,6 @@ export type PurchaseGardenBlockDependencies<Transaction> = Readonly<{
         stack: Readonly<{ x: number; y: number; blocks: string[] }>,
         transaction: Transaction,
     ) => Promise<unknown>;
-    validatePersistedStructuresAfterBlockMutation: typeof validatePersistedStructuresAfterBlockMutation;
     withAccountDeletionFenceTransaction: <Result>(
         accountId: string,
         callback: (transaction: Transaction) => Promise<Result>,
@@ -193,9 +178,6 @@ type PurchaseGardenBlockFailureCode =
     | 'BLOCK_NOT_PURCHASABLE_NOW'
     | 'BLOCK_PLACEMENT_INVALID'
     | 'GARDEN_NOT_FOUND'
-    | 'GARDEN_OCCUPANCY_CONFLICT'
-    | 'GARDEN_OCCUPANCY_INVALID_INPUT'
-    | 'GARDEN_OCCUPANCY_INVALID_STATE'
     | 'GARDEN_STATE_CHANGED'
     | 'INSUFFICIENT_SUNFLOWERS'
     | 'OPERATION_CONFLICT'
@@ -239,10 +221,6 @@ function fail(
     message: string,
 ): never {
     throw new PurchaseGardenBlockError(code, status, message);
-}
-
-function failOccupancy(error: GardenOccupancyServiceError): never {
-    throw new PurchaseGardenBlockError(error.code, error.status, error.message);
 }
 
 function assertBoundedIdentifier(value: string, name: string, limit: number) {
@@ -366,14 +344,6 @@ function authoritativeCost(block: BlockData) {
     return cost;
 }
 
-function structureOccupiedCellKeys(index: GardenOccupancyIndex) {
-    const blockedCells = new Set<string>();
-    for (const [key, cell] of index.cells) {
-        if (cell.structureIds.length > 0) blockedCells.add(key);
-    }
-    return blockedCells;
-}
-
 function expectedStackMatches(
     expected: readonly string[] | undefined,
     actual: readonly string[],
@@ -383,37 +353,6 @@ function expectedStackMatches(
         (expected.length === actual.length &&
             expected.every((blockId, index) => blockId === actual[index]))
     );
-}
-
-function candidateSnapshotAfterPlacement(
-    snapshot: GardenBlockPurchaseSnapshot,
-    placement: Readonly<{
-        existingBlocks: readonly string[];
-        x: number;
-        y: number;
-    }>,
-    block: Readonly<{ id: string; name: string }>,
-) {
-    const target = snapshot.stacks.find(
-        (stack) =>
-            stack.positionX === placement.x && stack.positionY === placement.y,
-    );
-    const nextBlocks = [...placement.existingBlocks, block.id];
-    return {
-        blocks: [...snapshot.blocks, { ...block, rotation: null }],
-        stacks: target
-            ? snapshot.stacks.map((stack) =>
-                  stack === target ? { ...stack, blocks: nextBlocks } : stack,
-              )
-            : [
-                  ...snapshot.stacks,
-                  {
-                      blocks: nextBlocks,
-                      positionX: placement.x,
-                      positionY: placement.y,
-                  },
-              ],
-    };
 }
 
 function operationPayload(command: PurchaseGardenBlockCommand) {
@@ -640,28 +579,6 @@ export function createPurchaseGardenBlockService<Transaction>(
                                                         );
                                                     }
                                                 }
-                                                const structures =
-                                                    await dependencies.listGardenStructures(
-                                                        command.gardenId,
-                                                        operationTransaction,
-                                                    );
-                                                const occupancy =
-                                                    dependencies.createGardenOccupancyIndexFromStorageSnapshot(
-                                                        {
-                                                            blockData,
-                                                            snapshot: {
-                                                                blocks: snapshot.blocks,
-                                                                stacks: snapshot.stacks,
-                                                                structures,
-                                                            },
-                                                        },
-                                                    );
-                                                if (!occupancy.valid) {
-                                                    failOccupancy(
-                                                        occupancy.error,
-                                                    );
-                                                }
-
                                                 const blockNameById = new Map(
                                                     snapshot.blocks.map(
                                                         (block) => [
@@ -690,10 +607,6 @@ export function createPurchaseGardenBlockService<Transaction>(
                                                         {
                                                             blockName:
                                                                 command.blockName,
-                                                            blockedCells:
-                                                                structureOccupiedCellKeys(
-                                                                    occupancy.index,
-                                                                ),
                                                             stacks: snapshot.stacks.map(
                                                                 (stack) => ({
                                                                     blocks: [
@@ -740,36 +653,6 @@ export function createPurchaseGardenBlockService<Transaction>(
                                                         dependencies.random,
                                                     ) ??
                                                     null;
-                                                const candidateBlockId =
-                                                    globalThis.crypto.randomUUID();
-                                                const candidate =
-                                                    candidateSnapshotAfterPlacement(
-                                                        snapshot,
-                                                        placement.placement,
-                                                        {
-                                                            id: candidateBlockId,
-                                                            name: command.blockName,
-                                                        },
-                                                    );
-                                                const postMutationValidation =
-                                                    dependencies.validatePersistedStructuresAfterBlockMutation(
-                                                        {
-                                                            blockData,
-                                                            snapshot: {
-                                                                blocks: candidate.blocks,
-                                                                stacks: candidate.stacks,
-                                                                structures,
-                                                            },
-                                                        },
-                                                    );
-                                                if (
-                                                    !postMutationValidation.valid
-                                                ) {
-                                                    failOccupancy(
-                                                        postMutationValidation.error,
-                                                    );
-                                                }
-
                                                 const targetStack =
                                                     snapshot.stacks.find(
                                                         (stack) =>
@@ -922,7 +805,6 @@ const defaultDependencies: PurchaseGardenBlockDependencies<GardenPlacementTransa
         createAppearanceVariant: createEntityAppearanceVariantForPlacement,
         createGardenBlock: (gardenId, blockName, variant, transaction) =>
             createGardenBlock(gardenId, blockName, variant, transaction),
-        createGardenOccupancyIndexFromStorageSnapshot,
         createGardenStack,
         createRaisedBedInTransaction: (input, transaction) =>
             createRaisedBedInTransaction(input, transaction),
@@ -938,12 +820,10 @@ const defaultDependencies: PurchaseGardenBlockDependencies<GardenPlacementTransa
         getGardenMutationAuthorityForUpdate,
         getGardenPlacementSnapshotForUpdate,
         isBlockPurchaseAvailableNow,
-        listGardenStructures,
         now: () => new Date(),
         random: Math.random,
         resolveGardenBlockPlacement,
         updateGardenStack,
-        validatePersistedStructuresAfterBlockMutation,
         withAccountDeletionFenceTransaction,
         withGardenMutationOperation: (input, callback, transaction) =>
             withGardenMutationOperation(input, callback, transaction),

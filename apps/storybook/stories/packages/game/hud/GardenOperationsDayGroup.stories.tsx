@@ -208,7 +208,7 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'Day grouping used by both garden operation lists — the upcoming list in the HUD popover and the full "Povijest radnji" history. Each day summarises itself with bubbles (one per distinct operation, with its record count) and expands on click to reveal the operation cards.',
+                    'Day grouping used by both garden operation lists — the upcoming list in the HUD popover and the full "Povijest radnji" history. Each day summarises itself with bubbles (one per distinct operation, with its record count) and expands on click to reveal the operation cards. Bubbles sit beside the day label when space permits and wrap individually as the header narrows, regardless of viewport breakpoint.',
             },
         },
     },

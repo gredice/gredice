@@ -6,6 +6,7 @@ import { Chip } from '@gredice/ui/Chip';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Calendar, Close, Edit } from '@gredice/ui/icons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { OperationRequestNote } from '@gredice/ui/OperationRequestNote';
 import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -39,6 +40,10 @@ import { OperationCompletionEvidenceEditModal } from './OperationCompletionEvide
 import { OperationRequirementIcons } from './OperationRequirementIcons';
 import { RescheduleOperationModal } from './RescheduleOperationModal';
 import { ScheduleOperationVisual } from './ScheduleTaskVisual';
+import {
+    resolveScheduleFormVersion,
+    settleScheduleActions,
+} from './scheduleActionQueue';
 import { getScheduleOperationHref } from './scheduleOperationLinks';
 import {
     createOperationAssignedUsers,
@@ -283,6 +288,7 @@ export function RaisedBedOperationsScheduleSection({
                     {raisedBedDetailsLink ? (
                         <Link
                             href={raisedBedDetailsLink}
+                            prefetch={false}
                             aria-label={`Gredica ${physicalId}`}
                         >
                             <RaisedBedIcon
@@ -317,13 +323,16 @@ export function RaisedBedOperationsScheduleSection({
                                         patch: { isAccepted: true },
                                     }),
                                 ),
-                                action: () =>
-                                    Promise.all(
+                                action: (getVersion) =>
+                                    settleScheduleActions(
                                         operationsToApprove.map((operation) =>
                                             acceptOperationAction(
                                                 operation.id,
                                                 operation.entityId,
-                                                operation.taskVersionEventId,
+                                                getVersion(
+                                                    `operation:${operation.id}`,
+                                                    operation.taskVersionEventId,
+                                                ),
                                             ),
                                         ),
                                     ),
@@ -368,13 +377,16 @@ export function RaisedBedOperationsScheduleSection({
                                         };
                                     },
                                 ),
-                                action: () =>
-                                    Promise.all(
+                                action: (getVersion) =>
+                                    settleScheduleActions(
                                         operationsToAssign.map((operation) =>
                                             assignOperationUserAction(
                                                 operation.id,
                                                 operation.expectedEntityId,
-                                                operation.expectedTaskVersionEventId,
+                                                getVersion(
+                                                    `operation:${operation.id}`,
+                                                    operation.expectedTaskVersionEventId,
+                                                ),
                                                 assignedUserIds,
                                             ),
                                         ),
@@ -403,8 +415,8 @@ export function RaisedBedOperationsScheduleSection({
                                         },
                                     }),
                                 ),
-                                action: () =>
-                                    Promise.all(
+                                action: (getVersion) =>
+                                    settleScheduleActions(
                                         operationsToReschedule.map(
                                             (operation) => {
                                                 const formData = new FormData();
@@ -418,14 +430,22 @@ export function RaisedBedOperationsScheduleSection({
                                                 );
                                                 formData.set(
                                                     'expectedTaskVersionEventId',
-                                                    operation.taskVersionEventId.toString(),
+                                                    getVersion(
+                                                        `operation:${operation.id}`,
+                                                        operation.taskVersionEventId,
+                                                    ).toString(),
                                                 );
                                                 formData.set(
                                                     'scheduledDate',
                                                     scheduledDate,
                                                 );
                                                 return rescheduleOperationAction(
-                                                    formData,
+                                                    resolveScheduleFormVersion(
+                                                        formData,
+                                                        `operation:${operation.id}`,
+                                                        'expectedTaskVersionEventId',
+                                                        getVersion,
+                                                    ),
                                                 );
                                             },
                                         ),
@@ -449,12 +469,19 @@ export function RaisedBedOperationsScheduleSection({
                                         patch: { status: 'canceled' },
                                     }),
                                 ),
-                                action: () =>
-                                    Promise.all(
+                                action: (getVersion) =>
+                                    settleScheduleActions(
                                         operationsToCancel.map((operation) =>
                                             cancelOperationAction(
                                                 buildOperationCancelFormData(
-                                                    operation,
+                                                    {
+                                                        ...operation,
+                                                        taskVersionEventId:
+                                                            getVersion(
+                                                                `operation:${operation.id}`,
+                                                                operation.taskVersionEventId,
+                                                            ),
+                                                    },
                                                     formData,
                                                 ),
                                             ),
@@ -586,10 +613,13 @@ export function RaisedBedOperationsScheduleSection({
                                                             },
                                                         },
                                                     ],
-                                                    action: () =>
+                                                    action: (getVersion) =>
                                                         verifyOperationAction(
                                                             operation.id,
-                                                            operation.taskVersionEventId,
+                                                            getVersion(
+                                                                `operation:${operation.id}`,
+                                                                operation.taskVersionEventId,
+                                                            ),
                                                         ),
                                                     errorLogMessage:
                                                         'Error verifying operation:',
@@ -627,19 +657,25 @@ export function RaisedBedOperationsScheduleSection({
                                                             },
                                                         },
                                                     ],
-                                                    action: () =>
+                                                    action: (getVersion) =>
                                                         imageUrls
                                                             ? completeOperationWithImageUrls(
                                                                   operation.id,
                                                                   operation.entityId,
-                                                                  operation.taskVersionEventId,
+                                                                  getVersion(
+                                                                      `operation:${operation.id}`,
+                                                                      operation.taskVersionEventId,
+                                                                  ),
                                                                   imageUrls,
                                                                   notes,
                                                               )
                                                             : completeOperation(
                                                                   operation.id,
                                                                   operation.entityId,
-                                                                  operation.taskVersionEventId,
+                                                                  getVersion(
+                                                                      `operation:${operation.id}`,
+                                                                      operation.taskVersionEventId,
+                                                                  ),
                                                                   undefined,
                                                                   notes,
                                                               ),
@@ -673,11 +709,14 @@ export function RaisedBedOperationsScheduleSection({
                                                             },
                                                         },
                                                     ],
-                                                    action: () =>
+                                                    action: (getVersion) =>
                                                         acceptOperationAction(
                                                             operation.id,
                                                             operation.entityId,
-                                                            operation.taskVersionEventId,
+                                                            getVersion(
+                                                                `operation:${operation.id}`,
+                                                                operation.taskVersionEventId,
+                                                            ),
                                                         ),
                                                     errorLogMessage:
                                                         'Error accepting operation:',
@@ -693,6 +732,7 @@ export function RaisedBedOperationsScheduleSection({
                                     />
                                     <Link
                                         className="min-w-0 flex-1"
+                                        prefetch={false}
                                         href={getScheduleOperationHref(
                                             operation.id,
                                         )}
@@ -860,11 +900,14 @@ export function RaisedBedOperationsScheduleSection({
                                                         },
                                                     },
                                                 ],
-                                                action: () =>
+                                                action: (getVersion) =>
                                                     assignOperationUserAction(
                                                         operation.id,
                                                         operation.entityId,
-                                                        operation.taskVersionEventId,
+                                                        getVersion(
+                                                            `operation:${operation.id}`,
+                                                            operation.taskVersionEventId,
+                                                        ),
                                                         assignedUserIds,
                                                     ),
                                                 errorLogMessage:
@@ -905,9 +948,14 @@ export function RaisedBedOperationsScheduleSection({
                                                         },
                                                     },
                                                 ],
-                                                action: () =>
+                                                action: (getVersion) =>
                                                     rescheduleOperationAction(
-                                                        formData,
+                                                        resolveScheduleFormVersion(
+                                                            formData,
+                                                            `operation:${operation.id}`,
+                                                            'expectedTaskVersionEventId',
+                                                            getVersion,
+                                                        ),
                                                     ),
                                                 errorLogMessage:
                                                     'Error rescheduling operation:',
@@ -957,9 +1005,14 @@ export function RaisedBedOperationsScheduleSection({
                                                         },
                                                     },
                                                 ],
-                                                action: () =>
+                                                action: (getVersion) =>
                                                     cancelOperationAction(
-                                                        formData,
+                                                        resolveScheduleFormVersion(
+                                                            formData,
+                                                            `operation:${operation.id}`,
+                                                            'expectedTaskVersionEventId',
+                                                            getVersion,
+                                                        ),
                                                     ),
                                                 errorLogMessage:
                                                     'Error canceling operation:',
@@ -983,6 +1036,10 @@ export function RaisedBedOperationsScheduleSection({
                                     />
                                 </Row>
                             </Row>
+                            <OperationRequestNote
+                                note={operation.requestNote}
+                                className="mx-2 mb-2"
+                            />
                         </div>
                     );
                 })}

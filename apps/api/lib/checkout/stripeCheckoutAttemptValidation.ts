@@ -19,8 +19,8 @@ import {
 export type StripeCheckoutSessionForReconciliation =
     StripeCheckoutSessionForSnapshot & {
         metadata: Record<string, string> | null;
-        paymentStatus: 'no_payment_required' | 'paid' | 'unpaid';
-        status: 'complete' | 'expired' | 'open' | null;
+        paymentStatus: string;
+        status: string | null;
         url: string | null;
     };
 

@@ -29,6 +29,20 @@ Use this guide for repo layout, setup, commands, package boundaries, and local d
 - Browser tests: Playwright.
 - Node tests: Node's built-in test runner through `node --test` with `tsx` where needed.
 
+### Playwright runner compatibility
+
+The component-test apps (`app`, `delivery`, `farm`, `garden`, and `www`) keep
+`@playwright/test` and `@playwright/experimental-ct-react` on `1.62.1`, the final
+experimental React component-test release. WWW and Farm accessibility tests pass
+that runner's `Page` objects to Axe, so the scoped
+`@axe-core/playwright>playwright-core` override must stay on `1.62.1` too. Renovate
+protects both the app manifests and that workspace override until the component
+suites migrate to stories. Update these compatibility rules together when
+removing the legacy runner.
+
+`apps/api` uses `@playwright/test` `1.63.0` independently. Do not apply a global
+Playwright core override or downgrade the API runner to align component tests.
+
 ## Package boundaries
 
 - Use `workspace:*` versions for internal dependencies.
@@ -68,9 +82,10 @@ pnpm lint --filter garden
 pnpm typecheck --filter garden
 pnpm typecheck --filter www
 
-# Run tests
+# Run tests (keep `run`: pnpm 12 applies `pnpm test --filter` as its own
+# workspace filter and skips the root turbo script and its build dependency)
 pnpm test
-pnpm test --filter garden
+pnpm run test --filter garden
 
 # Build
 pnpm build
@@ -180,12 +195,16 @@ pnpm env:pull
 
 `pnpm env:pull` runs `vercel env pull .env` in every app with a Vercel project in `scripts/app-registry.ts`, including `apps/www`, `apps/news`, `apps/garden`, `apps/farm`, `apps/delivery`, `apps/app`, `apps/storybook`, `apps/api`, and `apps/status`.
 
+For a preview that fails with `git_info_fail` before build logs, use the
+[Git retrieval recovery runbook](./docs/vercel-preview-git-recovery.md) to verify
+the current PR head and retry its existing Git deployment.
+
 ### Turborepo remote cache
 
 Turbo build/test results are cached remotely through Vercel for the `gredice` team, which speeds up cold builds locally and in CI.
 
 - Local and worktrees: `pnpm bootstrap` runs `pnpm turbo link --yes --scope=gredice`, which writes `.turbo/config.json` for the current worktree. The link relies on Vercel CLI auth, so run `vercel login` first if it has not been done on the machine. Each linked worktree gets its own `.turbo/config.json` (the `.turbo` directory is gitignored).
-- CI: the `TURBO_TOKEN` (set to `VERCEL_TOKEN`) and `TURBO_TEAM=gredice` environment variables are wired in `.github/workflows/ci.yml` and `.github/workflows/nextjs_ci_reusable.yml`. No per-repo link file is needed.
+- CI: only `TURBO_TEAM=gredice` is set in workflows by default. `TURBO_TOKEN` is intentionally not exported workflow-wide to avoid exposing secrets to pull-request code; remote cache auth must be provided only in tightly scoped trusted contexts.
 
 `pnpm doctor` reports the link status under the optional "Turbo remote cache" check.
 
@@ -231,7 +250,7 @@ PLAYWRIGHT_HTML_OPEN=never
 
 Keep agent internet access off by default. Setup scripts already have internet access for dependency installation. If a task truly needs runtime internet access, prefer the common dependency allowlist and read-only HTTP methods.
 
-Do not use `pnpm dev` as the default Codex validation path. It starts the local HTTPS proxy and expects Docker, host entries, and Caddy certificate setup. Use targeted `pnpm lint --filter <workspace>`, `pnpm test --filter <workspace>`, and `pnpm build --filter <workspace>` commands instead.
+Do not use `pnpm dev` as the default Codex validation path. It starts the local HTTPS proxy and expects Docker, host entries, and Caddy certificate setup. Use targeted `pnpm lint --filter <workspace>`, `pnpm run test --filter <workspace>`, and `pnpm build --filter <workspace>` commands instead.
 
 Avoid `pnpm bootstrap` in Codex unless Vercel auth and project access are configured. It links projects and pulls real environment variables. For most Codex tasks, the checked-in `.env.example` files provide enough safe smoke-test configuration.
 

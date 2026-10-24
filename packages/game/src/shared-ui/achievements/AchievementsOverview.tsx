@@ -20,7 +20,7 @@ export function AchievementsOverview() {
     const [selectedKey, setSelectedKey] = useState<AchievementCategory | null>(
         null,
     );
-    const families = getAchievementFamilies(query.data ?? []);
+    const families = getAchievementFamilies(query.data?.achievements ?? []);
     const selected = families.find((family) => family.key === selectedKey);
 
     if (query.isLoading)
@@ -41,7 +41,9 @@ export function AchievementsOverview() {
 
     return (
         <>
-            <AchievementApprovalNotice achievements={query.data} />
+            <AchievementApprovalNotice
+                achievements={query.data?.achievements}
+            />
             {query.error && (
                 <p role="alert" className="mb-3 text-sm text-foreground/75">
                     Zbirku trenutno nije moguće osvježiti. Prikazana su
@@ -68,7 +70,12 @@ export function AchievementsOverview() {
                 showHeader
                 className="max-w-xl"
             >
-                {selected && <AchievementFamilyDetails family={selected} />}
+                {selected && (
+                    <AchievementFamilyDetails
+                        family={selected}
+                        activity={query.data?.activity}
+                    />
+                )}
             </GameModal>
         </>
     );

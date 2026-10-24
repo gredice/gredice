@@ -190,7 +190,7 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'Composable chat rows, bubbles, markers, and a streaming-safe message scroller adapted from the shadcn chat primitives for Gredice surfaces.',
+                    'Composable chat rows, bubbles, markers, and a streaming-safe message scroller for Gredice surfaces. Avatars sit beside the author above the response, keeping the full message width available on narrow screens.',
             },
         },
     },
@@ -307,4 +307,13 @@ export const MarkdownResponse: Story = {
         ],
     },
     render: (args) => <ChatPanel {...args} />,
+};
+
+export const NarrowConversation: Story = {
+    ...Conversation,
+    render: (args) => (
+        <div className="max-w-[320px]">
+            <ChatPanel {...args} />
+        </div>
+    ),
 };

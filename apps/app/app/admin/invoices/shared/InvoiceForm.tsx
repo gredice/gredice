@@ -745,7 +745,7 @@ export default function InvoiceForm({
                                                     )
                                                 }
                                                 placeholder="Ulica i broj, Poštanski broj Grad, Država..."
-                                                className="w-full text-base px-3 py-2 border border-input bg-background rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 resize-none"
+                                                className="w-full text-base px-3 py-2 border border-input bg-field rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 resize-none"
                                                 rows={3}
                                             />
                                         </Stack>
@@ -813,7 +813,7 @@ export default function InvoiceForm({
                                                     )
                                                 }
                                                 placeholder="Dodatne napomene..."
-                                                className="w-full text-base px-3 py-2 border border-input bg-background rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 resize-none"
+                                                className="w-full text-base px-3 py-2 border border-input bg-field rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 resize-none"
                                                 rows={3}
                                             />
                                         </Stack>
@@ -830,7 +830,7 @@ export default function InvoiceForm({
                                                     )
                                                 }
                                                 placeholder="Uvjeti plaćanja..."
-                                                className="w-full text-base px-3 py-2 border border-input bg-background rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 resize-none"
+                                                className="w-full text-base px-3 py-2 border border-input bg-field rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 resize-none"
                                                 rows={3}
                                             />
                                         </Stack>

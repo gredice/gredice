@@ -4,15 +4,18 @@ import { Accordion } from '@gredice/ui/Accordion';
 import { Markdown } from '@gredice/ui/Markdown';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import { CommunityEntitySuggestionButton } from '../../../components/community-edits/CommunityEntitySuggestionButton';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 
 export function PlantTips({
     plant,
+    publicPath,
 }: {
     plant: {
         id: number;
-        information?: { tip?: PlantData['information']['tip'] };
+        information: { name: string; tip?: PlantData['information']['tip'] };
     };
+    publicPath: string;
 }) {
     return (
         <Stack spacing={4}>
@@ -47,6 +50,14 @@ export function PlantTips({
                         </Stack>
                     </Accordion>
                 ))}
+                <CommunityEntitySuggestionButton
+                    key={plant.id}
+                    kind="plantTip"
+                    parentPlantId={plant.id}
+                    parentPlantName={plant.information.name}
+                    publicPath={publicPath}
+                    compact
+                />
             </div>
         </Stack>
     );

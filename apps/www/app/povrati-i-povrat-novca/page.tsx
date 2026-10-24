@@ -2,13 +2,14 @@ import { Container } from '@gredice/ui/Container';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
+import { RelatedFaq } from '../../components/faq/RelatedFaq';
 import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
 
 export const metadata = createPublicMetadata({
     title: 'Povrat novca',
     description:
-        'Informacije o povratu novca, suncokretima, rezervacijama i korekcijama Gredice salda.',
+        'Puni povrat sadnje u suncokretima za biljke koje nisu proklijale nakon 15 dana te pravila ostalih povrata i korekcija salda.',
     path: KnownPages.Refunds,
     eyebrow: 'Povrati',
 });
@@ -20,9 +21,15 @@ export default function RefundsPage() {
                 <PageHeader
                     padded
                     header="Povrat novca"
-                    subHeader="Ako nisi zadovoljan uslugom ili proizvodom, možeš zatražiti povrat novca u roku od 30 dana."
+                    subHeader="Za biljku koja nije proklijala nakon 15 dana vraćamo puni plaćeni iznos sadnje u suncokretima. Ostale reklamacije možeš zatražiti unutar 30 dana od kupnje."
                 />
                 <StyledHtml>
+                    <h2>Puni povrat za biljku koja nije proklijala</h2>
+                    <p>{notSproutedRefundPolicy}</p>
+                    <p>
+                        Povrat dobivaš automatski u suncokretima, bez zahtjeva
+                        podršci. Obavijest u vrtu potvrđuje iznos povrata.
+                    </p>
                     <h2>Naša politika</h2>
                     <p>
                         Reklamacije su moguće za biljke i radnje unutar{' '}
@@ -50,15 +57,14 @@ export default function RefundsPage() {
                     </p>
                     <p>
                         Kada naručiš akciju u vrtu, potreban broj suncokreta
-                        najprije se rezervira. Ako se akcija otkaže prije
-                        obrade, rezervacija se otpušta i suncokreti se vraćaju
-                        na raspoloživi saldo.
+                        oduzima se sa salda odmah pri potvrdi narudžbe. Ako se
+                        akcija otkaže prije obrade, suncokreti se vraćaju na
+                        saldo kao povrat.
                     </p>
                     <p>
-                        Nakon što je akcija izvršena i naplaćena iz salda,
-                        eventualni povrat ili korekcija rješava se kroz
-                        korisničku podršku. Bonus suncokreti iz paketa ne
-                        predstavljaju zaseban novčani iznos i ne obećavaju
+                        Za ostale izvršene akcije povrat ili korekcija rješava
+                        se kroz korisničku podršku. Bonus suncokreti iz paketa
+                        ne predstavljaju zaseban novčani iznos i ne obećavaju
                         automatski gotovinski povrat.
                     </p>
                     <h2>Kako zatražiti povrat</h2>
@@ -77,8 +83,8 @@ export default function RefundsPage() {
                         tržištu Hrvatske (HR).
                     </p>
                     <p>
-                        Povrat je moguć isključivo kroz korisničku podršku i
-                        odobrenje povrata novca/suncokreta.
+                        Ostale zahtjeve za povrat provjerava i odobrava
+                        korisnička podrška.
                     </p>
                     <hr />
                     <p>
@@ -89,6 +95,9 @@ export default function RefundsPage() {
                     </p>
                 </StyledHtml>
             </Stack>
+            <RelatedFaq placement="refunds" />
         </Container>
     );
 }
+
+import { notSproutedRefundPolicy } from '@gredice/js/plants';

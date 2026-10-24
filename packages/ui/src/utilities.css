@@ -271,6 +271,25 @@ html[data-public-environment="on"] body {
     isolation: isolate;
 }
 
+/* Public copy must remain readable over every part of the sky, including
+   the outer edges and the bright horizon in the dark theme. */
+[data-public-environment="on"] {
+    --public-theme-color-duration: 0s;
+    --muted-foreground: var(--baseHue, 28) 12% 22%;
+    --secondary-foreground: var(--baseHue, 28) 12% 20%;
+    --tertiary-foreground: var(--baseHue, 28) 12% 22%;
+}
+
+.dark[data-public-environment="on"] {
+    --muted-foreground: var(--environmentHue, 212) 10% 90%;
+    --secondary-foreground: var(--environmentHue, 212) 10% 90%;
+    --tertiary-foreground: var(--environmentHue, 212) 10% 90%;
+}
+
+[data-public-environment="on"] .public-page-description {
+    color: hsl(var(--foreground));
+}
+
 .public-environment-backdrop {
     inset: 0;
     z-index: -1;
@@ -401,20 +420,30 @@ html[data-public-environment="on"] body {
 }
 
 .public-environment-contrast-veil {
-    background: linear-gradient(
-        180deg,
-        hsl(var(--background) / 0.26),
-        hsl(var(--background) / 0.5) 46%,
-        hsl(var(--background) / 0.72)
-    );
+    --veil-opacity: calc(0.68 + var(--public-environment-contrast-boost, 0));
+    /* A continuous reading surface, with a little more sky at the edges.
+       The base wash protects text even outside the central content column. */
+    background:
+        linear-gradient(
+            90deg,
+            transparent,
+            hsl(var(--background) / 0.16) 16%,
+            hsl(var(--background) / 0.16) 84%,
+            transparent
+        ),
+        linear-gradient(
+            180deg,
+            hsl(var(--background) / var(--veil-opacity)),
+            hsl(var(--background) / calc(var(--veil-opacity) + 0.04)) 50%,
+            hsl(var(--background) / calc(var(--veil-opacity) + 0.08))
+        );
 }
 
 .dark .public-environment-contrast-veil {
-    background: linear-gradient(
-        180deg,
-        hsl(var(--background) / 0.16),
-        hsl(var(--background) / 0.42) 48%,
-        hsl(var(--background) / 0.66)
+    --veil-opacity: calc(
+        0.8 +
+        var(--public-environment-contrast-boost, 0) *
+        0.6
     );
 }
 

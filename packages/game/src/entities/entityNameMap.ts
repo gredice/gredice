@@ -1,10 +1,17 @@
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { ArrowSign } from './ArrowSign';
+import { AutumnAsterPot } from './AutumnAsterPot';
+import { AutumnBlanketBench } from './AutumnBlanketBench';
+import { AutumnEntrance } from './AutumnEntrance';
+import { AutumnGrass } from './AutumnGrass';
+import { AutumnLeafPile } from './AutumnLeafPile';
+import { AutumnShrub } from './AutumnShrub';
 import { BaleHey } from './BaleHey';
 import { BeachBall } from './BeachBall';
 import { BeachChair } from './BeachChair';
 import { BeachTowelStriped } from './BeachTowelStriped';
 import { BeachUmbrella } from './BeachUmbrella';
+import { BirdFeeder } from './BirdFeeder';
 import { BirdHouse } from './BirdHouse';
 import { BlockDryGround } from './BlockDryGround';
 import { BlockDryGroundAngle } from './BlockDryGroundAngle';
@@ -39,6 +46,7 @@ import { Bucket } from './Bucket';
 import { Bush } from './Bush';
 import { Cactus } from './Cactus';
 import { CatPillow } from './CatPillow';
+import { ChestnutRoastingCart } from './ChestnutRoastingCart';
 import { ChickenCoop } from './ChickenCoop';
 import { Composter } from './Composter';
 import { Cow } from './Cow';
@@ -47,22 +55,32 @@ import { DesertStone } from './DesertStone';
 import { DogHouse } from './DogHouse';
 import { DoubleGardenLightPole } from './DoubleGardenLightPole';
 import { EnamelGardenLamp } from './EnamelGardenLamp';
+import { FallenLog } from './FallenLog';
 import { Fence } from './Fence';
 import { FenceGate } from './FenceGate';
 import { FireflyJar } from './FireflyJar';
 import { FishingBoat } from './FishingBoat';
 import { Goat } from './farmAnimals/FarmAnimals';
 import { GardenBox } from './GardenBox';
+import { GardenBrazier } from './GardenBrazier';
+import { GardenScarecrow } from './GardenScarecrow';
+import { GardenTeaTable } from './GardenTeaTable';
 import { GiftBoxBlueWhite } from './GiftBoxBlueWhite';
 import { GiftBoxGoldRed } from './GiftBoxGoldRed';
 import { GiftBoxGreenGold } from './GiftBoxGreenGold';
 import { GiftBoxPurpleSilver } from './GiftBoxPurpleSilver';
 import { GiftBoxRedWhite } from './GiftBoxRedWhite';
 import { GiftBoxWhiteGreen } from './GiftBoxWhiteGreen';
+import { HalloweenAccent } from './HalloweenAccent';
+import { HarvestCrate } from './HarvestCrate';
+import { HarvestPumpkin } from './HarvestPumpkin';
+import { HarvestWheelbarrow } from './HarvestWheelbarrow';
 import { HazelLightArch } from './HazelLightArch';
+import { HedgehogShelter } from './HedgehogShelter';
 import { Horse } from './horses/Horse';
 import { IceCreamCart } from './IceCreamCart';
 import { InflatablePoolSmall } from './InflatablePoolSmall';
+import { LeafRake } from './LeafRake';
 import { LemonadeStand } from './LemonadeStand';
 import { LiquidPreparationBottle } from './LiquidPreparationBottle';
 import { MoonRainBarrel } from './MoonRainBarrel';
@@ -74,6 +92,7 @@ import { Pine } from './Pine';
 import { PineAdvent } from './PineAdvent';
 import { PolishedStoneFence } from './PolishedStoneFence';
 import { Pot } from './Pot';
+import { PumpkinLantern } from './PumpkinLantern';
 import {
     CowShelter,
     GoatShelter,
@@ -83,6 +102,7 @@ import {
 } from './persistentPets/PersistentPetHomeModels';
 import { RaisedBed } from './RaisedBed';
 import { RoofTileLantern } from './RoofTileLantern';
+import { Rose } from './Rose';
 import { Rabbit } from './rabbits/Rabbit';
 import { MulchCoconut } from './raisedBed/MulchCoconut';
 import { MulchHey } from './raisedBed/MulchHey';
@@ -90,11 +110,14 @@ import { MulchWood } from './raisedBed/MulchWood';
 import { Seed } from './raisedBed/Seed';
 import { Stick } from './raisedBed/Stick';
 import { SandcastleSmallA } from './SandcastleSmall';
+import { SeasonalMaple } from './SeasonalMaple';
+import { SeedDryingRack } from './SeedDryingRack';
 import { Shade } from './Shade';
 import { Sheep } from './Sheep';
 import { ShovelSmall } from './ShovelSmall';
 import { SmallWoodenBridge } from './SmallWoodenBridge';
 import { Snowman } from './Snowman';
+import { StackedFirewood } from './StackedFirewood';
 import { StoneFence } from './StoneFence';
 import { StoneLarge } from './StoneLarge';
 import { StoneMedium } from './StoneMedium';
@@ -113,6 +136,8 @@ import { WoodenBench } from './WoodenBench';
 import { WoodenHandLantern } from './WoodenHandLantern';
 import { WoodenSign } from './WoodenSign';
 import { WoodenWalkway } from './WoodenWalkway';
+import { WoodlandArrangement } from './WoodlandArrangement';
+import { WoodlandMushrooms } from './WoodlandMushrooms';
 
 export const entityNameMap = {
     Block_Ground: BlockGround,
@@ -184,6 +209,49 @@ export const entityNameMap = {
     LemonadeStand: LemonadeStand,
     IceCreamCart: IceCreamCart,
     SummerHat: SummerHat,
+    GardenScarecrow,
+    HarvestCrate,
+    AutumnAsterPotMauve: AutumnAsterPot,
+    AutumnAsterPotCream: AutumnAsterPot,
+    AutumnAsterPotGold: AutumnAsterPot,
+    HarvestWheelbarrow,
+    AutumnShrub,
+    SeasonalMaple,
+    WoodlandMushrooms,
+    FallenLog,
+    AutumnBlanketBench,
+    ChestnutRoastingCart,
+    LeafRake,
+    StackedFirewood,
+    SeedDryingRack,
+    BirdFeeder,
+    HedgehogShelter,
+    FriendlyGhost: HalloweenAccent,
+    SupportedCobweb: HalloweenAccent,
+    PumpkinLanternSmile: PumpkinLantern,
+    PumpkinLanternWink: PumpkinLantern,
+    GardenBrazier,
+    GardenTeaTable,
+    AutumnLeafPileMound: AutumnLeafPile,
+    AutumnGrassTuft: AutumnGrass,
+    WoodlandAcorns: WoodlandArrangement,
+    AutumnWreathPost: AutumnEntrance,
+    AutumnGarland: AutumnEntrance,
+    AutumnFenceGate: FenceGate,
+    WoodlandConkers: WoodlandArrangement,
+    WoodlandMushroomBasket: WoodlandArrangement,
+    AutumnSeedHeads: AutumnGrass,
+    AutumnLeafPileCrescent: AutumnLeafPile,
+    HarvestCrateOrchard: HarvestCrate,
+    HarvestPumpkinSquatOrange: HarvestPumpkin,
+    HarvestPumpkinSquatCream: HarvestPumpkin,
+    HarvestPumpkinSquatGreen: HarvestPumpkin,
+    HarvestPumpkinGourdOrange: HarvestPumpkin,
+    HarvestPumpkinGourdCream: HarvestPumpkin,
+    HarvestPumpkinGourdGreen: HarvestPumpkin,
+    HarvestPumpkinGroupOrange: HarvestPumpkin,
+    HarvestPumpkinGroupCream: HarvestPumpkin,
+    HarvestPumpkinGroupGreen: HarvestPumpkin,
     BeachTowelStriped: BeachTowelStriped,
     InflatablePoolSmall: InflatablePoolSmall,
     BeachChair: BeachChair,
@@ -260,6 +328,7 @@ export const entityNameMap = {
     Snowman: Snowman,
     Tulip: Tulip,
     Sunflower: Sunflower,
+    Rose: Rose,
     CactusBarrel: Cactus,
     CactusColumnCluster: Cactus,
     CactusPricklyPear: Cactus,

@@ -35,6 +35,7 @@ export const KnownPages = {
     BlockPets: PublicDirectoryPaths.BlockPets as Route,
     BlockPlantGenerator: '/blokovi/biljke/generator' as Route,
     Sunflowers: '/suncokreti',
+    Experience: '/iskustvo-i-razine',
     RaisedBeds: '/podignuta-gredica',
     Outlet: '/outlet',
     Sowing: '/sjetva',
@@ -56,6 +57,7 @@ export const KnownPages = {
     WhatsNew: '/novosti/sto-je-novo',
     PublicGardens: '/vrtovi',
     Users: '/korisnici',
+    Achievements: '/postignuca',
     Wallpapers: '/pozadine',
     PublicGarden: (gardenId: number) =>
         `/vrtovi/${gardenId.toString()}` as Route,

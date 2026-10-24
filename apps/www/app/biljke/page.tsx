@@ -2,12 +2,11 @@ import { orderBy } from '@gredice/js/arrays';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
-import { Tabs, TabsContent } from '@gredice/ui/Tabs';
+import { Tabs } from '@gredice/ui/Tabs';
 import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
-import { Card, CardOverflow } from '../../components/shared/Card';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { PageFilterInputNoSSR } from '../../components/shared/PageFilterInputNoSSR';
 import { StructuredDataScript } from '../../components/shared/seo/StructuredDataScript';
@@ -15,11 +14,12 @@ import { getPlantSortsData } from '../../lib/plants/getPlantSortsData';
 import { getPlantsData } from '../../lib/plants/getPlantsData';
 import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
+import { publicHtmlGrowthFixture } from '../../tests/publicHtmlGrowthFixture';
 import { CalendarInfoChip } from './CalendarInfoChip';
-import { PlantsCalendar } from './PlantsCalendar';
-import { PlantsGallery } from './PlantsGallery';
+import { PlantsCatalogue } from './PlantsCatalogue';
 import { PlantsSeedTimeFilterToggle } from './PlantsSeedTimeFilterToggle';
 import { PlantsViewTabs } from './PlantsViewTabs';
+import { toPlantCatalogue } from './plantCatalogue';
 
 export const metadata: Metadata = createPublicMetadata({
     title: 'Biljke',
@@ -48,7 +48,12 @@ export default async function PlantsPage({
         getPlantSortsData(),
     ]);
     const isCanonicalView = !search && !isSeedTimeFilterEnabled;
-    const sortedEntities = orderBy(entities ?? [], (a, b) =>
+    const catalogue = toPlantCatalogue(entities, sorts);
+    const plants =
+        process.env.GREDICE_PLAYWRIGHT_CATALOGUE_GROWTH_FIXTURE === 'true'
+            ? publicHtmlGrowthFixture(catalogue)
+            : catalogue;
+    const sortedEntities = orderBy(plants, (a, b) =>
         a.information.name.localeCompare(b.information.name),
     );
     return (
@@ -87,43 +92,27 @@ export default async function PlantsPage({
                     />
                 </Suspense>
             </PageHeader>
-            <Suspense>
-                <Tabs value={view} defaultValue="popis" className="w-full">
-                    <div className="mt-2 flex flex-col gap-2 md:flex-row md:items-center">
-                        <PlantsViewTabs
-                            search={search}
-                            seedTimeOnly={isSeedTimeFilterEnabled}
-                        />
-                        {view === 'kalendar' && <CalendarInfoChip />}
-                        <div className="flex flex-col gap-2 md:ml-auto md:flex-row md:items-center">
-                            <Suspense>
-                                <PlantsSeedTimeFilterToggle
-                                    initialValue={seedTimeFilterValue}
-                                />
-                            </Suspense>
-                        </div>
+            <Tabs value={view} defaultValue="popis" className="w-full">
+                <div className="mt-2 flex flex-col gap-2 md:flex-row md:items-center">
+                    <PlantsViewTabs
+                        search={search}
+                        seedTimeOnly={isSeedTimeFilterEnabled}
+                    />
+                    {view === 'kalendar' && <CalendarInfoChip />}
+                    <div className="flex flex-col gap-2 md:ml-auto md:flex-row md:items-center">
+                        <Suspense>
+                            <PlantsSeedTimeFilterToggle
+                                initialValue={seedTimeFilterValue}
+                            />
+                        </Suspense>
                     </div>
-                    <TabsContent value="popis" className="mt-2">
-                        <PlantsGallery
-                            plants={entities}
-                            sorts={sorts}
-                            initialSearch={search}
-                            initialSeedTimeFilter={seedTimeFilterValue}
-                        />
-                    </TabsContent>
-                    <TabsContent value="kalendar" className="mt-2">
-                        <Card>
-                            <CardOverflow>
-                                <PlantsCalendar
-                                    plants={entities}
-                                    initialSearch={search}
-                                    initialSeedTimeFilter={seedTimeFilterValue}
-                                />
-                            </CardOverflow>
-                        </Card>
-                    </TabsContent>
-                </Tabs>
-            </Suspense>
+                </div>
+                <PlantsCatalogue
+                    plants={plants}
+                    initialSearch={search}
+                    initialSeedTimeFilter={seedTimeFilterValue}
+                />
+            </Tabs>
             <Typography level="body1" className="mt-6">
                 Za objašnjenja radnji i regionalnih termina otvori{' '}
                 <Link

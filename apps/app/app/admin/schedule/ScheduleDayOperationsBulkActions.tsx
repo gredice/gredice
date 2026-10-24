@@ -14,6 +14,7 @@ import {
 } from './BulkCancelRaisedBedButton';
 import { BulkPhotoOperationImportModal } from './BulkPhotoOperationImportModal';
 import type { BulkPhotoOperationTarget } from './bulkPhotoOperationImportModel';
+import { settleScheduleActions } from './scheduleActionQueue';
 import {
     createOperationAssignedUsers,
     isDayBulkOperationApprovalTargetVisible,
@@ -87,13 +88,16 @@ export function ScheduleDayOperationsBulkActions({
                                 patch: { isAccepted: true },
                             }),
                         ),
-                        action: () =>
-                            Promise.all(
+                        action: (getVersion) =>
+                            settleScheduleActions(
                                 visibleOperationsToApprove.map((operation) =>
                                     acceptOperationAction(
                                         operation.id,
                                         operation.entityId,
-                                        operation.taskVersionEventId,
+                                        getVersion(
+                                            `operation:${operation.id}`,
+                                            operation.taskVersionEventId,
+                                        ),
                                     ),
                                 ),
                             ),
@@ -131,13 +135,16 @@ export function ScheduleDayOperationsBulkActions({
                                 };
                             },
                         ),
-                        action: () =>
-                            Promise.all(
+                        action: (getVersion) =>
+                            settleScheduleActions(
                                 visibleOperationsToAssign.map((operation) =>
                                     assignOperationUserAction(
                                         operation.id,
                                         operation.expectedEntityId,
-                                        operation.expectedTaskVersionEventId,
+                                        getVersion(
+                                            `operation:${operation.id}`,
+                                            operation.expectedTaskVersionEventId,
+                                        ),
                                         assignedUserIds,
                                     ),
                                 ),
@@ -161,12 +168,18 @@ export function ScheduleDayOperationsBulkActions({
                                 patch: { status: 'canceled' },
                             }),
                         ),
-                        action: () =>
-                            Promise.all(
+                        action: (getVersion) =>
+                            settleScheduleActions(
                                 visibleOperationsToCancel.map((operation) =>
                                     cancelOperationAction(
                                         buildOperationCancelFormData(
-                                            operation,
+                                            {
+                                                ...operation,
+                                                taskVersionEventId: getVersion(
+                                                    `operation:${operation.id}`,
+                                                    operation.taskVersionEventId,
+                                                ),
+                                            },
                                             formData,
                                         ),
                                     ),

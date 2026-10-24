@@ -1,6 +1,6 @@
 import 'server-only';
 import { createHmac } from 'node:crypto';
-import { initAuth, initRbac } from '@gredice/auth';
+import { initAuth, initRbac, isAccessTokenPayload } from '@gredice/auth';
 import { getUser as storageGetUser } from '@gredice/storage';
 import type { Context } from 'hono';
 import { deleteCookie, setCookie as honoSetCookie } from 'hono/cookie';
@@ -85,7 +85,29 @@ const rbac = initRbac(
     }),
 );
 
-export const { withAuth, verifyJwt, auth } = rbac;
+export const { withAuth, verifyJwt, verifyAccessJwt, auth } = rbac;
+
+export function createOAuthStateJwt(userId: string) {
+    return rbac.createJwtWithClaims(userId, { tokenUse: 'oauth_state' }, '10m');
+}
+
+export function createMcpAccessJwt(userId: string) {
+    // MCP selects and authorizes the account from x-gredice-account-id.
+    return rbac.createJwt(userId, '72h');
+}
+
+export async function verifyOAuthStateJwt(token: string) {
+    const verified = await verifyJwt(token);
+    const payload = verified.result?.payload;
+    if (
+        payload &&
+        payload.tokenUse !== 'oauth_state' &&
+        !(payload.tokenUse === undefined && isAccessTokenPayload(payload))
+    ) {
+        return { error: new Error('Unauthorized: Invalid OAuth state token') };
+    }
+    return verified;
+}
 
 export function createDeliveryMobileAccessJwt(input: {
     userId: string;
@@ -161,6 +183,7 @@ async function createAccountBoundJwt(
             iat: issuedAt,
             iss: 'urn:gredice:issuer:api',
             sub: payload.sub,
+            tokenUse: 'account_delete',
         }),
     ].join('.');
     const signature = createHmac('sha256', await jwtSecretFactory())

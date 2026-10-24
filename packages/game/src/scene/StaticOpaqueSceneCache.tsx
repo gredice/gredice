@@ -11,7 +11,6 @@ import {
     useLayoutEffect,
     useMemo,
     useRef,
-    useSyncExternalStore,
 } from 'react';
 import {
     ACESFilmicToneMapping,
@@ -45,8 +44,37 @@ import {
     type CloudShadowMaterialUniforms,
     getCloudShadowAttenuationMaterialUniforms,
 } from './cloudShadowAttenuation';
-import { updateGameProfileMetadata } from './gameProfileMetadata';
+import {
+    type StaticOpaqueSceneCacheLayerState,
+    updateGameProfileMetadata,
+} from './gameProfileMetadata';
 import { useSceneRenderRequest, useSceneResume } from './SceneTime';
+import {
+    createStaticOpaqueSceneCacheBenefitState,
+    invalidateStaticOpaqueSceneCacheBenefitGpuSamples,
+    isStaticOpaqueSceneCacheBenefitAllowed,
+    recordStaticOpaqueSceneCacheBenefitFrame,
+    recordStaticOpaqueSceneCacheBenefitGpuSample,
+    recordStaticOpaqueSceneCacheLiveProbe,
+    restartStaticOpaqueSceneCacheBenefit,
+    resumeStaticOpaqueSceneCacheBenefit,
+    type StaticOpaqueSceneCacheBenefitState,
+    shouldProbeStaticOpaqueSceneCacheLive,
+} from './staticOpaqueSceneCacheBenefit';
+import {
+    readNavigatorDeviceMemoryGiB,
+    resolveStaticOpaqueSceneCacheBudget,
+} from './staticOpaqueSceneCacheBudget';
+import {
+    buildStaticOpaqueSceneCacheObservedLiveMetadata,
+    renderStaticOpaqueSceneCacheFrame,
+    staticOpaqueSceneCacheDisabledMetadata,
+    staticOpaqueSceneCacheObserverWindowId,
+} from './staticOpaqueSceneCacheFrame';
+import {
+    type StaticOpaqueSceneCacheGpuSample,
+    StaticOpaqueSceneCacheGpuTimer,
+} from './staticOpaqueSceneCacheGpuTimer';
 import {
     createStaticOpaqueSceneCacheReplay,
     isStaticOpaqueSceneCacheReplayEligible,
@@ -56,12 +84,12 @@ import {
 import {
     createStaticOpaqueSceneCacheRuntime,
     isStaticOpaqueSceneCacheMaterialEligible,
+    resolveStaticOpaqueSceneCacheShadowBypass,
     resolveStaticOpaqueSceneCacheTarget,
     type StaticOpaqueSceneCacheReason,
     type StaticOpaqueSceneCacheRuntime,
     transitionStaticOpaqueSceneCache,
 } from './staticOpaqueSceneCacheState';
-import { useWeatherSurfaceUniformActivitySnapshot } from './WeatherSurfaceUniformProvider';
 
 export type StaticOpaqueSceneCacheGroup = 'base-terrain' | 'static-props';
 
@@ -81,6 +109,8 @@ type StaticOpaqueSceneCacheRegistrySnapshot = {
     instanceCount: number;
     invalidationCount: number;
     lastInvalidationReason: StaticOpaqueSceneCacheReason;
+    /** Mounted boundaries rendered live because a renderable is ineligible. */
+    liveBoundaries: readonly StaticOpaqueSceneCacheBoundaryEntry[];
     meshCount: number;
     renderables: readonly Object3D[];
     revision: number;
@@ -88,12 +118,11 @@ type StaticOpaqueSceneCacheRegistrySnapshot = {
     triangleCount: number;
 };
 
-class StaticOpaqueSceneCacheRegistry {
+export class StaticOpaqueSceneCacheRegistry {
     private readonly boundaries = new Map<
         symbol,
         StaticOpaqueSceneCacheBoundaryEntry
     >();
-    private readonly listeners = new Set<() => void>();
     private snapshot: StaticOpaqueSceneCacheRegistrySnapshot = {
         boundaries: [],
         boundarySignature: '',
@@ -101,6 +130,7 @@ class StaticOpaqueSceneCacheRegistry {
         instanceCount: 0,
         invalidationCount: 0,
         lastInvalidationReason: 'boundary-change',
+        liveBoundaries: [],
         meshCount: 0,
         renderables: [],
         revision: 0,
@@ -144,16 +174,12 @@ class StaticOpaqueSceneCacheRegistry {
         this.bump('boundary-change');
     };
 
-    subscribe = (listener: () => void) => {
-        this.listeners.add(listener);
-        return () => this.listeners.delete(listener);
-    };
-
     private bump(reason: StaticOpaqueSceneCacheReason) {
         const mountedBoundaries = [...this.boundaries.values()].filter(
             (boundary) => boundary.root.parent !== null,
         );
         const boundaries: StaticOpaqueSceneCacheBoundaryEntry[] = [];
+        const liveBoundaries: StaticOpaqueSceneCacheBoundaryEntry[] = [];
         const renderables: Object3D[] = [];
         let ineligibleBoundaryCount = 0;
         let instanceCount = 0;
@@ -174,6 +200,7 @@ class StaticOpaqueSceneCacheRegistry {
                 )
             ) {
                 ineligibleBoundaryCount += 1;
+                liveBoundaries.push(boundary);
                 continue;
             }
 
@@ -191,15 +218,13 @@ class StaticOpaqueSceneCacheRegistry {
             instanceCount,
             invalidationCount: this.snapshot.invalidationCount + 1,
             lastInvalidationReason: reason,
+            liveBoundaries,
             meshCount,
             renderables,
             revision: this.snapshot.revision + 1,
             submissionCount,
             triangleCount,
         };
-        for (const listener of this.listeners) {
-            listener();
-        }
         this.onInvalidate();
     }
 }
@@ -281,6 +306,7 @@ type StaticOpaqueSceneCacheCounters = {
     invalidations: number;
     lastInvalidationReason: StaticOpaqueSceneCacheReason;
     liveFrames: number;
+    probeFrames: number;
     savedSubmissions: number;
     savedTriangles: number;
     unexpectedStaticSubmissions: number;
@@ -300,10 +326,20 @@ function createCounters(): StaticOpaqueSceneCacheCounters {
         invalidations: 0,
         lastInvalidationReason: 'boundary-change',
         liveFrames: 0,
+        probeFrames: 0,
         savedSubmissions: 0,
         savedTriangles: 0,
         unexpectedStaticSubmissions: 0,
     };
+}
+
+function isWebGl2Context(
+    context: WebGLRenderingContext | WebGL2RenderingContext,
+): context is WebGL2RenderingContext {
+    return (
+        typeof WebGL2RenderingContext !== 'undefined' &&
+        context instanceof WebGL2RenderingContext
+    );
 }
 
 function isRenderable(object: Object3D) {
@@ -348,26 +384,64 @@ function isStaticOpaqueRenderableEligible(object: Object3D) {
     );
 }
 
-function countIneligibleStaticOpaqueSceneCacheBoundaries(
-    boundaries: readonly StaticOpaqueSceneCacheBoundaryEntry[],
+function isBoundaryCacheEligible(
+    boundary: StaticOpaqueSceneCacheBoundaryEntry,
 ) {
-    let count = 0;
+    let renderableCount = 0;
+    let eligible = true;
+    boundary.root.traverse((object) => {
+        if (!eligible || !isRenderable(object)) {
+            return;
+        }
+        renderableCount += 1;
+        if (!isStaticOpaqueRenderableEligible(object)) {
+            eligible = false;
+        }
+    });
+    return eligible && renderableCount > 0;
+}
+
+export function countBoundaryLayerChanges(
+    boundaries: readonly StaticOpaqueSceneCacheBoundaryEntry[],
+    liveBoundaries: readonly StaticOpaqueSceneCacheBoundaryEntry[],
+) {
+    let becameLive = 0;
+    let becameCached = 0;
     for (const boundary of boundaries) {
-        let eligible = true;
-        boundary.root.traverse((object) => {
-            if (
-                eligible &&
-                isRenderable(object) &&
-                !isStaticOpaqueRenderableEligible(object)
-            ) {
-                eligible = false;
-            }
-        });
-        if (!eligible) {
-            count += 1;
+        if (!isBoundaryCacheEligible(boundary)) {
+            becameLive += 1;
         }
     }
-    return count;
+    for (const boundary of liveBoundaries) {
+        if (
+            boundary.root.parent !== null &&
+            isBoundaryCacheEligible(boundary)
+        ) {
+            becameCached += 1;
+        }
+    }
+    return { becameCached, becameLive };
+}
+
+export function resolveLayerState(
+    group: StaticOpaqueSceneCacheGroup,
+    boundaries: readonly StaticOpaqueSceneCacheBoundaryEntry[],
+    liveBoundaries: readonly StaticOpaqueSceneCacheBoundaryEntry[],
+    cached: boolean,
+): StaticOpaqueSceneCacheLayerState {
+    const cachedCount = boundaries.filter(
+        (boundary) => boundary.group === group,
+    ).length;
+    const liveCount = liveBoundaries.filter(
+        (boundary) => boundary.group === group,
+    ).length;
+    if (cachedCount === 0 && liveCount === 0) {
+        return 'absent';
+    }
+    if (!cached || cachedCount === 0) {
+        return 'live';
+    }
+    return liveCount === 0 ? 'cached' : 'mixed';
 }
 
 function signatureNumbers(values: readonly number[]) {
@@ -1001,6 +1075,7 @@ function captureStaticCloudResponse({
             if (!responseCaptured) {
                 return {
                     captured: false,
+                    passes: 1,
                     submissions: 0,
                     triangles: 0,
                 };
@@ -1022,6 +1097,7 @@ function captureStaticCloudResponse({
                 scene,
                 target,
             }),
+            passes: previousMap !== null ? 2 : 1,
             submissions: gl.info.render.calls - submissionsBefore,
             triangles: gl.info.render.triangles - trianglesBefore,
         };
@@ -1167,20 +1243,24 @@ function StaticOpaqueSceneCacheRenderer({
     const signaturePartsRef = useRef<readonly string[] | null>(null);
     const cachePathSupportedRef = useRef(true);
     const replayStatusRef = useRef('pending');
-    const rainSurfaceIntensity = useOptionalGameState(
-        (state) => state.rainSurfaceIntensity,
-        0,
+    const budget = useMemo(
+        () =>
+            resolveStaticOpaqueSceneCacheBudget({
+                deviceMemoryGiB: readNavigatorDeviceMemoryGiB(),
+            }),
+        [],
     );
-    const snowCoverage = useOptionalGameState((state) => state.snowCoverage, 0);
+    const peakTargetBytesRef = useRef(0);
+    const benefitRef = useRef<StaticOpaqueSceneCacheBenefitState>(
+        createStaticOpaqueSceneCacheBenefitState(),
+    );
+    const gpuTimer = useMemo(() => new StaticOpaqueSceneCacheGpuTimer(), []);
+    const gpuSampleCountRef = useRef(0);
+    const gpuEvidenceEpochRef = useRef(0);
+    const cacheWasEnabledRef = useRef(false);
     const closeupView = useOptionalGameState(
         (state) => state.view === 'closeup',
         false,
-    );
-    const weatherSurfaceActivity = useWeatherSurfaceUniformActivitySnapshot();
-    const registrySnapshot = useSyncExternalStore(
-        registry.subscribe,
-        registry.getSnapshot,
-        registry.getSnapshot,
     );
 
     const invalidateForResume = useCallback(() => {
@@ -1190,17 +1270,32 @@ function StaticOpaqueSceneCacheRenderer({
 
     useEffect(() => {
         const canvas = gl.domElement;
+        const context = gl.getContext();
+        gpuTimer.attach(isWebGl2Context(context) ? context : null);
+        const handleContextLost = () => {
+            gpuTimer.markContextLost();
+        };
         const handleContextRestored = () => {
             cachePathSupportedRef.current = true;
+            benefitRef.current = createStaticOpaqueSceneCacheBenefitState();
+            gpuTimer.dispose();
+            const restoredContext = gl.getContext();
+            gpuTimer.attach(
+                isWebGl2Context(restoredContext) ? restoredContext : null,
+            );
             registry.invalidate('unsupported');
         };
+        canvas.addEventListener('webglcontextlost', handleContextLost);
         canvas.addEventListener('webglcontextrestored', handleContextRestored);
-        return () =>
+        return () => {
+            canvas.removeEventListener('webglcontextlost', handleContextLost);
             canvas.removeEventListener(
                 'webglcontextrestored',
                 handleContextRestored,
             );
-    }, [gl.domElement, registry]);
+            gpuTimer.dispose();
+        };
+    }, [gl, gpuTimer, registry]);
 
     useEffect(
         () => () => {
@@ -1219,38 +1314,43 @@ function StaticOpaqueSceneCacheRenderer({
         ],
     );
 
-    useFrame(() => {
-        gl.getDrawingBufferSize(drawingBufferSize);
-        const targetConfig = resolveStaticOpaqueSceneCacheTarget({
-            additionalBytes: cacheReplay.estimatedBytes,
-            height: drawingBufferSize.y,
-            sampleCount: cacheSampleCount,
-            width: drawingBufferSize.x,
-        });
-        const targetWidth = targetConfig.supported ? targetConfig.width : 1;
-        const targetHeight = targetConfig.supported ? targetConfig.height : 1;
-        if (target.width !== targetWidth || target.height !== targetHeight) {
-            target.setSize(targetWidth, targetHeight);
+    const consumeGpuSamples = (
+        gpuSamples: readonly StaticOpaqueSceneCacheGpuSample[],
+        evidenceEpoch: number,
+    ) => {
+        if (gpuEvidenceEpochRef.current !== evidenceEpoch) {
+            gpuEvidenceEpochRef.current = evidenceEpoch;
+            benefitRef.current =
+                invalidateStaticOpaqueSceneCacheBenefitGpuSamples(
+                    benefitRef.current,
+                );
         }
-        if (
-            cloudFullResponseTarget.width !== targetWidth ||
-            cloudFullResponseTarget.height !== targetHeight
-        ) {
-            cloudFullResponseTarget.setSize(targetWidth, targetHeight);
+        for (const sample of gpuSamples) {
+            gpuSampleCountRef.current += 1;
+            if (!enabled) {
+                continue;
+            }
+            benefitRef.current = recordStaticOpaqueSceneCacheBenefitGpuSample(
+                benefitRef.current,
+                sample.kind,
+                sample.elapsedMs,
+                sample.windowId,
+            );
         }
+    };
 
-        const boundaries = registrySnapshot.boundaries;
-        const runtimeIneligibleBoundaryCount =
-            countIneligibleStaticOpaqueSceneCacheBoundaries(boundaries);
-        const ineligibleBoundaryCount =
-            registrySnapshot.ineligibleBoundaryCount +
-            runtimeIneligibleBoundaryCount;
-        const boundaryMetrics = {
-            instances: registrySnapshot.instanceCount,
-            meshes: registrySnapshot.meshCount,
-            submissions: registrySnapshot.submissionCount,
-            triangles: registrySnapshot.triangleCount,
-        };
+    const renderCacheFrame = (nowMs: number) => {
+        cacheWasEnabledRef.current = true;
+        benefitRef.current = resumeStaticOpaqueSceneCacheBenefit(
+            benefitRef.current,
+            nowMs,
+        );
+        const benefitAllowed = isStaticOpaqueSceneCacheBenefitAllowed(
+            benefitRef.current,
+            nowMs,
+        );
+
+        const registrySnapshot = registry.getSnapshot();
         const context = gl.getContext();
         const webGlSupported =
             gl.capabilities.isWebGL2 &&
@@ -1262,18 +1362,69 @@ function StaticOpaqueSceneCacheRenderer({
             Reflect.get(target, 'isXRRenderTarget') === true &&
             !context.isContextLost() &&
             cachePathSupportedRef.current;
-        const supported =
+        gl.getDrawingBufferSize(drawingBufferSize);
+        const targetConfig = resolveStaticOpaqueSceneCacheTarget({
+            additionalBytes: cacheReplay.estimatedBytes,
+            height: drawingBufferSize.y,
+            maximumBytes: budget.bytes,
+            sampleCount: cacheSampleCount,
+            width: drawingBufferSize.x,
+        });
+        // A cache the benefit gate rejected keeps 1x1 targets, so its memory
+        // is released for the cooldown.
+        const allocateTarget =
+            enabled &&
             targetConfig.supported &&
+            benefitAllowed &&
             webGlSupported &&
-            boundaries.length > 0 &&
-            runtimeIneligibleBoundaryCount === 0;
-        const weatherActive =
-            rainSurfaceIntensity > 0.001 ||
-            snowCoverage > 0.001 ||
-            weatherSurfaceActivity.rainActive ||
-            weatherSurfaceActivity.rainSettling ||
-            weatherSurfaceActivity.snowActive ||
-            weatherSurfaceActivity.snowSettling;
+            registrySnapshot.boundaries.length > 0;
+        const targetWidth = allocateTarget ? targetConfig.width : 1;
+        const targetHeight = allocateTarget ? targetConfig.height : 1;
+        const allocatedTargetBytes = allocateTarget
+            ? targetConfig.estimatedBytes
+            : 0;
+        peakTargetBytesRef.current = Math.max(
+            peakTargetBytesRef.current,
+            allocatedTargetBytes,
+        );
+        if (target.width !== targetWidth || target.height !== targetHeight) {
+            target.setSize(targetWidth, targetHeight);
+        }
+        if (
+            cloudFullResponseTarget.width !== targetWidth ||
+            cloudFullResponseTarget.height !== targetHeight
+        ) {
+            cloudFullResponseTarget.setSize(targetWidth, targetHeight);
+        }
+
+        // Read the registry directly: a layer change invalidates it from this
+        // callback, and the next frame must not see the stale snapshot.
+        const boundaries = registrySnapshot.boundaries;
+        const liveBoundaries = registrySnapshot.liveBoundaries;
+        // Layers are independently dirty: a boundary whose materials stop
+        // being cacheable (for example base ground swapping to its integrated
+        // rain, snow, or frost material) moves to the live path and the rest
+        // stay cached. A boundary that becomes cacheable again rejoins.
+        const layerChanges = countBoundaryLayerChanges(
+            boundaries,
+            liveBoundaries,
+        );
+        if (layerChanges.becameLive > 0 || layerChanges.becameCached > 0) {
+            registry.invalidate('layer-change');
+        }
+        const ineligibleBoundaryCount =
+            registrySnapshot.ineligibleBoundaryCount + layerChanges.becameLive;
+        const boundaryMetrics = {
+            instances: registrySnapshot.instanceCount,
+            meshes: registrySnapshot.meshCount,
+            submissions: registrySnapshot.submissionCount,
+            triangles: registrySnapshot.triangleCount,
+        };
+        const supported =
+            targetConfig.supported && webGlSupported && boundaries.length > 0;
+        const shadowBypassReason = resolveStaticOpaqueSceneCacheShadowBypass(
+            gl.shadowMap,
+        );
         let bypassReason: StaticOpaqueSceneCacheReason | undefined;
         if (boundaries.length === 0) {
             bypassReason = 'empty';
@@ -1281,20 +1432,22 @@ function StaticOpaqueSceneCacheRenderer({
             bypassReason = 'wireframe';
         } else if (interactionActive || closeupView) {
             bypassReason = 'interaction';
-        } else if (weatherActive) {
-            bypassReason = 'weather';
         } else if (
             gl.xr.isPresenting ||
-            (gl.shadowMap.enabled && gl.shadowMap.autoUpdate) ||
+            shadowBypassReason === 'unsupported' ||
             scene.overrideMaterial !== null
         ) {
             bypassReason = 'unsupported';
-        } else if (gl.shadowMap.needsUpdate) {
+        } else if (shadowBypassReason === 'shadow-update') {
             bypassReason = 'shadow-update';
+        } else if (layerChanges.becameLive > 0) {
+            bypassReason = 'layer-change';
         } else if (!targetConfig.supported) {
             bypassReason = targetConfig.reason;
         } else if (!webGlSupported) {
             bypassReason = 'unsupported';
+        } else if (!benefitAllowed) {
+            bypassReason = 'low-benefit';
         }
 
         const signatureParts = [
@@ -1345,6 +1498,10 @@ function StaticOpaqueSceneCacheRenderer({
         if (transition.invalidated) {
             counters.invalidations += 1;
             counters.lastInvalidationReason = transition.reason;
+            benefitRef.current =
+                invalidateStaticOpaqueSceneCacheBenefitGpuSamples(
+                    benefitRef.current,
+                );
         }
         const renderLive = () => {
             counters.liveFrames += 1;
@@ -1360,6 +1517,42 @@ function StaticOpaqueSceneCacheRenderer({
                 scene,
             });
         };
+        const resetCachePath = () => {
+            cachePathSupportedRef.current = false;
+            runtimeRef.current = createStaticOpaqueSceneCacheRuntime();
+            renderLive();
+        };
+        // A probe renders one valid hit frame live so the gate can compare
+        // measured live and cached GPU time on the same scene. It runs only
+        // once its timer query is open, so a timer held by another owner
+        // never turns hits into unmeasured live frames.
+        const timingAllowed = benefitRef.current.status !== 'disabled';
+        const probeLive =
+            timingAllowed &&
+            transition.action === 'hit' &&
+            shouldProbeStaticOpaqueSceneCacheLive(
+                benefitRef.current,
+                gpuTimer.isAvailable(nowMs),
+            ) &&
+            gpuTimer.begin('live', nowMs, benefitRef.current.windowId);
+        const gpuTimed =
+            probeLive ||
+            (timingAllowed &&
+                (transition.action === 'capture' ||
+                    transition.action === 'hit') &&
+                gpuTimer.begin(
+                    transition.action,
+                    nowMs,
+                    benefitRef.current.windowId,
+                )) ||
+            (transition.action === 'live' &&
+                gpuTimer.isProfileObserved() &&
+                gpuTimer.begin(
+                    'live',
+                    nowMs,
+                    staticOpaqueSceneCacheObserverWindowId,
+                ));
+        let cachedFrame = false;
 
         const previousInfoAutoReset = gl.info.autoReset;
         gl.info.autoReset = false;
@@ -1398,11 +1591,27 @@ function StaticOpaqueSceneCacheRenderer({
                 if (capture.captured && replayStatus === 'ready') {
                     counters.captures += 1;
                     counters.compositePasses += 1;
+                    cachedFrame = true;
+                    benefitRef.current =
+                        recordStaticOpaqueSceneCacheBenefitFrame(
+                            benefitRef.current,
+                            {
+                                action: 'capture',
+                                capturePasses: capture.passes,
+                                staticSubmissions: counters.captureSubmissions,
+                                staticTriangles: counters.captureTriangles,
+                            },
+                            nowMs,
+                        );
                 } else {
-                    cachePathSupportedRef.current = false;
-                    runtimeRef.current = createStaticOpaqueSceneCacheRuntime();
-                    renderLive();
+                    resetCachePath();
                 }
+            } else if (transition.action === 'hit' && probeLive) {
+                counters.probeFrames += 1;
+                benefitRef.current = recordStaticOpaqueSceneCacheLiveProbe(
+                    benefitRef.current,
+                );
+                renderLive();
             } else if (transition.action === 'hit') {
                 counters.hitFrames += 1;
                 counters.compositePasses += 1;
@@ -1422,20 +1631,50 @@ function StaticOpaqueSceneCacheRenderer({
                     scene,
                 });
                 replayStatusRef.current = replayStatus;
-                if (replayStatus !== 'ready') {
-                    cachePathSupportedRef.current = false;
-                    runtimeRef.current = createStaticOpaqueSceneCacheRuntime();
-                    renderLive();
+                if (replayStatus === 'ready') {
+                    cachedFrame = true;
+                    benefitRef.current =
+                        recordStaticOpaqueSceneCacheBenefitFrame(
+                            benefitRef.current,
+                            {
+                                action: 'hit',
+                                staticSubmissions: counters.captureSubmissions,
+                                staticTriangles: counters.captureTriangles,
+                            },
+                            nowMs,
+                        );
+                } else {
+                    resetCachePath();
                 }
             } else {
                 renderLive();
             }
         } finally {
+            if (gpuTimed) {
+                gpuTimer.end();
+            }
             gl.info.autoReset = previousInfoAutoReset;
         }
 
+        const benefit = benefitRef.current;
         updateGameProfileMetadata({
+            staticOpaqueSceneCacheAllocatedTargetBytes: allocatedTargetBytes,
+            staticOpaqueSceneCacheBaseTerrainLayer: resolveLayerState(
+                'base-terrain',
+                boundaries,
+                liveBoundaries,
+                cachedFrame,
+            ),
+            staticOpaqueSceneCacheBenefitEvaluationCount: benefit.evaluations,
+            staticOpaqueSceneCacheBenefitNetGpuMsPerFrame:
+                benefit.lastNetGpuMsPerFrame,
+            staticOpaqueSceneCacheBenefitNetWorkPerFrame:
+                benefit.lastNetWorkPerFrame,
+            staticOpaqueSceneCacheBenefitReason: benefit.reason,
+            staticOpaqueSceneCacheBenefitStatus: benefit.status,
             staticOpaqueSceneCacheBoundaryCount: boundaries.length,
+            staticOpaqueSceneCacheBudgetBytes: budget.bytes,
+            staticOpaqueSceneCacheBudgetSource: budget.source,
             staticOpaqueSceneCacheBypassFrameCount: counters.bypassFrames,
             staticOpaqueSceneCacheCaptureCount: counters.captures,
             staticOpaqueSceneCacheCaptureSubmissionCount:
@@ -1450,14 +1689,19 @@ function StaticOpaqueSceneCacheRenderer({
                 counters.replaySubmissions,
             staticOpaqueSceneCacheReplayTriangleCount: counters.replayTriangles,
             staticOpaqueSceneCacheEnabled: enabled,
+            staticOpaqueSceneCacheGpuSampleCount: gpuSampleCountRef.current,
+            staticOpaqueSceneCacheGpuTimingSupported: gpuTimer.supported,
             staticOpaqueSceneCacheHitFrameCount: counters.hitFrames,
             staticOpaqueSceneCacheIneligibleBoundaryCount:
                 ineligibleBoundaryCount,
             staticOpaqueSceneCacheInvalidationCount: counters.invalidations,
             staticOpaqueSceneCacheLastInvalidationReason:
                 counters.lastInvalidationReason,
+            staticOpaqueSceneCacheLiveBoundaryCount: liveBoundaries.length,
             staticOpaqueSceneCacheLiveFrameCount: counters.liveFrames,
             staticOpaqueSceneCacheMeshCount: boundaryMetrics.meshes,
+            staticOpaqueSceneCachePeakTargetBytes: peakTargetBytesRef.current,
+            staticOpaqueSceneCacheProbeFrameCount: counters.probeFrames,
             staticOpaqueSceneCacheReason: capturedStateReason(
                 transition.reason,
                 cachePathSupportedRef.current,
@@ -1470,6 +1714,12 @@ function StaticOpaqueSceneCacheRenderer({
                 : transition.action === 'capture'
                   ? 'capturing'
                   : transition.state,
+            staticOpaqueSceneCacheStaticPropsLayer: resolveLayerState(
+                'static-props',
+                boundaries,
+                liveBoundaries,
+                cachedFrame,
+            ),
             staticOpaqueSceneCacheSupported:
                 supported && cachePathSupportedRef.current,
             staticOpaqueSceneCacheTargetEstimatedBytes:
@@ -1480,6 +1730,63 @@ function StaticOpaqueSceneCacheRenderer({
             staticOpaqueSceneCacheTriangleCount: boundaryMetrics.triangles,
             staticOpaqueSceneCacheUnexpectedStaticSubmissionCount:
                 counters.unexpectedStaticSubmissions,
+        });
+    };
+
+    useFrame(() => {
+        renderStaticOpaqueSceneCacheFrame({
+            enabled,
+            gpuTimer,
+            nowMs: performance.now(),
+            consumeGpuSamples,
+            renderCache: renderCacheFrame,
+            prepareLive: () => {
+                // Switching back to live releases cache targets without any
+                // registry, lighting, geometry or material traversal.
+                if (target.width !== 1 || target.height !== 1)
+                    target.setSize(1, 1);
+                if (
+                    cloudFullResponseTarget.width !== 1 ||
+                    cloudFullResponseTarget.height !== 1
+                )
+                    cloudFullResponseTarget.setSize(1, 1);
+                if (cacheWasEnabledRef.current) {
+                    runtimeRef.current = createStaticOpaqueSceneCacheRuntime();
+                    benefitRef.current = restartStaticOpaqueSceneCacheBenefit(
+                        benefitRef.current,
+                    );
+                    signaturePartsRef.current = null;
+                    replayStatusRef.current = 'disabled';
+                    cacheWasEnabledRef.current = false;
+                }
+            },
+            renderLive: () => {
+                const previousInfoAutoReset = gl.info.autoReset;
+                gl.info.autoReset = false;
+                gl.info.reset();
+                try {
+                    renderLiveScene({ camera, gl, scene });
+                } finally {
+                    gl.info.autoReset = previousInfoAutoReset;
+                }
+                countersRef.current.liveFrames += 1;
+            },
+            publishLive: () => {
+                updateGameProfileMetadata(
+                    buildStaticOpaqueSceneCacheObservedLiveMetadata({
+                        staticOpaqueSceneCachePeakTargetBytes:
+                            peakTargetBytesRef.current,
+                        staticOpaqueSceneCacheBudgetBytes: budget.bytes,
+                        staticOpaqueSceneCacheBudgetSource: budget.source,
+                        staticOpaqueSceneCacheGpuSampleCount:
+                            gpuSampleCountRef.current,
+                        staticOpaqueSceneCacheGpuTimingSupported:
+                            gpuTimer.supported,
+                        staticOpaqueSceneCacheLiveFrameCount:
+                            countersRef.current.liveFrames,
+                    }),
+                );
+            },
         });
     }, 1);
 
@@ -1518,44 +1825,19 @@ export function StaticOpaqueSceneCacheProvider({
         if (enabled) {
             return;
         }
-        updateGameProfileMetadata({
-            staticOpaqueSceneCacheBoundaryCount: 0,
-            staticOpaqueSceneCacheBypassFrameCount: 0,
-            staticOpaqueSceneCacheCaptureCount: 0,
-            staticOpaqueSceneCacheCaptureSubmissionCount: 0,
-            staticOpaqueSceneCacheCaptureTriangleCount: 0,
-            staticOpaqueSceneCacheCompositePassCount: 0,
-            staticOpaqueSceneCacheReplayEstimatedBytes: 0,
-            staticOpaqueSceneCacheReplayStatus: 'disabled',
-            staticOpaqueSceneCacheReplaySubmissionCount: 0,
-            staticOpaqueSceneCacheReplayTriangleCount: 0,
-            staticOpaqueSceneCacheEnabled: false,
-            staticOpaqueSceneCacheHitFrameCount: 0,
-            staticOpaqueSceneCacheIneligibleBoundaryCount: 0,
-            staticOpaqueSceneCacheInvalidationCount: 0,
-            staticOpaqueSceneCacheLastInvalidationReason: 'disabled',
-            staticOpaqueSceneCacheLiveFrameCount: 0,
-            staticOpaqueSceneCacheMeshCount: 0,
-            staticOpaqueSceneCacheReason: 'disabled',
-            staticOpaqueSceneCacheSavedSubmissionCount: 0,
-            staticOpaqueSceneCacheSavedTriangleCount: 0,
-            staticOpaqueSceneCacheState: 'disabled',
-            staticOpaqueSceneCacheSupported: false,
-            staticOpaqueSceneCacheTargetEstimatedBytes: 0,
-            staticOpaqueSceneCacheTargetHeight: 0,
-            staticOpaqueSceneCacheTargetSampleCount: 0,
-            staticOpaqueSceneCacheTargetWidth: 0,
-            staticOpaqueSceneCacheTriangleCount: 0,
-            staticOpaqueSceneCacheUnexpectedStaticSubmissionCount: 0,
-        });
+        updateGameProfileMetadata(staticOpaqueSceneCacheDisabledMetadata);
     }, [enabled]);
 
+    const profileObserved =
+        typeof window !== 'undefined' &&
+        typeof Reflect.get(window, '__gameProfileCacheGpuObserver') ===
+            'function';
     return (
         <StaticOpaqueSceneCacheContext.Provider value={registry}>
             {children}
-            {enabled && (
+            {(enabled || profileObserved) && (
                 <StaticOpaqueSceneCacheRenderer
-                    enabled
+                    enabled={enabled}
                     interactionActive={interactionActive}
                     qualityKey={qualityKey}
                     registry={registry}

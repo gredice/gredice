@@ -2,8 +2,6 @@ import {
     getHorseAppearanceVariantDefinition,
     resolveHorseAppearanceVariant,
 } from '@gredice/js/entityAppearanceVariants';
-import { useAnimations } from '@react-three/drei';
-import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { AnimationAction, Group, Material } from 'three';
 import {
@@ -35,6 +33,12 @@ import {
     getAnimalMovementYAt,
 } from '../animals/animalMovementTerrain';
 import { animalPresenceUpdateIntervalSeconds } from '../animals/animalPresence';
+import {
+    useFaunaFrame,
+    useFaunaRenderFrame,
+} from '../animals/FaunaRuntimeProvider';
+import { useFaunaActorCulling } from '../animals/useFaunaActorCulling';
+import { useFaunaAnimations } from '../animals/useFaunaAnimations';
 import type { CatPathPoint } from '../cats/catPathfinding';
 import {
     createPersistentPetHomeBlockedCells,
@@ -319,12 +323,7 @@ export function Horse({
     const activeAnimationRef = useRef<HorseAnimationName>('Horse_Idle');
     const [activeAnimation, setActiveAnimation] =
         useState<HorseAnimationName>('Horse_Idle');
-    const setAnimalPresenceEntry = useGameState(
-        (state) => state.setAnimalPresenceEntry,
-    );
-    const removeAnimalPresenceEntry = useGameState(
-        (state) => state.removeAnimalPresenceEntry,
-    );
+    const faunaWorld = useGameState((state) => state.faunaWorld);
     const appearanceVariant = resolveHorseAppearanceVariant(variant, block.id);
     const appearance = getHorseAppearanceVariantDefinition(appearanceVariant);
     const homePlacement =
@@ -414,7 +413,8 @@ export function Horse({
         );
         return { primaryCasterCount, scene };
     }, [appearance, gltf.scene]);
-    const { actions } = useAnimations(gltf.animations, model.scene);
+    useFaunaActorCulling(model.scene);
+    const { actions } = useFaunaAnimations(gltf.animations, model.scene);
     const updateActorGroundingShadow = useActorGroundingShadow({
         id: `horse:${block.id}`,
         primaryCasterCount: model.primaryCasterCount,
@@ -451,11 +451,11 @@ export function Horse({
     }, [actions, activeAnimation]);
 
     useEffect(
-        () => () => removeAnimalPresenceEntry(`horse:${block.id}`),
-        [block.id, removeAnimalPresenceEntry],
+        () => () => faunaWorld.removePresence(`horse:${block.id}`),
+        [block.id, faunaWorld],
     );
 
-    useFrame(({ clock }, delta) => {
+    useFaunaFrame(({ clock }, delta) => {
         const group = groupRef.current;
         if (!group) return;
         const now = clock.elapsedTime;
@@ -626,23 +626,12 @@ export function Horse({
             setActiveAnimation(nextAnimation);
         }
 
-        updateActorGroundingShadow?.({
-            actorY: group.position.y,
-            receiverY: getAnimalMovementYAt(
-                group.position,
-                navigation.surfaces,
-            ),
-            visible: group.visible && model.scene.visible,
-            x: group.position.x,
-            yaw: group.rotation.y,
-            z: group.position.z,
-        });
         if (
             now - lastPresenceUpdateRef.current >=
             animalPresenceUpdateIntervalSeconds
         ) {
             lastPresenceUpdateRef.current = now;
-            setAnimalPresenceEntry({
+            faunaWorld.reportPresence({
                 behavior:
                     runtime.phase === 'moving'
                         ? runtime.movement.gait
@@ -657,6 +646,22 @@ export function Horse({
                 updatedAt: now,
             });
         }
+    }, groupRef);
+
+    useFaunaRenderFrame(() => {
+        const group = groupRef.current;
+        if (!group) return;
+        updateActorGroundingShadow?.({
+            actorY: group.position.y,
+            receiverY: getAnimalMovementYAt(
+                group.position,
+                navigation.surfaces,
+            ),
+            visible: group.visible && model.scene.visible,
+            x: group.position.x,
+            yaw: group.rotation.y,
+            z: group.position.z,
+        });
     });
 
     return (

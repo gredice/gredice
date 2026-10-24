@@ -46,33 +46,6 @@ type GardenGiftBoxSnapshot = Readonly<{
     }>[];
 }>;
 
-type GardenGiftBoxStructure = Readonly<{
-    anchorX: unknown;
-    anchorY: unknown;
-    document: unknown;
-    id: unknown;
-    rotation: unknown;
-}>;
-
-type GardenGiftBoxDirectoryBlock = Readonly<{
-    attributes?: unknown;
-    information?: unknown;
-}>;
-
-type GardenGiftBoxOccupancyValidation =
-    | Readonly<{ valid: true }>
-    | Readonly<{
-          valid: false;
-          error: Readonly<{
-              code:
-                  | 'GARDEN_OCCUPANCY_CONFLICT'
-                  | 'GARDEN_OCCUPANCY_INVALID_INPUT'
-                  | 'GARDEN_OCCUPANCY_INVALID_STATE';
-              message: string;
-              status: 400 | 409;
-          }>;
-      }>;
-
 type GardenMutationReceipt = Readonly<{
     response: Readonly<Record<string, unknown>>;
 }>;
@@ -98,7 +71,6 @@ export type AdventGiftBoxDependencies<Transaction> = Readonly<{
         gardenId: number,
         transaction: Transaction,
     ) => Promise<GardenGiftBoxSnapshot | null>;
-    getBlockData: () => Promise<readonly GardenGiftBoxDirectoryBlock[]>;
     getGardenMutationAuthorityForUpdate: (
         gardenId: number,
         transaction: Transaction,
@@ -109,10 +81,6 @@ export type AdventGiftBoxDependencies<Transaction> = Readonly<{
         isSandbox: boolean;
     }> | null>;
     isAdventSeasonOver: (timeZone: string) => boolean;
-    listGardenStructuresForUpdate: (
-        gardenId: number,
-        transaction: Transaction,
-    ) => Promise<readonly GardenGiftBoxStructure[]>;
     loadGiftBoxRewardCatalog: () => Promise<GiftBoxRewardCatalog>;
     pickGiftBoxReward: (
         catalog: GiftBoxRewardCatalog,
@@ -127,16 +95,6 @@ export type AdventGiftBoxDependencies<Transaction> = Readonly<{
         stack: Readonly<{ x: number; y: number; blocks: string[] }>,
         transaction: Transaction,
     ) => Promise<void>;
-    validatePersistedStructuresAfterBlockMutation: (
-        input: Readonly<{
-            blockData: readonly GardenGiftBoxDirectoryBlock[];
-            snapshot: Readonly<{
-                blocks: GardenGiftBoxSnapshot['blocks'];
-                stacks: GardenGiftBoxSnapshot['stacks'];
-                structures: readonly GardenGiftBoxStructure[];
-            }>;
-        }>,
-    ) => GardenGiftBoxOccupancyValidation;
     withAccountDeletionFenceTransaction: <Result>(
         accountId: string,
         callback: (transaction: Transaction) => Promise<Result>,
@@ -181,12 +139,8 @@ export type OpenAdventGiftBoxCommand = Readonly<{
 
 type OpenAdventGiftBoxFailureCode =
     | 'ACCOUNT_DELETION_IN_PROGRESS'
-    | 'BLOCK_DIRECTORY_UNAVAILABLE'
     | 'BLOCK_NOT_FOUND'
     | 'GARDEN_NOT_FOUND'
-    | 'GARDEN_OCCUPANCY_CONFLICT'
-    | 'GARDEN_OCCUPANCY_INVALID_INPUT'
-    | 'GARDEN_OCCUPANCY_INVALID_STATE'
     | 'GARDEN_STATE_CHANGED'
     | 'GIFT_UNAVAILABLE'
     | 'INVALID_GIFT_BOX'
@@ -301,16 +255,11 @@ export function createAdventGiftBoxService<Transaction>(
             assertCommand(command);
 
             const operationId = getAdventGiftBoxOperationId(command.blockId);
-            const [blockDataResult, rewardCatalogResult] = await Promise.all([
-                settleGardenEconomicMutationDependency(
-                    dependencies.getBlockData,
-                    dependencies.dependencyPreparationTimeoutMs,
-                ),
-                settleGardenEconomicMutationDependency(
+            const rewardCatalogResult =
+                await settleGardenEconomicMutationDependency(
                     dependencies.loadGiftBoxRewardCatalog,
                     dependencies.dependencyPreparationTimeoutMs,
-                ),
-            ]);
+                );
             const execution =
                 await dependencies.withInventoryAccountTransaction(
                     command.accountId,
@@ -448,78 +397,6 @@ export function createAdventGiftBoxService<Transaction>(
                                                         'GARDEN_STATE_CHANGED',
                                                         409,
                                                         'Položaj poklon kutije se promijenio.',
-                                                    );
-                                                }
-
-                                                const candidateStacks =
-                                                    snapshot.stacks.flatMap(
-                                                        (candidate) => {
-                                                            if (
-                                                                candidate !==
-                                                                stack
-                                                            ) {
-                                                                return [
-                                                                    candidate,
-                                                                ];
-                                                            }
-                                                            const blocks =
-                                                                candidate.blocks.filter(
-                                                                    (
-                                                                        candidateBlockId,
-                                                                    ) =>
-                                                                        candidateBlockId !==
-                                                                        command.blockId,
-                                                                );
-                                                            return blocks.length >
-                                                                0
-                                                                ? [
-                                                                      {
-                                                                          ...candidate,
-                                                                          blocks,
-                                                                      },
-                                                                  ]
-                                                                : [];
-                                                        },
-                                                    );
-                                                const structures =
-                                                    await dependencies.listGardenStructuresForUpdate(
-                                                        command.gardenId,
-                                                        operationTransaction,
-                                                    );
-                                                if (
-                                                    blockDataResult.status ===
-                                                    'rejected'
-                                                ) {
-                                                    fail(
-                                                        'BLOCK_DIRECTORY_UNAVAILABLE',
-                                                        503,
-                                                        'Podaci kataloga vrtnih blokova trenutačno nisu dostupni.',
-                                                    );
-                                                }
-                                                const blockData =
-                                                    blockDataResult.value;
-                                                const occupancy =
-                                                    dependencies.validatePersistedStructuresAfterBlockMutation(
-                                                        {
-                                                            blockData,
-                                                            snapshot: {
-                                                                blocks: snapshot.blocks.filter(
-                                                                    (
-                                                                        candidate,
-                                                                    ) =>
-                                                                        candidate.id !==
-                                                                        command.blockId,
-                                                                ),
-                                                                stacks: candidateStacks,
-                                                                structures,
-                                                            },
-                                                        },
-                                                    );
-                                                if (!occupancy.valid) {
-                                                    fail(
-                                                        occupancy.error.code,
-                                                        occupancy.error.status,
-                                                        occupancy.error.message,
                                                     );
                                                 }
 

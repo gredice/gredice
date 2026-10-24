@@ -5,6 +5,7 @@ import {
     type Texture,
     Vector2,
     Vector4,
+    type WebGLRenderer,
 } from 'three';
 import type { GameQualityProfile } from './gameQuality';
 
@@ -147,7 +148,10 @@ const materialPatchStates = new WeakMap<
     Material,
     CloudShadowMaterialPatchState
 >();
-const registeredMaterialCandidateTokens = new Map<Material, Set<symbol>>();
+const registeredMaterialCandidateTokens = new Map<
+    Material,
+    Map<symbol, Object3D | undefined>
+>();
 let registeredMaterialCandidateRevision = 0;
 // The production garden owns one active weather scene, so one stable uniform
 // set lets shared materials keep a single compiled program across transitions.
@@ -229,11 +233,13 @@ export function getCloudShadowAttenuationMaterialUniforms() {
  */
 export function registerCloudShadowAttenuationMaterialCandidate(
     material: Material,
+    root?: Object3D,
 ) {
     const token = Symbol(material.uuid);
     const tokens =
-        registeredMaterialCandidateTokens.get(material) ?? new Set<symbol>();
-    tokens.add(token);
+        registeredMaterialCandidateTokens.get(material) ??
+        new Map<symbol, Object3D | undefined>();
+    tokens.set(token, root);
     registeredMaterialCandidateTokens.set(material, tokens);
     registeredMaterialCandidateRevision += 1;
 
@@ -453,10 +459,37 @@ function injectCloudShadowAttenuationShader(
         .replace('#include <aomap_fragment>', fragmentChunk);
 }
 
+/** Three keeps a material's latest uniform table when returning to a cached program.
+ * A base-only compile can replace that table; restore only this decorator's bindings.
+ */
+function refreshCloudShadowMaterialUniforms(
+    material: Material,
+    uniforms: CloudShadowMaterialUniforms,
+    renderer: Pick<WebGLRenderer, 'properties'> | undefined,
+) {
+    const properties: unknown = renderer?.properties.get(material);
+    if (
+        typeof properties !== 'object' ||
+        properties === null ||
+        Array.isArray(properties)
+    )
+        return;
+    const table: unknown = Reflect.get(properties, 'uniforms');
+    if (typeof table !== 'object' || table === null || Array.isArray(table))
+        return;
+    Reflect.set(table, 'grediceCloudShadowMap', uniforms.map);
+    Reflect.set(table, 'grediceCloudShadowBounds', uniforms.bounds);
+    Reflect.set(table, 'grediceCloudShadowProjection', uniforms.projection);
+    Reflect.set(table, 'grediceCloudShadowStrength', uniforms.strength);
+    Reflect.set(table, 'grediceCloudShadowHardness', uniforms.hardness);
+}
+
 export function retainCloudShadowAttenuationMaterial(
     material: Material,
     uniforms: CloudShadowMaterialUniforms,
+    renderer?: Pick<WebGLRenderer, 'properties'>,
 ): CloudShadowMaterialLease {
+    refreshCloudShadowMaterialUniforms(material, uniforms, renderer);
     const existingState = materialPatchStates.get(material);
     if (existingState) {
         existingState.consumerCount += 1;
@@ -536,11 +569,13 @@ export function syncCloudShadowAttenuationMaterials({
     leases,
     root,
     uniforms,
+    renderer,
 }: {
     enabled: boolean;
     leases: CloudShadowMaterialLeaseMap;
     root: Object3D;
     uniforms: CloudShadowMaterialUniforms;
+    renderer?: Pick<WebGLRenderer, 'properties'>;
 }) {
     const activeMaterialIds = new Set<string>();
 
@@ -554,13 +589,28 @@ export function syncCloudShadowAttenuationMaterials({
             if (!leases.has(material.uuid)) {
                 leases.set(
                     material.uuid,
-                    retainCloudShadowAttenuationMaterial(material, uniforms),
+                    retainCloudShadowAttenuationMaterial(
+                        material,
+                        uniforms,
+                        renderer,
+                    ),
+                );
+            } else {
+                refreshCloudShadowMaterialUniforms(
+                    material,
+                    uniforms,
+                    renderer,
                 );
             }
         };
 
-        for (const material of registeredMaterialCandidateTokens.keys()) {
-            activateMaterial(material);
+        for (const [material, tokens] of registeredMaterialCandidateTokens) {
+            if (
+                [...tokens.values()].some(
+                    (owner) => owner === undefined || owner === root,
+                )
+            )
+                activateMaterial(material);
         }
         root.traverse((object) => {
             for (const material of getObjectMaterials(object)) {

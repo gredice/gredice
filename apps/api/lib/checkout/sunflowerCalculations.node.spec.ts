@@ -1,17 +1,20 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+    calculateSunflowerAmount,
     calculateSunflowerReplayAmount,
     getDefaultCartItemCurrency,
 } from './sunflowerCalculations';
 
 function cartItem({
+    amount = 1,
     currency = 'eur',
     discountPrice,
     id,
     price,
     status = 'new',
 }: {
+    amount?: number;
     currency?: string;
     discountPrice?: number;
     id: number;
@@ -19,6 +22,7 @@ function cartItem({
     status?: string;
 }) {
     return {
+        amount,
         currency,
         id,
         shopData: {
@@ -104,27 +108,52 @@ test('uses the effective discounted price and requires a positive price', () => 
     );
 });
 
+test('prices every unit in a multi-quantity sunflower cart item', () => {
+    const item = cartItem({ amount: 3, id: 1, price: 2 });
+
+    assert.equal(calculateSunflowerAmount(item), 6_000);
+    assert.equal(
+        getDefaultCartItemCurrency({
+            availableSunflowers: 5_999,
+            items: [item],
+            newCartItemId: item.id,
+        }),
+        'eur',
+    );
+    assert.equal(
+        getDefaultCartItemCurrency({
+            availableSunflowers: 6_000,
+            items: [item],
+            newCartItemId: item.id,
+        }),
+        'sunflower',
+    );
+});
+
 test('reconstructs paid sunflower replay amounts without the paid-item zero discount', () => {
     assert.equal(
         calculateSunflowerReplayAmount({
+            amount: 2,
             shopData: { discountPrice: 0, price: 2.5 },
             status: 'paid',
         }),
-        2_500,
+        5_000,
     );
     assert.equal(
         calculateSunflowerReplayAmount({
+            amount: 2,
             outlet: { outletPrice: 1.2 },
             shopData: { discountPrice: 0, price: 2.5 },
             status: 'paid',
         }),
-        1_200,
+        2_400,
     );
     assert.equal(
         calculateSunflowerReplayAmount({
+            amount: 2,
             shopData: { discountPrice: 1.4, price: 2.5 },
             status: 'new',
         }),
-        1_400,
+        2_800,
     );
 });

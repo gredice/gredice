@@ -1,3 +1,4 @@
+import { safeUserDisplayName } from '@gredice/js/userDisplayName';
 import {
     type DeliveryLifecycleMilestone,
     notifyDeliveryRequestGroupEvent,
@@ -1035,7 +1036,7 @@ async function driverDashboard({
         kind: 'driver',
         user: {
             id: user.id,
-            displayName: user.displayName ?? user.userName,
+            displayName: safeUserDisplayName(user.displayName ?? user.userName),
             role,
         },
         activeRun: activeRun
@@ -1204,7 +1205,7 @@ async function customerDashboard({
         kind: 'customer',
         user: {
             id: user.id,
-            displayName: user.displayName ?? user.userName,
+            displayName: safeUserDisplayName(user.displayName ?? user.userName),
             role,
         },
         deliveries,

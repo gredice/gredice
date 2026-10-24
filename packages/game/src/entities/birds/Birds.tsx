@@ -1,6 +1,5 @@
 import type { BlockData } from '@gredice/client';
-import { useAnimations } from '@react-three/drei';
-import { type ThreeEvent, useFrame, useThree } from '@react-three/fiber';
+import { type ThreeEvent, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Group, Material, Object3D } from 'three';
 import { MathUtils, type Mesh, MeshStandardMaterial, Vector3 } from 'three';
@@ -27,6 +26,12 @@ import { AnimalTargetDebugMarker } from '../animals/AnimalDebugIndicators';
 import { configureActorMeshShadows } from '../animals/actorMeshShadows';
 import { birdSpeechMessages } from '../animals/actorSpeechMessages';
 import { isAnimalGroundBlockName } from '../animals/animalMovementTerrain';
+import {
+    useFaunaFrame,
+    useFaunaRenderFrame,
+} from '../animals/FaunaRuntimeProvider';
+import { useFaunaActorCulling } from '../animals/useFaunaActorCulling';
+import { useFaunaAnimations } from '../animals/useFaunaAnimations';
 import { isWaterBlockName } from '../waterBlockNames';
 import {
     type BirdBehavior,
@@ -1540,12 +1545,7 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
         (state) => state.animalDebugCommand,
     );
     const animalDisturbance = useGameState((state) => state.animalDisturbance);
-    const setAnimalDebugEntry = useGameState(
-        (state) => state.setAnimalDebugEntry,
-    );
-    const removeAnimalDebugEntry = useGameState(
-        (state) => state.removeAnimalDebugEntry,
-    );
+    const faunaWorld = useGameState((state) => state.faunaWorld);
 
     const birdModel = useMemo(() => {
         const clone = gltf.scene.clone(true);
@@ -1573,7 +1573,8 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
             scene: clone,
         };
     }, [gltf.scene]);
-    const { actions } = useAnimations(gltf.animations, birdModel.scene);
+    const shouldPoseBird = useFaunaActorCulling(birdModel.scene);
+    const { actions } = useFaunaAnimations(gltf.animations, birdModel.scene);
     const updateGroundingShadow = useActorGroundingShadow({
         id: `bird:${habitat.id}`,
         primaryCasterCount: birdModel.primaryCasterCount,
@@ -1609,8 +1610,8 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
     }, [habitat.home.facingYaw, habitat.home.position]);
 
     useEffect(() => {
-        return () => removeAnimalDebugEntry(habitat.id);
-    }, [habitat.id, removeAnimalDebugEntry]);
+        return () => faunaWorld.removeDebug(habitat.id);
+    }, [habitat.id, faunaWorld]);
 
     useEffect(() => {
         if (!animalTargetsDebugVisible && targetDebugRef.current) {
@@ -1667,7 +1668,7 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
         });
     }
 
-    useFrame(({ clock }, delta) => {
+    useFaunaFrame(({ clock }, delta) => {
         const group = groupRef.current;
         if (!group) {
             return;
@@ -2023,26 +2024,28 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
             target,
             timeOfDay,
         });
-    });
+    }, groupRef);
 
-    useFrame(({ clock }, delta) => {
+    useFaunaRenderFrame(({ clock }, delta) => {
         const runtime = runtimeRef.current;
         const group = groupRef.current;
         const now = clock.elapsedTime;
         const walking =
             runtime?.phase === 'moving' && runtime.motion === 'walk';
-        updateBirdLegPose({
-            delta,
-            flying:
-                runtime?.phase === 'circling' ||
-                (runtime?.phase === 'moving' && runtime.motion === 'fly'),
-            now,
-            rig: birdModel.rig,
-            seed: habitat.seed,
-            walking,
-            walkElapsed: walking ? Math.max(0, now - runtime.startedAt) : 0,
-        });
-        updateGroundPeckPose({ delta, rig: birdModel.rig });
+        if (shouldPoseBird()) {
+            updateBirdLegPose({
+                delta,
+                flying:
+                    runtime?.phase === 'circling' ||
+                    (runtime?.phase === 'moving' && runtime.motion === 'fly'),
+                now,
+                rig: birdModel.rig,
+                seed: habitat.seed,
+                walking,
+                walkElapsed: walking ? Math.max(0, now - runtime.startedAt) : 0,
+            });
+            updateGroundPeckPose({ delta, rig: birdModel.rig });
+        }
 
         if (runtime && group && updateGroundingShadow) {
             updateGroundingShadow({
@@ -2057,7 +2060,7 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
 
         if (runtime && group && now - lastAnimalDebugUpdateRef.current >= 0.5) {
             lastAnimalDebugUpdateRef.current = now;
-            setAnimalDebugEntry(
+            faunaWorld.reportDebug(
                 createBirdDebugEntry({ group, habitat, now, runtime }),
             );
         }

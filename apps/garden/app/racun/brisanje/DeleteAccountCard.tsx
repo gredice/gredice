@@ -28,6 +28,11 @@ export function DeleteAccountCard() {
         setLoading(false);
         if (res.ok || res.status === 404) {
             setResult('Brisanje računa je uspješno izvršeno.');
+        } else if (res.status === 409) {
+            const body = await res.json();
+            setResult(
+                'error' in body ? body.error : 'Brisanje računa nije izvršeno.',
+            );
         } else {
             setResult(
                 'Greška prilikom brisanja računa. Osvježite stranicu i pokušajte ponovno.',

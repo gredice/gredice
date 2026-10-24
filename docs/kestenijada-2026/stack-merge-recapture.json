@@ -1,0 +1,56 @@
+{
+  "recordedAt": "2026-10-04T15:03:55.041914+00:00",
+  "records": [
+    {
+      "view": "day",
+      "source": {
+        "commit": "ecde3becaa4710fb47583ab731db6430c5afc986",
+        "tree": "d5c0d517fca4566196d926a6c67e4a1605ef1f2e",
+        "status": ""
+      },
+      "byteIdentical": true,
+      "worldAndScreenBoundsIdentical": true
+    },
+    {
+      "view": "dusk",
+      "source": {
+        "commit": "ecde3becaa4710fb47583ab731db6430c5afc986",
+        "tree": "d5c0d517fca4566196d926a6c67e4a1605ef1f2e",
+        "status": ""
+      },
+      "byteIdentical": true,
+      "worldAndScreenBoundsIdentical": true
+    },
+    {
+      "view": "night",
+      "source": {
+        "commit": "ecde3becaa4710fb47583ab731db6430c5afc986",
+        "tree": "d5c0d517fca4566196d926a6c67e4a1605ef1f2e",
+        "status": ""
+      },
+      "byteIdentical": true,
+      "worldAndScreenBoundsIdentical": true
+    },
+    {
+      "view": "mobile-low",
+      "source": {
+        "commit": "ecde3becaa4710fb47583ab731db6430c5afc986",
+        "tree": "d5c0d517fca4566196d926a6c67e4a1605ef1f2e",
+        "status": ""
+      },
+      "byteIdentical": true,
+      "worldAndScreenBoundsIdentical": true
+    }
+  ],
+  "suiteTestsPassed": 6,
+  "previousEvidence": {
+    "path": "docs/kestenijada-2026/pre-stack-merge/evidence.json",
+    "sha256": "b8cec1a7ccecdbda7d704305fea30db90b67a13fefce229cc97e6c30e349225c",
+    "captureSource": {
+      "commit": "6d27794cc6f5c50a95e74916d6c9b5ff5959eff3",
+      "tree": "be3c21454a61edc2659fb1c6fae0882eb513d266",
+      "status": ""
+    }
+  },
+  "scope": "Fresh clean-source recapture after main integration and stack review fixes. All six functional cases passed and all four PNGs remain byte-identical to the previous authored captures. Route and physical-device acceptance are outside this check."
+}

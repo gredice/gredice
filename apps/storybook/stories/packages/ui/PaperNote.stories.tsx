@@ -13,7 +13,7 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'Saved notes in Garden, Farm and Admin share ruled paper with tape placement derived from the record key. Detail views show the full note; preview clamps admin list notes to four lines.',
+                    'Saved notes in Garden, Farm and Admin use bundled Patrick Hand at 20px with a shared 28px rhythm for text and paper rules. Croatian letters, wrapped text and Markdown stay readable on the ruled paper. Detail views show the full note; preview clamps admin list notes to four lines.',
             },
         },
     },
@@ -39,6 +39,17 @@ export const Multiline: Story = {
     },
 };
 export const LongNote: Story = { args: { children: longNote } };
+export const NarrowNote: Story = {
+    args: {
+        children:
+            'Pregledane rajčice i očišćena gredica.\nČvršće vezice čuvaju više stabljike. Đurđica će provjeriti vlažnost tla.',
+    },
+    render: (args) => (
+        <div className="w-[min(18rem,calc(100vw-6rem))] p-2">
+            <PaperNote {...args} />
+        </div>
+    ),
+};
 export const ListPreview: Story = {
     args: { children: longNote, preview: true },
 };
@@ -60,7 +71,7 @@ export const FormattedNote: Story = {
             <PaperNote {...args}>
                 <Markdown className="whitespace-normal text-inherit prose-headings:text-inherit prose-a:text-inherit prose-strong:text-inherit! [&_li::marker]:text-[#927a4e]">
                     {
-                        '**Pregled gredice**\n\n- Tlo je vlažno.\n- Provjeriti vezice.\n\n[Upute za uzgoj](https://www.gredice.com)'
+                        '### Pregled gredice\n\n**Tlo je još vlažno.** Rajčice su zdrave i vezice dobro drže stabljike.\n\n- Uklonjen je korov oko biljaka.\n- Provjeriti vezice nakon sljedeće kiše i učvrstiti više stabljike.\n\n[Upute za uzgoj](https://www.gredice.com)'
                     }
                 </Markdown>
             </PaperNote>

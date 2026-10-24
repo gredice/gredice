@@ -8,6 +8,7 @@ export type FieldOperationLabelData = {
     dateLabel?: string;
     traceUrl?: string;
     traceLinkId?: number;
+    traceLinkIds?: number[];
     traceStatus?: 'active' | 'revoked';
 };
 

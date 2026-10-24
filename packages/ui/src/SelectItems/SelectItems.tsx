@@ -331,7 +331,7 @@ export function SelectItems<T extends string>({
     const rootDefaultValue = toSelectValue(defaultValue);
     const rootClassName = cx(
         triggerClassName,
-        variant === 'outlined' && 'border border-input bg-background',
+        variant === 'outlined' && 'border border-input bg-field',
         variant === 'plain' && 'bg-transparent',
     );
 
@@ -406,25 +406,34 @@ export function SelectItems<T extends string>({
                         >
                             <ComboboxPrimitive.Positioner
                                 align="start"
-                                className={positionerClassName}
+                                aria-hidden={!isOpen || undefined}
+                                inert={!isOpen}
+                                className={cx(
+                                    positionerClassName,
+                                    !isOpen && 'pointer-events-none',
+                                )}
                                 collisionPadding={8}
                                 data-base-ui-swipe-ignore
                                 sideOffset={4}
                             >
                                 <ComboboxPrimitive.Popup
+                                    aria-label={
+                                        label ??
+                                        placeholder ??
+                                        searchPlaceholder
+                                    }
                                     className={popupClassName}
                                     dir={dir}
                                     initialFocus={false}
                                 >
                                     <div className="border-b p-1">
-                                        <div className="flex h-9 items-center rounded-sm border border-input bg-background px-2 ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                                        <div className="flex h-9 items-center rounded-sm border border-input bg-field px-2 ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
                                             <Search className="size-4 shrink-0 text-muted-foreground" />
                                             <ComboboxPrimitive.Input
                                                 ref={searchInputRef}
                                                 aria-label={searchPlaceholder}
                                                 className="min-w-0 flex-1 bg-transparent px-2 py-1 text-sm outline-hidden placeholder:text-muted-foreground"
                                                 placeholder={searchPlaceholder}
-                                                role="searchbox"
                                                 type="search"
                                             />
                                         </div>
@@ -432,7 +441,14 @@ export function SelectItems<T extends string>({
                                     <ComboboxPrimitive.Empty className="px-3 py-2 text-sm text-muted-foreground">
                                         {emptySearchText}
                                     </ComboboxPrimitive.Empty>
-                                    <ComboboxPrimitive.List className="max-h-[calc(min(24rem,var(--available-height))-3rem)] overflow-y-auto p-1">
+                                    <ComboboxPrimitive.List
+                                        aria-label={
+                                            label ??
+                                            placeholder ??
+                                            searchPlaceholder
+                                        }
+                                        className="max-h-[calc(min(24rem,var(--available-height))-3rem)] overflow-y-auto p-1"
+                                    >
                                         {(
                                             encodedValue: string,
                                             index: number,

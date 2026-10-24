@@ -1,11 +1,7 @@
 import { ListCollapsable } from '@apps/www/components/shared/ListCollapsable';
 import { Droplet, Leaf, Sprout } from '@gredice/ui/icons';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
-import {
-    createNavigation,
-    getRouter,
-    useRouter,
-} from '@storybook/nextjs-vite/navigation.mock';
+import { getRouter, useRouter } from '@storybook/nextjs-vite/navigation.mock';
 
 const items = [
     {
@@ -41,7 +37,6 @@ const meta = {
         },
     },
     beforeEach: () => {
-        createNavigation({});
         useRouter.mockImplementation(() => ({
             ...getRouter(),
             bfcacheId: 'storybook',

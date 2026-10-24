@@ -59,15 +59,27 @@ export default async function OccasionPage({ params }: OccasionPageProps) {
             day: 'numeric',
             month: 'long',
             year: 'numeric',
+            timeZone: 'Europe/Zagreb',
+        });
+
+    const formatDateTime = (dateString: string) =>
+        new Date(dateString).toLocaleString('hr-HR', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: 'Europe/Zagreb',
+            timeZoneName: 'short',
         });
 
     const rulesChangedDate = occasion.information.rulesChangedDate
         ? formatDate(occasion.information.rulesChangedDate)
         : null;
 
-    const startDate = formatDate(occasion.information.startDate);
+    const startDate = formatDateTime(occasion.information.startDate);
     const endDate = occasion.information.endDate
-        ? formatDate(occasion.information.endDate)
+        ? formatDateTime(occasion.information.endDate)
         : null;
 
     return (
@@ -78,14 +90,16 @@ export default async function OccasionPage({ params }: OccasionPageProps) {
                     header={`Pravila natječaja - ${occasion.information.name}`}
                     alternativeName={`Saznaj kako sudjelovati, osvojiti nagrade i koje su obveze organizatora natječaja - ${occasion.information.name}.`}
                     headerChildren={
-                        <Row spacing={2}>
+                        <Row spacing={2} className="flex-wrap">
                             <Timer className="size-5 shrink-0 opacity-60" />
-                            <Typography level="body2">{startDate}</Typography>
+                            <Typography level="body2">
+                                Početak: {startDate}
+                            </Typography>
                             {endDate && (
                                 <>
                                     <Navigate className="size-5 shrink-0 opacity-60" />
                                     <Typography level="body2">
-                                        {endDate}
+                                        Završetak: {endDate}
                                     </Typography>
                                 </>
                             )}

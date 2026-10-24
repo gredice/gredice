@@ -1,0 +1,146 @@
+import { Container } from '@gredice/ui/Container';
+import { Timeline, TimelineEntry, TimelineGroup } from '@gredice/ui/Timeline';
+import type { Route } from 'next';
+import { permanentRedirect } from 'next/navigation';
+import {
+    formatNewsDate,
+    getBlogPosts,
+    getChangelogEntries,
+    uniqueNewsValues,
+} from '../lib/news';
+import {
+    isKnownNewsFilter,
+    normalizeNewsFilterValue,
+} from '../lib/newsFilters';
+import { buildNewsTimeline } from '../lib/newsTimeline';
+import { getNewsArticleViewTransitionName } from '../lib/viewTransitions';
+import { buildChangelogWeeks } from '../lib/weeklyChangelog';
+import { EmptyNewsState } from './EmptyNewsState';
+import { NewsArchiveNavigation } from './NewsArchiveNavigation';
+import { NewsCard } from './NewsCard';
+import { NewsCategoryFilter } from './NewsCategoryFilter';
+import { WeeklyChangelogCard } from './WeeklyChangelogCard';
+
+export async function NewsArchive({
+    activeCategory,
+}: {
+    activeCategory?: string;
+}) {
+    const normalizedCategory = normalizeNewsFilterValue(activeCategory);
+    const [allPosts, changelogEntries] = await Promise.all([
+        getBlogPosts(),
+        getChangelogEntries(),
+    ]);
+    const categories = uniqueNewsValues(allPosts, (item) => item.category);
+    if (!isKnownNewsFilter(categories, activeCategory)) {
+        permanentRedirect('/');
+    }
+    const visiblePosts = allPosts.filter((post) => {
+        if (
+            normalizedCategory &&
+            normalizeNewsFilterValue(post.category ?? undefined) !==
+                normalizedCategory
+        ) {
+            return false;
+        }
+
+        return true;
+    });
+    const changelogWeeks = activeCategory
+        ? []
+        : buildChangelogWeeks(changelogEntries);
+    const eagerChangelogWeekKey = changelogWeeks[0]?.weekKey;
+    const timelineGroups = buildNewsTimeline(visiblePosts, changelogWeeks);
+    const totalItems = timelineGroups.reduce(
+        (total, group) => total + group.items.length,
+        0,
+    );
+    let itemIndex = 0;
+
+    return (
+        <Container className="grid gap-8 py-10">
+            <section className="grid gap-3">
+                <h1 className="max-w-3xl text-3xl font-bold leading-tight md:text-4xl">
+                    Novosti iz Gredica
+                </h1>
+                <p className="max-w-2xl text-lg text-muted-foreground">
+                    Priče, korisni vodiči i tjedni pregled razvoja Gredica.
+                </p>
+            </section>
+            <NewsArchiveNavigation active={activeCategory ? undefined : 'news'}>
+                <NewsCategoryFilter
+                    activeCategory={activeCategory}
+                    categories={categories.map((name) => ({
+                        name,
+                        count: allPosts.filter(
+                            (post) =>
+                                normalizeNewsFilterValue(
+                                    post.category ?? undefined,
+                                ) === normalizeNewsFilterValue(name),
+                        ).length,
+                    }))}
+                />
+            </NewsArchiveNavigation>
+            {totalItems > 0 ? (
+                <Timeline className="isolate">
+                    {timelineGroups.map((group, groupIndex) => (
+                        <TimelineGroup
+                            hasItems={group.items.length > 0}
+                            isFirst={groupIndex === 0}
+                            key={group.monthKey}
+                            label={group.monthLabel}
+                        >
+                            {group.items.map((item) => {
+                                const currentItemIndex = itemIndex;
+                                itemIndex += 1;
+
+                                return (
+                                    <TimelineEntry
+                                        index={currentItemIndex}
+                                        isLast={
+                                            currentItemIndex === totalItems - 1
+                                        }
+                                        key={item.key}
+                                        label={
+                                            item.kind === 'blog'
+                                                ? (formatNewsDate(
+                                                      item.blog.publishedAt,
+                                                  ) ?? 'Bez datuma')
+                                                : item.week.rangeLabel
+                                        }
+                                    >
+                                        {item.kind === 'blog' ? (
+                                            <NewsCard
+                                                entry={item.blog}
+                                                href={
+                                                    `/${item.blog.slug}` as Route
+                                                }
+                                                kind="blog"
+                                                viewTransitionName={getNewsArticleViewTransitionName(
+                                                    'blog',
+                                                    item.blog.slug,
+                                                )}
+                                            />
+                                        ) : (
+                                            <WeeklyChangelogCard
+                                                eager={
+                                                    item.week.weekKey ===
+                                                    eagerChangelogWeekKey
+                                                }
+                                                week={item.week}
+                                            />
+                                        )}
+                                    </TimelineEntry>
+                                );
+                            })}
+                        </TimelineGroup>
+                    ))}
+                </Timeline>
+            ) : (
+                <EmptyNewsState title="Još nema novosti">
+                    Trenutačno nema objavljenih novosti.
+                </EmptyNewsState>
+            )}
+        </Container>
+    );
+}

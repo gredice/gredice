@@ -1,0 +1,80 @@
+{
+    "generatedWith": "built-in image_gen",
+    "createdOn": "2026-09-22",
+    "referenceArtwork": "packages/ui/src/SunflowerVisuals/assets/mascot-3d.webp",
+    "processing": "Use the per-asset processing when specified; otherwise resize the complete source to 720px and add a 24px transparent border on all sides for a 768px WebP, preserving the generated alpha and internal margins. Silhouette and artifact cleanup were performed with the built-in image tool; no local recoloring or background extraction.",
+    "export": {
+        "width": 768,
+        "height": 768,
+        "format": "webp",
+        "quality": 90,
+        "alphaQuality": 100
+    },
+    "assets": [
+        {
+            "file": "mascot-sad-3d.webp",
+            "use": "404, error, and empty states",
+            "prompt": "Use case: identity-preserve. Asset type: Gredice game sunflower mascot expression. Edit the attached approved mascot into a gently sad/concerned version, preserving its exact character identity and rendering style. Keep the broad round warm medium-brown face, two large glossy round black eyes with one white upper-left highlight each, generous double ring of thick rounded sunny-yellow sunflower petals, short green stem and exactly two broad faceted green leaves. Change the tiny black U-shaped smile into a small soft downturned mouth and add very subtle concerned inner-raised brows; a slight downward head inclination is okay. The expression is gentle, patient and sympathetic, suitable for an empty state or 404, never distraught, angry or scary. No tears. Keep eyes open and the face clearly visible. Preserve the reference's chunky faceted low-poly 3D geometry, beveled petal volumes, matte brown face and warm upper-left illumination with darker right-facing facets. Yellow is natural petals, not metallic gold. Entire single character visible and centered on a square canvas with at least 7 percent clear margin on EVERY edge. True transparent alpha background, including gaps between petals, leaves and stem. No background, white plane, checkerboard pattern, card, pot, floor, shadow outside the object, text, punctuation, accessory, stray marks, extra limbs, nose or watermark. Deliver one clean standalone transparent mascot.",
+            "sourceFile": "exec-1e097f0d-73b4-46bd-aaa9-0568a7ae3ddb.png",
+            "edits": [
+                {
+                    "prompt": "Use case: precise-object-edit. Clean up ONLY the outer silhouette and canvas margins of this existing Gredice 3D sunflower mascot. Remove the accidental little yellow nub/splatter and isolated speckled pixels ABOVE the top central petal: the central petal must end in one clean rounded faceted edge with no spike, tuft, dot or protrusion. These marks are export artifacts, not part of the character. Preserve the entire intended character EXACTLY, including its expression, brown face, glossy eyes and highlights, petal arrangement, faceted 3D shading, stem, leaves, and any bouquet and teal ribbon. Do not change pose, identity, shape, colors or proportions of the intended artwork. Scale the COMPLETE cleaned character down slightly on a square canvas so there is a clearly empty transparent margin of at least 8 percent at the top, bottom and both sides. True transparent alpha including all gaps, no checkerboard, floor, backdrop or cast shadow. Deliver only the same cleaned mascot, no extra objects or marks.",
+                    "sourceFile": "exec-2cd1b7cd-327e-44c0-937e-61f727f6a76a.png",
+                    "sourceSha256": "7eaa14171e0438c1113151fafb10198cbb33cc45b5ff869751efa9061cf9810f"
+                }
+            ],
+            "sourceSha256": "b0f1931f3e3fe27457ce6a64e872a6a18f4e03634b843a3a96cc8845ee109cbd",
+            "outputSha256": "24730afc1832c05377091fafd0d08efcdd06d3c3f451c9abda99a8e8f807ceda",
+            "validation": {
+                "width": 768,
+                "height": 768,
+                "hasAlpha": true,
+                "alphaMin": 0,
+                "alphaMax": 255,
+                "transparentBorderPixels": 24,
+                "transparentPixelPercent": 55.48,
+                "bytes": 62806
+            }
+        },
+        {
+            "file": "mascot-gift-3d.webp",
+            "use": "Referrals and invitations",
+            "prompt": "Use case: identity-preserve. Asset type: Gredice game sunflower mascot referral illustration. Edit the attached approved mascot into a happy version offering a SMALL bouquet of three ordinary sunflowers. Preserve the mascot's exact identity: broad round warm medium-brown face, two large glossy black round eyes with one white upper-left highlight each, tiny friendly black U-shaped smile, generous double ring of thick rounded sunny-yellow petals, short green stem, exactly two broad faceted green leaves. Curve the existing two leaves gently forward like leaf hands to cradle the tied green stems of the small bouquet at the lower-right of its body, offering it toward the viewer. The bouquet has three small yellow sunflower heads with plain brown centers (NO faces), tied with a simple small teal ribbon. Bouquet should occupy at most 30 percent of the composition width; the mascot's main face and its eyes and smile stay fully unobstructed, with no human arms, hands or extra limbs. Keep the main head large and dominant as in the reference, not a tall human-shaped body. Match the existing chunky faceted low-poly 3D geometry, broad bevels, matte surfaces and warm upper-left light with darker right-facing facets. Natural warm yellow petals, green leaves, rich brown face, restrained teal tie, no metallic gold. Entire character and bouquet visible on square canvas with at least 7 percent clear margin on every edge. True transparent alpha including gaps. No background, white plane, checkerboard, card, floor, pot, external cast shadow, text, numbers, confetti, hearts, stray marks, nose, clothing or watermark. Deliver one clean standalone transparent illustration.",
+            "sourceFile": "exec-39baf099-62d7-4114-b4b3-bce59faf45ea.png",
+            "edits": [
+                {
+                    "prompt": "Use case: precise-object-edit. Clean up ONLY the outer silhouette and canvas margins of this existing Gredice 3D sunflower mascot. Remove the accidental little yellow nub/splatter and isolated speckled pixels ABOVE the top central petal: the central petal must end in one clean rounded faceted edge with no spike, tuft, dot or protrusion. These marks are export artifacts, not part of the character. Preserve the entire intended character EXACTLY, including its expression, brown face, glossy eyes and highlights, petal arrangement, faceted 3D shading, stem, leaves, and any bouquet and teal ribbon. Do not change pose, identity, shape, colors or proportions of the intended artwork. Scale the COMPLETE cleaned character down slightly on a square canvas so there is a clearly empty transparent margin of at least 8 percent at the top, bottom and both sides. True transparent alpha including all gaps, no checkerboard, floor, backdrop or cast shadow. Deliver only the same cleaned mascot, no extra objects or marks.",
+                    "sourceFile": "exec-50c51e6f-4714-492e-b5ca-45e0e96556b7.png",
+                    "sourceSha256": "ea83b9b021767dbe746601a6977df46f9bb26381cfb93281b3e2e7cfd7faaced"
+                },
+                {
+                    "prompt": "Use case: precise-object-edit. This is a STRICT tiny artifact cleanup of the attached 768px Gredice gift sunflower mascot. Remove ONLY the small detached pale yellow/white square floating in the transparent space above the uppermost central petal, around x=416 to 424 and y=35 to 60 on the 768px canvas. Replace that detached square with fully transparent pixels. It is NOT part of a petal. Do not replace it with a spark, highlight, tuft or smaller dot. Preserve the actual top petal edge, all other character pixels, the brown face, eyes, smile, petal facets, two leaves holding the three-flower bouquet, teal ribbon, lighting, silhouette, colors, pose, scale, canvas padding and transparency EXACTLY. Do not redraw, resize, recolor or restyle the intended mascot. The transparent gap between the top petal and the canvas edge must be completely empty. No new pixels or decorations, no background, no checkerboard, no shadow. Output the same complete square image with true transparent alpha, with only that detached artifact removed.",
+                    "sourceFile": "exec-5a485df3-19ca-482d-a933-c371b53503a4.png",
+                    "sourceSha256": "ed7d1895914cbfab3e7ea4c32ba516b28d11e57e17c467304f816171c5deef2d",
+                    "note": "Intermediate edit retained the detached mark; not exported. Used as reference for the following targeted cleanup."
+                },
+                {
+                    "prompt": "Precise pixel-area cleanup. In this image, clear the entire horizontal strip from the top canvas edge down to 8% of the canvas height. Every pixel in this top strip must have alpha 0. The sunflower starts below this strip, so none of the actual character is touched. Keep everything below the strip exactly unchanged, including the mascot, bouquet, transparent background, size, lighting and composition. No new marks. Output a transparent PNG.",
+                    "sourceFile": "exec-1bff7d05-5e84-4246-b87d-9bdadde0e2f2.png",
+                    "sourceSha256": "b7c09109698f8db40dbeea62083794a5aa84f301263dde16fc4d6eee19426616",
+                    "note": "Selected final edit. The detached yellow mark above the central petal is removed."
+                }
+            ],
+            "sourceSha256": "ec79a73576be36b3811a2f949f5e58a4232838049e33641080fa8fd875d8645a",
+            "outputSha256": "f1e82081796c67795cf446a9781eb0b56dcd7d6a84eb9d819eaaa93a6983b2ce",
+            "validation": {
+                "width": 768,
+                "height": 768,
+                "hasAlpha": true,
+                "alphaMin": 0,
+                "alphaMax": 255,
+                "transparentBorderPixels": 16,
+                "transparentPixelPercent": 55.14,
+                "bytes": 62560,
+                "removedArtifactRegionAlphaMax": 0
+            },
+            "processing": "Resize the complete final edited source to 768px without additional padding, retaining its composition and generated alpha. Encode WebP at quality 90 with alphaQuality 100. Artifact cleanup was done with the built-in image editing tool; no local erasing, recoloring, alpha thresholding or background extraction."
+        }
+    ],
+    "referenceSha256": "6d18b9d9871e7c5a997f919aa2b9b28d21582d5664469d38eaa8f46b8a6d31d2"
+}

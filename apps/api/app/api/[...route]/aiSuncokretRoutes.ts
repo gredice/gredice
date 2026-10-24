@@ -1,4 +1,6 @@
 import {
+    getAiChatMessageTimestamp,
+    getAiChatResponseTimestamp,
     suncokretPlantDetailTabs,
     suncokretRaisedBedDetailTabs,
     suncokretSettingsSections,
@@ -6,7 +8,6 @@ import {
 } from '@gredice/js/ai';
 import {
     ensureAiChatConversation,
-    finalizeAiChatUsage,
     getAiChatAccountLimitState,
     getAiChatConversationForUser,
     getAiChatConversationsForUser,
@@ -43,14 +44,16 @@ import { visibleRaisedBedsForGarden } from '../../../lib/ai/suncokretGardenConte
 import {
     estimateSuncokretPromptTokens,
     estimateSuncokretRequestCostMicroEur,
-    getSuncokretGatewayBilledCostMicroEur,
     getSuncokretModel,
     getSuncokretModelRegistry,
     getSuncokretPricedModel,
+    largestSuncokretStepInputTokens,
     resolveSuncokretMaxOutputTokens,
+    suncokretPricingForInputTokens,
 } from '../../../lib/ai/suncokretModels';
 import { buildSuncokretUsageStatus } from '../../../lib/ai/suncokretUsage';
-import { createJwt } from '../../../lib/auth/auth';
+import { scheduleSuncokretUsageSettlement } from '../../../lib/ai/suncokretUsageSettlement';
+import { createMcpAccessJwt } from '../../../lib/auth/auth';
 import { authSecurity } from '../../../lib/docs/security';
 import {
     type AuthVariables,
@@ -274,10 +277,6 @@ async function validateGardenContext({
         garden,
         raisedBed,
     };
-}
-
-async function mcpToken(userId: string, accountId: string) {
-    return createJwt({ sub: userId, accountId }, '72h');
 }
 
 async function callMcpTool({
@@ -510,7 +509,7 @@ function buildTools({
 
     const raisedBedDetailsTool = tool({
         description:
-            'Dohvati detalje jedne gredice: polja, nazive biljaka i njihov životni ciklus.',
+            'Dohvati detalje jedne gredice: polja, nazive biljaka, životni ciklus, datume sjetve/nicanja i sowingLocation. Uključuje presadnice u stakleniku vezane uz ciljna polja; koristi i za procjenu presađivanja.',
         inputSchema: z.object({
             gardenId: z.number().int().positive().optional(),
             raisedBedId: z.number().int().positive().optional(),
@@ -687,7 +686,7 @@ function buildTools({
                 'Dodaj proizvod u košaricu. Uvijek treba odobrenje korisnika.',
             inputSchema: z.object({
                 productId: z.string().min(1),
-                quantity: z.number().positive().default(1),
+                quantity: z.number().int().min(1).max(100).default(1),
                 gardenId: z.number().int().positive().optional(),
                 raisedBedId: z.number().int().positive().optional(),
                 positionIndex: z.number().int().min(0).optional(),
@@ -702,7 +701,7 @@ function buildTools({
                 'Dodaj dostupnu radnju za cijelu gredicu ili biljku na polju u košaricu. ID radnje dohvati iz kataloga radnji. Za radnju cijele gredice izostavi positionIndex; navedi ga samo za radnju biljke na konkretnom polju. Uvijek treba odobrenje korisnika.',
             inputSchema: z.object({
                 operationId: z.number().int().positive(),
-                quantity: z.number().positive().default(1),
+                quantity: z.number().int().min(1).max(100).default(1),
                 gardenId: z.number().int().positive().optional(),
                 raisedBedId: z.number().int().positive().optional(),
                 positionIndex: z
@@ -1017,7 +1016,13 @@ const app = new Hono<{ Variables: ChatVariables }>()
                         id: message.id,
                         role: message.role,
                         parts: message.parts,
-                        metadata: message.metadata ?? undefined,
+                        metadata: {
+                            ...message.metadata,
+                            createdAt: (
+                                getAiChatMessageTimestamp(message.metadata) ??
+                                message.createdAt
+                            ).toISOString(),
+                        },
                     })),
                 },
             });
@@ -1195,9 +1200,9 @@ const app = new Hono<{ Variables: ChatVariables }>()
                       return fallbackSuncokretConversationTitle(body.messages);
                   })
                 : null;
-            const token = await mcpToken(auth.userId, auth.accountId);
+            const token = await createMcpAccessJwt(auth.userId);
             const origin = new URL(context.req.url).origin;
-            let finalized = false;
+            let usageSettlementScheduled = false;
             let finishMetadata: Record<string, unknown> | null = null;
             const mcpTelemetryByToolCallId = new Map<
                 string,
@@ -1250,51 +1255,27 @@ const app = new Hono<{ Variables: ChatVariables }>()
                             ],
                         },
                     },
-                    onFinish: async ({ steps, totalUsage }) => {
+                    onFinish: ({ steps, totalUsage }) => {
+                        if (usageSettlementScheduled) return;
                         const usage = usageTokens(totalUsage);
-                        let billedTotalMicroEur: number | null = null;
-                        try {
-                            billedTotalMicroEur =
-                                await getSuncokretGatewayBilledCostMicroEur(
-                                    steps,
-                                );
-                            if (billedTotalMicroEur === null) {
-                                console.warn(
-                                    'Suncokret AI Gateway billed cost is unavailable; using token estimate',
-                                    {
-                                        accountId: auth.accountId,
-                                        conversationId,
-                                        modelId: model.id,
-                                        requestId,
-                                    },
-                                );
-                            }
-                        } catch (error) {
-                            console.warn(
-                                'Suncokret AI Gateway billed cost lookup failed; using token estimate',
-                                {
-                                    accountId: auth.accountId,
-                                    conversationId,
-                                    modelId: model.id,
-                                    requestId,
-                                    error,
-                                },
-                            );
-                        }
-                        const cost = await finalizeAiChatUsage({
-                            ledgerId: reservation.ledgerId,
-                            inputTokens: usage.inputTokens,
-                            noCacheTokens: usage.noCacheTokens,
-                            cacheReadTokens: usage.cacheReadTokens,
-                            cacheWriteTokens: usage.cacheWriteTokens,
-                            outputTokens: usage.outputTokens,
-                            totalTokens: usage.totalTokens,
-                            pricing: model,
-                            ...(billedTotalMicroEur === null
-                                ? {}
-                                : { billedTotalMicroEur }),
+                        const cost = scheduleSuncokretUsageSettlement({
+                            context: {
+                                accountId: auth.accountId,
+                                conversationId,
+                                modelId: model.id,
+                                requestId,
+                            },
+                            steps,
+                            usage: {
+                                ledgerId: reservation.ledgerId,
+                                ...usage,
+                                pricing: suncokretPricingForInputTokens(
+                                    model,
+                                    largestSuncokretStepInputTokens(steps),
+                                ),
+                            },
                         });
-                        finalized = true;
+                        usageSettlementScheduled = true;
                         finishMetadata = {
                             suncokret: {
                                 usage,
@@ -1303,6 +1284,7 @@ const app = new Hono<{ Variables: ChatVariables }>()
                                     ? {
                                           model: model.id,
                                           cost,
+                                          costSource: 'token-estimate',
                                           conversationId,
                                       }
                                     : {}),
@@ -1310,7 +1292,7 @@ const app = new Hono<{ Variables: ChatVariables }>()
                         };
                     },
                     onError: async ({ error }) => {
-                        if (!finalized) {
+                        if (!usageSettlementScheduled) {
                             await releaseAiChatUsageReservation({
                                 ledgerId: reservation.ledgerId,
                                 status: 'failed',
@@ -1323,17 +1305,23 @@ const app = new Hono<{ Variables: ChatVariables }>()
                     },
                 });
 
+                const responseCreatedAt = getAiChatResponseTimestamp(
+                    body.messages,
+                ).toISOString();
                 return result.toUIMessageStreamResponse({
                     originalMessages: body.messages as UIMessage[],
                     consumeSseStream: consumeStream,
                     onError: suncokretStreamErrorMessage,
                     messageMetadata: ({ part }) => {
+                        if (part.type === 'start')
+                            return { createdAt: responseCreatedAt };
                         if (part.type !== 'finish') {
                             return undefined;
                         }
 
-                        return (
-                            finishMetadata ?? {
+                        return {
+                            createdAt: responseCreatedAt,
+                            ...(finishMetadata ?? {
                                 suncokret: {
                                     requestId,
                                     usage: usageTokens(part.totalUsage),
@@ -1351,8 +1339,8 @@ const app = new Hono<{ Variables: ChatVariables }>()
                                           }
                                         : {}),
                                 },
-                            }
-                        );
+                            }),
+                        };
                     },
                     onFinish: async ({ isAborted, messages }) => {
                         await replaceAiChatMessages({
@@ -1381,7 +1369,7 @@ const app = new Hono<{ Variables: ChatVariables }>()
                                 }
                             }
                         }
-                        if (isAborted && !finalized) {
+                        if (isAborted && !usageSettlementScheduled) {
                             await releaseAiChatUsageReservation({
                                 ledgerId: reservation.ledgerId,
                             });
@@ -1389,7 +1377,7 @@ const app = new Hono<{ Variables: ChatVariables }>()
                     },
                 });
             } catch (error) {
-                if (!finalized) {
+                if (!usageSettlementScheduled) {
                     await releaseAiChatUsageReservation({
                         ledgerId: reservation.ledgerId,
                         status: 'failed',

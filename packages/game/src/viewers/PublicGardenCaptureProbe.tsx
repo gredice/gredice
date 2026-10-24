@@ -4,6 +4,7 @@ import { useProgress } from '@react-three/drei';
 import { type RootState, useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import { Box3, OrthographicCamera, Vector3 } from 'three';
+import { resolveCaptureCameraZoom } from '../controls/orthographicCameraFit';
 import {
     gardenPreviewHeight,
     gardenPreviewMaxSizeBytes,
@@ -48,28 +49,7 @@ type CaptureViewBounds = {
     top: number;
 };
 
-export function resolveCaptureCameraZoom({
-    bounds,
-    cameraHeight,
-    cameraWidth,
-    padding,
-}: {
-    bounds: CaptureViewBounds;
-    cameraHeight: number;
-    cameraWidth: number;
-    padding: number;
-}) {
-    const halfWidth = Math.max(Math.abs(bounds.left), Math.abs(bounds.right));
-    const halfHeight = Math.max(Math.abs(bounds.bottom), Math.abs(bounds.top));
-    if (halfWidth <= 0 || halfHeight <= 0) {
-        return null;
-    }
-
-    return Math.min(
-        (cameraWidth * 0.5 * padding) / halfWidth,
-        (cameraHeight * 0.5 * padding) / halfHeight,
-    );
-}
+export { resolveCaptureCameraZoom } from '../controls/orthographicCameraFit';
 
 function viewBoundsSignature(bounds: CaptureViewBounds) {
     return [bounds.bottom, bounds.left, bounds.right, bounds.top]

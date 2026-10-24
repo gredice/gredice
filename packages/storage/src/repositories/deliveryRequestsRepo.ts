@@ -953,10 +953,16 @@ export type DeliveryRequestWithEvents = Awaited<
     ReturnType<typeof reconstructDeliveryRequestFromEvents>
 >;
 
-// Helper function to reconstruct business state from events
-async function reconstructDeliveryRequestFromEvents(
+export type DeliveryRequestCore = Awaited<
+    ReturnType<typeof reconstructDeliveryRequestCore>
+>;
+
+// Business state and ownership read entirely through `db`, so dispatch
+// transactions can load a request without leaving their transaction.
+async function reconstructDeliveryRequestCore(
     request: SelectDeliveryRequest,
     events: DbEvent[],
+    db: DatabaseClient,
 ) {
     const {
         state,
@@ -972,7 +978,7 @@ async function reconstructDeliveryRequestFromEvents(
         surveySent,
     } = reconstructDeliveryRequestState(request.createdAt, events);
 
-    const operation = await getOperationById(request.operationId);
+    const operation = await getOperationById(request.operationId, db);
     if (!operation.accountId) {
         throw new Error('Delivery request owner not found');
     }
@@ -981,10 +987,44 @@ async function reconstructDeliveryRequestFromEvents(
     // The operation owner is authoritative for request ownership. Event data
     // is historical input and must not grant access to another account.
     const [slot, address, location] = await Promise.all([
-        slotId ? getTimeSlot(slotId) : undefined,
-        addressId ? getDeliveryAddress(addressId, accountId) : undefined,
-        locationId ? getPickupLocation(locationId) : undefined,
+        slotId ? getTimeSlot(slotId, db) : undefined,
+        addressId ? getDeliveryAddress(addressId, accountId, db) : undefined,
+        locationId ? getPickupLocation(locationId, db) : undefined,
     ]);
+
+    return {
+        id: request.id,
+        operationId: request.operationId,
+        operation,
+        state,
+        slot,
+        address,
+        location,
+        mode,
+        cancelReason,
+        requestNotes,
+        deliveryNotes,
+        customerHandoffReceipt,
+        deliveryException,
+        surveySent,
+        routeRevision: getDeliveryRequestDispatchEventId(events),
+        createdAt: request.createdAt,
+        updatedAt: request.updatedAt,
+        accountId,
+    };
+}
+
+// Helper function to reconstruct business state from events
+async function reconstructDeliveryRequestFromEvents(
+    request: SelectDeliveryRequest,
+    events: DbEvent[],
+) {
+    const core = await reconstructDeliveryRequestCore(
+        request,
+        events,
+        storage(),
+    );
+    const { operation } = core;
 
     const [operationEntity, raisedBed, fields, traceLinks] = await Promise.all([
         operation?.entityId
@@ -1066,25 +1106,11 @@ async function reconstructDeliveryRequestFromEvents(
     }
 
     return {
-        id: request.id,
-        operationId: request.operationId,
-        operation,
+        ...core,
         operationData: operationEntity,
         raisedBed,
         raisedBedField,
         plantSort,
-        state,
-        slot,
-        address,
-        location,
-        mode,
-        cancelReason,
-        requestNotes,
-        deliveryNotes,
-        customerHandoffReceipt,
-        deliveryException,
-        surveySent,
-        routeRevision: getDeliveryRequestDispatchEventId(events),
         trace: traceLink
             ? {
                   id: traceLink.id,
@@ -1092,9 +1118,6 @@ async function reconstructDeliveryRequestFromEvents(
                   publicPath: traceLink.publicPath,
               }
             : null,
-        createdAt: request.createdAt,
-        updatedAt: request.updatedAt,
-        accountId,
     };
 }
 
@@ -1460,6 +1483,25 @@ export async function getDeliveryRequest(
     return reconstructDeliveryRequestFromEvents(request, events);
 }
 
+// Transaction-safe read for dispatch mutations: state, slot, address, location
+// and ownership without the best-effort display enrichment.
+export async function getDeliveryRequestCore(
+    requestId: string,
+    db: DatabaseClient = storage(),
+): Promise<DeliveryRequestCore | undefined> {
+    const request = await db.query.deliveryRequests.findFirst({
+        where: eq(deliveryRequests.id, requestId),
+    });
+
+    if (!request) return undefined;
+
+    const events = await getAllEvents(deliveryRequestEventTypes, [request.id], {
+        db,
+    });
+
+    return reconstructDeliveryRequestCore(request, events, db);
+}
+
 export async function getDeliveryRequestOwners(
     requestIds: string[],
     db: DatabaseClient = storage(),
@@ -1821,7 +1863,7 @@ export async function changeDeliveryRequestSlot(
     }
 
     await withDeliveryDispatchTransaction(async (tx) => {
-        const request = await getDeliveryRequest(requestId, tx);
+        const request = await getDeliveryRequestCore(requestId, tx);
 
         if (!request) {
             throw new Error('Delivery request not found');
@@ -1852,7 +1894,7 @@ export async function cancelDeliveryRequest(
 ): Promise<void> {
     await withDeliveryDispatchTransaction(async (tx) => {
         const cancelledAt = new Date();
-        const request = await getDeliveryRequest(requestId, tx);
+        const request = await getDeliveryRequestCore(requestId, tx);
 
         if (!request) {
             throw new Error('Delivery request not found');
@@ -1935,7 +1977,7 @@ export async function uncancelDeliveryRequest(
     requestId: string,
 ): Promise<void> {
     await withDeliveryDispatchTransaction(async (tx) => {
-        const request = await getDeliveryRequest(requestId, tx);
+        const request = await getDeliveryRequestCore(requestId, tx);
         if (!request) throw new Error('Delivery request not found');
         if (request.state !== DeliveryRequestStates.CANCELLED) return;
 
@@ -1951,7 +1993,7 @@ export async function uncancelDeliveryRequest(
 // Confirm a delivery request
 export async function confirmDeliveryRequest(requestId: string): Promise<void> {
     await withDeliveryDispatchTransaction(async (tx) => {
-        const request = await getDeliveryRequest(requestId, tx);
+        const request = await getDeliveryRequestCore(requestId, tx);
         if (!request) throw new Error('Delivery request not found');
         if (request.state === DeliveryRequestStates.CONFIRMED) return;
 
@@ -1967,7 +2009,7 @@ export async function confirmDeliveryRequest(requestId: string): Promise<void> {
 // Prepare a delivery request
 export async function prepareDeliveryRequest(requestId: string): Promise<void> {
     await withDeliveryDispatchTransaction(async (tx) => {
-        const request = await getDeliveryRequest(requestId, tx);
+        const request = await getDeliveryRequestCore(requestId, tx);
         if (!request) throw new Error('Delivery request not found');
         if (request.state === DeliveryRequestStates.PREPARING) return;
 
@@ -1983,7 +2025,7 @@ export async function prepareDeliveryRequest(requestId: string): Promise<void> {
 // Ready a delivery request
 export async function readyDeliveryRequest(requestId: string): Promise<void> {
     await withDeliveryDispatchTransaction(async (tx) => {
-        const request = await getDeliveryRequest(requestId, tx);
+        const request = await getDeliveryRequestCore(requestId, tx);
         if (!request) throw new Error('Delivery request not found');
         if (request.state === DeliveryRequestStates.READY) return;
 
@@ -2173,7 +2215,7 @@ export async function fulfillDeliveryRequest(
     }
 
     await acquireDeliveryDispatchLock(db);
-    const request = await getDeliveryRequest(requestId, db);
+    const request = await getDeliveryRequestCore(requestId, db);
 
     if (!request) {
         throw new DeliveryRequestFulfillmentError(

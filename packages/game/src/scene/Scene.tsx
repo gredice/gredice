@@ -22,16 +22,22 @@ import {
     type WebGLRendererParameters,
 } from 'three';
 import { ActorGroundingShadowProvider } from '../entities/animals/ActorGroundingShadows';
+import { FaunaRuntimeProvider } from '../entities/animals/FaunaRuntimeProvider';
 import {
     HoverOutlineEffect,
     HoverOutlineProvider,
 } from '../entities/helpers/HoverOutline';
 import { useOptionalGameState } from '../useGameState';
+import { WarmPropSourcesProvider } from '../warmProps/WarmPropSources';
 import { AdaptiveHighQualityController } from './AdaptiveHighQualityController';
+import { AutumnPartsProvider } from './AutumnParts';
+import { AutumnPropWindProvider } from './AutumnPropWindProvider';
+import { AutumnSourcesProvider } from './AutumnSources';
 import {
     type AdaptiveHighQualityLevelProfile,
     adaptiveHighQualityLevels,
 } from './adaptiveHighQuality';
+import { BreathSourcesProvider } from './cold/BreathSources';
 import { GardenLightProvider } from './GardenLightProvider';
 import {
     createRuntimeFrameLoopProfileTelemetry,
@@ -42,6 +48,7 @@ import {
     type GameQualityProfile,
     resolveGameQualityProfile,
 } from './gameQuality';
+import { GardenPacketMaterialRoot } from './gardenPacketMaterialLifetime';
 import { subscribeToRendererContextLoss } from './RendererContextLossReporter';
 import { createRendererStatsPublisher } from './rendererStats';
 import {
@@ -51,6 +58,7 @@ import {
     useSceneTimeInvalidation,
 } from './SceneTime';
 import { StaticOpaqueSceneCacheProvider } from './StaticOpaqueSceneCache';
+import { SteamSourcesProvider } from './SteamSources';
 import { WeatherSurfaceUniformProvider } from './WeatherSurfaceUniformProvider';
 
 export type SceneProps = HTMLAttributes<HTMLDivElement> &
@@ -313,8 +321,6 @@ export function Scene({
         (state) => state.wireframeDebugVisible,
         false,
     );
-    const staticOpaqueCacheActive =
-        staticOpaqueCacheEnabled && qualityProfile.tier === 'high';
     const staticOpaqueCacheQualityKey = [
         qualityProfile.cloudShadowMode,
         qualityProfile.dpr,
@@ -384,6 +390,7 @@ export function Scene({
                 runtimeFrameLoop={runtimeFrameLoop}
                 suspendWhenOffscreen={suspendWhenOffscreen}
             >
+                <GardenPacketMaterialRoot />
                 <GardenLightProvider qualityTier={qualityProfile.tier}>
                     <AdaptiveHighQualityController
                         effectiveDprCeiling={qualityProfile.dpr}
@@ -398,8 +405,10 @@ export function Scene({
                         }
                     />
                     <WeatherSurfaceUniformProvider>
+                        {/* Capability, device memory, and measured benefit gate
+                            the cache at runtime for every quality tier. */}
                         <StaticOpaqueSceneCacheProvider
-                            enabled={staticOpaqueCacheActive}
+                            enabled={staticOpaqueCacheEnabled}
                             interactionActive={adaptiveHighInteractionActive}
                             qualityKey={staticOpaqueCacheQualityKey}
                             wireframe={Boolean(
@@ -409,19 +418,36 @@ export function Scene({
                             <ActorGroundingShadowProvider
                                 enabled={qualityProfile.shadows}
                             >
-                                <HoverOutlineProvider>
-                                    <SceneDebugName />
-                                    {(debugStats || profileStats) && (
-                                        <RendererStatsReporter />
-                                    )}
-                                    <SceneWireframeMode
-                                        enabled={Boolean(
-                                            debugStats && wireframeDebugVisible,
+                                <FaunaRuntimeProvider>
+                                    <HoverOutlineProvider>
+                                        <SceneDebugName />
+                                        {(debugStats || profileStats) && (
+                                            <RendererStatsReporter />
                                         )}
-                                    />
-                                    {children}
-                                    <HoverOutlineEffect />
-                                </HoverOutlineProvider>
+                                        <SceneWireframeMode
+                                            enabled={Boolean(
+                                                debugStats &&
+                                                    wireframeDebugVisible,
+                                            )}
+                                        />
+                                        <AutumnSourcesProvider>
+                                            <AutumnPartsProvider>
+                                                <AutumnPropWindProvider
+                                                    tier={qualityProfile.tier}
+                                                >
+                                                    <BreathSourcesProvider>
+                                                        <SteamSourcesProvider>
+                                                            <WarmPropSourcesProvider>
+                                                                {children}
+                                                            </WarmPropSourcesProvider>
+                                                        </SteamSourcesProvider>
+                                                    </BreathSourcesProvider>
+                                                </AutumnPropWindProvider>
+                                            </AutumnPartsProvider>
+                                        </AutumnSourcesProvider>
+                                        <HoverOutlineEffect />
+                                    </HoverOutlineProvider>
+                                </FaunaRuntimeProvider>
                             </ActorGroundingShadowProvider>
                         </StaticOpaqueSceneCacheProvider>
                     </WeatherSurfaceUniformProvider>

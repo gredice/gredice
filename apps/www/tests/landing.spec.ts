@@ -217,7 +217,17 @@ test('navbar floats on scroll and landing game frame is rounded', async ({
         frameBox.x + frameBox.width - (heroCardBox.x + heroCardBox.width),
     ).toBeGreaterThanOrEqual(minimumCardInset);
     expect(frameBox.height).toBeLessThanOrEqual(550);
-    await expect(page.locator('canvas')).toBeVisible({ timeout: 35_000 });
+    if (process.env.GREDICE_PLAYWRIGHT_FEATURED_GARDENS_FIXTURE === 'true') {
+        const gardens = page.getByRole('region', {
+            name: 'Vrtovi korisnika Gredica',
+        });
+        await expect(gardens).toBeVisible();
+        await expect(
+            gardens.getByRole('link', { name: 'Pogledaj' }),
+        ).toHaveAttribute('href', '/vrtovi/99999');
+    } else {
+        await expect(page.locator('canvas')).toBeVisible({ timeout: 35_000 });
+    }
 
     const signupCta = page.getByTestId('landing-game-signup-cta');
     await expect(signupCta).toBeVisible();
@@ -240,75 +250,79 @@ test('navbar floats on scroll and landing game frame is rounded', async ({
 
     expect(signupCtaBox.y).toBeGreaterThanOrEqual(frameBox.y + frameBox.height);
 
-    await expect
-        .poll(
-            () =>
-                page.evaluate(() => {
-                    const profile = (
-                        window as Window & {
-                            __grediceGameProfile?: {
-                                adaptiveHighEnabled?: boolean;
-                                dprCap?: number;
-                                qualityTier?: string;
-                            };
-                        }
-                    ).__grediceGameProfile;
+    if (process.env.GREDICE_PLAYWRIGHT_FEATURED_GARDENS_FIXTURE === 'true') {
+        await expect(page.locator('canvas')).toHaveCount(0);
+    } else {
+        await expect
+            .poll(
+                () =>
+                    page.evaluate(() => {
+                        const profile = (
+                            window as Window & {
+                                __grediceGameProfile?: {
+                                    adaptiveHighEnabled?: boolean;
+                                    dprCap?: number;
+                                    qualityTier?: string;
+                                };
+                            }
+                        ).__grediceGameProfile;
 
-                    return {
-                        adaptiveHighEnabled: profile?.adaptiveHighEnabled,
-                        dprCapIsSupported:
-                            typeof profile?.dprCap === 'number' &&
-                            profile.dprCap >= 1 &&
-                            profile.dprCap <= 2,
-                        qualityTier: profile?.qualityTier,
-                    };
-                }),
-            { timeout: 15_000 },
-        )
-        .toEqual({
-            adaptiveHighEnabled: !hasFeaturedGardenCarousel,
-            dprCapIsSupported: true,
-            qualityTier: hasFeaturedGardenCarousel
-                ? 'auto-constrained'
-                : 'high',
-        });
+                        return {
+                            adaptiveHighEnabled: profile?.adaptiveHighEnabled,
+                            dprCapIsSupported:
+                                typeof profile?.dprCap === 'number' &&
+                                profile.dprCap >= 1 &&
+                                profile.dprCap <= 2,
+                            qualityTier: profile?.qualityTier,
+                        };
+                    }),
+                { timeout: 15_000 },
+            )
+            .toEqual({
+                adaptiveHighEnabled: !hasFeaturedGardenCarousel,
+                dprCapIsSupported: true,
+                qualityTier: hasFeaturedGardenCarousel
+                    ? 'auto-constrained'
+                    : 'high',
+            });
 
-    const canvas = page.locator('canvas');
-    const countVisibleCanvasPixels = async () => {
-        const screenshot = await canvas.screenshot({ scale: 'css' });
+        const canvas = page.locator('canvas');
+        const countVisibleCanvasPixels = async () => {
+            const screenshot = await canvas.screenshot({ scale: 'css' });
 
-        return page.evaluate(async (base64) => {
-            const image = new Image();
-            image.src = `data:image/png;base64,${base64}`;
-            await image.decode();
+            return page.evaluate(async (base64) => {
+                const image = new Image();
+                image.src = `data:image/png;base64,${base64}`;
+                await image.decode();
 
-            const sampleCanvas = document.createElement('canvas');
-            sampleCanvas.width = 20;
-            sampleCanvas.height = 20;
-            const context = sampleCanvas.getContext('2d');
-            if (!context) {
-                return 0;
-            }
-
-            context.drawImage(image, 0, 0, 20, 20);
-            const pixels = context.getImageData(0, 0, 20, 20).data;
-            let visiblePixels = 0;
-            for (let index = 0; index < pixels.length; index += 4) {
-                const red = pixels[index] ?? 0;
-                const green = pixels[index + 1] ?? 0;
-                const blue = pixels[index + 2] ?? 0;
-                const alpha = pixels[index + 3] ?? 0;
-                if (alpha > 0 && red + green + blue > 0) {
-                    visiblePixels += 1;
+                const sampleCanvas = document.createElement('canvas');
+                sampleCanvas.width = 20;
+                sampleCanvas.height = 20;
+                const context = sampleCanvas.getContext('2d');
+                if (!context) {
+                    return 0;
                 }
-            }
 
-            return visiblePixels;
-        }, screenshot.toString('base64'));
-    };
-    await expect
-        .poll(countVisibleCanvasPixels, { timeout: 35_000 })
-        .toBeGreaterThan(10);
+                context.drawImage(image, 0, 0, 20, 20);
+                const pixels = context.getImageData(0, 0, 20, 20).data;
+                let visiblePixels = 0;
+                for (let index = 0; index < pixels.length; index += 4) {
+                    const red = pixels[index] ?? 0;
+                    const green = pixels[index + 1] ?? 0;
+                    const blue = pixels[index + 2] ?? 0;
+                    const alpha = pixels[index + 3] ?? 0;
+                    if (alpha > 0 && red + green + blue > 0) {
+                        visiblePixels += 1;
+                    }
+                }
+
+                return visiblePixels;
+            }, screenshot.toString('base64'));
+        };
+        await expect
+            .poll(countVisibleCanvasPixels, { timeout: 35_000 })
+            .toBeGreaterThan(10);
+    }
 
     await page.evaluate(() => window.scrollTo(0, 160));
     await expect

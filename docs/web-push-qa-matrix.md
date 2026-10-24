@@ -58,11 +58,11 @@ Current automated coverage anchors:
 | Area | Coverage | Command |
 |---|---|---|
 | API contracts and sender behavior | `apps/api/lib/notifications/pushDevices.node.spec.ts`, `pushEvents.node.spec.ts`, and `webPushSender.node.spec.ts` cover subscription payload validation, event metadata filtering, Web Push payload shape, retry handling, invalid endpoint revocation, and the test-notification helper. | `pnpm --filter api test:node` |
-| Storage routing and preferences | `packages/storage/tests/notificationsRepo.node.spec.ts` covers preference filtering, quiet hours, digest routing, deliverable subscription filtering, idempotent push queueing, delivery events, and summaries. | `pnpm test --filter @gredice/storage` |
+| Storage routing and preferences | `packages/storage/tests/notificationsRepo.node.spec.ts` covers preference filtering, quiet hours, digest routing, deliverable subscription filtering, idempotent push queueing, delivery events, and summaries. | `pnpm run test --filter @gredice/storage` |
 | Browser subscription helper | `packages/game/src/hooks/pushSubscription.unit.ts` covers subscription reuse, base64 key conversion, and registration payload persistence. | `pnpm --filter @gredice/game test` |
 | Shared client browser subscription helper | `packages/client/tests/push.node.spec.ts` covers farm/app client subscription metadata, endpoint fallback, and subscription reuse. | `pnpm --filter @gredice/client test` |
 | Garden service worker | `apps/garden/tests/push-notifications-sw.node.spec.mjs` covers fallback payloads, invalid JSON, same-origin URL/action normalization, click routing, and dismissal analytics payloads. | `pnpm --filter garden test:sw` |
-| Garden settings UI | `apps/garden/tests/notifications-tab.spec.tsx` covers mocked preferences, devices, push status, loading/empty/error states, device lifecycle actions, and user-triggered test notification calls. | `pnpm test --filter garden` |
+| Garden settings UI | `apps/garden/tests/notifications-tab.spec.tsx` covers mocked preferences, devices, push status, loading/empty/error states, device lifecycle actions, and user-triggered test notification calls. | `pnpm run test --filter garden` |
 | Farm settings UI | `apps/farm/app/settings/_components/NotificationSettings.spec.tsx` covers mocked devices, push status, unsupported/denied/unconfigured/dismissed states, device toggle/revoke, and test notification calls. | `pnpm --filter farm exec playwright test app/settings/_components/NotificationSettings.spec.tsx` |
 
 When a Garden dev server is already running for local debugging, run the Garden
@@ -119,9 +119,9 @@ Before shipping push changes:
 - [ ] Confirm browser/device matrix still matches current target versions.
 - [ ] Validate iOS/iPadOS Home Screen caveat in release notes and QA sign-off.
 - [ ] Run `pnpm --filter api test:node`,
-      `pnpm test --filter @gredice/storage`,
+      `pnpm run test --filter @gredice/storage`,
       `pnpm --filter @gredice/game test`, and
-      `pnpm test --filter garden`.
+      `pnpm run test --filter garden`.
 - [ ] Validate one preview-environment smoke test with real subscriptions,
       queued sender logs, and delivery audit events.
 - [ ] Confirm screenshots or logs used for QA do not expose VAPID private keys,

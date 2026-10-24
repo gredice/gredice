@@ -25,6 +25,104 @@ import {
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
 const DESKTOP_VIEWPORT = { width: 1280, height: 800 };
 
+for (const sowDays of [3, 20]) {
+    test(`not sprouted confirmation explains refund at ${sowDays} days`, async ({
+        mount,
+        page,
+    }) => {
+        await page.setViewportSize(MOBILE_VIEWPORT);
+        await mount(
+            <RaisedBedFieldHudStory
+                scenario={{
+                    fields: [
+                        {
+                            positionIndex: 0,
+                            plantSortId: testSorts.tomato.id,
+                            plantStatus: 'sowed',
+                            plantSowDate: new Date(
+                                Date.now() - sowDays * 24 * 60 * 60 * 1000,
+                            ).toISOString(),
+                        },
+                    ],
+                }}
+                positionIndex={0}
+            />,
+        );
+        await page.getByRole('button').first().click();
+        await page
+            .getByRole('button', { name: 'Promijeni stanje biljke: Posijana' })
+            .click();
+        await page
+            .getByRole('button', { name: 'Nije proklijala', exact: true })
+            .click();
+        const confirmation = page.getByRole('alertdialog', {
+            name: 'Potvrda promjene stanja',
+        });
+        await expect(confirmation).toContainText(
+            sowDays >= 15
+                ? 'Puni plaćeni iznos sadnje'
+                : 'Ova promjena stanja neće vratiti suncokrete',
+        );
+        await expect(
+            confirmation.getByRole('button', { name: 'Odustani' }),
+        ).toBeVisible();
+        const overflows = await confirmation.evaluate(
+            (node) => node.scrollWidth > node.clientWidth,
+        );
+        expect(overflows).toBe(false);
+    });
+}
+
+test('not sprouted confirmation refuses a refund after recorded growth', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(MOBILE_VIEWPORT);
+    await mount(
+        <RaisedBedFieldHudStory
+            scenario={{
+                fields: [
+                    {
+                        positionIndex: 0,
+                        plantSortId: testSorts.tomato.id,
+                        plantStatus: 'sowed',
+                        plantSowDate: new Date(
+                            Date.now() - 20 * 24 * 60 * 60 * 1000,
+                        ).toISOString(),
+                        statusChanges: [
+                            {
+                                status: 'sprouted',
+                                occurredAt: new Date(
+                                    Date.now() - 10 * 24 * 60 * 60 * 1000,
+                                ).toISOString(),
+                            },
+                            {
+                                status: 'sowed',
+                                occurredAt: new Date().toISOString(),
+                            },
+                        ],
+                    },
+                ],
+            }}
+            positionIndex={0}
+        />,
+    );
+    await page.getByRole('button').first().click();
+    await page
+        .getByRole('button', { name: 'Promijeni stanje biljke: Posijana' })
+        .click();
+    await page
+        .getByRole('button', { name: 'Nije proklijala', exact: true })
+        .click();
+    const confirmation = page.getByRole('alertdialog', {
+        name: 'Potvrda promjene stanja',
+    });
+    await expect(confirmation).toContainText('već proklijala');
+    await expect(confirmation).toContainText(
+        'Ova promjena stanja neće vratiti suncokrete',
+    );
+});
+
 async function expectRenderedGameIcon(icon: Locator, label?: string) {
     if (label) await expect(icon.locator('title')).toHaveText(label);
     const artwork = icon.locator('image');
@@ -2701,6 +2799,7 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         mount,
         page,
     }) => {
+        await page.clock.setFixedTime(new Date('2026-05-13T12:00:00.000Z'));
         const scenario = plantedGrowingWithOperationHistoryScenario();
         const operation = scenario.operationHistoryItems?.[0];
 
@@ -2744,7 +2843,9 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
             dialog.locator('[data-operation-media-badge]').first(),
         ).toBeVisible();
 
-        await dialog.getByRole('button', { name: '20. svibnja 2026.' }).click();
+        await dialog
+            .getByRole('button', { name: '20. svibnja', exact: true })
+            .click();
 
         await expect(
             page.getByText('Novi datum', { exact: true }),
@@ -2758,6 +2859,7 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         mount,
         page,
     }) => {
+        await page.clock.setFixedTime(new Date('2026-05-13T12:00:00.000Z'));
         const scenario = plantedGrowingWithOperationHistoryScenario();
         const operation = scenario.operationHistoryItems?.[0];
 
@@ -2802,7 +2904,8 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await dialog.getByRole('tab', { name: /Dnevnik/ }).click();
 
         const scheduleButton = dialog.getByRole('button', {
-            name: '13. svibnja 2026.',
+            name: '13. svibnja',
+            exact: true,
         });
         await expect(scheduleButton).toBeDisabled();
 
@@ -2872,6 +2975,7 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         mount,
         page,
     }) => {
+        await page.clock.setFixedTime(new Date('2026-05-13T12:00:00.000Z'));
         const scenario = plantedGrowingWithOperationHistoryScenario();
         const operation = scenario.operationHistoryItems?.[0];
 
@@ -2908,10 +3012,14 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         const dialog = page.getByRole('dialog');
         await dialog.getByRole('tab', { name: /Dnevnik/ }).click();
 
-        await expect(dialog.getByText('12. svibnja 2026.')).toBeVisible();
-        await expect(dialog.getByText('10. svibnja 2026.')).toHaveCount(0);
         await expect(
-            dialog.getByRole('button', { name: '12. svibnja 2026.' }),
+            dialog.getByText('12. svibnja', { exact: true }),
+        ).toBeVisible();
+        await expect(
+            dialog.getByText('10. svibnja', { exact: true }),
+        ).toHaveCount(0);
+        await expect(
+            dialog.getByRole('button', { name: '12. svibnja', exact: true }),
         ).toHaveCount(0);
     });
 

@@ -16,6 +16,7 @@
     --card-foreground: 222.2 47.4% 11.2%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
+    --field: 210 40% 97%;
     --primary: 222.2 47.4% 11.2%;
     --primary-foreground: 210 40% 98%;
     --secondary: 210 40% 96.1%;
@@ -43,6 +44,7 @@
         --card-foreground: 0 0% 91%;
         --border: 0 0% 17%;
         --input: 0 0% 17%;
+        --field: 0 0% 16%;
         --primary: 0 0% 98%;
         --primary-foreground: 0 0% 1.2%;
         --secondary: 0 0% 11.2%;

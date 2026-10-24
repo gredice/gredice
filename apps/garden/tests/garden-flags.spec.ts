@@ -10,7 +10,6 @@ const gardenFlagKeys = [
     'enableDebugHud',
     'enableSuncokretDebug',
     'enableGardenAvatar',
-    'enableGardenBuildingSystem',
 ];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -46,10 +45,7 @@ test('flag discovery merges all code-defined and managed Vercel metadata', () =>
     );
 
     expect(discoveredFlagKeys).toEqual(gardenFlagKeys);
-    for (const managedFlagName of [
-        'enableGardenAvatarFlag',
-        'enableGardenBuildingSystemFlag',
-    ]) {
+    for (const managedFlagName of ['enableGardenAvatarFlag']) {
         const managedFlagDeclaration = flagsSource.match(
             new RegExp(
                 `export const ${managedFlagName} = flag<boolean>\\(\\{[\\s\\S]*?\\n\\}\\);`,

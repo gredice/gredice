@@ -123,6 +123,67 @@ for (const decision of ['Odobri', 'Odbij']) {
     });
 }
 
+for (const width of [390, 1440]) {
+    for (const decision of ['Odobri', 'Odbij']) {
+        test(`${decision} keeps untouched actions stationary while processing at ${width}px`, async ({
+            mount,
+            page,
+        }) => {
+            await page.setViewportSize({ width, height: 900 });
+            let release: (() => void) | undefined;
+            const pending = new Promise<void>((resolve) => {
+                release = resolve;
+            });
+            await page.route('**/approval-test-action', async (route) => {
+                await pending;
+                await route.fulfill({ json: { success: true } });
+            });
+            await mount(<ApprovalTaskListHarness />);
+
+            const list = page.getByRole('list', {
+                name: 'Zahtjevi za odobrenje',
+            });
+            const untouchedAction = list
+                .getByRole('listitem')
+                .first()
+                .getByRole('button', { name: 'Odobri', exact: true });
+            const actionBounds = await untouchedAction.boundingBox();
+            const listTop = await list.evaluate(
+                (element) => element.getBoundingClientRect().top,
+            );
+            await list
+                .getByRole('listitem')
+                .nth(1)
+                .getByRole('button', { name: decision, exact: true })
+                .click();
+
+            const status = page.getByRole('status');
+            await expect(status).toHaveText('Obrada zahtjeva: 1');
+            await expect(status).toBeInViewport();
+            await expect(list.getByRole('listitem')).toHaveCount(3);
+            expect(
+                await list.evaluate(
+                    (element) => element.getBoundingClientRect().top,
+                ),
+            ).toBe(listTop);
+            expect(await untouchedAction.boundingBox()).toEqual(actionBounds);
+            await untouchedAction.click({ trial: true });
+            await page.screenshot({
+                path: test.info().outputPath('approvals-processing.png'),
+            });
+
+            release?.();
+            await expect(status).not.toContainText('Obrada zahtjeva');
+            expect(await untouchedAction.boundingBox()).toEqual(actionBounds);
+            expect(
+                await list.evaluate(
+                    (element) => element.getBoundingClientRect().top,
+                ),
+            ).toBe(listTop);
+        });
+    }
+}
+
 test('restores a rejected request after failure and allows retry', async ({
     mount,
     page,

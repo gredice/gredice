@@ -18,7 +18,6 @@ import {
     getGardenPlacementSnapshotForUpdate,
     getGardenStacks,
     knownEventTypes,
-    listGardenStructures,
     softDeleteGardenOnce,
     updateGardenStack,
     withGardenBoxInventoryTransaction,
@@ -34,10 +33,6 @@ import {
     createGardenBoxBlockPlacementService,
     type GardenBoxBlockPlacementDependencies,
 } from './gardenBoxBlockPlacementService';
-import {
-    createGardenOccupancyIndexFromStorageSnapshot,
-    validatePersistedStructuresAfterBlockMutation,
-} from './gardenOccupancyService';
 
 const storageIntegrationEnabled =
     process.env.TEST_ENV === '1' && Boolean(process.env.POSTGRES_URL);
@@ -111,16 +106,13 @@ function integrationService({
             },
             createGardenBlock: (gardenId, blockName, transaction) =>
                 createGardenBlock(gardenId, blockName, transaction),
-            createGardenOccupancyIndexFromStorageSnapshot,
             createGardenStack,
             getBlockData: async () => blockData,
             getGardenBlockForUpdate,
             getGardenMutationAuthorityForUpdate,
             getGardenPlacementSnapshotForUpdate,
-            listGardenStructures,
             resolveGardenBlockPlacement,
             updateGardenStack,
-            validatePersistedStructuresAfterBlockMutation,
             withGardenBoxInventoryTransaction: (
                 accountId,
                 gardenId,

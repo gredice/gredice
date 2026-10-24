@@ -131,6 +131,7 @@ export function CloudShadowAttenuation({
     strength: number;
 }) {
     const scene = useThree((state) => state.scene);
+    const gl = useThree((state) => state.gl);
     const [activated, setActivated] = useState(() =>
         resolveCloudShadowAttenuationActivation({
             activated: false,
@@ -207,6 +208,7 @@ export function CloudShadowAttenuation({
             leases,
             root: scene,
             uniforms,
+            renderer: gl,
         });
         updateGameProfileMetadata({
             cloudAttenuationMaterialCount: materialCount,
@@ -220,7 +222,7 @@ export function CloudShadowAttenuation({
                 cloudAttenuationMaterialCount: 0,
             });
         };
-    }, [materialIntegrationEnabled, scene, uniforms]);
+    }, [gl, materialIntegrationEnabled, scene, uniforms]);
 
     useEffect(
         () => () => {
@@ -274,6 +276,7 @@ export function CloudShadowAttenuation({
                 leases: leasesRef.current,
                 root: scene,
                 uniforms,
+                renderer: gl,
             });
             updateGameProfileMetadata({
                 cloudAttenuationMaterialCount: materialCount,

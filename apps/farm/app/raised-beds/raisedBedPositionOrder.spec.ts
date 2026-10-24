@@ -12,16 +12,18 @@ test('places position 18 top-left and position 1 bottom-right', () => {
     ).toEqual(Array.from({ length: 18 }, (_, index) => 17 - index));
 });
 
-test('keeps the minimum three-by-three preview for sparse raised beds', () => {
-    expect(getRaisedBedPositionIndexesDescending([0, 2])).toEqual([
-        8, 7, 6, 5, 4, 3, 2, 1, 0,
-    ]);
-});
+for (const positions of [[], [0, 2], Array.from({ length: 9 }, (_, i) => i)]) {
+    test(`preserves all 18 physical spaces with ${positions.length} recorded fields`, () => {
+        expect(getRaisedBedPositionIndexesDescending(positions)).toEqual(
+            Array.from({ length: 18 }, (_, index) => 17 - index),
+        );
+    });
+}
 
 test('completes a partial top row so field 1 remains bottom-right', () => {
-    expect(getRaisedBedPositionIndexesDescending([0, 9])).toEqual([
-        11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0,
-    ]);
+    expect(getRaisedBedPositionIndexesDescending([0, 18])).toEqual(
+        Array.from({ length: 21 }, (_, index) => 20 - index),
+    );
 });
 
 test('uses the recorded anchor for a selected footprint rather than its lowest membership', () => {

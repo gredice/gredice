@@ -1,8 +1,7 @@
 import type { FaqData } from '@gredice/client';
-import { Accordion } from '@gredice/ui/Accordion';
-import { Markdown } from '@gredice/ui/Markdown';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import { FaqAnswer } from './FaqAnswer';
 import { FaqCategoryVisual } from './FaqCategoryVisual';
 
 export function FaqCategorySection({
@@ -13,7 +12,11 @@ export function FaqCategorySection({
     entries: FaqData[];
 }) {
     return (
-        <Stack spacing={4}>
+        <Stack
+            spacing={4}
+            id={category.information.name}
+            className="scroll-mt-28"
+        >
             <div className="flex items-center gap-4">
                 <FaqCategoryVisual
                     category={category}
@@ -25,17 +28,7 @@ export function FaqCategorySection({
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {entries.map((item) => (
-                    <Accordion
-                        key={item.id}
-                        className="h-min border-tertiary border-b-4"
-                    >
-                        <Typography className="px-3" semiBold>
-                            {item.information.header}
-                        </Typography>
-                        <div className="px-3">
-                            <Markdown>{item.information.content}</Markdown>
-                        </div>
-                    </Accordion>
+                    <FaqAnswer key={item.id} entry={item} />
                 ))}
             </div>
         </Stack>

@@ -1,21 +1,28 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { restoreGameProfileDate } from '../../profile/game/profileDate';
 
 type EntitySandboxViewerComponent =
     typeof import('@gredice/game').EntitySandboxViewer;
 
 export function EntityViewerDynamic({
     entityName,
+    freezeTime,
     rotation,
     storageKey,
     variant,
 }: {
     entityName: string;
+    freezeTime?: string;
     rotation?: number;
     storageKey: string;
     variant?: number;
 }) {
+    const date = useMemo(
+        () => restoreGameProfileDate(freezeTime),
+        [freezeTime],
+    );
     const [EntitySandboxViewer, setEntitySandboxViewer] =
         useState<EntitySandboxViewerComponent | null>(null);
 
@@ -46,6 +53,7 @@ export function EntityViewerDynamic({
             className="h-full w-full"
             debugHud
             entityName={entityName}
+            freezeTime={date}
             localSandboxStorageKey={storageKey}
             rotation={rotation}
             variant={variant}

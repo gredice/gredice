@@ -5,6 +5,7 @@ import {
     type ComponentProps,
     isValidElement,
     type MouseEvent,
+    useId,
     useState,
 } from 'react';
 import { Card, CardContent, CardHeader } from '../Card';
@@ -36,6 +37,7 @@ export function Accordion({
     className,
     ...props
 }: AccordionProps) {
+    const contentId = useId();
     const [internalOpen, setInternalOpen] = useState(defaultOpen ?? false);
     const openState = open ?? internalOpen;
     const childrenArray = Children.toArray(children);
@@ -71,6 +73,10 @@ export function Accordion({
                         'w-full text-left disabled:cursor-not-allowed disabled:opacity-60',
                         variant === 'plain' ? 'px-2 py-4' : 'p-4',
                     )}
+                    aria-expanded={openState}
+                    aria-controls={
+                        !unmountOnExit || openState ? contentId : undefined
+                    }
                     disabled={disabled}
                     onClick={handleToggle}
                     type="button"
@@ -95,6 +101,9 @@ export function Accordion({
                 <Collapse appear={openState}>
                     {hasSplitContent && (
                         <CardContent
+                            id={contentId}
+                            inert={!openState}
+                            aria-hidden={!openState}
                             className={cx(
                                 variant === 'plain'
                                     ? 'px-2 pt-2 pb-4'

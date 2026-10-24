@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/experimental-ct-react';
 import { DeliveryAvailabilityChecker } from '../app/dostava/DeliveryAvailabilityChecker';
+import { expect, test } from './component-fixtures';
 import '../app/globals.css';
 
 test('calculates paid delivery from the driving distance', async ({

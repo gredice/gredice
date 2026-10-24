@@ -1,3 +1,4 @@
+import { safeUserDisplayName } from '@gredice/js/userDisplayName';
 import {
     CommunityEditRequestError,
     createCommunityEditRequest,
@@ -59,7 +60,7 @@ const communityPlantHealthSuggestionFields = {
 };
 const communityEntitySuggestionSchema = z.discriminatedUnion('kind', [
     z.object({
-        kind: z.literal('plantSort'),
+        kind: z.enum(['plantSort', 'plantTip']),
         parentPlantId: z.number().int().positive(),
         name: z.string().trim().min(1).max(200),
         description: z.string().trim().min(1).max(2000),
@@ -362,7 +363,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/community-edits/entity-suggestions',
         describeRoute({
             description:
-                'Submit a pending suggestion for a new plant sort, operation, disease, or pest. No directory entity is created or published by this endpoint.',
+                'Submit a pending suggestion for a new plant sort, plant tip, operation, disease, or pest. No directory entity is created or published by this endpoint.',
             security: authSecurity,
         }),
         authValidator(['user', 'admin']),
@@ -377,10 +378,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     ...body,
                     submitter: {
                         id: authContext.userId,
-                        name:
-                            user?.displayName ??
-                            user?.userName ??
-                            authContext.userId,
+                        name: safeUserDisplayName(
+                            user?.displayName ?? user?.userName,
+                        ),
                     },
                 });
 
@@ -443,10 +443,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     sectionKey: body.sectionKey,
                     submitter: {
                         id: authContext.userId,
-                        name:
-                            user?.displayName ??
-                            user?.userName ??
-                            authContext.userId,
+                        name: safeUserDisplayName(
+                            user?.displayName ?? user?.userName,
+                        ),
                     },
                     submitterNote: body.submitterNote,
                     changes: body.changes,

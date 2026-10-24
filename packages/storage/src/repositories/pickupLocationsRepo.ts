@@ -8,6 +8,12 @@ import {
 } from '../schema';
 import { storage } from '../storage';
 
+type StorageClient = ReturnType<typeof storage>;
+type TransactionClient = Parameters<
+    Parameters<StorageClient['transaction']>[0]
+>[0];
+type DatabaseClient = StorageClient | TransactionClient;
+
 // Get all active pickup locations
 export function getPickupLocations(): Promise<SelectPickupLocation[]> {
     return storage().query.pickupLocations.findMany({
@@ -29,8 +35,9 @@ export function getAllPickupLocations(): Promise<SelectPickupLocation[]> {
 // Get a specific pickup location by ID
 export function getPickupLocation(
     locationId: number,
+    db: DatabaseClient = storage(),
 ): Promise<SelectPickupLocation | undefined> {
-    return storage().query.pickupLocations.findFirst({
+    return db.query.pickupLocations.findFirst({
         where: eq(pickupLocations.id, locationId),
     });
 }

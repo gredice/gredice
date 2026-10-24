@@ -1,11 +1,5 @@
 import type { GardenBlockDataLike } from '@gredice/js/gardenBlocks';
 import {
-    createGardenOccupancyIndexFromStorageSnapshot,
-    type GardenOccupancyServiceError,
-    type GardenOccupancyStorageStructureLike,
-    validatePersistedStructuresAfterBlockMutation,
-} from './gardenOccupancyService';
-import {
     validateSpanningBlockMove,
     validateStackPlacement,
 } from './stacksPatchValidation';
@@ -96,7 +90,6 @@ export type GardenStacksPatchPlannerInput = Readonly<{
         }>;
         raisedBeds?: readonly GardenStacksPatchRaisedBed[];
         stacks: readonly GardenStacksPatchStack[];
-        structures: readonly GardenOccupancyStorageStructureLike[];
     }>;
 }>;
 
@@ -131,9 +124,6 @@ export type GardenStacksPatchPlannerErrorCode =
     | 'ACTIVE_RAISED_BED'
     | 'DIRECTORY_BLOCK_NOT_FOUND'
     | 'EMPTY_PATCH'
-    | 'GARDEN_OCCUPANCY_CONFLICT'
-    | 'GARDEN_OCCUPANCY_INVALID_INPUT'
-    | 'GARDEN_OCCUPANCY_INVALID_STATE'
     | 'GARDEN_BOX_NOT_RECYCLABLE'
     | 'INDEX_OUT_OF_BOUNDS'
     | 'INVALID_GARDEN_STATE'
@@ -157,7 +147,6 @@ export type GardenStacksPatchPlannerResult =
           ok: false;
           code: GardenStacksPatchPlannerErrorCode;
           error: string;
-          occupancyError?: GardenOccupancyServiceError;
           status: 400 | 409;
       }>;
 
@@ -189,7 +178,6 @@ class GardenStacksPatchPlannerError extends Error {
         readonly code: GardenStacksPatchPlannerErrorCode,
         readonly status: 400 | 409,
         message: string,
-        readonly occupancyError?: GardenOccupancyServiceError,
     ) {
         super(message);
     }
@@ -201,15 +189,6 @@ function fail(
     message: string,
 ): never {
     throw new GardenStacksPatchPlannerError(code, status, message);
-}
-
-function failOccupancy(error: GardenOccupancyServiceError): never {
-    throw new GardenStacksPatchPlannerError(
-        error.code,
-        error.status,
-        error.message,
-        error,
-    );
 }
 
 function isBoundedBlockIdentifier(value: unknown): value is string {
@@ -577,18 +556,6 @@ function buildPlan(
         fail('INVALID_GARDEN_STATE', 409, 'Garden sandbox state is invalid');
     }
 
-    const initialOccupancy = createGardenOccupancyIndexFromStorageSnapshot({
-        blockData: input.blockData,
-        snapshot: {
-            blocks: input.snapshot.blocks,
-            stacks: input.snapshot.stacks,
-            structures: input.snapshot.structures,
-        },
-    });
-    if (!initialOccupancy.valid) {
-        failOccupancy(initialOccupancy.error);
-    }
-
     const initialStacks = new Map<string, GardenStacksPatchStack>();
     const workingStacks = new Map<string, MutableStack>();
     for (const stack of input.snapshot.stacks) {
@@ -628,7 +595,6 @@ function buildPlan(
         input.blockData.map((block) => [block.information.name, block]),
     );
     let recycle: GardenStacksPatchRecycleDelta | undefined;
-    let recycledBlockId: string | undefined;
 
     for (const operation of input.operations) {
         if (operation.op === 'test') {
@@ -743,7 +709,6 @@ function buildPlan(
                 isSandbox: input.snapshot.garden.isSandbox,
                 raisedBeds: input.snapshot.raisedBeds ?? [],
             });
-            recycledBlockId = blockId;
             stack.blocks.splice(path.index, 1);
             validateCurrentStack(stack, blockNameById, blockDataByName);
             continue;
@@ -762,21 +727,6 @@ function buildPlan(
         }
     }
     const finalCandidateStacks = candidateStacks(workingStacks);
-    const finalOccupancy = validatePersistedStructuresAfterBlockMutation({
-        blockData: input.blockData,
-        excludedBlockIds: recycledBlockId
-            ? new Set([recycledBlockId])
-            : undefined,
-        snapshot: {
-            blocks: input.snapshot.blocks,
-            stacks: finalCandidateStacks,
-            structures: input.snapshot.structures,
-        },
-    });
-    if (!finalOccupancy.valid) {
-        failOccupancy(finalOccupancy.error);
-    }
-
     const plan: {
         candidateStacks: readonly GardenStacksPatchStack[];
         recycle?: GardenStacksPatchRecycleDelta;
@@ -798,22 +748,12 @@ export function planGardenStacksPatch(
         return Object.freeze({ ok: true, plan: buildPlan(input) });
     } catch (error) {
         if (error instanceof GardenStacksPatchPlannerError) {
-            const failure: {
-                ok: false;
-                code: GardenStacksPatchPlannerErrorCode;
-                error: string;
-                occupancyError?: GardenOccupancyServiceError;
-                status: 400 | 409;
-            } = {
+            return Object.freeze({
                 ok: false,
                 code: error.code,
                 error: error.message,
                 status: error.status,
-            };
-            if (error.occupancyError) {
-                failure.occupancyError = error.occupancyError;
-            }
-            return Object.freeze(failure);
+            });
         }
         throw error;
     }

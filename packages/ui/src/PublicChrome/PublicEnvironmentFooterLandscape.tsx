@@ -5,18 +5,10 @@ import { usePublicEnvironment } from './PublicEnvironmentProvider';
 import { PublicFooterLandscape } from './PublicFooterLandscape';
 
 export function PublicEnvironmentFooterLandscape() {
-    const { enabled, snapshot } = usePublicEnvironment();
+    const { hydrated, snapshot } = usePublicEnvironment();
     const { resolvedTheme } = useTheme();
-    // Reserve the artwork's space without fetching a daylight image before
-    // the stored ambient preference and theme have hydrated.
-    const phase =
-        enabled === null || !resolvedTheme
-            ? null
-            : enabled
-              ? snapshot.phase
-              : resolvedTheme === 'dark'
-                ? 'night'
-                : 'day';
+    // Reserve the artwork's space until the theme has hydrated.
+    const phase = hydrated && resolvedTheme ? snapshot.phase : null;
 
     return <PublicFooterLandscape phase={phase} />;
 }

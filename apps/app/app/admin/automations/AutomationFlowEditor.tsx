@@ -915,7 +915,7 @@ export function AutomationFlowEditor({
                         setDescription(event.target.value);
                         setResult(null);
                     }}
-                    className="min-h-28 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-hidden ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    className="min-h-28 w-full rounded-md border border-input bg-field px-3 py-2 text-sm outline-hidden ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
                 />
             </Stack>
             {!currentAutomationId ? (
@@ -1121,7 +1121,7 @@ export function AutomationFlowEditor({
                                             );
                                         }
                                     }}
-                                    className="min-h-28 w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs outline-hidden ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                    className="min-h-28 w-full rounded-md border border-input bg-field px-3 py-2 font-mono text-xs outline-hidden ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
                                 />
                                 {automationConfigFieldDescription(
                                     selectedModule,

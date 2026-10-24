@@ -9,11 +9,17 @@ import {
     useMemo,
     useState,
 } from 'react';
+import type {
+    PhotoAnalysisAttachment,
+    PhotoAnalysisRequest,
+} from './raisedBed/photoAnalysisChat';
 import type { SuncokretContextSuggestion } from './suncokretChatContext';
 
 export type SuncokretChatSeedMessage = {
     role: 'assistant' | 'user';
     text: string;
+    createdAt?: string;
+    photoAnalysis?: PhotoAnalysisAttachment;
 };
 
 /**
@@ -34,6 +40,7 @@ export type SuncokretChatTarget = {
     positionIndex: number | null;
     raisedBedId: number | null;
     seed?: SuncokretChatSeed;
+    photoAnalysis?: PhotoAnalysisRequest;
     uiContext: SuncokretUiContext;
 };
 
@@ -41,6 +48,7 @@ type SuncokretChatController = {
     anchorElement: HTMLElement | null;
     closeChat: () => void;
     open: boolean;
+    openRequest: number;
     openChat: (target: SuncokretChatTarget, anchorElement: HTMLElement) => void;
     target: SuncokretChatTarget | null;
     toggleDefaultChat: (anchorElement: HTMLElement) => void;
@@ -50,16 +58,30 @@ const SuncokretChatContext = createContext<SuncokretChatController | null>(
     null,
 );
 
-export function SuncokretChatProvider({ children }: PropsWithChildren) {
+export function SuncokretChatProvider({
+    children,
+    gardenId,
+}: PropsWithChildren<{ gardenId: number | null }>) {
+    const [previousGardenId, setPreviousGardenId] = useState(gardenId);
     const [open, setOpen] = useState(false);
+    const [openRequest, setOpenRequest] = useState(0);
     const [target, setTarget] = useState<SuncokretChatTarget | null>(null);
     const [anchorElement, setAnchorElement] = useState<HTMLElement | null>(
         null,
     );
 
+    // Garden changes end the retained context before any trigger can reopen it.
+    if (previousGardenId !== gardenId) {
+        setPreviousGardenId(gardenId);
+        setTarget(null);
+        setAnchorElement(null);
+        setOpen(false);
+    }
+
     const closeChat = useCallback(() => setOpen(false), []);
     const openChat = useCallback(
         (nextTarget: SuncokretChatTarget, nextAnchorElement: HTMLElement) => {
+            setOpenRequest((request) => request + 1);
             setTarget(nextTarget);
             setAnchorElement(nextAnchorElement);
             setOpen(true);
@@ -73,11 +95,11 @@ export function SuncokretChatProvider({ children }: PropsWithChildren) {
                 return;
             }
 
-            setTarget(null);
+            if (!target?.photoAnalysis) setTarget(null);
             setAnchorElement(nextAnchorElement);
             setOpen(true);
         },
-        [open],
+        [open, target],
     );
     const value = useMemo(
         () => ({
@@ -85,10 +107,19 @@ export function SuncokretChatProvider({ children }: PropsWithChildren) {
             closeChat,
             open,
             openChat,
+            openRequest,
             target,
             toggleDefaultChat,
         }),
-        [anchorElement, closeChat, open, openChat, target, toggleDefaultChat],
+        [
+            anchorElement,
+            closeChat,
+            open,
+            openChat,
+            openRequest,
+            target,
+            toggleDefaultChat,
+        ],
     );
 
     return (

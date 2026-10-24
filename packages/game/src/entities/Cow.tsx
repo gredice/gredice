@@ -1,5 +1,4 @@
 import { resolveCowAppearanceVariant } from '@gredice/js/entityAppearanceVariants';
-import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import {
     type Group,
@@ -32,6 +31,13 @@ import {
     freshAnimalPresences,
 } from './animals/animalPresence';
 import { recordAnimalProfileCommandAcknowledgement } from './animals/animalProfileCommandMetrics';
+import {
+    useFaunaFrame,
+    useFaunaPresentationSample,
+    useFaunaRenderFrame,
+    useFaunaWalkDistance,
+} from './animals/FaunaRuntimeProvider';
+import { useFaunaActorCulling } from './animals/useFaunaActorCulling';
 import {
     type CowBehavior,
     cowHerdSpacingIsSafe,
@@ -327,6 +333,11 @@ export function Cow({ block, rotation, stack, stacks }: EntityInstanceProps) {
     const gltf = useGameGLTF('Cow');
     const gameStateStore = useGameStateStore();
     const groupRef = useRef<Group>(null);
+    const poseWalkDistance = useFaunaWalkDistance();
+    const poseSample = useFaunaPresentationSample<{
+        behavior: CowBehavior;
+        moving: boolean;
+    }>(groupRef);
     const runtimeRef = useRef<CowRuntimeState | null>(null);
     const previousHomeKeyRef = useRef('');
     const randomRef = useRef(createCowRandom(0));
@@ -337,18 +348,7 @@ export function Cow({ block, rotation, stack, stacks }: EntityInstanceProps) {
     const observeAvatarUntilRef = useRef(Number.NEGATIVE_INFINITY);
     const nextAvatarRepathAtRef = useRef(Number.NEGATIVE_INFINITY);
     const herdSpacingStallSecondsRef = useRef(0);
-    const setAnimalDebugEntry = useGameState(
-        (state) => state.setAnimalDebugEntry,
-    );
-    const removeAnimalDebugEntry = useGameState(
-        (state) => state.removeAnimalDebugEntry,
-    );
-    const setAnimalPresenceEntry = useGameState(
-        (state) => state.setAnimalPresenceEntry,
-    );
-    const removeAnimalPresenceEntry = useGameState(
-        (state) => state.removeAnimalPresenceEntry,
-    );
+    const faunaWorld = useGameState((state) => state.faunaWorld);
     const { message: speechMessage, showMessage: showSpeechMessage } =
         useActorHoverSpeech(cowSpeechMessages);
     const habitat = useMemo(
@@ -382,6 +382,7 @@ export function Cow({ block, rotation, stack, stacks }: EntityInstanceProps) {
             scene,
         };
     }, [appearanceVariant, gltf.scene]);
+    const shouldPoseCow = useFaunaActorCulling(model.scene);
     const updateActorGroundingShadow = useActorGroundingShadow({
         id: habitat.id,
         primaryCasterCount: model.primaryCasterCount,
@@ -409,13 +410,13 @@ export function Cow({ block, rotation, stack, stacks }: EntityInstanceProps) {
 
     useEffect(
         () => () => {
-            removeAnimalDebugEntry(habitat.id);
-            removeAnimalPresenceEntry(habitat.id);
+            faunaWorld.removeDebug(habitat.id);
+            faunaWorld.removePresence(habitat.id);
         },
-        [habitat.id, removeAnimalDebugEntry, removeAnimalPresenceEntry],
+        [habitat.id, faunaWorld],
     );
 
-    useFrame(({ clock }, delta) => {
+    useFaunaFrame(({ clock }, delta) => {
         const group = groupRef.current;
         if (!group) {
             return;
@@ -436,7 +437,7 @@ export function Cow({ block, rotation, stack, stacks }: EntityInstanceProps) {
 
         const gameState = gameStateStore.getState();
         const neighbors = freshAnimalPresences({
-            entries: gameState.animalPresenceEntries,
+            entries: faunaWorld.getSpeciesPresences('Cow'),
             now,
             species: 'Cow',
         }).map((entry) => ({
@@ -648,32 +649,21 @@ export function Cow({ block, rotation, stack, stacks }: EntityInstanceProps) {
         }
 
         const activeRuntime = runtimeRef.current ?? runtime;
-        updateCowPose({
-            behavior: activeRuntime.target.behavior,
-            delta,
-            moving: activeRuntime.phase === 'moving',
+        const poseSnapped = poseSample.set(
+            {
+                behavior: activeRuntime.target.behavior,
+                moving: activeRuntime.phase === 'moving',
+            },
             now,
-            rig: model.rig,
-            walkDistance,
-        });
-        updateActorGroundingShadow?.({
-            actorY: group.position.y,
-            receiverY: getAnimalMovementYAt(
-                group.position,
-                habitat.groundSurfaces,
-            ),
-            visible: group.visible && model.scene.visible,
-            x: group.position.x,
-            yaw: group.rotation.y,
-            z: group.position.z,
-        });
+        );
+        poseWalkDistance.set(walkDistance, poseSnapped);
 
         if (
             now - lastPresenceUpdateRef.current >=
             animalPresenceUpdateIntervalSeconds
         ) {
             lastPresenceUpdateRef.current = now;
-            setAnimalPresenceEntry({
+            faunaWorld.reportPresence({
                 behavior: activeRuntime.target.behavior,
                 id: habitat.id,
                 position: roundPoint(group.position),
@@ -683,7 +673,7 @@ export function Cow({ block, rotation, stack, stacks }: EntityInstanceProps) {
         }
         if (now - lastDebugUpdateRef.current >= 0.5) {
             lastDebugUpdateRef.current = now;
-            setAnimalDebugEntry({
+            faunaWorld.reportDebug({
                 activity:
                     activeRuntime.phase === 'moving'
                         ? `moving to ${activeRuntime.target.behavior}`
@@ -714,6 +704,39 @@ export function Cow({ block, rotation, stack, stacks }: EntityInstanceProps) {
                 updatedAt: now,
             });
         }
+    }, groupRef);
+
+    useFaunaRenderFrame((_, delta) => {
+        const group = groupRef.current;
+        const activeRuntime = runtimeRef.current;
+        if (!group || !activeRuntime) return;
+        const presentation = poseSample.get(delta);
+        if (presentation && shouldPoseCow()) {
+            updateCowPose({
+                behavior: presentation.value.behavior,
+                delta: presentation.delta,
+                moving: presentation.value.moving,
+                now: presentation.time,
+                rig: model.rig,
+                walkDistance: poseWalkDistance.get(
+                    presentation.value.behavior === 'trot' &&
+                        presentation.value.moving
+                        ? 0.78
+                        : 0.92,
+                ),
+            });
+        }
+        updateActorGroundingShadow?.({
+            actorY: group.position.y,
+            receiverY: getAnimalMovementYAt(
+                group.position,
+                habitat.groundSurfaces,
+            ),
+            visible: group.visible && model.scene.visible,
+            x: group.position.x,
+            yaw: group.rotation.y,
+            z: group.position.z,
+        });
     });
 
     return (

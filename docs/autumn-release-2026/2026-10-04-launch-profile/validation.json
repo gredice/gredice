@@ -1,0 +1,35 @@
+{
+  "fixture": {
+    "command": "pnpm --filter garden exec node --import tsx --test app/debug/profile/game/profileAutumnLaunch.unit.ts",
+    "passed": 2,
+    "failed": 0,
+    "log": "fixture-unit.log"
+  },
+  "profiler": {
+    "command": "pnpm --filter garden exec node --test scripts/profile-game-scene.unit.mjs",
+    "passed": 135,
+    "failed": 0,
+    "log": "profiler-unit.log"
+  },
+  "gardenTypecheckIncrementalDiagnostic": {
+    "command": "pnpm --filter garden typecheck",
+    "exitCode": 1,
+    "log": "garden-typecheck.log",
+    "interpretation": "Stale incremental cache diagnostic on generated typed route /staza-bundeva, resolved by clean compiler validation; not source failure"
+  },
+  "gardenTypecheckClean": {
+    "command": "pnpm --filter garden exec tsc --noEmit --incremental false",
+    "exitCode": 0,
+    "log": "garden-typecheck-no-incremental.log",
+    "verifiedBy": "root",
+    "interpretation": "Pass without source edits/casts"
+  },
+  "production": {
+    "command": "See corrected/run-input.json",
+    "buildPassed": true,
+    "passed": 18,
+    "failed": 0,
+    "comparability": true,
+    "log": "corrected/production.log"
+  }
+}

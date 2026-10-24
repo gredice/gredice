@@ -3,6 +3,7 @@
 import { Button } from '../Button';
 import { Row } from '../Row';
 import { Stack } from '../Stack';
+import { SunflowerMascot3D } from '../SunflowerVisuals/SunflowerMascot3D';
 import { Typography } from '../Typography';
 
 type ErrorFallbackProps = {
@@ -24,11 +25,10 @@ export function ErrorFallback({
     return (
         <div className="flex min-h-screen flex-col items-center justify-center p-6">
             <div className="flex max-w-3xl gap-8 md:flex-row flex-col items-center text-center md:text-left">
-                {/* biome-ignore lint/performance/noImgElement: error fallback must not depend on next/image remotePatterns config, otherwise a misconfig can crash the boundary itself */}
-                <img
-                    src="https://cdn.gredice.com/sunflower-sad-500x500.png"
-                    alt="Greška aplikacije"
-                    className="rounded-xl bg-card shadow-xl"
+                <SunflowerMascot3D
+                    expression="sad"
+                    aria-label="Greška aplikacije"
+                    className="size-[200px] shrink-0"
                     width={200}
                     height={200}
                 />

@@ -1,31 +1,59 @@
 'use client';
 
 import { GameScene, type GameSceneProps } from '@gredice/game';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { normalizePublicGardenStacks } from '../../../../../../packages/game/src/viewers/PublicGardenViewer';
+import { createAutumnLaunchFixture } from './profileAutumnLaunch';
+import { restoreGameProfileDate } from './profileDate';
+import { resolveGameProfileControllerEnabled } from './profileFlags';
 import {
     gameProfileGardenSwitchEventName,
     readGameProfileGardenSwitchProfile,
 } from './profileGardenSwitch';
 import {
+    createGameProfileWeatherWitness,
     gameProfileWeatherTransitionEventName,
     readGameProfileWeatherTransitionRequest,
     resolveGameProfileWeatherTransition,
 } from './profileWeather';
 
-type ProfileGameSceneProps = GameSceneProps & {
+type ProfileGameSceneProps = Omit<GameSceneProps, 'freezeTime'> & {
+    freezeTime?: string;
     gardenSwitchEnabled?: boolean;
+    cacheClearanceWitnessMode?: string;
+    autumnLaunchSize?: 'small' | 'medium' | 'dense';
 };
 
 export function ProfileGameScene({
     gardenSwitchEnabled = false,
+    cacheClearanceWitnessMode,
+    autumnLaunchSize,
+    freezeTime,
     mockGardenProfile: initialMockGardenProfile,
     weather: initialWeather,
     ...gameSceneProps
 }: ProfileGameSceneProps) {
+    const launchStacks = useMemo(
+        () =>
+            autumnLaunchSize
+                ? normalizePublicGardenStacks(
+                      createAutumnLaunchFixture(autumnLaunchSize).stacks,
+                  )
+                : undefined,
+        [autumnLaunchSize],
+    );
+    const date = useMemo(
+        () => restoreGameProfileDate(freezeTime),
+        [freezeTime],
+    );
     const [mockGardenProfile, setMockGardenProfile] = useState(
         initialMockGardenProfile,
     );
     const [weather, setWeather] = useState(initialWeather);
+    const [weatherReceipt, setWeatherReceipt] = useState({
+        request: 'initial',
+        revision: 0,
+    });
 
     useEffect(() => {
         if (!gardenSwitchEnabled) {
@@ -64,6 +92,12 @@ export function ProfileGameScene({
             }
 
             setWeather(resolveGameProfileWeatherTransition(request));
+            if (cacheClearanceWitnessMode) {
+                setWeatherReceipt((previous) => ({
+                    request,
+                    revision: previous.revision + 1,
+                }));
+            }
         };
 
         window.addEventListener(
@@ -75,13 +109,41 @@ export function ProfileGameScene({
                 gameProfileWeatherTransitionEventName,
                 handleWeatherTransition,
             );
-    }, []);
+    }, [cacheClearanceWitnessMode]);
 
-    return (
+    const scene = (
         <GameScene
             {...gameSceneProps}
+            enableGameProfileController={resolveGameProfileControllerEnabled(
+                gameSceneProps.enableGameProfileController,
+                cacheClearanceWitnessMode,
+            )}
+            localSandboxStorageKey={
+                autumnLaunchSize
+                    ? `gredice.debug.autumn-launch.v1.${autumnLaunchSize}`
+                    : undefined
+            }
+            localSandboxInitialStacks={launchStacks}
+            freezeTime={date}
             mockGardenProfile={mockGardenProfile}
             weather={weather}
         />
+    );
+    return cacheClearanceWitnessMode ? (
+        <>
+            <output
+                hidden
+                data-game-profile-cache-weather-witness={JSON.stringify({
+                    mode: cacheClearanceWitnessMode,
+                    cacheEnabled:
+                        gameSceneProps.staticOpaqueSceneCache === true,
+                    ...weatherReceipt,
+                    weather: createGameProfileWeatherWitness(weather),
+                })}
+            />
+            {scene}
+        </>
+    ) : (
+        scene
     );
 }

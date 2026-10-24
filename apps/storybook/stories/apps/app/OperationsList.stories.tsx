@@ -107,6 +107,10 @@ function buildOperation(
         entityId: 500 + index,
         entityTypeName: 'operation',
         taskVersionEventId: 1000 + index,
+        requestNote:
+            index === 0
+                ? 'Molim zalijte uz korijen i provjerite vlažnost zemlje.'
+                : null,
         completionNotes: seed.completionNotes ?? null,
     };
 }

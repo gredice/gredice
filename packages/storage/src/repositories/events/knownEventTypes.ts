@@ -1,4 +1,7 @@
 export const knownEventTypes = {
+    harvestTraceGroups: {
+        create: 'harvestTraceGroup.create',
+    },
     checkout: {
         operationCreated: 'checkout.operation.created',
     },
@@ -39,6 +42,9 @@ export const knownEventTypes = {
         fiscalize: 'receipt.fiscalize',
     },
     raisedBeds: {
+        seasonalSowingOfferGranted: 'raisedBed.seasonalSowingOffer.granted',
+        observationImageReserved: 'raisedBed.observation.imageReserved',
+        observationSubmitted: 'raisedBed.observation.submitted',
         create: 'raisedBed.create',
         place: 'raisedBed.place',
         delete: 'raisedBed.delete',
@@ -52,6 +58,7 @@ export const knownEventTypes = {
         plantPlace: 'raisedBedField.plantPlace',
         plantSchedule: 'raisedBedField.plantSchedule',
         plantUpdate: 'raisedBedField.plantUpdate',
+        notSproutedRefund: 'planting.notSproutedRefund',
         plantBlock: 'raisedBedField.plantBlock',
         plantReplaceSort: 'raisedBedField.plantReplaceSort',
         aiAnalysis: 'raisedBedField.aiAnalysis',
@@ -70,6 +77,8 @@ export const knownEventTypes = {
         taskCancelled: 'raisedBedPlanting.task.cancelled',
     },
     operations: {
+        observationRecorded: 'operation.observation.recorded',
+        adminUpdate: 'operation.admin.update',
         acceptance: 'operation.acceptance',
         assign: 'operation.assign',
         entityChange: 'operation.entityChange',

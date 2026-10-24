@@ -20,37 +20,36 @@ export function ChatMessage({
     return (
         <div
             className={cx(
-                'flex w-full min-w-0 gap-2 text-sm',
-                align === 'end' && 'flex-row-reverse',
+                'flex w-full min-w-0 flex-col gap-1.5 text-sm',
+                align === 'end' ? 'items-end' : 'items-start',
                 className,
             )}
             data-align={align}
             data-chat-message=""
             {...props}
         >
-            {avatar && (
-                <div className="flex size-8 shrink-0 items-center justify-center self-end overflow-hidden rounded-full border border-border bg-muted">
-                    {avatar}
+            {(avatar || header) && (
+                <div
+                    className={cx(
+                        'flex max-w-full min-w-0 items-center gap-2 text-xs font-medium text-muted-foreground',
+                        align === 'end' && 'flex-row-reverse',
+                    )}
+                    data-chat-message-header=""
+                >
+                    {avatar && (
+                        <div className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-muted">
+                            {avatar}
+                        </div>
+                    )}
+                    {header && <div className="min-w-0">{header}</div>}
                 </div>
             )}
-            <div
-                className={cx(
-                    'flex min-w-0 flex-1 flex-col gap-1.5',
-                    align === 'end' ? 'items-end' : 'items-start',
-                )}
-            >
-                {header && (
-                    <div className="max-w-full min-w-0 px-1 text-xs font-medium text-muted-foreground">
-                        {header}
-                    </div>
-                )}
-                {children}
-                {footer && (
-                    <div className="max-w-full min-w-0 px-1 text-xs text-muted-foreground">
-                        {footer}
-                    </div>
-                )}
-            </div>
+            {children}
+            {footer && (
+                <div className="max-w-full min-w-0 px-1 text-xs text-muted-foreground">
+                    {footer}
+                </div>
+            )}
         </div>
     );
 }

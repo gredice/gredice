@@ -1,5 +1,6 @@
 import { Vector3 } from 'three';
 import type { AnimalPresenceEntry } from '../../useGameState';
+import type { FaunaWorld } from './faunaWorld';
 
 export const animalPresenceUpdateIntervalSeconds = 0.4;
 export const animalInteractionMaxAgeSeconds = 3.5;
@@ -13,7 +14,7 @@ export function freshAnimalPresences({
     now,
     species,
 }: {
-    entries: AnimalPresenceEntry[];
+    entries: readonly AnimalPresenceEntry[];
     now: number;
     species: string;
 }) {
@@ -22,4 +23,13 @@ export function freshAnimalPresences({
             entry.species === species &&
             now - entry.updatedAt <= animalInteractionMaxAgeSeconds,
     );
+}
+
+/** Birds currently foraging on the ground, as cats and dogs stalk them. */
+export function groundBirdEntries(faunaWorld: FaunaWorld) {
+    return faunaWorld
+        .getDebugEntries()
+        .filter(
+            (entry) => entry.species === 'Bird' && entry.behavior === 'ground',
+        );
 }

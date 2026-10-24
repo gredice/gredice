@@ -1,5 +1,5 @@
 import { AnchorPrice } from '@gredice/ui/AnchorPrice';
-import { expect, test } from '@playwright/experimental-ct-react';
+import { expect, test } from './component-fixtures';
 import { PricingDisplayTestStory } from './PricingDisplayTestStory';
 
 for (const width of [360, 1280]) {

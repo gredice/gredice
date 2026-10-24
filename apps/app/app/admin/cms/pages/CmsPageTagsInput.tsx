@@ -94,7 +94,7 @@ export function CmsPageTagsInput({
             />
             <div
                 className={cx(
-                    'flex min-h-10 w-full flex-wrap items-center gap-1.5 rounded-md border border-input bg-background px-2 py-1.5 ring-offset-background transition-colors',
+                    'flex min-h-10 w-full flex-wrap items-center gap-1.5 rounded-md border border-input bg-field px-2 py-1.5 ring-offset-background transition-colors',
                     'focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2',
                 )}
             >

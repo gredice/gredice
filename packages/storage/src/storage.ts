@@ -1,6 +1,7 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { createRequire } from 'node:module';
-import type { PGlite } from '@electric-sql/pglite';
-import { Pool } from '@neondatabase/serverless';
+import type { PGlite, Transaction } from '@electric-sql/pglite';
+import { Client, Pool } from '@neondatabase/serverless';
 import {
     type NeonDatabase,
     drizzle as neonDrizzle,
@@ -16,6 +17,8 @@ import type { PgQueryResultHKT } from 'drizzle-orm/pg-core/session';
 import type { PgliteDatabase } from 'drizzle-orm/pglite';
 // @ts-expect-error Type definitions for 'pg' ESM entry may not be resolved under NodeNext; runtime is fine for tests
 import { Pool as PgPool } from 'pg';
+import WebSocket from 'ws';
+import { withDueWorkCommitSignals } from './dueWork';
 import { neonPoolErrorDetails } from './neonPoolError';
 import * as schema from './schema';
 
@@ -74,11 +77,78 @@ function loadPgliteMigrator() {
     return migratorModule.migrate;
 }
 
+const PGLITE_TRANSACTION_SCOPE_WAIT_MS = 10_000;
+const pgliteTransactionScope = new AsyncLocalStorage<{
+    settled: Promise<void>;
+}>();
+
+// PGlite serializes every call on one connection. A call made through the
+// shared client from inside a transaction callback (instead of through `tx`)
+// cannot run until that transaction ends. Hold such calls here until the
+// transaction settles: deliberately unawaited competing writers then run as
+// before, while a call the transaction awaits (a deadlock) is rejected after a
+// deadline with the offending stack and never reaches PGlite, so it cannot
+// execute after the transaction rolls back.
+function deferUntilPgliteTransactionSettles<T>(
+    method: string,
+    run: () => Promise<T>,
+): Promise<T> {
+    const scope = pgliteTransactionScope.getStore();
+    if (!scope) {
+        return run();
+    }
+
+    const deadlockError = new Error(
+        `PGlite ${method} on the shared storage client waited ${PGLITE_TRANSACTION_SCOPE_WAIT_MS}ms inside an open transaction. ` +
+            'PGlite has a single connection, so an awaited query here deadlocks; ' +
+            'pass the transaction client through or run the query before the transaction.',
+    );
+    return new Promise<T>((resolve, reject) => {
+        let timedOut = false;
+        const timeout = setTimeout(() => {
+            timedOut = true;
+            reject(deadlockError);
+        }, PGLITE_TRANSACTION_SCOPE_WAIT_MS);
+        void scope.settled.then(() => {
+            clearTimeout(timeout);
+            if (!timedOut) {
+                run().then(resolve, reject);
+            }
+        });
+    });
+}
+
+function runInPgliteTransactionScope<T>(run: () => Promise<T>): Promise<T> {
+    let settle: () => void = () => {};
+    const settled = new Promise<void>((resolve) => {
+        settle = resolve;
+    });
+    const result = pgliteTransactionScope.run({ settled }, run);
+    result.then(settle, settle);
+    return result;
+}
+
+function guardPgliteTransactionDeadlocks(client: PGlite) {
+    const transaction = client.transaction.bind(client);
+    const query = client.query.bind(client);
+    const exec = client.exec.bind(client);
+
+    client.transaction = <T>(callback: (tx: Transaction) => Promise<T>) =>
+        deferUntilPgliteTransactionSettles('transaction', () =>
+            runInPgliteTransactionScope(() => transaction(callback)),
+        );
+    client.query = <T>(...args: Parameters<PGlite['query']>) =>
+        deferUntilPgliteTransactionSettles('query', () => query<T>(...args));
+    client.exec = (...args: Parameters<PGlite['exec']>) =>
+        deferUntilPgliteTransactionSettles('exec', () => exec(...args));
+}
+
 function pgliteStorage() {
     if (!pgliteStorageClient) {
         console.debug('Instantiating PgliteDatabase for testing');
         const { PGlite: PGliteClient, pgliteDrizzle } = loadPgliteDriver();
         pgliteClient = new PGliteClient(getPgliteDataDir());
+        guardPgliteTransactionDeadlocks(pgliteClient);
         pgliteStorageClient = pgliteDrizzle(pgliteClient, { schema });
     }
     return pgliteStorageClient;
@@ -97,11 +167,23 @@ function nodePgStorage() {
     return nodeClient;
 }
 
+class NeonStorageClient extends Client {
+    constructor(config?: ConstructorParameters<typeof Client>[0]) {
+        super(config);
+        // Node's native WebSocket emits a code-less ErrorEvent when a peer
+        // ends TCP without a close handshake, even after our idle eviction.
+        // ws lets the driver distinguish intentional end from unexpected loss.
+        this.neonConfig.webSocketConstructor = WebSocket;
+    }
+}
+
 function neonStorage() {
     if (!pool) {
         const neonPool = new Pool({
             connectionString: getDbConnectionString(),
         });
+        // Neon overrides the PoolConfig Client option in its constructor.
+        neonPool.Client = NeonStorageClient;
         // The driver removes a failed idle client before emitting this event.
         // Handle it before first use so background disconnects cannot become
         // uncaught errors. Query/transaction rejections still reach their callers.
@@ -126,6 +208,28 @@ function neonStorage() {
 }
 
 export function storage(): StorageDatabase {
+    const client = storageClient();
+    installDueWorkTransactionSignals(client);
+    return client;
+}
+
+function installDueWorkTransactionSignals(client: StorageDatabase) {
+    if (!dueWorkTransactionClients.has(client)) {
+        const transaction = client.transaction.bind(client);
+        client.transaction = (callback, config) =>
+            withDueWorkCommitSignals(() =>
+                transaction((tx) => {
+                    installDueWorkTransactionSignals(tx);
+                    return callback(tx);
+                }, config),
+            );
+        dueWorkTransactionClients.add(client);
+    }
+}
+
+const dueWorkTransactionClients = new WeakSet<StorageDatabase>();
+
+function storageClient(): StorageDatabase {
     if (isTest) {
         if (isPgliteTest()) {
             return pgliteStorage();

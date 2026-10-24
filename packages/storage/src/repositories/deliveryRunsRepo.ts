@@ -90,7 +90,7 @@ import {
     DeliveryRequestFulfillmentError,
     deliveryDispatchEventTypes,
     fulfillDeliveryRequest,
-    getDeliveryRequest,
+    getDeliveryRequestCore,
     getDeliveryRequestDispatchSnapshots,
 } from './deliveryRequestsRepo';
 import { createEvent, knownEvents, knownEventTypes } from './eventsRepo';
@@ -4528,7 +4528,7 @@ export async function recoverDeliveryRunStop({
             );
         }
         const [request, latestStop] = await Promise.all([
-            getDeliveryRequest(stop.deliveryRequestId, tx),
+            getDeliveryRequestCore(stop.deliveryRequestId, tx),
             tx.query.deliveryRunStops.findFirst({
                 columns: { id: true },
                 where: eq(

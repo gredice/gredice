@@ -1,6 +1,8 @@
 import { tz } from '@date-fns/tz';
 import { sendEmail } from '@gredice/email/acs';
+import { safeUserDisplayName } from '@gredice/js/userDisplayName';
 import {
+    AccountDeletionRequiresReviewError,
     acceptAccountInvitation,
     accountHasActiveRaisedBed,
     cancelAccountInvitation,
@@ -10,6 +12,7 @@ import {
     deleteAccountWithDependencies,
     earnSunflowers,
     getAccount,
+    getAccountAchievementActivity,
     getAccountAchievements,
     getAccountGardens,
     getAccountInvitationByToken,
@@ -55,6 +58,7 @@ import { Hono } from 'hono';
 import { setCookie as honoSetCookie } from 'hono/cookie';
 import { describeRoute, resolver, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
+import { accountAchievementsResponse } from '../../../lib/accounts/accountAchievementsResponse';
 import { createJwt, verifyJwt } from '../../../lib/auth/auth';
 import {
     accountCookieName,
@@ -77,6 +81,9 @@ import { getBjelovarForecast } from '../../../lib/weather/forecast';
 import { populateWeatherFromSymbol } from '../../../lib/weather/populateWeatherFromSymbol';
 import { findClosestForecastEntry } from '../../../lib/weather/weatherNowContract';
 import accountBillingRoutes from './accountBillingRoutes';
+import autumnActivityRoutes from './autumnActivityRoutes';
+import gardenPackCatalogueRoutes from './gardenPackCatalogueRoutes';
+import gardenPacksRoutes from './gardenPacksRoutes';
 
 const dailyRewards = [5, 10, 15, 20, 25, 50];
 const DAILY_REWARD_TIME_ZONE = 'Europe/Zagreb';
@@ -263,6 +270,9 @@ function pickSunflowerBlock<T extends { id: string }>(blocks: T[]) {
 
 const app = new Hono<{ Variables: AuthVariables }>()
     .route('/current/billing', accountBillingRoutes)
+    .route('/current/autumn-activity', autumnActivityRoutes)
+    .route('/current/garden-packs', gardenPacksRoutes)
+    .route('/current/garden-pack-catalogue', gardenPackCatalogueRoutes)
     .get(
         '/current',
         describeRoute({
@@ -302,9 +312,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 users.map((accountUser) => ({
                     id: accountUser.user.id,
                     userName: accountUser.user.userName,
-                    displayName:
+                    displayName: safeUserDisplayName(
                         accountUser.user.displayName ??
-                        accountUser.user.userName,
+                            accountUser.user.userName,
+                    ),
                     avatarUrl: accountUser.user.avatarUrl,
                     achievementCount: accountUser.user.achievementCount,
                     assignedAt: accountUser.createdAt.toISOString(),
@@ -731,26 +742,20 @@ const app = new Hono<{ Variables: AuthVariables }>()
     .get(
         '/current/achievements',
         describeRoute({
-            description: 'Get the current account achievements',
+            description:
+                'Get the current account awards and current verified activity for numeric achievement goals. Reading progress does not grant awards or rewards.',
+            security: authSecurity,
         }),
         authValidator(['user', 'admin']),
         async (context) => {
             const { accountId } = context.get('authContext');
-            const achievements = await getAccountAchievements(accountId);
-            return context.json({
-                achievements: achievements.map((achievement) => ({
-                    id: achievement.id,
-                    key: achievement.achievementKey,
-                    status: achievement.status,
-                    rewardSunflowers: achievement.rewardSunflowers,
-                    progressValue: achievement.progressValue,
-                    threshold: achievement.threshold,
-                    earnedAt: achievement.earnedAt.toISOString(),
-                    approvedAt: achievement.approvedAt?.toISOString() ?? null,
-                    rewardGrantedAt:
-                        achievement.rewardGrantedAt?.toISOString() ?? null,
-                })),
-            });
+            const [achievements, activity] = await Promise.all([
+                getAccountAchievements(accountId),
+                getAccountAchievementActivity(accountId),
+            ]);
+            return context.json(
+                accountAchievementsResponse(accountId, achievements, activity),
+            );
         },
     )
     .get(
@@ -801,9 +806,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     status: invitation.status,
                     invitedBy: {
                         id: invitation.invitedByUser.id,
-                        displayName:
+                        displayName: safeUserDisplayName(
                             invitation.invitedByUser.displayName ??
-                            invitation.invitedByUser.userName,
+                                invitation.invitedByUser.userName,
+                        ),
                     },
                     expiresAt: invitation.expiresAt.toISOString(),
                     createdAt: invitation.createdAt.toISOString(),
@@ -875,8 +881,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             // Get inviter info for the email
             const inviter = await getUser(userId);
-            const inviterName =
-                inviter?.displayName ?? inviter?.userName ?? 'Korisnik';
+            const inviterName = safeUserDisplayName(
+                inviter?.displayName ?? inviter?.userName,
+            );
 
             const acceptUrl = `https://vrt.gredice.com/pozivnica?token=${invitation.token}`;
 
@@ -1049,9 +1056,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     token: invitation.token,
                     invitedBy: {
                         id: invitation.invitedByUser.id,
-                        displayName:
+                        displayName: safeUserDisplayName(
                             invitation.invitedByUser.displayName ??
-                            invitation.invitedByUser.userName,
+                                invitation.invitedByUser.userName,
+                        ),
                     },
                     expiresAt: invitation.expiresAt.toISOString(),
                     createdAt: invitation.createdAt.toISOString(),
@@ -1267,6 +1275,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     message: 'Account deleted successfully.',
                 });
             } catch (error) {
+                if (error instanceof AccountDeletionRequiresReviewError) {
+                    return context.json({ error: error.message }, 409);
+                }
                 console.error('Account deletion failed', {
                     accountId: requestedAccountId,
                     error,

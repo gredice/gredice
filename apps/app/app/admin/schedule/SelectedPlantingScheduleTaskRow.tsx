@@ -48,6 +48,7 @@ import {
     PLANTING_TASK_DURATION_MINUTES,
 } from './scheduleShared';
 import type { AdminSelectedPlantingScheduleItem } from './selectedPlantingSchedulePresentation';
+import { useSelectedPlantingScheduleAction } from './useSelectedPlantingScheduleAction';
 
 type AssignableUser = Pick<
     RaisedBedFieldAssignableFarmUser,
@@ -126,6 +127,7 @@ function SelectedPlantingAssignmentModal({
     farmUsers: readonly AssignableUser[];
     item: AdminSelectedPlantingScheduleItem;
 }) {
+    const runSelectedAction = useSelectedPlantingScheduleAction(item.identity);
     const [open, setOpen] = useState(false);
     const [selectedUserIds, setSelectedUserIds] = useState<string[]>([
         ...assignedUserIds,
@@ -163,10 +165,12 @@ function SelectedPlantingAssignmentModal({
         setIsLoading(true);
         setErrorMessage(undefined);
         try {
-            await assignSelectedPlantingTaskAction(
-                item.identity,
-                selectedUserIds,
-                commandIdRef.current,
+            await runSelectedAction((identity) =>
+                assignSelectedPlantingTaskAction(
+                    identity,
+                    selectedUserIds,
+                    commandIdRef.current,
+                ),
             );
             commandIdRef.current = crypto.randomUUID();
             setOpen(false);
@@ -291,6 +295,7 @@ function SelectedPlantingBlockModal({
 }: {
     item: AdminSelectedPlantingScheduleItem;
 }) {
+    const runSelectedAction = useSelectedPlantingScheduleAction(item.identity);
     const [open, setOpen] = useState(false);
     const [reasonCode, setReasonCode] =
         useState<ScheduleTaskBlockReasonCode>('unsafe_conditions');
@@ -303,11 +308,13 @@ function SelectedPlantingBlockModal({
         setIsLoading(true);
         setErrorMessage(undefined);
         try {
-            await blockSelectedPlantingTaskAction(
-                item.identity,
-                reasonCode,
-                commandIdRef.current,
-                note.trim() || undefined,
+            await runSelectedAction((identity) =>
+                blockSelectedPlantingTaskAction(
+                    identity,
+                    reasonCode,
+                    commandIdRef.current,
+                    note.trim() || undefined,
+                ),
             );
             commandIdRef.current = crypto.randomUUID();
             setOpen(false);
@@ -344,7 +351,7 @@ function SelectedPlantingBlockModal({
                 <label className="grid gap-1 text-sm font-medium">
                     Razlog
                     <select
-                        className="min-h-11 rounded-md border bg-card px-3"
+                        className="min-h-11 rounded-md border bg-field px-3"
                         disabled={isLoading}
                         onChange={(event) => {
                             const reason = parseSelectedTaskBlockReason(
@@ -366,7 +373,7 @@ function SelectedPlantingBlockModal({
                 <label className="grid gap-1 text-sm font-medium">
                     Napomena
                     <textarea
-                        className="min-h-24 rounded-md border bg-card px-3 py-2"
+                        className="min-h-24 rounded-md border bg-field px-3 py-2"
                         disabled={isLoading}
                         maxLength={2000}
                         onChange={(event) => setNote(event.target.value)}
@@ -406,6 +413,7 @@ function SelectedPlantingVerifyModal({
 }: {
     item: AdminSelectedPlantingScheduleItem;
 }) {
+    const runSelectedAction = useSelectedPlantingScheduleAction(item.identity);
     const [open, setOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string>();
@@ -415,9 +423,11 @@ function SelectedPlantingVerifyModal({
         setIsLoading(true);
         setErrorMessage(undefined);
         try {
-            await verifySelectedPlantingTaskAction(
-                item.identity,
-                commandIdRef.current,
+            await runSelectedAction((identity) =>
+                verifySelectedPlantingTaskAction(
+                    identity,
+                    commandIdRef.current,
+                ),
             );
             commandIdRef.current = crypto.randomUUID();
             setOpen(false);
@@ -488,6 +498,7 @@ export function SelectedPlantingScheduleTaskRow({
     plantSort: EntityStandardized | undefined;
     timeZone: string;
 }) {
+    const runSelectedAction = useSelectedPlantingScheduleAction(item.identity);
     const completed = item.status === 'completed';
     const pendingVerification = item.status === 'pendingVerification';
     const blocked = item.status === 'blocked';
@@ -504,9 +515,8 @@ export function SelectedPlantingScheduleTaskRow({
         : [];
 
     const complete = () =>
-        completeSelectedPlantingTaskAction(
-            item.identity,
-            crypto.randomUUID(),
+        runSelectedAction((identity) =>
+            completeSelectedPlantingTaskAction(identity, crypto.randomUUID()),
         ).then(() => undefined);
 
     return (
@@ -601,11 +611,13 @@ export function SelectedPlantingScheduleTaskRow({
                         label={item.plantName}
                         onSubmit={async (formData) => {
                             const value = formData.get('scheduledDate');
-                            await rescheduleSelectedPlantingTaskAction(
-                                item.identity,
-                                typeof value === 'string' ? value : null,
-                                item.sowingLocation,
-                                crypto.randomUUID(),
+                            await runSelectedAction((identity) =>
+                                rescheduleSelectedPlantingTaskAction(
+                                    identity,
+                                    typeof value === 'string' ? value : null,
+                                    item.sowingLocation,
+                                    crypto.randomUUID(),
+                                ),
                             );
                         }}
                         scheduledDate={scheduledDate}
@@ -632,13 +644,15 @@ export function SelectedPlantingScheduleTaskRow({
                         }
                         disabled={!planned && !blocked}
                         onClick={() =>
-                            rescheduleSelectedPlantingTaskAction(
-                                item.identity,
-                                item.scheduledDate,
-                                item.sowingLocation === 'greenhouse'
-                                    ? 'direct'
-                                    : 'greenhouse',
-                                crypto.randomUUID(),
+                            runSelectedAction((identity) =>
+                                rescheduleSelectedPlantingTaskAction(
+                                    identity,
+                                    item.scheduledDate,
+                                    item.sowingLocation === 'greenhouse'
+                                        ? 'direct'
+                                        : 'greenhouse',
+                                    crypto.randomUUID(),
+                                ),
                             )
                         }
                         size="xs"
@@ -666,10 +680,12 @@ export function SelectedPlantingScheduleTaskRow({
                         label={item.label}
                         onSubmit={async (formData) => {
                             const reason = formData.get('reason');
-                            await cancelSelectedPlantingTaskAction(
-                                item.identity,
-                                typeof reason === 'string' ? reason : '',
-                                crypto.randomUUID(),
+                            await runSelectedAction((identity) =>
+                                cancelSelectedPlantingTaskAction(
+                                    identity,
+                                    typeof reason === 'string' ? reason : '',
+                                    crypto.randomUUID(),
+                                ),
                             );
                         }}
                         trigger={
@@ -722,10 +738,12 @@ export function SelectedPlantingScheduleTaskRow({
                             if (!isMutableLifecycleStatus(status)) {
                                 return;
                             }
-                            await updateSelectedPlantingLifecycleStatusAction(
-                                item.identity,
-                                status,
-                                crypto.randomUUID(),
+                            await runSelectedAction((identity) =>
+                                updateSelectedPlantingLifecycleStatusAction(
+                                    identity,
+                                    status,
+                                    crypto.randomUUID(),
+                                ),
                             );
                         }}
                         value={item.lifecycleStatus}

@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Button } from '../Button';
+import { Button, type ButtonLinkProps } from '../Button';
 import { PageNav } from '../Nav';
 import { Logotype } from './Logotype';
 import {
@@ -16,14 +16,17 @@ function NavLinkButton({
     href,
     children,
     className,
+    navigation,
 }: Readonly<{
     href: string;
     children: ReactNode;
     className?: string;
+    navigation?: ButtonLinkProps['navigation'];
 }>) {
     return (
         <Button
             href={href}
+            navigation={navigation}
             variant="plain"
             size="sm"
             className={[
@@ -77,6 +80,9 @@ export function PublicHeader({
                     <NavLinkButton
                         key="news"
                         href={publicChromeHref(PublicPagePaths.News, linkMode)}
+                        navigation={
+                            linkMode === 'relative' ? 'document' : 'client'
+                        }
                     >
                         Novosti
                     </NavLinkButton>,

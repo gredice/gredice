@@ -592,7 +592,18 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                     coverUrl={item.shopData.image}
                 />
             )}
-            <Stack className="grow">
+            <Stack className="min-w-0 grow">
+                {item.entityTypeName === 'operation' &&
+                    typeof additionalData.requestNote === 'string' &&
+                    additionalData.requestNote.trim() && (
+                        <Typography
+                            level="body2"
+                            className="whitespace-pre-wrap [overflow-wrap:anywhere]"
+                        >
+                            <strong>Napomena za vrtlara:</strong>{' '}
+                            {additionalData.requestNote}
+                        </Typography>
+                    )}
                 <div className="grid grid-cols-[1fr_auto] items-center gap-2">
                     <Typography level="body1" noWrap>
                         {item.shopData.name}

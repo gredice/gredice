@@ -1,7 +1,15 @@
-import { buildHarvestTracePublicUrl } from '@gredice/client';
+import {
+    buildHarvestTraceGroupPublicUrl,
+    buildHarvestTracePublicUrl,
+} from '@gredice/client';
+import {
+    getHarvestDayKey,
+    groupConsecutiveHarvestFields,
+} from '@gredice/js/harvests';
 import { calculatePlantsPerField } from '@gredice/js/plants';
 import type { FieldOperationLabelData } from '@gredice/label-printer';
 import {
+    createOrGetHarvestTraceGroup,
     createOrGetHarvestTraceLink,
     createOrGetSelectedPlantingHarvestTraceLink,
     type EntityStandardized,
@@ -28,6 +36,9 @@ type SowingLabelField = FarmRaisedBedField & {
     physicalPositionIndex: number;
 };
 type HarvestLabelField = FarmRaisedBed['fields'][number];
+type HarvestPrintLabel = FieldOperationLabelData & {
+    harvestGroup?: { groupKey: string; position: number };
+};
 
 function getEntityById(entities: EntityStandardized[] | null | undefined) {
     const entityById = new Map<number, EntityStandardized>();
@@ -337,7 +348,7 @@ async function buildHarvestFieldLabel(
     detailLabel: string,
     dateLabel: string,
     createTraceLink: boolean,
-): Promise<FieldOperationLabelData | null> {
+): Promise<HarvestPrintLabel | null> {
     const labelScope =
         operation.raisedBedFieldId === null ? 'raisedBed' : 'explicitField';
     if (createTraceLink && !isHarvestLabelEligible(field, labelScope)) {
@@ -424,6 +435,20 @@ async function buildHarvestFieldLabel(
         ...label,
         traceLinkId: traceLink.id,
         traceStatus: traceLink.status,
+        harvestGroup:
+            traceLink.status === 'active'
+                ? {
+                      groupKey: JSON.stringify([
+                          accountId,
+                          gardenId,
+                          raisedBed.physicalId,
+                          operation.entityId,
+                          plantSortId,
+                          getHarvestDayKey(operation.timestamp),
+                      ]),
+                      position: Number(fieldLabel),
+                  }
+                : undefined,
         traceUrl:
             traceLink.status === 'active'
                 ? buildHarvestTracePublicUrl(traceLink.publicToken)
@@ -562,9 +587,7 @@ async function buildOperationLabels(
         ),
     );
 
-    return labels.filter(
-        (label): label is FieldOperationLabelData => label !== null,
-    );
+    return labels.filter((label): label is HarvestPrintLabel => label !== null);
 }
 
 function compareLabelData(
@@ -611,7 +634,7 @@ async function buildHarvestLabels(
         dayData.raisedBeds,
         affectedRaisedBedIds,
     );
-    const labels: FieldOperationLabelData[] = [];
+    const labels: HarvestPrintLabel[] = [];
 
     for (const operation of dayData.scheduledOperations) {
         const raisedBedGroup = raisedBedGroups.find((group) =>
@@ -635,7 +658,35 @@ async function buildHarvestLabels(
         );
     }
 
-    return labels.sort(compareLabelData);
+    const groupedLabels: FieldOperationLabelData[] = labels.filter(
+        (label) => !label.harvestGroup,
+    );
+    const candidates = labels.flatMap((label) =>
+        label.harvestGroup ? [{ ...label.harvestGroup, label }] : [],
+    );
+    for (const group of groupConsecutiveHarvestFields(candidates)) {
+        const first = group.at(0)?.label;
+        if (!first) continue;
+        const { harvestGroup: _harvestGroup, ...label } = first;
+        if (group.length === 1) {
+            groupedLabels.push(label);
+            continue;
+        }
+        const traceLinkIds = group.flatMap((member) =>
+            typeof member.label.traceLinkId === 'number'
+                ? [member.label.traceLinkId]
+                : [],
+        );
+        const traceGroup = await createOrGetHarvestTraceGroup(traceLinkIds);
+        groupedLabels.push({
+            ...label,
+            fieldLabel: traceGroup.fieldLabel,
+            traceLinkId: undefined,
+            traceLinkIds,
+            traceUrl: buildHarvestTraceGroupPublicUrl(traceGroup.publicToken),
+        });
+    }
+    return groupedLabels.sort(compareLabelData);
 }
 
 export async function buildScheduleLabelPrintData(

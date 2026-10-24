@@ -20,6 +20,9 @@ import { FavoriteToggleButton } from '../FavoriteToggleButton';
 import { OperationScheduleModal } from './OperationScheduleModal';
 
 export function OperationsListItem({
+    scheduleOnly = false,
+    onScheduleClose,
+    targetLabel,
     operation,
     gardenId,
     raisedBedId,
@@ -29,6 +32,9 @@ export function OperationsListItem({
     isScheduled,
     onOperationPicked,
 }: {
+    scheduleOnly?: boolean;
+    onScheduleClose?: () => void;
+    targetLabel?: string;
     gardenId: number;
     raisedBedId?: number;
     positionIndex?: number;
@@ -62,6 +68,7 @@ export function OperationsListItem({
         operation: OperationData,
         scheduledDate?: Date,
         useInventoryItem?: boolean,
+        requestNote?: string,
     ) {
         onOperationPicked?.(operation);
         await setShoppingCartItem.mutateAsync({
@@ -72,11 +79,12 @@ export function OperationsListItem({
             raisedBedId,
             positionIndex,
             additionalData:
-                scheduledDate || plantingTarget
+                scheduledDate || plantingTarget || requestNote
                     ? JSON.stringify({
                           ...(scheduledDate
                               ? { scheduledDate: scheduledDate.toISOString() }
                               : {}),
+                          ...(requestNote ? { requestNote } : {}),
                           ...(plantingTarget ? { plantingTarget } : {}),
                       })
                     : null,
@@ -160,29 +168,43 @@ export function OperationsListItem({
         </Button>
     );
 
+    const scheduleModal = (
+        <OperationScheduleModal
+            defaultOpen={scheduleOnly}
+            onClose={onScheduleClose}
+            targetLabel={targetLabel}
+            gardenId={gardenId}
+            operation={operation}
+            onConfirm={async (date, requestNote) => {
+                await handleOperationPicked(
+                    operation,
+                    date,
+                    false,
+                    requestNote,
+                );
+            }}
+            positionIndex={positionIndex}
+            raisedBedId={raisedBedId}
+            trigger={scheduleOnly ? undefined : operationButton}
+        />
+    );
+    if (scheduleOnly) return scheduleModal;
+
     return (
         <Stack key={operation.id} data-operation-id={operation.id}>
-            <OperationScheduleModal
-                gardenId={gardenId}
-                operation={operation}
-                onConfirm={async (date) => {
-                    await handleOperationPicked(operation, date);
-                }}
-                positionIndex={positionIndex}
-                raisedBedId={raisedBedId}
-                trigger={operationButton}
-            />
+            {scheduleModal}
             <div className="flex flex-wrap gap-y-1 gap-x-2 pr-4 items-center justify-between">
                 <Row>
                     {availableFromInventory ? (
                         <OperationScheduleModal
                             gardenId={gardenId}
                             operation={operation}
-                            onConfirm={async (date) => {
+                            onConfirm={async (date, requestNote) => {
                                 await handleOperationPicked(
                                     operation,
                                     date,
                                     true,
+                                    requestNote,
                                 );
                             }}
                             positionIndex={positionIndex}

@@ -1,19 +1,38 @@
+import { getEntitiesFormatted } from '@gredice/storage';
 import {
     cmsImageObjectPosition,
     parseSectionData,
+    resolveFaqSections,
     SectionsView,
+    type SharedFaqEntry,
 } from '@gredice/ui/cms';
+import { connection } from 'next/server';
 import type { NewsDetail as NewsDetailEntry } from '../lib/news';
 import { formatNewsDate } from '../lib/news';
 import { sectionsComponentRegistry } from './shared/sectionsComponentRegistry';
 
-export function NewsDetail({
+export async function NewsDetail({
     entry,
     viewTransitionName,
 }: {
     entry: NewsDetailEntry;
     viewTransitionName?: string;
 }) {
+    let sections = parseSectionData(entry.content);
+    if (
+        sections.some(
+            (section) =>
+                typeof section.faqSlugs === 'string' && section.faqSlugs.trim(),
+        )
+    ) {
+        // News is a separate deployment: only articles with shared answers need
+        // request-time rendering so FAQ edits do not wait for article ISR.
+        await connection();
+        sections = resolveFaqSections(
+            sections,
+            await getEntitiesFormatted<SharedFaqEntry>('faq'),
+        );
+    }
     return (
         <article className="grid gap-8">
             <header
@@ -69,7 +88,7 @@ export function NewsDetail({
                 componentsRegistry={sectionsComponentRegistry}
                 renderMaxWidth={entry.renderMaxWidth}
                 renderMode={entry.renderMode}
-                sectionsData={parseSectionData(entry.content)}
+                sectionsData={sections}
             />
         </article>
     );

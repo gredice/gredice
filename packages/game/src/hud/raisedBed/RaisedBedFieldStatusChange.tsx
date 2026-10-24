@@ -1,4 +1,7 @@
 import {
+    notSproutedRefundConfirmation,
+    type PlantStatusChangeLike,
+    plantCycleHasSprouted,
     plantFieldStatusLabel,
     userAllowedPlantStatusTransitions,
 } from '@gredice/js/plants';
@@ -32,6 +35,8 @@ export function RaisedBedFieldStatusChange({
     raisedBedId,
     positionIndex,
     currentStatus,
+    sowedAt,
+    statusChanges,
     trigger,
 }: {
     expectedPlantCycleEventId: number;
@@ -40,6 +45,8 @@ export function RaisedBedFieldStatusChange({
     raisedBedId: number;
     positionIndex: number;
     currentStatus: string | undefined;
+    sowedAt?: Date | string | null;
+    statusChanges?: readonly PlantStatusChangeLike[] | null;
     trigger: ReactNode;
 }) {
     const updateStatusMutation = useRaisedBedFieldUpdateStatus();
@@ -74,27 +81,32 @@ export function RaisedBedFieldStatusChange({
     const currentStatusInfo = plantFieldStatusLabel(currentStatus);
 
     const isDateSelected = selectedDate.length > 0;
+    const [year, month, day] = selectedDate.split('-').map(Number);
+    const statusChangeDate = new Date(year, month - 1, day, 12, 0, 0);
     const handleStatusChange = async (newStatus: string) => {
         if (!isDateSelected) {
             return;
         }
 
-        const [year, month, day] = selectedDate.split('-').map(Number);
-        const localDate = new Date(year, month - 1, day, 12, 0, 0);
-        if (Number.isNaN(localDate.getTime())) {
+        if (Number.isNaN(statusChangeDate.getTime())) {
             return;
         }
 
-        const timestamp = localDate.toISOString();
-        await updateStatusMutation.mutateAsync({
-            expectedPlantCycleEventId,
-            expectedPlantCycleVersionEventId,
-            expectedPlantSortId,
-            raisedBedId,
-            positionIndex,
-            status: newStatus,
-            timestamp,
-        });
+        const timestamp = statusChangeDate.toISOString();
+        try {
+            await updateStatusMutation.mutateAsync({
+                expectedPlantCycleEventId,
+                expectedPlantCycleVersionEventId,
+                expectedPlantSortId,
+                raisedBedId,
+                positionIndex,
+                status: newStatus,
+                timestamp,
+            });
+        } catch {
+            // The mutation rolls back and the popover shows the failure.
+            return;
+        }
         setOpen(false);
         setStatusToConfirm(null);
     };
@@ -154,6 +166,11 @@ export function RaisedBedFieldStatusChange({
                         />
                     )}
                 </Row>
+                {updateStatusMutation.isError && (
+                    <Typography role="alert" level="body2">
+                        Stanje nije spremljeno. Osvježi vrt i pokušaj ponovno.
+                    </Typography>
+                )}
                 {hasAllowedNextStatuses ? (
                     <List
                         variant="outlined"
@@ -242,9 +259,25 @@ export function RaisedBedFieldStatusChange({
                     }
                 }}
             >
-                {confirmedStatusInfo
-                    ? `Jeste li sigurni da želite promijeniti stanje biljke u "${confirmedStatusInfo.shortLabel}"?`
-                    : 'Jeste li sigurni da želite promijeniti stanje biljke?'}
+                <Stack spacing={3}>
+                    <Typography>
+                        {confirmedStatusInfo
+                            ? `Jeste li sigurni da želite promijeniti stanje biljke u "${confirmedStatusInfo.shortLabel}"?`
+                            : 'Jeste li sigurni da želite promijeniti stanje biljke?'}
+                    </Typography>
+                    {statusToConfirm === 'notSprouted' && (
+                        <Typography>
+                            {notSproutedRefundConfirmation(
+                                sowedAt,
+                                statusChangeDate,
+                                plantCycleHasSprouted({
+                                    plantStatus: currentStatus,
+                                    statusChanges,
+                                }),
+                            )}
+                        </Typography>
+                    )}
+                </Stack>
             </ModalConfirm>
         </Popper>
     );

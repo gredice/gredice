@@ -105,6 +105,12 @@ export function UserLeaderboard({
                     svaku sljedeću razinu potrebno je više iskustva. XP ostaje
                     uz tvoja postignuća i ne troši se kupnjom suncokreta.
                 </p>
+                <Link
+                    href={KnownPages.Experience}
+                    className="mt-4 inline-block text-sm underline underline-offset-4"
+                >
+                    Kako skupljati XP i prijeći na novu razinu
+                </Link>
                 <ul
                     className="mt-5 flex flex-wrap gap-x-6 gap-y-4"
                     aria-label="Primjeri razina"
@@ -128,6 +134,12 @@ export function UserLeaderboard({
                     jednakog broja postignuća prednost ima ranije registrirani
                     korisnik.
                 </p>
+                <Link
+                    href={KnownPages.Achievements}
+                    className="mt-5 block text-sm font-semibold underline underline-offset-4"
+                >
+                    Istraži sva postignuća i nagrade
+                </Link>
                 <Link
                     href={KnownPages.GardenApp}
                     className="mt-6 inline-flex rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90"

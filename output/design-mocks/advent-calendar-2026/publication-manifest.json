@@ -1,0 +1,709 @@
+{
+  "schemaVersion": 1,
+  "selectedDesign": "Zimski vrt V6",
+  "artifactRoot": "output/design-mocks/advent-calendar-2026",
+  "seedFiles": [
+    "docs/advent-calendar-improvements-2026.md",
+    "output/design-mocks/advent-calendar-2026/index.html",
+    "output/design-mocks/advent-calendar-2026/design-directions.md",
+    "output/design-mocks/advent-calendar-2026/README.md"
+  ],
+  "method": "Transitive closure of local Markdown inline links/images and HTML href/src/poster/CSS url references. Data URIs, external URLs and prose/backtick filename inventories are not separate dependencies. Follow links only inside this Advent folder; existing repository source links are verified but not copied. No files are deleted.",
+  "parentOwnedReport": "docs/advent-calendar-improvements-2026.md",
+  "artifactFiles": [
+    "output/design-mocks/advent-calendar-2026/README.md",
+    "output/design-mocks/advent-calendar-2026/chest-desktop-calendar.png",
+    "output/design-mocks/advent-calendar-2026/design-directions-v1.md",
+    "output/design-mocks/advent-calendar-2026/design-directions.md",
+    "output/design-mocks/advent-calendar-2026/herbarium-desktop-calendar.png",
+    "output/design-mocks/advent-calendar-2026/index-v1.html",
+    "output/design-mocks/advent-calendar-2026/index-v2.html",
+    "output/design-mocks/advent-calendar-2026/index-v3.html",
+    "output/design-mocks/advent-calendar-2026/index-v4.html",
+    "output/design-mocks/advent-calendar-2026/index-v5.html",
+    "output/design-mocks/advent-calendar-2026/index.html",
+    "output/design-mocks/advent-calendar-2026/v5-asset-integrity.json",
+    "output/design-mocks/advent-calendar-2026/v6-asset-integrity.json",
+    "output/design-mocks/advent-calendar-2026/verification-v1.json",
+    "output/design-mocks/advent-calendar-2026/verification-v2.json",
+    "output/design-mocks/advent-calendar-2026/verification-v3.json",
+    "output/design-mocks/advent-calendar-2026/verification-v4.json",
+    "output/design-mocks/advent-calendar-2026/verification-v5.json",
+    "output/design-mocks/advent-calendar-2026/verification-v6.json",
+    "output/design-mocks/advent-calendar-2026/verification.json",
+    "output/design-mocks/advent-calendar-2026/winter-desktop-calendar.png",
+    "output/design-mocks/advent-calendar-2026/winter-v2-comparison.png",
+    "output/design-mocks/advent-calendar-2026/winter-v2-day-desktop.png",
+    "output/design-mocks/advent-calendar-2026/winter-v2-day-mobile.png",
+    "output/design-mocks/advent-calendar-2026/winter-v2-night-desktop.png",
+    "output/design-mocks/advent-calendar-2026/winter-v2-night-mobile.png",
+    "output/design-mocks/advent-calendar-2026/winter-v2-notes.md",
+    "output/design-mocks/advent-calendar-2026/winter-v3-comparison.png",
+    "output/design-mocks/advent-calendar-2026/winter-v3-day-691px.png",
+    "output/design-mocks/advent-calendar-2026/winter-v3-dusk-desktop.png",
+    "output/design-mocks/advent-calendar-2026/winter-v3-night-mobile.png",
+    "output/design-mocks/advent-calendar-2026/winter-v3-notes.md",
+    "output/design-mocks/advent-calendar-2026/winter-v4-comparison.png",
+    "output/design-mocks/advent-calendar-2026/winter-v4-dawn-desktop.png",
+    "output/design-mocks/advent-calendar-2026/winter-v4-day-712px.png",
+    "output/design-mocks/advent-calendar-2026/winter-v4-dusk-desktop.png",
+    "output/design-mocks/advent-calendar-2026/winter-v4-night-712px.png",
+    "output/design-mocks/advent-calendar-2026/winter-v4-notes.md",
+    "output/design-mocks/advent-calendar-2026/winter-v5-comparison.png",
+    "output/design-mocks/advent-calendar-2026/winter-v5-day-future-closeup.png",
+    "output/design-mocks/advent-calendar-2026/winter-v5-night-future-closeup.png",
+    "output/design-mocks/advent-calendar-2026/winter-v5-night-missed-closeup.png",
+    "output/design-mocks/advent-calendar-2026/winter-v5-night-opened-closeup.png",
+    "output/design-mocks/advent-calendar-2026/winter-v5-night-today-closeup.png",
+    "output/design-mocks/advent-calendar-2026/winter-v5-notes.md",
+    "output/design-mocks/advent-calendar-2026/winter-v5-states.png",
+    "output/design-mocks/advent-calendar-2026/winter-v6-comparison.html",
+    "output/design-mocks/advent-calendar-2026/winter-v6-comparison.png",
+    "output/design-mocks/advent-calendar-2026/winter-v6-day-desktop.png",
+    "output/design-mocks/advent-calendar-2026/winter-v6-day-future-closeup.png",
+    "output/design-mocks/advent-calendar-2026/winter-v6-night-390px.png",
+    "output/design-mocks/advent-calendar-2026/winter-v6-night-desktop.png",
+    "output/design-mocks/advent-calendar-2026/winter-v6-night-future-closeup.png",
+    "output/design-mocks/advent-calendar-2026/winter-v6-notes.md",
+    "output/design-mocks/advent-calendar-2026/publication-manifest.json"
+  ],
+  "artifactFileCountIncludingManifest": 55,
+  "artifactBytesExcludingManifest": 8887622,
+  "existingRepositoryReferences": [
+    "DESIGN.md",
+    "PRODUCT_SENSE.md",
+    "apps/api/app/api/[...route]/occasionsRoutes.ts",
+    "apps/api/lib/occasions/advent2025.ts",
+    "docs/advent-calendar-improvements-2026.md",
+    "packages/game/src/entities/PineAdvent.tsx",
+    "packages/game/src/hooks/useAdventCalendar.ts",
+    "packages/game/src/hooks/useOpenAdventDay.ts",
+    "packages/game/src/hud/AdventHud.tsx",
+    "packages/game/src/hud/adventCalendarPeriod.ts",
+    "packages/game/src/modals/advent/AdventAwardScreen.tsx",
+    "packages/game/src/modals/advent/AdventCalendarScreen.tsx",
+    "packages/game/src/modals/advent/AdventDayCell.tsx",
+    "packages/game/src/modals/advent/AdventDescriptionScreen.tsx",
+    "packages/game/src/modals/advent/AdventMissedDayScreen.tsx",
+    "packages/game/src/modals/advent/AdventModal.tsx",
+    "packages/game/src/scene/visualDayNight.ts",
+    "packages/game/src/shared-ui/game-modal/GameModal.tsx",
+    "packages/game/src/useGameState.ts",
+    "packages/game/src/utils/timeOfDay.ts",
+    "packages/storage/src/repositories/occasionsRepo.ts",
+    "packages/ui/src/PaperNote/PaperNote.css",
+    "packages/ui/src/PublicChrome/PublicSkyBackdrop.tsx",
+    "packages/ui/src/SunflowerVisuals/index.ts",
+    "packages/ui/src/utilities.css"
+  ],
+  "unresolvedLocalReferences": [],
+  "excludedLocalArtifactCount": 102,
+  "excludedLocalArtifactBytes": 14564733,
+  "excludedLocalArtifacts": [
+    "output/design-mocks/advent-calendar-2026/chest-320px.png",
+    "output/design-mocks/advent-calendar-2026/chest-desktop.png",
+    "output/design-mocks/advent-calendar-2026/chest-mobile.png",
+    "output/design-mocks/advent-calendar-2026/chest-reward.png",
+    "output/design-mocks/advent-calendar-2026/comparison-desktop.png",
+    "output/design-mocks/advent-calendar-2026/comparison.html",
+    "output/design-mocks/advent-calendar-2026/design-directions-v2.md",
+    "output/design-mocks/advent-calendar-2026/design-directions-v3.md",
+    "output/design-mocks/advent-calendar-2026/design-directions-v4.md",
+    "output/design-mocks/advent-calendar-2026/design-directions-v5.md",
+    "output/design-mocks/advent-calendar-2026/herbarium-320px.png",
+    "output/design-mocks/advent-calendar-2026/herbarium-desktop.png",
+    "output/design-mocks/advent-calendar-2026/herbarium-mobile.png",
+    "output/design-mocks/advent-calendar-2026/herbarium-reward.png",
+    "output/design-mocks/advent-calendar-2026/review-mobile.png",
+    "output/design-mocks/advent-calendar-2026/v4-asset-integrity.json",
+    "output/design-mocks/advent-calendar-2026/winter-320px.png",
+    "output/design-mocks/advent-calendar-2026/winter-desktop.png",
+    "output/design-mocks/advent-calendar-2026/winter-mobile.png",
+    "output/design-mocks/advent-calendar-2026/winter-reward.png",
+    "output/design-mocks/advent-calendar-2026/winter-v2-comparison.html",
+    "output/design-mocks/advent-calendar-2026/winter-v2-day-320px.png",
+    "output/design-mocks/advent-calendar-2026/winter-v2-day-error.png",
+    "output/design-mocks/advent-calendar-2026/winter-v2-day-review.png",
+    "output/design-mocks/advent-calendar-2026/winter-v2-day-reward.png",
+    "output/design-mocks/advent-calendar-2026/winter-v2-night-320px.png",
+    "output/design-mocks/advent-calendar-2026/winter-v2-night-error.png",
+    "output/design-mocks/advent-calendar-2026/winter-v2-night-focus.png",
+    "output/design-mocks/advent-calendar-2026/winter-v2-night-review.png",
+    "output/design-mocks/advent-calendar-2026/winter-v2-night-reward.png",
+    "output/design-mocks/advent-calendar-2026/winter-v3-comparison.html",
+    "output/design-mocks/advent-calendar-2026/winter-v3-dawn-desktop.png",
+    "output/design-mocks/advent-calendar-2026/winter-v3-dawn-mobile.png",
+    "output/design-mocks/advent-calendar-2026/winter-v3-day-320px.png",
+    "output/design-mocks/advent-calendar-2026/winter-v3-day-desktop.png",
+    "output/design-mocks/advent-calendar-2026/winter-v3-day-error.png",
+    "output/design-mocks/advent-calendar-2026/winter-v3-day-mobile.png",
+    "output/design-mocks/advent-calendar-2026/winter-v3-day-reward.png",
+    "output/design-mocks/advent-calendar-2026/winter-v3-dusk-mobile.png",
+    "output/design-mocks/advent-calendar-2026/winter-v3-focus.png",
+    "output/design-mocks/advent-calendar-2026/winter-v3-night-320px.png",
+    "output/design-mocks/advent-calendar-2026/winter-v3-night-691px.png",
+    "output/design-mocks/advent-calendar-2026/winter-v3-night-desktop.png",
+    "output/design-mocks/advent-calendar-2026/winter-v3-night-error.png",
+    "output/design-mocks/advent-calendar-2026/winter-v3-night-reward.png",
+    "output/design-mocks/advent-calendar-2026/winter-v4-comparison.html",
+    "output/design-mocks/advent-calendar-2026/winter-v4-dawn-mobile.png",
+    "output/design-mocks/advent-calendar-2026/winter-v4-day-320px.png",
+    "output/design-mocks/advent-calendar-2026/winter-v4-day-691px.png",
+    "output/design-mocks/advent-calendar-2026/winter-v4-day-desktop.png",
+    "output/design-mocks/advent-calendar-2026/winter-v4-day-error.png",
+    "output/design-mocks/advent-calendar-2026/winter-v4-day-mobile.png",
+    "output/design-mocks/advent-calendar-2026/winter-v4-day-reward.png",
+    "output/design-mocks/advent-calendar-2026/winter-v4-dusk-mobile.png",
+    "output/design-mocks/advent-calendar-2026/winter-v4-focus.png",
+    "output/design-mocks/advent-calendar-2026/winter-v4-night-320px.png",
+    "output/design-mocks/advent-calendar-2026/winter-v4-night-691px.png",
+    "output/design-mocks/advent-calendar-2026/winter-v4-night-desktop.png",
+    "output/design-mocks/advent-calendar-2026/winter-v4-night-error.png",
+    "output/design-mocks/advent-calendar-2026/winter-v4-night-mobile.png",
+    "output/design-mocks/advent-calendar-2026/winter-v4-night-reward.png",
+    "output/design-mocks/advent-calendar-2026/winter-v5-comparison.html",
+    "output/design-mocks/advent-calendar-2026/winter-v5-dawn-desktop.png",
+    "output/design-mocks/advent-calendar-2026/winter-v5-dawn-mobile.png",
+    "output/design-mocks/advent-calendar-2026/winter-v5-day-320px.png",
+    "output/design-mocks/advent-calendar-2026/winter-v5-day-691px.png",
+    "output/design-mocks/advent-calendar-2026/winter-v5-day-712px.png",
+    "output/design-mocks/advent-calendar-2026/winter-v5-day-after-open.png",
+    "output/design-mocks/advent-calendar-2026/winter-v5-day-desktop.png",
+    "output/design-mocks/advent-calendar-2026/winter-v5-day-error.png",
+    "output/design-mocks/advent-calendar-2026/winter-v5-day-missed-closeup.png",
+    "output/design-mocks/advent-calendar-2026/winter-v5-day-mobile.png",
+    "output/design-mocks/advent-calendar-2026/winter-v5-day-opened-closeup.png",
+    "output/design-mocks/advent-calendar-2026/winter-v5-day-reward.png",
+    "output/design-mocks/advent-calendar-2026/winter-v5-day-today-closeup.png",
+    "output/design-mocks/advent-calendar-2026/winter-v5-dusk-desktop.png",
+    "output/design-mocks/advent-calendar-2026/winter-v5-dusk-mobile.png",
+    "output/design-mocks/advent-calendar-2026/winter-v5-focus.png",
+    "output/design-mocks/advent-calendar-2026/winter-v5-night-320px.png",
+    "output/design-mocks/advent-calendar-2026/winter-v5-night-691px.png",
+    "output/design-mocks/advent-calendar-2026/winter-v5-night-712px.png",
+    "output/design-mocks/advent-calendar-2026/winter-v5-night-after-open.png",
+    "output/design-mocks/advent-calendar-2026/winter-v5-night-desktop.png",
+    "output/design-mocks/advent-calendar-2026/winter-v5-night-error.png",
+    "output/design-mocks/advent-calendar-2026/winter-v5-night-mobile.png",
+    "output/design-mocks/advent-calendar-2026/winter-v5-night-reward.png",
+    "output/design-mocks/advent-calendar-2026/winter-v5-states.html",
+    "output/design-mocks/advent-calendar-2026/winter-v6-day-390px.png",
+    "output/design-mocks/advent-calendar-2026/winter-v6-day-712px.png",
+    "output/design-mocks/advent-calendar-2026/winter-v6-day-future-1440px.png",
+    "output/design-mocks/advent-calendar-2026/winter-v6-day-future-390px.png",
+    "output/design-mocks/advent-calendar-2026/winter-v6-day-future-712px.png",
+    "output/design-mocks/advent-calendar-2026/winter-v6-day-missed-closeup.png",
+    "output/design-mocks/advent-calendar-2026/winter-v6-day-opened-closeup.png",
+    "output/design-mocks/advent-calendar-2026/winter-v6-day-today-closeup.png",
+    "output/design-mocks/advent-calendar-2026/winter-v6-night-712px.png",
+    "output/design-mocks/advent-calendar-2026/winter-v6-night-future-1440px.png",
+    "output/design-mocks/advent-calendar-2026/winter-v6-night-future-390px.png",
+    "output/design-mocks/advent-calendar-2026/winter-v6-night-future-712px.png",
+    "output/design-mocks/advent-calendar-2026/winter-v6-night-missed-closeup.png",
+    "output/design-mocks/advent-calendar-2026/winter-v6-night-opened-closeup.png",
+    "output/design-mocks/advent-calendar-2026/winter-v6-night-today-closeup.png"
+  ],
+  "files": [
+    {
+      "path": "output/design-mocks/advent-calendar-2026/README.md",
+      "bytes": 2329,
+      "sha256": "b3f3885a526dd0c5a51a73f7055d32b86cc44172ce3a09b5577013e7dd02b9d5",
+      "linkedFrom": []
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/chest-desktop-calendar.png",
+      "bytes": 94498,
+      "sha256": "9dd8245d348ddfe970b8815fe92d3e1f8b67f432b226382ac2c269e9ca84ea03",
+      "linkedFrom": [
+        "output/design-mocks/advent-calendar-2026/design-directions-v1.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/design-directions-v1.md",
+      "bytes": 10359,
+      "sha256": "4c848638787b3d28be37926587f535c0258528f2b36350343e8d48cfa764fa28",
+      "linkedFrom": [
+        "output/design-mocks/advent-calendar-2026/winter-v2-notes.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/design-directions.md",
+      "bytes": 778,
+      "sha256": "74a134c5c5be2907d2df52092010b62f84fa2614b4c911200d7884671a1b2df4",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md",
+        "output/design-mocks/advent-calendar-2026/README.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/herbarium-desktop-calendar.png",
+      "bytes": 77278,
+      "sha256": "3e3e6250b817f361f42bdd7e98e172ddc9c6c07afd9304d2326dfc7b18965f0a",
+      "linkedFrom": [
+        "output/design-mocks/advent-calendar-2026/design-directions-v1.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/index-v1.html",
+      "bytes": 445195,
+      "sha256": "8fb25a195a72afdce614d2f607aff032cf2e6bf47847c1f4486f19c549d03fe8",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md",
+        "output/design-mocks/advent-calendar-2026/winter-v2-notes.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/index-v2.html",
+      "bytes": 468501,
+      "sha256": "1b5bcacba0fcbafdc79d375f8631c666d3cdfec0789ab928e8040fd27d928faf",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md",
+        "output/design-mocks/advent-calendar-2026/index-v3.html",
+        "output/design-mocks/advent-calendar-2026/winter-v3-notes.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/index-v3.html",
+      "bytes": 274866,
+      "sha256": "fb9dc64cf49d374a5193aa496bb22a218f1df5a65da0dbf5c3b2896de0f2764a",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md",
+        "output/design-mocks/advent-calendar-2026/index-v4.html",
+        "output/design-mocks/advent-calendar-2026/winter-v4-notes.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/index-v4.html",
+      "bytes": 282683,
+      "sha256": "c27bd39e4e51e3aa1550b4de79cbb579bda56ca65931ad0965f1e2067cf2de7d",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md",
+        "output/design-mocks/advent-calendar-2026/index-v5.html",
+        "output/design-mocks/advent-calendar-2026/winter-v5-notes.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/index-v5.html",
+      "bytes": 280878,
+      "sha256": "b204da33beafc89dbc440f2b1739fe41b349c3ad3cc7eadc65d807c5a0c9b72c",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md",
+        "output/design-mocks/advent-calendar-2026/design-directions.md",
+        "output/design-mocks/advent-calendar-2026/index.html",
+        "output/design-mocks/advent-calendar-2026/winter-v5-notes.md",
+        "output/design-mocks/advent-calendar-2026/winter-v6-notes.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/index.html",
+      "bytes": 280881,
+      "sha256": "9abca9c08c9b33efd59bf1ca7492c33c5436ca32a99263ebf0596ea33d902710",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md",
+        "output/design-mocks/advent-calendar-2026/README.md",
+        "output/design-mocks/advent-calendar-2026/design-directions-v1.md",
+        "output/design-mocks/advent-calendar-2026/design-directions.md",
+        "output/design-mocks/advent-calendar-2026/winter-v2-notes.md",
+        "output/design-mocks/advent-calendar-2026/winter-v3-notes.md",
+        "output/design-mocks/advent-calendar-2026/winter-v4-notes.md",
+        "output/design-mocks/advent-calendar-2026/winter-v6-notes.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/v5-asset-integrity.json",
+      "bytes": 691,
+      "sha256": "6e11b2866484a9450fa6abe9336f5aa5adb8fd94d32a9b2e66395100f6f5f9d6",
+      "linkedFrom": [
+        "output/design-mocks/advent-calendar-2026/winter-v5-notes.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/v6-asset-integrity.json",
+      "bytes": 691,
+      "sha256": "4dd0a508432a7d6bf940c366fb062764e44e373cba212413e3eaee1d0c8ceeb3",
+      "linkedFrom": [
+        "output/design-mocks/advent-calendar-2026/winter-v6-notes.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/verification-v1.json",
+      "bytes": 1707,
+      "sha256": "9a3dcbf4b3b9acf63ce90c06de3d32621aa55e5cd8b4833ced3c94d23ed8cbc5",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/verification-v2.json",
+      "bytes": 4030,
+      "sha256": "8cfc811c9439be34f57c6a23a146c4bd18ea655c107ef7e8acd27cec54753c7d",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/verification-v3.json",
+      "bytes": 21171,
+      "sha256": "25999347872e79849319b7db2c230abec3b1dbcdde9de4b911263e1e800cc662",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md",
+        "output/design-mocks/advent-calendar-2026/winter-v3-notes.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/verification-v4.json",
+      "bytes": 210534,
+      "sha256": "94a2f9036949e50eebf340802d27512b4b8924769b67c33289ed35ca88a8e0f6",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md",
+        "output/design-mocks/advent-calendar-2026/winter-v4-notes.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/verification-v5.json",
+      "bytes": 388156,
+      "sha256": "91de9562e04ce83052f3793a2fadfe5b6b775fd97c9926ca1abbe69ac4f8a297",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md",
+        "output/design-mocks/advent-calendar-2026/README.md",
+        "output/design-mocks/advent-calendar-2026/design-directions.md",
+        "output/design-mocks/advent-calendar-2026/winter-v5-notes.md",
+        "output/design-mocks/advent-calendar-2026/winter-v6-notes.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/verification-v6.json",
+      "bytes": 15839,
+      "sha256": "15a42c29144f317a64bc5469f9f3c9aba71a74e50716cc0cbb12b7616fef9225",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md",
+        "output/design-mocks/advent-calendar-2026/README.md",
+        "output/design-mocks/advent-calendar-2026/design-directions.md",
+        "output/design-mocks/advent-calendar-2026/winter-v6-notes.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/verification.json",
+      "bytes": 15839,
+      "sha256": "15a42c29144f317a64bc5469f9f3c9aba71a74e50716cc0cbb12b7616fef9225",
+      "linkedFrom": [
+        "output/design-mocks/advent-calendar-2026/winter-v4-notes.md",
+        "output/design-mocks/advent-calendar-2026/winter-v5-notes.md",
+        "output/design-mocks/advent-calendar-2026/winter-v6-notes.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/winter-desktop-calendar.png",
+      "bytes": 216784,
+      "sha256": "03406aef6ef35f21dd4be8e88d0d5fa0c81761c9816b0049d521c1080cd4b764",
+      "linkedFrom": [
+        "output/design-mocks/advent-calendar-2026/design-directions-v1.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/winter-v2-comparison.png",
+      "bytes": 565292,
+      "sha256": "419b25b0af723e01c9d0428b6d332c2f98f268d8c409d8cba00e467f3c545617",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md",
+        "output/design-mocks/advent-calendar-2026/winter-v2-notes.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/winter-v2-day-desktop.png",
+      "bytes": 414865,
+      "sha256": "057e5427e215d869bcd16837a44c5c068a25772114782dbe944b5a8144163545",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/winter-v2-day-mobile.png",
+      "bytes": 230647,
+      "sha256": "558b71c81d15195ec65050d36c047447f6967f0b1964d0d0dff9e62b74973561",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/winter-v2-night-desktop.png",
+      "bytes": 508379,
+      "sha256": "c7621785c94a0302d9c11061d85fa76ac2953de4ad0fac15657e3eab65540d85",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/winter-v2-night-mobile.png",
+      "bytes": 281160,
+      "sha256": "6e16bf4f738b3431cb5a95325405ec9a98fdf751abd07fd225c4f23f8bf5617b",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/winter-v2-notes.md",
+      "bytes": 7376,
+      "sha256": "dc3de81f4b331f7268210d5047aa91db701fa7aefe4e5b2938c3bde068dbac0a",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md",
+        "output/design-mocks/advent-calendar-2026/winter-v3-notes.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/winter-v3-comparison.png",
+      "bytes": 523495,
+      "sha256": "534f2105828d20c97e689080b6518409efeffe75605333779441f62c5419abfd",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md",
+        "output/design-mocks/advent-calendar-2026/winter-v3-notes.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/winter-v3-day-691px.png",
+      "bytes": 185376,
+      "sha256": "2dd401da13d1896d4eee7113137bea02c63aa9a92770c6df7fb01fb4b7c71ad7",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/winter-v3-dusk-desktop.png",
+      "bytes": 235093,
+      "sha256": "1365437a009c195e38a6b8a2d188afda0eae943aa877cc3fc7fc6d41d7ccd391",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/winter-v3-night-mobile.png",
+      "bytes": 187330,
+      "sha256": "de8f50c37b002cf886f090df448a4169b489420cebb434b487da7e0a45be4315",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/winter-v3-notes.md",
+      "bytes": 8188,
+      "sha256": "bf5584bc847e7699fce2821fca039c723563ae48b08fcc206a4afcaf37356bec",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/winter-v4-comparison.png",
+      "bytes": 498321,
+      "sha256": "acc0aaddcb1c12b4918d113ab98baac6c1b8ccd5628e28f6a34bb47dae2a9648",
+      "linkedFrom": [
+        "output/design-mocks/advent-calendar-2026/winter-v4-notes.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/winter-v4-dawn-desktop.png",
+      "bytes": 212774,
+      "sha256": "59f8819958b19b00d0aba984409def536781110c87fea196468f39ccb33c12b3",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/winter-v4-day-712px.png",
+      "bytes": 163991,
+      "sha256": "89b1b5465af5acde1c098f5a9a79430f2355130456d8299a67f4a351ddbd1056",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/winter-v4-dusk-desktop.png",
+      "bytes": 218130,
+      "sha256": "5671f73fc457ccdcc80bd002bee77879339fcb4a4741e6746d4d456fd3d7a717",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/winter-v4-night-712px.png",
+      "bytes": 198396,
+      "sha256": "e690636317cdd147cadae7bf84d5104041a1b7129aeac7d1a1dd74367a1a4fc2",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/winter-v4-notes.md",
+      "bytes": 6603,
+      "sha256": "519f577e64fc32105278362e76567dad73b7375ffc5ab60d5c58448c46743b8e",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/winter-v5-comparison.png",
+      "bytes": 443146,
+      "sha256": "ba033a7e2f6b39161270bcfc6ad86093c36799177c216dc198b9e44222fdb699",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md",
+        "output/design-mocks/advent-calendar-2026/winter-v5-notes.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/winter-v5-day-future-closeup.png",
+      "bytes": 13623,
+      "sha256": "0d78400584258073532a30b0c46979e8bf7a8800001dc0bb1aed5611032fedd9",
+      "linkedFrom": [
+        "output/design-mocks/advent-calendar-2026/winter-v6-comparison.html"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/winter-v5-night-future-closeup.png",
+      "bytes": 14738,
+      "sha256": "98b5ef088c074dc2955a6b6cdfa0c5a4e9e5af596f9a1fc7708d6cbc2c095829",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md",
+        "output/design-mocks/advent-calendar-2026/winter-v6-comparison.html"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/winter-v5-night-missed-closeup.png",
+      "bytes": 16077,
+      "sha256": "f952f5636623a22fcbc824ce9fb92fd4f266c8f797166075474b1fba07aa3e23",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/winter-v5-night-opened-closeup.png",
+      "bytes": 13086,
+      "sha256": "4b5c909687e709faffd9a4471539eebb4f6d396c2b32ce60672606779f315fb3",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/winter-v5-night-today-closeup.png",
+      "bytes": 25622,
+      "sha256": "5400176abba884d687b5790f7fbc7fd5b9d5ec7d9cb9a2f8905606a6f5a88ff4",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/winter-v5-notes.md",
+      "bytes": 7083,
+      "sha256": "bf80c6002f5234fdd9aa50db8a0b742ee6ed62a1816f71d8e15fb7dd00736c51",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/winter-v5-states.png",
+      "bytes": 181052,
+      "sha256": "97df319e1136287ab69281661cf5af1f5aacb0109c0f8293d1b9b65e4fa68e3d",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md",
+        "output/design-mocks/advent-calendar-2026/winter-v5-notes.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/winter-v6-comparison.html",
+      "bytes": 2275,
+      "sha256": "235da730544ea7355d9ebdfeadd92421bebc33304123e9982105aa226914d7ed",
+      "linkedFrom": [
+        "output/design-mocks/advent-calendar-2026/README.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/winter-v6-comparison.png",
+      "bytes": 74229,
+      "sha256": "3c62e30772e2f3004aeb600eee60a8ca29cb35d1fe96cc2e4309339369e41e9d",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md",
+        "output/design-mocks/advent-calendar-2026/design-directions.md",
+        "output/design-mocks/advent-calendar-2026/winter-v6-notes.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/winter-v6-day-desktop.png",
+      "bytes": 189977,
+      "sha256": "4c6d4449d6c4468a50b694aa0a91c31c0e7d4e29761261c643bf888fa40e7517",
+      "linkedFrom": [
+        "output/design-mocks/advent-calendar-2026/README.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/winter-v6-day-future-closeup.png",
+      "bytes": 12831,
+      "sha256": "a1257e5b3af844c1a9528621f66010fe87988f6a956f7613cc96f5a7126e3383",
+      "linkedFrom": [
+        "output/design-mocks/advent-calendar-2026/winter-v6-comparison.html"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/winter-v6-night-390px.png",
+      "bytes": 136488,
+      "sha256": "b63c49b74c01cbfa6dd1f1fe752eeaf041ce0be618ba1ee66ce79f7b34223afb",
+      "linkedFrom": [
+        "output/design-mocks/advent-calendar-2026/README.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/winter-v6-night-desktop.png",
+      "bytes": 201303,
+      "sha256": "a5d1ee226a040f8becdf8dac5b4f0f24a69074c01fb961896069de878017089d",
+      "linkedFrom": [
+        "output/design-mocks/advent-calendar-2026/README.md"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/winter-v6-night-future-closeup.png",
+      "bytes": 13951,
+      "sha256": "3bdb2463df95fcefdf45453c02bad3ab14f5b664d48fe1fa49c78f696c150d46",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md",
+        "output/design-mocks/advent-calendar-2026/winter-v6-comparison.html"
+      ]
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/winter-v6-notes.md",
+      "bytes": 3037,
+      "sha256": "9e0e8e0c56c26f6d53ee16771a29d48d1efcefa38dbd97780c439f17b5e528fe",
+      "linkedFrom": [
+        "docs/advent-calendar-improvements-2026.md",
+        "output/design-mocks/advent-calendar-2026/README.md",
+        "output/design-mocks/advent-calendar-2026/design-directions.md"
+      ]
+    }
+  ],
+  "recommendedPrScreenshots": [
+    {
+      "path": "output/design-mocks/advent-calendar-2026/winter-v6-night-390px.png",
+      "purpose": "Current mobile night design and physical day states"
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/winter-v6-day-desktop.png",
+      "purpose": "Current desktop day composition and 24 chronological cards"
+    },
+    {
+      "path": "output/design-mocks/advent-calendar-2026/winter-v6-comparison.png",
+      "purpose": "Focused V5/V6 curved-snow refinement, clearly historical comparison"
+    }
+  ],
+  "portableSourceCheck": {
+    "method": "Current index.html opened through file:// in an offline Chromium context; no new broad visual, contrast or interaction suite",
+    "title": "Gredice · Zimski vrt · V6",
+    "dayCount": 24,
+    "fontStatus": "loaded",
+    "embeddedGardenHandLoaded": true,
+    "visibleArtworkDecoded": [
+      "scene-pine:640x640",
+      "scene-gift:640x640",
+      "scene-lantern:640x640"
+    ],
+    "httpRequests": [],
+    "pageErrors": [],
+    "passed": true
+  },
+  "publicationScope": "Standalone demo and documented evidence only. No production code, flags, Debug HUD behavior, account mutations or campaign activation."
+}

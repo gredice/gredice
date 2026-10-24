@@ -1,3 +1,4 @@
+import type { OperationTaskAdminEvent } from '../../operationTaskAdministration';
 import { knownEventTypes } from './knownEventTypes';
 import type {
     AccountAiRequestPayload,
@@ -31,6 +32,7 @@ import type {
     GardenBlockRemovePayload,
     GardenCreatePayload,
     GardenRenamePayload,
+    HarvestTraceGroupCreatedPayload,
     InventoryChangePayload,
     InvoiceCreatePayload,
     InvoicePaidPayload,
@@ -72,12 +74,24 @@ import type {
     RaisedBedWeedStateSetPayload,
     ReceiptCreatePayload,
     ReceiptFiscalizePayload,
+    SeasonalSowingOfferGrantedPayload,
     TransactionCreatePayload,
     TransactionUpdatePayload,
     UserBirthdayRewardPayload,
 } from './types';
 
 export const knownEvents = {
+    harvestTraceGroups: {
+        createdV1: (
+            aggregateId: string,
+            data: HarvestTraceGroupCreatedPayload,
+        ) => ({
+            type: knownEventTypes.harvestTraceGroups.create,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+    },
     checkout: {
         operationCreatedV1: (
             aggregateId: string,
@@ -273,6 +287,15 @@ export const knownEvents = {
         }),
     },
     raisedBeds: {
+        seasonalSowingOfferGrantedV1: (
+            aggregateId: string,
+            data: SeasonalSowingOfferGrantedPayload,
+        ) => ({
+            type: knownEventTypes.raisedBeds.seasonalSowingOfferGranted,
+            version: 1,
+            aggregateId,
+            data,
+        }),
         createdV1: (aggregateId: string, data: RaisedBedCreatePayload) => ({
             type: knownEventTypes.raisedBeds.create,
             version: 1,
@@ -491,6 +514,15 @@ export const knownEvents = {
         }),
     },
     operations: {
+        adminUpdatedV1: (
+            aggregateId: string,
+            data: OperationTaskAdminEvent,
+        ) => ({
+            type: knownEventTypes.operations.adminUpdate,
+            version: 1,
+            aggregateId,
+            data,
+        }),
         acceptanceChangedV1: (
             aggregateId: string,
             data: OperationAcceptancePayload,

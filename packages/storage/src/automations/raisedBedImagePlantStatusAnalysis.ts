@@ -28,7 +28,7 @@ import type { AutomationJsonObject } from '../schema';
 import { buildPreviousPlantNames } from './raisedBedImagePlantContext';
 import type { AutomationSourceEvent } from './types';
 
-const AI_MODEL = process.env.AI_GATEWAY_MODEL ?? 'openai/gpt-5.6-terra';
+const AI_MODEL = process.env.AI_GATEWAY_MODEL ?? 'openai/gpt-6-sol';
 const RAISED_BED_COLUMNS = 3;
 const REVIEW_REQUESTER = 'automation:raised-bed-image-status-review';
 const MAX_AI_DEBUG_TEXT_LENGTH = 8_000;
@@ -50,7 +50,7 @@ const plantStatusReviewOutputSchema = z.object({
         .array(
             z.object({
                 positionLabel: z.number().int().min(1).max(18),
-                plantingId: z.number().int().positive().nullable().optional(),
+                plantingId: z.number().int().positive().nullable(),
                 requestedStatus: z.enum(imageObservablePlantFieldStatuses),
                 confidence: z.number().min(0).max(1),
                 evidence: z.string(),

@@ -10,7 +10,6 @@ export type GardenPreviewRevisionInput = {
     longitude: unknown;
     raisedBeds: unknown;
     stacks: unknown;
-    structures?: unknown;
 };
 
 export type GardenPreviewSourceAccessInput = {
@@ -154,22 +153,6 @@ function normalizeRaisedBeds(value: unknown) {
     });
 }
 
-function normalizeStructures(value: unknown) {
-    return sortedRecordArray(value, ['id']).map((structure) => {
-        if (!isRecord(structure)) {
-            return structure;
-        }
-
-        return {
-            anchorX: structure.anchorX,
-            anchorY: structure.anchorY,
-            id: structure.id,
-            revision: structure.revision,
-            rotation: structure.rotation,
-        };
-    });
-}
-
 function canonicalJson(value: unknown): string {
     if (value === null) {
         return 'null';
@@ -219,10 +202,6 @@ export function createGardenPreviewSourceRevision(
         raisedBeds: normalizeRaisedBeds(input.raisedBeds),
         renderDay: referenceDate.toISOString().slice(0, 10),
         stacks: input.stacks,
-        structures:
-            input.structures === undefined
-                ? undefined
-                : normalizeStructures(input.structures),
     };
 
     return createHash('sha256')

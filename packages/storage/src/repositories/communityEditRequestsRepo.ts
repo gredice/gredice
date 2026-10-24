@@ -136,16 +136,15 @@ export type CommunityOperationSuggestionValue =
       });
 
 export type CommunityEntitySuggestionValue =
-    | {
+    | (({ kind: 'plantSort' } | { kind: 'plantTip' }) & {
           format: 'community-entity-suggestion-v1';
-          kind: 'plantSort';
           name: string;
           description: string;
           parentPlantId: number;
           parentPlantName: string;
           note?: string;
           source?: string;
-      }
+      })
     | {
           format: 'community-entity-suggestion-v1';
           kind: 'operation';
@@ -180,8 +179,7 @@ export type CommunityEntitySuggestionValue =
       };
 
 export type CreateCommunityEntitySuggestionInput =
-    | {
-          kind: 'plantSort';
+    | (({ kind: 'plantSort' } | { kind: 'plantTip' }) & {
           parentPlantId: number;
           name: string;
           description: string;
@@ -189,7 +187,7 @@ export type CreateCommunityEntitySuggestionInput =
           note?: string | null;
           publicPath: string;
           submitter: CommunityEditActor;
-      }
+      })
     | {
           kind: 'operation';
           plantStageId: number;
@@ -332,7 +330,7 @@ export function parseCommunityEntitySuggestion(
             return null;
         }
 
-        if (parsed.kind === 'plantSort') {
+        if (parsed.kind === 'plantSort' || parsed.kind === 'plantTip') {
             if (
                 typeof parsed.parentPlantId !== 'number' ||
                 !Number.isInteger(parsed.parentPlantId) ||
@@ -443,8 +441,10 @@ export function parseCommunityEntitySuggestionRequest(request: {
         return null;
     }
 
-    if (suggestion.kind === 'plantSort') {
-        return request.sectionKey === 'new-plant-sort' &&
+    if (suggestion.kind === 'plantSort' || suggestion.kind === 'plantTip') {
+        const sectionKey =
+            suggestion.kind === 'plantTip' ? 'new-plant-tip' : 'new-plant-sort';
+        return request.sectionKey === sectionKey &&
             request.entityTypeName === 'plant' &&
             request.entityId === suggestion.parentPlantId
             ? suggestion
@@ -679,10 +679,11 @@ async function getCommunityEditableEntity(
     return entity;
 }
 
-async function plantStageInfoById() {
+async function plantStageInfoById(db: DatabaseClient = storage()) {
     const stages = (await getEntitiesRaw(
         'plantStage',
         'published',
+        db,
     )) as EntityRaw[];
 
     return new Map(
@@ -1304,13 +1305,16 @@ function normalizeRequiredSuggestionText(
     return normalized;
 }
 
-async function resolveOperationSuggestionTarget(input: {
-    operationId: number;
-    stage: NonNullable<
-        CommunityEditableFieldDefinition['operationSuggestionStage']
-    >;
-}) {
-    const operation = await getEntityRaw(input.operationId);
+async function resolveOperationSuggestionTarget(
+    input: {
+        operationId: number;
+        stage: NonNullable<
+            CommunityEditableFieldDefinition['operationSuggestionStage']
+        >;
+    },
+    db: DatabaseClient = storage(),
+) {
+    const operation = await getEntityRaw(input.operationId, db);
     if (
         operation?.entityTypeName !== 'operation' ||
         operation.state !== 'published'
@@ -1339,7 +1343,7 @@ async function resolveOperationSuggestionTarget(input: {
         );
     }
 
-    const stage = operationStageInfo(operation, await plantStageInfoById());
+    const stage = operationStageInfo(operation, await plantStageInfoById(db));
     if (stage?.name !== input.stage.name) {
         throw new CommunityEditRequestError(
             'invalid_value',
@@ -2007,17 +2011,19 @@ export async function createCommunityEntitySuggestion(
         | 'new-disease'
         | 'new-operation'
         | 'new-pest'
-        | 'new-plant-sort';
+        | 'new-plant-sort'
+        | 'new-plant-tip';
     let suggestion: CommunityEntitySuggestionValue;
 
-    if (input.kind === 'plantSort') {
+    if (input.kind === 'plantSort' || input.kind === 'plantTip') {
         const plant = await getPublishedSuggestionContext(
             'plant',
             input.parentPlantId,
         );
         contextEntityTypeName = 'plant';
         contextEntityId = plant.id;
-        sectionKey = 'new-plant-sort';
+        sectionKey =
+            input.kind === 'plantTip' ? 'new-plant-tip' : 'new-plant-sort';
         suggestion = {
             format: 'community-entity-suggestion-v1',
             kind: input.kind,
@@ -2506,13 +2512,16 @@ async function applyOperationSuggestionChange(input: {
             return;
         }
 
-        await resolveOperationSuggestionTarget({
-            operationId: suggestion.operationId,
-            stage: {
-                name: suggestion.stageName,
-                label: suggestion.stageLabel,
+        await resolveOperationSuggestionTarget(
+            {
+                operationId: suggestion.operationId,
+                stage: {
+                    name: suggestion.stageName,
+                    label: suggestion.stageLabel,
+                },
             },
-        });
+            input.db,
+        );
         await upsertAttributeValue(
             {
                 attributeDefinitionId: input.attributeDefinitionId,

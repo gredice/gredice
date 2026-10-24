@@ -44,6 +44,7 @@ compatibility, and dependency-audit decisions.
 - Use Server Actions where the app already uses them for mutations, and revalidate the affected routes with `revalidatePath` or the established cache pattern.
 - Keep client state scoped. Use React Query or existing state helpers where the local app already does.
 - Preserve existing route, layout, error boundary, and loading conventions.
+- Links between WWW and News cross a Next.js app boundary even on the same domain. Use native anchors (or `Button` with `navigation="document"`) across that boundary; keep Next.js links for routes within the same app. Disabling prefetch alone still allows an incompatible RSC navigation on click.
 
 ## TypeScript
 

@@ -1,6 +1,6 @@
 import 'server-only';
 import { slugify } from '@gredice/js/slug';
-import { and, count, desc, eq, gt, ne, sql } from 'drizzle-orm';
+import { and, count, desc, eq, gt, isNotNull, ne, sql } from 'drizzle-orm';
 import {
     cmsPageRevisions,
     cmsPages,
@@ -86,6 +86,7 @@ const reservedCmsPageFirstSegments = new Set([
     'kontakt',
     'kalendar-sjetve',
     'korisnici',
+    'postignuca',
     'legalno',
     'logout',
     'manifest.json',
@@ -106,6 +107,7 @@ const reservedCmsPageFirstSegments = new Set([
     'stetnici',
     'sjetva',
     'suncokreti',
+    'iskustvo-i-razine',
     'vodic-za-prvu-gredicu',
     'vrtovi',
 ]);
@@ -500,6 +502,25 @@ export async function getPublishedCmsNewsPages(
         .limit(limit);
 
     return rows;
+}
+
+/** Direct durable source for Next's tagged public News cache. */
+export async function getPublishedCmsNewsSourcePages() {
+    return storage()
+        .select()
+        .from(cmsPages)
+        .where(and(newsPagePublicWhere(), isNotNull(cmsPages.publishedAt)))
+        .orderBy(desc(cmsPages.publishedAt), desc(cmsPages.id));
+}
+
+export async function getPublishedCmsNewsPageBySlug(slug: string) {
+    return storage().query.cmsPages.findFirst({
+        where: and(
+            newsPagePublicWhere(),
+            isNotNull(cmsPages.publishedAt),
+            eq(cmsPages.slug, normalizeCmsPageSlug(slug)),
+        ),
+    });
 }
 
 export function getCmsPage(id: number) {

@@ -21,7 +21,6 @@ export type LocalSandboxGarden = {
     backgroundPalette: GameBackgroundPaletteKey;
     homeCamera: null;
     stacks: GardenStack[];
-    structures: [];
     location: {
         lat: number;
         lon: number;
@@ -96,7 +95,6 @@ export function createDefaultLocalSandboxGarden(
             options.backgroundPalette ?? defaultGameBackgroundPaletteKey,
         homeCamera: null,
         stacks: resolveDefaultLocalSandboxStacks(options.stacks),
-        structures: [],
         location: { lat: 45.739, lon: 16.572 },
         raisedBeds: [],
     };

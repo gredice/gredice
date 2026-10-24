@@ -1,5 +1,10 @@
 import { useMemo } from 'react';
 import { Color, type Material, MeshStandardMaterial, Vector2 } from 'three';
+import {
+    getGardenMaterialInstalledShaderHookSignature,
+    registerGardenMaterialShaderHooks,
+} from '../../scene/gardenMaterials';
+import { inheritGardenMaterialOrigin } from '../../scene/resources/gardenMaterialOrigins';
 import { dryGroundDarkColor, dryGroundLightColor } from '../dryGroundPalette';
 
 export type GroundPatchSurface =
@@ -366,6 +371,8 @@ export function applyGroundPatchMaterial(
 ) {
     const preset = groundPatchPresets[surface];
     const wetPatches = options.wetPatches ?? emptyWetPatches;
+    const baseHookSignature =
+        getGardenMaterialInstalledShaderHookSignature(material);
     const originalOnBeforeCompile = material.onBeforeCompile.bind(material);
     const originalCustomProgramCacheKey =
         material.customProgramCacheKey.bind(material);
@@ -449,6 +456,14 @@ export function applyGroundPatchMaterial(
         onBeforeCompile,
         customProgramCacheKey,
     );
+    if (baseHookSignature) {
+        // The decorator is a pure function of these inputs, so equal patched
+        // materials can share one instance and one static render packet.
+        registerGardenMaterialShaderHooks(
+            { customProgramCacheKey, onBeforeCompile },
+            `${baseHookSignature}>ground-patch:${surface}:${wetPatchKey(wetPatches)}:${options.wetColor ?? ''}:${options.wetStrength ?? ''}`,
+        );
+    }
     material.needsUpdate = true;
 
     return material;
@@ -463,7 +478,9 @@ function createGroundPatchMaterial(
         return material;
     }
 
-    return applyGroundPatchMaterial(material.clone(), surface, options);
+    const clone = applyGroundPatchMaterial(material.clone(), surface, options);
+    inheritGardenMaterialOrigin(clone, material);
+    return clone;
 }
 
 export function useGroundPatchMaterial(

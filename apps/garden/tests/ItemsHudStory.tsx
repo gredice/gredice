@@ -1,4 +1,52 @@
 import type { BlockData } from '@gredice/client';
+import {
+    autumnAsterPotNames,
+    getAutumnAsterPot,
+} from '@gredice/js/autumnAsterPots';
+import { autumnBlanketBench } from '@gredice/js/autumnBlanketBench';
+import {
+    autumnEntranceNames,
+    getAutumnEntrance,
+} from '@gredice/js/autumnEntrances';
+import { autumnGrassNames, getAutumnGrass } from '@gredice/js/autumnGrasses';
+import {
+    autumnLeafPileNames,
+    getAutumnLeafPile,
+} from '@gredice/js/autumnLeafPiles';
+import { autumnShrub } from '@gredice/js/autumnShrub';
+import { birdFeeder } from '@gredice/js/birdFeeder';
+import { chestnutRoastingCart } from '@gredice/js/chestnutRoastingCart';
+import { fallenLog } from '@gredice/js/fallenLog';
+import { gardenBrazier } from '@gredice/js/gardenBrazier';
+import { gardenScarecrow } from '@gredice/js/gardenScarecrow';
+import { gardenTeaTable } from '@gredice/js/gardenTeaTable';
+import {
+    getHalloweenAccent,
+    halloweenAccentNames,
+} from '@gredice/js/halloweenAccents';
+import { getHarvestCrate, harvestCrateNames } from '@gredice/js/harvestCrates';
+import {
+    getHarvestPumpkin,
+    harvestPumpkinNames,
+} from '@gredice/js/harvestPumpkins';
+import { harvestWheelbarrow } from '@gredice/js/harvestWheelbarrow';
+import {
+    getHedgehogShelter,
+    hedgehogShelterNames,
+} from '@gredice/js/hedgehogShelter';
+import { leafRake } from '@gredice/js/leafRake';
+import {
+    getPumpkinLantern,
+    pumpkinLanternNames,
+} from '@gredice/js/pumpkinLanterns';
+import { seasonalMaple } from '@gredice/js/seasonalMaple';
+import { seedDryingRack } from '@gredice/js/seedDryingRack';
+import { stackedFirewood } from '@gredice/js/stackedFirewood';
+import {
+    getWoodlandArrangement,
+    woodlandArrangementNames,
+} from '@gredice/js/woodlandArrangements';
+import { woodlandMushrooms } from '@gredice/js/woodlandMushrooms';
 import { cx } from '@gredice/ui/utils';
 import * as ReactQuery from '@tanstack/react-query';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
@@ -441,7 +489,52 @@ const blockFixtures: Record<
 };
 
 function createBlockData(name: string, index: number) {
-    const fixture = blockFixtures[name];
+    const decoration =
+        getAutumnEntrance(name) ??
+        getHedgehogShelter(name) ??
+        getHalloweenAccent(name) ??
+        getPumpkinLantern(name) ??
+        getWoodlandArrangement(name) ??
+        getAutumnGrass(name) ??
+        getAutumnLeafPile(name) ??
+        (name === gardenBrazier.name
+            ? gardenBrazier
+            : name === birdFeeder.name
+              ? birdFeeder
+              : name === seedDryingRack.name
+                ? seedDryingRack
+                : name === stackedFirewood.name
+                  ? stackedFirewood
+                  : name === chestnutRoastingCart.name
+                    ? chestnutRoastingCart
+                    : name === gardenTeaTable.name
+                      ? gardenTeaTable
+                      : name === autumnBlanketBench.name
+                        ? autumnBlanketBench
+                        : name === leafRake.name
+                          ? leafRake
+                          : name === fallenLog.name
+                            ? fallenLog
+                            : name === woodlandMushrooms.name
+                              ? woodlandMushrooms
+                              : name === seasonalMaple.name
+                                ? seasonalMaple
+                                : name === autumnShrub.name
+                                  ? autumnShrub
+                                  : name === gardenScarecrow.name
+                                    ? gardenScarecrow
+                                    : name === harvestWheelbarrow.name
+                                      ? harvestWheelbarrow
+                                      : (getAutumnAsterPot(name) ??
+                                        getHarvestCrate(name) ??
+                                        getHarvestPumpkin(name)));
+    const fixture = decoration
+        ? {
+              ...decoration.information,
+              ...decoration.attributes,
+              sunflowers: decoration.sunflowers,
+          }
+        : blockFixtures[name];
 
     return {
         id: index + 1,
@@ -499,6 +592,30 @@ function createMockGameCamera(
 }
 
 const blockNames = [
+    ...harvestPumpkinNames,
+    ...autumnAsterPotNames,
+    gardenScarecrow.name,
+    ...harvestCrateNames,
+    harvestWheelbarrow.name,
+    autumnShrub.name,
+    seasonalMaple.name,
+    woodlandMushrooms.name,
+    leafRake.name,
+    stackedFirewood.name,
+    seedDryingRack.name,
+    birdFeeder.name,
+    ...hedgehogShelterNames,
+    gardenBrazier.name,
+    gardenTeaTable.name,
+    fallenLog.name,
+    autumnBlanketBench.name,
+    chestnutRoastingCart.name,
+    ...autumnLeafPileNames,
+    ...autumnGrassNames,
+    ...woodlandArrangementNames,
+    ...pumpkinLanternNames,
+    ...halloweenAccentNames,
+    ...autumnEntranceNames,
     'Raised_Bed',
     'Bucket',
     'WateringCan',
@@ -580,6 +697,7 @@ const blockNames = [
     'ShovelSmall',
     'Tulip',
     'Sunflower',
+    'Rose',
     'CactusBarrel',
     'CactusColumnCluster',
     'CactusPricklyPear',
@@ -628,6 +746,31 @@ const blockNames = [
 ];
 
 type ItemsHudStoryOptions = {
+    appBaseUrl?: string;
+    includeHarvestPumpkins?: boolean;
+    includeGardenScarecrow?: boolean;
+    includeHarvestCrates?: boolean;
+    includeAutumnAsterPots?: boolean;
+    includeHarvestWheelbarrow?: boolean;
+    includeAutumnShrub?: boolean;
+    includeSeasonalMaple?: boolean;
+    includeWoodlandMushrooms?: boolean;
+    includeFallenLog?: boolean;
+    includeAutumnBlanketBench?: boolean;
+    includeLeafRake?: boolean;
+    includeStackedFirewood?: boolean;
+    includeSeedDryingRack?: boolean;
+    includeBirdFeeder?: boolean;
+    includeHedgehogShelter?: boolean;
+    includeGardenBrazier?: boolean;
+    includeGardenTeaTable?: boolean;
+    includeChestnutRoastingCart?: boolean;
+    includeAutumnLeafPiles?: boolean;
+    includeAutumnGrasses?: boolean;
+    includeWoodlandArrangements?: boolean;
+    includePumpkinLanterns?: boolean;
+    includeHalloweenAccents?: boolean;
+    includeAutumnEntrances?: boolean;
     accountSunflowers?: number;
     cameraTarget?: [x: number, y: number, z: number];
     closeup?: boolean;
@@ -639,6 +782,30 @@ type ItemsHudStoryOptions = {
 
 function createItemsHudQueryClient({
     accountSunflowers = 50,
+    includeHarvestPumpkins = true,
+    includeGardenScarecrow = true,
+    includeHarvestCrates = true,
+    includeAutumnAsterPots = true,
+    includeHarvestWheelbarrow = true,
+    includeAutumnShrub = true,
+    includeSeasonalMaple = true,
+    includeWoodlandMushrooms = true,
+    includeFallenLog = true,
+    includeAutumnBlanketBench = true,
+    includeLeafRake = true,
+    includeStackedFirewood = true,
+    includeSeedDryingRack = true,
+    includeBirdFeeder = true,
+    includeHedgehogShelter = true,
+    includeGardenBrazier = true,
+    includeGardenTeaTable = true,
+    includeChestnutRoastingCart = true,
+    includeAutumnLeafPiles = true,
+    includeAutumnGrasses = true,
+    includeWoodlandArrangements = true,
+    includePumpkinLanterns = true,
+    includeHalloweenAccents = true,
+    includeAutumnEntrances = true,
     isSandbox = false,
 }: ItemsHudStoryOptions) {
     const queryClient = new ReactQuery.QueryClient({
@@ -647,7 +814,82 @@ function createItemsHudQueryClient({
         },
     });
 
-    queryClient.setQueryData(['blocks'], blockNames.map(createBlockData));
+    queryClient.setQueryData(
+        ['blocks'],
+        blockNames
+            .filter(
+                (name) => includeHedgehogShelter || !getHedgehogShelter(name),
+            )
+            .filter(
+                (name) => includeHalloweenAccents || !getHalloweenAccent(name),
+            )
+            .filter(
+                (name) => includePumpkinLanterns || !getPumpkinLantern(name),
+            )
+            .filter((name) => includeBirdFeeder || name !== birdFeeder.name)
+            .filter(
+                (name) => includeSeasonalMaple || name !== seasonalMaple.name,
+            )
+            .filter(
+                (name) => includeAutumnEntrances || !getAutumnEntrance(name),
+            )
+            .filter(
+                (name) =>
+                    includeWoodlandArrangements ||
+                    !getWoodlandArrangement(name),
+            )
+            .filter(
+                (name) => includeSeedDryingRack || name !== seedDryingRack.name,
+            )
+            .filter((name) => includeAutumnGrasses || !getAutumnGrass(name))
+            .filter(
+                (name) => includeGardenBrazier || name !== gardenBrazier.name,
+            )
+            .filter(
+                (name) =>
+                    includeStackedFirewood || name !== stackedFirewood.name,
+            )
+            .filter(
+                (name) =>
+                    includeChestnutRoastingCart ||
+                    name !== chestnutRoastingCart.name,
+            )
+            .filter(
+                (name) => includeGardenTeaTable || name !== gardenTeaTable.name,
+            )
+            .filter(
+                (name) =>
+                    includeAutumnBlanketBench ||
+                    name !== autumnBlanketBench.name,
+            )
+            .filter((name) => includeLeafRake || name !== leafRake.name)
+            .filter(
+                (name) => includeAutumnLeafPiles || !getAutumnLeafPile(name),
+            )
+            .filter((name) => includeFallenLog || name !== fallenLog.name)
+            .filter(
+                (name) =>
+                    includeWoodlandMushrooms || name !== woodlandMushrooms.name,
+            )
+            .filter((name) => includeAutumnShrub || name !== autumnShrub.name)
+            .filter(
+                (name) => includeAutumnAsterPots || !getAutumnAsterPot(name),
+            )
+            .filter(
+                (name) => includeHarvestPumpkins || !getHarvestPumpkin(name),
+            )
+            .filter(
+                (name) =>
+                    includeGardenScarecrow || name !== gardenScarecrow.name,
+            )
+            .filter((name) => includeHarvestCrates || !getHarvestCrate(name))
+            .filter(
+                (name) =>
+                    includeHarvestWheelbarrow ||
+                    name !== harvestWheelbarrow.name,
+            )
+            .map(createBlockData),
+    );
     queryClient.setQueryData(['currentUser'], { id: 'test-user' });
     queryClient.setQueryData(currentAccountKeys, {
         id: 'test-account',
@@ -671,6 +913,31 @@ function createItemsHudQueryClient({
 }
 
 function ItemsHudTestProviders({
+    appBaseUrl = 'http://localhost',
+    includeHarvestPumpkins = true,
+    includeGardenScarecrow = true,
+    includeHarvestCrates = true,
+    includeAutumnAsterPots = true,
+    includeHarvestWheelbarrow = true,
+    includeAutumnShrub = true,
+    includeSeasonalMaple = true,
+    includeWoodlandMushrooms = true,
+    includeFallenLog = true,
+    includeAutumnBlanketBench = true,
+    includeLeafRake = true,
+    includeStackedFirewood = true,
+    includeSeedDryingRack = true,
+    includeBirdFeeder = true,
+    includeHedgehogShelter = true,
+    includeGardenBrazier = true,
+    includeGardenTeaTable = true,
+    includeChestnutRoastingCart = true,
+    includeAutumnLeafPiles = true,
+    includeAutumnGrasses = true,
+    includeWoodlandArrangements = true,
+    includePumpkinLanterns = true,
+    includeHalloweenAccents = true,
+    includeAutumnEntrances = true,
     children,
     accountSunflowers,
     cameraTarget,
@@ -681,12 +948,67 @@ function ItemsHudTestProviders({
     pickupHudDropTargetActive = false,
 }: PropsWithChildren<ItemsHudStoryOptions>) {
     const queryClient = useMemo(
-        () => createItemsHudQueryClient({ accountSunflowers, isSandbox }),
-        [accountSunflowers, isSandbox],
+        () =>
+            createItemsHudQueryClient({
+                accountSunflowers,
+                isSandbox,
+                includeHarvestPumpkins,
+                includeGardenScarecrow,
+                includeHarvestCrates,
+                includeAutumnAsterPots,
+                includeHarvestWheelbarrow,
+                includeAutumnShrub,
+                includeSeasonalMaple,
+                includeWoodlandMushrooms,
+                includeFallenLog,
+                includeAutumnBlanketBench,
+                includeLeafRake,
+                includeStackedFirewood,
+                includeSeedDryingRack,
+                includeBirdFeeder,
+                includeHedgehogShelter,
+                includeGardenBrazier,
+                includeGardenTeaTable,
+                includeChestnutRoastingCart,
+                includeAutumnLeafPiles,
+                includeAutumnGrasses,
+                includeWoodlandArrangements,
+                includePumpkinLanterns,
+                includeHalloweenAccents,
+                includeAutumnEntrances,
+            }),
+        [
+            accountSunflowers,
+            isSandbox,
+            includeHarvestPumpkins,
+            includeGardenScarecrow,
+            includeHarvestCrates,
+            includeAutumnAsterPots,
+            includeHarvestWheelbarrow,
+            includeAutumnShrub,
+            includeSeasonalMaple,
+            includeWoodlandMushrooms,
+            includeFallenLog,
+            includeAutumnBlanketBench,
+            includeLeafRake,
+            includeStackedFirewood,
+            includeSeedDryingRack,
+            includeBirdFeeder,
+            includeHedgehogShelter,
+            includeGardenBrazier,
+            includeGardenTeaTable,
+            includeChestnutRoastingCart,
+            includeAutumnLeafPiles,
+            includeAutumnGrasses,
+            includeWoodlandArrangements,
+            includePumpkinLanterns,
+            includeHalloweenAccents,
+            includeAutumnEntrances,
+        ],
     );
     const gameStore = useMemo(() => {
         const store = createGameState({
-            appBaseUrl: 'http://localhost',
+            appBaseUrl,
             freezeTime: new Date('2026-05-13T12:00:00.000Z'),
             isMock: false,
             localSandboxStorageKey,
@@ -712,6 +1034,7 @@ function ItemsHudTestProviders({
         }
         return store;
     }, [
+        appBaseUrl,
         cameraTarget,
         closeup,
         localSandboxStorageKey,
@@ -774,9 +1097,84 @@ function HudPlacementDragStateProbe() {
     );
 }
 
-export function ItemsHudAlignmentStory() {
+export function ItemsHudAlignmentStory({
+    includeHarvestPumpkins = true,
+    includeGardenScarecrow = true,
+    includeHarvestCrates = true,
+    includeAutumnAsterPots = true,
+    includeHarvestWheelbarrow = true,
+    includeAutumnShrub = true,
+    includeSeasonalMaple = true,
+    includeWoodlandMushrooms = true,
+    includeFallenLog = true,
+    includeAutumnBlanketBench = true,
+    includeLeafRake = true,
+    includeStackedFirewood = true,
+    includeSeedDryingRack = true,
+    includeBirdFeeder = true,
+    includeHedgehogShelter = true,
+    includeGardenBrazier = true,
+    includeGardenTeaTable = true,
+    includeChestnutRoastingCart = true,
+    includeAutumnLeafPiles = true,
+    includeAutumnGrasses = true,
+    includeWoodlandArrangements = true,
+    includePumpkinLanterns = true,
+    includeHalloweenAccents = true,
+    includeAutumnEntrances = true,
+}: {
+    includeHarvestPumpkins?: boolean;
+    includeGardenScarecrow?: boolean;
+    includeHarvestCrates?: boolean;
+    includeAutumnAsterPots?: boolean;
+    includeHarvestWheelbarrow?: boolean;
+    includeAutumnShrub?: boolean;
+    includeSeasonalMaple?: boolean;
+    includeWoodlandMushrooms?: boolean;
+    includeFallenLog?: boolean;
+    includeAutumnBlanketBench?: boolean;
+    includeLeafRake?: boolean;
+    includeStackedFirewood?: boolean;
+    includeSeedDryingRack?: boolean;
+    includeBirdFeeder?: boolean;
+    includeHedgehogShelter?: boolean;
+    includeGardenBrazier?: boolean;
+    includeGardenTeaTable?: boolean;
+    includeChestnutRoastingCart?: boolean;
+    includeAutumnLeafPiles?: boolean;
+    includeAutumnGrasses?: boolean;
+    includeWoodlandArrangements?: boolean;
+    includePumpkinLanterns?: boolean;
+    includeHalloweenAccents?: boolean;
+    includeAutumnEntrances?: boolean;
+}) {
     return (
-        <ItemsHudTestProviders>
+        <ItemsHudTestProviders
+            includeHarvestPumpkins={includeHarvestPumpkins}
+            includeGardenScarecrow={includeGardenScarecrow}
+            includeHarvestCrates={includeHarvestCrates}
+            includeAutumnAsterPots={includeAutumnAsterPots}
+            includeHarvestWheelbarrow={includeHarvestWheelbarrow}
+            includeAutumnShrub={includeAutumnShrub}
+            includeSeasonalMaple={includeSeasonalMaple}
+            includeWoodlandMushrooms={includeWoodlandMushrooms}
+            includeFallenLog={includeFallenLog}
+            includeAutumnBlanketBench={includeAutumnBlanketBench}
+            includeLeafRake={includeLeafRake}
+            includeStackedFirewood={includeStackedFirewood}
+            includeSeedDryingRack={includeSeedDryingRack}
+            includeBirdFeeder={includeBirdFeeder}
+            includeHedgehogShelter={includeHedgehogShelter}
+            includeGardenBrazier={includeGardenBrazier}
+            includeGardenTeaTable={includeGardenTeaTable}
+            includeChestnutRoastingCart={includeChestnutRoastingCart}
+            includeAutumnLeafPiles={includeAutumnLeafPiles}
+            includeAutumnGrasses={includeAutumnGrasses}
+            includeWoodlandArrangements={includeWoodlandArrangements}
+            includePumpkinLanterns={includePumpkinLanterns}
+            includeHalloweenAccents={includeHalloweenAccents}
+            includeAutumnEntrances={includeAutumnEntrances}
+        >
             <div className="relative h-screen w-screen overflow-hidden">
                 <div
                     data-testid="bottom-hud"
@@ -790,9 +1188,13 @@ export function ItemsHudAlignmentStory() {
     );
 }
 
-export function ItemsHudDragStateStory() {
+export function ItemsHudDragStateStory({
+    accountSunflowers = 50,
+}: {
+    accountSunflowers?: number;
+}) {
     return (
-        <ItemsHudTestProviders>
+        <ItemsHudTestProviders accountSunflowers={accountSunflowers}>
             <div className="relative h-screen w-screen overflow-hidden">
                 <HudPlacementDragStateProbe />
                 <div
@@ -967,10 +1369,15 @@ export function SandboxItemsHudDropTargetStory() {
     );
 }
 
-export function LocalSandboxItemsHudStory() {
+export function LocalSandboxItemsHudStory({
+    appBaseUrl = '',
+}: {
+    appBaseUrl?: string;
+}) {
     return (
         <ItemsHudTestProviders
             isSandbox
+            appBaseUrl={appBaseUrl}
             localSandboxStorageKey={`${defaultLocalSandboxStorageKey}.items-hud-test`}
         >
             <div className="relative h-screen w-screen overflow-hidden">

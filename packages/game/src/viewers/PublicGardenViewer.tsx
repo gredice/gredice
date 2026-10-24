@@ -1,6 +1,6 @@
 'use client';
 
-import type { PublicGardenResponse } from '@gredice/client';
+import type { BlockData, PublicGardenResponse } from '@gredice/client';
 import {
     defaultGameBackgroundPaletteKey,
     isGameBackgroundPaletteKey,
@@ -42,14 +42,12 @@ import { Birds } from '../entities/birds/Birds';
 import { Butterflies } from '../entities/butterflies/Butterflies';
 import { Cats } from '../entities/cats/Cats';
 import { Dogs } from '../entities/dogs/Dogs';
-import { EntityFactory } from '../entities/EntityFactory';
-import {
-    EntityInstances,
-    instancedBlockNames,
-} from '../entities/EntityInstances';
+import { EntityInstances } from '../entities/EntityInstances';
 import { Chickens, Piglets, Sheep } from '../entities/farmAnimals/FarmAnimals';
 import { Frogs } from '../entities/frogs/Frogs';
+import { Hedgehogs } from '../entities/hedgehogs/Hedgehogs';
 import { Ladybugs } from '../entities/ladybugs/Ladybugs';
+import { RetainedEntityChunks } from '../entities/RetainedEntityChunks';
 import { RaisedBedMulchOverlays } from '../entities/raisedBed/RaisedBedMulchOverlays';
 import { Slugs } from '../entities/slugs/Slugs';
 import { Squirrels } from '../entities/squirrels/Squirrels';
@@ -61,6 +59,7 @@ import { useGardensKeys } from '../hooks/useGardens';
 import { useAllSorts } from '../hooks/usePlantSorts';
 import { GardenAvatarHud } from '../hud/GardenAvatarHud';
 import { ParticleSystemProvider } from '../particles/ParticleSystem';
+import { useRetainedGardenScene } from '../scene/compiler/useRetainedGardenScene';
 import { Environment } from '../scene/Environment';
 import {
     type GameQualityProfile,
@@ -68,18 +67,6 @@ import {
     resolveGameQualityProfile,
 } from '../scene/gameQuality';
 import { Scene } from '../scene/Scene';
-import { GardenStructureSceneLayerDynamic } from '../structures/GardenStructureSceneLayerDynamic';
-import {
-    areGardenStructureAvatarInteriorPresentationsEqual,
-    emptyGardenStructureAvatarInteriorPresentation,
-    type GardenStructureAvatarInteriorPresentation,
-} from '../structures/gardenStructureAvatarInterior';
-import {
-    createGardenStructureSceneBaseHeightResolver,
-    type GardenStructureSceneDiagnosticStatus,
-    useGardenStructureSceneSnapshot,
-} from '../structures/gardenStructureScene';
-import type { GardenStructureHorizontalBounds } from '../structures/structurePlanTypes';
 import type { Block } from '../types/Block';
 import type { Stack } from '../types/Stack';
 import {
@@ -139,7 +126,6 @@ export type PublicGardenDetail = Pick<
     | 'name'
     | 'raisedBeds'
     | 'stacks'
-    | 'structures'
     | 'updatedAt'
 >;
 
@@ -158,13 +144,6 @@ export type PublicGardenCaptureViewport = {
 
 export type PublicGardenCapturePhase = 'morning' | 'day' | 'evening' | 'night';
 
-type PublicGardenStructureFramingEntry = Readonly<{
-    footprint: Readonly<{
-        bounds: GardenStructureHorizontalBounds;
-    }>;
-    structureId: string;
-}>;
-
 export type PublicGardenCapture = {
     fitGarden?: boolean;
     fitGardenPadding?: number;
@@ -174,12 +153,17 @@ export type PublicGardenCapture = {
     output?: PublicGardenCaptureOutput;
     phase?: PublicGardenCapturePhase;
     transparent?: boolean;
+    dayNightCycleDisabled?: boolean;
+    winterMode?: 'summer' | 'winter' | 'holiday';
 };
 
 export type PublicGardenSelectedBlockFocus = GameCameraCloseupFocus;
 
 export type PublicGardenViewerProps = HTMLAttributes<HTMLDivElement> & {
     garden?: PublicGardenDetail;
+    /** Static display metadata in this viewer’s isolated cache; never commerce or ownership data. */
+    renderOnlyBlockData?: BlockData[];
+    qualityOverride?: GameQualityProfile;
     stacks?: PublicGardenStack[];
     appBaseUrl?: string;
     spriteBaseUrl?: string;
@@ -321,7 +305,6 @@ type PublicGardenPlanarBounds = Readonly<{
 
 function getPublicGardenPlanarBounds(
     stacks: Stack[],
-    structureBounds?: GardenStructureHorizontalBounds | null,
 ): PublicGardenPlanarBounds | null {
     const bounds = stacks.reduce(
         (acc, stack) => ({
@@ -331,10 +314,10 @@ function getPublicGardenPlanarBounds(
             minZ: Math.min(acc.minZ, stack.position.z - 0.5),
         }),
         {
-            maxX: structureBounds?.maxX ?? Number.NEGATIVE_INFINITY,
-            maxZ: structureBounds?.maxY ?? Number.NEGATIVE_INFINITY,
-            minX: structureBounds?.minX ?? Number.POSITIVE_INFINITY,
-            minZ: structureBounds?.minY ?? Number.POSITIVE_INFINITY,
+            maxX: Number.NEGATIVE_INFINITY,
+            maxZ: Number.NEGATIVE_INFINITY,
+            minX: Number.POSITIVE_INFINITY,
+            minZ: Number.POSITIVE_INFINITY,
         },
     );
 
@@ -343,11 +326,8 @@ function getPublicGardenPlanarBounds(
         : null;
 }
 
-export function getPublicGardenStacksCenter(
-    stacks: Stack[],
-    structureBounds?: GardenStructureHorizontalBounds | null,
-) {
-    const bounds = getPublicGardenPlanarBounds(stacks, structureBounds);
+export function getPublicGardenStacksCenter(stacks: Stack[]) {
+    const bounds = getPublicGardenPlanarBounds(stacks);
     if (!bounds) {
         return new Vector3(0, 0, 0);
     }
@@ -362,11 +342,9 @@ export function getPublicGardenStacksCenter(
 export function getPublicGardenInitialView({
     homeCamera,
     stacks,
-    structureBounds,
 }: {
     homeCamera?: PublicGardenHomeCamera | null;
     stacks: Stack[];
-    structureBounds?: GardenStructureHorizontalBounds | null;
 }): PublicGardenInitialView {
     if (homeCamera) {
         return {
@@ -376,7 +354,7 @@ export function getPublicGardenInitialView({
         };
     }
 
-    const sceneCenter = getPublicGardenStacksCenter(stacks, structureBounds);
+    const sceneCenter = getPublicGardenStacksCenter(stacks);
 
     return {
         cameraPosition: new Vector3(
@@ -392,19 +370,14 @@ export function getPublicGardenInitialView({
 export function getPublicGardenCaptureInitialView({
     minimumZoom = 24,
     stacks,
-    structureBounds,
     viewport,
 }: {
     minimumZoom?: number;
     stacks: Stack[];
-    structureBounds?: GardenStructureHorizontalBounds | null;
     viewport: PublicGardenCaptureViewport;
 }): PublicGardenInitialView {
-    const initialView = getPublicGardenInitialView({
-        stacks,
-        structureBounds,
-    });
-    const bounds = getPublicGardenPlanarBounds(stacks, structureBounds);
+    const initialView = getPublicGardenInitialView({ stacks });
+    const bounds = getPublicGardenPlanarBounds(stacks);
     if (!bounds || viewport.width < 1 || viewport.height < 1) {
         return initialView;
     }
@@ -426,81 +399,6 @@ export function getPublicGardenCaptureInitialView({
         ...initialView,
         cameraZoom: Math.max(minimumZoom, Math.min(180, fittedZoom)),
     };
-}
-
-export function resolvePublicGardenSceneInitialView({
-    captureFitGarden,
-    captureViewport,
-    initialView,
-    resolveStructureFraming,
-    stacks,
-    structureBounds,
-}: {
-    captureFitGarden: boolean;
-    captureViewport?: PublicGardenCaptureViewport;
-    initialView: PublicGardenInitialView;
-    resolveStructureFraming: boolean;
-    stacks: Stack[];
-    structureBounds?: GardenStructureHorizontalBounds | null;
-}) {
-    if (!resolveStructureFraming) {
-        return initialView;
-    }
-
-    if (captureFitGarden && captureViewport) {
-        return getPublicGardenCaptureInitialView({
-            stacks,
-            structureBounds,
-            viewport: captureViewport,
-        });
-    }
-
-    return getPublicGardenInitialView({
-        stacks,
-        structureBounds,
-    });
-}
-
-export function getPublicGardenStructureInitialViewKey({
-    gardenId,
-    structures,
-}: {
-    gardenId?: number | string | null;
-    structures: readonly PublicGardenStructureFramingEntry[];
-}) {
-    const gardenKey = gardenId == null ? 'stacks' : gardenId.toString();
-    const footprintKey = structures
-        .map(({ footprint, structureId }) => {
-            const { maxX, maxY, minX, minY } = footprint.bounds;
-            return `${structureId}:${minX},${minY},${maxX},${maxY}`;
-        })
-        .sort()
-        .join('|');
-
-    return `${gardenKey}:structure-footprints:${footprintKey || 'none'}`;
-}
-
-export function isPublicGardenStructureCaptureReady({
-    diagnosticStatus,
-    hasPlan,
-    rejectedRecordCount,
-    rendererReady,
-    savedStructureCount,
-}: {
-    diagnosticStatus: GardenStructureSceneDiagnosticStatus;
-    hasPlan: boolean;
-    rejectedRecordCount: number;
-    rendererReady: boolean;
-    savedStructureCount: number;
-}) {
-    return (
-        savedStructureCount === 0 ||
-        (hasPlan &&
-            rendererReady &&
-            rejectedRecordCount === 0 &&
-            (diagnosticStatus === 'ready' ||
-                diagnosticStatus === 'rendered-with-diagnostics'))
-    );
 }
 
 function normalizePublicGardenBackgroundPalette(value: unknown) {
@@ -532,7 +430,6 @@ function publicGardenForGameState(
         homeCamera: garden.homeCamera ?? null,
         farmId: garden.farmId,
         stacks: normalizedStacks,
-        structures: garden.structures,
         location: {
             lat: garden.latitude,
             lon: garden.longitude,
@@ -591,11 +488,12 @@ function PublicGardenScene({
     onSceneReady,
     renderDetails,
     renderGroundDecorations,
-    resolveStructureFraming,
     sceneChildren,
     selectedBlockFocus,
     visitorPresence,
+    qualityOverride,
 }: {
+    qualityOverride?: GameQualityProfile;
     cameraMinZoom?: number;
     capture?: PublicGardenViewerProps['capture'];
     initialView: PublicGardenInitialView;
@@ -618,82 +516,16 @@ function PublicGardenScene({
     onSceneReady?: () => void;
     renderDetails: boolean;
     renderGroundDecorations?: boolean;
-    resolveStructureFraming: boolean;
     sceneChildren?: ReactNode;
     selectedBlockFocus?: PublicGardenSelectedBlockFocus;
     visitorPresence?: GardenVisitorPresenceController;
 }) {
     const blockDataQuery = useBlockData();
+    const retainedScene = useRetainedGardenScene(
+        normalizedStacks,
+        blockDataQuery.data,
+    );
     const blockDataLoaded = Boolean(blockDataQuery.data);
-    const structureBaseHeightResolver = useMemo(
-        () =>
-            createGardenStructureSceneBaseHeightResolver({
-                blockData: blockDataQuery.data,
-                records: garden?.structures,
-                stacks: normalizedStacks,
-            }),
-        [blockDataQuery.data, garden?.structures, normalizedStacks],
-    );
-    const structureScene = useGardenStructureSceneSnapshot({
-        gardenId: garden?.id,
-        includeCollision: Boolean(visitorPresence),
-        records: blockDataLoaded ? garden?.structures : undefined,
-        resolveBaseHeight: structureBaseHeightResolver,
-    });
-    const savedStructureCount = garden?.structures?.length ?? 0;
-    const structureBounds = structureScene.plan?.worldBounds;
-    const resolvedInitialView = useMemo(
-        () =>
-            resolvePublicGardenSceneInitialView({
-                captureFitGarden: Boolean(capture?.fitGarden),
-                captureViewport:
-                    capture?.fitGarden &&
-                    capture.output?.width &&
-                    capture.output.height
-                        ? {
-                              height: capture.output.height,
-                              width: capture.output.width,
-                          }
-                        : undefined,
-                initialView,
-                resolveStructureFraming,
-                stacks: normalizedStacks,
-                structureBounds,
-            }),
-        [
-            capture?.fitGarden,
-            capture?.output?.height,
-            capture?.output?.width,
-            initialView,
-            normalizedStacks,
-            resolveStructureFraming,
-            structureBounds,
-        ],
-    );
-    const initialViewKey = resolveStructureFraming
-        ? getPublicGardenStructureInitialViewKey({
-              gardenId: garden?.id,
-              structures: structureScene.plan?.structures ?? [],
-          })
-        : (garden?.id ?? 'stacks');
-    const structurePlanKey = structureScene.plan?.cacheKey ?? null;
-    const [readyStructurePlanKey, setReadyStructurePlanKey] = useState<
-        string | null
-    >(null);
-    const structureRendererReady =
-        structurePlanKey !== null && readyStructurePlanKey === structurePlanKey;
-    const markStructureRendererReady = useCallback(() => {
-        if (structurePlanKey !== null) {
-            setReadyStructurePlanKey(structurePlanKey);
-        }
-    }, [structurePlanKey]);
-    const structureCaptureReady = isPublicGardenStructureCaptureReady({
-        diagnosticStatus: structureScene.diagnostics.status,
-        hasPlan: structureScene.plan !== null,
-        rejectedRecordCount: structureScene.diagnostics.rejectedRecordCount,
-        rendererReady: structureRendererReady,
-        savedStructureCount,
-    });
     const plantSortsQuery = useAllSorts(loadPlantSorts);
     const plantSortsLoaded = Boolean(plantSortsQuery.data);
     const fetchingQueryCount = useIsFetching();
@@ -706,47 +538,12 @@ function PublicGardenScene({
                 ? publicGardenWallpaperCaptureQuality
                 : capture
                   ? publicGardenCaptureQuality
-                  : resolveGameQualityProfile(),
-        [capture],
+                  : (qualityOverride ?? resolveGameQualityProfile()),
+        [capture, qualityOverride],
     );
     const renderLivingDetails = renderDetails && gardenCacheReady;
     const renderTransientDetails = renderLivingDetails && !capture;
     const [visualOccluders, setVisualOccluders] = useState<Group | null>(null);
-    const [structureInteriorPresentation, setStructureInteriorPresentation] =
-        useState<GardenStructureAvatarInteriorPresentation>(
-            emptyGardenStructureAvatarInteriorPresentation,
-        );
-    const publishStructureInteriorPresentation = useCallback(
-        (next: GardenStructureAvatarInteriorPresentation) => {
-            setStructureInteriorPresentation((current) =>
-                areGardenStructureAvatarInteriorPresentationsEqual(
-                    current,
-                    next,
-                )
-                    ? current
-                    : next,
-            );
-        },
-        [],
-    );
-    const hiddenStructureInstanceIds = useMemo(
-        () => new Set(structureInteriorPresentation.hiddenInstanceIds),
-        [structureInteriorPresentation.hiddenInstanceIds],
-    );
-    const visibleInteriorStructureIds = useMemo(
-        () =>
-            structureInteriorPresentation.structureId
-                ? new Set([structureInteriorPresentation.structureId])
-                : new Set<string>(),
-        [structureInteriorPresentation.structureId],
-    );
-    useEffect(() => {
-        if (!visitorPresence || capture) {
-            publishStructureInteriorPresentation(
-                emptyGardenStructureAvatarInteriorPresentation,
-            );
-        }
-    }, [capture, publishStructureInteriorPresentation, visitorPresence]);
     const interactWithAvatarBlock = useCallback(
         (block: Block): GardenAvatarInteractionResult => {
             if (!onAvatarInteractBlock) {
@@ -775,38 +572,7 @@ function PublicGardenScene({
             data-public-garden-capture-plants-ready={
                 capture ? plantSortsLoaded : undefined
             }
-            data-public-garden-capture-structures-ready={
-                capture ? structureCaptureReady : undefined
-            }
             data-public-garden-sound={noSound ? 'disabled' : 'enabled'}
-            data-garden-structure-collision-status={
-                structureScene.collisionWorld
-                    ? 'ready'
-                    : savedStructureCount > 0
-                      ? 'missing'
-                      : 'empty'
-            }
-            data-garden-structure-diagnostic-status={
-                structureScene.diagnostics.status
-            }
-            data-garden-structure-rejected-count={
-                structureScene.diagnostics.rejectedRecordCount
-            }
-            data-garden-structure-rendered-count={
-                structureScene.plan?.structures.length ?? 0
-            }
-            data-garden-structure-first-id={
-                structureScene.plan?.structures[0]?.structureId
-            }
-            data-garden-structure-hidden-instance-count={
-                structureInteriorPresentation.hiddenInstanceIds.length
-            }
-            data-garden-structure-interior-id={
-                structureInteriorPresentation.structureId ?? 'outside'
-            }
-            data-garden-structure-warning-count={
-                structureScene.diagnostics.warningCount
-            }
         >
             {blockDataLoaded ? (
                 <Scene
@@ -822,7 +588,7 @@ function PublicGardenScene({
                         Boolean(capture),
                     )}
                     pixelRatio={capture ? 1 : undefined}
-                    position={resolvedInitialView.cameraPosition}
+                    position={initialView.cameraPosition}
                     quality={qualityProfile}
                     onContextLost={onSceneContextLost}
                     rendererOptions={
@@ -837,7 +603,7 @@ function PublicGardenScene({
                             : undefined
                     }
                     suspendWhenOffscreen={!capture}
-                    zoom={resolvedInitialView.cameraZoom}
+                    zoom={initialView.cameraZoom}
                     className="h-full w-full"
                 >
                     <ParticleSystemProvider>
@@ -866,27 +632,11 @@ function PublicGardenScene({
                                             ref={setVisualOccluders}
                                             name="PublicGardenScene:VisualOccluders"
                                         >
-                                            {normalizedStacks.map((stack) =>
-                                                stack.blocks.map((block) => (
-                                                    <EntityFactory
-                                                        key={`${stack.position.x}|${stack.position.z}|${block.id}-${block.name}`}
-                                                        name={block.name}
-                                                        stack={stack}
-                                                        block={block}
-                                                        stacks={
-                                                            normalizedStacks
-                                                        }
-                                                        rotation={
-                                                            block.rotation
-                                                        }
-                                                        variant={block.variant}
-                                                        noRenderInView={
-                                                            instancedBlockNames
-                                                        }
-                                                        noControl
-                                                    />
-                                                )),
-                                            )}
+                                            <RetainedEntityChunks
+                                                scene={retainedScene}
+                                                noControl
+                                                includeInstancedDebug
+                                            />
                                             <EntityInstances
                                                 farmId={garden?.farmId}
                                                 quality={qualityProfile}
@@ -894,33 +644,11 @@ function PublicGardenScene({
                                                     renderLivingDetails,
                                                     renderGroundDecorations,
                                                 )}
-                                                stacks={normalizedStacks}
+                                                stacks={retainedScene.stacks}
                                                 renderDetails={
                                                     renderLivingDetails
                                                 }
                                             />
-                                            {structureScene.plan?.structures
-                                                .length ? (
-                                                <GardenStructureSceneLayerDynamic
-                                                    castShadows={
-                                                        qualityProfile.shadows &&
-                                                        !capture?.transparent
-                                                    }
-                                                    renderProps={
-                                                        renderLivingDetails
-                                                    }
-                                                    hiddenInstanceIds={
-                                                        hiddenStructureInstanceIds
-                                                    }
-                                                    onRendererReady={
-                                                        markStructureRendererReady
-                                                    }
-                                                    snapshot={structureScene}
-                                                    visibleInteriorStructureIds={
-                                                        visibleInteriorStructureIds
-                                                    }
-                                                />
-                                            ) : null}
                                             {sceneChildren}
                                             {onSceneReady ? (
                                                 <PublicGardenSceneReady
@@ -934,11 +662,31 @@ function PublicGardenScene({
                                                     />
                                                 </Suspense>
                                             ) : null}
+                                            <Suspense fallback={null}>
+                                                <Hedgehogs
+                                                    enabled={
+                                                        renderTransientDetails
+                                                    }
+                                                    stacks={
+                                                        retainedScene.stacks
+                                                    }
+                                                    gardenId={garden?.id}
+                                                    quality={qualityProfile}
+                                                    weather={
+                                                        noWeather
+                                                            ? {
+                                                                  rainy: 0,
+                                                                  snowy: 0,
+                                                              }
+                                                            : undefined
+                                                    }
+                                                />
+                                            </Suspense>
                                             {renderTransientDetails && (
                                                 <Suspense fallback={null}>
                                                     <Birds
                                                         stacks={
-                                                            normalizedStacks
+                                                            retainedScene.stacks
                                                         }
                                                     />
                                                 </Suspense>
@@ -946,9 +694,12 @@ function PublicGardenScene({
                                             {renderTransientDetails && (
                                                 <Suspense fallback={null}>
                                                     <Squirrels
+                                                        seasonalEffectsEnabled={
+                                                            !noWeather
+                                                        }
                                                         farmId={garden?.farmId}
                                                         stacks={
-                                                            normalizedStacks
+                                                            retainedScene.stacks
                                                         }
                                                     />
                                                 </Suspense>
@@ -958,7 +709,7 @@ function PublicGardenScene({
                                                     <Frogs
                                                         gardenId={garden?.id}
                                                         stacks={
-                                                            normalizedStacks
+                                                            retainedScene.stacks
                                                         }
                                                     />
                                                 </Suspense>
@@ -969,7 +720,7 @@ function PublicGardenScene({
                                                         farmId={garden?.farmId}
                                                         gardenId={garden?.id}
                                                         stacks={
-                                                            normalizedStacks
+                                                            retainedScene.stacks
                                                         }
                                                     />
                                                 </Suspense>
@@ -979,7 +730,7 @@ function PublicGardenScene({
                                                     <Cats
                                                         farmId={garden?.farmId}
                                                         stacks={
-                                                            normalizedStacks
+                                                            retainedScene.stacks
                                                         }
                                                     />
                                                 </Suspense>
@@ -989,7 +740,7 @@ function PublicGardenScene({
                                                     <Dogs
                                                         farmId={garden?.farmId}
                                                         stacks={
-                                                            normalizedStacks
+                                                            retainedScene.stacks
                                                         }
                                                     />
                                                 </Suspense>
@@ -999,19 +750,19 @@ function PublicGardenScene({
                                                     <Chickens
                                                         farmId={garden?.farmId}
                                                         stacks={
-                                                            normalizedStacks
+                                                            retainedScene.stacks
                                                         }
                                                     />
                                                     <Piglets
                                                         farmId={garden?.farmId}
                                                         stacks={
-                                                            normalizedStacks
+                                                            retainedScene.stacks
                                                         }
                                                     />
                                                     <Sheep
                                                         farmId={garden?.farmId}
                                                         stacks={
-                                                            normalizedStacks
+                                                            retainedScene.stacks
                                                         }
                                                     />
                                                 </Suspense>
@@ -1062,9 +813,6 @@ function PublicGardenScene({
                                             {visitorPresence ? (
                                                 <Suspense fallback={null}>
                                                     <GardenAvatar
-                                                        additionalCollisionWorld={
-                                                            structureScene.collisionWorld
-                                                        }
                                                         activationRequest={
                                                             localVisitorActivationRequest
                                                         }
@@ -1080,9 +828,6 @@ function PublicGardenScene({
                                                         onPresenceChange={
                                                             visitorPresence.onLocalPresenceChange
                                                         }
-                                                        onStructureInteriorChange={
-                                                            publishStructureInteriorPresentation
-                                                        }
                                                         onInteractBlock={
                                                             interactWithAvatarBlock
                                                         }
@@ -1094,12 +839,7 @@ function PublicGardenScene({
                                                             undefined
                                                         }
                                                         stacks={
-                                                            normalizedStacks
-                                                        }
-                                                        structureCollectionPlan={
-                                                            capture
-                                                                ? null
-                                                                : structureScene.plan
+                                                            retainedScene.stacks
                                                         }
                                                     />
                                                     {visitorPresence.visitors.map(
@@ -1127,7 +867,7 @@ function PublicGardenScene({
                                                         }
                                                         onSelect={onSelectBlock}
                                                         stacks={
-                                                            normalizedStacks
+                                                            retainedScene.stacks
                                                         }
                                                     />
                                                 ) : null}
@@ -1135,11 +875,16 @@ function PublicGardenScene({
                                                     onSelect={
                                                         onSelectRaisedBedBlock
                                                     }
-                                                    stacks={normalizedStacks}
+                                                    stacks={
+                                                        retainedScene.stacks
+                                                    }
                                                 />
                                                 <BlockInteractionLayer
+                                                    scene={retainedScene}
                                                     controlsEnabled
-                                                    stacks={normalizedStacks}
+                                                    stacks={
+                                                        retainedScene.stacks
+                                                    }
                                                 />
                                             </>
                                         ) : null}
@@ -1154,21 +899,19 @@ function PublicGardenScene({
                                     !gardenAvatarActive &&
                                     !noControls
                                 }
-                                initialPosition={
-                                    resolvedInitialView.cameraPosition
-                                }
+                                initialPosition={initialView.cameraPosition}
                                 initialSnapshot={initialSnapshot}
-                                initialTarget={resolvedInitialView.cameraTarget}
-                                initialViewKey={initialViewKey}
-                                initialZoom={resolvedInitialView.cameraZoom}
+                                initialTarget={initialView.cameraTarget}
+                                initialViewKey={garden?.id ?? 'stacks'}
+                                initialZoom={initialView.cameraZoom}
                             />
                             {capture ? (
                                 <PublicGardenCaptureProbe
                                     key={capture.key}
                                     enabled={
-                                        renderLivingDetails &&
-                                        plantSortsLoaded &&
-                                        structureCaptureReady
+                                        gardenCacheReady &&
+                                        blockDataLoaded &&
+                                        plantSortsLoaded
                                     }
                                     fitSceneObjectName={
                                         capture.fitGarden
@@ -1232,11 +975,13 @@ function SeedPublicGardenQueryCache({
     children,
     client,
     garden,
+    winterMode = 'summer',
 }: {
     cacheKey: string;
     children: (gardenCacheReady: boolean) => ReactNode;
     client: QueryClient;
     garden?: ReturnType<typeof publicGardenForGameState>;
+    winterMode?: PublicGardenCapture['winterMode'];
 }) {
     const [seededCacheKey, setSeededCacheKey] = useState<string | null>(
         garden ? null : cacheKey,
@@ -1257,11 +1002,11 @@ function SeedPublicGardenQueryCache({
             },
         ]);
         client.setQueryData(
-            currentGardenKeys('summer', garden.id, undefined, undefined),
+            currentGardenKeys(winterMode, garden.id, undefined, undefined),
             garden,
         );
         setSeededCacheKey(cacheKey);
-    }, [cacheKey, client, garden]);
+    }, [cacheKey, client, garden, winterMode]);
 
     return children(seededCacheKey === cacheKey);
 }
@@ -1274,6 +1019,8 @@ export function PublicGardenViewer({
     deferDetails = true,
     fixedTime,
     garden,
+    renderOnlyBlockData,
+    qualityOverride,
     initialView: initialViewOverride,
     interactiveBlockIds,
     localVisitorActivationRequest,
@@ -1304,7 +1051,9 @@ export function PublicGardenViewer({
             appBaseUrl: resolvedAppBaseUrl,
             authenticatedGardenQueriesEnabled: false,
             spriteBaseUrl: resolvedSpriteBaseUrl,
-            dayNightCycleDisabled: capture?.phase ? false : undefined,
+            dayNightCycleDisabled:
+                capture?.dayNightCycleDisabled ??
+                (capture?.phase ? false : undefined),
             freezeTime:
                 fixedTime ??
                 (capture
@@ -1317,7 +1066,7 @@ export function PublicGardenViewer({
                     : null),
             isMock: false,
             timeLocation: initialTimeLocation,
-            winterMode: 'summer',
+            winterMode: capture?.winterMode ?? 'summer',
         });
     }
     useDisposeGameStateStore(storeRef.current);
@@ -1325,6 +1074,16 @@ export function PublicGardenViewer({
     const clientRef = useRef<QueryClient>(null);
     if (!clientRef.current) {
         clientRef.current = new QueryClient();
+        if (!garden && renderOnlyBlockData) {
+            // The display snapshot remains local even after a long-lived tab becomes stale.
+            clientRef.current.setQueryDefaults(['blocks'], { enabled: false });
+            clientRef.current.setQueryData(['blocks'], renderOnlyBlockData);
+            clientRef.current.setQueryData(['sorts'], []);
+            clientRef.current.setQueryDefaults(['operations'], {
+                enabled: false,
+            });
+            clientRef.current.setQueryData(['operations'], []);
+        }
     }
     useEffect(() => {
         const client = clientRef.current;
@@ -1389,12 +1148,12 @@ export function PublicGardenViewer({
         initialViewOverride,
         normalizedStacks,
     ]);
-    const resolveStructureFraming =
-        !initialViewOverride &&
-        (Boolean(capture?.fitGarden) || !garden?.homeCamera);
     const deferredRenderDetails = useDeferredSceneDetails(deferDetails);
     const renderDetails = renderDetailsOverride ?? deferredRenderDetails;
-    const loadPlantSorts = renderDetailsOverride !== false || Boolean(capture);
+    const loadPlantSorts =
+        !garden && renderOnlyBlockData
+            ? false
+            : renderDetailsOverride !== false || Boolean(capture);
     const cacheKey = getPublicGardenCacheKey(garden);
     const [selectedRaisedBedId, setSelectedRaisedBedId] = useState<
         number | null
@@ -1523,6 +1282,7 @@ export function PublicGardenViewer({
                     }}
                 >
                     <SeedPublicGardenQueryCache
+                        winterMode={capture?.winterMode}
                         cacheKey={cacheKey}
                         client={clientRef.current}
                         garden={gameGarden}
@@ -1535,6 +1295,7 @@ export function PublicGardenViewer({
                                 )}
                             >
                                 <PublicGardenScene
+                                    qualityOverride={qualityOverride}
                                     cameraMinZoom={cameraMinZoom}
                                     capture={capture}
                                     className="size-full"
@@ -1569,9 +1330,6 @@ export function PublicGardenViewer({
                                     renderDetails={renderDetails}
                                     renderGroundDecorations={
                                         renderGroundDecorations
-                                    }
-                                    resolveStructureFraming={
-                                        resolveStructureFraming
                                     }
                                     sceneChildren={sceneChildren}
                                     selectedBlockFocus={selectedBlockFocus}

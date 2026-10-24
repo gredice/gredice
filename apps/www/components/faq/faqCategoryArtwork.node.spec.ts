@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import test from 'node:test';
-import { qualityHarvestSafetyFaqEntries } from '../../lib/plants/qualityHarvestSafetyFaq.ts';
 import {
     faqCategoryArtwork,
     getFaqCategoryArtwork,
     resolveFaqCategoryImage,
 } from './faqCategoryArtwork.ts';
+import { faqTestEntries } from './faqTestEntries.ts';
 import { groupFaqCategories } from './groupFaqCategories.ts';
 
 test('all known FAQ categories have a distinct checked-in asset', () => {
@@ -69,9 +69,9 @@ test('blank and invalid image URLs use category defaults; unknown categories req
 });
 
 test('category grouping keeps complete entries and uses stable names when labels change', () => {
-    const original = qualityHarvestSafetyFaqEntries[0];
+    const original = faqTestEntries[0];
     const renamed = {
-        ...qualityHarvestSafetyFaqEntries[1],
+        ...faqTestEntries[1],
         attributes: {
             category: {
                 ...original.attributes.category,

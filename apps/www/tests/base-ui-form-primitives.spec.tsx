@@ -2,7 +2,7 @@ import { Checkbox } from '@gredice/ui/Checkbox';
 import { Progress } from '@gredice/ui/Progress';
 import { Slider } from '@gredice/ui/Slider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
-import { expect, test } from '@playwright/experimental-ct-react';
+import { expect, test } from './component-fixtures';
 import '../app/globals.css';
 
 test('preserves checkbox indeterminate and native form behavior', async ({

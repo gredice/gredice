@@ -19,14 +19,17 @@ import {
 } from 'react';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { InlineLoginDialog } from '../auth/InlineLoginDialog';
+import {
+    inputControlClassName,
+    selectControlClassName,
+    textareaControlClassName,
+} from './communityControlStyles';
+import { errorMessage, isSubmitResponse } from './communitySuggestionUtils';
+import { ExistingPlantHealthSuggestionForm } from './ExistingPlantHealthSuggestionForm';
+import { PlantHealthSuggestionMode } from './PlantHealthSuggestionMode';
 import { PlantReferencePicker } from './PlantReferencePicker';
 
 const communitySuggestionParam = 'communitySuggestion';
-const selectControlClassName =
-    'h-10 w-full rounded-md border border-border/80 bg-card px-3 text-sm text-foreground shadow-sm ring-offset-background transition-colors hover:border-primary/40 focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-muted/70 disabled:text-muted-foreground';
-const textareaControlClassName =
-    'w-full rounded-md border border-border/80 bg-card px-3 py-2 text-sm text-foreground shadow-sm ring-offset-background transition-colors placeholder:text-muted-foreground/70 hover:border-primary/40 focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-muted/70 disabled:text-muted-foreground';
-
 type OperationApplication =
     | 'farm'
     | 'garden'
@@ -46,17 +49,17 @@ export type CommunitySuggestionPlantOption = {
 
 type CommonProps = {
     className?: string;
+    compact?: boolean;
     publicPath: string;
     trigger?: ReactElement;
 };
 
 export type CommunityEntitySuggestionButtonProps = CommonProps &
     (
-        | {
-              kind: 'plantSort';
+        | (({ kind: 'plantSort' } | { kind: 'plantTip' }) & {
               parentPlantId: number;
               parentPlantName: string;
-          }
+          })
         | {
               kind: 'operation';
               stages: CommunityOperationSuggestionStage[];
@@ -64,6 +67,7 @@ export type CommunityEntitySuggestionButtonProps = CommonProps &
         | {
               kind: 'disease' | 'pest';
               plants: CommunitySuggestionPlantOption[];
+              defaultAffectedPlantId?: number;
           }
     );
 
@@ -90,6 +94,13 @@ function isPlantHealthSuggestionKind(
 
 function suggestionLabels(kind: CommunityEntitySuggestionButtonProps['kind']) {
     switch (kind) {
+        case 'plantTip':
+            return {
+                trigger: 'Predloži novi savjet',
+                title: 'Predloži novi savjet',
+                name: 'Naslov savjeta',
+                description: 'Tvoj savjet',
+            };
         case 'plantSort':
             return {
                 trigger: 'Predloži novu sortu',
@@ -106,43 +117,19 @@ function suggestionLabels(kind: CommunityEntitySuggestionButtonProps['kind']) {
             };
         case 'disease':
             return {
-                trigger: 'Predloži novu bolest',
-                title: 'Predloži novu bolest',
+                trigger: 'Predloži bolest',
+                title: 'Predloži bolest',
                 name: 'Naziv bolesti',
                 description: 'Kratki opis bolesti',
             };
         case 'pest':
             return {
-                trigger: 'Predloži novog štetnika',
-                title: 'Predloži novog štetnika',
+                trigger: 'Predloži štetnika',
+                title: 'Predloži štetnika',
                 name: 'Naziv štetnika',
                 description: 'Kratki opis štetnika',
             };
     }
-}
-
-function errorMessage(value: unknown) {
-    if (
-        typeof value === 'object' &&
-        value !== null &&
-        'message' in value &&
-        typeof value.message === 'string'
-    ) {
-        return value.message;
-    }
-    if (value instanceof Error) {
-        return value.message;
-    }
-    return 'Slanje prijedloga nije uspjelo.';
-}
-
-function isSubmitResponse(value: unknown): value is { requestId: number } {
-    return (
-        typeof value === 'object' &&
-        value !== null &&
-        'requestId' in value &&
-        typeof value.requestId === 'number'
-    );
 }
 
 function suggestionReturnPath(contextKey: string, fallbackPath: string) {
@@ -175,13 +162,22 @@ export function CommunityEntitySuggestionButton(
     props: CommunityEntitySuggestionButtonProps,
 ) {
     const [open, setOpen] = useState(false);
+    const [healthMode, setHealthMode] = useState<'existing' | 'new'>(
+        isPlantHealthSuggestionKind(props.kind) ? 'existing' : 'new',
+    );
     const [loginOpen, setLoginOpen] = useState(false);
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [source, setSource] = useState('');
     const [note, setNote] = useState('');
     const [plantStageId, setPlantStageId] = useState('');
-    const [affectedPlantIds, setAffectedPlantIds] = useState<string[]>([]);
+    const defaultAffectedPlantId =
+        props.kind === 'disease' || props.kind === 'pest'
+            ? props.defaultAffectedPlantId
+            : undefined;
+    const [affectedPlantIds, setAffectedPlantIds] = useState<string[]>(() =>
+        defaultAffectedPlantId ? [String(defaultAffectedPlantId)] : [],
+    );
     const [symptoms, setSymptoms] = useState('');
     const [favorableConditions, setFavorableConditions] = useState('');
     const [severity, setSeverity] = useState('');
@@ -195,9 +191,11 @@ export function CommunityEntitySuggestionButton(
     const fieldIdPrefix = useId();
     const { data: user, isLoading: isLoadingUser } = useCurrentUser();
     const contextKey =
-        props.kind === 'plantSort'
-            ? `plantSort:${props.parentPlantId}`
-            : props.kind;
+        props.kind === 'plantSort' || props.kind === 'plantTip'
+            ? `${props.kind}:${props.parentPlantId}`
+            : defaultAffectedPlantId
+              ? `${props.kind}:${defaultAffectedPlantId}`
+              : props.kind;
     const returnTo = useMemo(
         () => suggestionReturnPath(contextKey, props.publicPath),
         [contextKey, props.publicPath],
@@ -219,12 +217,17 @@ export function CommunityEntitySuggestionButton(
     }, [open]);
 
     function resetForm() {
+        setHealthMode(
+            isPlantHealthSuggestionKind(props.kind) ? 'existing' : 'new',
+        );
         setName('');
         setDescription('');
         setSource('');
         setNote('');
         setPlantStageId('');
-        setAffectedPlantIds([]);
+        setAffectedPlantIds(
+            defaultAffectedPlantId ? [String(defaultAffectedPlantId)] : [],
+        );
         setSymptoms('');
         setFavorableConditions('');
         setSeverity('');
@@ -271,7 +274,7 @@ export function CommunityEntitySuggestionButton(
                     'entity-suggestions'
                 ];
             const response = await (async () => {
-                if (props.kind === 'plantSort') {
+                if (props.kind === 'plantSort' || props.kind === 'plantTip') {
                     return await suggestions.$post({
                         json: {
                             kind: props.kind,
@@ -342,9 +345,16 @@ export function CommunityEntitySuggestionButton(
             trigger={
                 props.trigger ?? (
                     <Button
-                        className={props.className}
+                        className={cx(
+                            props.compact &&
+                                'h-auto min-h-12 w-full self-start justify-start gap-2 whitespace-normal rounded-lg border-dashed border-muted-foreground/40 bg-card/40 p-3 text-left font-normal hover:border-muted-foreground/60 hover:bg-card/70',
+                            props.className,
+                        )}
+                        color={props.compact ? 'neutral' : undefined}
                         size="sm"
-                        startDecorator={<Add className="size-4" />}
+                        startDecorator={
+                            <Add aria-hidden className="size-4 shrink-0" />
+                        }
                         type="button"
                         variant="outlined"
                     >
@@ -362,13 +372,24 @@ export function CommunityEntitySuggestionButton(
                             className="text-muted-foreground"
                         >
                             Prijedlog ide na administratorski pregled prije
-                            stvaranja novog zapisa.
+                            javne objave promjene.
                         </Typography>
                     </Stack>
                     {successRequestId ? (
                         <Check className="size-5 shrink-0 text-green-700" />
                     ) : null}
                 </Row>
+
+                {!isLoadingUser &&
+                user &&
+                !successRequestId &&
+                isPlantHealthSuggestionKind(props.kind) ? (
+                    <PlantHealthSuggestionMode
+                        kind={props.kind}
+                        value={healthMode}
+                        onChange={setHealthMode}
+                    />
+                ) : null}
 
                 {isLoadingUser ? (
                     <Typography level="body2">
@@ -412,13 +433,23 @@ export function CommunityEntitySuggestionButton(
                             level="body2"
                             className="text-muted-foreground"
                         >
-                            Hvala ti. Novi zapis neće biti javno dostupan bez
-                            administratorske obrade i objave.
+                            Hvala ti. Promjena će biti javno vidljiva nakon
+                            administratorskog odobrenja.
                         </Typography>
                     </Stack>
+                ) : (props.kind === 'disease' || props.kind === 'pest') &&
+                  healthMode === 'existing' ? (
+                    <ExistingPlantHealthSuggestionForm
+                        kind={props.kind}
+                        plants={props.plants}
+                        defaultAffectedPlantId={props.defaultAffectedPlantId}
+                        publicPath={props.publicPath}
+                        onSuccess={setSuccessRequestId}
+                    />
                 ) : (
                     <form className="space-y-4" onSubmit={handleSubmit}>
-                        {props.kind === 'plantSort' ? (
+                        {props.kind === 'plantSort' ||
+                        props.kind === 'plantTip' ? (
                             <Typography
                                 level="body2"
                                 className="rounded-lg border border-border/70 bg-muted/30 p-3"
@@ -517,6 +548,7 @@ export function CommunityEntitySuggestionButton(
                         )}
 
                         <Input
+                            className={inputControlClassName}
                             fullWidth
                             label={labels.name}
                             maxLength={200}
@@ -596,6 +628,7 @@ export function CommunityEntitySuggestionButton(
                                     />
                                 </label>
                                 <Input
+                                    className={inputControlClassName}
                                     fullWidth
                                     label="Ozbiljnost (opcionalno)"
                                     maxLength={1000}
@@ -607,6 +640,7 @@ export function CommunityEntitySuggestionButton(
                             </>
                         ) : null}
                         <Input
+                            className={inputControlClassName}
                             fullWidth
                             label="Izvor ili poveznica (opcionalno)"
                             maxLength={500}

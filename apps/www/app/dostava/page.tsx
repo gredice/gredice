@@ -16,6 +16,7 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Typography } from '@gredice/ui/Typography';
+import { RelatedFaq } from '../../components/faq/RelatedFaq';
 import {
     Card,
     CardContent,
@@ -348,9 +349,31 @@ export default function DeliveryPage() {
                         dogovoreno vrijeme, pokušat ćemo te kontaktirati. U
                         slučaju da dostava ipak ne uspije, svoje povrće možeš
                         naknadno osobno preuzeti na našoj lokaciji u Zagrebu.
-                        Ako povrće ne preuzmeš u roku od{' '}
-                        <strong>72 sata</strong>, donirat ćemo ga onima kojima
-                        je najpotrebnije.
+                    </p>
+                    <h2>Neuspjela dostava i preuzimanje</h2>
+                    <p>
+                        Ako je dostava izostala zbog naše pogreške, obrati nam
+                        se radi dogovora o ispunjenju obveze ili drugom rješenju
+                        prema primjenjivim pravima. Naknadno osobno preuzimanje
+                        ne oduzima pravo na reklamaciju i nije obvezna zamjena
+                        za dostavu koju nismo uredno izvršili.
+                    </p>
+                    <p>
+                        Ako povrće ne preuzmeš nakon neuspjelog pokušaja
+                        dostave, obavijestit ćemo te o mjestu preuzimanja i roku
+                        od <strong>72 sata od te obavijesti</strong>. Nakon
+                        isteka roka nepreuzeto povrće može biti donirano samo
+                        ako je sigurno za konzumaciju. Hranu koja nije sigurna
+                        ne dostavljamo niti doniramo. Taj rok nije jamstvo da
+                        svaka vrsta povrća ostaje svježa 72 sata.
+                    </p>
+                    <p>
+                        Postupanje s nepreuzetim povrćem ne isključuje zakonska
+                        prava zbog neuredne dostave ili nedostatka proizvoda.
+                        Ako primijetiš problem, javi se što prije kako bismo
+                        mogli provjeriti stanje. Upute su na stranicama{' '}
+                        <a href={KnownPages.Refunds}>Povrat novca</a> i{' '}
+                        <a href={KnownPages.Contact}>Kontakt</a>.
                     </p>
                     <hr />
                     <p>
@@ -397,6 +420,7 @@ export default function DeliveryPage() {
                 <Typography level="h5">Imaš dodatna pitanja?</Typography>
                 <WhatsAppCard />
             </Stack>
+            <RelatedFaq placement="delivery" />
             <Row spacing={4} className="mt-8">
                 <Typography level="body1">
                     Jesu li ti informacije korisne?

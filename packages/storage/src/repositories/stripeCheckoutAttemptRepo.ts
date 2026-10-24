@@ -6,6 +6,7 @@ import {
 import { and, asc, desc, eq, gt, inArray, notExists, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { z } from 'zod';
+import { signalAutomationEventWrite, signalDueWork } from '../dueWork';
 import { events, shoppingCartItems, shoppingCarts } from '../schema';
 import { storage } from '../storage';
 import { lockAccountAndAssertNotDeleting } from './accountDeletionFenceRepo';
@@ -850,28 +851,50 @@ export async function setStripeCheckoutAttemptReconciliationCursor(
             'reconciliation_cursor_invalid',
         );
     }
-    // This append-only cursor schedules at-least-once scans; it is not a
-    // correctness lease. Attempt transitions still re-fold under their cart
-    // lock, so overlapping workers may duplicate work but cannot bypass the
-    // checkout attempt fence.
-    await storage()
-        .insert(events)
-        .values(
-            afterCreatedEventId === null
-                ? {
-                      aggregateId: reconciliationCursorAggregateId,
-                      data: { afterCreatedEventId: null },
-                      type: reconciliationCursorEventTypes.reset,
-                      version: 1,
-                  }
-                : {
-                      aggregateId: reconciliationCursorAggregateId,
-                      data: { afterCreatedEventId },
-                      type: reconciliationCursorEventTypes.advanced,
-                      version: 1,
-                  },
+    // Serialize cursor changes to avoid racing an advance when deciding that
+    // an empty reset is redundant. This is not an attempt-processing lease:
+    // overlapping scans remain at-least-once and use their existing cart fence.
+    return storage().transaction(async (tx) => {
+        await tx.execute(
+            sql`select pg_advisory_xact_lock(hashtext(${reconciliationCursorAggregateId}))`,
         );
-    return afterCreatedEventId ?? undefined;
+        if (afterCreatedEventId === null) {
+            const [latest] = await tx
+                .select({ data: events.data, type: events.type })
+                .from(events)
+                .where(eq(events.aggregateId, reconciliationCursorAggregateId))
+                .orderBy(desc(events.id))
+                .limit(1);
+            if (
+                !latest ||
+                (latest.type === reconciliationCursorEventTypes.reset &&
+                    z
+                        .object({ afterCreatedEventId: z.null() })
+                        .strict()
+                        .safeParse(latest.data).success)
+            ) {
+                return undefined;
+            }
+        }
+        await signalAutomationEventWrite(
+            tx.insert(events).values(
+                afterCreatedEventId === null
+                    ? {
+                          aggregateId: reconciliationCursorAggregateId,
+                          data: { afterCreatedEventId: null },
+                          type: reconciliationCursorEventTypes.reset,
+                          version: 1,
+                      }
+                    : {
+                          aggregateId: reconciliationCursorAggregateId,
+                          data: { afterCreatedEventId },
+                          type: reconciliationCursorEventTypes.advanced,
+                          version: 1,
+                      },
+            ),
+        );
+        return afterCreatedEventId ?? undefined;
+    });
 }
 
 export async function hasActiveStripeCheckoutAttemptForAccount(
@@ -1096,12 +1119,15 @@ export async function createStripeCheckoutAttempt(
                 outletReservationConflict,
             );
         }
-        await db.insert(events).values({
-            aggregateId: cartAggregateId(snapshot.cartId),
-            data: snapshot,
-            type: eventTypes.created,
-            version: 1,
-        });
+        await signalAutomationEventWrite(
+            db.insert(events).values({
+                aggregateId: cartAggregateId(snapshot.cartId),
+                data: snapshot,
+                type: eventTypes.created,
+                version: 1,
+            }),
+        );
+        await signalDueWork('stripe-checkout-orphan-recovery', now);
         return snapshot;
     });
 }
@@ -1128,12 +1154,15 @@ export async function bindStripeCheckoutAttempt({
             }
             return attempt;
         }
-        await db.insert(events).values({
-            aggregateId: cartAggregateId(cartId),
-            data: { attemptId, sessionId },
-            type: eventTypes.bound,
-            version: 1,
-        });
+        await signalAutomationEventWrite(
+            db.insert(events).values({
+                aggregateId: cartAggregateId(cartId),
+                data: { attemptId, sessionId },
+                type: eventTypes.bound,
+                version: 1,
+            }),
+        );
+        await signalDueWork('stripe-checkout-orphan-recovery');
         return { ...attempt, sessionId };
     });
 }
@@ -1177,15 +1206,17 @@ export async function recordStripeCheckoutAttemptReconciliationMiss({
                 status: 'existing',
             };
         }
-        const [recorded] = await db
-            .insert(events)
-            .values({
-                aggregateId: cartAggregateId(cartId),
-                data: { attemptId, observedAt: observedAt.toISOString() },
-                type: eventTypes.reconciliationMiss,
-                version: 1,
-            })
-            .returning({ createdAt: events.createdAt });
+        const [recorded] = await signalAutomationEventWrite(
+            db
+                .insert(events)
+                .values({
+                    aggregateId: cartAggregateId(cartId),
+                    data: { attemptId, observedAt: observedAt.toISOString() },
+                    type: eventTypes.reconciliationMiss,
+                    version: 1,
+                })
+                .returning({ createdAt: events.createdAt }),
+        );
         if (!recorded) {
             throw new StripeCheckoutAttemptConflictError(
                 'reconciliation_miss_not_recorded',
@@ -1230,12 +1261,14 @@ async function releaseLockedStripeCheckoutAttempt({
         return attempt;
     }
     if (!attempt.sessionId && sessionId) {
-        await db.insert(events).values({
-            aggregateId: cartAggregateId(cartId),
-            data: { attemptId, sessionId },
-            type: eventTypes.bound,
-            version: 1,
-        });
+        await signalAutomationEventWrite(
+            db.insert(events).values({
+                aggregateId: cartAggregateId(cartId),
+                data: { attemptId, sessionId },
+                type: eventTypes.bound,
+                version: 1,
+            }),
+        );
     }
     // Cleanup commits before the release event removes the cart fence.
     // Replays of an already released attempt intentionally skip cleanup so
@@ -1248,12 +1281,14 @@ async function releaseLockedStripeCheckoutAttempt({
         now,
         db,
     );
-    await db.insert(events).values({
-        aggregateId: cartAggregateId(cartId),
-        data: { attemptId, reason, sessionId },
-        type: eventTypes.released,
-        version: 1,
-    });
+    await signalAutomationEventWrite(
+        db.insert(events).values({
+            aggregateId: cartAggregateId(cartId),
+            data: { attemptId, reason, sessionId },
+            type: eventTypes.released,
+            version: 1,
+        }),
+    );
     return {
         ...attempt,
         releaseReason: reason,

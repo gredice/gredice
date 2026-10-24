@@ -4,14 +4,12 @@ import { BlockImage } from '@gredice/ui/BlockImage';
 import {
     GameBasketIcon,
     GameBirthdayIcon,
-    GameBlocksIcon,
     GameCalendarIcon,
     GameCommunityIcon,
     GameGiftIcon,
     GameHistoryIcon,
     GameReceiptIcon,
     GameRefundIcon,
-    GameRulerIcon,
     GameSunflowerIcon,
     GameTasksIcon,
 } from '@gredice/ui/GameIcons';
@@ -24,8 +22,21 @@ import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import { useCurrentAccount } from '../../hooks/useCurrentAccount';
 import { formatSunflowers } from '../../utils/sunflowerPricing';
-import { getGardenStructureSunflowerHistoryDescription } from './gardenStructureSunflowerReason';
 import { NoSunflowersPlaceholder } from './NoSunflowersPlaceholder';
+
+function sunflowerRefundToLabel(reason: string) {
+    switch (reason.split(':')[1]) {
+        case 'operation':
+            return 'Povrat sredstava za radnju';
+        case 'raisedBedField':
+        case 'selectedRaisedBedPlanting':
+            return 'Povrat za otkazano sijanje';
+        case 'not-sprouted':
+            return 'Povrat za neproklijalu biljku';
+        default:
+            return 'Povrat sredstava';
+    }
+}
 
 function sunflowerReasonToDescription(reason: string) {
     if (reason === 'registration') {
@@ -148,26 +159,10 @@ function sunflowerReasonToDescription(reason: string) {
             label: 'Kupnja',
         };
     }
-    if (reason.startsWith('refund:operation')) {
+    if (reason === 'refund' || reason.startsWith('refund:')) {
         return {
             icon: <GameRefundIcon className="size-10 shrink-0" aria-hidden />,
-            label: 'Povrat sredstava za radnju',
-        };
-    }
-
-    const gardenStructureDescription =
-        getGardenStructureSunflowerHistoryDescription(reason);
-    if (gardenStructureDescription) {
-        return {
-            icon:
-                gardenStructureDescription.icon === 'refund' ? (
-                    <GameRefundIcon className="size-10 shrink-0" aria-hidden />
-                ) : gardenStructureDescription.icon === 'resize' ? (
-                    <GameRulerIcon className="size-10 shrink-0" aria-hidden />
-                ) : (
-                    <GameBlocksIcon className="size-10 shrink-0" aria-hidden />
-                ),
-            label: gardenStructureDescription.label,
+            label: sunflowerRefundToLabel(reason),
         };
     }
 
@@ -216,10 +211,12 @@ export function SunflowersList({
     // Group similar items on a daily basis
     const historyGrouped = history.reduce((acc, event) => {
         const eventDate = new Date(event.createdAt).toLocaleDateString('hr-HR');
+        const eventReasonParts =
+            typeof event.reason === 'string' ? event.reason.split(':') : [];
         const eventReasonGroup =
-            typeof event.reason === 'string'
-                ? event.reason.split(':')[0]
-                : 'unknown';
+            eventReasonParts[0] === 'refund'
+                ? eventReasonParts.slice(0, 2).join(':')
+                : (eventReasonParts[0] ?? 'unknown');
         const key = `${eventDate}-${eventReasonGroup}-${event.amount}`;
 
         if (!acc.has(key)) {

@@ -1,5 +1,5 @@
 import { MarkdownBlock } from '@gredice/ui/cms';
-import { expect, test } from '@playwright/experimental-ct-react';
+import { expect, test } from './component-fixtures';
 
 const markdown = [
     '## Usporedba',

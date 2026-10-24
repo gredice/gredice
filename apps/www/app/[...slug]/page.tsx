@@ -1,8 +1,9 @@
-import { SectionsView } from '@gredice/ui/cms';
+import { resolveFaqSections, SectionsView } from '@gredice/ui/cms';
 import type { Metadata } from 'next';
 import { draftMode } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { sectionsComponentRegistry } from '../../components/shared/sectionsComponentRegistry';
+import { getFaqData } from '../../lib/plants/getFaqData';
 import { createCmsPageMetadata } from '../../lib/seo/cmsPageMetadata';
 import {
     type CmsRoutePage,
@@ -49,10 +50,18 @@ export default async function CmsPublishedPageRoute({
         notFound();
     }
 
+    const sections = parseCmsSectionData(page.content);
+    const resolvedSections = sections.some(
+        (section) =>
+            typeof section.faqSlugs === 'string' && section.faqSlugs.trim(),
+    )
+        ? resolveFaqSections(sections, await getFaqData())
+        : sections;
+
     return (
         <main>
             <SectionsView
-                sectionsData={parseCmsSectionData(page.content)}
+                sectionsData={resolvedSections}
                 componentsRegistry={sectionsComponentRegistry}
                 renderMode={parseCmsPageRenderMode(page.renderMode)}
                 renderMaxWidth={parseCmsPageRenderMaxWidth(page.renderMaxWidth)}

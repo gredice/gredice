@@ -19,6 +19,7 @@ import {
     type BulkPhotoOperationTarget,
     buildBulkPhotoImportPreview,
 } from './bulkPhotoOperationImportModel';
+import { useOptimisticScheduleActions } from './useOptimisticScheduleActions';
 
 type BulkPhotoOperationImportModalProps = {
     targets: BulkPhotoOperationTarget[];
@@ -63,6 +64,7 @@ function selectedImagesLabel(count: number) {
 export function BulkPhotoOperationImportModal({
     targets,
 }: BulkPhotoOperationImportModalProps) {
+    const { runScheduleAction } = useOptimisticScheduleActions();
     const [isOpen, setIsOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [hasFailedUploads, setHasFailedUploads] = useState(false);
@@ -196,20 +198,28 @@ export function BulkPhotoOperationImportModal({
                     imageUrls[index] ?? '',
                 ]),
             );
-            const completionResult = await completeOperationsWithImageUrls(
-                preview.groups.map((group) => ({
-                    operationId: group.target.operationId,
-                    expectedEntityId: group.target.expectedEntityId,
-                    expectedTaskVersionEventId:
-                        group.target.expectedTaskVersionEventId,
-                    imageUrls: group.assignments
-                        .map((assignment) =>
-                            imageUrlByItemId.get(assignment.itemId),
-                        )
-                        .filter((imageUrl): imageUrl is string =>
-                            Boolean(imageUrl),
-                        ),
-                })),
+            const completionResult = await runScheduleAction(
+                preview.groups.map(
+                    (group) => `operation:${group.target.operationId}`,
+                ),
+                (getVersion) =>
+                    completeOperationsWithImageUrls(
+                        preview.groups.map((group) => ({
+                            operationId: group.target.operationId,
+                            expectedEntityId: group.target.expectedEntityId,
+                            expectedTaskVersionEventId: getVersion(
+                                `operation:${group.target.operationId}`,
+                                group.target.expectedTaskVersionEventId,
+                            ),
+                            imageUrls: group.assignments
+                                .map((assignment) =>
+                                    imageUrlByItemId.get(assignment.itemId),
+                                )
+                                .filter((imageUrl): imageUrl is string =>
+                                    Boolean(imageUrl),
+                                ),
+                        })),
+                    ),
             );
             if (!completionResult.success) {
                 setHasCompletionFailures(true);

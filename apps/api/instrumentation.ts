@@ -16,6 +16,10 @@ const requestLogger = getPostHogLogger(`${POSTHOG_SERVICE_NAME}.request`);
 export async function register() {
     registerPostHogLoggerProvider();
     registerPostHogConsoleForwarding();
+
+    if (process.env.NEXT_RUNTIME === 'nodejs') {
+        console.info('API Node.js runtime version:', process.version);
+    }
 }
 
 export const onRequestError: Instrumentation.onRequestError = (

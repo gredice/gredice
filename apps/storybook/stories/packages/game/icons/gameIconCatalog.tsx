@@ -10,7 +10,9 @@ import {
 import { PlantGridIcon } from '@gredice/ui/GridIcons';
 import {
     SunflowerPackageVisual,
+    sunflowerGiftMascotArtwork,
     sunflowerMascotArtwork,
+    sunflowerSadMascotArtwork,
 } from '@gredice/ui/SunflowerVisuals';
 import { MoveIndicator } from '@packages/game/controls/components/MoveIndicator';
 import { RainIcon } from '@packages/game/hud/components/weather/icons/RainIcon';
@@ -104,6 +106,20 @@ const artwork = [
         source: 'packages/ui/src/SunflowerVisuals/assets/mascot-3d.webp',
         usage: 'packages/game/src/hud/SunflowersHud.tsx',
         description: 'Currency, rewards and Suncokret assistant identity.',
+    },
+    {
+        name: 'Sad sunflower',
+        src: sunflowerSadMascotArtwork,
+        source: 'packages/ui/src/SunflowerVisuals/assets/mascot-sad-3d.webp',
+        usage: 'packages/ui/src/ErrorFallback/ErrorFallback.tsx',
+        description: '404 pages, application errors and empty news states.',
+    },
+    {
+        name: 'Gift sunflower',
+        src: sunflowerGiftMascotArtwork,
+        source: 'packages/ui/src/SunflowerVisuals/assets/mascot-gift-3d.webp',
+        usage: 'apps/www/app/preporuke/page.tsx',
+        description: 'Referral rewards and sharing sunflower gifts.',
     },
     {
         name: 'SantaCapIcon',

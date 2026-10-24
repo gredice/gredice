@@ -6,6 +6,7 @@ export { GameBlossomIcon } from './GameBlossomIcon';
 export { GameCalendarIcon } from './GameCalendarIcon';
 export { GameCameraIcon } from './GameCameraIcon';
 export { GameCloudIcon } from './GameCloudIcon';
+export { GameCoinsIcon } from './GameCoinsIcon';
 export { GameCommunityIcon } from './GameCommunityIcon';
 export { GameContactIcon } from './GameContactIcon';
 export { GameControllerIcon } from './GameControllerIcon';

@@ -1,12 +1,11 @@
-import {
-    getCmsPagesReadyForReviewCount,
-    getEntityTypes,
-    getPendingAchievementsCount,
-    getSetting,
-    SettingsKeys,
-} from '@gredice/storage';
+import { getEntityTypes } from '@gredice/storage';
 import { resolveCurrentWeekStatisticsPeriod } from '../../../app/admin/statistics/statisticsPeriod';
 import { auth } from '../../../lib/auth/auth';
+import {
+    getAdminCmsReviewCount,
+    getAdminDashboardQuickActionsSetting,
+    getAdminPendingAchievementsCount,
+} from '../../../src/adminNavigationData';
 import { getPendingAdminApprovalTaskCount } from '../../../src/approvalTasks';
 import {
     buildDashboardQuickActionOptions,
@@ -47,9 +46,9 @@ export async function AdminDashboard({ searchParams }: AdminDashboardProps) {
         selectedDataPromise,
         weeklyDataPromise,
         getEntityTypes(),
-        getSetting(SettingsKeys.DashboardQuickActions),
-        getCmsPagesReadyForReviewCount(),
-        getPendingAchievementsCount(),
+        getAdminDashboardQuickActionsSetting(),
+        getAdminCmsReviewCount(),
+        getAdminPendingAchievementsCount(),
         getPendingAdminApprovalTaskCount(),
     ]);
 

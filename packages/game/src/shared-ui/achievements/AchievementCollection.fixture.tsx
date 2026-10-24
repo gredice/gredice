@@ -1,20 +1,29 @@
 import {
+    type AchievementActivity,
     type AchievementRecord,
     getAchievementDefinitions,
 } from '@gredice/js/achievements';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { accountAchievementsKeys } from '../../hooks/useAccountAchievements';
+import { AchievementsTab } from '../../modals/components/AchievementsTab';
 import { AchievementsOverview } from './AchievementsOverview';
 
-export type CollectionState = 'empty' | 'starter' | 'experienced' | 'complete';
+export type CollectionState =
+    | 'empty'
+    | 'starter'
+    | 'experienced'
+    | 'complete'
+    | 'progress';
 function recordsFor(state: CollectionState): AchievementRecord[] {
     if (state === 'empty') return [];
     return getAchievementDefinitions()
         .filter(
             (award) =>
                 state === 'complete' ||
-                (state === 'starter' ? award.level === 1 : award.level <= 6),
+                (state === 'starter'
+                    ? award.level === 1
+                    : award.level <= (state === 'progress' ? 4 : 6)),
         )
         .map((award) => {
             const status: AchievementRecord['status'] =
@@ -38,18 +47,58 @@ function recordsFor(state: CollectionState): AchievementRecord[] {
             };
         });
 }
+function responseFor(
+    state: CollectionState,
+    accountId = 'award-fixture-account',
+    activity?: AchievementActivity | null,
+) {
+    return {
+        accountId,
+        achievements: recordsFor(state),
+        activity:
+            activity === null
+                ? undefined
+                : (activity ?? {
+                      calculatedAt: '2026-09-22T08:00:00.000Z',
+                      counts:
+                          state === 'empty'
+                              ? {
+                                    planting: 0,
+                                    watering: 0,
+                                    harvest: 0,
+                                    community_editing: 0,
+                                    garden_diversity: 0,
+                                    seed_to_table: 0,
+                                }
+                              : {
+                                    planting: 78,
+                                    watering: 78,
+                                    harvest: 78,
+                                    community_editing: 32,
+                                    garden_diversity: 17,
+                                    seed_to_table: 27,
+                                },
+                  }),
+    };
+}
 export function AchievementCollectionShowcase({
     state = 'experienced',
     dark = false,
     allowAccountReset = false,
     allowApproval = false,
     unseeded = false,
+    accountUnseeded = false,
+    activity,
+    showGuide = false,
 }: {
     state?: CollectionState;
     dark?: boolean;
     allowAccountReset?: boolean;
     allowApproval?: boolean;
     unseeded?: boolean;
+    accountUnseeded?: boolean;
+    activity?: AchievementActivity | null;
+    showGuide?: boolean;
 }) {
     useEffect(() => {
         if (!dark) return;
@@ -64,11 +113,15 @@ export function AchievementCollectionShowcase({
         const client = new QueryClient({
             defaultOptions: { queries: { retry: false } },
         });
+        if (accountUnseeded) return client;
         client.setQueryData(['accounts', 'current'], {
             id: 'award-fixture-account',
         });
         if (!unseeded)
-            client.setQueryData(accountAchievementsKeys, recordsFor(state));
+            client.setQueryData(
+                [...accountAchievementsKeys, 'award-fixture-account'],
+                responseFor(state, 'award-fixture-account', activity),
+            );
         return client;
     });
     return (
@@ -85,14 +138,17 @@ export function AchievementCollectionShowcase({
                         Svaka nova razina donosi posebnu nagradu za tvoju
                         zbirku.
                     </p>
-                    <AchievementsOverview />
+                    {showGuide ? <AchievementsTab /> : <AchievementsOverview />}
                     {allowApproval && (
                         <button
                             type="button"
                             onClick={() =>
                                 queryClient.setQueryData(
-                                    accountAchievementsKeys,
-                                    recordsFor('complete'),
+                                    [
+                                        ...accountAchievementsKeys,
+                                        'award-fixture-account',
+                                    ],
+                                    responseFor('complete'),
                                 )
                             }
                         >
@@ -108,8 +164,11 @@ export function AchievementCollectionShowcase({
                                     { id: 'new-fixture-account' },
                                 );
                                 queryClient.setQueryData(
-                                    accountAchievementsKeys,
-                                    [],
+                                    [
+                                        ...accountAchievementsKeys,
+                                        'new-fixture-account',
+                                    ],
+                                    responseFor('empty', 'new-fixture-account'),
                                 );
                             }}
                         >

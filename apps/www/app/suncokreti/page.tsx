@@ -12,6 +12,7 @@ import {
 import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import Link from 'next/link';
+import { RelatedFaq } from '../../components/faq/RelatedFaq';
 import {
     Card,
     CardContent,
@@ -178,14 +179,15 @@ export default async function SunflowersPage() {
                         <CardContent>
                             <Stack spacing={3}>
                                 <Typography level="body2" secondary>
-                                    Pri naručivanju vrtne akcije suncokreti se
-                                    najprije rezerviraju. Ako se akcija otkaže
-                                    prije obrade, rezervacija se vraća na saldo.
+                                    Pri potvrdi narudžbe vrtne akcije suncokreti
+                                    se odmah oduzimaju sa salda. Ako se akcija
+                                    otkaže prije obrade, iznos se vraća na
+                                    saldo.
                                 </Typography>
                                 <Typography level="body2" secondary>
-                                    Nakon izvršene akcije rezervirani iznos se
-                                    naplaćuje iz salda, a dokumenti su dostupni
-                                    u korisničkom profilu.
+                                    Nakon izvršene akcije eventualni povrat ili
+                                    korekciju rješava podrška, a dokumenti su
+                                    dostupni u korisničkom profilu.
                                 </Typography>
                                 <Link
                                     className="font-medium text-primary underline-offset-4 hover:underline"
@@ -212,10 +214,11 @@ export default async function SunflowersPage() {
                         svaki suncokret može isplatiti u novcu.
                     </Typography>
                     <Typography level="body2">
-                        Otpuštanje rezervacije vraća bodove na raspoloživi
-                        saldo; ne vraća automatski raniju uplatu na karticu. Za
-                        zahtjev za povrat uplate ili korekciju naplaćene radnje
-                        navedi paket odnosno narudžbu na koju se zahtjev odnosi.
+                        Otkazivanje neobrađene vrtne akcije vraća bodove na
+                        raspoloživi saldo; ne vraća automatski raniju uplatu na
+                        karticu. Za zahtjev za povrat uplate ili korekciju
+                        naplaćene radnje navedi paket odnosno narudžbu na koju
+                        se zahtjev odnosi.
                     </Typography>
                     <Typography level="body2">
                         Kod povrata razlikujemo uplaćeni iznos, iskorištene
@@ -225,10 +228,11 @@ export default async function SunflowersPage() {
                         tvoj odgovarajući izričit pristanak.
                     </Typography>
                     <Typography level="body2">
-                        Ako želiš zatvoriti račun ili imaš neizvršenu narudžbu,
-                        možeš zatražiti pregled uplata, rezervacija i preostalog
-                        salda. Zatvaranje računa ne ukida zakonska prava iz
-                        ranijih narudžbi. Zahtjev za povrat i zahtjev za
+                        Prije zatvaranja računa s uplatama, suncokretima ili
+                        narudžbama javi se podršci radi pregleda uplata,
+                        narudžbi i preostalog salda. Automatsko brisanje takvog
+                        računa zaustavlja se kako bi se sačuvali podaci potrebni
+                        za provjeru povrata. Zahtjev za povrat i zahtjev za
                         brisanje osobnih podataka različiti su postupci.
                     </Typography>
                     <Typography level="body2">
@@ -252,6 +256,39 @@ export default async function SunflowersPage() {
                         </a>
                         .
                     </Typography>
+                </section>
+
+                <section
+                    className="rounded-2xl border bg-muted/30 p-6"
+                    aria-labelledby="achievement-rewards-title"
+                >
+                    <h2
+                        id="achievement-rewards-title"
+                        className="text-xl font-semibold"
+                    >
+                        Suncokreti za tvoja postignuća
+                    </h2>
+                    <p className="mt-2 text-muted-foreground">
+                        Sadnja, zalijevanje, berba i doprinos zajednici donose
+                        značke i nagrade nakon odobrenja postignuća.
+                    </p>
+                    <Link
+                        href={KnownPages.Achievements}
+                        className="mt-4 inline-block font-semibold underline underline-offset-4"
+                    >
+                        Pogledaj sva postignuća i nagrade
+                    </Link>
+                    <p className="mt-4 text-muted-foreground">
+                        Suncokrete trošiš na vrtne akcije, a XP skupljaš
+                        odobrenim postignućima. Kupnja i trošenje suncokreta ne
+                        mijenjaju tvoju razinu.
+                    </p>
+                    <Link
+                        href={KnownPages.Experience}
+                        className="mt-4 inline-block underline underline-offset-4"
+                    >
+                        Saznaj kako skupljati XP i napredovati kroz razine
+                    </Link>
                 </section>
 
                 <section className="space-y-4">
@@ -320,6 +357,7 @@ export default async function SunflowersPage() {
                     ) : null}
                 </section>
             </Stack>
+            <RelatedFaq placement="sunflowers" />
         </Container>
     );
 }

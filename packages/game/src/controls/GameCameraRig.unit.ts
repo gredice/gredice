@@ -28,7 +28,7 @@ describe('camera pointer arbitration', () => {
 });
 
 describe('camera keyboard arbitration', () => {
-    it('reserves Arrow keys for placement while structure authoring is active', () => {
+    it('reserves Arrow keys when keyboard panning is disabled', () => {
         assert.deepEqual(getGameCameraKeyboardPan('ArrowLeft', true), [1, 0]);
         assert.equal(getGameCameraKeyboardPan('ArrowLeft', false), null);
         assert.equal(getGameCameraKeyboardPan('KeyQ', true), null);
@@ -36,7 +36,7 @@ describe('camera keyboard arbitration', () => {
 });
 
 describe('camera motion preference', () => {
-    it('makes structure focus and restore immediate for reduced motion', () => {
+    it('makes focus and restore immediate for reduced motion', () => {
         assert.equal(shouldUseImmediateGameCameraTransition(0.65, true), true);
         assert.equal(shouldUseImmediateGameCameraTransition(0, false), true);
         assert.equal(

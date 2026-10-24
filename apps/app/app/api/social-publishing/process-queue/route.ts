@@ -34,7 +34,7 @@ async function processQueueRequest(request: Request) {
     const result = await processReadySocialPosts({
         limit: SOCIAL_QUEUE_BATCH_LIMIT,
     });
-    revalidatePath(KnownPages.SocialPublishing);
+    if (result.processed > 0) revalidatePath(KnownPages.SocialPublishing);
 
     return NextResponse.json({
         ok: result.failed === 0,

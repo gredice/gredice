@@ -1,5 +1,6 @@
-import { pbkdf2Sync, randomUUID } from 'node:crypto';
+import { pbkdf2Sync } from 'node:crypto';
 import { userIdToPublicId } from '@gredice/js/publicId';
+import { safeUserDisplayName } from '@gredice/js/userDisplayName';
 import { notifyNewUserRegistered } from '@gredice/notifications';
 import {
     blockLogin,
@@ -36,7 +37,9 @@ import {
     clearCookie,
     createJwt,
     setCookie,
+    verifyAccessJwt,
     verifyJwt,
+    verifyOAuthStateJwt,
 } from '../../../lib/auth/auth';
 import {
     sendChangePassword,
@@ -56,6 +59,7 @@ import {
     resolveOAuthCallback,
     sanitizeOAuthCallbackUrl,
 } from '../../../lib/auth/oauthCallbackContract';
+import { createOAuthStateFromSession } from '../../../lib/auth/oauthSessionState';
 import {
     resolvePostLoginAccountId,
     resolveTemporaryUserIdToRetire,
@@ -149,7 +153,7 @@ function currentClaimsFromUser(
         id: user.id,
         publicId: userIdToPublicId(user.id),
         userName: user.userName,
-        displayName: user.displayName ?? user.userName,
+        displayName: safeUserDisplayName(user.displayName ?? user.userName),
         avatarUrl: user.avatarUrl,
         achievementCount: user.achievementCount,
         role: user.role,
@@ -165,7 +169,7 @@ async function currentClaimsFromSessionCookie(context: Context) {
     }
 
     try {
-        const { result, error } = await verifyJwt(sessionCookie);
+        const { result, error } = await verifyAccessJwt(sessionCookie);
         if (error) {
             return null;
         }
@@ -226,26 +230,6 @@ async function getCurrentClaims(context: Context) {
 async function getCurrentTemporaryClaims(context: Context) {
     const claims = await getCurrentClaims(context);
     return claims?.isTemporary ? claims : null;
-}
-
-/**
- * Reads the session cookie and, if valid, creates a short-lived JWT
- * to use as the OAuth state so the callback can link the provider
- * to the current user.
- */
-async function createOAuthStateFromSession(context: Context): Promise<string> {
-    const sessionCookie = getCookie(context, sessionCookieName);
-    if (sessionCookie) {
-        try {
-            const { result, error } = await verifyJwt(sessionCookie);
-            if (!error && result?.payload.sub) {
-                return createJwt(result.payload.sub, '10m');
-            }
-        } catch {
-            // Not authenticated – fall through to random UUID
-        }
-    }
-    return randomUUID().toString().replace('-', '');
 }
 
 function storeRedirectCookie(
@@ -707,7 +691,9 @@ const app = new Hono()
         ),
         async (context) => {
             const query = context.req.valid('query');
-            const state = await createOAuthStateFromSession(context);
+            const state = await createOAuthStateFromSession(
+                getCookie(context, sessionCookieName),
+            );
             storeRedirectCookie(context, 'google', query?.redirect);
             storeTimeZoneCookie(context, query?.timeZone);
             const authUrl = generateAuthUrl('google', state);
@@ -740,7 +726,9 @@ const app = new Hono()
             try {
                 let currentUserId: string | undefined;
                 try {
-                    const { result, error } = await verifyJwt(decision.state);
+                    const { result, error } = await verifyOAuthStateJwt(
+                        decision.state,
+                    );
                     if (error || !result?.payload.sub) {
                         throw new Error('Invalid state token');
                     }
@@ -766,7 +754,6 @@ const app = new Hono()
                 );
                 const oauthResult = await createOrUpdateUserWithOauth(
                     {
-                        name: userInfo.name,
                         email: userInfo.email,
                         providerUserId: userInfo.id,
                         provider: 'google',
@@ -868,7 +855,9 @@ const app = new Hono()
         ),
         async (context) => {
             const query = context.req.valid('query');
-            const state = await createOAuthStateFromSession(context);
+            const state = await createOAuthStateFromSession(
+                getCookie(context, sessionCookieName),
+            );
             const authUrl = generateAuthUrl('facebook', state);
 
             // Store state in cookie for verification
@@ -901,7 +890,9 @@ const app = new Hono()
             try {
                 let currentUserId: string | undefined;
                 try {
-                    const { result, error } = await verifyJwt(decision.state);
+                    const { result, error } = await verifyOAuthStateJwt(
+                        decision.state,
+                    );
                     if (error || !result?.payload.sub) {
                         throw new Error('Invalid state token');
                     }
@@ -927,7 +918,6 @@ const app = new Hono()
                 );
                 const oauthResult = await createOrUpdateUserWithOauth(
                     {
-                        name: userInfo.name,
                         email: userInfo.email,
                         providerUserId: userInfo.id,
                         provider: 'facebook',
@@ -1178,7 +1168,7 @@ const app = new Hono()
             let userId: string | undefined;
             if (sessionCookie) {
                 try {
-                    const { result } = await verifyJwt(sessionCookie);
+                    const { result } = await verifyAccessJwt(sessionCookie);
                     userId = result?.payload.sub ?? undefined;
                 } catch {
                     // ignore

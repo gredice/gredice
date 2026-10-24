@@ -11,21 +11,29 @@ import type {
     GameCameraRigApi,
     GameCameraSnapshot,
 } from './controls/GameCameraRigApi';
+import { createLeafRakingController } from './cosmeticLeafRaking/leafRaking';
 import {
     type ActiveDragPreviewTarget,
     type ActiveDragPreviewTargetOffset,
     activeDragPreviewTargetMatches,
 } from './dragPreviewIdentity';
 import {
+    createFaunaWorld,
+    type FaunaWorld,
+} from './entities/animals/faunaWorld';
+import {
     defaultGardenAvatarCameraZoom,
     scaleGardenAvatarCameraZoom,
 } from './entities/avatar/gardenAvatarCameraZoom';
+import type { PackLayoutPreviewSelection } from './packLayouts/packLayoutPreviewState';
+import { type AutumnState, getAutumnState } from './scene/autumnState';
 import {
     getGameBackgroundPaletteIndexByKey,
     getGameBackgroundPaletteKey,
     getNextGameBackgroundPaletteIndex,
     normalizeGameBackgroundPaletteIndex,
 } from './scene/backgroundPalettes';
+import { updateGameProfileMetadata } from './scene/gameProfileMetadata';
 import {
     type GameQualityCustomProfile,
     type GameQualitySetting,
@@ -36,7 +44,6 @@ import {
 } from './scene/gameQuality';
 import { resolveSeasonState, type SeasonState } from './scene/seasonState';
 import { defaultWaterColors, type WaterColors } from './scene/waterColorState';
-import type { GardenStructureEditorState } from './structures/editor';
 import type { Block } from './types/Block';
 import type { Stack } from './types/Stack';
 import { getAudioConfig } from './utils/audioConfig';
@@ -64,21 +71,10 @@ export type GardenAvatarMoveInput = {
     forward: number;
     right: number;
 };
-export type GardenStructureBuildCategory =
-    | 'footprint'
-    | 'structure'
-    | 'roof'
-    | 'interior';
-export type GardenStructureBuildSession = Readonly<{
-    editor: GardenStructureEditorState;
-    persistence: 'fixture' | 'remote';
-    category: GardenStructureBuildCategory;
-    roofCutaway: boolean;
-    selectedPartId: string | null;
-}>;
 export type MockGardenProfile =
     | 'default'
     | 'dense'
+    | 'dense-autumn'
     | 'fauna-heavy'
     | 'high-target'
     | 'operation-rewards'
@@ -388,6 +384,7 @@ export type GardenAvatarBeachBallKickRequest = {
 };
 
 type WeatherOverride = {
+    temperature?: number | null;
     cloudy: number;
     rainy: number;
     snowy: number;
@@ -406,6 +403,8 @@ type BackgroundPaletteCycle = {
 export type GameState = {
     // General
     authenticatedGardenQueriesEnabled: boolean;
+    gardenPacksEnabled: boolean;
+    autumnActivityEnabled: boolean;
     isMock: boolean;
     mockGardenProfile: MockGardenProfile;
     setMockGardenProfile: (mockGardenProfile: MockGardenProfile) => void;
@@ -467,6 +466,35 @@ export type GameState = {
      * clock as the lighting so a frozen date stays deterministic.
      */
     seasonState: SeasonState;
+    autumnState: AutumnState;
+
+    cosmeticLeafRaking: ReturnType<typeof createLeafRakingController>;
+    packLayoutPreview: PackLayoutPreviewSelection | null;
+    setPackLayoutPreview: (
+        selection: PackLayoutPreviewSelection | null,
+    ) => void;
+    packLayoutPreviewFramed: boolean;
+    setPackLayoutPreviewFramed: (framed: boolean) => void;
+    packLayoutPreviewHudRect: {
+        top: number;
+        left: number;
+        right: number;
+        bottom: number;
+    } | null;
+    setPackLayoutPreviewHudRect: (
+        rect: {
+            top: number;
+            left: number;
+            right: number;
+            bottom: number;
+        } | null,
+    ) => void;
+    packLayoutPreviewUnavailable: boolean;
+    setPackLayoutPreviewUnavailable: (unavailable: boolean) => void;
+    packLayoutPreviewReady: boolean;
+    setPackLayoutPreviewReady: (ready: boolean) => void;
+    packLayoutPreviewLocked: boolean;
+    setPackLayoutPreviewLocked: (locked: boolean) => void;
 
     // Pickup system
     pickupBlock: Block | null;
@@ -519,12 +547,10 @@ export type GameState = {
         highlight: Omit<GardenTargetHighlight, 'createdAt' | 'sequence'>,
     ) => void;
     clearGardenTargetHighlight: () => void;
+    /** Batched HUD snapshot published by `faunaWorld` after semantic changes. */
     animalDebugEntries: AnimalDebugEntry[];
-    setAnimalDebugEntry: (entry: AnimalDebugEntry) => void;
-    removeAnimalDebugEntry: (id: string) => void;
-    animalPresenceEntries: AnimalPresenceEntry[];
-    setAnimalPresenceEntry: (entry: AnimalPresenceEntry) => void;
-    removeAnimalPresenceEntry: (id: string) => void;
+    /** Per-root fauna registry for presence, spatial queries, and debug state. */
+    faunaWorld: FaunaWorld;
     animalDebugCommand: AnimalDebugCommand | null;
     triggerAnimalDebugBehavior: (
         command: Omit<AnimalDebugCommand, 'createdAt' | 'sequence'>,
@@ -536,7 +562,6 @@ export type GameState = {
 
     // Camera
     view: 'normal' | 'closeup';
-    structureBuildSession: GardenStructureBuildSession | null;
     gardenAvatarView: GardenAvatarView;
     gardenAvatarMoveInput: GardenAvatarMoveInput;
     gardenAvatarSprintInput: boolean;
@@ -558,9 +583,6 @@ export type GameState = {
         options:
             | { view: 'normal'; block?: Block }
             | { view: 'closeup'; block: Block },
-    ) => void;
-    setStructureBuildSession: (
-        session: GardenStructureBuildSession | null,
     ) => void;
     setGardenAvatarView: (view: GardenAvatarView) => void;
     setGardenAvatarMoveInput: (input: GardenAvatarMoveInput) => void;
@@ -600,6 +622,8 @@ export type GameState = {
     clearEnvironmentOverrides: () => void;
 
     // Environment derived state
+    frostIntensity: number;
+    setFrostIntensity: (frostIntensity: number) => void;
     rainSurfaceIntensity: number;
     setRainSurfaceIntensity: (rainSurfaceIntensity: number) => void;
     snowCoverage: number;
@@ -622,6 +646,8 @@ export type GameState = {
 export function createGameState({
     appBaseUrl,
     authenticatedGardenQueriesEnabled = true,
+    gardenPacksEnabled = false,
+    autumnActivityEnabled = false,
     spriteBaseUrl,
     dayNightCycleDisabled: initialDayNightCycleDisabled,
     freezeTime,
@@ -637,6 +663,8 @@ export function createGameState({
 }: {
     appBaseUrl: string;
     authenticatedGardenQueriesEnabled?: boolean;
+    gardenPacksEnabled?: boolean;
+    autumnActivityEnabled?: boolean;
     spriteBaseUrl?: string;
     dayNightCycleDisabled?: boolean;
     freezeTime: Date | null;
@@ -673,6 +701,8 @@ export function createGameState({
     let nextBlockPlacementDropAnimationRenderId = 0;
     return createStore<GameState>((set, get) => ({
         authenticatedGardenQueriesEnabled,
+        gardenPacksEnabled,
+        autumnActivityEnabled,
         isMock: isMock,
         mockGardenProfile: mockGardenProfile ?? 'default',
         setMockGardenProfile: (mockGardenProfile) =>
@@ -705,6 +735,7 @@ export function createGameState({
                 ),
                 sunriseTime: sunrise,
                 sunsetTime: sunset,
+                autumnState: getAutumnState(resolveSeasonState(referenceTime)),
                 seasonState: resolveSeasonState(
                     referenceTime,
                     get().seasonState,
@@ -823,6 +854,7 @@ export function createGameState({
                 ),
                 sunriseTime: sunrise,
                 sunsetTime: sunset,
+                autumnState: getAutumnState(resolveSeasonState(referenceTime)),
                 seasonState: resolveSeasonState(
                     referenceTime,
                     get().seasonState,
@@ -833,6 +865,26 @@ export function createGameState({
         sunriseTime: sunrise,
         sunsetTime: sunset,
         seasonState,
+        autumnState: getAutumnState(seasonState),
+
+        cosmeticLeafRaking: createLeafRakingController(),
+        packLayoutPreview: null,
+        setPackLayoutPreview: (packLayoutPreview) => set({ packLayoutPreview }),
+        packLayoutPreviewFramed: false,
+        setPackLayoutPreviewFramed: (packLayoutPreviewFramed) =>
+            set({ packLayoutPreviewFramed }),
+        packLayoutPreviewHudRect: null,
+        setPackLayoutPreviewHudRect: (packLayoutPreviewHudRect) =>
+            set({ packLayoutPreviewHudRect }),
+        packLayoutPreviewUnavailable: false,
+        setPackLayoutPreviewUnavailable: (packLayoutPreviewUnavailable) =>
+            set({ packLayoutPreviewUnavailable }),
+        packLayoutPreviewReady: false,
+        setPackLayoutPreviewReady: (packLayoutPreviewReady) =>
+            set({ packLayoutPreviewReady }),
+        packLayoutPreviewLocked: false,
+        setPackLayoutPreviewLocked: (packLayoutPreviewLocked) =>
+            set({ packLayoutPreviewLocked }),
 
         // Pickup system
         pickupBlock: null,
@@ -1136,59 +1188,11 @@ export function createGameState({
             })),
         clearGardenTargetHighlight: () => set({ gardenTargetHighlight: null }),
         animalDebugEntries: [],
-        setAnimalDebugEntry: (entry) =>
-            set((state) => {
-                const existingIndex = state.animalDebugEntries.findIndex(
-                    (candidate) => candidate.id === entry.id,
-                );
-                if (existingIndex === -1) {
-                    return {
-                        animalDebugEntries: [
-                            ...state.animalDebugEntries,
-                            entry,
-                        ].sort((left, right) =>
-                            left.label.localeCompare(right.label),
-                        ),
-                    };
-                }
-
-                const animalDebugEntries = [...state.animalDebugEntries];
-                animalDebugEntries[existingIndex] = entry;
-                return { animalDebugEntries };
-            }),
-        removeAnimalDebugEntry: (id) =>
-            set((state) => ({
-                animalDebugEntries: state.animalDebugEntries.filter(
-                    (entry) => entry.id !== id,
-                ),
-            })),
-        animalPresenceEntries: [],
-        setAnimalPresenceEntry: (entry) =>
-            set((state) => {
-                const existingIndex = state.animalPresenceEntries.findIndex(
-                    (candidate) => candidate.id === entry.id,
-                );
-                if (existingIndex === -1) {
-                    return {
-                        animalPresenceEntries: [
-                            ...state.animalPresenceEntries,
-                            entry,
-                        ].sort((left, right) =>
-                            left.id.localeCompare(right.id),
-                        ),
-                    };
-                }
-
-                const animalPresenceEntries = [...state.animalPresenceEntries];
-                animalPresenceEntries[existingIndex] = entry;
-                return { animalPresenceEntries };
-            }),
-        removeAnimalPresenceEntry: (id) =>
-            set((state) => ({
-                animalPresenceEntries: state.animalPresenceEntries.filter(
-                    (entry) => entry.id !== id,
-                ),
-            })),
+        faunaWorld: createFaunaWorld({
+            onStats: (faunaWorld) => updateGameProfileMetadata({ faunaWorld }),
+            publishDebugEntries: (animalDebugEntries) =>
+                set({ animalDebugEntries }),
+        }),
         animalDebugCommand: null,
         triggerAnimalDebugBehavior: (command) =>
             set((state) => ({
@@ -1210,7 +1214,6 @@ export function createGameState({
 
         // Camera
         view: 'normal',
-        structureBuildSession: null,
         gardenAvatarView: 'overview',
         gardenAvatarMoveInput: { forward: 0, right: 0 },
         gardenAvatarSprintInput: false,
@@ -1238,45 +1241,10 @@ export function createGameState({
             }
 
             if (view === 'closeup') {
-                set({
-                    view,
-                    closeupBlock: block,
-                    structureBuildSession: null,
-                });
+                set({ view, closeupBlock: block });
             } else {
                 set({ view });
             }
-        },
-        setStructureBuildSession: (structureBuildSession) => {
-            if (get().structureBuildSession !== structureBuildSession) {
-                triggerSelectionHaptic();
-            }
-            set(
-                structureBuildSession
-                    ? {
-                          structureBuildSession,
-                          activeDragPreview: null,
-                          hudPlacementDrag: null,
-                          isDragging: false,
-                          itemsHudDropTargetActive: false,
-                          pickupBlock: null,
-                          pickupSelectionTargets: [],
-                          stationaryPickupOutlineTarget: null,
-                          view: 'normal',
-                          closeupBlock: null,
-                          closeupCameraActive: false,
-                          closeupCameraSettled: false,
-                          gardenAvatarView: 'overview',
-                          gardenAvatarMoveInput: { forward: 0, right: 0 },
-                          gardenAvatarSprintInput: false,
-                          gardenAvatarCrouchInput: false,
-                          gardenAvatarBoatId: null,
-                          gardenAvatarAimedBoatId: null,
-                          gardenAvatarSeatId: null,
-                          gardenAvatarPresence: null,
-                      }
-                    : { structureBuildSession },
-            );
         },
         setGardenAvatarView: (gardenAvatarView) => {
             const currentGardenAvatarView = get().gardenAvatarView;
@@ -1303,7 +1271,6 @@ export function createGameState({
                           closeupBlock: null,
                           closeupCameraActive: false,
                           closeupCameraSettled: false,
-                          structureBuildSession: null,
                       },
             );
         },
@@ -1423,12 +1390,15 @@ export function createGameState({
                 ),
                 sunriseTime: sunrise,
                 sunsetTime: sunset,
+                autumnState: getAutumnState(resolveSeasonState(referenceTime)),
                 seasonState: resolveSeasonState(
                     referenceTime,
                     get().seasonState,
                 ),
             });
         },
+        frostIntensity: 0,
+        setFrostIntensity: (frostIntensity) => set({ frostIntensity }),
         rainSurfaceIntensity: 0,
         setRainSurfaceIntensity: (rainSurfaceIntensity) =>
             set({ rainSurfaceIntensity }),
@@ -1473,7 +1443,9 @@ export function useDisposeGameStateStore(store: GameStateStore | null) {
                 }
 
                 pendingStoreDisposals.delete(store);
+                store.getState().cosmeticLeafRaking.reset();
                 store.getState().audio.dispose();
+                store.getState().faunaWorld.dispose();
             }, 0);
             pendingStoreDisposals.set(store, disposeTimeout);
         };

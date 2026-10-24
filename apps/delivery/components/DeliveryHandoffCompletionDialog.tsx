@@ -350,7 +350,7 @@ export function DeliveryHandoffCompletionDialog({
                         <label className="block text-sm font-medium">
                             Razlog operativne iznimke
                             <select
-                                className="mt-1 min-h-11 w-full rounded-md border bg-background px-3 py-2 text-base text-foreground outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
+                                className="mt-1 min-h-11 w-full rounded-md border bg-field px-3 py-2 text-base text-foreground outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
                                 value={overrideReason ?? ''}
                                 disabled={busy}
                                 required

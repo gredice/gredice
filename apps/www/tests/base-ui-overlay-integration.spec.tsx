@@ -1,9 +1,9 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/experimental-ct-react';
 import {
     BaseUiOverlayIntegrationStory,
     ResponsiveModalIntegrationStory,
 } from './BaseUiOverlayIntegrationStory';
+import { expect, test } from './component-fixtures';
 
 test('keeps tooltip keyboard and pointer behavior accessible', async ({
     mount,

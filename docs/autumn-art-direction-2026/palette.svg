@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="540" viewBox="0 0 1080 540" role="img" aria-labelledby="title desc">
+<title id="title">Gredice autumn material palette</title>
+<desc id="desc">Fifteen labeled swatches. Existing colors are sRGB material values, with proposed accent roles identified.</desc>
+<rect width="1080" height="540" fill="#f7f3e9"/>
+<text x="24" y="34" fill="#313536" font-family="sans-serif" font-size="23" font-weight="bold">GREDICE / AUTUMN 2026</text>
+<text x="24" y="57" fill="#545958" font-family="sans-serif" font-size="13">Material albedo targets (sRGB) — lighting changes their screen appearance</text>
+<rect x="24" y="80" width="190" height="78" rx="5" fill="#764024"/>
+<text x="24" y="179" fill="#313536" font-family="sans-serif" font-size="14" font-weight="bold">Warm timber</text>
+<text x="24" y="198" fill="#313536" font-family="monospace" font-size="13">#764024</text>
+<text x="24" y="216" fill="#545958" font-family="sans-serif" font-size="12">existing bench</text>
+<rect x="236" y="80" width="190" height="78" rx="5" fill="#905935"/>
+<text x="236" y="179" fill="#313536" font-family="sans-serif" font-size="14" font-weight="bold">Cut wood / wicker</text>
+<text x="236" y="198" fill="#313536" font-family="monospace" font-size="13">#905935</text>
+<text x="236" y="216" fill="#545958" font-family="sans-serif" font-size="12">existing bench</text>
+<rect x="448" y="80" width="190" height="78" rx="5" fill="#d5c6a3"/>
+<text x="448" y="179" fill="#313536" font-family="sans-serif" font-size="14" font-weight="bold">Limestone / linen</text>
+<text x="448" y="198" fill="#313536" font-family="monospace" font-size="13">#D5C6A3</text>
+<text x="448" y="216" fill="#545958" font-family="sans-serif" font-size="12">existing lamp</text>
+<rect x="660" y="80" width="190" height="78" rx="5" fill="#2f5e83"/>
+<text x="660" y="179" fill="#313536" font-family="sans-serif" font-size="14" font-weight="bold">Blue enamel</text>
+<text x="660" y="198" fill="#313536" font-family="monospace" font-size="13">#2F5E83</text>
+<text x="660" y="216" fill="#545958" font-family="sans-serif" font-size="12">existing lamp</text>
+<rect x="872" y="80" width="190" height="78" rx="5" fill="#313536"/>
+<text x="872" y="179" fill="#313536" font-family="sans-serif" font-size="14" font-weight="bold">Charcoal metal</text>
+<text x="872" y="198" fill="#313536" font-family="monospace" font-size="13">#313536</text>
+<text x="872" y="216" fill="#545958" font-family="sans-serif" font-size="12">existing lamp</text>
+<rect x="24" y="232" width="190" height="78" rx="5" fill="#e08a3c"/>
+<text x="24" y="331" fill="#313536" font-family="sans-serif" font-size="14" font-weight="bold">Pumpkin orange</text>
+<text x="24" y="350" fill="#313536" font-family="monospace" font-size="13">#E08A3C</text>
+<text x="24" y="368" fill="#545958" font-family="sans-serif" font-size="12">existing basket</text>
+<rect x="236" y="232" width="190" height="78" rx="5" fill="#d6b83f"/>
+<text x="236" y="331" fill="#313536" font-family="sans-serif" font-size="14" font-weight="bold">Leaf gold</text>
+<text x="236" y="350" fill="#313536" font-family="monospace" font-size="13">#D6B83F</text>
+<text x="236" y="368" fill="#545958" font-family="sans-serif" font-size="12">existing curve</text>
+<rect x="448" y="232" width="190" height="78" rx="5" fill="#d78335"/>
+<text x="448" y="331" fill="#313536" font-family="sans-serif" font-size="14" font-weight="bold">Leaf amber</text>
+<text x="448" y="350" fill="#313536" font-family="monospace" font-size="13">#D78335</text>
+<text x="448" y="368" fill="#545958" font-family="sans-serif" font-size="12">existing curve</text>
+<rect x="660" y="232" width="190" height="78" rx="5" fill="#b94e32"/>
+<text x="660" y="331" fill="#313536" font-family="sans-serif" font-size="14" font-weight="bold">Leaf copper</text>
+<text x="660" y="350" fill="#313536" font-family="monospace" font-size="13">#B94E32</text>
+<text x="660" y="368" fill="#545958" font-family="sans-serif" font-size="12">existing curve</text>
+<rect x="872" y="232" width="190" height="78" rx="5" fill="#79563c"/>
+<text x="872" y="331" fill="#313536" font-family="sans-serif" font-size="14" font-weight="bold">Leaf russet</text>
+<text x="872" y="350" fill="#313536" font-family="monospace" font-size="13">#79563C</text>
+<text x="872" y="368" fill="#545958" font-family="sans-serif" font-size="12">existing curve</text>
+<rect x="24" y="384" width="190" height="78" rx="5" fill="#4e7f35"/>
+<text x="24" y="483" fill="#313536" font-family="sans-serif" font-size="14" font-weight="bold">Evergreen accent</text>
+<text x="24" y="502" fill="#313536" font-family="monospace" font-size="13">#4E7F35</text>
+<text x="24" y="520" fill="#545958" font-family="sans-serif" font-size="12">proposed prop accent</text>
+<rect x="236" y="384" width="190" height="78" rx="5" fill="#9b709c"/>
+<text x="236" y="483" fill="#313536" font-family="sans-serif" font-size="14" font-weight="bold">Aster mauve</text>
+<text x="236" y="502" fill="#313536" font-family="monospace" font-size="13">#9B709C</text>
+<text x="236" y="520" fill="#545958" font-family="sans-serif" font-size="12">proposed flower</text>
+<rect x="448" y="384" width="190" height="78" rx="5" fill="#aa563d"/>
+<text x="448" y="483" fill="#313536" font-family="sans-serif" font-size="14" font-weight="bold">Textile rust</text>
+<text x="448" y="502" fill="#313536" font-family="monospace" font-size="13">#AA563D</text>
+<text x="448" y="520" fill="#545958" font-family="sans-serif" font-size="12">proposed textile</text>
+<rect x="660" y="384" width="190" height="78" rx="5" fill="#eee3cb"/>
+<text x="660" y="483" fill="#313536" font-family="sans-serif" font-size="14" font-weight="bold">Tea porcelain</text>
+<text x="660" y="502" fill="#313536" font-family="monospace" font-size="13">#EEE3CB</text>
+<text x="660" y="520" fill="#545958" font-family="sans-serif" font-size="12">proposed ceramic</text>
+<rect x="872" y="384" width="190" height="78" rx="5" fill="#ffce53"/>
+<text x="872" y="483" fill="#313536" font-family="sans-serif" font-size="14" font-weight="bold">Warm glow</text>
+<text x="872" y="502" fill="#313536" font-family="monospace" font-size="13">#FFCE53</text>
+<text x="872" y="520" fill="#545958" font-family="sans-serif" font-size="12">existing lamp runtime</text>
+</svg>

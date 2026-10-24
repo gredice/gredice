@@ -2,17 +2,29 @@
 export const faqCategoryArtwork = [
     {
         name: 'harvest-and-plant-removal',
-        label: 'Berba i uklanjanje biljaka',
+        label: 'Berba i urod',
         file: 'harvest.webp',
     },
-    { name: 'usage', label: 'Korištenje gredica', file: 'using-beds.webp' },
+    {
+        name: 'usage',
+        label: 'Sadnja i planiranje gredice',
+        file: 'using-beds.webp',
+    },
     {
         name: 'kvaliteta-i-sigurnost-uroda',
         label: 'Kvaliteta i sigurnost uroda',
         file: 'harvest-safety.webp',
     },
-    { name: 'maintenance', label: 'Održavanje', file: 'maintenance.webp' },
-    { name: 'service', label: 'Usluga', file: 'service.webp' },
+    {
+        name: 'maintenance',
+        label: 'Održavanje i radnje',
+        file: 'maintenance.webp',
+    },
+    {
+        name: 'service',
+        label: 'Kako Gredice funkcioniraju',
+        file: 'service.webp',
+    },
 ];
 
 export const faqCategoryAssetPath = '/assets/faq-categories';

@@ -90,7 +90,7 @@ const longLabelOperation = {
     },
 } satisfies OperationData;
 
-function buildGarden() {
+function buildGarden(raisedBedName = 'Raised Bed 1') {
     return {
         id: TEST_GARDEN_ID,
         name: 'Test garden',
@@ -99,7 +99,7 @@ function buildGarden() {
         raisedBeds: [
             {
                 id: TEST_RAISED_BED_ID,
-                name: 'Raised Bed 1',
+                name: raisedBedName,
                 blockId: 'raised-bed-1',
                 physicalId: '1',
                 fields: [
@@ -284,7 +284,11 @@ function createQueryClient({
             queries: { retry: false, staleTime: Infinity },
         },
     });
-    const garden = buildGarden();
+    const garden = buildGarden(
+        denseOperations
+            ? 'Sunčana gredica s dugim imenom uz ogradu'
+            : undefined,
+    );
     const pendingOperationItems = denseOperations
         ? Array.from({ length: 14 }, (_, index) =>
               buildHudOperationItem({

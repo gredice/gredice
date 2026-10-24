@@ -1,6 +1,6 @@
-import { BlockImage } from '@gredice/ui/BlockImage';
 import { Link } from '@gredice/ui/Link';
 import { Typography } from '@gredice/ui/Typography';
+import { PublicBlockImage as BlockImage } from '../../components/shared/PublicBlockImage';
 import type { GardenPet } from '../../lib/pets/gardenPets';
 import { KnownPages } from '../../src/KnownPages';
 

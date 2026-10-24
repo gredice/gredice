@@ -28,6 +28,27 @@ Use this guide for database, storage, background jobs, payments, notifications, 
 - Log enough context to diagnose failures without logging secrets or unnecessary personal data.
 - Keep partial failure behavior explicit: skipped, retryable, failed, or completed.
 
+Seasonal sowing waterings commit a `raisedBed.seasonalSowingOffer.granted` event
+with their operations in one transaction under the raised-bed advisory lock.
+The event records the originating UTC year/season, reference date, and newly
+created operation IDs. Retries and later sowings in that season cannot mint a
+second batch; rescheduling or execution dates crossing a boundary do not change
+the entitlement. Historical waterings without a grant marker retain per-day
+deduplication; their entitlement is recorded when this writer next runs. No
+entitlement is inferred from arbitrary existing operation dates.
+
+## Account deletion and refund evidence
+
+Automatic account deletion stops before writing its deletion marker or removing
+any data when the account has sunflower history (including legacy events),
+invoices, payment transactions, operations, or submitted carts. A zero balance
+or a completed payment does not by itself settle later refund claims. These
+accounts require support review at `kontakt@gredice.com`; the API returns `409`
+and the Garden confirmation page displays that next step. Keep the records and
+account intact until a reviewed retention and settlement workflow exists. Do
+not bypass this safeguard by deleting commercial rows to make an account eligible.
+Accounts without that history continue through the existing retryable cleanup.
+
 ## Background and cron work
 
 - Cron routes live in app route handlers and Vercel config where applicable.
@@ -58,6 +79,15 @@ Use this guide for database, storage, background jobs, payments, notifications, 
 
 ## Logging
 
+Production storage selects the `ws` WebSocket constructor on each Neon client,
+without changing the global WebSocket or other pools. Node's native transport
+emits a code-less `ErrorEvent` when TCP ends without a WebSocket close handshake,
+including after the pool intentionally removes an idle client and sends Postgres
+Terminate. `ws` lets the driver treat intentional teardown as normal while
+unexpected idle disconnects still emit pool errors and active failures still
+reject their queries. See [the transport investigation](./docs/neon-pool-disconnect-investigation.md)
+for production evidence, the loopback reproduction, and its limits.
+
 The production Neon pool reports background connection errors with the stable
 `storage.neon.pool.error` event, error kind, safe SQLSTATE/transport code when
 available, and total/idle/waiting pool counts. Every event is logged at error
@@ -70,19 +100,15 @@ and transport health even when the associated HTTP request succeeded.
 Run its isolated regression without a database:
 `pnpm --filter @gredice/storage exec node --import tsx --test --conditions=react-server tests/neonStoragePool.node.spec.ts`.
 
-Two public-garden reads retry once when an awaited query fails with a Neon
-`ErrorEvent`, a transport code, or a PostgreSQL connection exception:
-
-- one page of operation-history hydration, reported as
-  `hydrate-garden-operation-events` with bounded query counts and the garden ID;
-- the active-structure list, reported as `list-public-garden-structures` with
-  the garden ID.
-
-The pool discards the failed active connection and the retry checks out a
-replacement; it does not reset the shared pool. Stable
-`storage.database.read.retry`, `.recovered`, and `.failed` events omit SQL,
-aggregate IDs, messages, URLs, stacks, clients, and causes. Other reads and every
-write remain non-retrying.
+The public-garden operation-history read retries one page once when an awaited
+query fails with a Neon `ErrorEvent`, a transport code, or a PostgreSQL
+connection exception. It is reported as `hydrate-garden-operation-events`
+(or `hydrate-garden-operation-scene-events` for the compact scene read) with
+bounded query counts and the garden ID. The pool discards the failed active
+connection and the retry checks out a replacement; it does not reset the shared
+pool. Stable `storage.database.read.retry`, `.recovered`, and `.failed` events
+omit SQL, aggregate IDs, messages, URLs, stacks, clients, and causes. Other reads
+and every write remain non-retrying.
 
 - Keep console messages stable and action-oriented; put request, account, garden, operation, and entity IDs in the second argument object.
 - Include the caught `error` in that context object when logging failed critical-path work, except for the explicitly sanitized Neon diagnostics above.

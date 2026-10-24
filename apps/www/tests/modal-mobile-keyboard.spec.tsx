@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/experimental-ct-react';
 import type { Page } from '@playwright/test';
+import { expect, test } from './component-fixtures';
 import {
     MobileModalForm,
     ModalConfirmInteractionStory,

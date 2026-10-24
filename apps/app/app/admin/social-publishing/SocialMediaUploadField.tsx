@@ -374,7 +374,7 @@ export function SocialMediaUploadField({
                     name={name}
                     rows={5}
                     placeholder="https://.../slika.jpg&#10;https://.../video.mp4"
-                    className="w-full rounded border border-muted bg-card p-2"
+                    className="w-full rounded border border-muted bg-field p-2"
                     value={mediaUrlsText}
                     onChange={(event) => {
                         setMediaUrlsText(event.target.value);

@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/experimental-ct-react';
 import { DeliveryZoneMap } from '../app/dostava/DeliveryZoneMap';
+import { expect, test } from './component-fixtures';
 import '../app/globals.css';
 
 const googleMapsStub = `

@@ -3,7 +3,7 @@ import { config } from './playwright.config';
 
 export default defineConfig({
     ...config,
-    testMatch: ['public-environment.spec.tsx'],
+    testMatch: ['public-environment*.spec.tsx'],
     testIgnore: [],
     webServer: undefined,
 });

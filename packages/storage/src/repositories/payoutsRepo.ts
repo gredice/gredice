@@ -2,6 +2,11 @@ import 'server-only';
 import type { OperationData } from '@gredice/directory-types';
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import {
+    projectSelectedRaisedBedPlantingLifecycle,
+    selectedRaisedBedPlantingEventTypes,
+} from '../helpers/selectedRaisedBedPlantingLifecycle';
+import {
+    events,
     farmerPayoutRequestAdjustments,
     farmerPayoutRequestItems,
     farmerPayoutRequests,
@@ -12,6 +17,7 @@ import {
     operationPrices,
     operations,
     type PayoutStatus,
+    raisedBedPlantings,
     raisedBeds,
     type SelectFarmerPayoutRequest,
     type SelectFarmerPayoutRequestAdjustment,
@@ -20,7 +26,7 @@ import {
 } from '../schema';
 import { storage } from '../storage';
 import { getEntitiesFormatted } from './entitiesRepo';
-import { createEvent, knownEvents } from './eventsRepo';
+import { createEvent, knownEvents, knownEventTypes } from './eventsRepo';
 import { getRaisedBedFieldPlantCycles } from './gardensRepo';
 import { createReceipt } from './invoicesRepo';
 import { createNotification } from './notificationsRepo';
@@ -138,7 +144,7 @@ async function getVerifiedSowingsForFarm(
     const allCycles = await Promise.all(
         raisedBedRows.map(async (row) => {
             const cycles = await getRaisedBedFieldPlantCycles(row.raisedBedId);
-            return cycles.map((cycle) => ({
+            const legacySowings = cycles.map((cycle) => ({
                 farmId: row.farmId,
                 sowingLocation: cycle.sowingLocation,
                 plantStatus: cycle.plantStatus,
@@ -151,6 +157,67 @@ async function getVerifiedSowingsForFarm(
                     cycle.plantRemovedDate ??
                     cycle.endedAt,
             }));
+            const selected = await storage().query.raisedBedPlantings.findMany({
+                where: and(
+                    eq(raisedBedPlantings.raisedBedId, row.raisedBedId),
+                    eq(raisedBedPlantings.configurationSource, 'selected'),
+                    eq(raisedBedPlantings.isDeleted, false),
+                ),
+            });
+            const selectedEvents =
+                selected.length > 0
+                    ? await storage()
+                          .select()
+                          .from(events)
+                          .where(
+                              and(
+                                  inArray(
+                                      events.aggregateId,
+                                      selected.map(
+                                          (planting) =>
+                                              planting.eventAggregateId,
+                                      ),
+                                  ),
+                                  inArray(events.type, [
+                                      ...selectedRaisedBedPlantingEventTypes,
+                                  ]),
+                              ),
+                          )
+                          .orderBy(asc(events.id))
+                    : [];
+            const eventsByAggregate = new Map<string, typeof selectedEvents>();
+            for (const event of selectedEvents) {
+                const aggregateEvents = eventsByAggregate.get(
+                    event.aggregateId,
+                );
+                if (aggregateEvents) aggregateEvents.push(event);
+                else eventsByAggregate.set(event.aggregateId, [event]);
+            }
+            const selectedSowings = selected.map((planting) => {
+                const projection = projectSelectedRaisedBedPlantingLifecycle(
+                    eventsByAggregate.get(planting.eventAggregateId) ?? [],
+                    {
+                        aggregateId: planting.eventAggregateId,
+                        plantingId: planting.id,
+                        plantSortId: planting.plantSortId,
+                    },
+                );
+                return {
+                    farmId: row.farmId,
+                    sowingLocation: projection.task.initialSowingLocation,
+                    plantStatus:
+                        projection.task.status === 'completed' &&
+                        (projection.task.verification !== null ||
+                            projection.task.completion?.status === 'sowed')
+                            ? projection.status
+                            : undefined,
+                    verifiedAt:
+                        projection.task.verification?.verifiedAt ??
+                        projection.task.completion?.completedAt ??
+                        projection.startedAt,
+                };
+            });
+            return [...legacySowings, ...selectedSowings];
         }),
     );
 
@@ -247,6 +314,7 @@ export type FarmerEarning = {
 const earningTypeLabel: Record<string, string> = {
     sowing: 'Sijanje (direktno)',
     sowingGreenhouse: 'Sijanje (staklenički rasad)',
+    sowingNotSprouted: 'Korekcija sijanja: nije proklijalo (50%)',
 };
 
 function getFarmerEarningLabel(earning: FarmerEarning) {
@@ -490,6 +558,65 @@ async function getFarmerEarningSnapshot(
                 pricePerUnit: priceValue,
                 totalEarned: priceValue,
                 currency: price.currency,
+            });
+        }
+    }
+
+    // Settlement time carries a deduction into the next window even when the
+    // original sowing has already been paid. The original payout stays auditable.
+    const refunds = await storage()
+        .select()
+        .from(events)
+        .where(
+            and(
+                eq(
+                    events.type,
+                    knownEventTypes.raisedBedFields.notSproutedRefund,
+                ),
+                sql`${events.data}->>'farmId' = ${farmId.toString()}`,
+                earnedFrom
+                    ? sql`${events.createdAt} > ${earnedFrom}`
+                    : undefined,
+                earnedUntil
+                    ? sql`${events.createdAt} <= ${earnedUntil}`
+                    : undefined,
+            ),
+        );
+    for (const refund of refunds) {
+        const data = refund.data;
+        if (
+            typeof data !== 'object' ||
+            data === null ||
+            !('deductionCents' in data) ||
+            typeof data.deductionCents !== 'number' ||
+            !Number.isSafeInteger(data.deductionCents) ||
+            data.deductionCents < 0
+        ) {
+            throw new Error('Invalid not-sprouted payout settlement.');
+        }
+        if (data.deductionCents === 0) continue;
+        const settlementCurrency =
+            'currency' in data && typeof data.currency === 'string'
+                ? data.currency
+                : 'eur';
+        const key = `sowingNotSprouted:${settlementCurrency}`;
+        const amount = -data.deductionCents / 100;
+        const existing = earningsByKey.get(key);
+        if (existing) {
+            existing.operationCount += 1;
+            existing.totalEarned += amount;
+            existing.pricePerUnit =
+                existing.totalEarned / existing.operationCount;
+        } else {
+            earningsByKey.set(key, {
+                entityTypeName: 'sowingNotSprouted',
+                entityId: null,
+                operationCount: 1,
+                durationMinutes: 0,
+                totalDurationMinutes: 0,
+                pricePerUnit: amount,
+                totalEarned: amount,
+                currency: settlementCurrency,
             });
         }
     }

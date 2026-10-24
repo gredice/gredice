@@ -18,6 +18,8 @@ import {
     isFenceGateBlockName,
 } from './fenceConnections';
 import { getToggledFenceGateVariant, isFenceGateOpen } from './fenceGateState';
+import { AutumnGateDecor } from './helpers/AutumnGateDecor';
+import { FenceGatePostsPart } from './helpers/FenceGatePostsPart';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
 type FenceGateNodeName = Extract<
@@ -28,6 +30,15 @@ type FenceGateNodeName = Extract<
 const gateHalfWidth = 0.43;
 
 const fenceGateConfigs = {
+    AutumnFenceGate: {
+        assetName: 'AutumnFenceGate',
+        leafNodeNames: [
+            'AutumnFenceGate_Leaf_Mesh',
+            'AutumnFenceGate_Leaf_Mesh_1',
+        ],
+        postsNodeNames: ['AutumnFenceGate_Posts'],
+        snowThickness: 0.07,
+    },
     FenceGate: {
         assetName: 'FenceGate',
         leafNodeNames: ['FenceGate_Leaf_Mesh', 'FenceGate_Leaf_Mesh_1'],
@@ -90,6 +101,9 @@ export function FenceGate({ stack, block, rotation }: EntityInstanceProps) {
         Boolean(state.activeDragPreview),
     );
     const currentStackHeight = useStackHeight(stack, block);
+    const covered = stack.blocks
+        .slice(stack.blocks.indexOf(block) + 1)
+        .some((above) => above.name.startsWith('Block_'));
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const open = isFenceGateOpen(block);
     const requestAnimatedShadowRefresh = useCallback(() => {
@@ -128,6 +142,7 @@ export function FenceGate({ stack, block, rotation }: EntityInstanceProps) {
 
     return (
         <animated.group
+            name={`FenceGate:${block.id}`}
             onClick={canToggle ? handleClick : undefined}
             position={stack.position.clone().setY(currentStackHeight)}
             rotation={animatedRotation as unknown as [number, number, number]}
@@ -135,24 +150,21 @@ export function FenceGate({ stack, block, rotation }: EntityInstanceProps) {
             {config.postsNodeNames.map((nodeName) => {
                 const node = nodes[nodeName];
                 return (
-                    <mesh
+                    <FenceGatePostsPart
                         key={nodeName}
-                        castShadow
-                        receiveShadow
-                        geometry={node.geometry}
-                        material={node.material}
-                    >
-                        <SnowOverlay
-                            geometry={node.geometry}
-                            maxThickness={config.snowThickness}
-                            slopeExponent={2.9}
-                            noiseScale={3.3}
-                        />
-                        <RainWetOverlay geometry={node.geometry} />
-                    </mesh>
+                        node={node}
+                        nodeName={nodeName}
+                        blockId={block.id}
+                        covered={covered}
+                        snowThickness={config.snowThickness}
+                    />
                 );
             })}
+            {block.name === 'AutumnFenceGate' && (
+                <AutumnGateDecor node={nodes.AutumnFenceGate_Decor} />
+            )}
             <animated.group
+                name={`FenceGate:leaf:${block.id}`}
                 position={[-gateHalfWidth, 0, 0]}
                 rotation={leafRotation as unknown as [number, number, number]}
             >

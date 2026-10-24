@@ -15,15 +15,10 @@ import { Stack } from '@gredice/ui/Stack';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import { Typography } from '@gredice/ui/Typography';
 import { useQueryClient } from '@tanstack/react-query';
-import {
-    type FormEvent,
-    useCallback,
-    useEffect,
-    useId,
-    useRef,
-    useState,
-} from 'react';
+import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
 import { currentUserQueryKey } from '../../hooks/useCurrentUser';
+
+const fetchLastLogin = () => clientPublic().api.auth['last-login'].$get();
 
 type AuthTab = 'login' | 'register';
 type OAuthProvider = 'google' | 'facebook';
@@ -166,11 +161,11 @@ export function InlineLoginDialog({
     const [registrationSent, setRegistrationSent] = useState(false);
     const emailTriggerId = useId();
     const restoreEmailTriggerFocusRef = useRef(false);
-    const fetchLastLogin = useCallback(
-        () => clientPublic().api.auth['last-login'].$get(),
-        [],
+    const lastLoginProvider = useLastLoginProvider(
+        fetchLastLogin,
+        undefined,
+        open,
     );
-    const lastLoginProvider = useLastLoginProvider(fetchLastLogin);
 
     useEffect(() => {
         if (!open) {

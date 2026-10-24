@@ -1,6 +1,11 @@
 'use client';
 
-import { GameInformationIcon } from '@gredice/ui/GameIcons';
+import {
+    GameDeliveryIcon,
+    GameInformationIcon,
+    GameProfileIcon,
+    GameSunflowerIcon,
+} from '@gredice/ui/GameIcons';
 import { cx } from '@gredice/ui/utils';
 import Image from 'next/image';
 import { useState } from 'react';
@@ -21,13 +26,16 @@ export function FaqCategoryVisual({
     const classes = cx('shrink-0 object-contain', className);
 
     if (!src || src === failedSrc) {
+        const Icon =
+            category.information?.name === 'delivery'
+                ? GameDeliveryIcon
+                : category.information?.name === 'pricing'
+                  ? GameSunflowerIcon
+                  : category.information?.name === 'account'
+                    ? GameProfileIcon
+                    : GameInformationIcon;
         return (
-            <GameInformationIcon
-                aria-hidden
-                width={size}
-                height={size}
-                className={classes}
-            />
+            <Icon aria-hidden width={size} height={size} className={classes} />
         );
     }
 

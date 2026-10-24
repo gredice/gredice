@@ -18,8 +18,11 @@ email intent per recipient. A later independent checkout receives its own
 intent, and pickup requests do not produce a scheduled-delivery email. Existing
 Slack settings and message copy remain authoritative when the worker executes.
 
-`GET /api/internal/cron/checkout-notifications` runs every minute, requires an
-exact `Bearer CRON_SECRET` header, and has a 60-second function limit. A worker
+The minute cron `/api/internal/cron/work-dispatch` invokes
+`GET /api/internal/cron/checkout-notifications` when its Redis signal is due
+or hourly recovery is required. Eligible work normally starts within one minute;
+empty minute polls avoid PostgreSQL. Both routes require an exact
+`Bearer CRON_SECRET` header and have a 60-second function limit. A worker
 claims at most 20 intents by default, stops before its provider-start budget is
 exhausted, and reserves time to persist the result. Claims use row locking and
 a five-minute lease. Expired claims from before the provider fence are safe to

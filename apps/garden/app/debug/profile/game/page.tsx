@@ -5,15 +5,22 @@ import {
     operationVisualRewardDebugProfile,
     operationVisualRewardDebugScenarios,
 } from '@gredice/game';
+import { getSeasonDebugDates } from '@gredice/game/seasonal-debug';
 import { ProfileGameScene } from './ProfileGameScene';
+import { resolveGameProfileLeafWind } from './profileAudio';
+import {
+    createAutumnLaunchFixture,
+    resolveAutumnLaunchSize,
+} from './profileAutumnLaunch';
+import {
+    resolveGameProfileDate,
+    serializeGameProfileDate,
+} from './profileDate';
 import {
     highTargetOperationVisualHighlightTarget,
     resolveGameProfileAdaptiveHigh,
     resolveGameProfileFlags,
     resolveGameProfileGardenAvatar,
-    resolveGameProfileGardenBuilding,
-    resolveGameProfileGardenBuildingFixture,
-    resolveGameProfileGardenBuildingFixtureGate,
     resolveGameProfileOperationVisuals,
     resolveGameProfileStaticIdle,
     resolveGameProfileStaticSceneCache,
@@ -42,15 +49,12 @@ type GameProfileMode =
     | 'night'
     | 'storm'
     | 'autumn'
-    | 'windy';
+    | 'windy'
+    | 'mist';
 
 type GameProfileMockGardenProfile = NonNullable<
     GameSceneProps['mockGardenProfile']
 >;
-
-function resolveAvatarProfileView(value: string | undefined) {
-    return value === 'third-person' ? value : null;
-}
 
 function firstValue(value: string | string[] | undefined) {
     return Array.isArray(value) ? value[0] : value;
@@ -89,7 +93,8 @@ function resolveMode(value: string | undefined): GameProfileMode {
         value === 'night' ||
         value === 'storm' ||
         value === 'autumn' ||
-        value === 'windy'
+        value === 'windy' ||
+        value === 'mist'
     ) {
         return value;
     }
@@ -117,6 +122,7 @@ function resolveMockGardenProfile(
 ): GameProfileMockGardenProfile {
     if (
         value === 'dense' ||
+        value === 'dense-autumn' ||
         value === faunaHeavyMockGardenProfile ||
         value === 'high-target' ||
         value === operationVisualRewardDebugProfile ||
@@ -128,24 +134,18 @@ function resolveMockGardenProfile(
     return 'default';
 }
 
-function resolveGardenBuildingAvatarSpawnPoint(
-    fixture: ReturnType<typeof resolveGameProfileGardenBuildingFixture>,
-) {
-    if (fixture === 'house') {
-        // Starts inside the south side of the representative profile house.
-        return { x: 0, z: 1.25 };
-    }
-    if (fixture === 'worst-case') {
-        // Starts outside a solid south wall so repeated forward steps exercise
-        // the furnished 100-cell collision buckets without entering cutaway.
-        return { x: 0, z: -1.85 };
-    }
-    return undefined;
-}
-
 function resolveWeather(
     mode: GameProfileMode,
 ): NonNullable<GameSceneProps['weather']> {
+    if (mode === 'mist') {
+        return {
+            ...gameProfileClearWeather,
+            cloudy: 0.6,
+            foggy: 1,
+            windSpeed: 0.4,
+        };
+    }
+
     if (mode === 'cloudy') {
         return gameProfileCloudyWeather;
     }
@@ -229,19 +229,13 @@ function resolveWeather(
 }
 
 function resolveFreezeTime(mode: GameProfileMode) {
-    if (mode === 'night') {
-        return new Date(2024, 5, 21, 22, 30, 0);
-    }
-
-    if (mode === 'storm') {
-        return new Date(2024, 5, 21, 18, 30, 0);
-    }
-
-    if (mode === 'autumn') {
-        return new Date(2024, 8, 22, 16, 30, 0);
-    }
-
-    return new Date(2024, 5, 21, 12, 0, 0);
+    const dates = getSeasonDebugDates();
+    const date = mode === 'autumn' ? dates.earlyAutumn : dates.summer;
+    if (mode === 'mist') date.setHours(8, 0);
+    if (mode === 'night') date.setHours(22, 30);
+    if (mode === 'storm') date.setHours(18, 30);
+    if (mode === 'autumn') date.setHours(16, 30);
+    return date;
 }
 
 function OperationRewardDebugOverlay() {
@@ -302,8 +296,16 @@ export default async function GameProfilePage({
 }) {
     const params = await searchParams;
     const mode = resolveMode(firstValue(params.mode));
+    const autumnLaunchSize = resolveAutumnLaunchSize(
+        firstValue(params.autumnLaunch),
+    );
+    const autumnLaunchFixture = autumnLaunchSize
+        ? createAutumnLaunchFixture(autumnLaunchSize)
+        : null;
     const renderDetails = firstValue(params.details) !== '0';
     const showLegend = firstValue(params.legend) !== '0';
+    const soundEnabled = firstValue(params.sound) === '1';
+    const leafWind = resolveGameProfileLeafWind(firstValue(params.leafWind));
     const showHud = firstValue(params.hud) === '1';
     const showDebugHud = firstValue(params.debugHud) === '1';
     const enableControls = firstValue(params.controls) === '1';
@@ -331,34 +333,9 @@ export default async function GameProfilePage({
     const gardenAvatar = resolveGameProfileGardenAvatar(
         firstValue(params.avatar),
     );
-    const avatarProfileView = resolveAvatarProfileView(
-        firstValue(params.avatarProfile),
-    );
-    const gardenBuildingFixtureEnabled =
-        resolveGameProfileGardenBuildingFixtureGate(
-            process.env.GREDICE_GARDEN_BUILDING_PROFILE_FIXTURE_ENABLED,
-        );
-    const gardenBuilding = resolveGameProfileGardenBuilding(
-        firstValue(params.building),
-        gardenBuildingFixtureEnabled,
-    );
-    const gardenBuildingFixture = resolveGameProfileGardenBuildingFixture(
-        firstValue(params.buildingFixture),
-        gardenBuildingFixtureEnabled,
-    );
-    const gardenStructureProfileFixture =
-        gardenBuilding && gardenBuildingFixture
-            ? (
-                  await import('@gredice/game/garden-building-profile-fixture')
-              ).createGardenStructureProfileFixtureDescriptor(
-                  gardenBuildingFixture,
-              )
-            : undefined;
     const debugGameFlags = resolveGameProfileFlags(
         firstValue(params.weatherSurface),
         firstValue(params.avatar),
-        firstValue(params.building),
-        gardenBuildingFixtureEnabled,
         mockGardenProfile !== 'fauna-heavy',
     );
     const staticSceneCacheMode = resolveGameProfileStaticSceneCache(
@@ -379,12 +356,21 @@ export default async function GameProfilePage({
         isOperationVisualRewardDebugProfile(mockGardenProfile);
     const quality = resolveQuality(firstValue(params.quality));
     const weather = resolveWeather(mode);
-    const freezeTime = resolveFreezeTime(mode);
+    const freezeTime = resolveGameProfileDate(
+        firstValue(params.date),
+        resolveFreezeTime(mode),
+    );
 
     return (
         <main
             className="relative h-screen w-screen overflow-hidden bg-[#e7e2cc]"
             data-game-profile-mode={mode}
+            data-game-profile-autumn-launch={
+                autumnLaunchFixture
+                    ? JSON.stringify(autumnLaunchFixture.stats)
+                    : undefined
+            }
+            data-game-profile-date={serializeGameProfileDate(freezeTime)}
             data-game-profile-comparison-contract-version={
                 process.env.NEXT_PUBLIC_GAME_PROFILE_COMPARISON_CONTRACT_VERSION
             }
@@ -399,15 +385,11 @@ export default async function GameProfilePage({
             data-game-profile-quality={quality ?? 'auto'}
             data-game-profile-adaptive-high={adaptiveHigh ? '1' : '0'}
             data-game-profile-avatar={gardenAvatar ? '1' : '0'}
-            data-game-profile-avatar-view={avatarProfileView ?? undefined}
-            data-game-profile-building={gardenBuilding ? '1' : '0'}
-            data-game-profile-building-fixture={
-                gardenBuilding ? gardenBuildingFixture : undefined
-            }
             data-game-profile-closeup-raised-bed-id={
                 closeupRaisedBedId ?? undefined
             }
             data-game-profile-outline={outlineProfile ? '1' : '0'}
+            data-game-profile-sound={soundEnabled ? '1' : '0'}
             data-game-profile-placement={placementProfile ? '1' : '0'}
             data-game-profile-operation-visuals={operationVisuals ? '1' : '0'}
             data-game-profile-static-scene-cache={staticSceneCacheMode}
@@ -442,26 +424,34 @@ export default async function GameProfilePage({
             }
         >
             <ProfileGameScene
+                cacheClearanceWitnessMode={
+                    firstValue(params.staticCacheWitness) === '1'
+                        ? mode
+                        : undefined
+                }
                 adaptiveHighQuality={adaptiveHigh}
-                authenticatedGardenQueriesEnabled={!staticIdleProfile}
+                authenticatedGardenQueriesEnabled={
+                    !staticIdleProfile && !autumnLaunchSize
+                }
+                autumnLaunchSize={autumnLaunchSize ?? undefined}
                 key={mode}
                 className="h-full w-full"
                 dayNightCycleDisabled={false}
                 flags={debugGameFlags}
                 fixedTimeSeconds={fixedTimeSeconds ?? undefined}
-                freezeTime={freezeTime}
+                freezeTime={serializeGameProfileDate(freezeTime)}
                 debugHud={showDebugHud}
                 gardenSwitchEnabled={gardenSwitchProfile}
                 hideHud={!showHud}
                 initialQualitySetting={quality}
                 enableGameProfileController={
+                    Boolean(autumnLaunchSize) ||
                     adaptiveHigh ||
                     cameraProfile ||
                     gardenSwitchProfile ||
                     lifecycleProfile ||
                     staticIdleProfile ||
                     mockGardenProfile === 'fauna-heavy' ||
-                    gardenBuilding ||
                     closeupRaisedBedId !== null ||
                     outlineProfile ||
                     placementProfile ||
@@ -471,26 +461,17 @@ export default async function GameProfilePage({
                     staticSceneCacheOcclusionFixture
                 }
                 continuousRenderLeasesEnabled={continuousRenderLeasesEnabled}
-                gardenStructureDebugFixture={
-                    gardenBuilding &&
-                    gardenStructureProfileFixture === undefined
-                }
-                gardenStructureProfileFixture={gardenStructureProfileFixture}
-                gardenAvatarInitialSpawnPoint={
-                    gardenAvatar && gardenBuilding
-                        ? resolveGardenBuildingAvatarSpawnPoint(
-                              gardenBuildingFixture,
-                          )
-                        : undefined
-                }
-                gardenAvatarActivationRequest={avatarProfileView ? 1 : 0}
                 mockGarden
                 mockGardenProfile={mockGardenProfile}
                 noControls={!enableControls}
-                noSound
+                noSound={!soundEnabled}
                 renderDetails={renderDetails}
                 staticOpaqueSceneCache={staticSceneCacheMode === 'cache'}
-                weather={weather}
+                weather={
+                    leafWind === undefined
+                        ? weather
+                        : { ...weather, windSpeed: leafWind }
+                }
                 winterMode={mode === 'snow' ? 'winter' : 'summer'}
                 zoom={isOperationRewardDebug ? 'far' : 'normal'}
             />

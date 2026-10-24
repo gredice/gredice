@@ -47,14 +47,3 @@ export const enableGardenAvatarFlag = flag<boolean>({
     defaultValue: false,
     options: booleanFlagOptions,
 });
-
-export const enableGardenBuildingSystemFlag = flag<boolean>({
-    key: 'enableGardenBuildingSystem',
-    description:
-        'Enable discovery and editing for the mobile-first modular garden building system.',
-    ...(process.env.FLAGS
-        ? { adapter: vercelAdapter }
-        : { decide: () => false }),
-    defaultValue: false,
-    options: booleanFlagOptions,
-});

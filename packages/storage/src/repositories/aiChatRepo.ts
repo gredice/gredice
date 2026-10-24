@@ -1,6 +1,9 @@
 import 'server-only';
 import { randomUUID } from 'node:crypto';
-import { sanitizeSuncokretAssistantText } from '@gredice/js/ai';
+import {
+    getAiChatMessageTimestamp,
+    sanitizeSuncokretAssistantText,
+} from '@gredice/js/ai';
 import { and, desc, eq, gte, sql } from 'drizzle-orm';
 import {
     accounts,
@@ -11,6 +14,10 @@ import {
     aiUsageLedger,
 } from '../schema';
 import { storage } from '../storage';
+import {
+    getAiPhotoConversations,
+    photoAnalysisIdForUser,
+} from './aiPhotoConversations';
 import { accountHasActiveRaisedBed } from './gardensRepo';
 
 export const SUNCOKRET_AI_FEATURE = 'suncokret-chat';
@@ -798,34 +805,67 @@ export async function getAiChatConversationsForUser({
     limit?: number;
     userId: string;
 }) {
-    return storage().query.aiChatConversations.findMany({
-        columns: {
-            id: true,
-            title: true,
-            model: true,
-            gardenId: true,
-            raisedBedId: true,
-            createdAt: true,
-            lastMessageAt: true,
-        },
-        where: and(
-            eq(aiChatConversations.accountId, accountId),
-            eq(aiChatConversations.userId, userId),
-        ),
-        orderBy: desc(aiChatConversations.lastMessageAt),
-        limit: Math.min(100, Math.max(1, limit)),
-        with: {
-            messages: {
-                columns: {
-                    parts: true,
-                    role: true,
-                },
-                where: eq(aiChatMessages.role, 'user'),
-                orderBy: aiChatMessages.createdAt,
-                limit: 1,
+    const count = Math.min(100, Math.max(1, limit));
+    const [persisted, analyses] = await Promise.all([
+        storage().query.aiChatConversations.findMany({
+            columns: {
+                id: true,
+                title: true,
+                model: true,
+                gardenId: true,
+                raisedBedId: true,
+                createdAt: true,
+                lastMessageAt: true,
             },
-        },
-    });
+            where: and(
+                eq(aiChatConversations.accountId, accountId),
+                eq(aiChatConversations.userId, userId),
+                // A failed first follow-up can create an empty row. Keep the event's
+                // original title/activity and apply the limit only to real continuations.
+                sql`(${aiChatConversations.id} NOT LIKE 'analysis-%' OR EXISTS (
+                    SELECT 1 FROM ${aiChatMessages} AS persisted_messages
+                    WHERE persisted_messages.conversation_id = ${aiChatConversations.id}
+                ))`,
+            ),
+            orderBy: desc(aiChatConversations.lastMessageAt),
+            limit: count,
+            with: {
+                messages: {
+                    columns: {
+                        parts: true,
+                        role: true,
+                    },
+                    where: eq(aiChatMessages.role, 'user'),
+                    orderBy: aiChatMessages.createdAt,
+                    limit: 1,
+                },
+            },
+        }),
+        getAiPhotoConversations({ accountId, userId, limit: count }),
+    ]);
+    const byId = new Map<string, (typeof persisted)[number]>(
+        analyses.map((conversation) => [
+            conversation.id,
+            {
+                ...conversation,
+                messages: conversation.messages.map(({ role, parts }) => ({
+                    role,
+                    parts,
+                })),
+            },
+        ]),
+    );
+    // Continued chats own their title and latest activity; each analysis appears only once.
+    for (const conversation of persisted)
+        byId.set(conversation.id, conversation);
+    return [...byId.values()]
+        .sort(
+            (a, b) =>
+                (b.lastMessageAt ?? b.createdAt).getTime() -
+                    (a.lastMessageAt ?? a.createdAt).getTime() ||
+                b.id.localeCompare(a.id),
+        )
+        .slice(0, count);
 }
 
 export async function getAiChatConversationForUser({
@@ -837,7 +877,7 @@ export async function getAiChatConversationForUser({
     conversationId: string;
     userId: string;
 }) {
-    return storage().query.aiChatConversations.findFirst({
+    const persisted = await storage().query.aiChatConversations.findFirst({
         where: and(
             eq(aiChatConversations.id, conversationId),
             eq(aiChatConversations.accountId, accountId),
@@ -849,6 +889,31 @@ export async function getAiChatConversationForUser({
             },
         },
     });
+    const analysisId = photoAnalysisIdForUser(conversationId, userId);
+    if (analysisId === undefined) return persisted;
+    const [analysis] = await getAiPhotoConversations({
+        accountId,
+        userId,
+        analysisId,
+        limit: 1,
+    });
+    if (!analysis) return persisted;
+    if (!persisted?.messages.length) return analysis;
+    const first = analysis.messages[0];
+    return {
+        ...persisted,
+        messages: persisted.messages.map((message) =>
+            message.id === first?.id
+                ? {
+                      ...message,
+                      metadata: {
+                          ...message.metadata,
+                          photoAnalysis: first.metadata?.photoAnalysis,
+                      },
+                  }
+                : message,
+        ),
+    };
 }
 
 export async function updateAiChatConversationTitle({
@@ -886,6 +951,26 @@ export async function replaceAiChatMessages({
     const normalizedMessages = normalizeAiChatMessagesForStorage(messages);
 
     await storage().transaction(async (tx) => {
+        const existingMessages = await tx
+            .select({
+                id: aiChatMessages.id,
+                createdAt: aiChatMessages.createdAt,
+                metadata: aiChatMessages.metadata,
+            })
+            .from(aiChatMessages)
+            .where(eq(aiChatMessages.conversationId, conversationId));
+        const existingMessagesById = new Map(
+            existingMessages.map((message) => [message.id, message]),
+        );
+        // createdAt orders the transcript. Client dates are display metadata only.
+        // Separate milliseconds keep a question ahead of its reply, including
+        // when both arrive in one snapshot or a continuation is saved immediately.
+        let nextOrderingTimestamp = Math.max(
+            Date.now(),
+            ...existingMessages.map(
+                (message) => message.createdAt.getTime() + 1,
+            ),
+        );
         const existingToolCalls = await tx
             .select()
             .from(aiChatToolCalls)
@@ -905,13 +990,31 @@ export async function replaceAiChatMessages({
 
         if (normalizedMessages.length > 0) {
             await tx.insert(aiChatMessages).values(
-                normalizedMessages.map((message) => ({
-                    id: message.id,
-                    conversationId,
-                    role: message.role,
-                    parts: message.parts,
-                    metadata: message.metadata,
-                })),
+                normalizedMessages.map((message) => {
+                    const existingMessage = existingMessagesById.get(
+                        message.id,
+                    );
+                    const createdAt =
+                        existingMessage?.createdAt ??
+                        new Date(nextOrderingTimestamp++);
+                    const displayTimestamp = existingMessage
+                        ? (getAiChatMessageTimestamp(
+                              existingMessage.metadata,
+                          ) ?? existingMessage.createdAt)
+                        : (getAiChatMessageTimestamp(message.metadata) ??
+                          createdAt);
+                    return {
+                        id: message.id,
+                        conversationId,
+                        role: message.role,
+                        parts: message.parts,
+                        metadata: {
+                            ...message.metadata,
+                            createdAt: displayTimestamp.toISOString(),
+                        },
+                        createdAt,
+                    };
+                }),
             );
         }
 

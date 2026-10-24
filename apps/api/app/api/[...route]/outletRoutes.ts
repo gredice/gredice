@@ -98,86 +98,94 @@ async function getPlantSortsById() {
     return new Map(plantSorts.map((plantSort) => [plantSort.id, plantSort]));
 }
 
-const app = new Hono()
-    .get(
-        '/offers',
-        describeRoute({
-            description:
-                'List active discounted Outlet seedling offers, optionally including sold-out offers for the garden display.',
-            security: publicSecurity,
-            tags: ['Outlet'],
-        }),
-        zValidator('query', outletOffersQuerySchema),
-        async (context) => {
-            const { includeSoldOut } = context.req.valid('query');
-            const [offers, plantSortsById] = await Promise.all([
-                getOutletOffers({ includeSoldOut }),
-                getPlantSortsById(),
-            ]);
-
-            setCacheControl(context, outletCacheControl);
-            return context.json({
-                items: offers.flatMap((offer) => {
-                    const plantSort = plantSortsById.get(offer.plantSortId);
-                    if (!plantSort) {
-                        return [];
-                    }
-
-                    return [outletOfferResponse(offer, plantSort)];
-                }),
-            });
-        },
-    )
-    .get(
-        '/offers/:offerId',
-        describeRoute({
-            description: 'Get one active discounted Outlet seedling offer.',
-            security: publicSecurity,
-            tags: ['Outlet'],
-        }),
-        zValidator(
-            'param',
-            z.object({
-                offerId: z.coerce.number().int().positive(),
+export function createOutletRoutes({
+    listOffers = getOutletOffers,
+    findOffer = getOutletOffer,
+    loadPlantSorts = getPlantSortsById,
+} = {}) {
+    return new Hono()
+        .get(
+            '/offers',
+            describeRoute({
+                description:
+                    'List active discounted Outlet seedling offers, optionally including sold-out offers for the garden display.',
+                security: publicSecurity,
+                tags: ['Outlet'],
             }),
-        ),
-        async (context) => {
-            const { offerId } = context.req.valid('param');
-            const [offer, plantSortsById] = await Promise.all([
-                getOutletOffer(offerId),
-                getPlantSortsById(),
-            ]);
-            if (!offer) {
-                return context.json(
-                    { error: 'Outlet offer not found' },
-                    { status: 404 },
+            zValidator('query', outletOffersQuerySchema),
+            async (context) => {
+                const { includeSoldOut } = context.req.valid('query');
+                const offers = await listOffers({ includeSoldOut });
+                // Availability is always current; no catalogue work is needed for
+                // an empty result, including an entirely sold-out catalogue.
+                const plantSortsById =
+                    offers.length > 0
+                        ? await loadPlantSorts()
+                        : new Map<number, EntityStandardized>();
+
+                setCacheControl(context, outletCacheControl);
+                return context.json({
+                    items: offers.flatMap((offer) => {
+                        const plantSort = plantSortsById.get(offer.plantSortId);
+                        if (!plantSort) {
+                            return [];
+                        }
+
+                        return [outletOfferResponse(offer, plantSort)];
+                    }),
+                });
+            },
+        )
+        .get(
+            '/offers/:offerId',
+            describeRoute({
+                description: 'Get one active discounted Outlet seedling offer.',
+                security: publicSecurity,
+                tags: ['Outlet'],
+            }),
+            zValidator(
+                'param',
+                z.object({
+                    offerId: z.coerce.number().int().positive(),
+                }),
+            ),
+            async (context) => {
+                const { offerId } = context.req.valid('param');
+                const offer = await findOffer(offerId);
+                if (!offer) {
+                    return context.json(
+                        { error: 'Outlet offer not found' },
+                        { status: 404 },
+                    );
+                }
+
+                const now = Date.now();
+                if (
+                    offer.status !== 'published' ||
+                    offer.startAt.getTime() > now ||
+                    offer.endAt.getTime() <= now ||
+                    offer.remainingQuantity <= 0
+                ) {
+                    return context.json(
+                        { error: 'Outlet offer not found' },
+                        { status: 404 },
+                    );
+                }
+
+                const plantSort = (await loadPlantSorts()).get(
+                    offer.plantSortId,
                 );
-            }
+                if (!plantSort) {
+                    return context.json(
+                        { error: 'Outlet offer not found' },
+                        { status: 404 },
+                    );
+                }
 
-            const now = Date.now();
-            if (
-                offer.status !== 'published' ||
-                offer.startAt.getTime() > now ||
-                offer.endAt.getTime() <= now ||
-                offer.remainingQuantity <= 0
-            ) {
-                return context.json(
-                    { error: 'Outlet offer not found' },
-                    { status: 404 },
-                );
-            }
+                setCacheControl(context, outletCacheControl);
+                return context.json(outletOfferResponse(offer, plantSort));
+            },
+        );
+}
 
-            const plantSort = plantSortsById.get(offer.plantSortId);
-            if (!plantSort) {
-                return context.json(
-                    { error: 'Outlet offer not found' },
-                    { status: 404 },
-                );
-            }
-
-            setCacheControl(context, outletCacheControl);
-            return context.json(outletOfferResponse(offer, plantSort));
-        },
-    );
-
-export default app;
+export default createOutletRoutes();

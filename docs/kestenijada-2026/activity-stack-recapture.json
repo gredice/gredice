@@ -1,0 +1,192 @@
+{
+  "recordedAt": "2026-10-03T15:03:10.774438+00:00",
+  "scope": "Bounded selected runtime identity evidence, not a complete renderer dependency graph or reproducible full-engine/performance proof.",
+  "trailSourceCommit": "9d2e437c12aee7bf84422b2ead4aeec860181c3b",
+  "captureSource": {
+    "commit": "6f7d5700a5426282d78b417908da9ce2ce6b0e00",
+    "tree": "b783e17be5439ee9ebe7dc10dccf87b7653a568d",
+    "status": ""
+  },
+  "originalEvidence": {
+    "path": "docs/kestenijada-2026/original-d0fee5e13/evidence.json",
+    "sha256": "62f52280e2ee04b7360bd871f3573185b88970a3a6d7aa5ec59d295f37654d42"
+  },
+  "previousEvidence": {
+    "path": "docs/kestenijada-2026/pre-activity-stack/evidence.json",
+    "sha256": "fad30df466ba40f9e816dbf0eee57b41d75f4ce1e6a326630f9f69a695fc7bed"
+  },
+  "commands": [
+    {
+      "command": "pnpm --filter garden exec playwright test --config playwright.kestenijada.config.ts --workers=1",
+      "passed": 6,
+      "sceneCaptures": 4
+    },
+    {
+      "command": "pnpm --filter garden build",
+      "result": "passed"
+    },
+    {
+      "command": "pnpm --filter garden exec playwright test --config playwright.kestenijada-route.config.ts --workers=1",
+      "passed": 1,
+      "scope": "Built public route, model origins, private-request fence, guest/root and discovery Link transitions."
+    }
+  ],
+  "views": [
+    {
+      "view": "day",
+      "pngSha256": "e4d43bcba44969711d157b799eeb6b47d20f3a15b288157ea8666d065997fa89",
+      "previousPngSha256": "e4d43bcba44969711d157b799eeb6b47d20f3a15b288157ea8666d065997fa89",
+      "pngByteIdentical": true,
+      "decodedPixelIdentical": true,
+      "captureRecordNonSourceParity": true,
+      "captureJsonSha256": "8c958af35cfd6f06a30ef994bb416f10f9b2397ade1aae1274afa5530acb8ece"
+    },
+    {
+      "view": "dusk",
+      "pngSha256": "3719b321f2980949951910919f1851f5aa20bd70bd283c4106887bdb65a15b89",
+      "previousPngSha256": "3719b321f2980949951910919f1851f5aa20bd70bd283c4106887bdb65a15b89",
+      "pngByteIdentical": true,
+      "decodedPixelIdentical": true,
+      "captureRecordNonSourceParity": true,
+      "captureJsonSha256": "8c958af35cfd6f06a30ef994bb416f10f9b2397ade1aae1274afa5530acb8ece"
+    },
+    {
+      "view": "night",
+      "pngSha256": "4293de055920e694e884d0046988fc7d1024d95bd5749e763c0c038f81f2fe87",
+      "previousPngSha256": "4293de055920e694e884d0046988fc7d1024d95bd5749e763c0c038f81f2fe87",
+      "pngByteIdentical": true,
+      "decodedPixelIdentical": true,
+      "captureRecordNonSourceParity": true,
+      "captureJsonSha256": "8c958af35cfd6f06a30ef994bb416f10f9b2397ade1aae1274afa5530acb8ece"
+    },
+    {
+      "view": "mobile-low",
+      "pngSha256": "21f3e80b1e4ede789204e1f50585d159c77bcd80944b93390f8832dad1d9d454",
+      "previousPngSha256": "21f3e80b1e4ede789204e1f50585d159c77bcd80944b93390f8832dad1d9d454",
+      "pngByteIdentical": true,
+      "decodedPixelIdentical": true,
+      "captureRecordNonSourceParity": true,
+      "captureJsonSha256": "69e75cb348f6b5c8854a4fca969efe012858a947fe6d815f5c128aa91ac509dd"
+    }
+  ],
+  "changedSelectedInputs": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "previousSha256": "c4929475f879854aba2aef6430438d84c6a444d78e8ecc0520ede8ceed37cc4d",
+      "currentSha256": "50a2e3a80e2b0b5cef9639ac54319bf1d8eaa4bc66fc91e1eefff8297031c765"
+    },
+    {
+      "path": "apps/garden/app/kestenijada/page.tsx",
+      "previousSha256": "690e37dd3d8611e28992f5d1f8c806de957ccf2dbd01245f9c98c4be18af6e4e",
+      "currentSha256": "0a30c2e3cd4aec8cfccf8f449759241f4548ea793ca6703a9eccc4826f55328c"
+    },
+    {
+      "path": "apps/garden/components/providers/ClientAppProvider.tsx",
+      "previousSha256": "d59ece31969fcc502a624421acc90c76402aba8a3736cab90c311a8b9a2f8fdd",
+      "currentSha256": "0184bdf1a62f32722f5fd8caf35d6d78763f438e1e0b478f85aca8e200d3e227"
+    },
+    {
+      "path": "apps/garden/playwright.config.ts",
+      "previousSha256": "e1868e390edb8ca0dd1f861f6450518fc748ef3b2fbdbe9600cadab5299d4dc5",
+      "currentSha256": "2195be03c5b7fec26371d6d83eb6bd232587113aa4436f2de14d56f421fee61c"
+    },
+    {
+      "path": "apps/garden/tests/kestenijada.spec.tsx",
+      "previousSha256": "7325824785dfd96ca0077eb352f39e89a10af5b8dc8f99c267b952c60b51d555",
+      "currentSha256": "e7040078e98a18d30770817abb49da537e2a1345b111b07a3f041efb6472dc68"
+    },
+    {
+      "path": "docs/kestenijada-2026/day.json",
+      "previousSha256": "0424de2363f16361ab48783d9c8580ef20cc1c191a45742c39003c913e131da9",
+      "currentSha256": "8c958af35cfd6f06a30ef994bb416f10f9b2397ade1aae1274afa5530acb8ece"
+    },
+    {
+      "path": "docs/kestenijada-2026/dusk.json",
+      "previousSha256": "0424de2363f16361ab48783d9c8580ef20cc1c191a45742c39003c913e131da9",
+      "currentSha256": "8c958af35cfd6f06a30ef994bb416f10f9b2397ade1aae1274afa5530acb8ece"
+    },
+    {
+      "path": "docs/kestenijada-2026/mobile-low.json",
+      "previousSha256": "24430d0422bcb55a27465da7187a89b568d8478980e29d32fcaeab8be0a5b091",
+      "currentSha256": "69e75cb348f6b5c8854a4fca969efe012858a947fe6d815f5c128aa91ac509dd"
+    },
+    {
+      "path": "docs/kestenijada-2026/night.json",
+      "previousSha256": "0424de2363f16361ab48783d9c8580ef20cc1c191a45742c39003c913e131da9",
+      "currentSha256": "8c958af35cfd6f06a30ef994bb416f10f9b2397ade1aae1274afa5530acb8ece"
+    },
+    {
+      "path": "packages/game/scripts/record-kestenijada-evidence.mjs",
+      "previousSha256": "091f1677b509cbd6bf90f02a95dd0d537bf7d948f99fd201dd0f14c1c8833056",
+      "currentSha256": "55c169a54654b8fc76da8255a2336ef9ab139d5631f22d25325193b504445726"
+    },
+    {
+      "path": "packages/game/src/useGameState.ts",
+      "previousSha256": "d65a1175bacf1414654f7ffdab768fab2e7dd90800fa03d8d215ae9a37a6eff4",
+      "currentSha256": "3902a31eb255dbc853ef9839fc4dc07132c5984ed0c3dab9738b7027b4e9c289"
+    },
+    {
+      "path": "packages/game/src/viewers/PublicGardenViewer.tsx",
+      "previousSha256": "4fc1d850d74dee4c6ee771c7465012b042509cec774435f02592b1c70bf1a74f",
+      "currentSha256": "7a0cf17ceae8ce261fd5da748caf98593cd444ff1d5e2f6996f3369c2ea8a918"
+    }
+  ],
+  "addedSelectedInputs": [
+    {
+      "path": "packages/game/src/entities/helpers/GardenNightLight.tsx",
+      "sha256": "9295ed5f3d020de021902d48956517d865bb009f69f3e4956ed483c0f7a7fc9a"
+    },
+    {
+      "path": "packages/game/src/entities/helpers/PumpkinLightOverrideContext.ts",
+      "sha256": "8058e8355f022f42a18f68856ee5b78db947e4b2c26b027222d0dfd329ba2f0f"
+    },
+    {
+      "path": "packages/game/src/entities/helpers/nightGardenLight.ts",
+      "sha256": "8810a4076baee9dc07d6c3db70aefd9a235be0578d1dfad890d0a5ce758edd8f"
+    },
+    {
+      "path": "packages/game/src/scene/GardenLightProvider.tsx",
+      "sha256": "ccadf96a8a911d490e59f9a40e6ba8fdd6f931c70a752b515a0b6c35a3fef2d3"
+    }
+  ],
+  "visualReview": "All four PNG files are byte-identical to the previous approved captures and original authored captures. Existing visual approval is retained; no changed image needs another approval.",
+  "limits": [
+    "Headless Chromium SwiftShader; incidental renderer counters are not performance evidence.",
+    "No physical-device, live campaign/catalogue, deployment or production-promotion acceptance.",
+    "The real root navigation fixture emits upstream remote block-thumbnail 404 diagnostics; no privacy assertion failed and the scene model/capture assets were local."
+  ],
+  "localValidationLogs": [
+    {
+      "path": "/tmp/gredice-activity-starter-capture.log",
+      "sha256": "6063bc1abf5deb81068477d316d667adb3fc0d2fbf293473a6f650328738607a"
+    },
+    {
+      "path": "/tmp/gredice-activity-kestenijada-capture.log",
+      "sha256": "90318cf1abfeb3ebd5eff672aeab24483fcc116a3ac346856b72c936adbf8bbb"
+    },
+    {
+      "path": "/tmp/gredice-activity-garden-build.log",
+      "sha256": "d2ff53973e6e5083c2aa0ccbf52c9405b9ac31472bbfdd0c27602cad1a35b5cc"
+    },
+    {
+      "path": "/tmp/gredice-activity-kestenijada-route.log",
+      "sha256": "3c5c52aefa3dff3ae4122de7cd194bb62aa10a31830d95d477973011f0e15743"
+    },
+    {
+      "path": "/tmp/gredice-activity-starter-proof.log",
+      "sha256": "2fe6c260e7e09ea7c6c7b84a4e46ac93cac635074309541b47886b6374c386db"
+    },
+    {
+      "path": "/tmp/gredice-activity-proof-loader.log",
+      "sha256": "e975f48178272356aaac7ea0400019e7fa010e2c5e4de6b6447647a6809fc54b"
+    },
+    {
+      "path": "/tmp/gredice-activity-starter-storefront.log",
+      "sha256": "8035ab02430e2ab78501b07bc2e9f68cf360b15f8d4b75b86e0996682004aa16"
+    },
+    {
+      "path": "/tmp/gredice-activity-discovery.log",
+      "sha256": "79b16f08a52f4f1eba715bfddbad3014dfea547a78fd758c06770a70079c9920"
+    }
+  ]
+}

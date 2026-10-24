@@ -135,7 +135,7 @@ export default async function HarvestTracesPage({
                             Token, URL ili gredica
                         </Typography>
                         <input
-                            className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-hidden focus:border-ring focus:ring-2 focus:ring-ring/30"
+                            className="h-10 w-full rounded-md border bg-field px-3 text-sm outline-hidden focus:border-ring focus:ring-2 focus:ring-ring/30"
                             defaultValue={query}
                             name="q"
                             placeholder="trag/... ili 12B"
@@ -146,7 +146,7 @@ export default async function HarvestTracesPage({
                             Status
                         </Typography>
                         <select
-                            className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-hidden focus:border-ring focus:ring-2 focus:ring-ring/30"
+                            className="h-10 w-full rounded-md border bg-field px-3 text-sm outline-hidden focus:border-ring focus:ring-2 focus:ring-ring/30"
                             defaultValue={status}
                             name="status"
                         >
@@ -160,7 +160,7 @@ export default async function HarvestTracesPage({
                             Skeniranja
                         </Typography>
                         <select
-                            className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-hidden focus:border-ring focus:ring-2 focus:ring-ring/30"
+                            className="h-10 w-full rounded-md border bg-field px-3 text-sm outline-hidden focus:border-ring focus:ring-2 focus:ring-ring/30"
                             defaultValue={scanState}
                             name="scans"
                         >

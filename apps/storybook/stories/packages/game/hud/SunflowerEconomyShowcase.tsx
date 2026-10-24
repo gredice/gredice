@@ -1,6 +1,6 @@
 import { cx } from '@gredice/ui/utils';
 import { SunflowerHistoryExamples } from './SunflowerHistoryExamples';
-import { SunflowerMascotComparison } from './SunflowerMascotComparison';
+import { SunflowerMascotExpressions } from './SunflowerMascotExpressions';
 import { SunflowerPackageExamples } from './SunflowerPackageExamples';
 
 export function SunflowerEconomyShowcase({
@@ -22,7 +22,7 @@ export function SunflowerEconomyShowcase({
                     <h1 className="text-2xl font-semibold">
                         Suncokreti · paketi i aktivnosti
                     </h1>
-                    <SunflowerMascotComparison />
+                    <SunflowerMascotExpressions />
                     <SunflowerPackageExamples />
                     <SunflowerHistoryExamples />
                 </div>

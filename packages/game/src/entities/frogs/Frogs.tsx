@@ -1,5 +1,3 @@
-import { useAnimations } from '@react-three/drei';
-import { useFrame } from '@react-three/fiber';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     type Group,
@@ -40,6 +38,12 @@ import {
     getAnimalMovementYAt,
 } from '../animals/animalMovementTerrain';
 import { animalPresenceUpdateIntervalSeconds } from '../animals/animalPresence';
+import {
+    useFaunaFrame,
+    useFaunaRenderFrame,
+} from '../animals/FaunaRuntimeProvider';
+import { useFaunaActorCulling } from '../animals/useFaunaActorCulling';
+import { useFaunaAnimations } from '../animals/useFaunaAnimations';
 import type { CatPathPoint } from '../cats/catPathfinding';
 import {
     chooseFrogEscapePlan,
@@ -108,9 +112,9 @@ function frogSpawnStatesEqual(
     );
 }
 
-const frogScale = 0.42;
-const frogGroundLift = 0.018;
-const frogSwimDepth = 0.055;
+const frogScale = 0.21;
+const frogGroundLift = 0.009;
+const frogSwimDepth = 0.0275;
 const frogDebugColor = '#84cc16';
 const frogDebugBehaviors = ['idle', 'croak', 'hop', 'escape'];
 const frogCroakDurationSeconds = 1.1;
@@ -313,18 +317,7 @@ function Frog({ candidate }: { candidate: FrogSpawnCandidate }) {
     const animalTargetsDebugVisible = useGameState(
         (state) => state.animalTargetsDebugVisible,
     );
-    const setAnimalDebugEntry = useGameState(
-        (state) => state.setAnimalDebugEntry,
-    );
-    const removeAnimalDebugEntry = useGameState(
-        (state) => state.removeAnimalDebugEntry,
-    );
-    const setAnimalPresenceEntry = useGameState(
-        (state) => state.setAnimalPresenceEntry,
-    );
-    const removeAnimalPresenceEntry = useGameState(
-        (state) => state.removeAnimalPresenceEntry,
-    );
+    const faunaWorld = useGameState((state) => state.faunaWorld);
 
     const frogModel = useMemo(() => {
         const scene = gltf.scene.clone(true);
@@ -334,7 +327,8 @@ function Frog({ candidate }: { candidate: FrogSpawnCandidate }) {
         );
         return { primaryCasterCount, scene };
     }, [gltf.scene]);
-    const { actions } = useAnimations(gltf.animations, frogModel.scene);
+    useFaunaActorCulling(frogModel.scene);
+    const { actions } = useFaunaAnimations(gltf.animations, frogModel.scene);
     const updateActorGroundingShadow = useActorGroundingShadow({
         id: `frog:${candidate.id}`,
         primaryCasterCount: frogModel.primaryCasterCount,
@@ -361,14 +355,14 @@ function Frog({ candidate }: { candidate: FrogSpawnCandidate }) {
 
     useEffect(() => {
         if (!enableDebugHudFlag) {
-            removeAnimalDebugEntry(candidate.id);
+            faunaWorld.removeDebug(candidate.id);
         }
-        return () => removeAnimalDebugEntry(candidate.id);
-    }, [candidate.id, enableDebugHudFlag, removeAnimalDebugEntry]);
+        return () => faunaWorld.removeDebug(candidate.id);
+    }, [candidate.id, enableDebugHudFlag, faunaWorld]);
 
     useEffect(
-        () => () => removeAnimalPresenceEntry(candidate.id),
-        [candidate.id, removeAnimalPresenceEntry],
+        () => () => faunaWorld.removePresence(candidate.id),
+        [candidate.id, faunaWorld],
     );
 
     useEffect(() => {
@@ -383,7 +377,7 @@ function Frog({ candidate }: { candidate: FrogSpawnCandidate }) {
         }
     }, [animalTargetsDebugVisible]);
 
-    useFrame(({ clock }, delta) => {
+    useFaunaFrame(({ clock }, delta) => {
         const group = groupRef.current;
         if (!group) {
             return;
@@ -635,9 +629,36 @@ function Frog({ candidate }: { candidate: FrogSpawnCandidate }) {
                 target: runtime.target,
             });
         }
+    }, groupRef);
+
+    useFaunaFrame(({ clock }) => {
+        const group = groupRef.current;
+        const runtime = runtimeRef.current;
+        if (!group || !runtime) return;
+        const now = clock.elapsedTime;
+        if (
+            now - lastPresenceUpdateRef.current >=
+            animalPresenceUpdateIntervalSeconds
+        ) {
+            lastPresenceUpdateRef.current = now;
+            faunaWorld.reportPresence({
+                behavior:
+                    runtime.phase === 'moving'
+                        ? runtime.escape
+                            ? 'escape'
+                            : 'hop'
+                        : now < runtime.croakingUntil
+                          ? 'croak'
+                          : 'idle',
+                id: candidate.id,
+                position: roundPoint(group.position),
+                species: 'Frog',
+                updatedAt: now,
+            });
+        }
     });
 
-    useFrame(({ clock }) => {
+    useFaunaRenderFrame(({ clock }) => {
         const group = groupRef.current;
         const runtime = runtimeRef.current;
         if (!group || !runtime) {
@@ -659,30 +680,9 @@ function Frog({ candidate }: { candidate: FrogSpawnCandidate }) {
             });
         }
 
-        if (
-            now - lastPresenceUpdateRef.current >=
-            animalPresenceUpdateIntervalSeconds
-        ) {
-            lastPresenceUpdateRef.current = now;
-            setAnimalPresenceEntry({
-                behavior:
-                    runtime.phase === 'moving'
-                        ? runtime.escape
-                            ? 'escape'
-                            : 'hop'
-                        : now < runtime.croakingUntil
-                          ? 'croak'
-                          : 'idle',
-                id: candidate.id,
-                position: roundPoint(group.position),
-                species: 'Frog',
-                updatedAt: now,
-            });
-        }
-
         if (enableDebugHudFlag && now - lastDebugUpdateRef.current >= 0.5) {
             lastDebugUpdateRef.current = now;
-            setAnimalDebugEntry(
+            faunaWorld.reportDebug(
                 createFrogDebugEntry({ candidate, group, now, runtime }),
             );
         }
@@ -697,7 +697,7 @@ function Frog({ candidate }: { candidate: FrogSpawnCandidate }) {
                 <ActorSpeechBubble
                     actorRef={groupRef}
                     message="Kre-kre!"
-                    offsetY={0.42}
+                    offsetY={frogScale}
                 />
             ) : null}
             <AnimalTargetDebugMarker

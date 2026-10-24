@@ -14,6 +14,7 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Typography } from '@gredice/ui/Typography';
+import { RelatedFaq } from '../../components/faq/RelatedFaq';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { PublicGardenIllustration } from '../../components/visuals/PublicGardenIllustration';
 import { getOperationsData } from '../../lib/plants/getOperationsData';
@@ -295,6 +296,7 @@ export default async function SowingPage() {
                         <a href={KnownPages.Operations}>radnji</a>.
                     </p>
                 </StyledHtml>
+                <RelatedFaq placement="sowing" />
                 <Row spacing={4} className="mt-4">
                     <Typography level="body1">
                         Jesu li ti informacije o sjetvi bile korisne?

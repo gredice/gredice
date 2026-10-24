@@ -1,7 +1,7 @@
 'use client';
 
 import { MessageScroller } from '@shadcn/react/message-scroller';
-import type { HTMLAttributes, ReactNode } from 'react';
+import type { ComponentProps, HTMLAttributes, ReactNode } from 'react';
 import { Down } from '../icons';
 import { cx } from '../utils';
 
@@ -17,7 +17,11 @@ export type ChatMessageScrollerProps = Omit<
 > & {
     ariaBusy?: boolean;
     ariaLabel?: string;
+    autoScroll?: boolean;
     contentClassName?: string;
+    defaultScrollPosition?: ComponentProps<
+        typeof MessageScroller.Provider
+    >['defaultScrollPosition'];
     emptyContent?: ReactNode;
     items: ChatMessageScrollerItem[];
     scrollButtonLabel?: string;
@@ -26,8 +30,10 @@ export type ChatMessageScrollerProps = Omit<
 export function ChatMessageScroller({
     ariaBusy = false,
     ariaLabel = 'Razgovor',
+    autoScroll = true,
     className,
     contentClassName,
+    defaultScrollPosition = 'end',
     emptyContent,
     items,
     scrollButtonLabel = 'Najnovije poruke',
@@ -35,8 +41,8 @@ export function ChatMessageScroller({
 }: ChatMessageScrollerProps) {
     return (
         <MessageScroller.Provider
-            autoScroll
-            defaultScrollPosition="end"
+            autoScroll={autoScroll}
+            defaultScrollPosition={defaultScrollPosition}
             scrollPreviousItemPeek={48}
         >
             <MessageScroller.Root

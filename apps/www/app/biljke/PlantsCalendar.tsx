@@ -1,6 +1,5 @@
 'use client';
 
-import type { PlantData } from '@gredice/client';
 import { orderBy } from '@gredice/js/arrays';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Row } from '@gredice/ui/Row';
@@ -12,10 +11,13 @@ import {
     calendarActivities,
     calendarActivityKeys,
 } from '../../lib/plants/calendarActivities';
-import { plantMatchesSearch } from '../../lib/plants/plantSearch';
 import { normalizeSearchText } from '../../lib/search/normalizeSearchText';
 import { KnownPages } from '../../src/KnownPages';
 import { getCalendarRangePosition } from './calendarRangePosition';
+import {
+    cataloguePlantMatchesSearch,
+    type PlantCatalogueItem,
+} from './plantCatalogue';
 
 const calendarMonths = [
     'I',
@@ -39,7 +41,7 @@ export function PlantsCalendar({
 }: {
     initialSearch?: string;
     initialSeedTimeFilter?: string;
-    plants: (PlantData & { isRecommended?: boolean })[] | undefined;
+    plants: PlantCatalogueItem[];
 }) {
     const [search] = useClientSearchParam('pretraga', initialSearch);
     const [seedTimeFilter] = useClientSearchParam(
@@ -52,7 +54,7 @@ export function PlantsCalendar({
         a.information.name.localeCompare(b.information.name),
     )
         .filter((plant) => !onlySeedTimePlants || plant.isRecommended)
-        .filter((plant) => plantMatchesSearch(plant, normalizedSearch))
+        .filter((plant) => cataloguePlantMatchesSearch(plant, normalizedSearch))
         .map((plant) => ({ ...plant, id: plant.id.toString() }));
 
     const currentDate = new Date();
@@ -84,13 +86,7 @@ export function PlantsCalendar({
             {calendarActivityKeys.map((activityTypeName) => {
                 const activityType = calendarActivities[activityTypeName];
                 return filteredPlants
-                    .filter(
-                        (p) =>
-                            p.calendar &&
-                            Object.keys(p.calendar).some(
-                                (a) => a === activityTypeName,
-                            ),
-                    )
+                    .filter((p) => p.calendar?.[activityTypeName])
                     .map((plant, plantIndex) => {
                         const activities = plant.calendar;
                         if (!activities) return null;

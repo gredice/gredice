@@ -59,6 +59,7 @@ export function NavItem({
     return (
         <Link
             href={href}
+            prefetch={false}
             onClick={handleClick}
             title={label}
             aria-label={compact ? label : undefined}

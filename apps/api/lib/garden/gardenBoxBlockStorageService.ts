@@ -11,25 +11,25 @@ import {
     GardenMutationOperationConflictError,
     type GardenMutationOperationExecution,
     type GardenMutationOperationStoredResponse,
+    GardenPackConflictError,
+    GardenPackLifecyclePendingError,
+    GardenPackNotFoundError,
     type GardenPlacementTransaction,
     getGardenBlockForUpdate,
     getGardenMutationAuthorityForUpdate,
     getGardenMutationOperationReceipt,
     getGardenPlacementSnapshotForUpdate,
     getGardenStackForUpdate,
-    listGardenStructures,
+    isPurchasedGardenPackBlock,
+    storeGardenPackBlock,
     updateGardenStack,
     withGardenBoxInventoryTransaction,
     withGardenMutationOperation,
     withGardenPlacementTransaction,
 } from '@gredice/storage';
+import { z } from 'zod';
 import { getBlockData } from '../blocks/blockDataService';
 import { settleGardenEconomicMutationDependency } from './gardenEconomicMutationDependency';
-import {
-    type GardenOccupancyServiceError,
-    type GardenOccupancyStorageStructureLike,
-    validatePersistedStructuresAfterBlockMutation,
-} from './gardenOccupancyService';
 
 const maximumStorageInteger = 2_147_483_647;
 const minimumStorageInteger = -2_147_483_648;
@@ -116,16 +116,11 @@ export type GardenBoxBlockStorageDependencies<Transaction> = Readonly<{
         position: Readonly<{ x: number; y: number }>,
         transaction: Transaction,
     ) => Promise<GardenBoxSourceStack | null>;
-    listGardenStructures: (
-        gardenId: number,
-        transaction: Transaction,
-    ) => Promise<readonly GardenOccupancyStorageStructureLike[]>;
     updateGardenStack: (
         gardenId: number,
         stack: Readonly<{ x: number; y: number; blocks: string[] }>,
         transaction: Transaction,
     ) => Promise<void>;
-    validatePersistedStructuresAfterBlockMutation: typeof validatePersistedStructuresAfterBlockMutation;
     withGardenBoxInventoryTransaction: <Result>(
         accountId: string,
         gardenId: number,
@@ -153,6 +148,7 @@ export type GardenBoxBlockStorageDependencies<Transaction> = Readonly<{
 
 export type GardenBoxBlockStorageCommand = Readonly<{
     accountId: string;
+    operationId?: string;
     blockId: string;
     blockIndex: number;
     entityId?: string;
@@ -162,6 +158,7 @@ export type GardenBoxBlockStorageCommand = Readonly<{
 }>;
 
 type GardenBoxBlockStorageFailureCode =
+    | 'PACK_LIFECYCLE_PENDING'
     | 'ACCOUNT_DELETION_IN_PROGRESS'
     | 'BLOCK_DIRECTORY_DATA_NOT_FOUND'
     | 'BLOCK_DIRECTORY_UNAVAILABLE'
@@ -170,9 +167,6 @@ type GardenBoxBlockStorageFailureCode =
     | 'GARDEN_BOX_NOT_FOUND'
     | 'GARDEN_BOX_NOT_PLACED'
     | 'GARDEN_NOT_FOUND'
-    | 'GARDEN_OCCUPANCY_CONFLICT'
-    | 'GARDEN_OCCUPANCY_INVALID_INPUT'
-    | 'GARDEN_OCCUPANCY_INVALID_STATE'
     | 'GARDEN_STATE_CHANGED'
     | 'INVALID_OPERATION_RECEIPT'
     | 'INVALID_REQUEST'
@@ -314,10 +308,6 @@ function readReceiptResponse(
             entityTypeName: 'block',
         },
     };
-}
-
-function failOccupancy(error: GardenOccupancyServiceError): never {
-    fail(error.code, error.status, error.message);
 }
 
 function assertBlockCanBeStored(
@@ -636,42 +626,6 @@ export function createGardenBoxBlockStorageService<Transaction>(
                                             operationTransaction,
                                         );
 
-                                        const [
-                                            postMutationSnapshot,
-                                            structures,
-                                        ] = await Promise.all([
-                                            dependencies.getGardenPlacementSnapshotForUpdate(
-                                                command.gardenId,
-                                                operationTransaction,
-                                            ),
-                                            dependencies.listGardenStructures(
-                                                command.gardenId,
-                                                operationTransaction,
-                                            ),
-                                        ]);
-                                        if (!postMutationSnapshot) {
-                                            fail(
-                                                'GARDEN_STATE_CHANGED',
-                                                409,
-                                                'Garden changed while storing block',
-                                            );
-                                        }
-                                        const validation =
-                                            dependencies.validatePersistedStructuresAfterBlockMutation(
-                                                {
-                                                    blockData:
-                                                        mutation.blockData,
-                                                    snapshot: {
-                                                        blocks: postMutationSnapshot.blocks,
-                                                        stacks: postMutationSnapshot.stacks,
-                                                        structures,
-                                                    },
-                                                },
-                                            );
-                                        if (!validation.valid) {
-                                            failOccupancy(validation.error);
-                                        }
-
                                         await dependencies.addGardenBoxInventoryItem(
                                             command.accountId,
                                             command.gardenId,
@@ -713,6 +667,13 @@ export function createGardenBoxBlockStorageService<Transaction>(
                     ),
             );
         } catch (error) {
+            if (error instanceof GardenPackLifecyclePendingError)
+                return {
+                    ok: false,
+                    code: 'PACK_LIFECYCLE_PENDING',
+                    error: 'Pohrana, recikliranje i promjena izgleda predmeta iz paketa još nisu dostupni. Vrt s tim predmetima trenutačno nije moguće obrisati.',
+                    status: 409,
+                };
             if (error instanceof GardenBoxBlockStorageError) {
                 return {
                     ok: false,
@@ -781,9 +742,7 @@ const defaultDependencies: GardenBoxBlockStorageDependencies<GardenPlacementTran
         getGardenMutationOperationReceipt,
         getGardenPlacementSnapshotForUpdate,
         getGardenStackForUpdate,
-        listGardenStructures,
         updateGardenStack,
-        validatePersistedStructuresAfterBlockMutation,
         withGardenBoxInventoryTransaction: (
             accountId,
             gardenId,
@@ -801,5 +760,61 @@ const defaultDependencies: GardenBoxBlockStorageDependencies<GardenPlacementTran
         withGardenPlacementTransaction,
     };
 
-export const storeGardenBlockInGardenBoxForAccount =
+const storeOrdinaryGardenBlock =
     createGardenBoxBlockStorageService(defaultDependencies);
+export async function storeGardenBlockInGardenBoxForAccount(
+    command: GardenBoxBlockStorageCommand,
+): Promise<GardenBoxBlockStorageResult> {
+    if (!(await isPurchasedGardenPackBlock(command.blockId)))
+        return storeOrdinaryGardenBlock(command);
+    try {
+        const response = await storeGardenPackBlock(command.accountId, {
+            gardenId: command.gardenId,
+            blockId: command.blockId,
+            gardenBoxBlockId: command.gardenBoxBlockId,
+            blockIndex: command.blockIndex,
+            sourcePosition: command.sourcePosition,
+            operationId: command.operationId,
+        });
+        return {
+            ok: true,
+            gardenBoxBlockId: command.gardenBoxBlockId,
+            item: {
+                entityTypeName: 'block',
+                entityId: z.string().parse(
+                    z
+                        .object({
+                            item: z.object({ entityId: z.string() }),
+                        })
+                        .parse(response).item.entityId,
+                ),
+                amount: 1,
+            },
+            replayed: z.object({ replayed: z.boolean() }).parse(response)
+                .replayed,
+        };
+    } catch (error) {
+        if (error instanceof GardenPackConflictError)
+            return {
+                ok: false,
+                code: 'OPERATION_CONFLICT',
+                error: error.message,
+                status: 409,
+            };
+        if (error instanceof GardenPackNotFoundError)
+            return {
+                ok: false,
+                code: 'BLOCK_NOT_FOUND',
+                error: error.message,
+                status: 404,
+            };
+        if (error instanceof GardenBoxInventoryLimitError)
+            return {
+                ok: false,
+                code: 'GARDEN_BOX_INVENTORY_LIMIT',
+                error: error.message,
+                status: 400,
+            };
+        throw error;
+    }
+}

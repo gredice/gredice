@@ -5,12 +5,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MathUtils, OrthographicCamera, Vector2, Vector3 } from 'three';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useSceneCurrentGarden } from '../hooks/useSceneCurrentGarden';
-import { updateGameProfileMetadata } from '../scene/gameProfileMetadata';
 import {
     sceneFrameRates,
     useSceneRenderRequest,
     useSceneTimeInvalidation,
 } from '../scene/SceneTime';
+import { getCameraFrame } from '../spatial/cameraFrame';
 import { useGameState } from '../useGameState';
 import {
     findRaisedBedByBlockId,
@@ -321,6 +321,12 @@ export function GameCameraRig({
     singlePointerPanEnabled?: boolean;
 }) {
     const { camera, gl, size } = useThree();
+    // Renderer size notifications can replace the object without resizing.
+    // Keep camera callbacks stable so they do not tear down active gestures.
+    const cameraViewport = useMemo(
+        () => ({ width: size.width, height: size.height }),
+        [size.width, size.height],
+    );
     const requestRender = useSceneRenderRequest();
     const isOrthographicCamera = camera instanceof OrthographicCamera;
     const setGameCamera = useGameState((state) => state.setGameCamera);
@@ -481,11 +487,12 @@ export function GameCameraRig({
             version: snapshotVersionRef.current,
             zoom: camera.zoom,
         });
+        getCameraFrame(camera, cameraViewport, snapshot.target);
         setGameCameraSnapshot(snapshot);
         for (const listener of cameraListenersRef.current) {
             listener(snapshot);
         }
-    }, [camera, isOrthographicCamera, setGameCameraSnapshot]);
+    }, [camera, cameraViewport, isOrthographicCamera, setGameCameraSnapshot]);
 
     const publishSnapshot = useCallback(() => {
         if (!isOrthographicCamera) {
@@ -495,17 +502,29 @@ export function GameCameraRig({
         snapshotDirtyRef.current = true;
     }, [isOrthographicCamera]);
 
-    const applyCamera = useCallback(() => {
-        if (!isOrthographicCamera) {
-            return;
-        }
+    const applyCamera = useCallback(
+        (requestNextFrame = true) => {
+            if (!isOrthographicCamera) {
+                return;
+            }
 
-        camera.lookAt(targetRef.current);
-        camera.updateProjectionMatrix();
-        camera.updateMatrixWorld();
-        publishSnapshot();
-        requestRender('camera-change');
-    }, [camera, isOrthographicCamera, publishSnapshot, requestRender]);
+            camera.lookAt(targetRef.current);
+            camera.updateProjectionMatrix();
+            camera.updateMatrixWorld();
+            getCameraFrame(camera, cameraViewport, targetRef.current.toArray());
+            publishSnapshot();
+            if (requestNextFrame) {
+                requestRender('camera-change');
+            }
+        },
+        [
+            camera,
+            cameraViewport,
+            isOrthographicCamera,
+            publishSnapshot,
+            requestRender,
+        ],
+    );
 
     const saveNormalCamera = useCallback(() => {
         if (!isOrthographicCamera || view !== 'normal') {
@@ -539,14 +558,14 @@ export function GameCameraRig({
     );
 
     const panByWorldVector = useCallback(
-        (offset: Vector3) => {
+        (offset: Vector3, requestNextFrame = true) => {
             if (!isOrthographicCamera) {
                 return;
             }
 
             camera.position.add(offset);
             targetRef.current.add(offset);
-            applyCamera();
+            applyCamera(requestNextFrame);
             saveNormalCamera();
         },
         [applyCamera, camera, isOrthographicCamera, saveNormalCamera],
@@ -742,7 +761,10 @@ export function GameCameraRig({
                     return null;
                 }
 
-                const projected = position.clone().project(camera);
+                const projected = getCameraFrame(camera).project(
+                    position,
+                    new Vector3(),
+                );
                 return {
                     x: rect.left + ((projected.x + 1) / 2) * rect.width,
                     y: rect.top + ((-projected.y + 1) / 2) * rect.height,
@@ -851,12 +873,6 @@ export function GameCameraRig({
             setIsDragging(dragging);
         };
 
-        const publishActivePointerCount = () =>
-            updateGameProfileMetadata({
-                gardenStructureCameraActivePointerCount:
-                    activePointersRef.current.size,
-            });
-
         const clearPointers = () => {
             for (const pointerId of activePointersRef.current.keys()) {
                 if (element.hasPointerCapture(pointerId)) {
@@ -866,7 +882,6 @@ export function GameCameraRig({
             activePointersRef.current.clear();
             pointerStateRef.current = null;
             setCameraDragging(false);
-            publishActivePointerCount();
         };
 
         const updatePointerState = () => {
@@ -907,7 +922,6 @@ export function GameCameraRig({
                 event.pointerId,
                 new Vector2(event.clientX, event.clientY),
             );
-            publishActivePointerCount();
             updatePointerState();
             if (
                 shouldGameCameraOwnPointerGesture(
@@ -1018,7 +1032,6 @@ export function GameCameraRig({
                 singlePointerPanEnabled,
             );
             activePointersRef.current.delete(event.pointerId);
-            publishActivePointerCount();
             const releaseRemainingPointerCapture =
                 shouldReleaseGameCameraPointerCapture(
                     activePointersRef.current.size,
@@ -1265,6 +1278,7 @@ export function GameCameraRig({
             return;
         }
 
+        // This frame draws these updates; interaction leases own future motion.
         if (lastWorldRotationRef.current !== worldRotation) {
             lastWorldRotationRef.current = worldRotation;
             if (view === 'normal') {
@@ -1275,7 +1289,7 @@ export function GameCameraRig({
                         worldRotation,
                     }),
                 );
-                applyCamera();
+                applyCamera(false);
                 saveNormalCamera();
             }
         }
@@ -1302,7 +1316,7 @@ export function GameCameraRig({
             camera.zoom =
                 animation.startZoom +
                 (animation.endZoom - animation.startZoom) * easedProgress;
-            applyCamera();
+            applyCamera(false);
 
             if (
                 progress >= 1 ||
@@ -1316,7 +1330,7 @@ export function GameCameraRig({
                 camera.zoom = animation.endZoom;
                 animationRef.current = null;
                 setIsAnimating(false);
-                applyCamera();
+                applyCamera(false);
                 saveNormalCamera();
                 animation.onComplete?.();
             }
@@ -1335,7 +1349,7 @@ export function GameCameraRig({
                 )
                 .normalize()
                 .multiplyScalar(0.2);
-            panByWorldVector(offset);
+            panByWorldVector(offset, false);
         }
 
         flushSnapshot();

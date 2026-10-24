@@ -7,9 +7,10 @@ name. `FaqCategorySection` uses the same component on `/cesta-pitanja`.
 
 An editor-selected cover takes precedence. Known categories fall back to the
 registry in `faqCategoryArtwork.ts`, keyed by directory name rather than display
-label. New categories without artwork and failed image requests use the shared
-game information icon. The bundled quality-and-harvest-safety FAQ uses the same
-registry without creating a duplicate database category.
+label. Delivery, pricing and account categories use shared game icons. New
+categories without artwork and failed image requests use the shared game
+information icon. All answers, including quality and harvest safety, come from
+the published directory; see [the content guide](../../../../docs/public-faq.md).
 
 The transparent WebP files and generation prompts are in
 `public/assets/faq-categories/`. Harvest and maintenance reuse existing Gredice

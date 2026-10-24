@@ -1,0 +1,117 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Local selected A/B launch profiling; not production release approval",
+  "recordedAtUtc": "2026-10-04T00:31:26.125195+00:00",
+  "acceptedLocalProfile": {
+    "sourceCommit": "22e48526d2b5f7e03386cb6540733386296c92db",
+    "sourceTree": "5e3bcb19b148f0ffbc767c2a4cad426082c53050",
+    "report": "corrected/report.json",
+    "summary": {
+      "durationMs": 212087,
+      "failedScenarioNames": [],
+      "failedScenarios": 0,
+      "failedRuns": 0,
+      "passedRuns": 18,
+      "passedScenarios": 18,
+      "totalRuns": 18,
+      "totalScenarios": 18
+    },
+    "comparability": {
+      "comparable": true,
+      "reasons": [],
+      "subject": {
+        "commit": "22e48526d2b5f7e03386cb6540733386296c92db",
+        "dirty": false,
+        "source": "served-build-marker"
+      },
+      "harness": {
+        "commit": "22e48526d2b5f7e03386cb6540733386296c92db",
+        "dirty": false
+      },
+      "runtime": {
+        "arch": "arm64",
+        "browserVersion": "151.0.7922.34",
+        "nodeVersion": "v24.15.0",
+        "platform": "darwin"
+      },
+      "server": {
+        "buildPerformed": true,
+        "mode": "managed"
+      }
+    },
+    "visibleGeometryFloor": 5000,
+    "matrixScope": "24 first-wave A/B identities + StoneMedium/EnamelGardenLamp;1/3/9 repeats, standard stationary camera; garden-data census, not all24 meshes visible/mounted proof",
+    "visualReview": {
+      "reviewer": "GPT6 Astra xhigh model_review",
+      "scope": "six representative existing screenshots; real support ground/identifiable props; former medium-mobile sky defect fixed",
+      "screenshots": [
+        "corrected/screenshots/game-autumn-launch-small-early-sun-constrained.png",
+        "corrected/screenshots/game-autumn-launch-small-early-sun-high.png",
+        "corrected/screenshots/game-autumn-launch-medium-mid-cloud-constrained.png",
+        "corrected/screenshots/game-autumn-launch-medium-mid-cloud-high.png",
+        "corrected/screenshots/game-autumn-launch-dense-late-wind-constrained.png",
+        "corrected/screenshots/game-autumn-launch-dense-late-wind-high.png"
+      ],
+      "limitations": "Normal frustum cuts outer props/recipes at edges. Densities show essentially the same central subset; increases total garden-data/offscreen population, not nine complete repeats simultaneously rendered. Not worst-case densely packed on-screen GPU coverage or product-art framing."
+    }
+  },
+  "rejectedDiagnostic": {
+    "sourceCommit": "9facdce16b31cc0dfc237fed49706d428c4caf97",
+    "report": "rejected-sky-only/report.json",
+    "reason": "Initial medium mobile fixture placed camera in empty fourth repeat corner. Generic nonblank screenshots, upper budgets and clean-source comparability passed, but the result is rejected as selected-launch QA. Subsequent central-repeat and ordinary-path geometry regressions cover the repair.",
+    "skyMetrics": [
+      {
+        "name": "game-autumn-launch-medium-mid-cloud-low",
+        "trianglesPerRenderedFrame": 1248,
+        "drawCallsPerRenderedFrame": 23
+      },
+      {
+        "name": "game-autumn-launch-medium-mid-cloud-constrained",
+        "trianglesPerRenderedFrame": 1380,
+        "drawCallsPerRenderedFrame": 25
+      }
+    ]
+  },
+  "remainingGates": [
+    "Physical mobile usability/thermal and real constrained-device measurements",
+    "Worst-case dense simultaneous on-screen GPU workload",
+    "Listening/audio mixing",
+    "2D fallback and selected-launch interaction/cleanup",
+    "Complete bundle economy/recovery matrix",
+    "Publication/deployment/real catalogue/configuration readback"
+  ],
+  "checksums": {
+    "corrected/production.log": "5968f5cbd74fea0914531b4dee01f3e1380164f5a50f82979c3a477cd64ee103",
+    "corrected/report.json": "5621c54048217f23b14972c7452743f58fd96c9991780396c9fb66a16ce9a219",
+    "corrected/report.md": "eb505637bdf97e018cea6326ef36104a56cc45cf4799ec5bc22dc7a2045a0728",
+    "corrected/run-input.json": "e303a572ed6e4beb702765de7f22d2b2945c0548f981223a17e0e6470fdae264",
+    "corrected/screenshots/game-autumn-launch-dense-late-wind-constrained-reduced-motion.png": "0e1aa3e7c6dbe54b0addbf051f3dcfeb5d485a7a3a222aade012fe59e9c00144",
+    "corrected/screenshots/game-autumn-launch-dense-late-wind-constrained.png": "4a881af87fc5301afd4c545ef5e8532fed9b67d819cb7b279ed72b0700c27116",
+    "corrected/screenshots/game-autumn-launch-dense-late-wind-high.png": "1af6600ab0c6e21093a0eadef16a4cd8cf348abe8342dd5c8dbb37afeaa48a99",
+    "corrected/screenshots/game-autumn-launch-dense-late-wind-low.png": "722ffb08062c15087c51e44aba9188df4cbdc38cb792b8a20c51f29aba4e8614",
+    "corrected/screenshots/game-autumn-launch-dense-winter-snow-constrained.png": "5436889ca48ebe4b70bd1dc822e4b8c8b9b7efc743079f4d0a0fcae31acd3731",
+    "corrected/screenshots/game-autumn-launch-dense-winter-snow-high.png": "5fb0542f9e63a8edef16f2e25b9bd753ad7561ed9aee2b4fd5ead118df813742",
+    "corrected/screenshots/game-autumn-launch-dense-winter-snow-low.png": "41e2b3f4e2cd478cd50fbbdd4ad9c658166e10b8a33a6d918ecd6f87e88729f1",
+    "corrected/screenshots/game-autumn-launch-medium-mid-cloud-constrained.png": "d76d9664c0cb9eb618d79a69780fd49dc09865596d50d8646805254d3c028469",
+    "corrected/screenshots/game-autumn-launch-medium-mid-cloud-high.png": "dd171b7f8a8679e59a59371a17478035b2197f45a1705b48266b15c4aa87282b",
+    "corrected/screenshots/game-autumn-launch-medium-mid-cloud-low.png": "078e672b483ce94d6b97c8f4d09342c2495ac45392ebfe2bf06b7ee9529c0cbc",
+    "corrected/screenshots/game-autumn-launch-medium-mid-rain-constrained.png": "3180d18c85f7a869dc1ea110bc3a0f9ee5f6f18a4f37e004d3f64358d7f63c7b",
+    "corrected/screenshots/game-autumn-launch-medium-mid-rain-high.png": "0b523d911d3ffc0394cfb6ef01cb38d6c1a4a4a4eedc83f0c2e2e2042f8d6bf3",
+    "corrected/screenshots/game-autumn-launch-medium-mid-rain-low.png": "273d18bbe7c13600411fdfe02904f15e864028866ce836b8b9a9333b17da5a06",
+    "corrected/screenshots/game-autumn-launch-small-early-sun-constrained.png": "77358849852b893acd84b3033342ce21fffb7b89b6826978ac1bc97f51dde029",
+    "corrected/screenshots/game-autumn-launch-small-early-sun-high.png": "15bbfee6d1416c3260f327519098a15a25b215a40b2df23c27f5eef6d797b217",
+    "corrected/screenshots/game-autumn-launch-small-early-sun-low.png": "f2ee2df2db286a7c321b0bd4cb4e0f18912f7fbcf68ecad8abb06bc7cbf09469",
+    "corrected/screenshots/game-autumn-launch-small-mid-night-high.png": "5cdde8c61e9c74e2f9a8aba127d1709297a38649a62d2b4cc7a9a11375be8c61",
+    "corrected/screenshots/game-autumn-launch-small-mid-night-low.png": "e4cfd24d4a5d8d0f7d219cb129796eec2876c954c526925ec4a88b35f4c8e6e2",
+    "fixture-unit.log": "2e1f00e591bfd64851eca460c05ad1fcad317fc956980a50d5da2dd0d3704d15",
+    "garden-typecheck.log": "5d4da64b9ce7eaf82e619ecfca454527b04da2c3c866abca3d70db411e9c7a5b",
+    "profiler-unit.log": "2230fe863fe3374a928ef7056c535701527c66a62290c3eb4dcbdc2b94bb1873",
+    "rejected-sky-only/production.log": "c9dd1b92918af639d2d30df7a13942f251cfa9e14728222c818b9660da2c67ce",
+    "rejected-sky-only/report.json": "6b303a6f0bdc223c5164f8d24a18e9c637c61cbd7e182afe5d00912e9fe5e29b",
+    "rejected-sky-only/report.md": "428cd6cddc16b57082bcdf577f8768ac4827bb4a5e1529d0ff5d461dc45cd6b5",
+    "rejected-sky-only/run-input.json": "d1d3c9cd3fc263ef6ec6eedef9b93ad1cb378b256054b7eb225052a1f99bb981",
+    "rejected-sky-only/screenshots/game-autumn-launch-medium-mid-cloud-constrained.png": "9ba67946716a312244987ad8d6f4abe97ee5395108396fc47a93eeba99a81e4b",
+    "garden-typecheck-no-incremental.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "validation.json": "51b8600276015e56e1b53465a95f6348db0a3dc398ed071f47f184c003e645f0"
+  }
+}

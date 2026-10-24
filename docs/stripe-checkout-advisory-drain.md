@@ -19,6 +19,8 @@ verification. Keep this document as the cutover and rollback evidence record.
   `checkout.session.expired` to `POST /api/stripe/webhook`.
 - The authenticated reconciliation job invokes `GET /api/stripe/cron`.
 - The authenticated outlet job invokes
+  `GET /api/internal/cron/stripe-checkout-orphan-recovery` on deployments with the
+  #5090 split; the historical #4387 deployment exposes this readback on
   `GET /api/internal/cron/outlet-lifecycle`.
 - During the prerequisite release, legacy paid-session processing was owned by
   `withStripePaymentProcessingLock` in `packages/storage`.
@@ -35,8 +37,9 @@ Signature and cron authentication are checked before maintenance state:
 - An expired checkout remains active and releases its durable checkout attempt.
 - The authenticated Stripe reconciliation job returns the same retryable
   maintenance response before listing Stripe sessions.
-- Outlet lifecycle cleanup still releases expired reservations and closes
-  offers. Stripe orphan-attempt reconciliation is skipped, and the response is
+- On the historical prerequisite deployment, the combined outlet lifecycle
+  route still releases expired reservations and closes offers. Stripe
+  orphan-attempt reconciliation is skipped, and the response is
   HTTP `503` with `maintenance: true`. The same authenticated invocation runs
   the aggregate drain preflight without exposing checkout or account data.
   `stripePaymentProcessingDrained: true` means no instrumented shared-lock
@@ -98,7 +101,7 @@ schema readback; preview deployments skip both. The completed cutover order is:
 4. Run the drain preflight through the approved production environment runner
    until it exits `0`. Because the deployed gate prevents new completed-payment
    work, the elapsed predecessor limit and successful exclusive probe together
-   establish the drain boundary. The scheduled outlet lifecycle response and
+   establish the drain boundary. The historical scheduled outlet lifecycle response and
    `stripe_payment.processing.maintenance_active` log provide an independent
    production readback of the same aggregate result. Neither condition is
    sufficient on its own.
@@ -128,7 +131,7 @@ schema readback; preview deployments skip both. The completed cutover order is:
 
 - Maintenance responses log
   `stripe_payment.processing.maintenance_active` with the entry-point source
-  and, for outlet lifecycle, only the aggregate drain result or failure
+  and, for orphan recovery, only the aggregate drain result or failure
   category.
 - A failed exclusive drain probe means at least one legacy processor transaction
    is still active. Do not run or merge the claim migration.
@@ -162,3 +165,10 @@ The storage CI job must run the drain concurrency case on real PostgreSQL with
 zero skips before merge. Run the migration readback only with the intended
 environment's `POSTGRES_URL`; it is read-only and prints aggregate counts or a
 bounded invariant code, never connection details or cursor values.
+
+After #5090, current maintenance/drain readback belongs to five-minute orphan
+recovery while hourly outlet cleanup remains independent. A rollback to an older
+deployment without the new route must restore the combined outlet-lifecycle
+cron at five-minute cadence or redeploy the prior source/configuration together;
+Vercel rollback retains current cron configuration. Verify effective schedules
+and an authenticated recovery response after any rollback.

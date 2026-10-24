@@ -19,6 +19,7 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { RelatedFaq } from '../../components/faq/RelatedFaq';
 import {
     Card,
     CardContent,
@@ -26,6 +27,7 @@ import {
     CardTitle,
 } from '../../components/shared/Card';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
+import { PageSectionNav } from '../../components/shared/PageSectionNav';
 import { formatPrice } from '../../lib/formatPrice';
 import { getHqLocationsData } from '../../lib/getHqLocationsData';
 import { getOperationsData } from '../../lib/plants/getOperationsData';
@@ -260,7 +262,50 @@ export default async function PricingPage() {
     return (
         <Container className="pb-12" maxWidth="lg">
             <Stack spacing={6}>
-                <Stack spacing={2}>
+                <PageSectionNav
+                    label="Dijelovi cjenika"
+                    items={[
+                        {
+                            id: 'suncokreti',
+                            label: 'Paketi suncokreta',
+                            icon: (
+                                <GameSunflowerIcon
+                                    aria-hidden
+                                    className="size-5"
+                                />
+                            ),
+                        },
+                        {
+                            id: 'biljke-i-sorte',
+                            label: 'Biljke i sorte',
+                            icon: (
+                                <GameSeedlingIcon
+                                    aria-hidden
+                                    className="size-5"
+                                />
+                            ),
+                        },
+                        {
+                            id: 'radnje',
+                            label: 'Radnje',
+                            icon: (
+                                <GameToolsIcon aria-hidden className="size-5" />
+                            ),
+                        },
+                        {
+                            id: 'dostava',
+                            label: 'Dostava',
+                            icon: (
+                                <GameDeliveryIcon
+                                    aria-hidden
+                                    className="size-5"
+                                />
+                            ),
+                        },
+                    ]}
+                    className="mt-8 md:mt-12"
+                />
+                <Stack spacing={2} className="pb-6 md:pb-12">
                     <PageHeader
                         header="Cjenik"
                         visual={
@@ -269,7 +314,6 @@ export default async function PricingPage() {
                                 className="size-48 p-6"
                             />
                         }
-                        padded
                         subHeader="Jasan pregled cijena i dostupnosti paketa suncokreta, biljaka, sorti, radnji i dostave."
                     />
                     <Typography level="body2" secondary>
@@ -433,7 +477,7 @@ export default async function PricingPage() {
 
                 <Card className="scroll-mt-28" id="dostava">
                     <CatalogSectionHeader
-                        description="Za svaku lokaciju prikazane su besplatna zona, maksimalna zona i cijena po kilometru."
+                        description="Dostava unutar Grada Zagreba je besplatna. Za ostale adrese provjeri udaljenost i konačnu cijenu prije narudžbe."
                         headingId="dostava-naslov"
                         icon={<GameDeliveryIcon aria-hidden />}
                         title="Dostava"
@@ -463,7 +507,7 @@ export default async function PricingPage() {
                                                 }
                                             />
                                         }
-                                        subtitle={`Prvih ${row.freeRadius} km bez naknade · dostupno do ${row.zoneRadius} km`}
+                                        subtitle={`Grad Zagreb bez naknade · izvan Zagreba do ${row.zoneRadius} km vožnje`}
                                         title={row.label}
                                         visual={
                                             <GameDeliveryIcon
@@ -528,6 +572,7 @@ export default async function PricingPage() {
                     </CardContent>
                 </Card>
 
+                <RelatedFaq placement="pricing" />
                 <Row spacing={4} className="pt-4">
                     <Typography level="body1">
                         Jesu li ti informacije u cjeniku korisne?

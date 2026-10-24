@@ -1,7 +1,10 @@
 import { type ExportResult, ExportResultCode } from '@opentelemetry/core';
 import { OTLPExporterBase } from '@opentelemetry/otlp-exporter-base';
 import { createLegacyOtlpBrowserExportDelegate } from '@opentelemetry/otlp-exporter-base/browser-http';
-import { JsonLogsSerializer } from '@opentelemetry/otlp-transformer';
+import {
+    JsonLogsSerializer,
+    LogsExporterMetricsHelper,
+} from '@opentelemetry/otlp-transformer';
 import type {
     LogRecordExporter,
     ReadableLogRecord,
@@ -15,6 +18,8 @@ export const POSTHOG_LOG_FLUSH_TIMEOUT_MS = 13_000;
 export const POSTHOG_LOG_INITIAL_FAILURE_BACKOFF_MS = 30_000;
 export const POSTHOG_LOG_MAX_FAILURE_BACKOFF_MS = 5 * 60_000;
 const POSTHOG_LOG_TIMEOUT_RETRY_COUNT = 1;
+// Matches the exporter self-observability component type used by OpenTelemetry's OTLPLogExporter.
+const OTLP_HTTP_LOG_EXPORTER_COMPONENT_TYPE = 'otlp_http_log_exporter';
 
 export function getPostHogLogsUrl(host: string | undefined): string | null {
     if (!host) {
@@ -93,6 +98,9 @@ export class FetchOTLPLogExporter
             createLegacyOtlpBrowserExportDelegate(
                 options,
                 JsonLogsSerializer,
+                OTLP_HTTP_LOG_EXPORTER_COMPONENT_TYPE,
+                LogsExporterMetricsHelper,
+                undefined,
                 'v1/logs',
                 { 'Content-Type': 'application/json' },
             ),
@@ -181,10 +189,13 @@ export function createPostHogLogFlushScheduler({
     let failureBackoffMs = initialFailureBackoffMs;
     let hasReportedFailure = false;
     let pendingFlush: Promise<void> | null = null;
+    let collecting = false;
     let retryAfter = 0;
 
     return function schedulePostHogLogFlush(): Promise<void> {
-        if (pendingFlush) {
+        if (pendingFlush && collecting) {
+            // Concurrent requests must each keep their shared task alive.
+            registerBackgroundTask?.(pendingFlush);
             return pendingFlush;
         }
 
@@ -192,9 +203,21 @@ export function createPostHogLogFlushScheduler({
             return Promise.resolve();
         }
 
-        pendingFlush = wait(batchDelayMs)
-            .then(flush)
-            .then(() => {
+        // forceFlush snapshots the processor queue when it starts. Records
+        // arriving during export need a subsequent flush, not the same promise.
+        // Keep at most one collecting batch behind the active export.
+        const previousFlush = pendingFlush;
+        collecting = true;
+        const task = wait(batchDelayMs)
+            .then(() => previousFlush)
+            .then(async () => {
+                collecting = false;
+                // The preceding export may have failed while we were waiting.
+                if (now() < retryAfter) {
+                    return;
+                }
+
+                await flush();
                 consecutiveFailures = 0;
                 failureBackoffMs = initialFailureBackoffMs;
                 hasReportedFailure = false;
@@ -218,11 +241,14 @@ export function createPostHogLogFlushScheduler({
                 }
             })
             .finally(() => {
-                pendingFlush = null;
+                if (pendingFlush === task) {
+                    pendingFlush = null;
+                }
             });
 
-        registerBackgroundTask?.(pendingFlush);
+        pendingFlush = task;
+        registerBackgroundTask?.(task);
 
-        return pendingFlush;
+        return task;
     };
 }

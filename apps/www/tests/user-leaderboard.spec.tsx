@@ -1,10 +1,10 @@
 import AxeBuilder from '@axe-core/playwright';
 import { getAchievementDefinitions } from '@gredice/js/achievements';
 import { UserAchievementProgress } from '@gredice/ui/UserAvatar';
-import { expect, test } from '@playwright/experimental-ct-react';
 import UsersError from '../app/korisnici/error';
 import UsersLoading from '../app/korisnici/loading';
 import { UserLeaderboard } from '../app/korisnici/UserLeaderboard';
+import { expect, test } from './component-fixtures';
 
 const items = Array.from({ length: 10 }, (_, index) => ({
     id: `user-${index}`,
@@ -57,6 +57,11 @@ for (const width of [390, 1280]) {
         await expect(page.getByRole('heading', { level: 1 })).toHaveText(
             'Vrtlari koji rastu zajedno',
         );
+        await expect(
+            page.getByRole('link', {
+                name: 'Kako skupljati XP i prijeći na novu razinu',
+            }),
+        ).toHaveAttribute('href', '/iskustvo-i-razine');
         const rows = page.locator('ol > li');
         await expect(rows).toHaveCount(10);
         await expect(rows.first().getByRole('link')).toHaveAttribute(

@@ -70,10 +70,8 @@ function approvedPlantStatusNotificationCopy({
                 content: `${location} proklijala je biljka **${plantName}**.`,
             };
         case 'notSprouted':
-            return {
-                header: `😢 Biljka ${plantName} nije proklijala!`,
-                content: `${location} biljka **${plantName}** nije proklijala. ${stoppedFieldMessage}`,
-            };
+            // The transactional status writer already sent the refund outcome.
+            return null;
         case 'died':
             return {
                 header: `😢 Biljka ${plantName} nije uspjela!`,

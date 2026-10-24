@@ -25,8 +25,8 @@ async function RaisedBedsPageContent() {
     );
 
     return (
-        <div className="mx-auto w-full max-w-2xl space-y-3 p-2 sm:p-4">
-            <Typography component="h1" level="h5" semiBold>
+        <div className="mx-auto w-full max-w-2xl p-2 sm:p-4">
+            <Typography component="h1" className="sr-only">
                 Gredice
             </Typography>
             {activeRaisedBeds.length === 0 ? (

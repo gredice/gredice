@@ -1,7 +1,7 @@
 'use client';
 
 import { resolveRabbitAppearanceVariant } from '@gredice/js/entityAppearanceVariants';
-import { useFrame, useThree } from '@react-three/fiber';
+import { useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import {
     type Euler,
@@ -30,6 +30,11 @@ import {
     createAnimalMovementSurfaces,
     getAnimalMovementSurfaceAt,
 } from '../animals/animalMovementTerrain';
+import {
+    useFaunaFrame,
+    useFaunaRenderFrame,
+} from '../animals/FaunaRuntimeProvider';
+import { useFaunaActorCulling } from '../animals/useFaunaActorCulling';
 import {
     createPersistentPetHomeBlockedCells,
     getPersistentPetHomePlacement,
@@ -459,6 +464,7 @@ export function Rabbit({
             scene,
         };
     }, [gltf.scene, palette]);
+    const shouldPoseRabbit = useFaunaActorCulling(rabbitModel.scene);
     const habitat = useMemo(() => {
         const surfaces = createAnimalMovementSurfaces({
             blockData,
@@ -561,7 +567,7 @@ export function Rabbit({
                 : makeMovingState(runtime.behavior, replacement.points);
     }, [clock, habitat]);
 
-    useFrame(({ clock }, delta) => {
+    useFaunaFrame(({ clock }, delta) => {
         const group = groupRef.current;
         if (!group) {
             return;
@@ -688,8 +694,14 @@ export function Rabbit({
             runtime = movingState ?? makeSettledState(random, now);
             runtimeRef.current = runtime;
         }
+    }, groupRef);
 
-        if (rabbitModel.rig) {
+    useFaunaRenderFrame(({ clock }, delta) => {
+        const group = groupRef.current;
+        const runtime = runtimeRef.current;
+        if (!group || !runtime) return;
+        const now = clock.elapsedTime;
+        if (shouldPoseRabbit() && rabbitModel.rig) {
             animateRabbitRig({
                 delta,
                 rig: rabbitModel.rig,

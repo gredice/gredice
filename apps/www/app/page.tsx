@@ -12,6 +12,7 @@ import { Suspense } from 'react';
 import DeliveryTruck from '../assets/DeliveryTruck.webp';
 import RaisedBedMaintenance from '../assets/RaisedBedMaintenance.webp';
 import SeedsAndTransplants from '../assets/SeedsAndTransplants.webp';
+import { RelatedFaq } from '../components/faq/RelatedFaq';
 import { Card, CardContent } from '../components/shared/Card';
 import { sectionsComponentRegistry } from '../components/shared/sectionsComponentRegistry';
 import { FacebookCard } from '../components/social/FacebookCard';
@@ -338,6 +339,7 @@ export default async function Home() {
                     </Suspense>
                     <PlantsShowcase />
                 </Stack>
+                <RelatedFaq placement="home" />
                 <Stack spacing={8} className="mt-20">
                     <Stack spacing={2}>
                         <Typography level="body1" semiBold tertiary>

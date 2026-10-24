@@ -1,0 +1,192 @@
+{
+  "state": "unpublished",
+  "publicationIssue": 5000,
+  "sources": [
+    {
+      "path": "assets/game-assets/HarvestCrate.blend",
+      "bytes": 126886,
+      "sha256": "47b3150fb4df06e5f62307d7f45991a395b8a95df31b23bb1ba7cb170bb24b3b"
+    },
+    {
+      "path": "assets/game-assets/HarvestCrateOrchard.blend",
+      "bytes": 121360,
+      "sha256": "49e138e1f0a8dedd21fc1ca30895ea728598324807f850e689c947c0ca81d066"
+    }
+  ],
+  "models": [
+    {
+      "name": "HarvestCrate",
+      "path": "apps/garden/public/assets/models/HarvestCrate.glb",
+      "bytes": 192772,
+      "sha256": "ff4ae49fa93bc99ea4bf1b48a0abb7272edca3283a59bc78eac7d9060ffb9a5d",
+      "url": "https://vrt.gredice.com/assets/models/HarvestCrate.glb?v=ff4ae49fa93b",
+      "triangles": 3204,
+      "meshCount": 5,
+      "materialCount": 5
+    },
+    {
+      "name": "HarvestCrateOrchard",
+      "path": "apps/garden/public/assets/models/HarvestCrateOrchard.glb",
+      "bytes": 146048,
+      "sha256": "715049a6ea1338c9a5fdabfee8cda99b0e67d769d62ca7794e62ffba5f60e4ae",
+      "url": "https://vrt.gredice.com/assets/models/HarvestCrateOrchard.glb?v=715049a6ea13",
+      "triangles": 2132,
+      "meshCount": 5,
+      "materialCount": 5
+    }
+  ],
+  "items": [
+    {
+      "name": "HarvestCrate",
+      "information": {
+        "label": "Ukrasni sanduk s bundevama",
+        "shortDescription": "Drveni sanduk s krupnim narančastim i krem bundevama.",
+        "fullDescription": "Drveni sanduk s krupnim narančastim i krem bundevama. Mali ukras za jesenski kutak vrta ili izložbeni stol. Zauzima jedno polje. Sadržaj je stalan i služi samo za ukrašavanje; ne prikazuje stvarni urod, količinu ni dostupnost plodova i nije spremnik za berbu."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 0.44,
+        "hitboxHeight": 0.44,
+        "hitboxWidth": 0.86,
+        "hitboxDepth": 0.74,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 60,
+      "catalogueId": null,
+      "cover": "https://www.gredice.com/assets/blocks/HarvestCrate.webp",
+      "topDown": "https://vrt.gredice.com/assets/blocks/top-down/HarvestCrate.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/HarvestCrate.webp",
+          "bytes": 14102,
+          "sha256": "08dccb2cea294f0870ba33255e1358657e531e55030cc1aece0f66257fd43ae0"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestCrate_1.webp",
+          "bytes": 14102,
+          "sha256": "08dccb2cea294f0870ba33255e1358657e531e55030cc1aece0f66257fd43ae0"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestCrate_2.webp",
+          "bytes": 13564,
+          "sha256": "718822c4c388c22791716f72531e1a1e078e43861768d341b4af4a295ac78224"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestCrate_3.webp",
+          "bytes": 13798,
+          "sha256": "3d6f601821794513df976c5d74de0fbb41f22d40f0b0772e9d4e7361dc62f42b"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestCrate_4.webp",
+          "bytes": 13262,
+          "sha256": "3bcaa966e096ad4e8f4989abe5b904729a6610c5eda33ca6e24a5767f4bbf5b2"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestCrate.webp",
+          "bytes": 5396,
+          "sha256": "bde7386aa2e97d4a3c6c71f852646721d7bffcc59aea136d89e6cf7f8be887c8"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestCrate_1.webp",
+          "bytes": 5396,
+          "sha256": "bde7386aa2e97d4a3c6c71f852646721d7bffcc59aea136d89e6cf7f8be887c8"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestCrate_2.webp",
+          "bytes": 5750,
+          "sha256": "87de410c23301b211bcfb1963806dd0f430dcd3df0a875f62494645fa8563751"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestCrate_3.webp",
+          "bytes": 5542,
+          "sha256": "a3225ab2afdf43389686b5269772de03be2d0710342d02ae0b1c6d0ba6f5d4e0"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestCrate_4.webp",
+          "bytes": 5888,
+          "sha256": "0a6c83265f4481c1d6b61dcd74a62dc28c7832f26de0f0f8bc120e5fa3f4a656"
+        }
+      ]
+    },
+    {
+      "name": "HarvestCrateOrchard",
+      "information": {
+        "label": "Ukrasni sanduk s jabukama i kruškama",
+        "shortDescription": "Drveni sanduk s crvenim jabukama i zelenim kruškama.",
+        "fullDescription": "Drveni sanduk s crvenim jabukama i zelenim kruškama. Mali ukras za jesenski kutak vrta ili izložbeni stol. Zauzima jedno polje. Sadržaj je stalan i služi samo za ukrašavanje; ne prikazuje stvarni urod, količinu ni dostupnost plodova i nije spremnik za berbu."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 0.5,
+        "hitboxHeight": 0.5,
+        "hitboxWidth": 0.86,
+        "hitboxDepth": 0.74,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 60,
+      "catalogueId": null,
+      "cover": "https://www.gredice.com/assets/blocks/HarvestCrateOrchard.webp",
+      "topDown": "https://vrt.gredice.com/assets/blocks/top-down/HarvestCrateOrchard.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/HarvestCrateOrchard.webp",
+          "bytes": 14172,
+          "sha256": "1723bf3b535ce091cb244f502f2ec4f49fdb6609ca9f2750e7eb03a0da0a4e4e"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestCrateOrchard_1.webp",
+          "bytes": 14172,
+          "sha256": "1723bf3b535ce091cb244f502f2ec4f49fdb6609ca9f2750e7eb03a0da0a4e4e"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestCrateOrchard_2.webp",
+          "bytes": 14246,
+          "sha256": "90bc30f548e93d30a1606c66060f74611485442059412da7eddffef3a08b7186"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestCrateOrchard_3.webp",
+          "bytes": 14122,
+          "sha256": "b4f01371b5d4e04eeac192e3f4d0b2eea65e723a3ac266629b3c4352f447b094"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestCrateOrchard_4.webp",
+          "bytes": 13838,
+          "sha256": "d3c7851737c1d2822f977fa2a7a96a44e72031566a6bdcf6f07617d26a2bb6ff"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestCrateOrchard.webp",
+          "bytes": 5730,
+          "sha256": "4aec03d6a21eaa2224d138bcbd814251fb4f85196428cd5bdc81c6563be1c191"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestCrateOrchard_1.webp",
+          "bytes": 5730,
+          "sha256": "4aec03d6a21eaa2224d138bcbd814251fb4f85196428cd5bdc81c6563be1c191"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestCrateOrchard_2.webp",
+          "bytes": 5474,
+          "sha256": "d5a70ae5a22f2c55b642c0932020921602d3079b5f1aed5805503a0d12d6e11f"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestCrateOrchard_3.webp",
+          "bytes": 5264,
+          "sha256": "2dfe4d2cb848ab294289f756650fe3dd833641b5aeb987b20d31ecbaba644bf2"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestCrateOrchard_4.webp",
+          "bytes": 5530,
+          "sha256": "47122d2ad02a7621c2eb6a30e47167633c5901f056ef0cb94c9ff509533466fd"
+        }
+      ]
+    }
+  ]
+}

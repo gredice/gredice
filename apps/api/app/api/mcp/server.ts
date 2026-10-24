@@ -1,12 +1,14 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { getUser } from '@gredice/storage';
+import { waitUntil } from '@vercel/functions';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { verifyJwt } from '../../../lib/auth/auth';
+import { verifyAccessJwt } from '../../../lib/auth/auth';
 import { accountCookieName } from '../../../lib/auth/sessionConfig';
 import { resolveMcpAccountId } from '../../../lib/mcp/accountSelection';
 import { mcpPublicDocumentationUrl } from '../../../lib/mcp/publicMetadata';
+import { McpOperationNotApplicableError } from '../../../lib/mcp/toolErrors';
 import {
     getMcpResources,
     getMcpResourceTemplates,
@@ -247,7 +249,7 @@ async function authenticateMcpRequest(
         return { ok: false as const, response: unauthorizedResponse(request) };
     }
 
-    const verified = await verifyJwt(token).catch(() => null);
+    const verified = await verifyAccessJwt(token).catch(() => null);
     if (!verified) {
         return { ok: false as const, response: unauthorizedResponse(request) };
     }
@@ -557,6 +559,29 @@ export async function handleMcpRequest(request: NextRequest) {
                     { headers: { 'x-correlation-id': correlationId } },
                 );
             } catch (error) {
+                if (error instanceof McpOperationNotApplicableError) {
+                    logger.warn('mcp.request.rejected', {
+                        correlationId,
+                        method,
+                        toolName: name,
+                        latencyMs: Math.round(performance.now() - requestStart),
+                        status: 'rejected',
+                        errorType: 'operation_not_applicable',
+                    });
+                    return NextResponse.json(
+                        {
+                            jsonrpc: '2.0',
+                            id,
+                            result: {
+                                isError: true,
+                                content: [
+                                    { type: 'text', text: error.message },
+                                ],
+                            },
+                        },
+                        { headers: { 'x-correlation-id': correlationId } },
+                    );
+                }
                 const isInvalidParams = error instanceof z.ZodError;
                 const isTimeout = error instanceof ToolExecutionTimeoutError;
                 const errorType = isInvalidParams
@@ -621,6 +646,8 @@ export async function handleMcpRequest(request: NextRequest) {
             path: '/api/mcp',
             clientIpHash: safeIdentifier(clientAddress),
         });
+        // Keep the function alive until logs emitted by the tool have been exported.
+        waitUntil(logger.flush());
     }
 }
 

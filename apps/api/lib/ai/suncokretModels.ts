@@ -1,3 +1,4 @@
+import { setTimeout as delay } from 'node:timers/promises';
 import {
     AI_USD_TO_EUR_REFERENCE_RATE,
     convertAiUsdToEur,
@@ -6,15 +7,22 @@ import {
     type AiChatPricing,
     calculateAiChatUsageCostMicroEur,
 } from '@gredice/storage';
-import { gateway } from 'ai';
+import { createGateway, gateway } from 'ai';
+
+type SuncokretLongContextPricing = {
+    inputTokenThreshold: number;
+    inputRateMultiplier: number;
+    outputRateMultiplier: number;
+};
 
 export type SuncokretModelConfig = AiChatPricing & {
     id: string;
     label: string;
     enabled: boolean;
+    longContext?: SuncokretLongContextPricing;
 };
 
-const DEFAULT_MODEL_ID = 'openai/gpt-5.6-luna';
+const DEFAULT_MODEL_ID = 'openai/gpt-6-luna';
 
 type SuncokretModelUsdConfig = {
     id: string;
@@ -24,18 +32,24 @@ type SuncokretModelUsdConfig = {
     outputUsdPerMillionTokens: number;
     cachedInputUsdPerMillionTokens?: number;
     cacheWriteInputUsdPerMillionTokens?: number;
+    longContext?: SuncokretLongContextPricing;
 };
 
 // Used only when AI Gateway metadata cannot be loaded. Normal requests replace
 // these values with Gateway catalog pricing and persist the billed request cost.
 const MODEL_REGISTRY_USD: SuncokretModelUsdConfig[] = [
     {
-        id: 'openai/gpt-5.6-luna',
-        label: 'OpenAI GPT-5.6 Luna',
-        inputUsdPerMillionTokens: 0.2,
-        outputUsdPerMillionTokens: 1.2,
-        cachedInputUsdPerMillionTokens: 0.02,
-        cacheWriteInputUsdPerMillionTokens: 0.25,
+        id: 'openai/gpt-6-luna',
+        label: 'OpenAI GPT-6 Luna',
+        inputUsdPerMillionTokens: 0.1,
+        outputUsdPerMillionTokens: 0.5,
+        cachedInputUsdPerMillionTokens: 0.01,
+        cacheWriteInputUsdPerMillionTokens: 0.125,
+        longContext: {
+            inputTokenThreshold: 272_000,
+            inputRateMultiplier: 2,
+            outputRateMultiplier: 1.5,
+        },
         enabled: true,
     },
     {
@@ -50,6 +64,7 @@ const MODEL_REGISTRY_USD: SuncokretModelUsdConfig[] = [
 
 const USD_PER_TOKEN_TO_USD_PER_MILLION = 1_000_000;
 const EUR_TO_MICRO_EUR = 1_000_000;
+export const SUNCOKRET_GATEWAY_COST_LOOKUP_TIMEOUT_MS = 90_000;
 
 type GatewayModelMetadata = Awaited<
     ReturnType<typeof gateway.getAvailableModels>
@@ -94,6 +109,7 @@ function usdModelPricingToEur(
         id: model.id,
         label: model.label,
         enabled: model.enabled,
+        ...(model.longContext ? { longContext: model.longContext } : {}),
         inputEurPerMillionTokens: usdToEur(model.inputUsdPerMillionTokens),
         outputEurPerMillionTokens: usdToEur(model.outputUsdPerMillionTokens),
         ...(model.cachedInputUsdPerMillionTokens == null
@@ -143,6 +159,7 @@ function gatewayPricing(
         id: model.id,
         label: model.label,
         enabled: model.enabled,
+        ...(model.longContext ? { longContext: model.longContext } : {}),
         inputEurPerMillionTokens: usdToEur(inputUsdPerMillionTokens),
         outputEurPerMillionTokens: usdToEur(outputUsdPerMillionTokens),
         ...(cachedInputUsdPerMillionTokens === null
@@ -254,27 +271,168 @@ export function suncokretGatewayGenerationIds(
 
 export async function getSuncokretGatewayBilledCostMicroEur(
     steps: readonly SuncokretGatewayStep[],
-    loadGeneration: (id: string) => Promise<GatewayGenerationInfo> = (id) =>
-        gateway.getGenerationInfo({ id }),
+    loadGeneration: (
+        id: string,
+        signal: AbortSignal,
+    ) => Promise<GatewayGenerationInfo> = (id, signal) =>
+        createGateway({
+            fetch: (url, init) =>
+                fetch(url, {
+                    ...init,
+                    signal: init?.signal
+                        ? AbortSignal.any([signal, init.signal])
+                        : signal,
+                }),
+        }).getGenerationInfo({ id }),
+    wait: (ms: number, signal: AbortSignal) => Promise<void> = (ms, signal) =>
+        delay(ms, undefined, { signal }),
+    timeoutMs = SUNCOKRET_GATEWAY_COST_LOOKUP_TIMEOUT_MS,
 ) {
     const generationIds = suncokretGatewayGenerationIds(steps);
     if (generationIds.length === 0) {
         return null;
     }
 
-    const generations = await Promise.all(generationIds.map(loadGeneration));
-    const totalCostUsd = generations.reduce(
-        (sum, generation) => sum + generation.totalCost,
-        0,
-    );
+    // Gateway ingests usage asynchronously. Retry only the documented not-yet
+    // response, including the SDK's GatewayResponseError wrapper from production.
+    // One deadline covers all generations, network calls and backoff waits.
+    const controller = new AbortController();
+    const timeout = setTimeout(() => {
+        controller.abort(new Error('Suncokret Gateway cost lookup timed out'));
+    }, timeoutMs);
+    const { signal } = controller;
+    // Keep the fast initial polls, then allow ingestion beyond the old seven
+    // second window. This runs in waitUntil, with the quota reservation held.
+    const retryDelays = [1_000, 2_000, 4_000, 8_000, 16_000, 32_000];
+    const aborted = new Promise<never>((_, reject) => {
+        signal.addEventListener('abort', () => reject(signal.reason), {
+            once: true,
+        });
+    });
+    try {
+        const lookups = Promise.all(
+            generationIds.map(async (id) => {
+                for (let attempt = 0; ; attempt++) {
+                    try {
+                        return await loadGeneration(id, signal);
+                    } catch (error) {
+                        const retryDelay = retryDelays[attempt];
+                        if (
+                            signal.aborted ||
+                            retryDelay === undefined ||
+                            !isGatewayUsageNotYetAvailable(error)
+                        ) {
+                            throw error;
+                        }
+                        await wait(retryDelay, signal);
+                    }
+                }
+            }),
+        );
+        const generations = await Promise.race([lookups, aborted]);
+        if (
+            generations.some(
+                (generation, index) =>
+                    generation.id !== generationIds[index] ||
+                    !Number.isFinite(generation.totalCost) ||
+                    generation.totalCost < 0,
+            )
+        ) {
+            return null;
+        }
+        const totalCostUsd = generations.reduce(
+            (sum, generation) => sum + generation.totalCost,
+            0,
+        );
 
-    return Number.isFinite(totalCostUsd) && totalCostUsd >= 0
-        ? Math.round(usdToEur(totalCostUsd) * EUR_TO_MICRO_EUR)
-        : null;
+        return Number.isFinite(totalCostUsd)
+            ? Math.round(usdToEur(totalCostUsd) * EUR_TO_MICRO_EUR)
+            : null;
+    } finally {
+        clearTimeout(timeout);
+        // Stop other pending generations if one lookup failed permanently.
+        controller.abort();
+    }
+}
+
+function isGatewayUsageNotYetAvailable(error: unknown) {
+    if (
+        typeof error !== 'object' ||
+        error === null ||
+        !('statusCode' in error) ||
+        error.statusCode !== 404
+    ) {
+        return false;
+    }
+    // Structured errors become GatewayNotFoundError (without a response field).
+    if ('message' in error && error.message === 'Usage event not found') {
+        return true;
+    }
+    if (!('response' in error)) return false;
+    const response = error.response;
+    if (
+        typeof response !== 'object' ||
+        response === null ||
+        !('error' in response)
+    ) {
+        return false;
+    }
+    return (
+        response.error === 'Usage event not found' ||
+        (typeof response.error === 'object' &&
+            response.error !== null &&
+            'message' in response.error &&
+            response.error.message === 'Usage event not found')
+    );
 }
 
 export function estimateSuncokretPromptTokens(value: unknown) {
     return Math.max(1, Math.ceil(JSON.stringify(value).length / 4));
+}
+
+// Requests above the long-context threshold are billed at higher rates for
+// the whole request, so budgeting and fallback usage costs must use them too.
+export function suncokretPricingForInputTokens(
+    model: SuncokretModelConfig,
+    inputTokens: number,
+): AiChatPricing {
+    const longContext = model.longContext;
+    if (!longContext || inputTokens <= longContext.inputTokenThreshold) {
+        return model;
+    }
+
+    const { inputRateMultiplier, outputRateMultiplier } = longContext;
+    return {
+        inputEurPerMillionTokens:
+            model.inputEurPerMillionTokens * inputRateMultiplier,
+        outputEurPerMillionTokens:
+            model.outputEurPerMillionTokens * outputRateMultiplier,
+        ...(model.cachedInputEurPerMillionTokens == null
+            ? {}
+            : {
+                  cachedInputEurPerMillionTokens:
+                      model.cachedInputEurPerMillionTokens *
+                      inputRateMultiplier,
+              }),
+        ...(model.cacheWriteInputEurPerMillionTokens == null
+            ? {}
+            : {
+                  cacheWriteInputEurPerMillionTokens:
+                      model.cacheWriteInputEurPerMillionTokens *
+                      inputRateMultiplier,
+              }),
+    };
+}
+
+// Gateway applies the long-context threshold per model call, so the largest
+// step decides the rate tier rather than the summed usage of all tool steps.
+export function largestSuncokretStepInputTokens(
+    steps: readonly { usage?: { inputTokens?: number | undefined } }[],
+) {
+    return steps.reduce(
+        (largest, step) => Math.max(largest, step.usage?.inputTokens ?? 0),
+        0,
+    );
 }
 
 export function estimateSuncokretRequestCostMicroEur({
@@ -289,7 +447,7 @@ export function estimateSuncokretRequestCostMicroEur({
     return calculateAiChatUsageCostMicroEur({
         inputTokens,
         outputTokens: maxOutputTokens,
-        pricing: model,
+        pricing: suncokretPricingForInputTokens(model, inputTokens),
     }).totalMicroEur;
 }
 
@@ -302,10 +460,11 @@ export function resolveSuncokretMaxOutputTokens({
     model: SuncokretModelConfig;
     remainingMicroEur: number;
 }) {
+    const pricing = suncokretPricingForInputTokens(model, estimatedInputTokens);
     const inputCost = calculateAiChatUsageCostMicroEur({
         inputTokens: estimatedInputTokens,
         outputTokens: 0,
-        pricing: model,
+        pricing,
     }).inputMicroEur;
     const remainingForOutput = remainingMicroEur - inputCost;
     if (remainingForOutput <= 0) {
@@ -316,7 +475,7 @@ export function resolveSuncokretMaxOutputTokens({
         0,
         Math.min(
             2048,
-            Math.floor(remainingForOutput / model.outputEurPerMillionTokens),
+            Math.floor(remainingForOutput / pricing.outputEurPerMillionTokens),
         ),
     );
 }

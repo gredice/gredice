@@ -1,0 +1,360 @@
+{
+  "recordedAt": "2026-10-12T11:32:11.343704+00:00",
+  "scope": "Fresh desktop renderer recapture after the October 11 dependency reconciliation. Prior visual review is retained after checking all object records and the bounded background pixel differences. Catalogue, deployment, commerce, product-version publication and physical-device acceptance remain separate release gates.",
+  "previousEvidence": {
+    "path": "docs/autumn-starter-pack-review-2026/pre-merge-20261012/reviewed-evidence.json",
+    "sha256": "931b07a15223ef60d53b80c81c63653cf0e08afad5fa9c6427161ef14f267a96"
+  },
+  "captureSource": {
+    "commit": "7d5f2d878d6a88fe6618168a3f16ca27348f374e",
+    "tree": "5b27798caca6f4f1d35447326f8915d9378efa2b",
+    "status": ""
+  },
+  "command": "GREDICE_GARDEN_CT_PORT=5498 pnpm --filter garden exec playwright test --config playwright.autumn-arrangements.config.ts --grep desktop-high --update-snapshots=all --workers=1",
+  "captureTestsPassed": 3,
+  "sceneCaptures": 36,
+  "mobileLowStatic": "Not recaptured; original evidence retained.",
+  "nonSourceCaptureRecordParity": true,
+  "visualReview": "Dusk/night differences share the same background bounds across the three arrangements; at most 160 pixels change by at most 3/255. The object placements, framing, meshes and scene records are unchanged.",
+  "productVersionGate": "Use fresh product versions for any existing draft or published snapshot whose evidence fingerprint changes; this recapture writes no products or sales configuration.",
+  "previews": [
+    {
+      "path": "apps/garden/public/assets/arrangements/harvest-corner.png",
+      "previousSha256": "ed1b245678a3613a093026ecdfadd3a416a3332972f926ab9aa3a552bb95c2e2",
+      "currentSha256": "ed1b245678a3613a093026ecdfadd3a416a3332972f926ab9aa3a552bb95c2e2"
+    },
+    {
+      "path": "apps/garden/public/assets/arrangements/woodland-path.png",
+      "previousSha256": "2f21c98172611d2e3d37d71d4fd5c5c7685c044239f406a271a09d5e775c5e55",
+      "currentSha256": "2f21c98172611d2e3d37d71d4fd5c5c7685c044239f406a271a09d5e775c5e55"
+    },
+    {
+      "path": "apps/garden/public/assets/arrangements/evening-seat.png",
+      "previousSha256": "48325aa58a719dafebafa403c3b3f51565d3128d9bbbac9ce80d93e539d434d7",
+      "currentSha256": "e3eccaa634461ae5f76792283c481e253ba43b964389c26fc7c71a6cb4942cd0"
+    }
+  ],
+  "images": [
+    {
+      "file": "evening-seat-earlyAutumn-day.png",
+      "byteIdentical": true,
+      "pixelIdentical": true,
+      "changedPixels": 0,
+      "maxChannelDelta": 0
+    },
+    {
+      "file": "evening-seat-earlyAutumn-dusk.png",
+      "byteIdentical": false,
+      "pixelIdentical": false,
+      "changedPixels": 118,
+      "maxChannelDelta": 3
+    },
+    {
+      "file": "evening-seat-earlyAutumn-night.png",
+      "byteIdentical": false,
+      "pixelIdentical": false,
+      "changedPixels": 139,
+      "maxChannelDelta": 3
+    },
+    {
+      "file": "evening-seat-earlyAutumn-overcast.png",
+      "byteIdentical": true,
+      "pixelIdentical": true,
+      "changedPixels": 0,
+      "maxChannelDelta": 0
+    },
+    {
+      "file": "evening-seat-lateAutumn-day.png",
+      "byteIdentical": true,
+      "pixelIdentical": true,
+      "changedPixels": 0,
+      "maxChannelDelta": 0
+    },
+    {
+      "file": "evening-seat-lateAutumn-dusk.png",
+      "byteIdentical": false,
+      "pixelIdentical": false,
+      "changedPixels": 111,
+      "maxChannelDelta": 2
+    },
+    {
+      "file": "evening-seat-lateAutumn-night.png",
+      "byteIdentical": false,
+      "pixelIdentical": false,
+      "changedPixels": 160,
+      "maxChannelDelta": 3
+    },
+    {
+      "file": "evening-seat-lateAutumn-overcast.png",
+      "byteIdentical": true,
+      "pixelIdentical": true,
+      "changedPixels": 0,
+      "maxChannelDelta": 0
+    },
+    {
+      "file": "evening-seat-midAutumn-day.png",
+      "byteIdentical": true,
+      "pixelIdentical": true,
+      "changedPixels": 0,
+      "maxChannelDelta": 0
+    },
+    {
+      "file": "evening-seat-midAutumn-dusk.png",
+      "byteIdentical": false,
+      "pixelIdentical": false,
+      "changedPixels": 108,
+      "maxChannelDelta": 2
+    },
+    {
+      "file": "evening-seat-midAutumn-night.png",
+      "byteIdentical": false,
+      "pixelIdentical": false,
+      "changedPixels": 123,
+      "maxChannelDelta": 2
+    },
+    {
+      "file": "evening-seat-midAutumn-overcast.png",
+      "byteIdentical": true,
+      "pixelIdentical": true,
+      "changedPixels": 0,
+      "maxChannelDelta": 0
+    },
+    {
+      "file": "harvest-corner-earlyAutumn-day.png",
+      "byteIdentical": true,
+      "pixelIdentical": true,
+      "changedPixels": 0,
+      "maxChannelDelta": 0
+    },
+    {
+      "file": "harvest-corner-earlyAutumn-dusk.png",
+      "byteIdentical": false,
+      "pixelIdentical": false,
+      "changedPixels": 118,
+      "maxChannelDelta": 3
+    },
+    {
+      "file": "harvest-corner-earlyAutumn-night.png",
+      "byteIdentical": false,
+      "pixelIdentical": false,
+      "changedPixels": 139,
+      "maxChannelDelta": 3
+    },
+    {
+      "file": "harvest-corner-earlyAutumn-overcast.png",
+      "byteIdentical": true,
+      "pixelIdentical": true,
+      "changedPixels": 0,
+      "maxChannelDelta": 0
+    },
+    {
+      "file": "harvest-corner-lateAutumn-day.png",
+      "byteIdentical": true,
+      "pixelIdentical": true,
+      "changedPixels": 0,
+      "maxChannelDelta": 0
+    },
+    {
+      "file": "harvest-corner-lateAutumn-dusk.png",
+      "byteIdentical": false,
+      "pixelIdentical": false,
+      "changedPixels": 111,
+      "maxChannelDelta": 2
+    },
+    {
+      "file": "harvest-corner-lateAutumn-night.png",
+      "byteIdentical": false,
+      "pixelIdentical": false,
+      "changedPixels": 160,
+      "maxChannelDelta": 3
+    },
+    {
+      "file": "harvest-corner-lateAutumn-overcast.png",
+      "byteIdentical": true,
+      "pixelIdentical": true,
+      "changedPixels": 0,
+      "maxChannelDelta": 0
+    },
+    {
+      "file": "harvest-corner-midAutumn-day.png",
+      "byteIdentical": true,
+      "pixelIdentical": true,
+      "changedPixels": 0,
+      "maxChannelDelta": 0
+    },
+    {
+      "file": "harvest-corner-midAutumn-dusk.png",
+      "byteIdentical": false,
+      "pixelIdentical": false,
+      "changedPixels": 108,
+      "maxChannelDelta": 2
+    },
+    {
+      "file": "harvest-corner-midAutumn-night.png",
+      "byteIdentical": false,
+      "pixelIdentical": false,
+      "changedPixels": 123,
+      "maxChannelDelta": 2
+    },
+    {
+      "file": "harvest-corner-midAutumn-overcast.png",
+      "byteIdentical": true,
+      "pixelIdentical": true,
+      "changedPixels": 0,
+      "maxChannelDelta": 0
+    },
+    {
+      "file": "woodland-path-earlyAutumn-day.png",
+      "byteIdentical": true,
+      "pixelIdentical": true,
+      "changedPixels": 0,
+      "maxChannelDelta": 0
+    },
+    {
+      "file": "woodland-path-earlyAutumn-dusk.png",
+      "byteIdentical": false,
+      "pixelIdentical": false,
+      "changedPixels": 118,
+      "maxChannelDelta": 3
+    },
+    {
+      "file": "woodland-path-earlyAutumn-night.png",
+      "byteIdentical": false,
+      "pixelIdentical": false,
+      "changedPixels": 139,
+      "maxChannelDelta": 3
+    },
+    {
+      "file": "woodland-path-earlyAutumn-overcast.png",
+      "byteIdentical": true,
+      "pixelIdentical": true,
+      "changedPixels": 0,
+      "maxChannelDelta": 0
+    },
+    {
+      "file": "woodland-path-lateAutumn-day.png",
+      "byteIdentical": true,
+      "pixelIdentical": true,
+      "changedPixels": 0,
+      "maxChannelDelta": 0
+    },
+    {
+      "file": "woodland-path-lateAutumn-dusk.png",
+      "byteIdentical": false,
+      "pixelIdentical": false,
+      "changedPixels": 111,
+      "maxChannelDelta": 2
+    },
+    {
+      "file": "woodland-path-lateAutumn-night.png",
+      "byteIdentical": false,
+      "pixelIdentical": false,
+      "changedPixels": 160,
+      "maxChannelDelta": 3
+    },
+    {
+      "file": "woodland-path-lateAutumn-overcast.png",
+      "byteIdentical": true,
+      "pixelIdentical": true,
+      "changedPixels": 0,
+      "maxChannelDelta": 0
+    },
+    {
+      "file": "woodland-path-midAutumn-day.png",
+      "byteIdentical": true,
+      "pixelIdentical": true,
+      "changedPixels": 0,
+      "maxChannelDelta": 0
+    },
+    {
+      "file": "woodland-path-midAutumn-dusk.png",
+      "byteIdentical": false,
+      "pixelIdentical": false,
+      "changedPixels": 108,
+      "maxChannelDelta": 2
+    },
+    {
+      "file": "woodland-path-midAutumn-night.png",
+      "byteIdentical": false,
+      "pixelIdentical": false,
+      "changedPixels": 123,
+      "maxChannelDelta": 2
+    },
+    {
+      "file": "woodland-path-midAutumn-overcast.png",
+      "byteIdentical": true,
+      "pixelIdentical": true,
+      "changedPixels": 0,
+      "maxChannelDelta": 0
+    }
+  ],
+  "changedReviewedInputs": [
+    {
+      "path": "packages/game/src/data/gameAssetModels.generated.ts",
+      "previousSha256": "c36273e4dcd24aed6834b944408f82bd99b977d11f9bdd700654719bb74f323e",
+      "currentSha256": "4f8e86bca3d8e0768ef7f0997d88a0f4e85b392106eb88c316694444184f861a"
+    },
+    {
+      "path": "packages/game/src/entities/entityNameMap.ts",
+      "previousSha256": "a5afced89a89b0dcfe5b624a0ea09eca7a1cf0187aa877eefd8a985854c0e110",
+      "currentSha256": "cd1470a5af8561c81fcd8b0cdfbc8195e69b3272141a9e93df0476026682f50b"
+    },
+    {
+      "path": "packages/game/src/localSandboxBlockData.ts",
+      "previousSha256": "323ee3506cc34605dca9374c0ccf5831287d3792414dd42327daabdd08dae01d",
+      "currentSha256": "5a0cd54552cf40296e1db904e898c8b336410db953c17525c3b2661eb0818975"
+    }
+  ],
+  "changedSelectionPins": [
+    {
+      "path": "apps/api/lib/garden/autumnStarterPackEvidence.reviewed.json",
+      "previousSha256": "931b07a15223ef60d53b80c81c63653cf0e08afad5fa9c6427161ef14f267a96",
+      "currentSha256": "48b1309bc6969fa84478bd569977fb40bc7c37aa66dbd6c2bbfa0a8b5d03f4df"
+    },
+    {
+      "path": "apps/api/lib/garden/autumnStarterPackPreparation.ts",
+      "previousSha256": "e017df6c5aba37981460e8890951c49c448ae5270ed078109547b442cb65868e",
+      "currentSha256": "c4d7863774edd4aa5cafd900b9aead8e0b05e276b08fa107f719d800b3738061"
+    },
+    {
+      "path": "assets/game-assets.json",
+      "previousSha256": "43e3ecc705f04ade794ee868ea9244f93ac089a21b0a1ee86c19da1d7fa64685",
+      "currentSha256": "6dbc580063f261a37fde4c02b2a66bf954ec7c9ffb94442ae5722ec2c37e613c"
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/evening-seat.json",
+      "previousSha256": "59de1448b3c9888297a565f3b6b3bb8c1a63a2207bd7a66beba446c56ade3ad4",
+      "currentSha256": "ea0036dd1cf2cb5610de56800adc0d7a1b4326a9842ac853305b81ac14a1df83"
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/harvest-corner.json",
+      "previousSha256": "fd5da939da6318cab25e83200dcb3a7aa66f5203e3b1f9443149078bce6a7f64",
+      "currentSha256": "34f58a91831cd713cc219342ddad022d21b6ce58f6d39f855a0c5e37b14390f8"
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/woodland-path.json",
+      "previousSha256": "45250e85d7ed1dedb8d7b25c0bb121c17924454fb116f7fa1ba42a2c1925ac50",
+      "currentSha256": "d4fac46954d3dd6d0fdd0d5ae81d02f2264a82dcb6bdd8f463c42323369465e8"
+    },
+    {
+      "path": "packages/game/src/data/gameAssetModels.generated.ts",
+      "previousSha256": "c36273e4dcd24aed6834b944408f82bd99b977d11f9bdd700654719bb74f323e",
+      "currentSha256": "4f8e86bca3d8e0768ef7f0997d88a0f4e85b392106eb88c316694444184f861a"
+    },
+    {
+      "path": "packages/game/src/entities/entityNameMap.ts",
+      "previousSha256": "a5afced89a89b0dcfe5b624a0ea09eca7a1cf0187aa877eefd8a985854c0e110",
+      "currentSha256": "cd1470a5af8561c81fcd8b0cdfbc8195e69b3272141a9e93df0476026682f50b"
+    },
+    {
+      "path": "packages/game/src/hud/ItemsHud.tsx",
+      "previousSha256": "a7873469f753023b3e6ae80f30d3fa28d3394ff7690908ab501925122f39a9ca",
+      "currentSha256": "5dfe2573176a496a57bd554d68057545d5426a3247de1125145b6ab85ec121b1"
+    },
+    {
+      "path": "packages/game/src/localSandboxBlockData.ts",
+      "previousSha256": "323ee3506cc34605dca9374c0ccf5831287d3792414dd42327daabdd08dae01d",
+      "currentSha256": "5a0cd54552cf40296e1db904e898c8b336410db953c17525c3b2661eb0818975"
+    }
+  ]
+}

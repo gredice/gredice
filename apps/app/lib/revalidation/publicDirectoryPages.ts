@@ -5,6 +5,8 @@ import {
 } from '@gredice/storage';
 
 type PublicDirectoryEntityType =
+    | 'faq'
+    | 'faq-category'
     | 'block'
     | 'brand'
     | 'hqLocations'
@@ -22,6 +24,8 @@ function publicDirectoryEntityType(
     entityTypeName: string | null | undefined,
 ): PublicDirectoryEntityType | null {
     switch (entityTypeName) {
+        case 'faq':
+        case 'faq-category':
         case 'block':
         case 'brand':
         case 'hqLocations':

@@ -6,7 +6,7 @@ import { Modal } from '@gredice/ui/Modal';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { upload } from '@vercel/blob/client';
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import {
     blockFarmScheduleTask,
     refreshFarmScheduleAfterSubmission,
@@ -46,6 +46,8 @@ type BlockerPhotoUploadResult =
 const MAX_UPLOAD_ATTEMPTS = 3;
 const MULTIPART_UPLOAD_THRESHOLD_BYTES = 5 * 1024 * 1024;
 const MAX_BLOCKER_NOTE_LENGTH = 2000;
+const MISSING_BLOCKER_NOTE_MESSAGE =
+    'Za odabrani razlog napiši kratko objašnjenje.';
 
 function createBlockerPhoto(file: File): BlockerPhoto {
     return {
@@ -102,6 +104,7 @@ export function ScheduleTaskBlockerModal({
     const galleryInputRef = useRef<HTMLInputElement>(null);
     const cameraInputRef = useRef<HTMLInputElement>(null);
     const errorRef = useRef<HTMLDivElement>(null);
+    const noteHelpId = useId();
 
     const targetLabel = getScheduleTaskBlockerTargetLabel(target);
     const noteRequired = reasonCode
@@ -307,7 +310,7 @@ export function ScheduleTaskBlockerModal({
             return;
         }
         if (noteMissing) {
-            setErrorMessage('Za odabrani razlog napiši kratko objašnjenje.');
+            setErrorMessage(MISSING_BLOCKER_NOTE_MESSAGE);
             focusError();
             return;
         }
@@ -495,8 +498,11 @@ export function ScheduleTaskBlockerModal({
                     <label className="space-y-1 text-sm font-medium">
                         Napomena{noteRequired ? ' (obavezno)' : ' (opcionalno)'}
                         <textarea
+                            aria-describedby={
+                                noteMissing ? noteHelpId : undefined
+                            }
                             aria-invalid={noteMissing || undefined}
-                            className="min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-base font-normal focus:outline-hidden focus:ring-2 focus:ring-primary"
+                            className="min-h-24 w-full resize-y rounded-md border border-input bg-field px-3 py-2 text-base font-normal focus:outline-hidden focus:ring-2 focus:ring-primary"
                             disabled={isSubmitting}
                             maxLength={MAX_BLOCKER_NOTE_LENGTH}
                             onChange={(event) => {
@@ -507,6 +513,15 @@ export function ScheduleTaskBlockerModal({
                             required={noteRequired}
                             value={note}
                         />
+                        {noteMissing ? (
+                            <span
+                                className="block text-xs font-normal text-red-700 dark:text-red-300"
+                                id={noteHelpId}
+                                role="status"
+                            >
+                                {MISSING_BLOCKER_NOTE_MESSAGE}
+                            </span>
+                        ) : null}
                         <span className="block text-xs font-normal text-muted-foreground">
                             {note.length}/{MAX_BLOCKER_NOTE_LENGTH}
                         </span>

@@ -424,7 +424,7 @@ Suggested validation per slice:
 
 ```bash
 pnpm lint --filter <workspace>
-pnpm test --filter <workspace>
+pnpm run test --filter <workspace>
 pnpm build --filter <workspace>
 ```
 
@@ -460,7 +460,7 @@ in `@gredice/ui/cms`.
 Validation after this phase:
 
 ```bash
-pnpm test --filter @gredice/storage
+pnpm run test --filter @gredice/storage
 pnpm build --filter app
 pnpm build --filter www
 pnpm build --filter status

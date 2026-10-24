@@ -80,10 +80,6 @@ const nextConfig: NextConfig = {
                 headers: assetCacheHeaders,
             },
             {
-                source: '/assets/structures/:path*',
-                headers: assetCacheHeaders,
-            },
-            {
                 source: '/assets/blocks/:path*',
                 headers: assetCacheHeaders,
             },

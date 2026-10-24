@@ -1,3 +1,4 @@
+import { safeUserDisplayName } from '@gredice/js/userDisplayName';
 import { RAISED_BED_DETAILED_INSPECTION_OPERATION_ID } from '@gredice/storage';
 
 type DetailedInspectionNotification = {
@@ -97,9 +98,10 @@ export function buildDetailedRaisedBedInspectionReports({
                             achievementCount:
                                 operation.assignedUser.achievementCount,
                         }),
-                  displayName:
-                      operation.assignedUser.displayName?.trim() ||
-                      operation.assignedUser.userName,
+                  displayName: safeUserDisplayName(
+                      operation.assignedUser.displayName ??
+                          operation.assignedUser.userName,
+                  ),
               }
             : null;
 

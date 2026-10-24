@@ -1,5 +1,5 @@
 import type { BlockData } from '@gredice/client';
-import { type ThreeEvent, useFrame, useThree } from '@react-three/fiber';
+import { type ThreeEvent, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import type { Group, Material, Object3D } from 'three';
 import {
@@ -32,6 +32,11 @@ import { AnimalTargetDebugMarker } from '../animals/AnimalDebugIndicators';
 import { configureActorMeshShadows } from '../animals/actorMeshShadows';
 import { beeSpeechMessages } from '../animals/actorSpeechMessages';
 import { initializeAnimalAtHome } from '../animals/animalRuntimeLifecycle';
+import {
+    useFaunaFrame,
+    useFaunaRenderFrame,
+} from '../animals/FaunaRuntimeProvider';
+import { useFaunaActorCulling } from '../animals/useFaunaActorCulling';
 import {
     computePollinatorHabitatCenter,
     createPollinatorInteractionFlowerTargets,
@@ -864,12 +869,7 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
     const animalDebugCommand = useGameState(
         (state) => state.animalDebugCommand,
     );
-    const setAnimalDebugEntry = useGameState(
-        (state) => state.setAnimalDebugEntry,
-    );
-    const removeAnimalDebugEntry = useGameState(
-        (state) => state.removeAnimalDebugEntry,
-    );
+    const faunaWorld = useGameState((state) => state.faunaWorld);
     const animalDisturbance = useGameState((state) => state.animalDisturbance);
 
     const beeModel = useMemo(() => {
@@ -889,6 +889,7 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
             scene: clone,
         };
     }, [gltf.scene]);
+    useFaunaActorCulling(beeModel.scene);
     const updateGroundingShadow = useActorGroundingShadow({
         id: `bee:${habitat.id}`,
         primaryCasterCount: beeModel.primaryCasterCount,
@@ -908,11 +909,11 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
 
     useEffect(() => {
         if (!enableDebugHudFlag) {
-            removeAnimalDebugEntry(habitat.id);
+            faunaWorld.removeDebug(habitat.id);
         }
 
-        return () => removeAnimalDebugEntry(habitat.id);
-    }, [enableDebugHudFlag, habitat.id, removeAnimalDebugEntry]);
+        return () => faunaWorld.removeDebug(habitat.id);
+    }, [enableDebugHudFlag, habitat.id, faunaWorld]);
 
     useEffect(() => {
         if (!animalTargetsDebugVisible && targetDebugRef.current) {
@@ -967,7 +968,7 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
         });
     }
 
-    useFrame(({ clock }, delta) => {
+    useFaunaFrame(({ clock }, delta) => {
         const group = groupRef.current;
         if (!group) {
             return;
@@ -1126,7 +1127,23 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
             }
         }
 
-        runtime = runtimeRef.current;
+        if (
+            enableDebugHudFlag &&
+            runtime &&
+            now - lastAnimalDebugUpdateRef.current >= 0.5
+        ) {
+            lastAnimalDebugUpdateRef.current = now;
+            faunaWorld.reportDebug(
+                createBeeDebugEntry({ group, habitat, now, runtime }),
+            );
+        }
+    }, groupRef);
+
+    useFaunaRenderFrame(({ clock }, delta) => {
+        const group = groupRef.current;
+        const runtime = runtimeRef.current;
+        if (!group || !runtime) return;
+        const now = clock.elapsedTime;
         updateBeeRig({
             delta,
             now,
@@ -1145,17 +1162,6 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
                 yaw: group.rotation.y,
                 z: group.position.z,
             });
-        }
-
-        if (
-            enableDebugHudFlag &&
-            runtime &&
-            now - lastAnimalDebugUpdateRef.current >= 0.5
-        ) {
-            lastAnimalDebugUpdateRef.current = now;
-            setAnimalDebugEntry(
-                createBeeDebugEntry({ group, habitat, now, runtime }),
-            );
         }
     });
 

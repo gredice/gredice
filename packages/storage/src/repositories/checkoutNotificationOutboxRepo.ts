@@ -2,6 +2,7 @@ import 'server-only';
 
 import { createHash } from 'node:crypto';
 import { and, asc, eq, or, sql } from 'drizzle-orm';
+import { signalDueWork } from '../dueWork';
 import { accountUsers, emailMessages, users } from '../schema';
 import { storage } from '../storage';
 
@@ -354,6 +355,7 @@ async function enqueue(
         if (!created) {
             throw new Error('Failed to enqueue checkout notification');
         }
+        await signalDueWork('checkout-notifications', now);
         return created.id;
     });
 }
@@ -799,6 +801,7 @@ export async function markCheckoutNotificationFailed({
                     updatedAt: now,
                 })
                 .where(eq(emailMessages.id, emailMessageId));
+            await signalDueWork('checkout-notifications', nextAttemptAt);
             return {
                 attempt,
                 nextAttemptAt,
@@ -832,6 +835,7 @@ export async function markCheckoutNotificationFailed({
                     updatedAt: now,
                 })
                 .where(eq(emailMessages.id, emailMessageId));
+            await signalDueWork('checkout-notifications', nextAttemptAt);
             return {
                 attempt,
                 nextAttemptAt,

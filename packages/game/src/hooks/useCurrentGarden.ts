@@ -75,7 +75,6 @@ type useCurrentGardenResponse = Omit<
     GardenResponse,
     | 'backgroundPalette'
     | 'farmId'
-    | 'gardenBuildingSystem'
     | 'latitude'
     | 'longitude'
     | 'stacks'
@@ -87,7 +86,6 @@ type useCurrentGardenResponse = Omit<
 > & {
     backgroundPalette: GameBackgroundPaletteKey;
     farmId?: number | null;
-    gardenBuildingSystem?: GardenResponse['gardenBuildingSystem'];
     previewImage?: GardenPreviewImage | null;
     previewImages?: GardenResponse['previewImages'];
     previewSourceRevision?: string | null;
@@ -261,7 +259,10 @@ function getDenseMockDetailBlockName(x: number, z: number) {
     return null;
 }
 
-function createDenseMockStacks(winterMode: WinterMode): {
+function createDenseMockStacks(
+    winterMode: WinterMode,
+    autumnSurfaces = false,
+): {
     stackByPosition: Map<string, GardenStack>;
     stacks: GardenStack[];
 } {
@@ -278,7 +279,11 @@ function createDenseMockStacks(winterMode: WinterMode): {
             z <= denseMockGardenBounds.max;
             z += 1
         ) {
-            const groundName = getDenseMockGroundBlockName(x, z, winterMode);
+            const inAutumnGrid =
+                autumnSurfaces && Math.abs(x) <= 7 && Math.abs(z) <= 7;
+            const groundName = inAutumnGrid
+                ? 'Block_Grass'
+                : getDenseMockGroundBlockName(x, z, winterMode);
             const stack: GardenStack = {
                 position: createGardenPosition(x, 0, z),
                 blocks: [
@@ -289,7 +294,25 @@ function createDenseMockStacks(winterMode: WinterMode): {
                     },
                 ],
             };
-            const detailName = getDenseMockDetailBlockName(x, z);
+            const detailName = inAutumnGrid
+                ? x % 3 === 0 && z % 3 === 0
+                    ? 'Tree'
+                    : (x - 1) % 3 === 0 && z % 3 === 0
+                      ? z < -3
+                          ? 'Stool'
+                          : z < 0
+                            ? 'WoodenBench'
+                            : z < 3
+                              ? 'OutletDisplayTable'
+                              : 'GardenBox'
+                      : x % 3 === 0 && (z - 1) % 3 === 0
+                        ? z < 0
+                            ? 'GiftBox_BlueWhite'
+                            : z < 3
+                              ? 'StoneLarge'
+                              : 'FenceGate'
+                        : null
+                : getDenseMockDetailBlockName(x, z);
             if (detailName) {
                 stack.blocks.push({
                     id: `profile-detail:${detailName}:${x}:${z}`,
@@ -741,10 +764,16 @@ function addOperationRewardDebugRaisedBed({
 
 function denseMockGarden(
     winterMode: WinterMode,
-    profile: Extract<MockGardenProfile, 'dense' | 'plant-heavy'>,
+    profile: Extract<
+        MockGardenProfile,
+        'dense' | 'dense-autumn' | 'plant-heavy'
+    >,
 ): useCurrentGardenResponse {
     const now = resolveMockGardenProfileReferenceDate(profile);
-    const { stackByPosition, stacks } = createDenseMockStacks(winterMode);
+    const { stackByPosition, stacks } = createDenseMockStacks(
+        winterMode,
+        profile === 'dense-autumn',
+    );
     const raisedBeds: useCurrentGardenResponse['raisedBeds'] = [];
 
     if (profile === 'plant-heavy') {
@@ -776,7 +805,6 @@ function denseMockGarden(
         backgroundPalette: defaultGameBackgroundPaletteKey,
         homeCamera: null,
         stacks,
-        structures: [],
         location: { lat: 45.739, lon: 16.572 },
         raisedBeds,
     };
@@ -917,7 +945,6 @@ function highTargetMockGarden(
         backgroundPalette: defaultGameBackgroundPaletteKey,
         homeCamera: null,
         stacks,
-        structures: [],
         location: { lat: 45.739, lon: 16.572 },
         raisedBeds,
     };
@@ -932,7 +959,6 @@ function faunaHeavyMockGarden(): useCurrentGardenResponse {
         backgroundPalette: defaultGameBackgroundPaletteKey,
         homeCamera: null,
         stacks: createAllAnimalDebugStacks(),
-        structures: [],
         location: { lat: 45.739, lon: 16.572 },
         raisedBeds: [],
     };
@@ -983,7 +1009,6 @@ function operationRewardDebugMockGarden(
         backgroundPalette: defaultGameBackgroundPaletteKey,
         homeCamera: null,
         stacks,
-        structures: [],
         location: { lat: 45.739, lon: 16.572 },
         raisedBeds,
     };
@@ -1002,7 +1027,11 @@ export function createMockGarden(
         return faunaHeavyMockGarden();
     }
 
-    if (profile === 'dense' || profile === 'plant-heavy') {
+    if (
+        profile === 'dense' ||
+        profile === 'dense-autumn' ||
+        profile === 'plant-heavy'
+    ) {
         return denseMockGarden(winterMode, profile);
     }
 
@@ -1238,7 +1267,6 @@ export function createMockGarden(
                 ],
             },
         ],
-        structures: [],
         location: { lat: 45.739, lon: 16.572 },
         raisedBeds,
     };
@@ -1392,15 +1420,7 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
                 ),
                 homeCamera: garden.homeCamera ?? null,
                 farmId: garden.farmId,
-                // Older API deployments do not publish rollout authority.
-                // Keep those rolling combinations closed on the client.
-                gardenBuildingSystem: garden.gardenBuildingSystem ?? {
-                    enabled: false,
-                },
                 stacks,
-                // Tolerate a rolling deployment where an older API response
-                // predates the additive structures collection.
-                structures: garden.structures ?? [],
                 location: {
                     lat: garden.latitude,
                     lon: garden.longitude,

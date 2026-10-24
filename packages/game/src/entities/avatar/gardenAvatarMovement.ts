@@ -233,15 +233,6 @@ export function createIndexedGardenAvatarCollisionWorld({
     };
 }
 
-export function mergeGardenAvatarCollisionWorlds(
-    ...worlds: readonly (GardenAvatarCollisionWorld | null | undefined)[]
-) {
-    return createIndexedGardenAvatarCollisionWorld({
-        blockedCells: worlds.flatMap((world) => world?.blockedCells ?? []),
-        surfaces: worlds.flatMap((world) => world?.surfaces ?? []),
-    });
-}
-
 export function getGardenAvatarSurfaceY(
     position: Pick<GardenAvatarPoint, 'x' | 'z'>,
     surface: GardenAvatarMovementSurface,
@@ -644,6 +635,12 @@ const fenceGateCollisionProfiles: Record<
     FenceGateBlockName,
     FenceGateCollisionProfile
 > = {
+    AutumnFenceGate: {
+        height: 0.72,
+        leafThickness: 0.09,
+        postDepth: 0.16,
+        postWidth: 0.16,
+    },
     FenceGate: {
         height: 0.72,
         leafThickness: 0.09,

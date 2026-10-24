@@ -1,5 +1,6 @@
-import { getCmsPage } from '@gredice/storage';
+import { getCmsPage, getEntitiesFormatted } from '@gredice/storage';
 import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
+import type { SharedFaqEntry } from '@gredice/ui/cms';
 import { Stack } from '@gredice/ui/Stack';
 import { notFound } from 'next/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
@@ -40,6 +41,7 @@ export default async function EditCmsPagePage({
         <Stack spacing={8}>
             <CmsPageForm
                 page={page}
+                faqEntries={await getEntitiesFormatted<SharedFaqEntry>('faq')}
                 action={updateAction}
                 formId={`cms-page-${id}-edit-form`}
                 autosaveAction={autosaveAction}

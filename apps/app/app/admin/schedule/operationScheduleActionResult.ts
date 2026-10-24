@@ -1,8 +1,10 @@
+import type { ScheduleTaskVersionChange } from './scheduleActionQueue';
+
 export const OPERATION_SCHEDULE_CONFLICT_MESSAGE =
     'Radnja se u međuvremenu promijenila. Osvježi stranicu i pokušaj ponovno.';
 
 export type OperationScheduleActionResult =
-    | { success: true }
+    | { success: true; scheduleTaskVersions?: ScheduleTaskVersionChange[] }
     | { success: false; message: string };
 
 export class OperationScheduleConflictError extends Error {
@@ -22,11 +24,15 @@ function isScheduleTaskConflictError(error: unknown): boolean {
 }
 
 export async function runOperationScheduleAction(
-    action: () => Promise<void>,
+    action: () =>
+        | Promise<void>
+        | Promise<
+              { scheduleTaskVersions: ScheduleTaskVersionChange[] } | undefined
+          >,
 ): Promise<OperationScheduleActionResult> {
     try {
-        await action();
-        return { success: true };
+        const result = await action();
+        return { success: true, ...result };
     } catch (error) {
         if (
             error instanceof OperationScheduleConflictError ||

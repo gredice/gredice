@@ -6,7 +6,7 @@ import { BlockAttributeCards } from '@apps/www/app/blokovi/[alias]/BlockAttribut
 import { OperationAttributesCards } from '@apps/www/app/radnje/[alias]/OperationAttributesCards';
 import { SeedAttributeCards } from '@apps/www/app/sjeme/[slug]/SeedAttributeCards';
 import { PriceAttributeCard } from '@apps/www/components/attributes/PriceAttributeCard';
-import { GameReceiptIcon } from '@gredice/ui/GameIcons';
+import { GameCoinsIcon, GameReceiptIcon } from '@gredice/ui/GameIcons';
 import type { ComponentProps } from 'react';
 
 const plantAttributes = {
@@ -54,6 +54,15 @@ export function PublicAttributeExamples({
                     <h3 className="text-lg font-semibold">
                         Biljke i sorte · Ljupčac
                     </h3>
+                    <PriceAttributeCard
+                        icon={<GameCoinsIcon aria-hidden />}
+                        header="Cijena sijanja"
+                        currentPrice={2.99}
+                        availability={missing ? 'unavailable' : 'available'}
+                        description="Cijena jedne biljke uključuje troškove sjemena, pripreme tla, sjetve i sezonske pogodnosti."
+                        navigateHref="/sjetva"
+                        navigateLabel="Više o sjetvi"
+                    />
                     <SowingAttributeCards
                         attributes={attributes}
                         plantName="Ljupčac"

@@ -38,6 +38,7 @@ import {
     users,
 } from '@gredice/storage';
 import { eq, inArray } from 'drizzle-orm';
+import type { OAuthUserData } from '../src/repositories/usersRepo';
 import { createTestAccount, ensureFarmId } from './helpers/testHelpers';
 import { createTestDb } from './testDb';
 
@@ -201,6 +202,51 @@ test('ensureRegisteredUserAccount repairs an accountless login once', async () =
     assert.equal(gardens[0].name, 'Moj vrt');
 });
 
+test('email registration starts with a random public name', async () => {
+    createTestDb();
+    await ensureFarmId();
+
+    const email = `new-email-${randomUUID()}@example.com`;
+    const userId = await createUserWithPassword(email, 'secret-password');
+    const user = await storage().query.users.findFirst({
+        where: eq(users.id, userId),
+    });
+    assert.ok(user);
+    assert.match(user.displayName ?? '', /\d{4}$/u);
+    assert.doesNotMatch(user.displayName ?? '', /@/u);
+    assert.notEqual(user.displayName, email);
+});
+
+test('new social accounts use random names and keep later user edits', async () => {
+    createTestDb();
+    await ensureFarmId();
+
+    const login: OAuthUserData = {
+        email: `new-social-${randomUUID()}@example.com`,
+        provider: 'google',
+        providerUserId: randomUUID(),
+    };
+    const first = await createOrUpdateUserWithOauth(login);
+    assert.equal(first.isNewUser, true);
+    const user = await storage().query.users.findFirst({
+        where: eq(users.id, first.userId),
+    });
+    assert.ok(user);
+    assert.match(user.displayName ?? '', /\d{4}$/u);
+    assert.notEqual(user.displayName, login.email);
+
+    await storage()
+        .update(users)
+        .set({ displayName: 'Veseli vrtlar' })
+        .where(eq(users.id, first.userId));
+    const second = await createOrUpdateUserWithOauth(login);
+    assert.equal(second.isNewUser, false);
+    const edited = await storage().query.users.findFirst({
+        where: eq(users.id, first.userId),
+    });
+    assert.equal(edited?.displayName, 'Veseli vrtlar');
+});
+
 test('existing-user OAuth login leaves the temporary account isolated', async () => {
     createTestDb();
     await ensureFarmId();
@@ -211,7 +257,6 @@ test('existing-user OAuth login leaves the temporary account isolated', async ()
 
     const result = await createOrUpdateUserWithOauth(
         {
-            name: 'Existing user',
             email,
             provider: 'google',
             providerUserId: `google-${randomUUID()}`,
@@ -336,6 +381,7 @@ test('promoteTemporaryUser converts a temporary user to email identity', async (
     assert.ok(user);
     assert.equal(user.isTemporary, false);
     assert.equal(user.userName, promotedEmail);
+    assert.equal(user.displayName, temporary.displayName);
 
     const login = await storage().query.userLogins.findFirst({
         where: eq(userLogins.userId, temporary.userId),

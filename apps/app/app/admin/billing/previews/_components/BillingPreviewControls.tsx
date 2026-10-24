@@ -9,7 +9,7 @@ import {
 } from '../billingPreviewModel';
 
 const selectClassName =
-    'h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2';
+    'h-10 rounded-md border border-input bg-field px-3 py-2 text-sm ring-offset-background focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2';
 
 export function BillingPreviewControls({
     state,

@@ -1,8 +1,25 @@
 import type { ColorRepresentation, IUniform, Material } from 'three';
 import { Color, MeshStandardMaterial, NormalBlending, Vector3 } from 'three';
 import { getMaterialShaderHooksWithoutCloudShadowAttenuation } from './cloudShadowAttenuation';
+import {
+    getGardenMaterialShaderHookSignature,
+    getGardenMaterialSignature,
+    registerGardenMaterialShaderHooks,
+} from './gardenMaterials';
 
-const WEATHER_SURFACE_PLUGIN_VARIANT_KEY_PREFIX = 'gredice-weather-surface-v2';
+const WEATHER_SURFACE_PLUGIN_VARIANT_KEY_PREFIX = 'gredice-weather-surface-v3';
+const weatherUniformIds = new WeakMap<object, number>();
+let nextWeatherUniformId = 0;
+
+function weatherUniformKey(uniform: object | undefined) {
+    if (!uniform) return 'none';
+    let id = weatherUniformIds.get(uniform);
+    if (id === undefined) {
+        id = ++nextWeatherUniformId;
+        weatherUniformIds.set(uniform, id);
+    }
+    return id;
+}
 
 type Vector3Tuple = readonly [number, number, number];
 
@@ -14,6 +31,7 @@ export type WeatherSurfacePluginActivation = {
 };
 
 export type WeatherSurfaceMaterialOptions = {
+    frostIntensityUniform?: IUniform<number>;
     rain: {
         bounds: {
             max: Vector3Tuple;
@@ -303,6 +321,7 @@ varying float vGrediceWeatherWorldNormalY;
 `;
 
 const weatherRainFragmentPars = `
+uniform float uGrediceFrostIntensity;
 uniform float uGrediceRainDarkness;
 uniform float uGrediceRainGlossiness;
 uniform float uGrediceRainPuddleStrength;
@@ -645,6 +664,8 @@ function injectWeatherSurfaceShader(
     const usesBuiltInSnowViewNormal = mode === 'snow-only' && !flatShaded;
 
     if (includesRain) {
+        shader.uniforms.uGrediceFrostIntensity =
+            options.frostIntensityUniform ?? { value: 0 };
         shader.uniforms.uGrediceRainDarkness = {
             value: options.rain.darkness,
         };
@@ -767,7 +788,16 @@ function injectWeatherSurfaceShader(
         shader.fragmentShader = replaceShaderChunk(
             shader.fragmentShader,
             '#include <dithering_fragment>',
-            `${rainOutputFragment}\n#include <dithering_fragment>`,
+            `${rainOutputFragment}
+// Thin, static crystals on existing ground surfaces; no displacement.
+if (uGrediceFrostIntensity > 0.001) {
+float frostTop = ${mode === 'rain-only' ? 'vGrediceWeatherWorldNormalY' : 'normalize(vGrediceWeatherWorldNormal).y'};
+float frostGrain = grediceWeatherFragmentNoise(vGrediceWeatherWorldPosition * 95.0);
+float frostMask = uGrediceFrostIntensity * pow(max(0.0, frostTop), 4.0) *
+    (0.10 + 0.22 * step(0.68, frostGrain)) * (1.0 - uGrediceRainWetness);
+gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.82, 0.90, 0.95), frostMask);
+}
+#include <dithering_fragment>`,
         );
     }
 }
@@ -812,6 +842,33 @@ export function createIntegratedWeatherSurfaceMaterial(
         grediceWeatherSurfacePluginMode: pluginMode,
         grediceWeatherSurfacePluginVariantKey: pluginVariantKey,
     };
+    const sourceHookSignature = getGardenMaterialShaderHookSignature(source);
+    if (sourceHookSignature && getGardenMaterialSignature(source)) {
+        // Equal settings may share only when mutable weather uniforms have the
+        // same owner. Values alone cannot prove their future updates agree.
+        const signature = JSON.stringify({
+            source: sourceHookSignature,
+            pluginMode,
+            frost: weatherUniformKey(options.frostIntensityUniform),
+            rain: {
+                ...options.rain,
+                puddleStrengthUniform: weatherUniformKey(
+                    options.rain.puddleStrengthUniform,
+                ),
+                wetnessUniform: weatherUniformKey(options.rain.wetnessUniform),
+            },
+            snow: {
+                ...options.snow,
+                color: new Color(options.snow.color).toArray(),
+                amountUniform: weatherUniformKey(options.snow.amountUniform),
+            },
+        });
+        registerGardenMaterialShaderHooks(
+            material,
+            signature,
+            material.userData,
+        );
+    }
     material.needsUpdate = true;
 
     return material;

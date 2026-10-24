@@ -12,9 +12,15 @@ import {
     sql,
 } from 'drizzle-orm';
 import {
+    bustFeaturedPublicGardenCache,
+    bustGrediceCached,
+    grediceCacheKeys,
+} from '../../cache/grediceCached';
+import {
     bustDeliveryRequestsCache,
     bustScheduleCache,
 } from '../../cache/scheduleCache';
+import { signalAutomationEventWrite, signalDueWork } from '../../dueWork';
 import { getTimeZoneDateKey } from '../../helpers/timezoneUtils';
 import { automationRunSteps, automationRuns, events } from '../../schema';
 import { storage } from '../../storage';
@@ -98,6 +104,7 @@ const aiPlantStatusReviewModuleKey =
     'action.createPlantStatusRequestsFromImageAnalysis';
 
 const scheduleInvalidatingEventTypes = new Set<string>([
+    knownEventTypes.operations.adminUpdate,
     knownEventTypes.operations.acceptance,
     knownEventTypes.operations.assign,
     knownEventTypes.operations.entityChange,
@@ -144,6 +151,22 @@ const deliveryInvalidatingEventTypes = new Set<string>([
     knownEventTypes.delivery.userCancelled,
     knownEventTypes.delivery.runReassigned,
     knownEventTypes.delivery.runAbandoned,
+]);
+
+const featuredGardenInvalidatingEventTypes = new Set<string>([
+    knownEventTypes.gardens.create,
+    knownEventTypes.gardens.rename,
+    knownEventTypes.gardens.delete,
+    knownEventTypes.raisedBeds.create,
+    knownEventTypes.raisedBeds.place,
+    knownEventTypes.raisedBeds.delete,
+    knownEventTypes.raisedBeds.abandon,
+    knownEventTypes.raisedBedFields.create,
+    knownEventTypes.raisedBedFields.delete,
+    knownEventTypes.raisedBedFields.plantPlace,
+    knownEventTypes.raisedBedFields.plantUpdate,
+    knownEventTypes.raisedBedFields.plantReplaceSort,
+    knownEventTypes.raisedBedFields.plantBlock,
 ]);
 
 function eventTypeFilter(type: string | string[]) {
@@ -256,6 +279,12 @@ function aiOperationTypeForDomainEvent(type: string): AiAnalyticsOperationType {
 
 async function bustReadModelCachesForEvent(event: Event) {
     await Promise.all([
+        featuredGardenInvalidatingEventTypes.has(event.type)
+            ? bustFeaturedPublicGardenCache()
+            : undefined,
+        event.type === knownEventTypes.raisedBedFields.plantPlace
+            ? bustGrediceCached(grediceCacheKeys.publicPlantStatistics)
+            : undefined,
         scheduleInvalidatingEventTypes.has(event.type)
             ? bustScheduleCache()
             : undefined,
@@ -477,24 +506,60 @@ export async function countAiRequestEventsSince({
 }
 
 export async function createEvent(
-    { type, version, aggregateId, data, createdAt }: Event,
-    db: DatabaseClient = storage(),
-) {
-    const [event] = await db
-        .insert(events)
-        .values({
-            type,
-            version,
-            aggregateId,
-            data,
-            ...(createdAt && { createdAt }),
-        })
-        .returning();
+    input: Event,
+    database?: DatabaseClient,
+): Promise<typeof events.$inferSelect> {
+    const { type, version, aggregateId, data, createdAt } = input;
+    const settlesNotSprouted =
+        version === 1 &&
+        (type === knownEventTypes.raisedBedFields.plantUpdate ||
+            type ===
+                knownEventTypes.raisedBedPlantings.lifecycleStatusChanged) &&
+        typeof data === 'object' &&
+        data !== null &&
+        'status' in data &&
+        data.status === 'notSprouted';
+    const db = database ?? storage();
+    if (settlesNotSprouted && !('rollback' in db)) {
+        return db.transaction((tx) => createEvent(input, tx));
+    }
+    if (settlesNotSprouted) {
+        await db.execute(
+            sql`select pg_advisory_xact_lock(hashtext(${`not-sprouted:${aggregateId}`}));`,
+        );
+    }
+    const [event] = await signalAutomationEventWrite(
+        db
+            .insert(events)
+            .values({
+                type,
+                version,
+                aggregateId,
+                data,
+                ...(createdAt && { createdAt }),
+            })
+            .returning(),
+    );
     if (!event) {
         throw new Error('Failed to create event.');
     }
 
+    if (settlesNotSprouted && 'rollback' in db) {
+        const { settleNotSproutedPlanting } = await import(
+            '../notSproutedRefundRepo'
+        );
+        await settleNotSproutedPlanting(event, db);
+    }
+
     await enqueueAutomationRunsForEvent(event, { db });
+    if (
+        type.startsWith('delivery.') &&
+        type !==
+            knownEventTypes.delivery.requestLifecycleNotificationProcessed &&
+        type !== knownEventTypes.delivery.requestLifecycleNotificationDecision
+    ) {
+        await signalDueWork('delivery-lifecycle-reconciliation');
+    }
     await bustReadModelCachesForEvent({ type, version, aggregateId, data });
 
     return event;

@@ -10,7 +10,7 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'The shared public footer uses the approved garden panorama. Light and dark themes select day and night; ambient mode follows the Zagreb solar cycle through sunrise, day, sunset, and night. The top edge blends into the surrounding page, with a centered crop on narrow screens.',
+                    'The shared public footer uses the approved garden panorama. The always-on ambience follows the Zagreb solar cycle through sunrise, day, sunset, and night. The top edge blends into the surrounding page, with a centered crop on narrow screens.',
             },
         },
     },

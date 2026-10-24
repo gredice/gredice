@@ -10,6 +10,7 @@ export type ActorGroundingShadowSpecies =
     | 'dog'
     | 'goat'
     | 'frog'
+    | 'hedgehog'
     | 'horse'
     | 'ladybug'
     | 'piglet'
@@ -172,8 +173,8 @@ export const actorGroundingShadowProfiles = {
         maxFootprintScale: 1.65,
     },
     frog: {
-        baseHalfLength: 0.2,
-        baseHalfWidth: 0.17,
+        baseHalfLength: 0.1,
+        baseHalfWidth: 0.085,
         baseOpacity: 0.28,
         cutoffHeight: 0.75,
         maxFootprintScale: 1.55,
@@ -219,6 +220,13 @@ export const actorGroundingShadowProfiles = {
         baseOpacity: 0.2,
         cutoffHeight: 0.154,
         maxFootprintScale: 1.2,
+    },
+    hedgehog: {
+        baseHalfLength: 0.19,
+        baseHalfWidth: 0.105,
+        baseOpacity: 0.25,
+        cutoffHeight: 0.3,
+        maxFootprintScale: 1.3,
     },
     squirrel: {
         baseHalfLength: 0.133,

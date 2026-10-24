@@ -16,14 +16,15 @@
     },
     "dependencies": {
         "@gredice/directory-types": "workspace:*",
-        "openapi-fetch": "0.17.0"
+        "openapi-fetch": "0.17.0",
+        "@gredice/storage": "workspace:*"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.5.3",
-        "@types/node": "24.12.4",
+        "@biomejs/biome": "2.5.15",
+        "@types/node": "24.19.2",
         "api": "workspace:*",
-        "hono": "4.13.5",
-        "tsx": "4.23.0",
+        "hono": "4.13.13",
+        "tsx": "4.23.15",
         "typescript": "7.0.2"
     }
 }

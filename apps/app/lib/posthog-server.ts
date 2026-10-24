@@ -78,13 +78,18 @@ const postHogLogsProcessor = postHogLogsExporter
     : null;
 
 export const loggerProvider = new LoggerProvider({
-    forceFlushTimeoutMillis: POSTHOG_LOG_FLUSH_TIMEOUT_MS,
     processors: postHogLogsProcessor ? [postHogLogsProcessor] : [],
     resource: resourceFromAttributes({
         'service.name': POSTHOG_SERVICE_NAME,
         'service.namespace': 'gredice',
     }),
 });
+
+function flushLoggerProvider() {
+    return loggerProvider.forceFlush({
+        timeoutMillis: POSTHOG_LOG_FLUSH_TIMEOUT_MS,
+    });
+}
 
 export function registerPostHogLoggerProvider() {
     if (process.env.NEXT_RUNTIME === 'nodejs') {
@@ -130,9 +135,9 @@ function stringifyConsoleArgument(value: unknown): string {
 const schedulePostHogLogFlush = createPostHogLogFlushScheduler({
     batchDelayMs: POSTHOG_LOG_BATCH_DELAY_MS,
     flush: () =>
-        postHogLogsExporter?.forceFlushWithErrorPropagation(() =>
-            loggerProvider.forceFlush(),
-        ) ?? loggerProvider.forceFlush(),
+        postHogLogsExporter?.forceFlushWithErrorPropagation(
+            flushLoggerProvider,
+        ) ?? flushLoggerProvider(),
     initialFailureBackoffMs: POSTHOG_LOG_INITIAL_FAILURE_BACKOFF_MS,
     maxFailureBackoffMs: POSTHOG_LOG_MAX_FAILURE_BACKOFF_MS,
     onPersistentError: (error, context) => {

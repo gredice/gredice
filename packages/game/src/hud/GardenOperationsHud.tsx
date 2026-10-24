@@ -245,10 +245,14 @@ function getDisplayStatusConfig(status: OperationDisplayStatus) {
 
 function formatDate(value?: string | null) {
     if (!value) return null;
-    return new Date(value).toLocaleDateString('hr-HR', {
+    const date = new Date(value);
+    return date.toLocaleDateString('hr-HR', {
         day: 'numeric',
         month: 'long',
-        year: 'numeric',
+        year:
+            date.getFullYear() === new Date().getFullYear()
+                ? undefined
+                : 'numeric',
     });
 }
 
@@ -940,7 +944,7 @@ function StatusBadge({
                 semiBold
                 noWrap
                 component="span"
-                className="min-w-0"
+                className="hidden min-w-0 sm:inline"
             >
                 {config.label}
             </Typography>
@@ -1449,7 +1453,7 @@ function OperationTargetLabel({
             className="min-w-0 max-w-full items-center flex-wrap gap-y-0.5"
             aria-label={targetDetails.fallbackLabel}
         >
-            <Row spacing={1} className="min-w-0 items-center">
+            <Row spacing={1} className="min-w-0 max-w-full items-center">
                 <RaisedBedIcon
                     physicalId={targetDetails.raisedBedPhysicalId}
                     containerClassName="h-6 w-6 min-w-6 overflow-visible"
@@ -1464,6 +1468,7 @@ function OperationTargetLabel({
                     noWrap
                     component="span"
                     className={cx('min-w-0', className)}
+                    title={targetDetails.raisedBedName}
                 >
                     {targetDetails.raisedBedName}
                 </Typography>
@@ -1656,7 +1661,7 @@ export function GardenOperationCard({
                                     targetDetails={targetDetails}
                                 />
                             </div>
-                            <div className="min-w-0 max-w-[58%] shrink-0 overflow-hidden">
+                            <div className="min-w-0 max-w-[75%] shrink-0 overflow-hidden sm:max-w-[58%]">
                                 <OperationSchedule
                                     operation={operation}
                                     cancelAction={cancelAction}

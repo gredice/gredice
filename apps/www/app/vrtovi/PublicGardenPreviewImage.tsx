@@ -2,6 +2,7 @@
 
 import { GameGardenIcon } from '@gredice/ui/GameIcons';
 import { usePublicEnvironment } from '@gredice/ui/PublicChrome';
+import { cx } from '@gredice/ui/utils';
 import Image from 'next/image';
 import { useState } from 'react';
 
@@ -10,11 +11,15 @@ export function PublicGardenPreviewImage({
     gardenName,
     nightPreviewImageUrl,
     priority = false,
+    className,
+    sizes = '(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw',
 }: {
     dayPreviewImageUrl?: string | null;
     gardenName: string;
     nightPreviewImageUrl?: string | null;
     priority?: boolean;
+    className?: string;
+    sizes?: string;
 }) {
     const { snapshot } = usePublicEnvironment();
     const [failedImageUrls, setFailedImageUrls] = useState<string[]>([]);
@@ -29,7 +34,12 @@ export function PublicGardenPreviewImage({
     );
 
     return (
-        <div className="relative aspect-[1200/630] w-full overflow-hidden bg-muted">
+        <div
+            className={cx(
+                'relative aspect-[1200/630] w-full overflow-hidden bg-muted',
+                className,
+            )}
+        >
             <div
                 aria-hidden={Boolean(visibleImageUrl)}
                 aria-label={`Pregled vrta ${gardenName} još nije dostupan`}
@@ -48,7 +58,7 @@ export function PublicGardenPreviewImage({
                     src={visibleImageUrl}
                     alt={`Prikaz vrta ${gardenName}`}
                     fill
-                    sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                    sizes={sizes}
                     priority={priority}
                     className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
                     onError={() =>

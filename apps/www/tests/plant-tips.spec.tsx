@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/experimental-ct-react';
+import { expect, test } from './component-fixtures';
 import { PlantTipsHarness } from './PlantTipsHarness';
 import '../app/globals.css';
 
@@ -9,9 +9,11 @@ test('renders plant advice content as markdown', async ({ mount, page }) => {
 
     await mount(
         <PlantTipsHarness
+            publicPath="/biljke/bob"
             plant={{
                 id: 1,
                 information: {
+                    name: 'Bob',
                     tip: [
                         {
                             header: 'Zalijevanje',

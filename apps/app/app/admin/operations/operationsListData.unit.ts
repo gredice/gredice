@@ -279,7 +279,7 @@ test('operations list entity filter narrows operations and hides sowing rows', (
     );
 });
 
-test('operations list exposes farmer completion notes on operation rows', () => {
+test('operations list keeps customer requests separate from farmer completion notes', () => {
     const page = buildOperationsListPage({
         context: buildContext(),
         fromDate: new Date('2026-07-02T00:00:00.000Z'),
@@ -292,6 +292,7 @@ test('operations list exposes farmer completion notes on operation rows', () => 
                 status: 'completed',
                 timestamp: new Date('2026-07-03T07:00:00.000Z'),
                 completedAt: new Date('2026-07-03T07:15:00.000Z'),
+                requestNote: '  Molim sačuvajte listove.  ',
                 completionNotes:
                     '  Zaliveno nakon berbe.\nTlo je još uvijek vlažno.  ',
             },
@@ -305,6 +306,7 @@ test('operations list exposes farmer completion notes on operation rows', () => 
     assert.ok(operation);
     assert.equal(operation.kind, 'operation');
     if (operation.kind === 'operation') {
+        assert.equal(operation.requestNote, 'Molim sačuvajte listove.');
         assert.equal(
             operation.completionNotes,
             'Zaliveno nakon berbe.\nTlo je još uvijek vlažno.',

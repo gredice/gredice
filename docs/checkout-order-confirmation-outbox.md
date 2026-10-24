@@ -5,8 +5,11 @@ Direct non-Stripe checkout records an order-confirmation intent in the existing
 transition. The checkout response waits for that transaction, but it does not
 render the email, call the provider, or poll provider delivery.
 
-The API cron at `/api/internal/cron/order-confirmation-emails` runs every minute
-and requires `CRON_SECRET`. Workers claim a bounded batch with database row
+The minute `/api/internal/cron/work-dispatch` cron invokes the worker at
+`/api/internal/cron/order-confirmation-emails` when its Redis signal is due or
+hourly recovery is required. Eligible work normally starts within one minute;
+empty minute polls avoid PostgreSQL. Both routes require `CRON_SECRET`.
+Workers claim a bounded batch with database row
 locking. A durable claim can be retried after its lease expires. Once a worker
 crosses the provider-submission fence, an ambiguous result remains in `sending`
 and is not automatically submitted again; ACS operation IDs are identifiers,

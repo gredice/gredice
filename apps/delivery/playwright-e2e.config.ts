@@ -4,6 +4,7 @@ import {
     getPlaywrightBaseUrl,
     shouldReusePlaywrightServer,
 } from '../../scripts/app-registry.ts';
+import { blobGuardLaunchArgs } from '../../scripts/blob-test-fixtures.mjs';
 import { deliveryQualityJwtSignSecret } from './tests/e2e/deliveryTestSession';
 
 const app = getAppByName('delivery');
@@ -22,6 +23,7 @@ export default defineConfig({
     ],
     outputDir: 'test-results/e2e',
     use: {
+        launchOptions: { args: blobGuardLaunchArgs() },
         baseURL: getPlaywrightBaseUrl(app),
         trace: 'on-first-retry',
     },

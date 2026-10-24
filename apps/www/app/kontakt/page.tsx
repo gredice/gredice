@@ -38,6 +38,34 @@ export default function ContactPage() {
                     Trudimo se odgovoriti na sve poruke u najkraćem mogućem
                     roku, stoga ne oklijevaj i javi nam se!
                 </p>
+                <h2 id="pisani-prigovor">Pisani prigovor potrošača</h2>
+                <p>
+                    Pisani prigovor na kupljeni proizvod, pruženu uslugu ili
+                    naše poslovanje možeš poslati na{' '}
+                    <a href="mailto:kontakt@gredice.com">kontakt@gredice.com</a>
+                    , poštom na Gredice d.o.o., Ulica Julija Knifera 3, 10000
+                    Zagreb, ili ga predati u našim poslovnim prostorijama.
+                </p>
+                <p>
+                    Primitak prigovora potvrđujemo bez odgađanja. Pisani odgovor
+                    šaljemo u roku od <strong>15 dana od primitka</strong>, uz
+                    jasno očitovanje prihvaćamo li osnovanost prigovora.
+                    Evidenciju prigovora čuvamo najmanje godinu dana od
+                    primitka.
+                </p>
+                <p>
+                    Opiši problem i navedi kontakt za odgovor te, ako ga imaš,
+                    broj narudžbe. Fotografije ili drugi podaci mogu pomoći, ali
+                    ne moraš koristiti poseban obrazac da bi podnio prigovor.
+                    Prigovor i dobrovoljni zahtjev za povrat ne zamjenjuju
+                    zakonsko pravo na jednostrani raskid ili druga prava.
+                </p>
+                <p>
+                    Postupci su opisani na stranici{' '}
+                    <a href={KnownPages.Refunds}>Povrat novca</a>. Za zahtjeve
+                    vezane uz osobne podatke pročitaj{' '}
+                    <a href={KnownPages.LegalPrivacy}>Politiku privatnosti</a>.
+                </p>
                 <hr />
                 <p>Kontaktiraj nas:</p>
                 <ul>

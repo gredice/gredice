@@ -1,5 +1,8 @@
 # Observability event budget
 
+For the September 2026 WWW/Garden preview flag-definition 401s, see the
+[authentication investigation and prepared Preview setting](./vercel-preview-flags/README.md).
+
 Vercel records separate Observability events for the request, Proxy, Function,
 and outgoing API stages of one product action. Gredice keeps those layers when
 they provide required routing, authentication, or operational reliability and
@@ -35,7 +38,7 @@ errors, and the explicit high-signal request logs above. This prevents routine
 cron completion and health records from forcing an outgoing OTLP request every
 minute while retaining operational failures.
 
-API, WWW, App, and Farm log flushes share the batch processor's one-second
+API, WWW, Garden, App, and Farm log flushes share the scheduler's one-second
 collection window. A single post-response flush then covers concurrent
 high-signal records. The OTLP fetch transport aborts exports after five seconds
 so DNS, connection, and response stalls are bounded. A timeout retries the same
@@ -49,11 +52,24 @@ Failed exports propagate through the forced-flush scheduler, which uses
 exponential backoff from 30 seconds to five minutes. The batch processor's own
 timer is a five-minute fallback, so it cannot bypass that backoff. A runtime
 warns only after a repeated failure and only once until a successful flush
-resets the failure streak. WWW registers every scheduled flush with Vercel's
-post-response `waitUntil` lifecycle, including flushes triggered by forwarded
+resets the failure streak. WWW and Garden register every scheduled flush with
+Vercel's post-response `waitUntil` lifecycle, including flushes triggered by forwarded
 console warnings. Telemetry therefore remains non-blocking without leaving its
 batch timer or export request detached when the response completes. Error-hook
 and Proxy callers also register their flushes explicitly.
+
+Calls within a collection window share one flush. Records arriving after an
+export starts collect in a subsequent batch, which waits for the active flush
+and checks its failure backoff before exporting. Each caller registers its task
+with the current request lifecycle, including callers sharing an existing batch.
+This avoids leaving late records to the unregistered five-minute fallback timer.
+The queue remains in memory: failed batches and runtime termination can still
+lose logs, and a timeout retry can duplicate a batch accepted before the timeout.
+
+Run `pnpm --filter garden test:posthog` for the Garden console/error-hook lifecycle
+integration and `pnpm --filter @gredice/js test` for shared batching, export
+deadlines, timeout retries, and failure-backoff coverage. Tests use mocked
+transport and do not send telemetry to PostHog.
 
 ## Cron schedules
 

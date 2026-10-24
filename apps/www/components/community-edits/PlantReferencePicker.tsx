@@ -5,6 +5,7 @@ import { Close } from '@gredice/ui/icons';
 import { SelectItems } from '@gredice/ui/SelectItems';
 import { Typography } from '@gredice/ui/Typography';
 import { useMemo } from 'react';
+import { referenceControlClassName } from './communityControlStyles';
 
 type PlantReferenceOption = {
     value: string;
@@ -62,6 +63,7 @@ export function PlantReferencePicker({
     return (
         <div className="space-y-3">
             <SelectItems
+                className={referenceControlClassName}
                 disabled={availableOptions.length === 0}
                 emptySearchText={`Nema ${noun.genitivePlural} za taj pojam.`}
                 id={id}

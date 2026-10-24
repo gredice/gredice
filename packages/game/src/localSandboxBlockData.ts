@@ -1,5 +1,53 @@
 import type { BlockData } from '@gredice/client';
 import {
+    autumnAsterPotNames,
+    getAutumnAsterPot,
+} from '@gredice/js/autumnAsterPots';
+import { autumnBlanketBench } from '@gredice/js/autumnBlanketBench';
+import {
+    autumnEntranceNames,
+    getAutumnEntrance,
+} from '@gredice/js/autumnEntrances';
+import { autumnGrassNames, getAutumnGrass } from '@gredice/js/autumnGrasses';
+import {
+    autumnLeafPileNames,
+    getAutumnLeafPile,
+} from '@gredice/js/autumnLeafPiles';
+import { autumnShrub } from '@gredice/js/autumnShrub';
+import { birdFeeder } from '@gredice/js/birdFeeder';
+import { chestnutRoastingCart } from '@gredice/js/chestnutRoastingCart';
+import { fallenLog } from '@gredice/js/fallenLog';
+import { gardenBrazier } from '@gredice/js/gardenBrazier';
+import { gardenScarecrow } from '@gredice/js/gardenScarecrow';
+import { gardenTeaTable } from '@gredice/js/gardenTeaTable';
+import {
+    getHalloweenAccent,
+    halloweenAccentNames,
+} from '@gredice/js/halloweenAccents';
+import { getHarvestCrate, harvestCrateNames } from '@gredice/js/harvestCrates';
+import {
+    getHarvestPumpkin,
+    harvestPumpkinNames,
+} from '@gredice/js/harvestPumpkins';
+import { harvestWheelbarrow } from '@gredice/js/harvestWheelbarrow';
+import {
+    getHedgehogShelter,
+    hedgehogShelterNames,
+} from '@gredice/js/hedgehogShelter';
+import { leafRake } from '@gredice/js/leafRake';
+import {
+    getPumpkinLantern,
+    pumpkinLanternNames,
+} from '@gredice/js/pumpkinLanterns';
+import { seasonalMaple } from '@gredice/js/seasonalMaple';
+import { seedDryingRack } from '@gredice/js/seedDryingRack';
+import { stackedFirewood } from '@gredice/js/stackedFirewood';
+import {
+    getWoodlandArrangement,
+    woodlandArrangementNames,
+} from '@gredice/js/woodlandArrangements';
+import { woodlandMushrooms } from '@gredice/js/woodlandMushrooms';
+import {
     type ArrowSignDirection,
     arrowSignConfigs,
     arrowSignNames,
@@ -62,6 +110,30 @@ export const localSandboxBlockNames = [
     'LemonadeStand',
     'IceCreamCart',
     'SummerHat',
+    ...harvestPumpkinNames,
+    ...autumnAsterPotNames,
+    gardenScarecrow.name,
+    ...harvestCrateNames,
+    harvestWheelbarrow.name,
+    autumnShrub.name,
+    seasonalMaple.name,
+    woodlandMushrooms.name,
+    leafRake.name,
+    stackedFirewood.name,
+    seedDryingRack.name,
+    birdFeeder.name,
+    ...hedgehogShelterNames,
+    gardenBrazier.name,
+    gardenTeaTable.name,
+    fallenLog.name,
+    autumnBlanketBench.name,
+    chestnutRoastingCart.name,
+    ...autumnLeafPileNames,
+    ...autumnGrassNames,
+    ...woodlandArrangementNames,
+    ...pumpkinLanternNames,
+    ...halloweenAccentNames,
+    ...autumnEntranceNames,
     'BeachTowelStriped',
     'InflatablePoolSmall',
     'BeachChair',
@@ -100,6 +172,7 @@ export const localSandboxBlockNames = [
     'DeadTreeStump',
     'Tulip',
     'Sunflower',
+    'Rose',
     'CactusBarrel',
     'CactusColumnCluster',
     'CactusPricklyPear',
@@ -154,6 +227,12 @@ const localSandboxBlockMetadata: Partial<
         }
     >
 > = {
+    Rose: {
+        label: 'Ruža',
+        shortDescription: 'Rascvjetani grm crvene ruže za mirisni kutak vrta.',
+        fullDescription:
+            'Kompaktan grm ruže s bogatim crvenim cvjetovima i svježim zelenim lišćem. Postavi ga uz stazu, ogradu ili omiljeno mjesto za odmor.',
+    },
     ChickenCoop: {
         label: 'Kokošinjac',
         shortDescription:
@@ -518,6 +597,7 @@ const localSandboxStackHeights: Partial<Record<LocalSandboxBlockName, number>> =
         Raised_Bed: 0.35,
         Snowman: 0.5,
         Sunflower: 1,
+        Rose: 1,
     };
 
 type LocalSandboxHitboxAttributes = Partial<
@@ -880,7 +960,46 @@ function createLocalSandboxBlockData(
     const isGroundBlock = name.startsWith('Block_');
     const isRaisedBed = name === 'Raised_Bed';
     const isOutletDisplayTable = name === 'OutletDisplayTable';
-    const metadata = localSandboxBlockMetadata[name];
+    const decoration =
+        getAutumnEntrance(name) ??
+        getHedgehogShelter(name) ??
+        getHalloweenAccent(name) ??
+        getPumpkinLantern(name) ??
+        getWoodlandArrangement(name) ??
+        getAutumnGrass(name) ??
+        getAutumnLeafPile(name) ??
+        (name === gardenBrazier.name
+            ? gardenBrazier
+            : name === birdFeeder.name
+              ? birdFeeder
+              : name === seedDryingRack.name
+                ? seedDryingRack
+                : name === stackedFirewood.name
+                  ? stackedFirewood
+                  : name === chestnutRoastingCart.name
+                    ? chestnutRoastingCart
+                    : name === gardenTeaTable.name
+                      ? gardenTeaTable
+                      : name === autumnBlanketBench.name
+                        ? autumnBlanketBench
+                        : name === leafRake.name
+                          ? leafRake
+                          : name === fallenLog.name
+                            ? fallenLog
+                            : name === woodlandMushrooms.name
+                              ? woodlandMushrooms
+                              : name === seasonalMaple.name
+                                ? seasonalMaple
+                                : name === autumnShrub.name
+                                  ? autumnShrub
+                                  : name === gardenScarecrow.name
+                                    ? gardenScarecrow
+                                    : name === harvestWheelbarrow.name
+                                      ? harvestWheelbarrow
+                                      : (getAutumnAsterPot(name) ??
+                                        getHarvestCrate(name) ??
+                                        getHarvestPumpkin(name)));
+    const metadata = decoration?.information ?? localSandboxBlockMetadata[name];
     return {
         id: index + 1,
         entityType: {
@@ -915,6 +1034,7 @@ function createLocalSandboxBlockData(
             nightOnlyPurchase: false,
             ...localSandboxHitboxAttributes[name],
             ...localSandboxPlacementAttributes[name],
+            ...decoration?.attributes,
             ...(['LemonadeStand', 'IceCreamCart'].includes(name)
                 ? { spanDepth: 2, spanWidth: 3 }
                 : {}),

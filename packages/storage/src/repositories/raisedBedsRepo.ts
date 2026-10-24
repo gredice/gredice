@@ -21,6 +21,7 @@ import {
     scheduleCacheKeys,
     scheduleCacheTtls,
 } from '../cache/scheduleCache';
+import { signalAutomationEventWrite } from '../dueWork';
 import { generateRaisedBedName } from '../helpers/generateRaisedBedName';
 import { RAISED_BED_PHOTO_OPERATION_ID } from '../helpers/raisedBedPhotoOperations';
 import {
@@ -55,6 +56,7 @@ import {
     type RaisedBedWeedStateSetPayload,
     type RaisedBedWeedStateSource,
 } from './eventsRepo';
+import { getOperationsByIds } from './operationsRepo';
 import {
     getRaisedBedFieldsWithEvents,
     getRaisedBedFieldsWithEventsForBeds,
@@ -90,15 +92,6 @@ type RaisedBedWithFields = typeof raisedBeds.$inferSelect & {
     plantings: RaisedBedPlantingWithFields[];
     weedState: RaisedBedWeedState | null;
 };
-
-const raisedBedPhotoOperationStatusEventTypes = [
-    knownEventTypes.operations.schedule,
-    knownEventTypes.operations.complete,
-    knownEventTypes.operations.block,
-    knownEventTypes.operations.verify,
-    knownEventTypes.operations.fail,
-    knownEventTypes.operations.cancel,
-];
 
 function parseWeedStateLevel(value: unknown): RaisedBedWeedStateLevel | null {
     switch (value) {
@@ -161,20 +154,6 @@ function latestWeedStateFromEvents(
     return weedState;
 }
 
-function imageUrlsFromOperationCompleteData(value: unknown) {
-    if (!value || typeof value !== 'object') {
-        return [];
-    }
-
-    const images = (value as { images?: unknown }).images;
-    return Array.isArray(images)
-        ? images.filter(
-              (imageUrl): imageUrl is string =>
-                  typeof imageUrl === 'string' && imageUrl.trim().length > 0,
-          )
-        : [];
-}
-
 async function getLatestRaisedBedPhotoOperationsByIds(
     raisedBedIds: number[],
 ): Promise<Map<number, RaisedBedLatestPhotoOperation>> {
@@ -213,57 +192,32 @@ async function getLatestRaisedBedPhotoOperationsByIds(
         return new Map();
     }
 
-    const operationEvents = await getAllEvents(
-        raisedBedPhotoOperationStatusEventTypes,
-        operationIds.map((operationId) => operationId.toString()),
-    );
-    const latestStatusTypeByOperationId = new Map<number, string>();
-    for (const event of operationEvents) {
-        const operationId = Number(event.aggregateId);
-        if (raisedBedIdByOperationId.has(operationId)) {
-            latestStatusTypeByOperationId.set(operationId, event.type);
-        }
-    }
-
-    for (const event of operationEvents) {
-        if (event.type !== knownEventTypes.operations.complete) {
-            continue;
-        }
-
-        const operationId = Number(event.aggregateId);
-        const latestStatusType = latestStatusTypeByOperationId.get(operationId);
+    const currentOperations = await getOperationsByIds(operationIds);
+    for (const operation of currentOperations) {
         if (
-            latestStatusType !== knownEventTypes.operations.complete &&
-            latestStatusType !== knownEventTypes.operations.verify
-        ) {
+            !operation.completedAt ||
+            !operation.imageUrls?.length ||
+            !['pendingVerification', 'completed'].includes(operation.status)
+        )
             continue;
-        }
-
-        const raisedBedId = raisedBedIdByOperationId.get(operationId);
-        if (!raisedBedId) {
-            continue;
-        }
-
-        const imageUrls = imageUrlsFromOperationCompleteData(event.data);
-        if (imageUrls.length === 0) {
-            continue;
-        }
-
+        const raisedBedId = raisedBedIdByOperationId.get(operation.id);
+        if (!raisedBedId) continue;
+        const eventId =
+            operation.completionEventId ?? operation.taskVersionEventId;
         const current = latestPhotoOperationsByRaisedBedId.get(raisedBedId);
         if (
             current &&
-            (current.completedAt > event.createdAt ||
-                (current.completedAt.getTime() === event.createdAt.getTime() &&
-                    current.eventId > event.id))
-        ) {
+            (current.completedAt > operation.completedAt ||
+                (current.completedAt.getTime() ===
+                    operation.completedAt.getTime() &&
+                    current.eventId > eventId))
+        )
             continue;
-        }
-
         latestPhotoOperationsByRaisedBedId.set(raisedBedId, {
-            id: operationId,
-            completedAt: event.createdAt,
-            imageUrls,
-            eventId: event.id,
+            id: operation.id,
+            completedAt: operation.completedAt,
+            imageUrls: operation.imageUrls,
+            eventId,
         });
     }
 
@@ -547,6 +501,38 @@ export async function getRaisedBeds(
     );
 }
 
+/** The public list counts event-derived fields, not selected planting density. */
+export async function getGardenActivePlantCounts(gardenIds: number[]) {
+    const counts = new Map<number, number>();
+    if (gardenIds.length === 0) return counts;
+
+    const beds = await storage()
+        .select({ id: raisedBeds.id, gardenId: raisedBeds.gardenId })
+        .from(raisedBeds)
+        .where(
+            and(
+                inArray(raisedBeds.gardenId, [...new Set(gardenIds)]),
+                eq(raisedBeds.isDeleted, false),
+            ),
+        );
+    // Reuse the canonical reducer so removals, replacements and reactivation
+    // retain exactly the same meaning as the full public garden list.
+    const fieldsByBed = await getRaisedBedFieldsWithEventsForBeds(
+        beds.map((bed) => bed.id),
+    );
+    for (const bed of beds) {
+        if (bed.gardenId === null) continue;
+        const activePlantCount = (fieldsByBed.get(bed.id) ?? []).filter(
+            (field) => field.active && typeof field.plantSortId === 'number',
+        ).length;
+        counts.set(
+            bed.gardenId,
+            (counts.get(bed.gardenId) ?? 0) + activePlantCount,
+        );
+    }
+    return counts;
+}
+
 export async function getRaisedBedsForGardens(
     gardenIds: number[],
     filters?: {
@@ -823,10 +809,12 @@ export async function abandonRaisedBed({
             .set({ status: 'abandoned' })
             .where(eq(raisedBeds.id, raisedBedId));
 
-        await tx.insert(events).values(
-            knownEvents.raisedBeds.abandonV1(raisedBedId.toString(), {
-                reason,
-            }),
+        await signalAutomationEventWrite(
+            tx.insert(events).values(
+                knownEvents.raisedBeds.abandonV1(raisedBedId.toString(), {
+                    reason,
+                }),
+            ),
         );
 
         return createdOperation;
