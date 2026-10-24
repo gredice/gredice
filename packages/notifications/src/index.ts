@@ -653,15 +653,19 @@ export async function deliverStripePaymentManualReviewAlert(
     ) {
         throw new TypeError('Manual-review alert context is invalid');
     }
-    return sendSlackMessage(
+    // The outbox worker records bounded failure codes. Do not pass this alert
+    // through the generic helper that logs raw provider failure responses.
+    return postMessage({
+        token: process.env.SLACK_BOT_TOKEN,
         channel,
-        [
+        abortSignal: deliveryOptions.abortSignal,
+        beforeProviderSubmission: deliveryOptions.beforeProviderSubmission,
+        text: [
             ':rotating_light: *Plaćena narudžba zahtijeva ručnu provjeru*',
             `• Zahtjev: ${details.paymentClaimId}`,
             `• Ciklus provjere: ${details.reviewCycleId}`,
             `• Kategorija: ${details.failureCategory}`,
             '• Administracija: https://app.gredice.com/admin/shopping-carts',
         ].join('\n'),
-        deliveryOptions,
-    );
+    });
 }
