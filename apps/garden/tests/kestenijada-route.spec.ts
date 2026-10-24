@@ -3,6 +3,10 @@ import { kestenijadaItems } from '@gredice/js/kestenijada';
 import { expect, test } from '@playwright/test';
 import { getLocalSandboxBlockData } from '../../../packages/game/src/localSandboxBlockData';
 
+// Match chromium-webgl-outlet's functional startup bound for cold game imports
+// and software WebGL initialization.
+const canvasStartupTimeout = 30_000;
+
 const offers = getLocalSandboxBlockData()
     .filter((row) =>
         kestenijadaItems.some((item) => item.name === row.information.name),
@@ -126,7 +130,9 @@ for (const signedIn of [false, true]) {
                 page.getByRole('button', { name: 'Testni vrt', exact: true }),
             ).toHaveCount(0);
         }
-        await expect(page.locator('canvas')).toBeVisible();
+        await expect(page.locator('canvas')).toBeVisible({
+            timeout: canvasStartupTimeout,
+        });
         await page.reload();
         await expect(discoveryLink).toBeVisible();
         expect(pageErrors).toEqual([]);
@@ -198,7 +204,9 @@ test('direct public route and real Link transition fence private reads while pre
     await expect(
         page.getByRole('heading', { name: 'Kestenijada', exact: true }),
     ).toBeVisible();
-    await expect(page.locator('canvas')).toBeVisible();
+    await expect(page.locator('canvas')).toBeVisible({
+        timeout: canvasStartupTimeout,
+    });
     await expect(
         page.getByRole('link', { name: /Pogledaj ponudu:/ }),
     ).toHaveCount(5);
