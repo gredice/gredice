@@ -40,7 +40,7 @@ android {
 
     defaultConfig {
         applicationId twaManifest.applicationId
-        minSdk 23
+        minSdk 24
         targetSdk 36
         versionCode providers.gradleProperty('GREDICE_VERSION_CODE').get().toInteger()
         versionName providers.gradleProperty('GREDICE_VERSION_NAME').get()
