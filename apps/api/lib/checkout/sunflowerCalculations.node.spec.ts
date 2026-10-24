@@ -69,6 +69,35 @@ test('defaults a new item to euros when it is affordable alone but not with sunf
     );
 });
 
+test('accounts for quantities when checking the new item and existing commitments', () => {
+    const items = [
+        cartItem({
+            amount: 2,
+            currency: 'sunflower',
+            id: 1,
+            price: 1,
+        }),
+        cartItem({ amount: 3, id: 2, price: 2 }),
+    ];
+
+    assert.equal(
+        getDefaultCartItemCurrency({
+            availableSunflowers: 7_999,
+            items,
+            newCartItemId: 2,
+        }),
+        'eur',
+    );
+    assert.equal(
+        getDefaultCartItemCurrency({
+            availableSunflowers: 8_000,
+            items,
+            newCartItemId: 2,
+        }),
+        'sunflower',
+    );
+});
+
 test('does not reserve sunflowers for items explicitly kept in euros or already paid', () => {
     assert.equal(
         getDefaultCartItemCurrency({
