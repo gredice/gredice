@@ -4741,6 +4741,9 @@ describe('processItem', () => {
     it('reuses mapped operation state after the field changes and bed is abandoned', async () => {
         const calls: RecordedCall[] = [];
         const dependencies = makeDependencies(calls, {
+            getDefaultShoppingCartScheduledDate: () => {
+                throw new Error('Replay must use the persisted date.');
+            },
             getCheckoutOperationMapping: async (...args: unknown[]) => {
                 record(calls, 'getCheckoutOperationMapping', args);
                 return {
@@ -4784,7 +4787,7 @@ describe('processItem', () => {
                 accountId: 'account-1',
                 amount_total: 2500,
                 additionalData: {
-                    scheduledDate: '2026-07-09T00:00:00.000Z',
+                    scheduledDate: 'not-a-date',
                 },
                 cartId: 100,
                 cartItemId: 1,
@@ -5850,7 +5853,8 @@ describe('selected planting operation purchases', () => {
                 return { created: false, operationId: stored.operationId };
             },
         });
-        for (const scheduledDate of ['2026-09-20', '2026-09-21']) {
+        const replayDates = ['2026-09-20', '2026-09-21', undefined, 'invalid'];
+        for (const scheduledDate of replayDates) {
             const result = await processItem(
                 {
                     ...item,
@@ -5876,8 +5880,10 @@ describe('selected planting operation purchases', () => {
             calls,
             'getOrCreateCheckoutOperation',
         );
-        assert.equal(operationCalls.length, 2);
-        assert.deepEqual(operationCalls[0]?.args, operationCalls[1]?.args);
+        assert.equal(operationCalls.length, replayDates.length);
+        for (const call of operationCalls) {
+            assert.deepEqual(call.args, operationCalls[0]?.args);
+        }
         const options = operationCalls[0]?.args[2];
         assert.ok(isRecord(options));
         assert.ok(options.scheduledDate instanceof Date);
@@ -5887,10 +5893,7 @@ describe('selected planting operation purchases', () => {
             callsNamed(calls, 'earnSunflowersForPayment').map(
                 ({ args }) => args,
             ),
-            [
-                ['account-1', 25, 'shoppingCartItem:501'],
-                ['account-1', 25, 'shoppingCartItem:501'],
-            ],
+            replayDates.map(() => ['account-1', 25, 'shoppingCartItem:501']),
         );
         assert.equal(
             callsNamed(calls, 'getRaisedBedFieldsWithEvents').length,
@@ -5933,6 +5936,129 @@ describe('selected planting operation purchases', () => {
     });
 });
 
+describe('checkout operation scheduled dates', () => {
+    const plantingTarget = {
+        plantingId: 901,
+        expectedLifecycleVersionEventId: 123,
+        expectedPlantSortId: 42,
+    };
+    const item = {
+        accountId: 'account-1',
+        amount_total: 2500,
+        cartId: 100,
+        cartItemId: 501,
+        currency: 'eur',
+        entityId: '601',
+        entityTypeName: 'operation',
+        gardenId: 1,
+        raisedBedId: 2,
+    };
+    const dateCases = [
+        ['2026-09-15T00:00:00.000Z', '2026-09-15T00:00:00.000Z'],
+        ['2026-09-15', '2026-09-15T00:00:00.000Z'],
+        ['2026-09-15T01:30:00+02:00', '2026-09-14T23:30:00.000Z'],
+        ['2026-09-15T23:30:00-02:00', '2026-09-16T01:30:00.000Z'],
+        [undefined, '2026-07-02T00:00:00.000Z'],
+        [null, '2026-07-02T00:00:00.000Z'],
+        ['', '2026-07-02T00:00:00.000Z'],
+        ['not-a-date', '2026-07-02T00:00:00.000Z'],
+        [42, '2026-07-02T00:00:00.000Z'],
+        [{ value: '2026-09-15' }, '2026-07-02T00:00:00.000Z'],
+    ] as const;
+
+    for (const selected of [false, true]) {
+        const target = selected ? 'selected planting' : 'field';
+        const positionIndex = selected ? null : 2;
+        for (const serialize of [false, true]) {
+            for (const [scheduledDate, expected] of dateCases) {
+                it(`normalizes ${target} ${serialize ? 'JSON' : 'object'} date ${JSON.stringify(scheduledDate)}`, async () => {
+                    const calls: RecordedCall[] = [];
+                    const additionalData = {
+                        ...(selected ? { plantingTarget } : {}),
+                        scheduledDate,
+                    };
+                    const result = await processItem(
+                        {
+                            ...item,
+                            positionIndex,
+                            additionalData: serialize
+                                ? JSON.stringify(additionalData)
+                                : additionalData,
+                        },
+                        makeDependencies(calls),
+                    );
+                    assert.deepEqual(result, { status: 'fulfilled' });
+                    const operationCalls = callsNamed(
+                        calls,
+                        'getOrCreateCheckoutOperation',
+                    );
+                    assert.equal(operationCalls.length, 1);
+                    const options = operationCalls[0]?.args[2];
+                    assert.ok(isRecord(options));
+                    assert.ok(options.scheduledDate instanceof Date);
+                    assert.equal(options.scheduledDate.toISOString(), expected);
+                });
+            }
+        }
+
+        for (const source of ['stored', 'default']) {
+            for (const invalid of ['invalid', '', 42, new Date(Number.NaN)]) {
+                it(`rejects an invalid ${source} ${target} date before fulfillment writes (${String(invalid)})`, async () => {
+                    const calls: RecordedCall[] = [];
+                    const dependencies = makeDependencies(calls, {
+                        getRaisedBedFieldsWithEvents: async () => [],
+                        getCheckoutOperationMapping: async () =>
+                            source === 'stored'
+                                ? { scheduledDate: invalid, delivery: null }
+                                : null,
+                        getDefaultShoppingCartScheduledDate: () => {
+                            assert.equal(source, 'default');
+                            return invalid;
+                        },
+                    });
+                    const additionalData = selected ? { plantingTarget } : {};
+                    await assert.rejects(
+                        processItem(
+                            { ...item, positionIndex, additionalData },
+                            dependencies,
+                        ),
+                        {
+                            name: 'CheckoutOperationConflictError',
+                            message:
+                                'Checkout operation scheduled date must be a valid Date.',
+                        },
+                    );
+                    if (selected) {
+                        await assert.rejects(
+                            prepareSelectedPlantingCheckoutOperation(
+                                { ...item, positionIndex, additionalData },
+                                undefined,
+                                dependencies,
+                            ),
+                            { name: 'CheckoutOperationConflictError' },
+                        );
+                    }
+                    for (const effect of [
+                        'getOrCreateCheckoutOperation',
+                        'earnSunflowersForPayment',
+                        'createEvent',
+                        'createTransaction',
+                        'consumeInventoryItem',
+                        'getOrCreateDeliveryRequest',
+                        'upsertRaisedBedField',
+                    ]) {
+                        assert.equal(
+                            callsNamed(calls, effect).length,
+                            0,
+                            effect,
+                        );
+                    }
+                });
+            }
+        }
+    }
+});
+
 describe('customer operation request notes', () => {
     for (const currency of ['eur', 'sunflower', 'inventory']) {
         for (const positionIndex of [null, 2]) {
@@ -5966,6 +6092,11 @@ describe('customer operation request notes', () => {
                 assert.equal(
                     call.args[2].requestNote,
                     'Molim sačuvajte listove.',
+                );
+                assert.ok(call.args[2].scheduledDate instanceof Date);
+                assert.equal(
+                    call.args[2].scheduledDate.toISOString(),
+                    '2099-07-01T00:00:00.000Z',
                 );
             });
         }
