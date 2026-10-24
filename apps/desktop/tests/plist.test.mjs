@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import plist from 'plist';
+import { build, parse } from 'plist';
 
 test('Electron property lists round-trip with xmldom 0.9', () => {
     const info = {
@@ -15,9 +15,9 @@ test('Electron property lists round-trip with xmldom 0.9', () => {
             },
         ],
     };
-    assert.deepEqual(plist.parse(plist.build(info)), info);
+    assert.deepEqual(parse(build(info)), info);
     assert.deepEqual(
-        plist.parse(plist.build({ 'com.apple.security.app-sandbox': false })),
+        parse(build({ 'com.apple.security.app-sandbox': false })),
         { 'com.apple.security.app-sandbox': false },
     );
 });

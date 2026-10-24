@@ -49,6 +49,12 @@ export function registerGardenPackIntegrationSuite(
             const { stdout, stderr } = await promisify(execFile)(
                 process.execPath,
                 [
+                    // Match the storage runner's test-only Node 24 workaround:
+                    // https://github.com/nodejs/node/issues/66366
+                    ...(process.versions.node.startsWith('24.') &&
+                    environment.GREDICE_TEST_DB_PROVIDER === 'pglite'
+                        ? ['--no-wasm-code-gc']
+                        : []),
                     '--import',
                     'tsx',
                     '--test',

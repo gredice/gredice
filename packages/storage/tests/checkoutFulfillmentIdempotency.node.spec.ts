@@ -112,6 +112,31 @@ test('checkout operation ensure atomically maps one scheduled operation and reje
         ),
     });
     assert.equal(mappingEvents.length, 1);
+    assert.equal(
+        (await getCheckoutOperationMapping(cartItemId))?.scheduledDate,
+        scheduledDate.toISOString(),
+    );
+    const equivalentDateRetry = await getOrCreateCheckoutOperation(
+        cartItemId,
+        operationInput,
+        {
+            delivery: null,
+            paymentCurrency: 'eur',
+            scheduledDate: new Date('2099-04-05T02:00:00+02:00'),
+        },
+    );
+    assert.deepEqual(equivalentDateRetry, { operationId, created: false });
+    assert.equal(
+        (
+            await storage().query.events.findMany({
+                where: and(
+                    eq(events.type, knownEventTypes.operations.schedule),
+                    eq(events.aggregateId, operationId.toString()),
+                ),
+            })
+        ).length,
+        1,
+    );
     const operationNotifications = await storage()
         .select({ id: emailMessages.id, status: emailMessages.status })
         .from(emailMessages)
@@ -167,6 +192,34 @@ test('checkout operation ensure atomically maps one scheduled operation and reje
             scheduledDate: new Date('2099-04-06T00:00:00.000Z'),
         }),
         CheckoutOperationConflictError,
+    );
+});
+
+test('checkout operation rejects invalid dates before persisting any fulfillment effects', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const cartItemId = uniqueCartItemId();
+    await assert.rejects(
+        getOrCreateCheckoutOperation(
+            cartItemId,
+            { accountId, entityId: 17, entityTypeName: 'operation' },
+            {
+                delivery: null,
+                paymentCurrency: 'eur',
+                scheduledDate: new Date('not-a-date'),
+            },
+        ),
+        {
+            name: 'CheckoutOperationConflictError',
+            message: 'Checkout operation scheduled date must be a valid Date.',
+        },
+    );
+    assert.equal(await getCheckoutOperationMapping(cartItemId), null);
+    assert.deepEqual(
+        await storage().query.operations.findMany({
+            where: eq(operations.accountId, accountId),
+        }),
+        [],
     );
 });
 
