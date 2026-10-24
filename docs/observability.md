@@ -52,7 +52,7 @@ Failed exports propagate through the forced-flush scheduler, which uses
 exponential backoff from 30 seconds to five minutes. The batch processor's own
 timer is a five-minute fallback, so it cannot bypass that backoff. A runtime
 warns only after a repeated failure and only once until a successful flush
-resets the failure streak. WWW and Garden register every scheduled flush with
+resets the failure streak. API, WWW, and Garden register every scheduled flush with
 Vercel's post-response `waitUntil` lifecycle, including flushes triggered by forwarded
 console warnings. Telemetry therefore remains non-blocking without leaving its
 batch timer or export request detached when the response completes. Error-hook
@@ -68,8 +68,16 @@ lose logs, and a timeout retry can duplicate a batch accepted before the timeout
 
 Run `pnpm --filter garden test:posthog` for the Garden console/error-hook lifecycle
 integration and `pnpm --filter @gredice/js test` for shared batching, export
-deadlines, timeout retries, and failure-backoff coverage. Tests use mocked
-transport and do not send telemetry to PostHog.
+deadlines, timeout retries, and failure-backoff coverage. The API integration also
+covers persistent AbortError warnings and recovery:
+
+```bash
+pnpm --filter api exec node --experimental-test-module-mocks --import tsx --test --conditions=react-server lib/posthog-server.node.spec.ts
+```
+
+Tests use mocked transport and do not send telemetry to PostHog. See the
+[October API export investigation](./posthog-api-log-export-investigation.md)
+for the deployed-source evidence and remaining runtime verification limits.
 
 ## Cron schedules
 
