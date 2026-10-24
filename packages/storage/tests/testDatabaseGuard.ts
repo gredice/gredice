@@ -66,7 +66,10 @@ function parsePostgresDatabaseName(connectionString: string) {
 }
 
 export function assertDisposableStorageTestDatabase(
-    environment: StorageTestDatabaseEnvironment = process.env,
+    environment: StorageTestDatabaseEnvironment = {
+        ...process.env,
+        TEST_ENV: process.env.TEST_ENV,
+    },
 ) {
     const connectionString = environment.POSTGRES_URL;
     if (!connectionString) {
