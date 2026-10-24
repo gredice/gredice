@@ -28,6 +28,12 @@ export type CheckoutNotificationDatabaseClient =
 
 export type CheckoutNotificationPayload =
     | {
+          kind: 'payment_manual_review_slack';
+          paymentClaimId: number;
+          reviewCycleId: number;
+          failureCategory: string;
+      }
+    | {
           kind: 'operation_scheduled_slack';
           operationId: number;
           scheduledDate: string;
@@ -156,6 +162,21 @@ function parsePayload(
 ): CheckoutNotificationPayload | null {
     if (metadata.outboxKind !== checkoutNotificationOutboxKind) return null;
     const kind = metadata.notificationKind;
+    if (kind === 'payment_manual_review_slack') {
+        const { paymentClaimId, reviewCycleId, failureCategory } = metadata;
+        if (
+            typeof paymentClaimId !== 'number' ||
+            !Number.isSafeInteger(paymentClaimId) ||
+            paymentClaimId <= 0 ||
+            typeof reviewCycleId !== 'number' ||
+            !Number.isSafeInteger(reviewCycleId) ||
+            reviewCycleId < 0 ||
+            typeof failureCategory !== 'string' ||
+            !/^[A-Za-z0-9_.:-]{1,120}$/u.test(failureCategory)
+        )
+            return null;
+        return { kind, paymentClaimId, reviewCycleId, failureCategory };
+    }
     if (kind === 'operation_scheduled_slack') {
         const operationId = metadata.operationId;
         const scheduledDate = metadata.scheduledDate;
@@ -282,21 +303,27 @@ function parsePayload(
 
 function initialMetadata(payload: CheckoutNotificationPayload): Metadata {
     const source =
-        payload.kind === 'operation_scheduled_slack'
+        payload.kind === 'payment_manual_review_slack'
             ? {
-                  operationId: payload.operationId,
-                  scheduledDate: payload.scheduledDate,
+                  paymentClaimId: payload.paymentClaimId,
+                  reviewCycleId: payload.reviewCycleId,
+                  failureCategory: payload.failureCategory,
               }
-            : payload.kind === 'purchase_slack'
+            : payload.kind === 'operation_scheduled_slack'
               ? {
-                    accountId: payload.accountId,
-                    amountTotal: payload.amountTotal,
-                    checkoutSessionId: payload.checkoutSessionId,
-                    currency: payload.currency,
-                    customerEmail: payload.customerEmail,
-                    items: payload.items,
+                    operationId: payload.operationId,
+                    scheduledDate: payload.scheduledDate,
                 }
-              : { requestId: payload.requestId };
+              : payload.kind === 'purchase_slack'
+                ? {
+                      accountId: payload.accountId,
+                      amountTotal: payload.amountTotal,
+                      checkoutSessionId: payload.checkoutSessionId,
+                      currency: payload.currency,
+                      customerEmail: payload.customerEmail,
+                      items: payload.items,
+                  }
+                : { requestId: payload.requestId };
     return {
         ...source,
         attemptCount: 0,
@@ -358,6 +385,23 @@ async function enqueue(
         await signalDueWork('checkout-notifications', now);
         return created.id;
     });
+}
+
+export async function enqueueStripePaymentManualReviewAlert(
+    payload: Extract<
+        CheckoutNotificationPayload,
+        { kind: 'payment_manual_review_slack' }
+    >,
+    db: CheckoutNotificationDatabaseClient,
+) {
+    if (!parsePayload(initialMetadata(payload), undefined)) {
+        throw new TypeError('Manual-review alert payload is invalid');
+    }
+    return enqueue(
+        payload,
+        `payment-manual-review:${payload.paymentClaimId}:${payload.reviewCycleId}`,
+        db,
+    );
 }
 
 export async function enqueueCheckoutOperationScheduledNotification(

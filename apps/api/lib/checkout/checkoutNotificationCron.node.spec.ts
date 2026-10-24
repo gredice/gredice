@@ -84,6 +84,7 @@ test('checkout notification cron returns aggregate health', async (t) => {
     const response = await handleCheckoutNotificationCron(
         request('Bearer cron-secret'),
         {
+            repair: async () => ({ failed: 0, pending: false }),
             health: async () => healthyOutbox,
             now: () => observedAt,
             run: async () => successfulResult,
@@ -94,6 +95,7 @@ test('checkout notification cron returns aggregate health', async (t) => {
         success: true,
         ...successfulResult,
         outboxHealth: healthyOutbox,
+        reviewAlertRepair: { failed: 0, pending: false },
     });
 });
 
@@ -118,11 +120,44 @@ test('fenced, failed, and stale intents make cron unhealthy', async (t) => {
         const response = await handleCheckoutNotificationCron(
             request('Bearer cron-secret'),
             {
+                repair: async () => ({ failed: 0, pending: false }),
                 health: async () => unhealthy,
                 now: () => observedAt,
                 run: async () => successfulResult,
             },
         );
         assert.equal(response.status, 503);
+    }
+});
+
+test('alert repair failures stay unhealthy while already queued notifications still run', async (t) => {
+    const previous = process.env.CRON_SECRET;
+    t.after(() => {
+        if (previous === undefined) delete process.env.CRON_SECRET;
+        else process.env.CRON_SECRET = previous;
+    });
+    process.env.CRON_SECRET = 'cron-secret';
+    for (const repair of [
+        async () => ({ failed: 1, pending: true }),
+        async () => ({ failed: 0, pending: true }),
+        async () => {
+            throw new Error('Synthetic repair query failure');
+        },
+    ]) {
+        let delivered = false;
+        const response = await handleCheckoutNotificationCron(
+            request('Bearer cron-secret'),
+            {
+                repair,
+                health: async () => healthyOutbox,
+                now: () => observedAt,
+                run: async () => {
+                    delivered = true;
+                    return successfulResult;
+                },
+            },
+        );
+        assert.equal(response.status, 503);
+        assert.equal(delivered, true);
     }
 });

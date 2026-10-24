@@ -614,7 +614,12 @@ async function ensureCheckoutCompletionOutputs({
     return result;
 }
 
-function normalizeStripePaymentProcessingError(error: unknown) {
+export function normalizeStripePaymentProcessingError(error: unknown) {
+    if (error instanceof CheckoutOperationConflictError) {
+        return new StripePaymentProcessingPermanentError(
+            'checkout_operation_conflict',
+        );
+    }
     if (
         error instanceof StripePaymentProcessingPermanentError ||
         error instanceof StripePaymentProcessingClaimLostError

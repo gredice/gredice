@@ -8,6 +8,7 @@ import {
     deliverDeliveryRequestSlackNotification,
     deliverOperationSlackNotification,
     deliverPurchaseNotification,
+    deliverStripePaymentManualReviewAlert,
 } from '@gredice/notifications';
 import {
     buildDeliveryEmailDetails,
@@ -52,6 +53,7 @@ type WorkerDependencies = {
     notifyDelivery: typeof deliverDeliveryRequestSlackNotification;
     notifyOperation: typeof deliverOperationSlackNotification;
     notifyPurchase: typeof deliverPurchaseNotification;
+    notifyManualReview: typeof deliverStripePaymentManualReviewAlert;
     now: () => Date;
     randomId: () => string;
     sendDeliveryEmail: typeof sendDeliveryScheduled;
@@ -70,6 +72,7 @@ const defaultDependencies: WorkerDependencies = {
     notifyDelivery: deliverDeliveryRequestSlackNotification,
     notifyOperation: deliverOperationSlackNotification,
     notifyPurchase: deliverPurchaseNotification,
+    notifyManualReview: deliverStripePaymentManualReviewAlert,
     now: () => new Date(),
     randomId: randomUUID,
     sendDeliveryEmail: sendDeliveryScheduled,
@@ -282,7 +285,17 @@ export async function runCheckoutNotificationWorker({
                 beforeProviderSubmission,
                 throwOnLookupError: true,
             };
+            const manualReviewAlert =
+                claimed.claim.payload.kind === 'payment_manual_review_slack';
             const response = await (async () => {
+                if (
+                    claimed.claim.payload.kind === 'payment_manual_review_slack'
+                ) {
+                    return resolved.notifyManualReview(
+                        claimed.claim.payload,
+                        deliveryOptions,
+                    );
+                }
                 if (
                     claimed.claim.payload.kind === 'operation_scheduled_slack'
                 ) {
@@ -306,6 +319,19 @@ export async function runCheckoutNotificationWorker({
                     deliveryOptions,
                 );
             })();
+            if (manualReviewAlert && (!response || response.skipped)) {
+                const deferred = await resolved.markFailed({
+                    claimId: claimed.claim.claimId,
+                    emailMessageId: claimed.claim.emailMessageId,
+                    failureCode: 'configuration_error',
+                    failureKind: 'configuration',
+                    now: resolved.now(),
+                });
+                if (deferred.status === 'retry_scheduled')
+                    result.queuedForRetry += 1;
+                else result.finalizationFailures += 1;
+                continue;
+            }
             if (!response || response.skipped === 'missing_channel') {
                 const skipped = await resolved.markSkipped({
                     claimId: claimed.claim.claimId,

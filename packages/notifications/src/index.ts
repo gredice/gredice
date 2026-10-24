@@ -629,3 +629,39 @@ export async function notifyCheckoutFulfillmentIncident(
         );
     }
 }
+
+export async function deliverStripePaymentManualReviewAlert(
+    details: {
+        paymentClaimId: number;
+        reviewCycleId: number;
+        failureCategory: string;
+    },
+    deliveryOptions: SlackNotificationDeliveryOptions = {},
+) {
+    const channel = await getSlackChannelId(
+        NotificationSettingKeys.SlackShoppingChannel,
+        true,
+    );
+    // Use only bounded server-owned identifiers; never render error messages or
+    // provider/customer payloads in an operator alert.
+    if (
+        !Number.isSafeInteger(details.paymentClaimId) ||
+        details.paymentClaimId <= 0 ||
+        !Number.isSafeInteger(details.reviewCycleId) ||
+        details.reviewCycleId < 0 ||
+        !/^[A-Za-z0-9_.:-]{1,120}$/u.test(details.failureCategory)
+    ) {
+        throw new TypeError('Manual-review alert context is invalid');
+    }
+    return sendSlackMessage(
+        channel,
+        [
+            ':rotating_light: *Plaćena narudžba zahtijeva ručnu provjeru*',
+            `• Zahtjev: ${details.paymentClaimId}`,
+            `• Ciklus provjere: ${details.reviewCycleId}`,
+            `• Kategorija: ${details.failureCategory}`,
+            '• Administracija: https://app.gredice.com/admin/shopping-carts',
+        ].join('\n'),
+        deliveryOptions,
+    );
+}

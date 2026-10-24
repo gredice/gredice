@@ -1,6 +1,7 @@
 import {
     type CheckoutNotificationOutboxHealth,
     getCheckoutNotificationOutboxHealth,
+    repairStripePaymentManualReviewAlerts,
 } from '@gredice/storage';
 import {
     type CheckoutNotificationWorkerResult,
@@ -12,12 +13,14 @@ const staleThresholdMilliseconds = 10 * 60_000;
 
 type CronDependencies = {
     health: typeof getCheckoutNotificationOutboxHealth;
+    repair: typeof repairStripePaymentManualReviewAlerts;
     now: () => Date;
     run: () => Promise<CheckoutNotificationWorkerResult>;
 };
 
 const defaultDependencies: CronDependencies = {
     health: getCheckoutNotificationOutboxHealth,
+    repair: repairStripePaymentManualReviewAlerts,
     now: () => new Date(),
     run: runCheckoutNotificationWorker,
 };
@@ -79,6 +82,14 @@ export async function handleCheckoutNotificationCron(
     }
 
     try {
+        // Repair durable claim-to-outbox gaps without replaying fulfillment.
+        // Delivery of already queued work continues even when repair fails.
+        let reviewAlertRepair = { failed: 1, pending: true };
+        try {
+            reviewAlertRepair = await resolved.repair();
+        } catch {
+            console.error('stripe_payment.manual_review.alert_repair_failed');
+        }
         const result = await resolved.run();
         const observedAt = resolved.now();
         const staleBefore = new Date(
@@ -90,10 +101,12 @@ export async function handleCheckoutNotificationCron(
         });
         console.info('checkout_notification.outbox.health', outboxHealth);
         const success =
+            reviewAlertRepair.failed === 0 &&
+            !reviewAlertRepair.pending &&
             workerIsHealthy(result) &&
             outboxIsHealthy(outboxHealth, staleBefore);
         return Response.json(
-            { success, ...result, outboxHealth },
+            { success, ...result, outboxHealth, reviewAlertRepair },
             { headers: noStoreHeaders, status: success ? 200 : 503 },
         );
     } catch (error) {
