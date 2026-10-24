@@ -17,6 +17,7 @@ import { notifyCheckoutFulfillmentIncident } from '@gredice/notifications';
 import {
     acquirePlantingScheduleTaskLock,
     bindStripeCheckoutAttempt,
+    CheckoutOperationConflictError,
     type CheckoutPlantingRaisedBedActivation,
     consumeInventoryItem,
     convertOutletReservationForCartItem,
@@ -3220,6 +3221,26 @@ function checkoutScheduledDateFromAdditionalData(
     );
 }
 
+function checkoutOperationScheduledDate(
+    additionalData: unknown,
+    storedScheduledDate: string | undefined,
+    dependencies: ProcessCheckoutSessionDependencies,
+): Date {
+    // Replays use the purchased schedule, without consulting today's default.
+    // Lifecycle events keep their serialized date contract; only operation
+    // creation crosses this Date boundary.
+    const scheduledDate =
+        storedScheduledDate ??
+        checkoutScheduledDateFromAdditionalData(additionalData, dependencies);
+    if (typeof scheduledDate === 'string') {
+        const date = new Date(scheduledDate);
+        if (!Number.isNaN(date.getTime())) return date;
+    }
+    throw new CheckoutOperationConflictError(
+        'Checkout operation scheduled date must be a valid Date.',
+    );
+}
+
 function plantingPurchaseFromCheckoutItem(itemData: {
     amount_total: number;
     cartItemId?: number | null;
@@ -3379,12 +3400,10 @@ export async function prepareSelectedPlantingCheckoutOperation(
             plantingTarget,
             requestNote: readOperationRequestNote(item.additionalData),
             paymentCurrency: currency,
-            scheduledDate: new Date(
-                stored?.scheduledDate ??
-                    checkoutScheduledDateFromAdditionalData(
-                        item.additionalData,
-                        dependencies,
-                    ),
+            scheduledDate: checkoutOperationScheduledDate(
+                item.additionalData,
+                stored?.scheduledDate,
+                dependencies,
             ),
             delivery: stored
                 ? stored.delivery
@@ -3513,6 +3532,22 @@ export async function processItem(
             };
         }
 
+        let additionalData = itemData.additionalData;
+        if (typeof additionalData === 'string') {
+            try {
+                additionalData = JSON.parse(additionalData);
+            } catch {
+                throw new Error(
+                    'Invalid additional data for operation checkout.',
+                );
+            }
+        }
+        const operationScheduledDate = checkoutOperationScheduledDate(
+            additionalData,
+            checkoutOperationMapping?.scheduledDate,
+            dependencies,
+        );
+
         // New operations target the stable field position, including before a
         // plant is placed. Retries keep the field captured in the durable
         // mapping even if the plant at this position changes later.
@@ -3532,22 +3567,6 @@ export async function processItem(
             });
         }
 
-        let additionalData = itemData.additionalData;
-        if (typeof additionalData === 'string') {
-            try {
-                additionalData = JSON.parse(additionalData);
-            } catch {
-                throw new Error(
-                    'Invalid additional data for operation checkout.',
-                );
-            }
-        }
-        const scheduledDate = checkoutScheduledDateFromAdditionalData(
-            additionalData,
-            dependencies,
-        );
-        const operationScheduledDate =
-            checkoutOperationMapping?.scheduledDate ?? scheduledDate;
         const requestedDeliveryInfo =
             checkoutDeliveryInfoFromAdditionalData(additionalData);
         const deliveryProvenance = checkoutOperationMapping
@@ -3584,7 +3603,7 @@ export async function processItem(
                     delivery: deliveryProvenance,
                     requestNote: readOperationRequestNote(additionalData),
                     paymentCurrency,
-                    scheduledDate: new Date(operationScheduledDate),
+                    scheduledDate: operationScheduledDate,
                 },
                 itemData.fulfillmentTransaction,
             ));
