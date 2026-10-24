@@ -5748,10 +5748,156 @@ describe('selected planting operation purchases', () => {
         assert.ok(isRecord(call?.args[2]));
         assert.deepEqual(call.args[2].plantingTarget, plantingTarget);
         assert.equal(call.args[2].requestNote, 'Molim provjerite listove.');
+        assert.ok(call.args[2].scheduledDate instanceof Date);
+        assert.equal(
+            call.args[2].scheduledDate.toISOString(),
+            '2026-09-15T00:00:00.000Z',
+        );
         assert.equal(
             callsNamed(calls, 'getRaisedBedFieldsWithEvents').length,
             0,
         );
+    });
+
+    for (const currency of ['eur', 'sunflower', 'inventory']) {
+        for (const serialize of [false, true]) {
+            it(`normalizes ${currency} dates from ${serialize ? 'JSON' : 'object'} metadata`, async () => {
+                const calls: RecordedCall[] = [];
+                const additionalData = {
+                    plantingTarget,
+                    scheduledDate: '2026-09-15T10:30:00+02:00',
+                };
+                await prepareSelectedPlantingCheckoutOperation(
+                    {
+                        ...item,
+                        currency,
+                        additionalData: serialize
+                            ? JSON.stringify(additionalData)
+                            : additionalData,
+                    },
+                    undefined,
+                    makeDependencies(calls),
+                );
+                const options = callsNamed(
+                    calls,
+                    'getOrCreateCheckoutOperation',
+                )[0]?.args[2];
+                assert.ok(isRecord(options));
+                assert.ok(options.scheduledDate instanceof Date);
+                assert.equal(
+                    options.scheduledDate.toISOString(),
+                    '2026-09-15T08:30:00.000Z',
+                );
+                assert.equal(
+                    callsNamed(calls, 'getDefaultShoppingCartScheduledDate')
+                        .length,
+                    0,
+                );
+            });
+        }
+    }
+
+    for (const scheduledDate of [undefined, 'not-a-date', '2026-09-15']) {
+        it(`uses a valid Date for ${scheduledDate ?? 'missing'} metadata`, async () => {
+            const calls: RecordedCall[] = [];
+            await prepareSelectedPlantingCheckoutOperation(
+                {
+                    ...item,
+                    additionalData: { plantingTarget, scheduledDate },
+                },
+                undefined,
+                makeDependencies(calls),
+            );
+            const options = callsNamed(calls, 'getOrCreateCheckoutOperation')[0]
+                ?.args[2];
+            assert.ok(isRecord(options));
+            assert.ok(options.scheduledDate instanceof Date);
+            assert.equal(
+                options.scheduledDate.toISOString(),
+                scheduledDate === '2026-09-15'
+                    ? '2026-09-15T00:00:00.000Z'
+                    : '2026-07-02T00:00:00.000Z',
+            );
+        });
+    }
+
+    it('reuses the stored date and delivery on a selected-operation replay with the same reward key', async () => {
+        const calls: RecordedCall[] = [];
+        const stored = {
+            operationId: 501,
+            accountId: item.accountId,
+            entityId: Number(item.entityId),
+            entityTypeName: item.entityTypeName,
+            farmId: null,
+            gardenId: item.gardenId,
+            raisedBedId: item.raisedBedId,
+            raisedBedFieldId: null,
+            plantingId: plantingTarget.plantingId,
+            operationTimestamp: null,
+            paymentCurrency: 'eur',
+            delivery: null,
+            scheduledDate: '2026-09-15T00:00:00.000Z',
+            requestNote: 'Molim provjerite listove.',
+            accepted: false,
+        };
+        const dependencies = makeDependencies(calls, {
+            getCheckoutOperationMapping: async () => stored,
+            getDefaultShoppingCartScheduledDate: () => {
+                throw new Error('Replay must use the persisted date.');
+            },
+            getOrCreateCheckoutOperation: async (...args: unknown[]) => {
+                record(calls, 'getOrCreateCheckoutOperation', args);
+                return { created: false, operationId: stored.operationId };
+            },
+        });
+        for (const scheduledDate of ['2026-09-20', '2026-09-21']) {
+            const result = await processItem(
+                {
+                    ...item,
+                    amount_total: 2500,
+                    cartId: 100,
+                    currency: 'eur',
+                    additionalData: {
+                        plantingTarget,
+                        scheduledDate,
+                        requestNote: stored.requestNote,
+                        delivery: {
+                            slotId: 999,
+                            mode: 'pickup',
+                            locationId: 888,
+                        },
+                    },
+                },
+                dependencies,
+            );
+            assert.deepEqual(result, { status: 'fulfilled' });
+        }
+        const operationCalls = callsNamed(
+            calls,
+            'getOrCreateCheckoutOperation',
+        );
+        assert.equal(operationCalls.length, 2);
+        assert.deepEqual(operationCalls[0]?.args, operationCalls[1]?.args);
+        const options = operationCalls[0]?.args[2];
+        assert.ok(isRecord(options));
+        assert.ok(options.scheduledDate instanceof Date);
+        assert.equal(options.scheduledDate.toISOString(), stored.scheduledDate);
+        assert.equal(options.delivery, stored.delivery);
+        assert.deepEqual(
+            callsNamed(calls, 'earnSunflowersForPayment').map(
+                ({ args }) => args,
+            ),
+            [
+                ['account-1', 25, 'shoppingCartItem:501'],
+                ['account-1', 25, 'shoppingCartItem:501'],
+            ],
+        );
+        assert.equal(
+            callsNamed(calls, 'getRaisedBedFieldsWithEvents').length,
+            0,
+        );
+        assert.equal(callsNamed(calls, 'getOrCreateDeliveryRequest').length, 0);
+        assert.equal(callsNamed(calls, 'notifyOperationUpdate').length, 0);
     });
     it('rejects ambiguous and malformed targets before creating an operation', async () => {
         const calls: RecordedCall[] = [];

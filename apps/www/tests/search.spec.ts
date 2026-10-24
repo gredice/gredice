@@ -22,10 +22,11 @@ test.describe('public search filters', () => {
     test('navbar search opens inline command results on desktop', async ({
         page,
     }) => {
+        const searchResponse = Promise.withResolvers<void>();
         await page.route(
             '**/api/gredice/api/directories/search**',
             async (route) => {
-                await new Promise((resolve) => setTimeout(resolve, 250));
+                await searchResponse.promise;
                 await route.fulfill({
                     contentType: 'application/json',
                     json: {
@@ -88,19 +89,25 @@ test.describe('public search filters', () => {
         );
         const searchInput = page.getByRole('combobox', { name: 'Pretraga' });
         await expect(searchInput).toBeFocused();
-        await searchInput.fill('rajcica');
-        await expect(searchInput).toHaveValue('rajcica');
-        await expect(searchInput).toHaveAttribute('placeholder', 'Pretraga...');
-        await expect(searchInput).toBeFocused();
-
         const searchDialog = page.getByRole('dialog', { name: 'Pretraga' });
-        await expect(searchDialog).toBeVisible();
-        await expect(
-            searchDialog.getByText('Pretraga...', { exact: true }),
-        ).toBeVisible();
-        await expect(
-            searchDialog.locator('.gredice-loading-indicator__bar'),
-        ).toBeVisible();
+        try {
+            await searchInput.fill('rajcica');
+            await expect(searchInput).toHaveValue('rajcica');
+            await expect(searchInput).toHaveAttribute(
+                'placeholder',
+                'Pretraga...',
+            );
+            await expect(searchInput).toBeFocused();
+            await expect(searchDialog).toBeVisible();
+            await expect(
+                searchDialog.getByText('Pretraga...', { exact: true }),
+            ).toBeVisible();
+            await expect(
+                searchDialog.locator('.gredice-loading-indicator__bar'),
+            ).toBeVisible();
+        } finally {
+            searchResponse.resolve();
+        }
         await expect(
             searchDialog.getByRole('option', { name: /Rajčica/ }),
         ).toBeVisible();

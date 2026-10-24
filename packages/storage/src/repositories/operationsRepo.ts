@@ -2434,6 +2434,14 @@ function checkoutOperationFingerprint(
     operation: InsertOperation,
     options: CheckoutOperationOptions,
 ): Omit<CheckoutOperationCreatedPayload, 'operationId'> {
+    if (
+        !(options.scheduledDate instanceof Date) ||
+        Number.isNaN(options.scheduledDate.getTime())
+    ) {
+        throw new CheckoutOperationConflictError(
+            'Checkout operation scheduled date must be a valid Date.',
+        );
+    }
     const scheduledDate = options.scheduledDate.toISOString();
     const operationTimestamp = operation.timestamp?.toISOString() ?? null;
     const requestNote = normalizeOperationRequestNote(options.requestNote);
