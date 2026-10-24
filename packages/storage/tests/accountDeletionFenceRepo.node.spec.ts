@@ -53,8 +53,6 @@ import {
     gardenVisitStates,
     harvestTraceLinks,
     harvestTraceScans,
-    invoiceItems,
-    invoices,
     notificationEmailLog,
     notifications,
     operations,
@@ -62,12 +60,9 @@ import {
     outletOffers,
     pickupLocations,
     raisedBedFields,
-    receipts,
     shoppingCartItems,
     shoppingCarts,
-    sunflowerLedgerEntries,
     timeSlots,
-    transactions,
     users,
 } from '../src/schema';
 import {
@@ -357,7 +352,7 @@ test('account deletion erases only exact owned garden and inventory event famili
     );
 });
 
-test('account deletion clears hard FK families while retaining detached commercial history', async (t) => {
+test('account deletion clears nonfinancial hard FK families', async (t) => {
     createTestDb();
     const fixtureId = randomUUID();
     const userId = `account-delete-user-${fixtureId}`;
@@ -372,15 +367,11 @@ test('account deletion clears hard FK families while retaining detached commerci
         deliveryRunStopId?: number;
         harvestOperationId?: number;
         outletOfferId?: number;
-        paidCartId?: number;
-        paidCartItemId?: number;
         pickupLocationId?: number;
         plantPlaceEventId?: number;
         plantSortId?: number;
         raisedBedFieldId?: number;
-        receiptId?: number;
         timeSlotId?: number;
-        transactionId?: number;
     } = {};
     t.after(async () => {
         if (cleanupIds.accountId && (await getAccount(cleanupIds.accountId))) {
@@ -434,26 +425,7 @@ test('account deletion clears hard FK families while retaining detached commerci
                     .delete(raisedBeds)
                     .where(inArray(raisedBeds.id, raisedBedIds));
             }
-            if (cleanupIds.paidCartItemId !== undefined) {
-                await cleanupTransaction
-                    .delete(shoppingCartItems)
-                    .where(eq(shoppingCartItems.id, cleanupIds.paidCartItemId));
-            }
-            if (cleanupIds.paidCartId !== undefined) {
-                await cleanupTransaction
-                    .delete(shoppingCarts)
-                    .where(eq(shoppingCarts.id, cleanupIds.paidCartId));
-            }
-            if (cleanupIds.receiptId !== undefined) {
-                await cleanupTransaction
-                    .delete(receipts)
-                    .where(eq(receipts.id, cleanupIds.receiptId));
-            }
-            if (cleanupIds.transactionId !== undefined) {
-                await cleanupTransaction
-                    .delete(transactions)
-                    .where(eq(transactions.id, cleanupIds.transactionId));
-            }
+
             if (cleanupIds.outletOfferId !== undefined) {
                 await cleanupTransaction
                     .delete(outletOffers)
@@ -596,93 +568,6 @@ test('account deletion clears hard FK families while retaining detached commerci
             status: 'held',
         });
 
-    const [paidCart] = await storage()
-        .insert(shoppingCarts)
-        .values({ accountId, status: 'paid' })
-        .returning({ id: shoppingCarts.id });
-    cleanupIds.paidCartId = paidCart.id;
-    const [paidCartItem] = await storage()
-        .insert(shoppingCartItems)
-        .values({
-            amount: 199,
-            cartId: paidCart.id,
-            currency: 'eur',
-            entityId: plantSortId.toString(),
-            entityTypeName,
-            gardenId: deletedGardenId,
-            raisedBedId: deletedRaisedBedId,
-            status: 'paid',
-        })
-        .returning({ id: shoppingCartItems.id });
-    cleanupIds.paidCartItemId = paidCartItem.id;
-
-    const [transaction] = await storage()
-        .insert(transactions)
-        .values({
-            accountId,
-            amount: 199,
-            currency: 'eur',
-            gardenId: activeGardenId,
-            status: 'paid',
-            stripePaymentId: `pi-account-delete-${fixtureId}`,
-        })
-        .returning({ id: transactions.id });
-    cleanupIds.transactionId = transaction.id;
-    const [invoice] = await storage()
-        .insert(invoices)
-        .values({
-            accountId,
-            billToEmail: `account-delete-${fixtureId}@example.test`,
-            currency: 'eur',
-            dueDate: new Date('2026-09-01T00:00:00.000Z'),
-            invoiceNumber: `account-delete-invoice-${fixtureId}`,
-            issueDate: new Date('2026-08-30T00:00:00.000Z'),
-            status: 'paid',
-            subtotal: '1.99',
-            taxAmount: '0.00',
-            totalAmount: '1.99',
-            transactionId: transaction.id,
-        })
-        .returning({ id: invoices.id });
-    await storage().insert(invoiceItems).values({
-        description: 'Account deletion invoice item',
-        invoiceId: invoice.id,
-        quantity: '1.00',
-        totalPrice: '1.99',
-        unitPrice: '1.99',
-    });
-    const [receipt] = await storage()
-        .insert(receipts)
-        .values({
-            cisStatus: 'confirmed',
-            currency: 'eur',
-            invoiceId: invoice.id,
-            paymentMethod: 'card',
-            receiptNumber: `account-delete-receipt-${fixtureId}`,
-            subtotal: '1.99',
-            taxAmount: '0.00',
-            totalAmount: '1.99',
-            yearReceiptNumber: `2026-account-delete-${fixtureId}`,
-        })
-        .returning({ id: receipts.id });
-    cleanupIds.receiptId = receipt.id;
-    await storage()
-        .insert(sunflowerLedgerEntries)
-        .values({
-            accountId,
-            amount: -50,
-            availableBalanceAfter: 50,
-            availableDelta: -50,
-            entryType: 'debit',
-            idempotencyKey: `account-delete-ledger-${fixtureId}`,
-            invoiceId: invoice.id,
-            receiptId: receipt.id,
-            reservedBalanceAfter: 0,
-            reservedDelta: 0,
-            totalBalanceAfter: 50,
-            transactionId: transaction.id,
-        });
-
     const conversationId = `account-delete-conversation-${fixtureId}`;
     await storage().insert(aiChatConversations).values({
         accountId,
@@ -775,7 +660,7 @@ test('account deletion clears hard FK families while retaining detached commerci
     const [harvestOperation] = await storage()
         .insert(operations)
         .values({
-            accountId,
+            accountId: null,
             entityId: plantSortId,
             entityTypeName,
             gardenId: activeGardenId,
@@ -901,42 +786,6 @@ test('account deletion clears hard FK families while retaining detached commerci
         }),
         undefined,
     );
-    const retainedCart = await storage().query.shoppingCarts.findFirst({
-        where: eq(shoppingCarts.id, paidCart.id),
-    });
-    const retainedItem = await storage().query.shoppingCartItems.findFirst({
-        where: eq(shoppingCartItems.id, paidCartItem.id),
-    });
-    assert.ok(retainedCart);
-    assert.ok(retainedItem);
-    assert.equal(retainedCart.accountId, null);
-    assert.equal(retainedItem.gardenId, null);
-    assert.equal(retainedItem.raisedBedId, null);
-
-    const retainedTransaction = await storage().query.transactions.findFirst({
-        where: eq(transactions.id, transaction.id),
-    });
-    const retainedReceipt = await storage().query.receipts.findFirst({
-        where: eq(receipts.id, receipt.id),
-    });
-    assert.ok(retainedTransaction);
-    assert.ok(retainedReceipt);
-    assert.equal(retainedTransaction.accountId, null);
-    assert.equal(retainedTransaction.gardenId, null);
-    assert.equal(retainedReceipt.invoiceId, null);
-    assert.equal(
-        await storage().query.invoices.findFirst({
-            where: eq(invoices.id, invoice.id),
-        }),
-        undefined,
-    );
-    assert.equal(
-        await storage().query.sunflowerLedgerEntries.findFirst({
-            where: eq(sunflowerLedgerEntries.accountId, accountId),
-        }),
-        undefined,
-    );
-
     assert.equal(
         await storage().query.aiChatConversations.findFirst({
             where: eq(aiChatConversations.id, conversationId),

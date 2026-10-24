@@ -181,7 +181,8 @@ export default async function SunflowersPage() {
                                 <Typography level="body2" secondary>
                                     Pri potvrdi narudžbe vrtne akcije suncokreti
                                     se odmah oduzimaju sa salda. Ako se akcija
-                                    otkaže prije obrade, iznos se vraća na saldo.
+                                    otkaže prije obrade, iznos se vraća na
+                                    saldo.
                                 </Typography>
                                 <Typography level="body2" secondary>
                                     Nakon izvršene akcije eventualni povrat ili
@@ -197,6 +198,64 @@ export default async function SunflowersPage() {
                             </Stack>
                         </CardContent>
                     </Card>
+                </section>
+
+                <section
+                    className="space-y-4"
+                    aria-labelledby="sunflower-balance-rights"
+                >
+                    <Typography level="h2" id="sunflower-balance-rights">
+                        Uplate, bonus i povrati
+                    </Typography>
+                    <Typography level="body2">
+                        Cijena paketa, ukupan broj suncokreta i eventualni bonus
+                        prikazani su uz ponudu. Bonus nije zasebna novčana
+                        uplata. Orijentacijski odnos prema euru ne znači da se
+                        svaki suncokret može isplatiti u novcu.
+                    </Typography>
+                    <Typography level="body2">
+                        Otkazivanje neobrađene vrtne akcije vraća bodove na
+                        raspoloživi saldo; ne vraća automatski raniju uplatu na
+                        karticu. Za zahtjev za povrat uplate ili korekciju
+                        naplaćene radnje navedi paket odnosno narudžbu na koju
+                        se zahtjev odnosi.
+                    </Typography>
+                    <Typography level="body2">
+                        Kod povrata razlikujemo uplaćeni iznos, iskorištene
+                        radnje i bonus. Zakonsko pravo na povrat novca ne
+                        prestaje zato što je uplata evidentirana u suncokretima.
+                        Zamjena zakonskog novčanog povrata bodovima zahtijeva
+                        tvoj odgovarajući izričit pristanak.
+                    </Typography>
+                    <Typography level="body2">
+                        Prije zatvaranja računa s uplatama, suncokretima ili
+                        narudžbama javi se podršci radi pregleda uplata,
+                        narudžbi i preostalog salda. Automatsko brisanje takvog
+                        računa zaustavlja se kako bi se sačuvali podaci potrebni
+                        za provjeru povrata. Zahtjev za povrat i zahtjev za
+                        brisanje osobnih podataka različiti su postupci.
+                    </Typography>
+                    <Typography level="body2">
+                        Pročitaj{' '}
+                        <Link href={KnownPages.Refunds} className="underline">
+                            pravila povrata i korekcija
+                        </Link>{' '}
+                        i{' '}
+                        <Link
+                            href={KnownPages.LegalTerms}
+                            className="underline"
+                        >
+                            uvjete korištenja
+                        </Link>
+                        , a za pojedinačni zahtjev javi se na{' '}
+                        <a
+                            href="mailto:kontakt@gredice.com"
+                            className="underline"
+                        >
+                            kontakt@gredice.com
+                        </a>
+                        .
+                    </Typography>
                 </section>
 
                 <section

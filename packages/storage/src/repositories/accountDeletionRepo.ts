@@ -1,4 +1,4 @@
-import { and, eq, inArray, or, type SQL } from 'drizzle-orm';
+import { and, eq, inArray, or, type SQL, sql } from 'drizzle-orm';
 import { bustScheduleCache } from '../cache/scheduleCache';
 import { accountAchievements } from '../schema/achievementsSchema';
 import {
@@ -38,6 +38,7 @@ import {
 } from '../schema/usersSchema';
 import { storage } from '../storage';
 import {
+    type AccountDeletionFenceTransaction,
     lockAccountForDeletionLifecycle,
     markAccountDeletionStarted,
 } from './accountDeletionFenceRepo';
@@ -53,6 +54,57 @@ import { deleteUserAuthenticationData } from './usersRepo';
 
 const GARDEN_EVENT_TYPES = Object.values(knownEventTypes.gardens);
 const INVENTORY_EVENT_TYPES = Object.values(knownEventTypes.inventory);
+
+export class AccountDeletionRequiresReviewError extends Error {
+    override readonly name = 'AccountDeletionRequiresReviewError';
+
+    constructor() {
+        super(
+            'Prije brisanja računa s uplatama, suncokretima ili narudžbama javite se na kontakt@gredice.com radi pregleda salda i povrata. Račun nije obrisan.',
+        );
+    }
+}
+
+async function assertAccountHasNoRefundRecords(
+    accountId: string,
+    db: AccountDeletionFenceTransaction,
+) {
+    // A zero current balance does not prove that all refund rights are settled.
+    // Until there is a reviewed retention workflow, leave the entire account
+    // intact rather than erase the evidence needed to assess a later claim.
+    const ledgerEntry = await db.query.sunflowerLedgerEntries.findFirst({
+        columns: { id: true },
+        where: eq(sunflowerLedgerEntries.accountId, accountId),
+    });
+    const invoice = await db.query.invoices.findFirst({
+        columns: { id: true },
+        where: eq(invoices.accountId, accountId),
+    });
+    const transaction = await db.query.transactions.findFirst({
+        columns: { id: true },
+        where: eq(transactions.accountId, accountId),
+    });
+    const sunflowerEvent = await db.query.events.findFirst({
+        columns: { id: true },
+        where: and(
+            eq(events.aggregateId, accountId),
+            inArray(events.type, [
+                knownEventTypes.accounts.earnSunflowers,
+                knownEventTypes.accounts.earnSunflowerDrop,
+                knownEventTypes.accounts.spendSunflowers,
+            ]),
+            // Signup rewards alone are not evidence of a paid balance or order.
+            sql`coalesce(${events.data} ->> 'reason', '') NOT IN ('registration', 'achievement:registration')`,
+        ),
+    });
+    const operation = await db.query.operations.findFirst({
+        columns: { id: true },
+        where: eq(operations.accountId, accountId),
+    });
+    if (ledgerEntry || invoice || transaction || sunflowerEvent || operation) {
+        throw new AccountDeletionRequiresReviewError();
+    }
+}
 
 async function deleteNotificationsMatching(where: SQL) {
     await storage().transaction(async (db) => {
@@ -105,6 +157,10 @@ export async function fenceAccountShoppingCartsForDeletion(accountId: string) {
                 );
             }
 
+            await assertAccountHasNoRefundRecords(accountId, db);
+            if (liveCarts.some((cart) => cart.status !== 'new')) {
+                throw new AccountDeletionRequiresReviewError();
+            }
             await markAccountDeletionStarted(accountId, db);
 
             const newCartIds = liveCarts.flatMap((cart) =>

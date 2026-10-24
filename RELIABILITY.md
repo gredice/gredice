@@ -37,6 +37,18 @@ the entitlement. Historical waterings without a grant marker retain per-day
 deduplication; their entitlement is recorded when this writer next runs. No
 entitlement is inferred from arbitrary existing operation dates.
 
+## Account deletion and refund evidence
+
+Automatic account deletion stops before writing its deletion marker or removing
+any data when the account has sunflower history (including legacy events),
+invoices, payment transactions, operations, or submitted carts. A zero balance
+or a completed payment does not by itself settle later refund claims. These
+accounts require support review at `kontakt@gredice.com`; the API returns `409`
+and the Garden confirmation page displays that next step. Keep the records and
+account intact until a reviewed retention and settlement workflow exists. Do
+not bypass this safeguard by deleting commercial rows to make an account eligible.
+Accounts without that history continue through the existing retryable cleanup.
+
 ## Background and cron work
 
 - Cron routes live in app route handlers and Vercel config where applicable.

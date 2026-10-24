@@ -2,6 +2,7 @@ import { tz } from '@date-fns/tz';
 import { sendEmail } from '@gredice/email/acs';
 import { safeUserDisplayName } from '@gredice/js/userDisplayName';
 import {
+    AccountDeletionRequiresReviewError,
     acceptAccountInvitation,
     accountHasActiveRaisedBed,
     cancelAccountInvitation,
@@ -1274,6 +1275,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     message: 'Account deleted successfully.',
                 });
             } catch (error) {
+                if (error instanceof AccountDeletionRequiresReviewError) {
+                    return context.json({ error: error.message }, 409);
+                }
                 console.error('Account deletion failed', {
                     accountId: requestedAccountId,
                     error,
