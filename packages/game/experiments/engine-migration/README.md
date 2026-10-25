@@ -71,7 +71,7 @@ reviewable WebAssembly source, compiled to `.output/transform.wasm`.
 
 ## What is measured
 
-- Three 0.186.0 `WebGLRenderer`, `WebGPURenderer` with the actual WebGPU backend,
+- Three 0.186.1 `WebGLRenderer`, `WebGPURenderer` with the actual WebGPU backend,
   and `WebGPURenderer` with its explicit WebGL2 fallback. A requested WebGPU run
   fails if it falls back silently.
 - Shipped `BlockGrass`, `Tree`, and `GardenBox` GLBs; selected production mesh
