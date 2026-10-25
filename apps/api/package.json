@@ -44,7 +44,7 @@
         "@vercel/blob": "2.8.2",
         "@vercel/functions": "3.10.1",
         "@vercel/sandbox": "3.8.0",
-        "ai": "7.0.145",
+        "ai": "7.0.146",
         "date-fns": "4.4.0",
         "drizzle-orm": "0.45.4",
         "hono": "4.13.13",
