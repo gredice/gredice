@@ -1,7 +1,7 @@
 import {
     type Logger as OpenTelemetryLogger,
     SeverityNumber,
-} from '@opentelemetry/api-logs';
+} from '@opentelemetry/api';
 
 import {
     flushPostHogLogs,
