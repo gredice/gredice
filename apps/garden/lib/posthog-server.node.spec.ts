@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import https from 'node:https';
 import test from 'node:test';
+import { logs } from '@opentelemetry/api';
 
 test('Garden batches console and request errors in lifecycle-bound, serialized exports', async (t) => {
     const originalEnvironment = { ...process.env };
@@ -69,6 +70,8 @@ test('Garden batches console and request errors in lifecycle-bound, serialized e
     const { onRequestError, register } = await import('../instrumentation');
     t.after(() => loggerProvider.shutdown());
     await register();
+    assert.equal(logs.getLoggerProvider(), loggerProvider);
+    t.after(() => logs.disable());
     console.info('routine info stays in Vercel');
     console.warn('batched warning', { count: 1 });
     console.error('batched error');

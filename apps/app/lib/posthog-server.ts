@@ -10,7 +10,7 @@ import {
     POSTHOG_LOG_MAX_FAILURE_BACKOFF_MS,
     POSTHOG_LOG_PROCESSOR_TIMEOUT_MS,
 } from '@gredice/js/posthog-logs';
-import { type Logger, logs, SeverityNumber } from '@opentelemetry/api-logs';
+import { type Logger, logs, SeverityNumber } from '@opentelemetry/api';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import {
     BatchLogRecordProcessor,

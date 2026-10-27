@@ -1,4 +1,4 @@
-import { SeverityNumber } from '@opentelemetry/api-logs';
+import { SeverityNumber } from '@opentelemetry/api';
 import { waitUntil } from '@vercel/functions';
 import type { Instrumentation } from 'next';
 

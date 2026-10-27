@@ -14,10 +14,10 @@
         "test": "node --import tsx --test ./src/**/*.unit.ts"
     },
     "dependencies": {
-        "@opentelemetry/api": "1.9.1",
+        "@opentelemetry/api": "1.10.0",
         "@opentelemetry/core": "3.0.0",
-        "@opentelemetry/otlp-exporter-base": "0.223.0",
-        "@opentelemetry/otlp-transformer": "0.223.0",
+        "@opentelemetry/otlp-exporter-base": "0.300.0",
+        "@opentelemetry/otlp-transformer": "0.300.0",
         "@opentelemetry/sdk-logs": "3.0.0"
     },
     "devDependencies": {
