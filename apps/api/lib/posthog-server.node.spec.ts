@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import https from 'node:https';
 import test from 'node:test';
+import { logs } from '@opentelemetry/api';
 
 test('API exports console and request errors in lifecycle-bound batches and reports persistent failures', async (t) => {
     const originalEnvironment = { ...process.env };
@@ -80,6 +81,8 @@ test('API exports console and request errors in lifecycle-bound batches and repo
     const { onRequestError, register } = await import('../instrumentation');
     t.after(() => loggerProvider.shutdown());
     await register();
+    assert.equal(logs.getLoggerProvider(), loggerProvider);
+    t.after(() => logs.disable());
     console.info('routine cron completion stays in Vercel');
     console.warn('batched warning', { count: 1 });
     console.error('batched error');

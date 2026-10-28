@@ -1,5 +1,5 @@
 import { shouldLogPostHogProxyRequest } from '@gredice/js/observability';
-import { SeverityNumber } from '@opentelemetry/api-logs';
+import { SeverityNumber } from '@opentelemetry/api';
 import { postHogMiddleware } from '@posthog/next';
 import {
     type NextFetchEvent,
