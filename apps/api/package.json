@@ -47,7 +47,7 @@
         "ai": "7.0.146",
         "date-fns": "4.4.0",
         "drizzle-orm": "0.45.4",
-        "hono": "4.13.13",
+        "hono": "4.13.14",
         "hono-openapi": "1.5.0",
         "hono-rate-limiter": "0.5.4",
         "next": "16.4.3",
