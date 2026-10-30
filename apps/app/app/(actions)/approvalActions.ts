@@ -8,6 +8,7 @@ import {
     getRaisedBed,
     rejectApprovalRequest,
     type SelectedRaisedBedPlantingTaskCommandIdentity,
+    StalePlantStatusApprovalRequestError,
 } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
 import type { EntityStandardized } from '../../lib/@types/EntityStandardized';
@@ -154,10 +155,24 @@ async function notifyApprovedPlantStatus(
 
 export async function approveApprovalRequestAction(requestId: string) {
     const { userId } = await auth(['admin']);
-    const request = await approvePlantStatusApprovalRequest({
-        requestId,
-        reviewedBy: userId,
-    });
+    let request: Awaited<ReturnType<typeof approvePlantStatusApprovalRequest>>;
+    try {
+        request = await approvePlantStatusApprovalRequest({
+            requestId,
+            reviewedBy: userId,
+        });
+    } catch (error) {
+        if (!(error instanceof StalePlantStatusApprovalRequestError)) {
+            throw error;
+        }
+        revalidateApprovalQueues();
+        return {
+            success: false,
+            conflict: true,
+            code: error.code,
+            message: error.message,
+        };
+    }
     await notifyApprovedPlantStatus(request);
     revalidateApprovedPlantStatusPaths(request);
     revalidateApprovalQueues();

@@ -1,3 +1,4 @@
+import { AppRouterContext } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 import { useState } from 'react';
 import { ApprovalTaskList } from '../app/admin/approvals/ApprovalTaskList';
 import type { AdminApprovalTask } from '../src/approvalTasks';
@@ -65,43 +66,68 @@ export function ApprovalTaskListHarness({
     single?: boolean;
 }) {
     const [version, setVersion] = useState(0);
+    const [refreshCount, setRefreshCount] = useState(0);
     const visibleTasks = single ? tasks.slice(2, 3) : tasks;
     return (
-        <div className="bg-background p-4 text-foreground">
-            <ApprovalTaskList
-                items={visibleTasks.map((task) => {
-                    const versionedTask =
-                        task.kind === 'scheduleOperationVerification'
-                            ? {
-                                  ...task,
-                                  expectedTaskVersionEventId:
-                                      task.expectedTaskVersionEventId + version,
-                              }
-                            : task;
-                    async function action(decision: string) {
-                        const response = await fetch('/approval-test-action', {
-                            method: 'POST',
-                            body: JSON.stringify({ id: task.id, decision }),
-                        });
-                        if (!response.ok) throw new Error('Request failed');
-                        return response.json();
-                    }
-                    return {
-                        task: versionedTask,
-                        approveAction: () => action('approve'),
-                        rejectAction:
-                            task.kind === 'plantStatusRequest'
-                                ? () => action('reject')
-                                : undefined,
-                    };
-                })}
-            />
-            <button
-                type="button"
-                onClick={() => setVersion((current) => current + 1)}
-            >
-                Nova verzija radnje
-            </button>
-        </div>
+        <AppRouterContext.Provider
+            value={{
+                bfcacheId: 'approval-task-list',
+                back() {},
+                forward() {},
+                refresh() {
+                    setRefreshCount((current) => current + 1);
+                },
+                push() {},
+                replace() {},
+                prefetch() {},
+            }}
+        >
+            <div className="bg-background p-4 text-foreground">
+                <span hidden data-testid="approval-refresh-count">
+                    {refreshCount}
+                </span>
+                <ApprovalTaskList
+                    items={visibleTasks.map((task) => {
+                        const versionedTask =
+                            task.kind === 'scheduleOperationVerification'
+                                ? {
+                                      ...task,
+                                      expectedTaskVersionEventId:
+                                          task.expectedTaskVersionEventId +
+                                          version,
+                                  }
+                                : task;
+                        async function action(decision: string) {
+                            const response = await fetch(
+                                '/approval-test-action',
+                                {
+                                    method: 'POST',
+                                    body: JSON.stringify({
+                                        id: task.id,
+                                        decision,
+                                    }),
+                                },
+                            );
+                            if (!response.ok) throw new Error('Request failed');
+                            return response.json();
+                        }
+                        return {
+                            task: versionedTask,
+                            approveAction: () => action('approve'),
+                            rejectAction:
+                                task.kind === 'plantStatusRequest'
+                                    ? () => action('reject')
+                                    : undefined,
+                        };
+                    })}
+                />
+                <button
+                    type="button"
+                    onClick={() => setVersion((current) => current + 1)}
+                >
+                    Nova verzija radnje
+                </button>
+            </div>
+        </AppRouterContext.Provider>
     );
 }

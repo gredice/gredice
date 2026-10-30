@@ -11,6 +11,7 @@ import {
     getRaisedBedPlanting,
     knownEventTypes,
     rejectApprovalRequest,
+    StalePlantStatusApprovalRequestError,
     updateSelectedRaisedBedPlantingLifecycleStatus,
 } from '@gredice/storage';
 import { createSelectedTaskFixture } from './helpers/selectedPlantingFixture';
@@ -190,16 +191,43 @@ test('stale selected approval stays pending and does not overwrite a later lifec
         actor: { role: 'admin', userId: f.adminId },
         status: 'notSprouted',
     });
+    const plantingBefore = await getRaisedBedPlanting(f.plantingId);
+    const lifecycleEventsBefore = await getAllEvents(
+        knownEventTypes.raisedBedPlantings.lifecycleStatusChanged,
+        [f.aggregateId],
+    );
     await assert.rejects(
         approvePlantStatusApprovalRequest({
             requestId: request.id,
             reviewedBy: f.adminId,
         }),
+        (error: unknown) => {
+            assert.ok(error instanceof StalePlantStatusApprovalRequestError);
+            assert.equal(error.code, 'plant_changed');
+            assert.match(error.message, /odbij zastarjeli zahtjev/u);
+            return true;
+        },
     );
     assert.equal((await getApprovalRequest(request.id))?.status, 'pending');
     assert.equal(
         (await getRaisedBedPlanting(f.plantingId))?.lifecycleStatus,
         'notSprouted',
+    );
+    assert.deepEqual(await getRaisedBedPlanting(f.plantingId), plantingBefore);
+    assert.deepEqual(
+        await getAllEvents(
+            knownEventTypes.raisedBedPlantings.lifecycleStatusChanged,
+            [f.aggregateId],
+        ),
+        lifecycleEventsBefore,
+    );
+    assert.equal(
+        (
+            await getAllEvents(knownEventTypes.approvalRequests.approve, [
+                request.id,
+            ])
+        ).length,
+        0,
     );
 });
 

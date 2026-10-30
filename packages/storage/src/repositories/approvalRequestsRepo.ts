@@ -77,6 +77,17 @@ export class PendingPlantStatusApprovalRequestConflictError extends Error {
     }
 }
 
+export class StalePlantStatusApprovalRequestError extends Error {
+    readonly code = 'plant_changed';
+
+    constructor() {
+        super(
+            'Biljka se promijenila nakon slanja zahtjeva. Pregledaj trenutačno stanje i odbij zastarjeli zahtjev. Za novu promjenu potreban je novi zahtjev.',
+        );
+        this.name = 'StalePlantStatusApprovalRequestError';
+    }
+}
+
 type StorageClient = ReturnType<typeof storage>;
 type DatabaseClient = StorageClient | ScheduleTaskTransaction;
 
@@ -699,9 +710,7 @@ export async function approvePlantStatusApprovalRequest(
                 planting.lifecycleStatus !== target.currentStatus ||
                 !status
             ) {
-                throw new Error(
-                    'Biljka se promijenila nakon slanja zahtjeva. Osvježi podatke i pregledaj novi zahtjev.',
-                );
+                throw new StalePlantStatusApprovalRequestError();
             }
             await updateSelectedRaisedBedPlantingLifecycleStatus(
                 {
@@ -746,9 +755,7 @@ export async function approvePlantStatusApprovalRequest(
             activePlantCycle.endedEventId !== target.plantCycleVersionEventId ||
             field.plantStatus !== target.currentStatus
         ) {
-            throw new Error(
-                'Biljka se promijenila nakon slanja zahtjeva. Osvježi podatke i pregledaj novi zahtjev.',
-            );
+            throw new StalePlantStatusApprovalRequestError();
         }
         if (
             !target.currentStatus ||

@@ -17,6 +17,7 @@ import {
     knownEventTypes,
     PendingPlantStatusApprovalRequestConflictError,
     rejectApprovalRequest,
+    StalePlantStatusApprovalRequestError,
     upsertRaisedBedField,
 } from '@gredice/storage';
 import {
@@ -273,7 +274,12 @@ test('plant status approval rejects a stale task version without reviewing the r
             requestId: fixture.request.id,
             reviewedBy: 'admin-stale-approval',
         }),
-        /Biljka se promijenila/u,
+        (error: unknown) => {
+            assert.ok(error instanceof StalePlantStatusApprovalRequestError);
+            assert.equal(error.code, 'plant_changed');
+            assert.match(error.message, /odbij zastarjeli zahtjev/u);
+            return true;
+        },
     );
     assert.equal(
         (await getApprovalRequest(fixture.request.id))?.status,
@@ -281,6 +287,22 @@ test('plant status approval rejects a stale task version without reviewing the r
     );
     const [field] = await getRaisedBedFieldsWithEvents(fixture.raisedBedId);
     assert.equal(field?.plantStatus, 'planned');
+    assert.equal(
+        (
+            await getAllEvents(knownEventTypes.approvalRequests.approve, [
+                fixture.request.id,
+            ])
+        ).length,
+        0,
+    );
+    assert.equal(
+        (
+            await getAllEvents(knownEventTypes.raisedBedFields.plantUpdate, [
+                fixture.aggregateId,
+            ])
+        ).length,
+        1,
+    );
 });
 
 test('concurrent approval and rejection append exactly one terminal review', async () => {
