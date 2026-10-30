@@ -197,6 +197,7 @@ test('restores a rejected request after failure and allows retry', async ({
         .first()
         .click();
     await expect(page.getByRole('alert')).toContainText('Zahtjev nije obrađen');
+    await expect(page.getByTestId('approval-refresh-count')).toHaveText('0');
     await expect(page.getByRole('listitem')).toHaveCount(4);
     await page.route('**/approval-test-action', (route) =>
         route.fulfill({ json: { success: true } }),
@@ -207,6 +208,44 @@ test('restores a rejected request after failure and allows retry', async ({
         .click();
     await expect(page.getByRole('alert')).toHaveCount(0);
     await expect(page.getByRole('listitem')).toHaveCount(3);
+});
+
+test('refreshes a stale plant conflict, restores its guidance and allows rejection', async ({
+    mount,
+    page,
+}) => {
+    const message =
+        'Biljka se promijenila nakon slanja zahtjeva. Pregledaj trenutačno stanje i odbij zastarjeli zahtjev. Za novu promjenu potreban je novi zahtjev.';
+    await page.route('**/approval-test-action', (route) =>
+        route.fulfill({
+            json: {
+                success: false,
+                conflict: true,
+                code: 'plant_changed',
+                message,
+            },
+        }),
+    );
+    await mount(<ApprovalTaskListHarness />);
+    await page
+        .getByRole('button', { name: 'Odobri', exact: true })
+        .first()
+        .click();
+    await expect(page.getByRole('alert')).toHaveText(message);
+    await expect(page.getByRole('listitem')).toHaveCount(4);
+    await expect(page.getByTestId('approval-refresh-count')).toHaveText('1');
+    await expect(page.getByRole('status')).not.toContainText('Obrada zahtjeva');
+
+    await page.route('**/approval-test-action', (route) =>
+        route.fulfill({ json: { success: true } }),
+    );
+    await page
+        .getByRole('button', { name: 'Odbij', exact: true })
+        .first()
+        .click();
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    await expect(page.getByRole('listitem')).toHaveCount(3);
+    await expect(page.getByTestId('approval-refresh-count')).toHaveText('1');
 });
 
 test('restores an operation conflict and handles empty, pending and new task versions', async ({

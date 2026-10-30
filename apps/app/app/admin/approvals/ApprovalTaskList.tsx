@@ -1,7 +1,7 @@
 'use client';
 
 import { Spinner } from '@gredice/ui/Spinner';
-import { unstable_rethrow } from 'next/navigation';
+import { unstable_rethrow, useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 import type { AdminApprovalTask } from '../../../src/approvalTasks';
 import { getOperationScheduleActionFailureMessage } from '../schedule/operationScheduleActionResult';
@@ -28,6 +28,7 @@ function taskKey(task: AdminApprovalTask) {
 }
 
 export function ApprovalTaskList({ items }: { items: ApprovalTaskListItem[] }) {
+    const router = useRouter();
     const [hiddenKeys, setHiddenKeys] = useState<Set<string>>(() => new Set());
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [pendingCount, setPendingCount] = useState(0);
@@ -69,6 +70,15 @@ export function ApprovalTaskList({ items }: { items: ApprovalTaskListItem[] }) {
         try {
             const result = await action();
             failureMessage = getOperationScheduleActionFailureMessage(result);
+            if (
+                failureMessage &&
+                typeof result === 'object' &&
+                result !== null &&
+                'conflict' in result &&
+                result.conflict === true
+            ) {
+                router.refresh();
+            }
         } catch (error) {
             unstable_rethrow(error);
             failureMessage =
