@@ -85,6 +85,9 @@ for every profile. The initial cross-tier/fauna capture otherwise made two
 account requests per scene (current account and sunflower balance), producing
 401/API/console failures even though the scene uses mock garden data. The
 zero-request and zero-error profile gates remain unchanged.
+`useCurrentAccount` enforces the scene flag centrally, including interaction
+callers that omit an explicit enable option. An explicit caller disable still
+wins; consumers outside a game scene retain their previous enabled default.
 
 ## Offscreen actors
 
