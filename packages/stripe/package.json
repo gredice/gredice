@@ -15,7 +15,7 @@
         "lint:migrate": "biome migrate --write"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.5.15",
+        "@biomejs/biome": "2.6.3",
         "@types/node": "26.6.5",
         "@types/react": "19.3.0",
         "server-only": "0.0.1",
