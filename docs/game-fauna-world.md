@@ -80,6 +80,12 @@ These counters establish allocation scaling for presence reads, not complete
 simulation cost: herd filtering, neighbor-distance scans, species decisions,
 renderer work, and allocations made by report callers are outside this probe.
 
+Synthetic `/debug/profile/game` scenes disable authenticated garden queries
+for every profile. The initial cross-tier/fauna capture otherwise made two
+account requests per scene (current account and sunflower balance), producing
+401/API/console failures even though the scene uses mock garden data. The
+zero-request and zero-error profile gates remain unchanged.
+
 ## Offscreen actors
 
 Species previously disabled frustum culling on actor meshes (or relied on

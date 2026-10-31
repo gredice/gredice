@@ -430,9 +430,7 @@ export default async function GameProfilePage({
                         : undefined
                 }
                 adaptiveHighQuality={adaptiveHigh}
-                authenticatedGardenQueriesEnabled={
-                    !staticIdleProfile && !autumnLaunchSize
-                }
+                authenticatedGardenQueriesEnabled={false}
                 autumnLaunchSize={autumnLaunchSize ?? undefined}
                 key={mode}
                 className="h-full w-full"
