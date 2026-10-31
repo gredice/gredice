@@ -3,12 +3,12 @@ import {
     getInventoryItemsByConfig,
 } from '@gredice/storage';
 import { auth } from '../../../../../lib/auth/auth';
+import { getInventoryEntityLabels } from '../inventoryEntityLabels';
 import {
     generateInventoryPrintoutPdf,
     type InventoryPrintoutPdfItem,
     inventoryPrintoutFilename,
 } from '../inventoryPrintoutPdf';
-import { getInventoryEntityLabels } from '../inventoryEntityLabels';
 import {
     getInventoryItemState,
     isInventoryItemOrphaned,

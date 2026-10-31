@@ -296,7 +296,7 @@ function getViewOptions(
     };
 }
 
-test.describe('block screenshots', async () => {
+test.describe('block screenshots', () => {
     const entities = JSON.parse(
         readFileSync('./generate/test-cases.json', 'utf8'),
     ) as BlockData[];

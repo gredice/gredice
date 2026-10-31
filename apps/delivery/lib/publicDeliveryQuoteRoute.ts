@@ -107,7 +107,7 @@ const platformRateLimitCheck: RateLimitCheck = (request) =>
 export function createPublicDeliveryQuoteHandlers(
     rateLimitCheck: RateLimitCheck = platformRateLimitCheck,
 ) {
-    function OPTIONS(request: Request) {
+    function options(request: Request) {
         const origin = allowedOrigin(request.headers.get('origin'));
         if (!origin) {
             return Response.json({ error: 'Forbidden.' }, { status: 403 });
@@ -119,7 +119,7 @@ export function createPublicDeliveryQuoteHandlers(
         });
     }
 
-    async function POST(request: Request) {
+    async function post(request: Request) {
         const origin = allowedOrigin(request.headers.get('origin'));
         if (!origin) {
             return Response.json({ error: 'Forbidden.' }, { status: 403 });
@@ -221,7 +221,7 @@ export function createPublicDeliveryQuoteHandlers(
         }
     }
 
-    return { OPTIONS, POST };
+    return { OPTIONS: options, POST: post };
 }
 
 const deliveryQuoteHandlers = createPublicDeliveryQuoteHandlers();
