@@ -56,6 +56,7 @@ test('discovery keeps disabled config static and reads event time only after the
         {
             exports: {
                 directoriesClient: () => ({
+                    // biome-ignore lint/correctness/noComponentHookFactories: GET is an HTTP client mock method.
                     GET: async (path: string) => {
                         assert.ok(connected);
                         assert.equal(path, '/entities/block');

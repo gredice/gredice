@@ -19,7 +19,7 @@
         "server-only": "0.0.1"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.5.15",
+        "@biomejs/biome": "2.6.3",
         "@types/node": "26.6.5",
         "next": "16.4.3",
         "typescript": "7.0.2"
