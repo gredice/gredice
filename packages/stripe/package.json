@@ -23,7 +23,7 @@
     },
     "dependencies": {
         "@gredice/js": "workspace:*",
-        "@stripe/stripe-js": "10.1.0",
+        "@stripe/stripe-js": "10.2.0",
         "react": "19.3.1",
         "stripe": "23.0.1"
     }
