@@ -82,7 +82,7 @@
         "@neondatabase/serverless": "1.2.0",
         "@types/ws": "8.18.2",
         "@upstash/redis": "1.40.0",
-        "ai": "7.0.146",
+        "ai": "7.0.153",
         "dotenv": "18.0.9",
         "drizzle-kit": "0.31.11",
         "drizzle-orm": "0.45.4",
