@@ -22,11 +22,11 @@ import {
     getInventorySelectOptions,
 } from '../../../../../../lib/inventoryFieldTypes';
 import { KnownPages } from '../../../../../../src/KnownPages';
-import { isInventoryItemOrphaned } from '../../inventoryStatus';
 import {
     quickAdjustInventoryItemAction,
     updateInventoryItemAction,
 } from '../../../../../(actions)/inventoryActions';
+import { isInventoryItemOrphaned } from '../../inventoryStatus';
 import { DeleteInventoryItemEventButton } from './DeleteInventoryItemEventButton';
 
 export const dynamic = 'force-dynamic';

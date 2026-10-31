@@ -62,7 +62,7 @@
         "sharp": "0.35.5"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.5.15",
+        "@biomejs/biome": "2.6.3",
         "@gredice/client": "workspace:*",
         "@gredice/game": "workspace:*",
         "@gredice/js": "workspace:*",

@@ -28,7 +28,10 @@ async function PlantSortsListContent({
                 Sorte
             </Typography>
             {!sorts.length && (
-                <Typography level="body2" className="text-muted-foreground italic">
+                <Typography
+                    level="body2"
+                    className="text-muted-foreground italic"
+                >
                     Nema dostupnih sorti
                 </Typography>
             )}

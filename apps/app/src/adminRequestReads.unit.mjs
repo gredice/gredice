@@ -77,6 +77,7 @@ test('concurrent layout/page readers share one load, and separate requests stay 
         },
         async (...args) => records.push(args),
     );
+    // biome-ignore lint/correctness/noComponentHookFactories: This render fixture captures request-local test state.
     async function Navigation() {
         const [layout, page] = await Promise.all([read(), read()]);
         assert.equal(layout, account);
@@ -104,6 +105,7 @@ test('a failed request shares its rejection, while a later request retries', asy
         },
         async (...args) => records.push(args),
     );
+    // biome-ignore lint/correctness/noComponentHookFactories: This render fixture captures request-local test state.
     async function Navigation() {
         const results = await Promise.allSettled([read(), read()]);
         assert.equal(results[0].status, results[1].status);
@@ -130,6 +132,7 @@ test('overlapping Admin render requests cannot share private read results', asyn
         },
         async () => {},
     );
+    // biome-ignore lint/correctness/noComponentHookFactories: This render fixture captures request-local test state.
     async function Navigation() {
         const results = await Promise.all([read(), read()]);
         assert.deepEqual(results, [request.getStore(), request.getStore()]);
@@ -164,6 +167,7 @@ test('badge and approval list share three core loads without a catalogue depende
             return raisedBeds;
         },
     });
+    // biome-ignore lint/correctness/noComponentHookFactories: This render fixture captures request-local test state.
     async function Approvals() {
         const [layoutCount, pageData, dashboardCount] = await Promise.all([
             readers.getPendingAdminApprovalTaskCount(),

@@ -71,7 +71,10 @@ test('isInventoryItemOrphaned marks references to missing entities', () => {
 
 test('isInventoryItemOrphaned keeps live references linked', () => {
     assert.equal(
-        isInventoryItemOrphaned({ entityId: 520, entity: { isDeleted: false } }),
+        isInventoryItemOrphaned({
+            entityId: 520,
+            entity: { isDeleted: false },
+        }),
         false,
     );
 });

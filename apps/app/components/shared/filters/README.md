@@ -50,7 +50,7 @@ const filters = [TIME_FILTER_OPTIONS]; // "from" parameter
 Available time options:
 
 - Today
-- Yesterday  
+- Yesterday
 - Last 7 days
 - Last 30 days
 - Last 90 days
@@ -72,7 +72,7 @@ import { getDateFromTimeFilter } from '../shared/filters';
 export default async function MyPage({ searchParams }) {
     const fromFilter = searchParams.from;
     const fromDate = getDateFromTimeFilter(fromFilter);
-    
+
     // Pass to your data fetching function
     const data = await getData({ from: fromDate });
 }
@@ -91,7 +91,7 @@ export default async function MyPage({
 }) {
     const params = await searchParams;
     const status = typeof params.status === 'string' ? params.status : '';
-    
+
     return (
         <div>
             <MyFilters /> {/* Client component with TableFilter */}
@@ -101,7 +101,7 @@ export default async function MyPage({
 }
 
 // MyFilters.tsx (Client Component)
-'use client';
+('use client');
 export function MyFilters() {
     return <TableFilter filters={myFilters} />;
 }
@@ -119,7 +119,11 @@ const PRIORITY_FILTER: FilterOption = {
     options: [
         { value: '', label: 'All priorities' },
         { value: 'high', label: 'High', icon: <FlagRed className="size-4" /> },
-        { value: 'medium', label: 'Medium', icon: <FlagYellow className="size-4" /> },
+        {
+            value: 'medium',
+            label: 'Medium',
+            icon: <FlagYellow className="size-4" />,
+        },
         { value: 'low', label: 'Low', icon: <FlagGreen className="size-4" /> },
     ],
 };
@@ -130,13 +134,9 @@ const PRIORITY_FILTER: FilterOption = {
 Combine multiple filter types:
 
 ```tsx
-const filters = [
-    TIME_FILTER_OPTIONS,
-    STATUS_FILTER,
-    PRIORITY_FILTER,
-];
+const filters = [TIME_FILTER_OPTIONS, STATUS_FILTER, PRIORITY_FILTER];
 
-<TableFilter filters={filters} />
+<TableFilter filters={filters} />;
 ```
 
 ## Styling
@@ -144,10 +144,7 @@ const filters = [
 The component uses Tailwind classes and can be customized:
 
 ```tsx
-<TableFilter 
-    filters={filters} 
-    className="my-4 border-b pb-4" 
-/>
+<TableFilter filters={filters} className="my-4 border-b pb-4" />;
 ```
 
 ## Examples
@@ -159,7 +156,7 @@ The component uses Tailwind classes and can be customized:
 export default async function OperationsPage({ searchParams }) {
     const params = await searchParams;
     const fromDate = getDateFromTimeFilter(params.from);
-    
+
     return (
         <div>
             <OperationsFilters />
@@ -169,7 +166,7 @@ export default async function OperationsPage({ searchParams }) {
 }
 
 // OperationsFilters.tsx
-'use client';
+('use client');
 export function OperationsFilters() {
     return <TableFilter filters={[TIME_FILTER_OPTIONS]} />;
 }
@@ -190,7 +187,7 @@ const USER_FILTERS: FilterOption[] = [
     },
     {
         key: 'status',
-        label: 'Status', 
+        label: 'Status',
         options: [
             { value: '', label: 'All statuses' },
             { value: 'active', label: 'Active' },
@@ -208,23 +205,23 @@ export function UsersFilters() {
 
 ### TableFilter Props
 
-| Prop | Type | Description |
-|------|------|-------------|
-| `filters` | `FilterOption[]` | Array of filter configurations |
-| `onFiltersChange?` | `(filters: Record<string, string>) => void` | Callback when filters change |
-| `className?` | `string` | Additional CSS classes |
+| Prop               | Type                                        | Description                    |
+| ------------------ | ------------------------------------------- | ------------------------------ |
+| `filters`          | `FilterOption[]`                            | Array of filter configurations |
+| `onFiltersChange?` | `(filters: Record<string, string>) => void` | Callback when filters change   |
+| `className?`       | `string`                                    | Additional CSS classes         |
 
 ### FilterOption Interface
 
 ```tsx
 interface FilterOption {
-    key: string;                    // URL parameter name
-    label: string;                  // Display label
-    icon?: React.ReactNode;         // Optional icon
+    key: string; // URL parameter name
+    label: string; // Display label
+    icon?: React.ReactNode; // Optional icon
     options: Array<{
-        value: string;              // Filter value
-        label: string;              // Display label
-        icon?: React.ReactNode;     // Optional icon
+        value: string; // Filter value
+        label: string; // Display label
+        icon?: React.ReactNode; // Optional icon
     }>;
 }
 ```
