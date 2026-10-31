@@ -39,7 +39,7 @@
         "@scalar/api-reference-react": "0.9.83",
         "@standard-community/standard-json": "0.3.7",
         "@standard-community/standard-openapi": "0.2.11",
-        "@upstash/redis": "1.39.0",
+        "@upstash/redis": "1.40.0",
         "@valibot/to-json-schema": "1.8.0",
         "@vercel/blob": "2.8.2",
         "@vercel/functions": "3.10.3",
