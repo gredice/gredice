@@ -30,7 +30,7 @@
         "@gredice/google": "workspace:*",
         "@gredice/ui": "workspace:*",
         "@hono/mcp": "0.3.2",
-        "@hono/standard-validator": "0.4.0",
+        "@hono/standard-validator": "0.4.1",
         "@modelcontextprotocol/sdk": "1.32.2",
         "@opentelemetry/api": "1.10.0",
         "@opentelemetry/resources": "3.0.0",
