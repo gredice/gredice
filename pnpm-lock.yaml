@@ -275,7 +275,7 @@ importers:
         version: 4.4.0
       drizzle-orm:
         specifier: 0.45.4
-        version: 0.45.4(@electric-sql/pglite@0.5.11)(@neondatabase/serverless@1.2.0)(@opentelemetry/api@1.10.0)(@types/pg@8.23.1)(@upstash/redis@1.40.0)(pg@8.23.1)
+        version: 0.45.4(@electric-sql/pglite@0.5.12)(@neondatabase/serverless@1.2.0)(@opentelemetry/api@1.10.0)(@types/pg@8.23.1)(@upstash/redis@1.40.0)(pg@8.23.1)
       hono:
         specifier: 4.13.14
         version: 4.13.14
@@ -329,8 +329,8 @@ importers:
         specifier: 2.6.3
         version: 2.6.3
       '@electric-sql/pglite':
-        specifier: 0.5.11
-        version: 0.5.11
+        specifier: 0.5.12
+        version: 0.5.12
       '@gredice/auth':
         specifier: workspace:*
         version: link:../../packages/auth
@@ -459,7 +459,7 @@ importers:
         version: 12.12.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(immer@11.1.18)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       drizzle-orm:
         specifier: 0.45.4
-        version: 0.45.4(@electric-sql/pglite@0.5.11)(@neondatabase/serverless@1.2.0)(@opentelemetry/api@1.10.0)(@types/pg@8.23.1)(@upstash/redis@1.40.0)(pg@8.23.1)
+        version: 0.45.4(@electric-sql/pglite@0.5.12)(@neondatabase/serverless@1.2.0)(@opentelemetry/api@1.10.0)(@types/pg@8.23.1)(@upstash/redis@1.40.0)(pg@8.23.1)
       next:
         specifier: 16.4.3
         version: 16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.5)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.106.1)
@@ -1722,8 +1722,8 @@ importers:
         specifier: 2.6.3
         version: 2.6.3
       '@electric-sql/pglite':
-        specifier: 0.5.11
-        version: 0.5.11
+        specifier: 0.5.12
+        version: 0.5.12
       '@gredice/directory-types':
         specifier: workspace:*
         version: link:../directory-types
@@ -1750,7 +1750,7 @@ importers:
         version: 0.31.11
       drizzle-orm:
         specifier: 0.45.4
-        version: 0.45.4(@electric-sql/pglite@0.5.11)(@neondatabase/serverless@1.2.0)(@opentelemetry/api@1.10.0)(@types/pg@8.23.1)(@upstash/redis@1.40.0)(pg@8.23.1)
+        version: 0.45.4(@electric-sql/pglite@0.5.12)(@neondatabase/serverless@1.2.0)(@opentelemetry/api@1.10.0)(@types/pg@8.23.1)(@upstash/redis@1.40.0)(pg@8.23.1)
       openapi-types:
         specifier: 12.1.3
         version: 12.1.3
@@ -2459,8 +2459,8 @@ packages:
     resolution: {integrity: sha512-Sd8LcWpZk/SWEeKGE8LT6gMm5MGfX/wm+GPnh1eBEtCpya3vYqn37wYknwAHw92ONoyyREl1hJwxV/Qx2DWNOg==}
     engines: {node: '>=16'}
 
-  '@electric-sql/pglite@0.5.11':
-    resolution: {integrity: sha512-SWuqsTjA4DDWqgZ05PC1RJaq8e00p5KACxbqaikDFQ8dIGA0SLRzuPniky7IW+q/c5RDNMdEXwv7mFBWIx9Hxw==}
+  '@electric-sql/pglite@0.5.12':
+    resolution: {integrity: sha512-IiAxv1ld1V9QP0AWsflliDqrGRo+20O+yXOr2fjk6YzBHsCvTPclwQhCB1uZ7eHtPrxUrSllNzWgqy/Ot76PEw==}
 
   '@electron-internal/extract-zip@1.0.5':
     resolution: {integrity: sha512-+bqFCP98pLI0Tt0XQo1TmlXtwjWchISndDOxCkEcIuUgXWpBnLyRI+2DU+mesvnMMX6L1XDqYNA0lXNDHd/yiA==}
@@ -11446,7 +11446,7 @@ snapshots:
 
   '@edge-runtime/cookies@5.0.2': {}
 
-  '@electric-sql/pglite@0.5.11': {}
+  '@electric-sql/pglite@0.5.12': {}
 
   '@electron-internal/extract-zip@1.0.5': {}
 
@@ -16115,9 +16115,9 @@ snapshots:
       esbuild: 0.25.12
       tsx: 4.23.15
 
-  drizzle-orm@0.45.4(@electric-sql/pglite@0.5.11)(@neondatabase/serverless@1.2.0)(@opentelemetry/api@1.10.0)(@types/pg@8.23.1)(@upstash/redis@1.40.0)(pg@8.23.1):
+  drizzle-orm@0.45.4(@electric-sql/pglite@0.5.12)(@neondatabase/serverless@1.2.0)(@opentelemetry/api@1.10.0)(@types/pg@8.23.1)(@upstash/redis@1.40.0)(pg@8.23.1):
     optionalDependencies:
-      '@electric-sql/pglite': 0.5.11
+      '@electric-sql/pglite': 0.5.12
       '@neondatabase/serverless': 1.2.0
       '@opentelemetry/api': 1.10.0
       '@types/pg': 8.23.1
