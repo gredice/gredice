@@ -191,7 +191,7 @@ The fixture uses local models and mock data, blocks remote requests and non-read
 requests, and has no authenticated garden queries. It is outside the normal
 regression snapshot inventory and mounts no real plants or farm-operation flows.
 
-From the repository root with Node >=24 and the pinned pnpm version:
+From the repository root with Node 26.x and the pinned pnpm version:
 
 ```bash
 pnpm install --frozen-lockfile

@@ -24,7 +24,7 @@ test('raised-bed plants stay visible throughout above-ground lifecycle stages', 
         assert.equal(
             shouldRenderRaisedBedPlant({ plantSowDate: sowDate, plantStatus }),
             true,
-            plantStatus,
+            plantStatus ?? 'unknown status',
         );
     }
 });
@@ -43,7 +43,7 @@ test('raised-bed plants stay as seed visuals before sprouting or after failure',
         assert.equal(
             shouldRenderRaisedBedPlant({ plantSowDate: sowDate, plantStatus }),
             false,
-            plantStatus,
+            plantStatus ?? 'unknown status',
         );
     }
 });

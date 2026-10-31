@@ -20,7 +20,7 @@ Use this guide for repo layout, setup, commands, package boundaries, and local d
 
 ## Tooling
 
-- Runtime: Node.js `>=24`.
+- Runtime: Node.js `26.x`.
 - Package manager: pnpm, pinned by the root `packageManager` field.
 - Task runner: Turborepo.
 - Formatting and linting: Biome per app/package.
@@ -221,7 +221,7 @@ sets `nextBuildCache: true`.
 
 ### Codex environment setup
 
-Use a lean Codex environment for routine code tasks. Set Node.js to a current `24.x` release when the environment UI asks for an exact version. The repo-owned setup scripts also bootstrap Node.js `>=24` for their own run if the base image starts on an older Node.js release, then use Corepack to install the pnpm version pinned by `packageManager`.
+Use a lean Codex environment for routine code tasks. Set Node.js to a current `26.x` release when the environment UI asks for an exact version. The repo-owned setup scripts also bootstrap Node.js `26.x` for their own run if the base image starts on another Node.js major, install the repository-pinned Corepack when it is missing, then use it to install the pnpm version pinned by `packageManager`.
 
 Recommended Codex setup script:
 
@@ -235,7 +235,7 @@ Recommended Codex maintenance script:
 ./scripts/codex-cloud-maintenance.sh
 ```
 
-Override the setup-time Node.js installer with `GREDICE_CODEX_NODE_VERSION=<major-or-full-version>` only when the Codex base image does not already provide Node.js `>=24` and a specific release is required.
+Override the setup-time Node.js installer with `GREDICE_CODEX_NODE_VERSION=<major-or-full-version>` only when the Codex base image does not already provide Node.js `26.x` and a specific release is required.
 
 `./scripts/codex-cloud-setup.sh` installs the `www` Playwright Chromium browser. By default it tries `playwright install --with-deps chromium`, then falls back to browser-only `playwright install chromium` if Codex Cloud's Ubuntu package mirror or apt proxy is unavailable. Set `GREDICE_CODEX_PLAYWRIGHT_WITH_DEPS=browser-only` to skip apt entirely, or `GREDICE_CODEX_PLAYWRIGHT_WITH_DEPS=required` when a task must fail fast unless OS-level Playwright dependencies install successfully.
 

@@ -33,7 +33,7 @@ Gredice is a Turborepo monorepo for the Gredice platform. It includes the public
 
 ## Getting Started
 
-Requirements: nvm/Node.js `>=24`, Corepack-managed pnpm, Vercel CLI, and Docker.
+Requirements: nvm/Node.js `26.x`, Corepack-managed pnpm, Vercel CLI, and Docker.
 
 ```bash
 nvm use

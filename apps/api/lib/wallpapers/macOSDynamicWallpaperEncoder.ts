@@ -38,7 +38,7 @@ export async function encodeMacOSDynamicWallpaper({
 }) {
     const source = sandboxSource();
     const sandbox = await Sandbox.create({
-        ...(source ? { source } : { runtime: 'node24' as const }),
+        ...(source ? { source } : { runtime: 'node26' }),
         resources: { vcpus: 4 },
         timeout: sandboxTimeoutMs,
     });

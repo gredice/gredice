@@ -11,7 +11,7 @@ Follow the [Code of Conduct](./CODE_OF_CONDUCT.md). Keep changes scoped, reuse e
 
 ## Local setup
 
-Use Node.js `>=24`, pnpm from `packageManager`, Docker, and the Vercel CLI. See [WORKSPACE.md](./WORKSPACE.md) for the full setup and local domains.
+Use Node.js `26.x`, pnpm from `packageManager`, Docker, and the Vercel CLI. See [WORKSPACE.md](./WORKSPACE.md) for the full setup and local domains.
 
 Common path:
 

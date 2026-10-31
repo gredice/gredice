@@ -32,7 +32,11 @@ for (const rotation of [0, 1, 2, 3] as const)
         const input = fixture();
         const before = JSON.stringify(input);
         const result = resolveOwnedPackLayout({ ...input, rotation });
-        assert.equal(result.valid, true, result.error ?? undefined);
+        assert.equal(
+            result.valid,
+            true,
+            result.error ?? 'Expected a valid pack layout',
+        );
         assert.equal(result.placements.length, 4);
         assert.equal(result.units.length, 4);
         assert.equal(
