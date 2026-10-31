@@ -15,10 +15,14 @@ count.
 
 Readers use one of two queries:
 
-- `getSpeciesPresences(species)` returns a cached, id-sorted snapshot that is
-  rebuilt only after that species reports or loses an actor. Per-frame
-  neighbor reads (cow herd spacing, sheep flocking) no longer allocate when
-  nothing changed.
+- `getSpeciesPresences(species)` returns cached, id-sorted membership with
+  read-only live entries owned by the world. Reports update position,
+  behavior, and freshness timestamps in place. The array is rebuilt only
+  when an actor joins, leaves, or changes species, so even moving herds and
+  settled-actor heartbeats do not allocate and sort a new herd per reader.
+  Do not retain it as a historical sample: use `queryPresences` for detached
+  point-in-time copies. A removed/reassigned actor's retained entry stops
+  updating, and slot reuse never retargets that old entry to another actor.
 - `queryPresences({ species, behavior, center, radius, now, maxAgeSeconds })`
   resolves spatial queries through a four-unit X/Z grid, then applies the
   exact 3D distance check. Avatar petting and beach-ball kicks use it.
@@ -49,8 +53,32 @@ not wait for the HUD batch.
 `window.__grediceGameProfile.faunaWorld` receives coalesced counters after
 membership changes, debug publications, and at most once per scene second of
 reports: actor count, presence capacity, presence reports and queries,
-snapshot rebuilds, debug reports, published versus skipped debug batches, and
+membership snapshot rebuilds, presence read-view allocations
+(`presenceViewBuildCount`), debug reports, published versus skipped debug batches, and
 actors whose last record was removed.
+
+`pnpm --filter @gredice/game benchmark:fauna` runs a CPU/allocation diagnostic
+with 16, 128, and 1,024 actors, 600 simulation steps at 30 Hz, reports every
+0.4 seconds, and interleaved per-actor herd reads. Input objects are reused to
+isolate allocations inside the world. Read-view allocations must follow actor
+lifetimes and membership arrays must follow membership changes; neither follows
+the report or reader count. Timings are diagnostic, not browser/GPU or complete
+simulation measurements. Cow herd readers also pass presence entries directly
+to spacing helpers instead of allocating a second mapped object per neighbor.
+
+The 2026-10-31 diagnostic used the identical benchmark against
+`b2fb3af933197c4091ee75deec363af9aeebd0b0` and this implementation. Both produced
+identical position/freshness checksums and report counts:
+
+| Actors | Herd reads | Baseline membership array builds | Retained membership array builds | Retained entry builds |
+| --- | ---: | ---: | ---: | ---: |
+| 16 | 9,600 | 801 | 1 | 16 |
+| 128 | 76,800 | 6,401 | 1 | 128 |
+| 1,024 | 614,400 | 51,201 | 1 | 1,024 |
+
+These counters establish allocation scaling for presence reads, not complete
+simulation cost: herd filtering, neighbor-distance scans, species decisions,
+renderer work, and allocations made by report callers are outside this probe.
 
 ## Offscreen actors
 

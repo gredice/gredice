@@ -72,7 +72,7 @@ function presence(
     };
 }
 
-test('fauna world keeps stable presence slots and species snapshots', () => {
+test('fauna world keeps stable presence slots and live species views', () => {
     const { world } = createTestWorld();
     world.reportPresence(presence('cow:b', 'Cow', 1, 1, 0));
     world.reportPresence(presence('cow:a', 'Cow', 2, 2, 0));
@@ -98,7 +98,7 @@ test('fauna world keeps stable presence slots and species snapshots', () => {
 
     world.reportPresence(presence('cow:a', 'Cow', 5, 5, 1, 'graze'));
     const updatedCows = world.getSpeciesPresences('Cow');
-    assert.notEqual(updatedCows, cows);
+    assert.equal(updatedCows, cows, 'reports retain sorted membership');
     assert.deepEqual(
         updatedCows[0],
         presence('cow:a', 'Cow', 5, 5, 1, 'graze'),
@@ -198,6 +198,135 @@ test('species snapshots preserve the previous freshness contract', () => {
         }).map((entry) => entry.id),
         ['cow:new'],
     );
+});
+
+test('live species views refresh heartbeats without rebuilding or publishing', () => {
+    const { published, timers, world } = createTestWorld();
+    world.reportPresence(presence('cow:a', 'Cow', 0, 0, 0));
+    const cows = world.getSpeciesPresences('Cow');
+    const cow = cows[0];
+
+    for (let tick = 1; tick <= 300; tick += 1) {
+        const now = tick * 0.4;
+        world.reportPresence(presence('cow:a', 'Cow', 0, 0, now));
+        assert.equal(world.getSpeciesPresences('Cow'), cows);
+        assert.equal(cows[0], cow);
+        assert.equal(cow.updatedAt, now);
+        assert.deepEqual(
+            freshAnimalPresences({ entries: cows, now, species: 'Cow' }),
+            [cow],
+        );
+    }
+    assert.deepEqual(
+        freshAnimalPresences({ entries: cows, now: 123.5, species: 'Cow' }),
+        [cow],
+        'the existing inclusive freshness boundary still applies',
+    );
+    assert.deepEqual(
+        freshAnimalPresences({ entries: cows, now: 123.501, species: 'Cow' }),
+        [],
+    );
+    // Scene clocks can restart; readers must immediately see that receipt too.
+    world.reportPresence(presence('cow:a', 'Cow', 0, 0, 0.1));
+    assert.equal(cow.updatedAt, 0.1);
+    assert.equal(world.getStats().presenceSnapshotBuildCount, 1);
+    assert.equal(world.getStats().presenceViewBuildCount, 1);
+    timers.runAll();
+    assert.deepEqual(published, [], 'presence never publishes to the HUD');
+});
+
+test('live views follow authoritative movement while spatial query copies stay detached', () => {
+    const { world } = createTestWorld();
+    const input = presence('dog:a', 'Dog', 0, 0, 0);
+    world.reportPresence(input);
+    const dogs = world.getSpeciesPresences('Dog');
+    const view = dogs[0];
+    const initial = world.queryPresences({ species: 'Dog' });
+    input.position.x = 500;
+    assert.equal(view.position.x, 0, 'the world owns its view');
+
+    world.reportPresence({
+        ...presence('dog:a', 'Dog', 20, -20, 2, 'follow-avatar'),
+        position: { x: 20, y: 1.5, z: -20 },
+    });
+    assert.equal(world.getSpeciesPresences('Dog'), dogs);
+    assert.equal(dogs[0], view);
+    assert.deepEqual(view, {
+        ...presence('dog:a', 'Dog', 20, -20, 2, 'follow-avatar'),
+        position: { x: 20, y: 1.5, z: -20 },
+    });
+    assert.equal(initial[0].position.x, 0);
+    assert.equal(initial[0].updatedAt, 0);
+    assert.deepEqual(
+        world.queryPresences({ center: { x: 0, y: 0, z: 0 }, radius: 1 }),
+        [],
+    );
+    const nearby = world.queryPresences({
+        behavior: 'follow-avatar',
+        center: view.position,
+        maxAgeSeconds: 0.6,
+        now: 2.5,
+        radius: 0.5,
+        species: 'Dog',
+    });
+    assert.deepEqual(
+        nearby,
+        [view],
+        'petting/kicks observe current packed state',
+    );
+    nearby[0].position.x = -500;
+    assert.equal(view.position.x, 20);
+    assert.equal(world.queryPresences({ species: 'Dog' })[0].position.x, 20);
+});
+
+test('species reassignment and slot reuse never retarget retained views', () => {
+    const { world } = createTestWorld();
+    world.reportPresence(presence('actor:a', 'Cow', 1, 1, 0));
+    const cows = world.getSpeciesPresences('Cow');
+    world.reportPresence(presence('actor:a', 'Dog', 2, 2, 1));
+    assert.deepEqual(world.getSpeciesPresences('Cow'), []);
+    const dogs = world.getSpeciesPresences('Dog');
+    assert.deepEqual(cows, [presence('actor:a', 'Cow', 1, 1, 0)]);
+    assert.deepEqual(dogs, [presence('actor:a', 'Dog', 2, 2, 1)]);
+
+    world.removePresence('actor:a');
+    world.reportPresence(presence('actor:b', 'Dog', 3, 3, 2));
+    assert.deepEqual(dogs, [presence('actor:a', 'Dog', 2, 2, 1)]);
+    assert.deepEqual(world.getSpeciesPresences('Dog'), [
+        presence('actor:b', 'Dog', 3, 3, 2),
+    ]);
+    assert.equal(world.getStats().presenceViewBuildCount, 3);
+});
+
+test('species view allocations follow membership rather than actor reports or readers', () => {
+    for (const count of [16, 128, 1024]) {
+        const { world } = createTestWorld();
+        for (let actor = 0; actor < count; actor += 1) {
+            world.reportPresence(presence(`cow:${actor}`, 'Cow', actor, 0, 0));
+        }
+        const cows = world.getSpeciesPresences('Cow');
+        for (let tick = 1; tick <= 30; tick += 1) {
+            for (let actor = 0; actor < count; actor += 1) {
+                world.reportPresence(
+                    presence(
+                        `cow:${actor}`,
+                        'Cow',
+                        actor + tick,
+                        0,
+                        tick * 0.4,
+                    ),
+                );
+                // Multiple readers in a step see earlier actors' latest
+                // reports without re-sorting/rebuilding the whole herd.
+                assert.equal(world.getSpeciesPresences('Cow'), cows);
+            }
+        }
+        assert.equal(world.getStats().presenceViewBuildCount, count);
+        assert.equal(world.getStats().presenceSnapshotBuildCount, 1);
+        assert.equal(world.getStats().presenceReportCount, count * 31);
+        assert.deepEqual(cows, world.queryPresences({ species: 'Cow' }));
+        world.dispose();
+    }
 });
 
 test('removed actors leave presence queries and the spatial grid', () => {

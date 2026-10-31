@@ -22,6 +22,11 @@ const spatialCellKeyStride = 65_536;
 type FaunaPoint = { x: number; y: number; z: number };
 
 export type FaunaPresenceInput = AnimalPresenceEntry;
+export type FaunaPresenceView = Readonly<
+    Omit<AnimalPresenceEntry, 'position'>
+> & {
+    readonly position: Readonly<AnimalPresenceEntry['position']>;
+};
 
 export type FaunaPresenceQuery = {
     behavior?: string;
@@ -47,6 +52,7 @@ export type FaunaWorldStats = {
     presenceQueryCount: number;
     presenceReportCount: number;
     presenceSnapshotBuildCount: number;
+    presenceViewBuildCount: number;
     removedActorCount: number;
 };
 
@@ -179,6 +185,11 @@ export function createFaunaWorld({
     let slotIds: (string | undefined)[] = new Array(presenceCapacity);
     let slotSpecies: (string | undefined)[] = new Array(presenceCapacity);
     let slotBehaviors: (string | undefined)[] = new Array(presenceCapacity);
+    // One owned read view per actor lifetime. Reports update it in place;
+    // readers never retain a reference to a reusable numeric slot.
+    let slotPresences: (AnimalPresenceEntry | undefined)[] = new Array(
+        presenceCapacity,
+    );
     let slotCellKeys = new Float64Array(presenceCapacity).fill(Number.NaN);
     const freeSlots: number[] = [];
     let nextSlot = 0;
@@ -216,6 +227,7 @@ export function createFaunaWorld({
         presenceQueryCount: 0,
         presenceReportCount: 0,
         presenceSnapshotBuildCount: 0,
+        presenceViewBuildCount: 0,
         removedActorCount: 0,
     };
 
@@ -258,6 +270,9 @@ export function createFaunaWorld({
             new Array(nextCapacity - presenceCapacity),
         );
         slotBehaviors = slotBehaviors.concat(
+            new Array(nextCapacity - presenceCapacity),
+        );
+        slotPresences = slotPresences.concat(
             new Array(nextCapacity - presenceCapacity),
         );
         presenceCapacity = nextCapacity;
@@ -314,6 +329,7 @@ export function createFaunaWorld({
             slotsBySpecies.set(species, speciesSlots);
         }
         speciesSlots.add(slot);
+        bumpSpeciesVersion(species);
     }
 
     function reportPresence(entry: FaunaPresenceInput) {
@@ -344,7 +360,17 @@ export function createFaunaWorld({
                 spatialCellCoordinate(entry.position.z, spatialCellSize),
             ),
         );
-        bumpSpeciesVersion(entry.species);
+        const view = slotPresences[slot];
+        if (!view || view.species !== entry.species) {
+            slotPresences[slot] = readPresence(slot);
+            stats.presenceViewBuildCount += 1;
+        } else {
+            view.behavior = entry.behavior;
+            view.position.x = entry.position.x;
+            view.position.y = entry.position.y;
+            view.position.z = entry.position.z;
+            view.updatedAt = entry.updatedAt;
+        }
         stats.presenceReportCount += 1;
         requestStatsPublishForReport(entry.updatedAt);
     }
@@ -465,12 +491,14 @@ export function createFaunaWorld({
     }
 
     /**
-     * Cached per-species snapshot, rebuilt only after a member of that
-     * species reports or leaves. Safe to read every frame.
+     * Cached id-sorted membership with live, world-owned read views. Movement,
+     * behavior and heartbeat timestamps update in place without rebuilding
+     * the array. Treat both the array and entries as read-only; use
+     * queryPresences for detached point-in-time copies.
      */
     function getSpeciesPresences(
         species: string,
-    ): readonly AnimalPresenceEntry[] {
+    ): readonly FaunaPresenceView[] {
         const version = speciesVersions.get(species) ?? 0;
         const cached = speciesSnapshots.get(species);
         if (cached && cached.version === version) {
@@ -478,9 +506,12 @@ export function createFaunaWorld({
         }
 
         stats.presenceSnapshotBuildCount += 1;
-        const entries = Array.from(slotsBySpecies.get(species) ?? [])
-            .map(readPresence)
-            .sort((left, right) => left.id.localeCompare(right.id));
+        const entries: AnimalPresenceEntry[] = [];
+        for (const slot of slotsBySpecies.get(species) ?? []) {
+            const entry = slotPresences[slot];
+            if (entry) entries.push(entry);
+        }
+        entries.sort((left, right) => left.id.localeCompare(right.id));
         speciesSnapshots.set(species, { entries, version });
         return entries;
     }
@@ -508,6 +539,7 @@ export function createFaunaWorld({
         slotIds[slot] = undefined;
         slotSpecies[slot] = undefined;
         slotBehaviors[slot] = undefined;
+        slotPresences[slot] = undefined;
         slotCellKeys[slot] = Number.NaN;
         presenceTransforms.fill(
             0,

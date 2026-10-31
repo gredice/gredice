@@ -440,10 +440,7 @@ export function Cow({ block, rotation, stack, stacks }: EntityInstanceProps) {
             entries: faunaWorld.getSpeciesPresences('Cow'),
             now,
             species: 'Cow',
-        }).map((entry) => ({
-            id: entry.id,
-            position: entry.position,
-        }));
+        });
         const petRequest = gameState.gardenAvatarAnimalPetRequest;
         if (
             petRequest &&
