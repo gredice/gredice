@@ -1392,8 +1392,8 @@ importers:
         specifier: workspace:*
         version: link:../storage
       node-forge:
-        specifier: 1.4.0
-        version: 1.4.0
+        specifier: 1.4.1
+        version: 1.4.1
       qrcode:
         specifier: 1.5.4
         version: 1.5.4
@@ -8784,8 +8784,8 @@ packages:
   node-api-version@0.2.1:
     resolution: {integrity: sha512-2xP/IGGMmmSQpI1+O/k72jF/ykvZ89JeuKX3TLJAYPDVLUalrshrLHkeVcCCZqG/eEa635cr8IBYzgnDvM2O8Q==}
 
-  node-forge@1.4.0:
-    resolution: {integrity: sha512-LarFH0+6VfriEhqMMcLX2F7SwSXeWwnEAJEsYm5QKWchiVYVvJyV9v7UDvUv+w5HO23ZpQTXDv/GxdDdMyOuoQ==}
+  node-forge@1.4.1:
+    resolution: {integrity: sha512-w5/MfWaeMrpR/5ba6fZyAUTLSuE6aYz7H/3cYrqwZEmf5eQS3IaaLgJt4MBv7HglGFWmV22K8h4U18RJQmw/ow==}
     engines: {node: '>= 6.13.0'}
 
   node-gyp@12.4.0:
@@ -18155,7 +18155,7 @@ snapshots:
     dependencies:
       semver: 7.7.4
 
-  node-forge@1.4.0: {}
+  node-forge@1.4.1: {}
 
   node-gyp@12.4.0:
     dependencies:
