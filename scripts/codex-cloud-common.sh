@@ -5,7 +5,7 @@
 
 GREDICE_CODEX_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 GREDICE_REPO_ROOT="$(cd "${GREDICE_CODEX_SCRIPT_DIR}/.." && pwd)"
-GREDICE_CODEX_REQUIRED_NODE_MAJOR="${GREDICE_CODEX_REQUIRED_NODE_MAJOR:-24}"
+GREDICE_CODEX_REQUIRED_NODE_MAJOR="${GREDICE_CODEX_REQUIRED_NODE_MAJOR:-26}"
 GREDICE_CODEX_NODE_VERSION="${GREDICE_CODEX_NODE_VERSION:-${GREDICE_CODEX_REQUIRED_NODE_MAJOR}}"
 GREDICE_CODEX_CACHE_DIR="${GREDICE_CODEX_CACHE_DIR:-${XDG_CACHE_HOME:-${HOME}/.cache}/gredice-codex}"
 
@@ -26,7 +26,7 @@ codex_node_major() {
 codex_node_is_supported() {
   local major
   major="$(codex_node_major || true)"
-  [[ "${major}" =~ ^[0-9]+$ ]] && (( major >= GREDICE_CODEX_REQUIRED_NODE_MAJOR ))
+  [[ "${major}" =~ ^[0-9]+$ ]] && (( major == GREDICE_CODEX_REQUIRED_NODE_MAJOR ))
 }
 
 codex_load_nvm() {
@@ -229,7 +229,7 @@ codex_ensure_node() {
     detected="$(node --version)"
   fi
 
-  codex_log "Node.js >=${GREDICE_CODEX_REQUIRED_NODE_MAJOR} is required; detected ${detected}."
+  codex_log "Node.js ${GREDICE_CODEX_REQUIRED_NODE_MAJOR}.x is required; detected ${detected}."
   codex_try_nvm_node && return
   codex_try_fnm_node && return
   codex_try_mise_node && return
@@ -244,7 +244,12 @@ codex_ensure_node() {
 }
 
 codex_prepare_pnpm() {
-  command -v corepack >/dev/null 2>&1 || codex_die "Corepack is not available after Node.js setup."
+  if ! command -v corepack >/dev/null 2>&1; then
+    local corepack_version
+    corepack_version="$(node -p 'JSON.parse(require("node:fs").readFileSync("package.json", "utf8")).dependencies.corepack')"
+    codex_log "Installing repository-pinned Corepack ${corepack_version}."
+    npm install --global "corepack@${corepack_version}"
+  fi
 
   codex_log "Preparing pnpm from the root packageManager field."
   corepack enable

@@ -124,9 +124,10 @@ test('keeps edge previews within explicit non-targetable tracks at every rotatio
             stacks: [],
             worldRotation,
         });
-        const explicitColumnCount =
+        const explicitColumnCount: number =
             layout.columnCount + previewTrackPadding * 2;
-        const explicitRowCount = layout.rowCount + previewTrackPadding * 2;
+        const explicitRowCount: number =
+            layout.rowCount + previewTrackPadding * 2;
         const renderedCorners = [
             { x: layout.bounds.minX, z: layout.bounds.minZ },
             { x: layout.bounds.maxX, z: layout.bounds.minZ },
@@ -149,9 +150,10 @@ test('keeps edge previews within explicit non-targetable tracks at every rotatio
                 projection: layout.projection,
                 worldRotation,
             });
-            const shiftedColumnStart =
+            const shiftedColumnStart: number =
                 area.gridColumnStart + previewTrackPadding;
-            const shiftedRowStart = area.gridRowStart + previewTrackPadding;
+            const shiftedRowStart: number =
+                area.gridRowStart + previewTrackPadding;
 
             assert.ok(shiftedColumnStart >= 1);
             assert.ok(shiftedRowStart >= 1);

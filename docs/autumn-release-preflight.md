@@ -24,7 +24,7 @@ those separately after their own gates; this preflight cannot silently expand th
 
 ## Run
 
-Use Node >=24 and the pinned pnpm. From the repository root:
+Use Node 26.x and the pinned pnpm. From the repository root:
 
 ```sh
 pnpm install --frozen-lockfile --filter api... --filter .

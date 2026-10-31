@@ -62,7 +62,7 @@ do not label these results iPhone FPS. `--mobile` and `--bundles` are separate
 campaigns. See [Playwright emulation](https://playwright.dev/docs/emulation) and
 [Chrome's emulation limits](https://developer.chrome.com/docs/devtools/device-mode#limitations).
 
-Requires Node >=24, the repository's pnpm version, and the Garden Playwright
+Requires Node 26.x, the repository's pnpm version, and the Garden Playwright
 Chromium installation (`pnpm --filter garden exec playwright install chromium`
 if missing). Uses the existing Three, esbuild (via tsx), Playwright and Sharp
 dependencies. The runner downloads the pinned `wabt@1.0.39` compiler through

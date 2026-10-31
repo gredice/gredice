@@ -97,7 +97,7 @@ function readConfiguredPnpm() {
 
 function checkNode() {
   const major = Number(process.versions.node.split('.')[0]);
-  addCheck('Node.js >=24', true, major >= 24, `Detected ${process.versions.node}.`, 'Install Node.js >=24 and retry.');
+  addCheck('Node.js 26.x', true, major === 26, `Detected ${process.versions.node}.`, 'Install Node.js 26.x and retry.');
 }
 
 function checkPnpm() {

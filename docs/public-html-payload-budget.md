@@ -32,7 +32,7 @@ hard budget does.
 
 ## Reproduce
 
-Use Node 24 and the pinned pnpm version. Configure the existing read-only
+Use Node 26.x and the pinned pnpm version. Configure the existing read-only
 catalogue environment, then run from the repository root:
 
 ```sh

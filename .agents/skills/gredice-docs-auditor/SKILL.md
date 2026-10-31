@@ -29,7 +29,7 @@ Use `rg`/`rg --files` first and confirm paths exist.
 ## Stable Facts
 
 - App/package map lives in `WORKSPACE.md`; local domains come from `scripts/app-registry.ts`.
-- Runtime is Node.js `>=24`; pnpm is pinned by `packageManager`.
+- Runtime is Node.js `26.x`; pnpm is pinned by `packageManager`.
 - Internal deps use `workspace:*`.
 - Schema changes live in `packages/storage`; run `pnpm db-generate`; do not run `pnpm db-push`.
 - Do not commit build output, caches, `.next`, coverage, `node_modules`, or unexpected generated files.

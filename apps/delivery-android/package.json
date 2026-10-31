@@ -9,5 +9,8 @@
         "android:verify": "./gradlew --no-daemon lintRelease testDebugUnitTest assembleDebug assembleDebugAndroidTest bundleRelease",
         "contract:validate": "node ../../scripts/validate-delivery-car-contract.mjs",
         "store:validate": "node ../../scripts/validate-android-store-listing.mjs apps/delivery-android --allow-missing-screenshots"
+    },
+    "engines": {
+        "node": "26.x"
     }
 }

@@ -4,7 +4,7 @@ Gredice is a Next.js/Turborepo monorepo with apps, shared packages, docs, and as
 
 ## Start here
 
-- Use Node.js `>=24` and the pnpm version pinned in `packageManager`.
+- Use Node.js `26.x` and the pnpm version pinned in `packageManager`.
 - Check for nested `AGENTS.md` files before editing; nested files override this one.
 - Read only the guide that matches the change:
   - [WORKSPACE.md](./WORKSPACE.md): layout, setup, commands, dev servers.
