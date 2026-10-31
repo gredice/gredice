@@ -1,12 +1,17 @@
 import { clientAuthenticated } from '@gredice/client';
 import { useQuery } from '@tanstack/react-query';
+import { useOptionalGameState } from '../useGameState';
 
 export const currentAccountKeys = ['accounts', 'current'];
 
 export function useCurrentAccount(enabled = true) {
+    const authenticatedGardenQueriesEnabled = useOptionalGameState(
+        (state) => state.authenticatedGardenQueriesEnabled,
+        true,
+    );
     return useQuery({
         queryKey: currentAccountKeys,
-        enabled,
+        enabled: authenticatedGardenQueriesEnabled && enabled,
         queryFn: async () => {
             const [accountResponse, sunflowersResponse] = await Promise.all([
                 clientAuthenticated().api.accounts.current.$get(),
