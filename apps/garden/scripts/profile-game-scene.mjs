@@ -15398,8 +15398,9 @@ function evaluateHighTargetAcceptance({
         1,
         Math.floor((sample.elapsedMs ?? 0) / 1_000),
     );
+    // Details includes 5 birds/mammals plus 1 bee, 5 ladybugs and 2 butterflies.
     const expectedActorGroundingShadowCount =
-        requested.mode === 'details' ? 5 : 4;
+        requested.mode === 'details' ? 13 : 4;
     const checks = [
         exact('highTargetQualityRequest', requested.quality, 'high'),
         exact('highTargetQualityTier', runtime?.qualityTier, 'high'),

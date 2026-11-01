@@ -9403,7 +9403,7 @@ test('operation-visual High acceptance gates batching, uploads, mulch, and highl
         },
         runtime: {
             actorGroundingShadowBatchCount: 1,
-            actorGroundingShadowCount: 5,
+            actorGroundingShadowCount: 13,
             actorGroundingShadowDroppedCount: 0,
             actorGroundingShadowPrimaryCasterCount: 0,
             actorGroundingShadowVisibleCount: 5,
@@ -9609,7 +9609,7 @@ test('foliage-budget High acceptance admits one normal-view detail bed', () => {
         },
         runtime: {
             actorGroundingShadowBatchCount: 1,
-            actorGroundingShadowCount: 5,
+            actorGroundingShadowCount: 13,
             actorGroundingShadowDroppedCount: 0,
             actorGroundingShadowPrimaryCasterCount: 0,
             actorGroundingShadowVisibleCount: 5,
@@ -10487,7 +10487,7 @@ test('adaptive High acceptance allows bounded effective DPR during interaction',
         },
         runtime: {
             actorGroundingShadowBatchCount: 1,
-            actorGroundingShadowCount: 5,
+            actorGroundingShadowCount: 13,
             actorGroundingShadowDroppedCount: 0,
             actorGroundingShadowPrimaryCasterCount: 0,
             actorGroundingShadowVisibleCount: 5,
@@ -10846,7 +10846,7 @@ test('high target acceptance distinguishes a cached map from refreshes and reset
             },
             runtime: {
                 actorGroundingShadowBatchCount: 1,
-                actorGroundingShadowCount: 5,
+                actorGroundingShadowCount: 13,
                 actorGroundingShadowDroppedCount: 0,
                 actorGroundingShadowPrimaryCasterCount: 0,
                 actorGroundingShadowVisibleCount: 4,
@@ -10921,7 +10921,7 @@ test('high target placement acceptance requires one deferred final shadow flush'
         },
         runtime: {
             actorGroundingShadowBatchCount: 1,
-            actorGroundingShadowCount: 5,
+            actorGroundingShadowCount: 13,
             actorGroundingShadowDroppedCount: 0,
             actorGroundingShadowPrimaryCasterCount: 0,
             actorGroundingShadowVisibleCount: 4,
@@ -10966,6 +10966,14 @@ test('high target placement acceptance requires one deferred final shadow flush'
     });
 
     assert.equal(evaluateHighTargetAcceptance(createInput()).pass, true);
+    const legacyFauna = createInput();
+    legacyFauna.runtime.actorGroundingShadowCount = 5;
+    assert.equal(
+        evaluateHighTargetAcceptance(legacyFauna).checks.find(
+            (check) => check.name === 'highTargetActorGroundingShadowCount',
+        )?.pass,
+        false,
+    );
 
     for (const invalid of [
         { flushDelta: 0 },
