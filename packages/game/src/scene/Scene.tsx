@@ -159,6 +159,7 @@ function restoreWireframeOverride(
 
 function RendererStatsReporter() {
     const lastUpdateRef = useRef(0);
+    const receiptRequestedRef = useRef(false);
     const publisherRef = useRef<ReturnType<
         typeof createRendererStatsPublisher
     > | null>(null);
@@ -170,7 +171,18 @@ function RendererStatsReporter() {
                 readGameProfileMetadata()?.rendererStatsReceiptCount,
         });
         publisherRef.current = publisher;
+        const requestReceipt = () => {
+            receiptRequestedRef.current = true;
+        };
+        window.addEventListener(
+            'gredice:game-profile-render-receipt-request',
+            requestReceipt,
+        );
         return () => {
+            window.removeEventListener(
+                'gredice:game-profile-render-receipt-request',
+                requestReceipt,
+            );
             publisher.dispose();
             if (publisherRef.current === publisher) {
                 publisherRef.current = null;
@@ -180,10 +192,14 @@ function RendererStatsReporter() {
 
     useFrame(({ gl }) => {
         const now = performance.now();
-        if (now - lastUpdateRef.current < rendererStatsUpdateMs) {
+        if (
+            !receiptRequestedRef.current &&
+            now - lastUpdateRef.current < rendererStatsUpdateMs
+        ) {
             return;
         }
 
+        receiptRequestedRef.current = false;
         lastUpdateRef.current = now;
         publisherRef.current?.schedule(gl);
     });

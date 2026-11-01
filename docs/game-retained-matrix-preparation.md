@@ -62,7 +62,9 @@ improvements:
   execution or upload completion. Unpacking is not reported as GPU upload.
 - **Latency:** observers and upload wrappers are off. The endpoint is a settled
   compiled scene plus a fresh post-render receipt, fenced by restoring the
-  unchanged camera pose. It is renderer edit/switch latency, not network,
+  unchanged camera pose. A one-shot receipt request bypasses the ordinary 500 ms
+  statistics reporting throttle without changing rendering or the normal
+  reporting interval. It is renderer edit/switch latency, not network,
   physical display latency, or FPS. Twenty samples retain absolute p50/p95 and
   full ranges. Prospectively, p50 and p95 must be no more than reference ×1.05
   plus 1 ms; a faster kernel cannot waive an end-to-end regression.

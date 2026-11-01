@@ -226,6 +226,9 @@ async function command(page, { kind, count, profile }, sequence) {
                     const receipt = p.rendererStatsReceiptCount;
                     const camera = p.gameCameraSnapshot;
                     window.dispatchEvent(
+                        new Event('gredice:game-profile-render-receipt-request'),
+                    );
+                    window.dispatchEvent(
                         new CustomEvent(
                             'gredice:game-profile-camera-restore-command',
                             { detail: camera },
