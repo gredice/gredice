@@ -44,7 +44,7 @@ The primary method fixes four alternating AB/BA rounds, five commands per pass
 per subject, and all five resolved canonical quality profiles. Cases are a
 complete 8×8 spatial chunk, a 64×64 rebuild distributed across real 8-unit chunks,
 and the existing high-target/fauna-heavy garden switch. Edit fixtures contain
-ground plus mixed rigid wooden props with shared materials so both stable instance writes and actual
+ground plus rigid instanced `GardenBox`/`Stool` props with compatible planks so both stable instance writes and actual
 multi-source Float64 compiler preparation are exercised. An immutable local
 query-cache edit changes only selected top-block rotations; it never writes
 garden or account data. The command is enabled only for the explicit matrix

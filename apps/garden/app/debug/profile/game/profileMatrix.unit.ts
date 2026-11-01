@@ -9,6 +9,10 @@ test('matrix fixtures contain genuine complete eight-unit spatial chunks', () =>
     const sizes: Array<8 | 64> = [8, 64];
     for (const size of sizes) {
         const stacks = createMatrixProfileStacks(size);
+        assert.deepEqual(
+            [...new Set(stacks.map((stack) => stack.blocks[1].name))],
+            ['GardenBox', 'Stool'],
+        );
         assert.equal(stacks.length, size * size);
         assert.equal(
             new Set(
