@@ -1,0 +1,738 @@
+{
+  "recordedAt": "2026-11-01T19:44:16.177407+00:00",
+  "scope": "Offline recapture/review after the opt-in passive frame probe. Not a performance or physical-device acceptance. No catalogue, published asset, price, layout or purchased-version change.",
+  "command": "GREDICE_GARDEN_CT_PORT=5488 pnpm --filter garden exec playwright test --config playwright.autumn-arrangements.config.ts --grep desktop-high --update-snapshots=all --workers=1",
+  "captureTestsPassed": 3,
+  "sceneCaptures": 36,
+  "publicPreviews": 3,
+  "mobileLowStatic": "36 original images retained unchanged, not recaptured.",
+  "review": "All39 regenerated images are byte and decoded-pixel identical; all non-source JSON fields match. All3 public previews visually inspected.",
+  "previousFiles": [
+    {
+      "path": "apps/api/lib/garden/autumnStarterPackEvidence.reviewed.json",
+      "commit": "ee7cc45b7afc680a4128e6b9c57ade023a1d27dd",
+      "sha256": "dfc067f7ed680338a7af75882746f09a23e6ac9802dd8253e4ce9302a20e1d6d"
+    },
+    {
+      "path": "docs/autumn-release-2026/pilot-selection.json",
+      "commit": "ee7cc45b7afc680a4128e6b9c57ade023a1d27dd",
+      "sha256": "2f4a7ff632c95ab88165f5339f4deacc12bfd22e69ace92e50239a2a8a7333ac"
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/harvest-corner.json",
+      "commit": "ee7cc45b7afc680a4128e6b9c57ade023a1d27dd",
+      "sha256": "730033d06faeafeecd4a1a298f247dc285d5c722f996ad96e71120fb1e9ac0e1"
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/woodland-path.json",
+      "commit": "ee7cc45b7afc680a4128e6b9c57ade023a1d27dd",
+      "sha256": "0936ee6dd67a9cd6018abb4ed38317f2e101a1294967c8f5fa366de268285403"
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/evening-seat.json",
+      "commit": "ee7cc45b7afc680a4128e6b9c57ade023a1d27dd",
+      "sha256": "e4bd361c00f7972f8c47c39b18f75387da9326bd975f88722c7011d4fc719e8b"
+    }
+  ],
+  "previousEvidencePreservation": "Exact preceding bytes are available at the pinned immutable Git commit and also retained with per-file SHA256 verification in the private task evidence archive.",
+  "changedInputs": [
+    {
+      "path": "packages/game/src/scene/Scene.tsx",
+      "previousSha256": "c656fcbb5cdc79e9acc64976515772617036fe0e18e088170c80cd34ad6c4707",
+      "currentSha256": "c00e91080bc9b42e85da783626a95febcd81e1b2e3190777baf02f0143a400c2"
+    },
+    {
+      "path": "packages/game/src/scene/sceneRootRuntime.ts",
+      "previousSha256": "4eea0c8b76aac543517eb24a3ee6e941fdd9f8e6bf3ed839f9bfb8530f6f46dd",
+      "currentSha256": "c22b36c6f0603c7b43928bf293b43633ae26357015f75cbe34c73b79c1c8723d"
+    }
+  ],
+  "publicationSourcePinChanges": [
+    {
+      "path": "apps/api/lib/garden/autumnStarterPackEvidence.reviewed.json",
+      "previousSha256": "dfc067f7ed680338a7af75882746f09a23e6ac9802dd8253e4ce9302a20e1d6d",
+      "currentSha256": "408309e38c11f500e6cff9865c7053a2d1ba870e58315a9aa9b73a32c5dcb322"
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/evening-seat.json",
+      "previousSha256": "e4bd361c00f7972f8c47c39b18f75387da9326bd975f88722c7011d4fc719e8b",
+      "currentSha256": "18d9e35fff93d38f792bcfc40710a8a4a43c485fcdb00e74f5f1876df8a31e31"
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/harvest-corner.json",
+      "previousSha256": "730033d06faeafeecd4a1a298f247dc285d5c722f996ad96e71120fb1e9ac0e1",
+      "currentSha256": "a985c23a99b1a2b136dbffb876b4a0560c5646af177ed605d888d0fa84f95318"
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/woodland-path.json",
+      "previousSha256": "0936ee6dd67a9cd6018abb4ed38317f2e101a1294967c8f5fa366de268285403",
+      "currentSha256": "1e8e3738d61decaddb76525f963cfa110230f9abd2c90437f680cdc1cbadfd57"
+    },
+    {
+      "path": "packages/game/src/scene/Scene.tsx",
+      "previousSha256": "c656fcbb5cdc79e9acc64976515772617036fe0e18e088170c80cd34ad6c4707",
+      "currentSha256": "c00e91080bc9b42e85da783626a95febcd81e1b2e3190777baf02f0143a400c2"
+    },
+    {
+      "path": "packages/game/src/scene/sceneRootRuntime.ts",
+      "previousSha256": "4eea0c8b76aac543517eb24a3ee6e941fdd9f8e6bf3ed839f9bfb8530f6f46dd",
+      "currentSha256": "c22b36c6f0603c7b43928bf293b43633ae26357015f75cbe34c73b79c1c8723d"
+    }
+  ],
+  "allOtherSelectionFieldsEqual": true,
+  "images": [
+    {
+      "path": "docs/autumn-arrangements-2026/evening-seat-lateAutumn-overcast-low-static.png",
+      "previousSha256": "caf55b5bdde9626bfac176fc1b6e80812bb0b79436c349bbf56a8a99cdae7b4f",
+      "currentSha256": "caf55b5bdde9626bfac176fc1b6e80812bb0b79436c349bbf56a8a99cdae7b4f",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": false
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/evening-seat-lateAutumn-overcast.png",
+      "previousSha256": "017ec3e3154c9299391fbae51334537dad2dd9ca17eee77be90439b79741edfb",
+      "currentSha256": "017ec3e3154c9299391fbae51334537dad2dd9ca17eee77be90439b79741edfb",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/evening-seat-midAutumn-night-low-static.png",
+      "previousSha256": "b954540ab19f612119e9dc42953406c053747f23ebc92ed2d3c7bbe72caf1d10",
+      "currentSha256": "b954540ab19f612119e9dc42953406c053747f23ebc92ed2d3c7bbe72caf1d10",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": false
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/evening-seat-earlyAutumn-overcast.png",
+      "previousSha256": "ea60a817759e238bf52135cd4373b7b95d2f35e354db890f33371df190f7e0a9",
+      "currentSha256": "ea60a817759e238bf52135cd4373b7b95d2f35e354db890f33371df190f7e0a9",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/woodland-path-lateAutumn-night.png",
+      "previousSha256": "347d47412807ad75e733839a785727ce727575360737cfe8bd5b55948b765ab3",
+      "currentSha256": "347d47412807ad75e733839a785727ce727575360737cfe8bd5b55948b765ab3",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/woodland-path-midAutumn-day.png",
+      "previousSha256": "5092ecbb6fb031e28190ac56ceff5e387d0d62cc7094cd9698e69ffb838569bc",
+      "currentSha256": "5092ecbb6fb031e28190ac56ceff5e387d0d62cc7094cd9698e69ffb838569bc",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/harvest-corner-midAutumn-overcast-low-static.png",
+      "previousSha256": "08c4856165f53ad33c407d9723d037950fce758395b7fa6f01944fe2a0727a65",
+      "currentSha256": "08c4856165f53ad33c407d9723d037950fce758395b7fa6f01944fe2a0727a65",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": false
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/evening-seat-midAutumn-day-low-static.png",
+      "previousSha256": "b2b11be47bd02d4cd75d5cce729cfdfacb6320f3650b1bda26bde2d4de81fd65",
+      "currentSha256": "b2b11be47bd02d4cd75d5cce729cfdfacb6320f3650b1bda26bde2d4de81fd65",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": false
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/evening-seat-lateAutumn-dusk-low-static.png",
+      "previousSha256": "dbfd259118a9c52d0486041c12075ca9d83ba849d0a62a8f3f58b3fa7d288fd1",
+      "currentSha256": "dbfd259118a9c52d0486041c12075ca9d83ba849d0a62a8f3f58b3fa7d288fd1",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": false
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/harvest-corner-earlyAutumn-night-low-static.png",
+      "previousSha256": "b702815740f10e2551c3e81435c4862f27673c8ea627936173809f44dce50d5f",
+      "currentSha256": "b702815740f10e2551c3e81435c4862f27673c8ea627936173809f44dce50d5f",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": false
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/harvest-corner-midAutumn-dusk.png",
+      "previousSha256": "1f23368caa3e2be2523cc1ae30333a5fbaf141407040d13f58dc9aa24d161746",
+      "currentSha256": "1f23368caa3e2be2523cc1ae30333a5fbaf141407040d13f58dc9aa24d161746",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/evening-seat-midAutumn-overcast.png",
+      "previousSha256": "89118d898006304f929f0f7fba969f62e32315f970bbebc920f017f7bb67fd38",
+      "currentSha256": "89118d898006304f929f0f7fba969f62e32315f970bbebc920f017f7bb67fd38",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/woodland-path-lateAutumn-day-low-static.png",
+      "previousSha256": "5160c16415925725036fb1313f04b447c510bda832e3ee930c80097176d958f9",
+      "currentSha256": "5160c16415925725036fb1313f04b447c510bda832e3ee930c80097176d958f9",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": false
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/harvest-corner-lateAutumn-overcast.png",
+      "previousSha256": "69e89fad3a163bd4c673b4ebb5c1a8f3f6fff5e3fac62d62791f80dcf91057ba",
+      "currentSha256": "69e89fad3a163bd4c673b4ebb5c1a8f3f6fff5e3fac62d62791f80dcf91057ba",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/harvest-corner-midAutumn-day.png",
+      "previousSha256": "2ecf8e1f9591e28c1ce7fa8c16e7c585efcc93b93c0cb3482a9f5821453d1ad2",
+      "currentSha256": "2ecf8e1f9591e28c1ce7fa8c16e7c585efcc93b93c0cb3482a9f5821453d1ad2",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/harvest-corner-midAutumn-dusk-low-static.png",
+      "previousSha256": "e561bc2d973b1439b11276460792830896c58eadf31b36f5614aa49e27ce029a",
+      "currentSha256": "e561bc2d973b1439b11276460792830896c58eadf31b36f5614aa49e27ce029a",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": false
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/evening-seat-midAutumn-day.png",
+      "previousSha256": "544190e7147b40fc9ac028be1035dccbe804a279681e9d5917818d5c9245d259",
+      "currentSha256": "544190e7147b40fc9ac028be1035dccbe804a279681e9d5917818d5c9245d259",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/evening-seat-earlyAutumn-day.png",
+      "previousSha256": "43b156f9ea2aa8937cae96fe9d312dd3add95b2697096973249b2c7651c16cc5",
+      "currentSha256": "43b156f9ea2aa8937cae96fe9d312dd3add95b2697096973249b2c7651c16cc5",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/evening-seat-earlyAutumn-night-low-static.png",
+      "previousSha256": "8e951b770ab5e3ddeb9e0e760ec3154d8d9b908cbc99c3b4754dbce4e10a948c",
+      "currentSha256": "8e951b770ab5e3ddeb9e0e760ec3154d8d9b908cbc99c3b4754dbce4e10a948c",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": false
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/harvest-corner-earlyAutumn-night.png",
+      "previousSha256": "f929f780ea9478f4a44c70245f2214f44d538cca9dbe7cbae5e845650ab6f735",
+      "currentSha256": "f929f780ea9478f4a44c70245f2214f44d538cca9dbe7cbae5e845650ab6f735",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/evening-seat-lateAutumn-day.png",
+      "previousSha256": "c49f1efb9db9c0f1c8378cec20c222dd64ccf9202dbb1e517258b9330ad81e1b",
+      "currentSha256": "c49f1efb9db9c0f1c8378cec20c222dd64ccf9202dbb1e517258b9330ad81e1b",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/evening-seat-midAutumn-dusk-low-static.png",
+      "previousSha256": "005c898fd9956fc1ce7d8658cac9017512da863f342ddf2b5bd3ffb58401e1b9",
+      "currentSha256": "005c898fd9956fc1ce7d8658cac9017512da863f342ddf2b5bd3ffb58401e1b9",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": false
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/woodland-path-lateAutumn-night-low-static.png",
+      "previousSha256": "e3a184db1125b0c834187b4f11a819f5d6475ae9efc7fe60c3dd3e4f4f5281ff",
+      "currentSha256": "e3a184db1125b0c834187b4f11a819f5d6475ae9efc7fe60c3dd3e4f4f5281ff",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": false
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/woodland-path-earlyAutumn-overcast.png",
+      "previousSha256": "6d92ef7cbfd80b603dca6a6833b909da8d4f98c582318a31c0105fc8bc250035",
+      "currentSha256": "6d92ef7cbfd80b603dca6a6833b909da8d4f98c582318a31c0105fc8bc250035",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/woodland-path-earlyAutumn-night-low-static.png",
+      "previousSha256": "432c696bd0ee9ddc3c66e6dafbe8e66c8e59afa38a37b24de692ec2e0a1154c0",
+      "currentSha256": "432c696bd0ee9ddc3c66e6dafbe8e66c8e59afa38a37b24de692ec2e0a1154c0",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": false
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/woodland-path-earlyAutumn-day-low-static.png",
+      "previousSha256": "a6ab1bfc8784fdad0de824fe3050bb6d09e9cc4903c07adbf4166ebb27e219f0",
+      "currentSha256": "a6ab1bfc8784fdad0de824fe3050bb6d09e9cc4903c07adbf4166ebb27e219f0",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": false
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/harvest-corner-lateAutumn-night.png",
+      "previousSha256": "43e39e7f5041c61fac0b862ee27cbee5438f40233da09bec97cc953936e87351",
+      "currentSha256": "43e39e7f5041c61fac0b862ee27cbee5438f40233da09bec97cc953936e87351",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/woodland-path-earlyAutumn-dusk-low-static.png",
+      "previousSha256": "f9c3f43c1e721f73c3bea424d85950710eea87759df2c76c1a355aa100527fd7",
+      "currentSha256": "f9c3f43c1e721f73c3bea424d85950710eea87759df2c76c1a355aa100527fd7",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": false
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/harvest-corner-midAutumn-overcast.png",
+      "previousSha256": "a32706c3bbff07953cc94c0298ccf54028b1cacb4f0ee300930acbca7c682ec4",
+      "currentSha256": "a32706c3bbff07953cc94c0298ccf54028b1cacb4f0ee300930acbca7c682ec4",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/harvest-corner-earlyAutumn-day.png",
+      "previousSha256": "ed1b245678a3613a093026ecdfadd3a416a3332972f926ab9aa3a552bb95c2e2",
+      "currentSha256": "ed1b245678a3613a093026ecdfadd3a416a3332972f926ab9aa3a552bb95c2e2",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/harvest-corner-earlyAutumn-day-low-static.png",
+      "previousSha256": "61084f804af93c1aed8fdc3ccbb1c6b85e021f1047d39323aaf241a9e4651a91",
+      "currentSha256": "61084f804af93c1aed8fdc3ccbb1c6b85e021f1047d39323aaf241a9e4651a91",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": false
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/evening-seat-earlyAutumn-dusk.png",
+      "previousSha256": "6d7207f06100241dda82138b669a147841a48c7189966aed72ac401777be32d6",
+      "currentSha256": "6d7207f06100241dda82138b669a147841a48c7189966aed72ac401777be32d6",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/woodland-path-earlyAutumn-day.png",
+      "previousSha256": "2f21c98172611d2e3d37d71d4fd5c5c7685c044239f406a271a09d5e775c5e55",
+      "currentSha256": "2f21c98172611d2e3d37d71d4fd5c5c7685c044239f406a271a09d5e775c5e55",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/evening-seat-midAutumn-overcast-low-static.png",
+      "previousSha256": "07ceb0fe75091efbc249c6df5b29b9595da579c1b3b0787e3f57078e9a07ed1f",
+      "currentSha256": "07ceb0fe75091efbc249c6df5b29b9595da579c1b3b0787e3f57078e9a07ed1f",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": false
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/harvest-corner-earlyAutumn-overcast.png",
+      "previousSha256": "688b44bbca778030fb819936b74fafeaa031d78346537b7f72607813a2c63e45",
+      "currentSha256": "688b44bbca778030fb819936b74fafeaa031d78346537b7f72607813a2c63e45",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/woodland-path-midAutumn-dusk.png",
+      "previousSha256": "6a77816d50d289a6d7a46c3151cef1f27f06bd7118c496c6ce3454e774acef3e",
+      "currentSha256": "6a77816d50d289a6d7a46c3151cef1f27f06bd7118c496c6ce3454e774acef3e",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/woodland-path-midAutumn-overcast.png",
+      "previousSha256": "63bf76c7851c4295956b4b0053b68b7ef55c24f9785024d226b50fdf90de2cfd",
+      "currentSha256": "63bf76c7851c4295956b4b0053b68b7ef55c24f9785024d226b50fdf90de2cfd",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/harvest-corner-lateAutumn-overcast-low-static.png",
+      "previousSha256": "a8f1738cdbb332dc45ed7d491ed0003ba8ac62ae2bafbc4b981d6ad128c5fee9",
+      "currentSha256": "a8f1738cdbb332dc45ed7d491ed0003ba8ac62ae2bafbc4b981d6ad128c5fee9",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": false
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/evening-seat-midAutumn-night.png",
+      "previousSha256": "2f26c098f5709986eebc4ee2a9cb6c5e1df7a118fc42ea09a9ff7cd41c23b64d",
+      "currentSha256": "2f26c098f5709986eebc4ee2a9cb6c5e1df7a118fc42ea09a9ff7cd41c23b64d",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/woodland-path-lateAutumn-overcast-low-static.png",
+      "previousSha256": "8684c06d08fe0eb753ade1df16d3d61bbb1917b0a6d66237d79798af0f34c907",
+      "currentSha256": "8684c06d08fe0eb753ade1df16d3d61bbb1917b0a6d66237d79798af0f34c907",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": false
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/evening-seat-lateAutumn-dusk.png",
+      "previousSha256": "66bcc04184912ab5cfb7b042f5f63f53e28c2028d209d35307141a1b298b8da3",
+      "currentSha256": "66bcc04184912ab5cfb7b042f5f63f53e28c2028d209d35307141a1b298b8da3",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/evening-seat-earlyAutumn-day-low-static.png",
+      "previousSha256": "535e13f84a9096bd59eeaf4340b1c6861996eaca563335a4b4979f87d09c98bc",
+      "currentSha256": "535e13f84a9096bd59eeaf4340b1c6861996eaca563335a4b4979f87d09c98bc",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": false
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/evening-seat-lateAutumn-day-low-static.png",
+      "previousSha256": "2a7bc2d4218ca9341886b5fa7c9ed9baa12d319db92fc5eac672867ba03167f9",
+      "currentSha256": "2a7bc2d4218ca9341886b5fa7c9ed9baa12d319db92fc5eac672867ba03167f9",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": false
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/woodland-path-midAutumn-overcast-low-static.png",
+      "previousSha256": "3a943ff5c8688e2e9ee890f52a35b97fe06cef169123470613befcf59184bcaa",
+      "currentSha256": "3a943ff5c8688e2e9ee890f52a35b97fe06cef169123470613befcf59184bcaa",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": false
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/harvest-corner-midAutumn-day-low-static.png",
+      "previousSha256": "fa52c0c0c49e9bf105e6dc164336086b9027adda12e8fe1084a8d90ef29ae4e9",
+      "currentSha256": "fa52c0c0c49e9bf105e6dc164336086b9027adda12e8fe1084a8d90ef29ae4e9",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": false
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/evening-seat-earlyAutumn-night.png",
+      "previousSha256": "e3eccaa634461ae5f76792283c481e253ba43b964389c26fc7c71a6cb4942cd0",
+      "currentSha256": "e3eccaa634461ae5f76792283c481e253ba43b964389c26fc7c71a6cb4942cd0",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/harvest-corner-lateAutumn-night-low-static.png",
+      "previousSha256": "c6e73c19919f06c234f16198f07dca3242c315c037479a8f984e01f6de7c45c1",
+      "currentSha256": "c6e73c19919f06c234f16198f07dca3242c315c037479a8f984e01f6de7c45c1",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": false
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/woodland-path-midAutumn-day-low-static.png",
+      "previousSha256": "38e1ceb3bbfead9aae7db825746476594dd0cef4f115108ba1a487180bf2219f",
+      "currentSha256": "38e1ceb3bbfead9aae7db825746476594dd0cef4f115108ba1a487180bf2219f",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": false
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/harvest-corner-lateAutumn-day.png",
+      "previousSha256": "0707e8924fadd114ba01039752ab9d2c45411770f4f24c75396ebcde56ffbd54",
+      "currentSha256": "0707e8924fadd114ba01039752ab9d2c45411770f4f24c75396ebcde56ffbd54",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/woodland-path-earlyAutumn-night.png",
+      "previousSha256": "46e17dff0e24c57768977144f8c6c1926331694c8b40102b5697311c855d3159",
+      "currentSha256": "46e17dff0e24c57768977144f8c6c1926331694c8b40102b5697311c855d3159",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/woodland-path-earlyAutumn-dusk.png",
+      "previousSha256": "6b1a67b078d711d0f758aabee18ee26b7270e09f91c5ec542f3a45ba690617a5",
+      "currentSha256": "6b1a67b078d711d0f758aabee18ee26b7270e09f91c5ec542f3a45ba690617a5",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/harvest-corner-earlyAutumn-dusk-low-static.png",
+      "previousSha256": "0807419c9f9f7aa9d3c7921a29501ae42ecf704c4112ae6e0bd22f8f3681900d",
+      "currentSha256": "0807419c9f9f7aa9d3c7921a29501ae42ecf704c4112ae6e0bd22f8f3681900d",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": false
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/harvest-corner-lateAutumn-dusk.png",
+      "previousSha256": "9a5b49da52704e4700b92eda6efbc4ee82f52f1ac954ba0abb71e72b6873c778",
+      "currentSha256": "9a5b49da52704e4700b92eda6efbc4ee82f52f1ac954ba0abb71e72b6873c778",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/evening-seat-lateAutumn-night-low-static.png",
+      "previousSha256": "f9a8f461e0f659fd1f14a1c179bd132fd79b0778c2022280c8b2081d8b52ec21",
+      "currentSha256": "f9a8f461e0f659fd1f14a1c179bd132fd79b0778c2022280c8b2081d8b52ec21",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": false
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/harvest-corner-lateAutumn-day-low-static.png",
+      "previousSha256": "5f57d7deeef6821648f89eaf31daec935c47d9e285cfc3093162bd291ebc6b24",
+      "currentSha256": "5f57d7deeef6821648f89eaf31daec935c47d9e285cfc3093162bd291ebc6b24",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": false
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/woodland-path-midAutumn-night-low-static.png",
+      "previousSha256": "bdff404e8d6bb406caa5ce3cd0705ca2ee18c7f7358b65f6fbdc884ac0c214b4",
+      "currentSha256": "bdff404e8d6bb406caa5ce3cd0705ca2ee18c7f7358b65f6fbdc884ac0c214b4",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": false
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/woodland-path-lateAutumn-dusk.png",
+      "previousSha256": "2c17d37b2b447c99c8ace2b0aa644ba7bb5529cd839f5b706fe7a3f453ee9db4",
+      "currentSha256": "2c17d37b2b447c99c8ace2b0aa644ba7bb5529cd839f5b706fe7a3f453ee9db4",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/woodland-path-lateAutumn-overcast.png",
+      "previousSha256": "0edc7d4728c21fbeaec36a806e2f0f05c3b3014fd0f0ff9d93c58c8da8613d2a",
+      "currentSha256": "0edc7d4728c21fbeaec36a806e2f0f05c3b3014fd0f0ff9d93c58c8da8613d2a",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/harvest-corner-earlyAutumn-overcast-low-static.png",
+      "previousSha256": "d5c75e87a01fceb78ef4e6f9b88caa7bbc6a199678601d2a5cbf0278115fb697",
+      "currentSha256": "d5c75e87a01fceb78ef4e6f9b88caa7bbc6a199678601d2a5cbf0278115fb697",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": false
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/evening-seat-earlyAutumn-dusk-low-static.png",
+      "previousSha256": "dcb309139760215c7fc90e9294e69d1b7d131ddb2eabe7a8189a5a7e0880dee4",
+      "currentSha256": "dcb309139760215c7fc90e9294e69d1b7d131ddb2eabe7a8189a5a7e0880dee4",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": false
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/evening-seat-lateAutumn-night.png",
+      "previousSha256": "1ab74d7713374584c1b4583e94bcfa33543f69d59ca6323e7499ff5ddb72caa2",
+      "currentSha256": "1ab74d7713374584c1b4583e94bcfa33543f69d59ca6323e7499ff5ddb72caa2",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/woodland-path-midAutumn-dusk-low-static.png",
+      "previousSha256": "45e38a55a567e1b464cc2828d68f1190fb8879b3b1f97ab8818551883164f46e",
+      "currentSha256": "45e38a55a567e1b464cc2828d68f1190fb8879b3b1f97ab8818551883164f46e",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": false
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/woodland-path-lateAutumn-day.png",
+      "previousSha256": "0b01cdf926a0329a4dd7250c451344ad96d498e9ed890fb3cd37ab1eb345a763",
+      "currentSha256": "0b01cdf926a0329a4dd7250c451344ad96d498e9ed890fb3cd37ab1eb345a763",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/woodland-path-midAutumn-night.png",
+      "previousSha256": "8505695f760ec2a7fb3c03da51d0a543009e593a7e959e7e0debf1a7442588c2",
+      "currentSha256": "8505695f760ec2a7fb3c03da51d0a543009e593a7e959e7e0debf1a7442588c2",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/woodland-path-lateAutumn-dusk-low-static.png",
+      "previousSha256": "332bc663601bcd5ca8ecb6cf4b1a4fc127334fd0a6cbecee48d0f658a7fbbdd7",
+      "currentSha256": "332bc663601bcd5ca8ecb6cf4b1a4fc127334fd0a6cbecee48d0f658a7fbbdd7",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": false
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/harvest-corner-midAutumn-night.png",
+      "previousSha256": "d570def073ec3b9c4b38068219b9437b0aed90ab63cca547dfb9161d4e5d719f",
+      "currentSha256": "d570def073ec3b9c4b38068219b9437b0aed90ab63cca547dfb9161d4e5d719f",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/harvest-corner-earlyAutumn-dusk.png",
+      "previousSha256": "f46deb34a8e5d82dddabe4bad94b63fad4adc3c2c601cab70e4e8a2cba1a39b9",
+      "currentSha256": "f46deb34a8e5d82dddabe4bad94b63fad4adc3c2c601cab70e4e8a2cba1a39b9",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/harvest-corner-lateAutumn-dusk-low-static.png",
+      "previousSha256": "a09f5c72f7ce12ddcd4a3bfb9ee271c5b7b78c55f28b92ba37caa2d2a3f3798c",
+      "currentSha256": "a09f5c72f7ce12ddcd4a3bfb9ee271c5b7b78c55f28b92ba37caa2d2a3f3798c",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": false
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/evening-seat-earlyAutumn-overcast-low-static.png",
+      "previousSha256": "a849496e06f0c46f26b4675dd6bc37525d29f68da677cd087d41d86ed7de5136",
+      "currentSha256": "a849496e06f0c46f26b4675dd6bc37525d29f68da677cd087d41d86ed7de5136",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": false
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/woodland-path-earlyAutumn-overcast-low-static.png",
+      "previousSha256": "274e6a210eeadc32ee1aed2496a5651187e12fea678230ee27933ff2796cbd23",
+      "currentSha256": "274e6a210eeadc32ee1aed2496a5651187e12fea678230ee27933ff2796cbd23",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": false
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/harvest-corner-midAutumn-night-low-static.png",
+      "previousSha256": "d8774a210d2476a3ecfd913a9b02a6348f8a8aaa0ee5b578a4918a8d52c388bb",
+      "currentSha256": "d8774a210d2476a3ecfd913a9b02a6348f8a8aaa0ee5b578a4918a8d52c388bb",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": false
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/evening-seat-midAutumn-dusk.png",
+      "previousSha256": "078af797b29138d56f171ec51cf5d5e58a1c1c3cd4d3fdb5a35bded094c98516",
+      "currentSha256": "078af797b29138d56f171ec51cf5d5e58a1c1c3cd4d3fdb5a35bded094c98516",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "apps/garden/public/assets/arrangements/harvest-corner.png",
+      "previousSha256": "ed1b245678a3613a093026ecdfadd3a416a3332972f926ab9aa3a552bb95c2e2",
+      "currentSha256": "ed1b245678a3613a093026ecdfadd3a416a3332972f926ab9aa3a552bb95c2e2",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "apps/garden/public/assets/arrangements/evening-seat.png",
+      "previousSha256": "e3eccaa634461ae5f76792283c481e253ba43b964389c26fc7c71a6cb4942cd0",
+      "currentSha256": "e3eccaa634461ae5f76792283c481e253ba43b964389c26fc7c71a6cb4942cd0",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    },
+    {
+      "path": "apps/garden/public/assets/arrangements/woodland-path.png",
+      "previousSha256": "2f21c98172611d2e3d37d71d4fd5c5c7685c044239f406a271a09d5e775c5e55",
+      "currentSha256": "2f21c98172611d2e3d37d71d4fd5c5c7685c044239f406a271a09d5e775c5e55",
+      "byteIdentical": true,
+      "decodedPixelIdentical": true,
+      "recaptured": true
+    }
+  ],
+  "records": [
+    {
+      "id": "harvest-corner",
+      "path": "docs/autumn-arrangements-2026/harvest-corner.json",
+      "previousSha256": "730033d06faeafeecd4a1a298f247dc285d5c722f996ad96e71120fb1e9ac0e1",
+      "currentSha256": "a985c23a99b1a2b136dbffb876b4a0560c5646af177ed605d888d0fa84f95318",
+      "previousSource": {
+        "commit": "86b6f4c438d3970f00e4229f4b40a82dd64b60fe",
+        "tree": "6237802889455861a85a30d9369b31ac74d13c45",
+        "status": ""
+      },
+      "source": {
+        "commit": "146945bda31d46393100e3d6a81fe284fcb28f6a",
+        "tree": "4a9fbbef6ec0c625b4f8727a7805e8ff2cee7404",
+        "status": ""
+      },
+      "nonSourceEqual": true
+    },
+    {
+      "id": "woodland-path",
+      "path": "docs/autumn-arrangements-2026/woodland-path.json",
+      "previousSha256": "0936ee6dd67a9cd6018abb4ed38317f2e101a1294967c8f5fa366de268285403",
+      "currentSha256": "1e8e3738d61decaddb76525f963cfa110230f9abd2c90437f680cdc1cbadfd57",
+      "previousSource": {
+        "commit": "86b6f4c438d3970f00e4229f4b40a82dd64b60fe",
+        "tree": "6237802889455861a85a30d9369b31ac74d13c45",
+        "status": ""
+      },
+      "source": {
+        "commit": "146945bda31d46393100e3d6a81fe284fcb28f6a",
+        "tree": "4a9fbbef6ec0c625b4f8727a7805e8ff2cee7404",
+        "status": ""
+      },
+      "nonSourceEqual": true
+    },
+    {
+      "id": "evening-seat",
+      "path": "docs/autumn-arrangements-2026/evening-seat.json",
+      "previousSha256": "e4bd361c00f7972f8c47c39b18f75387da9326bd975f88722c7011d4fc719e8b",
+      "currentSha256": "18d9e35fff93d38f792bcfc40710a8a4a43c485fcdb00e74f5f1876df8a31e31",
+      "previousSource": {
+        "commit": "86b6f4c438d3970f00e4229f4b40a82dd64b60fe",
+        "tree": "6237802889455861a85a30d9369b31ac74d13c45",
+        "status": ""
+      },
+      "source": {
+        "commit": "146945bda31d46393100e3d6a81fe284fcb28f6a",
+        "tree": "4a9fbbef6ec0c625b4f8727a7805e8ff2cee7404",
+        "status": ""
+      },
+      "nonSourceEqual": true
+    }
+  ]
+}

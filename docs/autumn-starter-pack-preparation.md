@@ -56,6 +56,14 @@ selected Scene/shadow helper pins; `pre-matrix-profiling/` preserves the previou
 manifest and capture records. This refresh changes no image, layout, catalogue
 entry or purchased immutable version.
 
+Passive-frame probe validation repeated the three desktop/high captures from
+clean `146945bda31d46393100e3d6a81fe284fcb28f6a`. All 39 regenerated images
+and non-source JSON fields again match exactly, and the public previews were
+visually inspected. `passive-frame-recapture.json` records the two changed
+selected renderer inputs and the matching publication source-pin updates.
+It pins the exact preceding records to immutable commit `ee7cc45b7` and their
+SHA256s; the private task archive also retains their verified original bytes.
+
 The read-only public export observed **2026-10-02T18:28:09Z**, SHA256 `8c4fff1ebe0a5ac9f90f9ba52436d263c70b16f9cb5a85f1cc018b4674c88cde`, contained 144 rows. It was a CDN-cached public response (`X-Vercel-Cache: HIT`, `Age: 108`, `Cache-Control: public, max-age=3600`), not a direct database audit. Among the twelve included models, only StoneMedium (140, 5 sunflowers) and EnamelGardenLamp (758, 80 sunflowers) were present. Preparation is blocked for all three products by the other ten missing models. These observations are dated evidence, not configured production prices or IDs.
 
 Tests use an explicitly synthetic directory and published fixture versions solely inside isolated PGlite service/repository tests and browser mocks. They cover all three derived products: four-unit grants, partial exact placement, readback, independent repeat purchases, placement after catalogue withdrawal without extra charge and original-value idempotent refund. Three actual storefront card reviews cover mobile/keyboard input, precise pieces, excluded scenery, individual prices without invented savings and no automatic purchase/placement.
