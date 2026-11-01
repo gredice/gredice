@@ -5,9 +5,51 @@ import {
     isMatrixProfileReady,
     matrixProfileUrl,
     percentiles,
+    settleMatrixProfile,
     sourceMapContents,
 } from './profile-chunk-matrices.mjs';
 import { summarizeMatrixRows } from './summarize-chunk-matrices.mjs';
+
+test('setup refreshes stale renderer statistics in an idle Low scene', async () => {
+    const names = ['window', 'requestAnimationFrame', '__grediceGameProfile'];
+    const previous = names.map((name) => globalThis[name]);
+    try {
+        globalThis.__grediceGameProfile = {
+            gameCameraSnapshot: {},
+            rendererStatsReceiptCount: 1,
+            sceneGeometryPending: 2,
+            shadowsEnabled: false,
+            chunkCompiler: { pendingJobs: 0, matrixPreparationInstances: 128 },
+            renderPackets: { packetFallbackMeshes: 0 },
+        };
+        const events = new EventTarget();
+        globalThis.window = events;
+        globalThis.requestAnimationFrame = (callback) =>
+            setTimeout(callback, 0);
+        events.addEventListener(
+            'gredice:game-profile-render-receipt-request',
+            () => {
+                // Compilation has committed; the throttled statistics are older.
+                globalThis.__grediceGameProfile.sceneGeometryPending = 0;
+                globalThis.__grediceGameProfile.rendererStatsReceiptCount++;
+            },
+        );
+        await settleMatrixProfile(
+            {
+                evaluate: (callback, argument) => callback(argument),
+                waitForFunction: (callback, argument) =>
+                    assert(callback(argument)),
+            },
+            128,
+        );
+        assert.equal(isMatrixProfileReady(), true);
+    } finally {
+        names.forEach((name, index) => {
+            if (previous[index] === undefined) delete globalThis[name];
+            else globalThis[name] = previous[index];
+        });
+    }
+});
 
 test('edits wait for the displayed revision and reject absent preparation work', async () => {
     const names = [

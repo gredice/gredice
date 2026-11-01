@@ -213,10 +213,44 @@ async function snapshot(page) {
     });
 }
 
-async function settle(page) {
-    await page.waitForFunction(isMatrixProfileReady, undefined, {
-        timeout: 60000,
-    });
+export async function settleMatrixProfile(page, minimumPreparedInstances = 0) {
+    await page.waitForFunction(
+        () => Boolean(globalThis.__grediceGameProfile?.gameCameraSnapshot),
+        undefined,
+        {
+            timeout: 60000,
+        },
+    );
+    const deadline = Date.now() + 60000;
+    while (true) {
+        const before = await page.evaluate(() => {
+            const receipt =
+                globalThis.__grediceGameProfile?.rendererStatsReceiptCount ?? 0;
+            window.dispatchEvent(
+                new Event('gredice:game-profile-render-receipt-request'),
+            );
+            return receipt;
+        });
+        await page.waitForFunction(
+            (receipt) =>
+                globalThis.__grediceGameProfile?.rendererStatsReceiptCount >
+                receipt,
+            before,
+            { timeout: Math.max(1, deadline - Date.now()) },
+        );
+        if (
+            (await page.evaluate(isMatrixProfileReady)) &&
+            (await page.evaluate(
+                (minimum) =>
+                    globalThis.__grediceGameProfile.chunkCompiler
+                        .matrixPreparationInstances >= minimum,
+                minimumPreparedInstances,
+            ))
+        )
+            break;
+        if (Date.now() >= deadline)
+            throw new Error('Matrix profile did not settle');
+    }
     await page.evaluate(
         () =>
             new Promise((resolve) =>
@@ -409,7 +443,7 @@ export async function run(options) {
             })}\n`,
             { flag: 'wx' },
         );
-        for (const profile of options.preflight || options.smoke
+        for (const profile of options.smoke
             ? profiles.filter((p) => p.expectedQualityTier === 'high')
             : profiles)
             for (const kind of options.preflight
@@ -466,7 +500,10 @@ export async function run(options) {
                             await page.goto(url.href, {
                                 waitUntil: 'domcontentloaded',
                             });
-                            await settle(page);
+                            await settleMatrixProfile(
+                                page,
+                                kind === 'switch' ? 0 : size * size * 2,
+                            );
                             const initial = await snapshot(page);
                             if (
                                 initial.source !== subject.sourceCommit ||

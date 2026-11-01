@@ -43,7 +43,9 @@ pnpm --filter garden exec node scripts/summarize-chunk-matrices.mjs \
 
 Use a fresh output directory per attempt. A zero-command preflight verifies
 actual loaded JS/source maps, the writer hash, camera, source commit, resolved
-quality, DPR, shadows, fixed date, compiler readiness and heap-sampling protocol.
+quality, DPR, shadows, fixed date, compiler readiness and heap-sampling protocol
+across all five canonical profiles. Setup requests a fresh receipt so a fully
+idle Low scene cannot retain stale statistics from before compilation committed.
 Pass dates as `YYYY-MM-DD`; the old rejected ISO-timestamp route input is not
 accepted. Fixture query positions are plain data, not renderer Vector3 objects.
 Authenticated garden queries stay disabled; unexpected response/page errors
