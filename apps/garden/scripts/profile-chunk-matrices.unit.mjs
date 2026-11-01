@@ -408,6 +408,7 @@ test('passive edits retain the first matching Canvas receipt without requesting 
                 renderPackets: { packetFallbackMeshes: 0 },
                 rendererStatsReceiptCount: 1,
                 sceneGeometryPending: 0,
+                sceneGeometryRevision: 1,
                 sceneRootAnimations: { active: 0, pendingEvents: 0 },
                 matrixProfileCommittedSequence: 0,
                 matrixProfileDisplayedSequence: 0,
@@ -436,14 +437,15 @@ test('passive edits retain the first matching Canvas receipt without requesting 
                     matrixProfileDisplayedSequence: 1,
                 };
                 setTimeout(() => {
-                    const submit = (matrixSequence) => {
+                    const submit = (matrixSequence, revision = 1) => {
                         const frame = {
                             ...runtime,
                             rendererStatsReceiptCount: ++received + 1,
                             rendererStatsPublishedAt: performance.now(),
-                            rendererStatsFrameEpoch: {
-                                gardenId: 99996,
-                                matrixSequence,
+                            rendererStatsFrameState: {
+                                epoch: { gardenId: 99996, matrixSequence },
+                                geometry: { pending: 0, revision },
+                                animations: { active: 0, pendingEvents: 0 },
                             },
                             chunkCompiler: {
                                 ...runtime.chunkCompiler,
@@ -460,6 +462,7 @@ test('passive edits retain the first matching Canvas receipt without requesting 
                         return frame;
                     };
                     submit(0); // Incoming data alone cannot identify the displayed frame.
+                    submit(1, 0); // Matching sequence with stale geometry cannot identify a final draw.
                     const first = submit(1);
                     firstTime = first.rendererStatsPublishedAt;
                     // A later publication must not inflate latency if the timer resumes late.

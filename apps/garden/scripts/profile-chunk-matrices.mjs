@@ -410,8 +410,8 @@ export async function executePassiveMatrixEdit({
             !next ||
             next.rendererStatsReceiptCount <= before ||
             next.rendererStatsPublishedAt < startedAt ||
-            next.rendererStatsFrameEpoch?.matrixSequence !== sequence ||
-            next.rendererStatsFrameEpoch?.gardenId !==
+            next.rendererStatsFrameState?.epoch?.matrixSequence !== sequence ||
+            next.rendererStatsFrameState?.epoch?.gardenId !==
                 Number(scene?.getAttribute('data-scene-garden-id')) ||
             next.matrixProfileCommittedSequence !== sequence ||
             next.matrixProfileDisplayedSequence !== sequence ||
@@ -420,6 +420,11 @@ export async function executePassiveMatrixEdit({
             scene.getAnimations().length !== 0 ||
             next.chunkCompiler.pendingJobs !== 0 ||
             next.renderPackets.packetFallbackMeshes !== 0 ||
+            next.rendererStatsFrameState?.geometry?.pending !== 0 ||
+            next.rendererStatsFrameState?.geometry?.revision !==
+                next.sceneGeometryRevision ||
+            next.rendererStatsFrameState?.animations?.active !== 0 ||
+            next.rendererStatsFrameState?.animations?.pendingEvents !== 0 ||
             next.sceneGeometryPending !== 0 ||
             next.sceneRootAnimations?.active !== 0 ||
             next.sceneRootAnimations?.pendingEvents !== 0 ||
@@ -468,7 +473,7 @@ export async function executePassiveMatrixEdit({
                 first.chunkCompiler.matrixPreparationMs -
                 compilerBefore.matrixPreparationMs,
             preparationInstances,
-            frameEpoch: first.rendererStatsFrameEpoch,
+            frameEpoch: first.rendererStatsFrameState.epoch,
         };
     } finally {
         window.removeEventListener(

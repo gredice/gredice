@@ -95,7 +95,11 @@ improvements:
   A passive probe publishes each naturally scheduled frame during the command;
   it requests no render or camera work. Its immutable first matching receipt
   cannot be replaced by a later frame if polling resumes late. The camera was
-  fixed before timing (position −100/100/−100, target 0/0/0, zoom 100).
+  fixed before timing. The receipt binds the epoch, geometry revision and
+  animation state entering the draw to renderer counters read afterward; a
+  commit after drawing cannot relabel that frame with newer geometry.
+  The comparison pose is
+  position −100/100/−100, target 0/0/0, zoom 100.
   Garden switches retain the existing endpoint: CSS transition and compilation
   settle, followed by a fresh receipt at the restored comparison camera.
   `--edit-endpoint fenced` retains that earlier camera/render fence for edits

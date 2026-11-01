@@ -54,6 +54,14 @@ export function createRendererStatsPublisher({
                 return;
             }
             scheduled = true;
+            // Capture the state entering the draw, before after-frame commits can replace it.
+            const frameState = readFrameEpoch
+                ? {
+                      epoch: readFrameEpoch(),
+                      geometry: readSceneGeometryActivity?.(),
+                      animations: readSceneAnimations?.(),
+                  }
+                : undefined;
             enqueue(() => {
                 scheduled = false;
                 if (!active) {
@@ -80,7 +88,7 @@ export function createRendererStatsPublisher({
                     rendererStatsReceiptCount: receiptCount,
                     rendererStatsRenderFrame: gl.info.render.frame,
                     ...(readFrameEpoch
-                        ? { rendererStatsFrameEpoch: readFrameEpoch() }
+                        ? { rendererStatsFrameState: frameState }
                         : {}),
                     rendererTextures: gl.info.memory.textures,
                     rendererTriangles: gl.info.render.triangles,

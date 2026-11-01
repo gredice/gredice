@@ -142,27 +142,36 @@ test('frame epochs are Canvas owned and obsolete cleanup cannot erase a replacem
     assert.equal(first.read(), undefined);
 });
 
-test('a frame receipt records its own displayed epoch at the post-render boundary', () => {
+test('a frame receipt cannot relabel an old draw with an after-frame commit', () => {
     const callbacks: Array<() => void> = [];
     const publications: Array<Record<string, unknown>> = [];
     const epoch = createRendererFrameEpoch();
+    let geometry = { pending: 1, revision: 5 };
     epoch.set({ gardenId: 1, matrixSequence: 2 });
     const publisher = createRendererStatsPublisher({
         enqueue: (callback) => callbacks.push(callback),
         publish: (metadata) => publications.push(metadata),
         readFrameEpoch: epoch.read,
+        readSceneGeometryActivity: () => geometry,
+        readSceneAnimations: () => ({ active: 0, pendingEvents: 0 }),
     });
     publisher.schedule(renderer());
     epoch.set({ gardenId: 1, matrixSequence: 3 });
+    geometry = { pending: 0, revision: 6 };
     callbacks.shift()?.();
-    assert.deepEqual(publications[0]?.rendererStatsFrameEpoch, {
-        gardenId: 1,
-        matrixSequence: 3,
+    assert.deepEqual(publications[0]?.rendererStatsFrameState, {
+        epoch: { gardenId: 1, matrixSequence: 2 },
+        geometry: { pending: 1, revision: 5 },
+        animations: { active: 0, pendingEvents: 0 },
     });
+    assert.equal(publications[0]?.sceneGeometryRevision, 6);
     const release = epoch.set({ gardenId: 2 });
     release();
     publisher.schedule(renderer());
     callbacks.shift()?.();
-    assert.ok(Object.hasOwn(publications[1] ?? {}, 'rendererStatsFrameEpoch'));
-    assert.equal(publications[1]?.rendererStatsFrameEpoch, undefined);
+    assert.deepEqual(publications[1]?.rendererStatsFrameState, {
+        epoch: undefined,
+        geometry: { pending: 0, revision: 6 },
+        animations: { active: 0, pendingEvents: 0 },
+    });
 });

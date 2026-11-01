@@ -568,7 +568,11 @@ export type GameProfileMetadata = {
     rendererStatsPublishedAt?: number;
     rendererStatsReceiptCount?: number;
     rendererStatsRenderFrame?: number;
-    rendererStatsFrameEpoch?: { gardenId?: number; matrixSequence?: number };
+    rendererStatsFrameState?: {
+        epoch?: { gardenId?: number; matrixSequence?: number };
+        geometry?: { pending: number; revision: number };
+        animations?: { active: number; pendingEvents: number };
+    };
     rendererTextures?: number;
     rendererTriangles?: number;
     sceneRootAnimations?: { active: number; pendingEvents: number };
