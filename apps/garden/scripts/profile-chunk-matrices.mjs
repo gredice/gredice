@@ -171,6 +171,10 @@ async function snapshot(page) {
                 ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL)
                 : null,
             browserDpr: devicePixelRatio,
+            navigatorMetrics: {
+                deviceMemory: navigator.deviceMemory ?? null,
+                hardwareConcurrency: navigator.hardwareConcurrency,
+            },
             sceneSeconds: p?.runtimeFrameLoop?.sceneTimeSeconds,
             quality: p?.qualityTier,
             dpr: p?.dprCap,
@@ -508,6 +512,13 @@ export async function run(options) {
                             if (
                                 initial.source !== subject.sourceCommit ||
                                 initial.sourceDirty !== 'false' ||
+                                Object.entries(
+                                    profile.navigatorMetrics ?? {},
+                                ).some(
+                                    ([name, value]) =>
+                                        initial.navigatorMetrics[name] !==
+                                        value,
+                                ) ||
                                 initial.browserDpr !== 2 ||
                                 initial.sceneSeconds !== 43200 ||
                                 !/ANGLE.*Metal/.test(initial.renderer ?? '') ||
@@ -596,7 +607,7 @@ export async function run(options) {
                                 await writeFile(
                                     resolve(
                                         outDir,
-                                        `preflight-${subject.label}.json`,
+                                        `preflight-${subject.label}-${profile.name}.json`,
                                     ),
                                     JSON.stringify(
                                         {
@@ -612,11 +623,11 @@ export async function run(options) {
                                 await page.screenshot({
                                     path: resolve(
                                         outDir,
-                                        `preflight-${subject.label}.png`,
+                                        `preflight-${subject.label}-${profile.name}.png`,
                                     ),
                                 });
                                 console.log(
-                                    `Preflight ${subject.label}: verified loaded source, fixture, compiler, camera and sampling protocol`,
+                                    `Preflight ${subject.label} ${profile.name}: verified loaded source, fixture, compiler, camera and sampling protocol`,
                                 );
                                 continue;
                             }
