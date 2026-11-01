@@ -61,7 +61,7 @@
         "@gredice/storage": "workspace:*",
         "@gredice/stripe": "workspace:*",
         "@gredice/ui": "workspace:*",
-        "@mdxeditor/editor": "4.3.3",
+        "@mdxeditor/editor": "4.3.4",
         "@playwright/experimental-ct-react": "1.62.1",
         "@playwright/test": "1.62.1",
         "@tailwindcss/postcss": "4.3.3",
