@@ -10,6 +10,8 @@
 
 // Hits and captures needed before a window is judged.
 export const staticOpaqueSceneCacheBenefitWindowFrames = 60;
+// Admitted windows must collect three spaced probes without restarting a burst.
+export const staticOpaqueSceneCacheBenefitEnabledWindowFrames = 120;
 // Captures that end a window early, so capture churn is caught quickly.
 export const staticOpaqueSceneCacheBenefitWindowCaptures = 8;
 // GPU samples needed per kind before caching can be admitted.
@@ -196,8 +198,9 @@ export function shouldProbeStaticOpaqueSceneCacheLive(
         return false;
     }
     const interval =
+        state.status === 'probing' &&
         state.window.liveGpuMs.length <
-        staticOpaqueSceneCacheBenefitMinimumGpuSamples
+            staticOpaqueSceneCacheBenefitMinimumGpuSamples
             ? staticOpaqueSceneCacheBenefitInitialProbeInterval
             : staticOpaqueSceneCacheBenefitProbeInterval;
     return state.hitsSinceProbe >= interval;
@@ -234,7 +237,9 @@ export function recordStaticOpaqueSceneCacheBenefitGpuSample(
         window: {
             ...state.window,
             [key]: [...state.window[key], elapsedMs].slice(
-                -staticOpaqueSceneCacheBenefitWindowFrames,
+                -(state.status === 'enabled'
+                    ? staticOpaqueSceneCacheBenefitEnabledWindowFrames
+                    : staticOpaqueSceneCacheBenefitWindowFrames),
             ),
         },
     };
@@ -310,8 +315,12 @@ export function recordStaticOpaqueSceneCacheBenefitFrame(
         window,
     };
     const frames = window.hits + window.captures;
+    const requiredFrames =
+        state.status === 'enabled'
+            ? staticOpaqueSceneCacheBenefitEnabledWindowFrames
+            : staticOpaqueSceneCacheBenefitWindowFrames;
     if (
-        frames < staticOpaqueSceneCacheBenefitWindowFrames &&
+        frames < requiredFrames &&
         window.captures < staticOpaqueSceneCacheBenefitWindowCaptures
     ) {
         return next;

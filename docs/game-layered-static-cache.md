@@ -92,13 +92,17 @@ for the garden avatar. Each frame checks these gates in order:
    The target estimate includes resolved RGBA8 color and cloud response, D24
    depth, and 8 bytes per pixel for each MSAA sample. A drawing buffer above
    the budget reports `target-budget` and keeps 1×1 targets.
-3. **Benefit**: `staticOpaqueSceneCacheBenefit.ts` judges windows of 60 hits
-   and captures, or ends a window early after 8 captures:
+3. **Benefit**: `staticOpaqueSceneCacheBenefit.ts` judges an initial window of
+   60 hits and captures, then 120-hit admitted windows, or ends a window early
+   after 8 captures:
    - **Measured GPU time.** Used when `EXT_disjoint_timer_query_webgl2` is
      available and no other owner holds the only timer query. Adaptive High
      and the profiler's external timer both hold it. Capture and hit frames
-     are timed. Every 30th consecutive hit renders live as a probe, and the
-     first probe comes after 4 hits. The window keeps the cache only when
+     are timed. Initial admission probes after 4 hits until three live samples
+     arrive. Admitted caches probe every 30 hits, including across window
+     boundaries. Their longer bounded window collects three spaced live samples
+     without repeating the initial probe burst and inflating the P95 tail.
+     The window keeps the cache only when
      `hits × (live − hit) − captures × (capture − live)` is positive.
    - **Submitted work diagnostic.** It estimates static work from submissions,
      triangles, and a full-screen shading term. Negative work can reject capture
@@ -112,7 +116,7 @@ for the garden avatar. Each frame checks these gates in order:
    decision. Scene changes and disjoint results clear GPU evidence and its
    matching frame counts without extending the probe. The net GPU rate is per
    cached frame in that unchanged scene; paired timing also includes live probes.
-   Sample arrays are bounded to the 60-frame window. Unsupported render paths
+   Sample arrays are bounded to their 60- or 120-frame window. Unsupported render paths
    and the diagnostic legacy path retain 1×1 targets.
 
    A losing window disables the cache with `low-benefit` and shrinks its targets
@@ -186,6 +190,10 @@ Every invocation also writes a uniquely named `.runs.jsonl`
 checkpoint file before sampling and appends each completed run outside its timed
 window. Later setup failures preserve earlier raw evidence. Checkpoints are
 partial evidence, not a passing acceptance report.
+
+Fixed-time scenes seed each snow field independently from their fixed scene time.
+Particle capacity, density, motion and normal live-scene randomness are unchanged;
+paired captures compare identical flakes rather than unrelated random layouts.
 
 The supplemental profiler observes the cache's own render-pass queries without
 claiming the WebGL query slot. Its explicit `cache-owned-render-pass-v1` mode

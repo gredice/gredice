@@ -13,6 +13,7 @@ import {
     type StaticOpaqueSceneCacheBenefitState,
     shouldProbeStaticOpaqueSceneCacheLive,
     staticOpaqueSceneCacheBenefitCooldownMs,
+    staticOpaqueSceneCacheBenefitEnabledWindowFrames,
     staticOpaqueSceneCacheBenefitMaximumCooldownMs,
     staticOpaqueSceneCacheBenefitWindowCaptures,
     staticOpaqueSceneCacheBenefitWindowFrames,
@@ -362,5 +363,79 @@ describe('static opaque scene cache benefit gate', () => {
             false,
             'a capture restarts the hit streak',
         );
+    });
+
+    it('keeps admitted probes spaced across windows without a repeated bootstrap burst', () => {
+        let state = record(
+            withGpuSamples(createStaticOpaqueSceneCacheBenefitState(), {
+                capture: 6,
+                hit: 2,
+                live: 4,
+            }),
+            [capture, ...repeat(hit, 59)],
+        );
+        const actions: string[] = [];
+        for (let frame = 0; frame < 360; frame += 1) {
+            if (shouldProbeStaticOpaqueSceneCacheLive(state, true)) {
+                actions.push('live');
+                state = recordStaticOpaqueSceneCacheLiveProbe(state);
+                state = recordStaticOpaqueSceneCacheBenefitGpuSample(
+                    state,
+                    'live',
+                    4,
+                );
+            } else {
+                actions.push('hit');
+                state = recordStaticOpaqueSceneCacheBenefitGpuSample(
+                    state,
+                    'hit',
+                    2,
+                );
+                state = recordStaticOpaqueSceneCacheBenefitFrame(
+                    state,
+                    hit,
+                    frame,
+                );
+            }
+            assert.equal(state.status, 'enabled');
+        }
+        assert.ok(state.evaluations >= 3);
+        for (let start = 0; start + 150 <= actions.length; start += 1) {
+            assert.ok(
+                actions
+                    .slice(start, start + 150)
+                    .filter((action) => action === 'live').length <= 5,
+            );
+        }
+    });
+
+    it('bounds admitted evidence and judges it after enough spaced live probes', () => {
+        let state = record(
+            withGpuSamples(createStaticOpaqueSceneCacheBenefitState(), {
+                capture: 6,
+                hit: 2,
+                live: 4,
+            }),
+            [capture, ...repeat(hit, 59)],
+        );
+        for (let index = 0; index < 1_000; index += 1)
+            state = recordStaticOpaqueSceneCacheBenefitGpuSample(
+                state,
+                'hit',
+                2,
+            );
+        assert.equal(
+            state.window.hitGpuMs.length,
+            staticOpaqueSceneCacheBenefitEnabledWindowFrames,
+        );
+        state = withGpuSamples(state, { hit: 2, live: 4 });
+        state = record(
+            state,
+            repeat(hit, staticOpaqueSceneCacheBenefitEnabledWindowFrames - 1),
+        );
+        assert.equal(state.evaluations, 1);
+        state = record(state, [hit]);
+        assert.equal(state.evaluations, 2);
+        assert.equal(state.status, 'enabled');
     });
 });

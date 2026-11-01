@@ -1,3 +1,5 @@
+import { SeededRNG } from '../../generators/plant/lib/rng';
+
 export const maximumSnowParticleCount = 5000;
 
 type SnowParticleAttributeOptions = {
@@ -5,6 +7,7 @@ type SnowParticleAttributeOptions = {
     flakeSize: number;
     heightRange: number;
     random?: () => number;
+    seed?: number;
     size: number;
 };
 
@@ -59,9 +62,14 @@ export function createSnowParticleAttributes({
     capacity,
     flakeSize,
     heightRange,
-    random = Math.random,
+    random,
+    seed,
     size,
 }: SnowParticleAttributeOptions) {
+    const seeded =
+        seed === undefined ? undefined : new SeededRNG(`snow:${seed}`);
+    const nextRandom =
+        random ?? (seeded ? () => seeded.nextFloat() : Math.random);
     const normalizedCapacity = Math.max(0, Math.floor(capacity));
     const baseAttributes = new Float32Array(normalizedCapacity * 4);
     const motionAttributes = new Float32Array(normalizedCapacity * 4);
@@ -69,18 +77,19 @@ export function createSnowParticleAttributes({
 
     for (let index = 0; index < normalizedCapacity; index += 1) {
         const offset = index * 4;
-        baseAttributes[offset] = randomSpread(random, size);
-        baseAttributes[offset + 1] = random() * heightRange;
-        baseAttributes[offset + 2] = randomSpread(random, size);
-        baseAttributes[offset + 3] = randomBetween(random, 0.55, 1.35);
+        baseAttributes[offset] = randomSpread(nextRandom, size);
+        baseAttributes[offset + 1] = nextRandom() * heightRange;
+        baseAttributes[offset + 2] = randomSpread(nextRandom, size);
+        baseAttributes[offset + 3] = randomBetween(nextRandom, 0.55, 1.35);
 
-        motionAttributes[offset] = randomSpread(random, 0.22);
-        motionAttributes[offset + 1] = randomSpread(random, 0.16);
-        motionAttributes[offset + 2] = random() * Math.PI * 2;
-        motionAttributes[offset + 3] = randomBetween(random, 0.45, 1.25);
+        motionAttributes[offset] = randomSpread(nextRandom, 0.22);
+        motionAttributes[offset + 1] = randomSpread(nextRandom, 0.16);
+        motionAttributes[offset + 2] = nextRandom() * Math.PI * 2;
+        motionAttributes[offset + 3] = randomBetween(nextRandom, 0.45, 1.25);
 
-        shapeAttributes[offset] = flakeSize * randomBetween(random, 0.75, 1.25);
-        shapeAttributes[offset + 1] = randomBetween(random, 0.86, 1);
+        shapeAttributes[offset] =
+            flakeSize * randomBetween(nextRandom, 0.75, 1.25);
+        shapeAttributes[offset + 1] = randomBetween(nextRandom, 0.86, 1);
     }
 
     return { baseAttributes, motionAttributes, shapeAttributes };
