@@ -68,6 +68,17 @@ Each pass receives four unmeasured warmup commands before a fresh capture and
 collection boundary. `--smoke-only` runs a one-round High-quality diagnostic;
 the summarizer rejects smoke/setup reports as primary acceptance.
 
+For a complete confirmation with finer tail resolution, add
+`--latency-samples-per-round 20 --vary-latency-dispatch`. This keeps all four
+rounds, all fifteen cases, and the same acceptance limits, with eighty latency
+samples per subject/case. Stage/allocation passes retain twenty samples.
+Dispatch is delayed deterministically by 0–36 ms after an animation frame,
+outside the measured window; each receipt retains dispatch/frame/submission
+timestamps. Preserve preceding failed captures alongside any confirmation.
+The append-only journal retains full evidence; the final index streams heavy
+heap/trace windows into checksum-verified sidecars rather than retaining the
+whole capture in the collector's heap. Only complete cohorts can be summarized.
+
 Three separate passes prevent profiler costs from being called application
 improvements:
 

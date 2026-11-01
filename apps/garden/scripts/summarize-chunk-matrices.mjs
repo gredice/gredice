@@ -3,10 +3,60 @@ import { SourceMap } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import sharp from 'sharp';
+import { loadMatrixProfileEvidence } from './matrix-profile-report.mjs';
 import { percentiles } from './profile-chunk-matrices.mjs';
-import { measureStaticSceneCacheImageParity } from './profile-game-scene.mjs';
+import {
+    measureStaticSceneCacheImageParity,
+    resolveScenarios,
+} from './profile-game-scene.mjs';
 
-export function summarizeMatrixRows(rows, labels) {
+export function validateMatrixCohort(report) {
+    const latencySamplesPerRound = report.latencySamplesPerRound ?? 5;
+    if (
+        !Number.isInteger(latencySamplesPerRound) ||
+        latencySamplesPerRound < 5 ||
+        latencySamplesPerRound > 100
+    )
+        throw new Error('Invalid latency sampling declaration');
+    if (
+        report.subjects?.length !== 2 ||
+        new Set(report.subjects.map((s) => s.label)).size !== 2
+    )
+        throw new Error('Two distinct subjects are required');
+    const expected = new Set();
+    const key = (r) =>
+        JSON.stringify([r.subject, r.profile, r.kind, r.round, r.mode]);
+    for (const subject of report.subjects)
+        for (const profile of resolveScenarios('cross-tier').filter(
+            (s) => !s.motion,
+        ))
+            for (const kind of ['edit8', 'edit64', 'switch'])
+                for (let round = 0; round < 4; round++)
+                    for (const mode of ['stages', 'latency', 'allocation'])
+                        expected.add(
+                            key({
+                                subject: subject.label,
+                                profile: profile.name,
+                                kind,
+                                round,
+                                mode,
+                            }),
+                        );
+    const actual = new Set(report.rows.map(key));
+    if (
+        report.rows.length !== expected.size ||
+        actual.size !== expected.size ||
+        [...expected].some((k) => !actual.has(k)) ||
+        report.rows.some(
+            (r) =>
+                r.samples.length !==
+                (r.mode === 'latency' ? latencySamplesPerRound : 5),
+        )
+    )
+        throw new Error('Incomplete or duplicate matrix cohort');
+}
+
+export function summarizeMatrixRows(rows, labels, expectedLatencySamples = 20) {
     const groups = Map.groupBy(rows, (row) => `${row.profile}:${row.kind}`);
     return Object.fromEntries(
         [...groups].map(([key, group]) => {
@@ -74,7 +124,8 @@ export function summarizeMatrixRows(rows, labels) {
                 (label) => subjects[label],
             );
             const complete = labels.every(
-                (label) => subjects[label].latencyMs.count === 20,
+                (label) =>
+                    subjects[label].latencyMs.count === expectedLatencySamples,
             );
             const noLatencyRegression =
                 complete &&
@@ -92,7 +143,9 @@ export async function summarizeFile(input, output) {
     const report = JSON.parse(await readFile(input, 'utf8'));
     if (report.preflight || report.smoke)
         throw new Error('Setup/smoke data cannot become primary acceptance');
+    validateMatrixCohort(report);
     for (const row of report.rows.filter((row) => row.mode === 'allocation')) {
+        const evidence = await loadMatrixProfileEvidence(input, row);
         const mappings = new Map();
         for (const source of row.sourceManifest) {
             const path = resolve(
@@ -126,18 +179,20 @@ export async function summarizeFile(input, output) {
                 )
             );
         };
-        row.transformAllocatedBytes = visit(row.allocation.profile.head);
+        row.transformAllocatedBytes = visit(evidence.allocation.profile.head);
         if (mappedNodes === 0)
             throw new Error(
                 'No allocation frames mapped to loaded production sources',
             );
-        const marker = row.trace.traceEvents.find(
+        const marker = evidence.trace.traceEvents.find(
             (event) => event.name === 'matrix-allocation-start',
         );
+        if (!Number.isInteger(marker?.pid) || !Number.isInteger(marker?.tid))
+            throw new Error('Missing renderer-main allocation trace marker');
         row.gcEvents = Object.fromEntries(
             [
                 ...Map.groupBy(
-                    row.trace.traceEvents.filter(
+                    evidence.trace.traceEvents.filter(
                         (event) =>
                             event.pid === marker?.pid &&
                             event.tid === marker?.tid &&
@@ -161,6 +216,7 @@ export async function summarizeFile(input, output) {
     const summary = summarizeMatrixRows(
         report.rows,
         report.subjects.map((s) => s.label),
+        4 * (report.latencySamplesPerRound ?? 5),
     );
     for (const [name, value] of Object.entries(summary)) {
         const [profile, kind] = name.split(':');
@@ -209,7 +265,11 @@ export async function summarizeFile(input, output) {
         pass: Object.values(summary).every((value) => value.pass),
         subjects: report.subjects,
         method: {
-            samplesPerSubjectCase: 20,
+            samplesPerSubjectCase: 4 * (report.latencySamplesPerRound ?? 5),
+            stageAndAllocationSamplesPerSubjectCase: 20,
+            latencyDispatch: report.varyLatencyDispatch
+                ? 'deterministic 0–36 ms delay after animation frame, before measured dispatch'
+                : 'immediate sequential dispatch',
             latencyTolerance: 'p50 and p95 <= reference * 1.05 + 1 ms',
             allocation:
                 'V8 sampled JS heap bytes with a mapped transform ancestor, including collected objects; not exact allocation or external buffer bytes',

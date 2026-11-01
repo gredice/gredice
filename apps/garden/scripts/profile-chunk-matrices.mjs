@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { chromium } from '@playwright/test';
 import { assertSafeGameProfileOutputDirectory } from './game-profile-output.mjs';
+import { writeMatrixProfileReport } from './matrix-profile-report.mjs';
 import {
     resolveChromiumGraphicsArgs,
     resolveScenarios,
@@ -268,7 +269,14 @@ export async function executeMatrixProfileCommand({
     count,
     profile,
     sequence,
+    dispatchDelayMs,
 }) {
+    // Phase variation happens outside the measured command-to-submission window.
+    let dispatchFrameAt;
+    if (dispatchDelayMs !== undefined) {
+        dispatchFrameAt = await new Promise(requestAnimationFrame);
+        await new Promise((resolve) => setTimeout(resolve, dispatchDelayMs));
+    }
     const before = globalThis.__grediceGameProfile.rendererStatsReceiptCount;
     const compilerBefore = {
         ...globalThis.__grediceGameProfile.chunkCompiler,
@@ -359,6 +367,10 @@ export async function executeMatrixProfileCommand({
                         );
                     return {
                         durationMs: next.rendererStatsPublishedAt - startedAt,
+                        startedAt,
+                        submittedAt: next.rendererStatsPublishedAt,
+                        dispatchFrameAt,
+                        dispatchDelayMs,
                         receipt: next.rendererStatsReceiptCount,
                         compiler: { ...next.chunkCompiler },
                         preparationMs:
@@ -399,6 +411,15 @@ async function traceStop(cdp) {
 }
 
 export async function run(options) {
+    const latencySamplesPerRound = options.latencySamplesPerRound ?? 5;
+    if (
+        !Number.isInteger(latencySamplesPerRound) ||
+        latencySamplesPerRound < 5 ||
+        latencySamplesPerRound > 100
+    )
+        throw new Error(
+            'Latency samples per round must be an integer from 5 to 100',
+        );
     const outDir = assertSafeGameProfileOutputDirectory(
         resolve(options.outDir),
     );
@@ -429,7 +450,6 @@ export async function run(options) {
             ...resolveChromiumGraphicsArgs(process.platform, 'angle-metal'),
         ],
     });
-    const rows = [];
     const journal = resolve(outDir, 'runs.jsonl');
     try {
         await writeFile(
@@ -439,6 +459,8 @@ export async function run(options) {
                 subjects,
                 rounds: 4,
                 samplesPerRound: 5,
+                latencySamplesPerRound,
+                varyLatencyDispatch: options.varyLatencyDispatch === true,
                 endpoint:
                     'displayed revision and settled animation/compilation to post-render receipt at fixed comparison camera',
                 browser: browser.version(),
@@ -573,7 +595,7 @@ export async function run(options) {
                                 loadedScripts,
                             );
                             let seq = 0;
-                            const action = () =>
+                            const action = (varyDispatch = false) =>
                                 command(
                                     page,
                                     {
@@ -582,6 +604,12 @@ export async function run(options) {
                                                 ? 'switch'
                                                 : 'edit',
                                         count: size * size,
+                                        ...(varyDispatch
+                                            ? {
+                                                  dispatchDelayMs:
+                                                      (seq * 17) % 37,
+                                              }
+                                            : {}),
                                         profile:
                                             seq % 2
                                                 ? 'high-target'
@@ -648,7 +676,10 @@ export async function run(options) {
                                     mode,
                                 );
                                 for (let warmup = 0; warmup < 4; warmup++)
-                                    await action();
+                                    await action(
+                                        mode === 'latency' &&
+                                            options.varyLatencyDispatch,
+                                    );
                                 await page.evaluate(() =>
                                     globalThis.__matrixCaptureStart('off'),
                                 );
@@ -679,8 +710,20 @@ export async function run(options) {
                                     );
                                 }
                                 const samples = [];
-                                for (let i = 0; i < 5; i++)
-                                    samples.push(await action());
+                                for (
+                                    let i = 0;
+                                    i <
+                                    (mode === 'latency'
+                                        ? latencySamplesPerRound
+                                        : 5);
+                                    i++
+                                )
+                                    samples.push(
+                                        await action(
+                                            mode === 'latency' &&
+                                                options.varyLatencyDispatch,
+                                        ),
+                                    );
                                 let allocation, trace;
                                 if (mode === 'allocation') {
                                     allocation = await cdp.send(
@@ -736,7 +779,6 @@ export async function run(options) {
                                     trace,
                                     sourceManifest,
                                 };
-                                rows.push(row);
                                 await appendFile(
                                     journal,
                                     JSON.stringify({ type: 'completed', row }) +
@@ -799,19 +841,16 @@ export async function run(options) {
                         }
                     }
                 }
-        await writeFile(
-            resolve(outDir, 'latest.json'),
-            JSON.stringify(
-                {
-                    subjects,
-                    preflight: options.preflight,
-                    smoke: options.smoke === true,
-                    rows,
-                },
-                null,
-                2,
-            ),
-        );
+        await writeMatrixProfileReport(journal, outDir, {
+            preflight: options.preflight === true,
+            expectedRows: options.preflight
+                ? 0
+                : (options.smoke ? 1 : profiles.length) *
+                  3 *
+                  (options.smoke ? 1 : 4) *
+                  subjects.length *
+                  3,
+        });
     } finally {
         await browser.close();
     }
@@ -825,6 +864,10 @@ if (import.meta.url === pathToFileURL(resolve(process.argv[1] ?? '')).href) {
         outDir: value('--out-dir'),
         preflight: args.includes('--preflight-only'),
         smoke: args.includes('--smoke-only'),
+        latencySamplesPerRound: args.includes('--latency-samples-per-round')
+            ? Number(value('--latency-samples-per-round'))
+            : 5,
+        varyLatencyDispatch: args.includes('--vary-latency-dispatch'),
     }).catch((error) => {
         console.error(error);
         process.exitCode = 1;

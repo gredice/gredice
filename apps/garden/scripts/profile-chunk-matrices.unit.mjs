@@ -1,5 +1,13 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
+import {
+    loadMatrixProfileEvidence,
+    writeMatrixProfileReport,
+} from './matrix-profile-report.mjs';
 import {
     executeMatrixProfileCommand,
     isMatrixProfileReady,
@@ -8,7 +16,135 @@ import {
     settleMatrixProfile,
     sourceMapContents,
 } from './profile-chunk-matrices.mjs';
-import { summarizeMatrixRows } from './summarize-chunk-matrices.mjs';
+import { resolveScenarios } from './profile-game-scene.mjs';
+import {
+    summarizeMatrixRows,
+    validateMatrixCohort,
+} from './summarize-chunk-matrices.mjs';
+
+test('large evidence is indexed without losing journal data, and checksum/partial captures fail closed', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'matrix-evidence-'));
+    try {
+        const row = {
+            subject: 'scratch',
+            mode: 'allocation',
+            samples: [1.25],
+            allocation: { profile: { head: { selfSize: 32768 } } },
+            trace: {
+                traceEvents: [
+                    { name: 'matrix-allocation-start', pid: 1, tid: 2 },
+                ],
+            },
+        };
+        const stage = {
+            subject: 'scratch',
+            mode: 'stages',
+            captured: { stages: [{ durationMs: 0.1 }] },
+        };
+        const journal = `${[
+            {
+                type: 'header',
+                subjects: [{ label: 'scratch' }],
+                smoke: false,
+            },
+            { type: 'completed', row },
+            { type: 'completed', row: stage },
+        ]
+            .map((r) => JSON.stringify(r))
+            .join('\n')}\n`;
+        const input = join(dir, 'runs.jsonl');
+        await writeFile(input, journal);
+        const result = await writeMatrixProfileReport(input, dir, {
+            expectedRows: 2,
+        });
+        const indexBytes = await readFile(result.output, 'utf8');
+        const report = JSON.parse(indexBytes);
+        assert.equal(report.rows[0].allocation, undefined);
+        assert.equal(report.rows[0].trace, undefined);
+        assert.deepEqual(report.rows[0].samples, row.samples);
+        assert.deepEqual(report.rows[1], stage);
+        assert.deepEqual(
+            await loadMatrixProfileEvidence(result.output, report.rows[0]),
+            { allocation: row.allocation, trace: row.trace },
+        );
+        assert.equal(
+            report.sourceJournalSha256,
+            createHash('sha256').update(journal).digest('hex'),
+        );
+        assert.equal(await readFile(input, 'utf8'), journal);
+        await assert.rejects(
+            writeMatrixProfileReport(input, dir, { expectedRows: 2 }),
+            { code: 'EEXIST' },
+        );
+        assert.equal(await readFile(result.output, 'utf8'), indexBytes);
+        await writeFile(join(dir, report.rows[0].allocationEvidenceFile), '{}');
+        await assert.rejects(
+            loadMatrixProfileEvidence(result.output, report.rows[0]),
+            /checksum mismatch/,
+        );
+        const partial = join(dir, 'partial');
+        await mkdir(partial);
+        await assert.rejects(
+            writeMatrixProfileReport(input, partial, { expectedRows: 3 }),
+            /Incomplete capture/,
+        );
+        await assert.rejects(readFile(join(partial, 'latest.json')), {
+            code: 'ENOENT',
+        });
+    } finally {
+        await rm(dir, { recursive: true, force: true });
+    }
+});
+
+test('primary acceptance requires every declared profile, round, pass and subject exactly once', () => {
+    const subjects = [{ label: 'allocating' }, { label: 'scratch' }];
+    const rows = [];
+    for (const subject of subjects)
+        for (const profile of resolveScenarios('cross-tier').filter(
+            (s) => !s.motion,
+        ))
+            for (const kind of ['edit8', 'edit64', 'switch'])
+                for (let round = 0; round < 4; round++)
+                    for (const mode of ['stages', 'latency', 'allocation'])
+                        rows.push({
+                            subject: subject.label,
+                            profile: profile.name,
+                            kind,
+                            round,
+                            mode,
+                            samples: Array(5).fill(1),
+                        });
+    assert.doesNotThrow(() => validateMatrixCohort({ subjects, rows }));
+    const confirmationRows = rows.map((row) => ({
+        ...row,
+        samples: Array(row.mode === 'latency' ? 20 : 5).fill(1),
+    }));
+    assert.doesNotThrow(() =>
+        validateMatrixCohort({
+            subjects,
+            rows: confirmationRows,
+            latencySamplesPerRound: 20,
+        }),
+    );
+    assert.throws(
+        () => validateMatrixCohort({ subjects, rows: confirmationRows }),
+        /Incomplete/,
+    );
+    assert.throws(
+        () => validateMatrixCohort({ subjects, rows: [] }),
+        /Incomplete/,
+    );
+    assert.throws(
+        () =>
+            validateMatrixCohort({
+                subjects,
+                rows: [...rows.slice(1), rows[1]],
+            }),
+        /duplicate/,
+    );
+    rows[0].samples.pop();
+    assert.throws(() => validateMatrixCohort({ subjects, rows }), /Incomplete/);
+});
 
 test('setup refreshes stale renderer statistics in an idle Low scene', async () => {
     const names = ['window', 'requestAnimationFrame', '__grediceGameProfile'];
