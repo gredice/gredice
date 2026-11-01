@@ -2,11 +2,78 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
     buildStaticCacheClearanceScenarioSets,
+    captureResolvedStaticCacheWitness,
     classifyStaticCacheWitness,
     evaluateStaticCacheClearance,
     installStaticCacheGpuMetrics,
     staticCacheClearanceMinimumSoakMs,
 } from './static-cache-clearance.mjs';
+
+test('cache resource capture retries a receipt that starts a fresh probe', async () => {
+    const probing = {
+        staticOpaqueSceneCacheEnabled: true,
+        staticOpaqueSceneCacheBenefitStatus: 'probing',
+    };
+    const rejected = {
+        staticOpaqueSceneCacheEnabled: true,
+        staticOpaqueSceneCacheBenefitStatus: 'disabled',
+        staticOpaqueSceneCacheBenefitReason: 'gpu-cost',
+        staticOpaqueSceneCacheAllocatedTargetBytes: 0,
+        staticOpaqueSceneCacheBaseTerrainLayer: 'live',
+        staticOpaqueSceneCacheStaticPropsLayer: 'live',
+    };
+    let captures = 0;
+    let waits = 0;
+    const witness = await captureResolvedStaticCacheWitness({
+        requestedMode: 'cache',
+        waitForDecision: async () => {
+            waits += 1;
+        },
+        capture: async () => (++captures === 1 ? probing : rejected),
+    });
+    assert.equal(witness, rejected);
+    assert.equal(captures, 2);
+    assert.equal(waits, 2);
+});
+
+test('cache resource capture never accepts an unmeasured or unreleased witness', async () => {
+    let atMs = 0;
+    await assert.rejects(
+        captureResolvedStaticCacheWitness({
+            requestedMode: 'cache',
+            now: () => atMs,
+            timeoutMs: 10,
+            waitForDecision: async () => {},
+            capture: async () => {
+                atMs += 5;
+                return {
+                    staticOpaqueSceneCacheEnabled: true,
+                    staticOpaqueSceneCacheBenefitStatus: 'disabled',
+                    staticOpaqueSceneCacheBenefitReason: 'gpu-cost',
+                    staticOpaqueSceneCacheAllocatedTargetBytes: 100,
+                    staticOpaqueSceneCacheBaseTerrainLayer: 'live',
+                    staticOpaqueSceneCacheStaticPropsLayer: 'live',
+                };
+            },
+        }),
+        /Timed out capturing/,
+    );
+});
+
+test('legacy resource capture keeps the original cache role', async () => {
+    const legacy = {
+        staticOpaqueSceneCacheEnabled: false,
+        staticOpaqueSceneCacheAllocatedTargetBytes: 0,
+    };
+    assert.equal(
+        await captureResolvedStaticCacheWitness({
+            requestedMode: 'legacy',
+            waitForDecision: async () => {},
+            capture: async () => legacy,
+        }),
+        legacy,
+    );
+});
 
 const profiles = [
     {

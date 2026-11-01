@@ -178,7 +178,11 @@ limits and records failed savings comparisons separately from safe live no-ops.
 The lifecycle readiness barrier binds each supplemental scenario's resolved
 quality tier, including resume and restoration; canonical garden-switch and
 lifecycle scenarios retain their High requirement. Fixture cardinality checks
-are unchanged. Every invocation also writes a uniquely named `.runs.jsonl`
+are unchanged. Lifecycle screenshots retain browser DPR 2 independently of the
+quality-capped Canvas backing buffer. Resource captures wait for a resolved
+decision and retry if their render receipt crosses a cooldown boundary into a
+fresh probe; an unmeasured probe still cannot pass clearance.
+Every invocation also writes a uniquely named `.runs.jsonl`
 checkpoint file before sampling and appends each completed run outside its timed
 window. Later setup failures preserve earlier raw evidence. Checkpoints are
 partial evidence, not a passing acceptance report.

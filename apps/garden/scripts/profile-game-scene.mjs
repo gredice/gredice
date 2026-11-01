@@ -9,6 +9,7 @@ import { assertSafeGameProfileOutputDirectory } from './game-profile-output.mjs'
 import {
     allowMissingStaticCacheShadowPopulation,
     buildStaticCacheClearanceScenarioSets,
+    captureResolvedStaticCacheWitness,
     classifyStaticCacheWitness,
     evaluateStaticCacheClearance,
     installStaticCacheGpuMetrics,
@@ -6771,12 +6772,12 @@ function evaluateLifecycleAcceptance({
         exact(
             `${prefix}ScreenshotWidth`,
             control?.screenshotWitness?.width,
-            expectedCanvasWidth,
+            expectedScreenshotWidth,
         ),
         exact(
             `${prefix}ScreenshotHeight`,
             control?.screenshotWitness?.height,
-            expectedCanvasHeight,
+            expectedScreenshotHeight,
         ),
     ];
     const baselineResidualWindowChecks = (prefix, phase) => [
@@ -7310,6 +7311,9 @@ function evaluateLifecycleAcceptance({
     const expectedDprCap = cacheSupplement ? requested.expectedDprCap : 2;
     const expectedCanvasWidth = Math.round(1_280 * expectedDprCap);
     const expectedCanvasHeight = Math.round(720 * expectedDprCap);
+    // Locator screenshots use browser DPR, independently of the Canvas quality cap.
+    const expectedScreenshotWidth = 1_280 * 2;
+    const expectedScreenshotHeight = 720 * 2;
     const expectedCacheEnabled = cacheSupplement;
     const checks = [
         exact('lifecycleOptIn', requested?.lifecycle, '1'),
@@ -7461,12 +7465,12 @@ function evaluateLifecycleAcceptance({
         exact(
             'lifecycleColdScreenshotWidth',
             cold?.screenshotWitness?.width,
-            expectedCanvasWidth,
+            expectedScreenshotWidth,
         ),
         exact(
             'lifecycleColdScreenshotHeight',
             cold?.screenshotWitness?.height,
-            expectedCanvasHeight,
+            expectedScreenshotHeight,
         ),
         exact(
             'lifecycleFixtureStackCount',
@@ -7956,12 +7960,12 @@ function evaluateLifecycleAcceptance({
         exact(
             'lifecycleRestoredScreenshotWidth',
             restoredScreenshotWitness?.width,
-            expectedCanvasWidth,
+            expectedScreenshotWidth,
         ),
         exact(
             'lifecycleRestoredScreenshotHeight',
             restoredScreenshotWitness?.height,
-            expectedCanvasHeight,
+            expectedScreenshotHeight,
         ),
         exact('lifecycleApiErrors', apiErrors.length, 0),
         exact('lifecycleApiRequests', apiRequests.length, 0),
@@ -8971,37 +8975,48 @@ async function captureStaticCacheWitness(
     page,
     rendererStatsMode,
     expectedShadows,
+    requestedMode = 'cache',
 ) {
-    const observedShadows = await page.evaluate(
-        () => globalThis.__grediceGameProfile?.shadowsEnabled,
-    );
-    const allowMissingPopulation = allowMissingStaticCacheShadowPopulation(
-        expectedShadows,
-        observedShadows,
-    );
-    const resources = await captureCrossTierResourceSnapshot(
-        page,
-        rendererStatsMode,
-        { allowMissingPopulation },
-    );
-    const witness = await page.evaluate(readStaticCacheWitness);
-    if (allowMissingPopulation && witness.shadowsEnabled !== false)
-        throw new Error(
-            'Disabled-shadow population policy changed during the resource witness',
-        );
-    return {
-        ...witness,
-        ...resources.resources,
-        resourceMeasurementMode: resources.measurementMode,
-        resourceMeasurementValid: isLifecycleRendererStatsMeasurementValid(
-            resources.resources,
-            rendererStatsMode,
-        ),
-        populationExposureSignature: resources.populationExposureSignature,
-        shadowPopulationPolicy: allowMissingPopulation
-            ? 'observed-disabled-shadow-registry'
-            : 'registered-shadow-population',
-    };
+    return captureResolvedStaticCacheWitness({
+        requestedMode,
+        waitForDecision: (timeoutMs) =>
+            waitForStaticCacheClearanceDecision(page, requestedMode, timeoutMs),
+        capture: async () => {
+            const observedShadows = await page.evaluate(
+                () => globalThis.__grediceGameProfile?.shadowsEnabled,
+            );
+            const allowMissingPopulation =
+                allowMissingStaticCacheShadowPopulation(
+                    expectedShadows,
+                    observedShadows,
+                );
+            const resources = await captureCrossTierResourceSnapshot(
+                page,
+                rendererStatsMode,
+                { allowMissingPopulation },
+            );
+            const witness = await page.evaluate(readStaticCacheWitness);
+            if (allowMissingPopulation && witness.shadowsEnabled !== false)
+                throw new Error(
+                    'Disabled-shadow population policy changed during the resource witness',
+                );
+            return {
+                ...witness,
+                ...resources.resources,
+                resourceMeasurementMode: resources.measurementMode,
+                resourceMeasurementValid:
+                    isLifecycleRendererStatsMeasurementValid(
+                        resources.resources,
+                        rendererStatsMode,
+                    ),
+                populationExposureSignature:
+                    resources.populationExposureSignature,
+                shadowPopulationPolicy: allowMissingPopulation
+                    ? 'observed-disabled-shadow-registry'
+                    : 'registered-shadow-population',
+            };
+        },
+    });
 }
 
 async function runStaticCacheLayerCycle(
@@ -9065,7 +9080,11 @@ async function runStaticCacheLayerCycle(
     }
 }
 
-async function waitForStaticCacheClearanceDecision(page, requestedMode) {
+async function waitForStaticCacheClearanceDecision(
+    page,
+    requestedMode,
+    timeoutMs = 60_000,
+) {
     if (requestedMode === 'legacy') return;
     await page.waitForFunction(
         () => {
@@ -9081,9 +9100,9 @@ async function waitForStaticCacheClearanceDecision(page, requestedMode) {
             );
         },
         undefined,
-        { timeout: 60_000 },
+        { timeout: timeoutMs },
     );
-    // Disabled gates shrink GPU targets on the next rendered frame.
+    // Let renderer receipts publish before a fresh resource witness.
     await page.evaluate(
         () =>
             new Promise((resolveFrame) =>
@@ -9374,6 +9393,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                     page,
                     crossTierRendererStatsMode,
                     scenario.expectedShadows,
+                    request.staticSceneCache,
                 ),
             ],
             soakMs: 0,
@@ -9430,6 +9450,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                     page,
                     crossTierRendererStatsMode,
                     scenario.expectedShadows,
+                    request.staticSceneCache,
                 ),
             );
         }
@@ -12077,6 +12098,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 page,
                 crossTierRendererStatsMode,
                 scenario.expectedShadows,
+                request.staticSceneCache,
             ),
         );
         runtime = { ...runtime, ...staticCacheEvidence.witnesses.at(-1) };

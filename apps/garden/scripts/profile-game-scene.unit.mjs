@@ -6472,6 +6472,76 @@ test('legacy lifecycle acceptance explicitly requires pre-receipt telemetry whil
     );
 });
 
+test('supplemental lifecycle screenshots retain browser DPR while Canvas dimensions follow quality caps', () => {
+    for (const [tier, dprCap, shadows, shadowMapSize] of [
+        ['low', 1, false, 0],
+        ['medium', 1.5, true, 2_048],
+        ['high', 2, true, 4_096],
+    ]) {
+        const input = createPassingLifecycleAcceptanceInput();
+        Object.assign(input.requested, {
+            expectedDprCap: dprCap,
+            expectedQualitySetting: tier,
+            expectedQualityTier: tier,
+            expectedShadowMapSize: shadowMapSize,
+            expectedShadows: shadows,
+            quality: tier,
+            staticCacheClearance: true,
+            staticSceneCache: 'cache',
+        });
+        Object.assign(input.resolved, {
+            dprCap,
+            qualityTier: tier,
+            shadowMapSize,
+            shadowsEnabled: shadows,
+        });
+        const canvasSize = {
+            height: Math.round(720 * dprCap),
+            width: Math.round(1_280 * dprCap),
+        };
+        Object.assign(input.cold.canvasSize, canvasSize);
+        for (const fixture of [
+            input.fixture,
+            input.cold.fixture,
+            input.offscreen.resumedControl.fixture,
+            input.hidden.resumedControl.fixture,
+            input.context.restoredControl.fixture,
+        ]) {
+            Object.assign(fixture.canvas, canvasSize);
+            fixture.resources.staticOpaqueSceneCacheEnabled = true;
+        }
+        const acceptance = evaluateLifecycleAcceptance(input);
+        assert.equal(
+            acceptance.pass,
+            true,
+            acceptance.checks
+                .filter((check) => !check.pass)
+                .map((check) => check.name)
+                .join(', '),
+        );
+
+        input.cold.screenshotWitness.width = 1_280;
+        assert.equal(
+            lifecycleAcceptanceCheck(input, 'lifecycleColdScreenshotWidth')
+                .pass,
+            false,
+        );
+        input.offscreen.resumedControl.screenshotWitness.height = 720;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                input,
+                'lifecycleOffscreenResumedScreenshotHeight',
+            ).pass,
+            false,
+        );
+        input.fixture.canvas.width += 1;
+        assert.equal(
+            lifecycleAcceptanceCheck(input, 'lifecycleCanvasWidth').pass,
+            false,
+        );
+    }
+});
+
 function lifecycleAcceptanceCheck(input, name) {
     return evaluateLifecycleAcceptance(input).checks.find(
         (check) => check.name === name,

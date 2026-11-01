@@ -393,6 +393,26 @@ function hasResolvedRequestedDecision(witness, requestedMode) {
     );
 }
 
+/** A resource receipt can cross a cooldown boundary and start a new probe. */
+export async function captureResolvedStaticCacheWitness({
+    capture,
+    waitForDecision,
+    requestedMode,
+    now = Date.now,
+    timeoutMs = 60_000,
+}) {
+    const deadline = now() + timeoutMs;
+    while (now() < deadline) {
+        await waitForDecision(deadline - now());
+        const witness = await capture();
+        if (hasResolvedRequestedDecision(witness, requestedMode))
+            return witness;
+    }
+    throw new Error(
+        'Timed out capturing a resolved static cache resource witness',
+    );
+}
+
 /** Supplemental acceptance; an unmeasured probe is never called clearance. */
 export function evaluateStaticCacheClearance({
     requested,
