@@ -50,7 +50,9 @@ query-cache edit changes only selected top-block rotations; it never writes
 garden or account data. The command is enabled only for the explicit matrix
 debug fixture and isolated local sandbox namespace.
 Each edit waits for its revision to commit in the displayed Canvas tree, not
-only the incoming query, and must prepare exactly 64 or 4,096 instances.
+only the incoming query, and must prepare exactly 128 or 8,192 matrices: one
+ground and one prop transform per cell. The selected edits change 64 or 4,096
+top blocks; retained chunk invalidation rebuilds both layers.
 Each pass receives four unmeasured warmup commands before a fresh capture and
 collection boundary. `--smoke-only` runs a one-round High-quality diagnostic;
 the summarizer rejects smoke/setup reports as primary acceptance.

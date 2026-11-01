@@ -18,7 +18,7 @@ test('edits wait for the displayed revision and reject absent preparation work',
     ];
     const previous = names.map((name) => globalThis[name]);
     try {
-        for (const prepared of [64, 0]) {
+        for (const prepared of [128, 0]) {
             const runtime = {
                 chunkCompiler: {
                     pendingJobs: 0,
@@ -63,8 +63,8 @@ test('edits wait for the displayed revision and reject absent preparation work',
                 count: 64,
                 sequence: 1,
             });
-            if (prepared === 64)
-                assert.equal((await command).preparationInstances, 64);
+            if (prepared === 128)
+                assert.equal((await command).preparationInstances, 128);
             else
                 await assert.rejects(command, /Edit preparation work mismatch/);
         }

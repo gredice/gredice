@@ -298,9 +298,13 @@ export async function executeMatrixProfileCommand({
                     const preparationInstances =
                         next.chunkCompiler.matrixPreparationInstances -
                         compilerBefore.matrixPreparationInstances;
-                    if (kind === 'edit' && preparationInstances !== count)
+                    const expectedPreparations = count * 2;
+                    if (
+                        kind === 'edit' &&
+                        preparationInstances !== expectedPreparations
+                    )
                         throw new Error(
-                            `Edit preparation work mismatch: expected ${count}, observed ${preparationInstances}`,
+                            `Edit preparation work mismatch: expected ${expectedPreparations}, observed ${preparationInstances}`,
                         );
                     return {
                         durationMs: next.rendererStatsPublishedAt - startedAt,
