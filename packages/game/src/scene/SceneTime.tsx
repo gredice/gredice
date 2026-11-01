@@ -137,6 +137,14 @@ export function SceneTimeProvider({
     const gl = useThree((state) => state.gl);
     const visibilityReadyRef = useRef(false);
     const frameStartRef = useRef<number | null>(null);
+    // Dedicated diagnostics install the observer before this root mounts.
+    // Normal profiling and production retain no callback or event history.
+    const unexpectedWakeupObserver: unknown = runtimeFrameLoop
+        ? Reflect.get(
+              globalThis,
+              '__grediceGameRuntimeUnexpectedWakeupObserver',
+          )
+        : undefined;
     const [scheduler] = useState(
         () =>
             new GameRuntimeScheduler({
@@ -160,6 +168,10 @@ export function SceneTimeProvider({
                 },
                 invalidate: rootRuntime.requestFrame,
                 now: () => globalThis.performance.now(),
+                onUnexpectedWakeup:
+                    typeof unexpectedWakeupObserver === 'function'
+                        ? (event) => unexpectedWakeupObserver(event)
+                        : undefined,
                 requestFrame: (callback) =>
                     window.requestAnimationFrame(callback),
                 setTimeout: (callback, delayMs) =>

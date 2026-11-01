@@ -4,6 +4,7 @@ import {
     GameRuntimeScheduler,
     type GameRuntimeSchedulerOptions,
     type GameRuntimeSchedulerSnapshot,
+    type GameRuntimeUnexpectedWakeup,
 } from './GameRuntimeScheduler';
 
 const timingToleranceMs = 0.01;
@@ -2428,7 +2429,13 @@ describe('GameRuntimeScheduler semantic work', () => {
     it('fails closed if a browser timeout fires before its semantic due time', () => {
         const queue = new FakeRuntimeQueue();
         queue.browserLongTimeoutDelays = true;
-        const { scheduler } = createScheduler({ queue });
+        const events: GameRuntimeUnexpectedWakeup[] = [];
+        const { scheduler } = createScheduler({
+            queue,
+            options: {
+                onUnexpectedWakeup: (event) => events.push(event),
+            },
+        });
         const delivered: number[] = [];
 
         scheduler.scheduleDeadline('early-deadline', 100.75, ({ nowMs }) =>
@@ -2444,6 +2451,11 @@ describe('GameRuntimeScheduler semantic work', () => {
         assert.equal(snapshot.unexpectedNoWorkWakeupCount, 1);
         assert.equal(snapshot.pendingCallbackDueAt, 100.75);
         assertWakeupClassificationConserved(snapshot);
+        assert.equal(events.length, 1);
+        assert.equal(events[0]?.reason, 'early-timeout');
+        assert.equal(events[0]?.nowMs, 100.5);
+        assert.equal(events[0]?.callbackDueAt, 100.75);
+        assert.equal(events[0]?.snapshot.unexpectedNoWorkWakeupCount, 1);
 
         queue.runNext();
         snapshot = scheduler.getSnapshot();
@@ -2452,6 +2464,7 @@ describe('GameRuntimeScheduler semantic work', () => {
         assert.equal(snapshot.productiveWakeupCount, 1);
         assert.equal(snapshot.retainedTimeoutReconciliationWakeupCount, 0);
         assert.equal(snapshot.unexpectedNoWorkWakeupCount, 1);
+        assert.equal(events.length, 1);
         assertWakeupClassificationConserved(snapshot);
     });
 
