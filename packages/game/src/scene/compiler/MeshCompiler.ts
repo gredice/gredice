@@ -1,5 +1,6 @@
 import type { BufferGeometry } from 'three';
 import { recordChunkCompilerMetrics } from './chunkCompilerMetrics';
+import { chunkCompilerProfileObserver } from './chunkCompilerProfile';
 import {
     compileMeshBufferSources,
     meshBufferByteLength,
@@ -74,13 +75,23 @@ export class MeshCompiler {
             this.syncSpentMs < synchronousChunkBudgetMs
         ) {
             const started = performance.now();
-            const packet = compileMeshBufferSources(
-                sources.map(({ geometry, matrices }) => ({
-                    source: packMeshGeometry(geometry),
-                    matrices,
-                })),
-            );
+            const observer = chunkCompilerProfileObserver();
+            const packed = sources.map(({ geometry, matrices }) => ({
+                source: packMeshGeometry(geometry),
+                matrices,
+            }));
+            const packedAt = observer ? performance.now() : started;
+            const packet = compileMeshBufferSources(packed);
             const duration = performance.now() - started;
+            observer?.({
+                stage: 'pack',
+                durationMs: packedAt - started,
+                sources: sources.length,
+            });
+            observer?.({
+                stage: 'sync',
+                durationMs: duration - (packedAt - started),
+            });
             this.syncSpentMs += duration;
             if (!this.budgetReset)
                 this.budgetReset = setTimeout(() => {
@@ -171,6 +182,10 @@ export class MeshCompiler {
                         if (!deliver) metrics.staleResults++;
                         if (data.error) metrics.workerFailures++;
                     });
+                    chunkCompilerProfileObserver()?.({
+                        stage: 'worker',
+                        durationMs: data.durationMs,
+                    });
                     deliver?.(data.packet ?? null, data.durationMs);
                     this.publishPending();
                     this.dispatch();
@@ -180,10 +195,12 @@ export class MeshCompiler {
             if (!job) return;
             this.active = { id: job.id, deliver: job.deliver };
             const started = performance.now();
+            const observer = chunkCompilerProfileObserver();
             const sources = job.sources.map(({ geometry, matrices }) => ({
                 source: packMeshGeometry(geometry),
                 matrices,
             }));
+            const packedAt = observer ? performance.now() : started;
             const bytes = sources.reduce(
                 (total, { source, matrices }) =>
                     total + meshBufferByteLength(source) + matrices.byteLength,
@@ -197,6 +214,15 @@ export class MeshCompiler {
                     ]),
                 ),
             ]);
+            observer?.({
+                stage: 'pack',
+                durationMs: packedAt - started,
+                sources: sources.length,
+            });
+            observer?.({
+                stage: 'transfer',
+                durationMs: performance.now() - packedAt,
+            });
             recordChunkCompilerMetrics((metrics) => {
                 metrics.transferredBytes += bytes;
                 metrics.transferMaxMs = Math.max(

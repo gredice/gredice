@@ -7,6 +7,7 @@ import {
     type MeshInstanceScale,
 } from '../../entities/chunkedMeshGeometry';
 import { recordChunkCompilerMetrics } from './chunkCompilerMetrics';
+import { chunkCompilerProfileObserver } from './chunkCompilerProfile';
 import { MeshCompiler } from './MeshCompiler';
 import { meshBufferByteLength, unpackMeshGeometry } from './meshBuffers';
 
@@ -74,6 +75,15 @@ export function useCompiledChunkSources(
             }),
         );
         const preparationMs = performance.now() - preparationStartedAt;
+        chunkCompilerProfileObserver()?.({
+            stage: 'prepare',
+            durationMs: preparationMs,
+            instances: sources.reduce(
+                (count, source) => count + source.instances.length,
+                0,
+            ),
+            sources: sources.length,
+        });
         recordChunkCompilerMetrics((metrics) => {
             metrics.matrixPreparationMs += preparationMs;
             metrics.matrixPreparationMaxMs = Math.max(
@@ -90,7 +100,13 @@ export function useCompiledChunkSources(
             preparedSources,
             (packet, durationMs) => {
                 if (!packet || cancelled) return;
+                const observer = chunkCompilerProfileObserver();
+                const unpackStartedAt = observer ? performance.now() : 0;
                 owned = unpackMeshGeometry(packet);
+                observer?.({
+                    stage: 'unpack',
+                    durationMs: performance.now() - unpackStartedAt,
+                });
                 bytes = meshBufferByteLength(packet);
                 recordChunkCompilerMetrics((metrics) => {
                     metrics.liveGeometries++;

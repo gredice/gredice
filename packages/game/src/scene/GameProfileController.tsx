@@ -1,5 +1,6 @@
 'use client';
 
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import type { GameCameraSnapshot } from '../controls/GameCameraRigApi';
 import { useHoveredBlockStore } from '../controls/useHoveredBlockStore';
@@ -18,6 +19,10 @@ import {
     useRemoveRaisedBedCloseupParam,
     useSetRaisedBedCloseupParam,
 } from '../useRaisedBedCloseup';
+import {
+    editChunkMatrixProfile,
+    readChunkMatrixProfileCommand,
+} from './compiler/chunkMatrixProfile';
 import {
     type GameProfileMetadata,
     updateGameProfileMetadata,
@@ -424,8 +429,62 @@ export function resolveGameProfileRaisedBedTarget(
 
 export function GameProfileController() {
     const { data: garden } = useCurrentGarden();
+    const queryClient = useQueryClient();
     const gameStateStore = useGameStateStore();
     const requestRender = useSceneRenderRequest();
+    const matrixProfileSequence = useRef(0);
+    useEffect(() => {
+        if (
+            !garden ||
+            !document.querySelector('[data-game-profile-matrix="1"]')
+        )
+            return;
+        const state = gameStateStore.getState();
+        if (
+            !state.isMock ||
+            state.authenticatedGardenQueriesEnabled ||
+            !state.localSandboxStorageKey?.startsWith('gredice.debug.matrix.')
+        )
+            return;
+        const listener = (event: Event) => {
+            const command =
+                event instanceof CustomEvent
+                    ? readChunkMatrixProfileCommand(event.detail)
+                    : null;
+            if (!command || command.sequence <= matrixProfileSequence.current)
+                return;
+            const query = queryClient
+                .getQueryCache()
+                .findAll()
+                .find((candidate) => candidate.state.data === garden);
+            const edited = editChunkMatrixProfile(
+                garden,
+                command.count,
+                command.sequence,
+            );
+            if (!query || !edited || edited.changed !== command.count) return;
+            matrixProfileSequence.current = command.sequence;
+            queryClient.setQueryData(query.queryKey, edited.garden);
+            updateGameProfileMetadata({
+                matrixProfileCommand: { ...command, changed: edited.changed },
+            });
+            requestRender('profile-matrix-edit', 2);
+        };
+        window.addEventListener('gredice:game-profile-matrix-edit', listener);
+        return () =>
+            window.removeEventListener(
+                'gredice:game-profile-matrix-edit',
+                listener,
+            );
+    }, [garden, gameStateStore, queryClient, requestRender]);
+    useEffect(() => {
+        if (!garden) return;
+        const sequence: unknown = Reflect.get(garden, 'matrixProfileSequence');
+        if (typeof sequence === 'number')
+            updateGameProfileMetadata({
+                matrixProfileCommittedSequence: sequence,
+            });
+    }, [garden]);
     const operationVisualHighlightDispatchKeyRef = useRef<string | null>(null);
     const view = useGameState((current) => current.view);
     const closeupCameraActive = useGameState(
@@ -557,6 +616,8 @@ export function GameProfileController() {
                     : null;
             if (command) {
                 gameCamera.restore(command, { immediate: true });
+                // An unchanged pose can still fence a newly compiled scene.
+                requestRender('profile-camera-restore', 2);
             }
         };
 
@@ -570,7 +631,7 @@ export function GameProfileController() {
                 handleCommand,
             );
         };
-    }, [gameCamera]);
+    }, [gameCamera, requestRender]);
 
     useEffect(() => {
         const profileElement = document.querySelector(

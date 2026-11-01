@@ -10,6 +10,7 @@ import {
     gameProfileGardenSwitchEventName,
     readGameProfileGardenSwitchProfile,
 } from './profileGardenSwitch';
+import { createMatrixProfileStacks } from './profileMatrix';
 import {
     createGameProfileWeatherWitness,
     gameProfileWeatherTransitionEventName,
@@ -22,12 +23,14 @@ type ProfileGameSceneProps = Omit<GameSceneProps, 'freezeTime'> & {
     gardenSwitchEnabled?: boolean;
     cacheClearanceWitnessMode?: string;
     autumnLaunchSize?: 'small' | 'medium' | 'dense';
+    matrixProfileSize?: 8 | 64;
 };
 
 export function ProfileGameScene({
     gardenSwitchEnabled = false,
     cacheClearanceWitnessMode,
     autumnLaunchSize,
+    matrixProfileSize,
     freezeTime,
     mockGardenProfile: initialMockGardenProfile,
     weather: initialWeather,
@@ -35,12 +38,16 @@ export function ProfileGameScene({
 }: ProfileGameSceneProps) {
     const launchStacks = useMemo(
         () =>
-            autumnLaunchSize
+            matrixProfileSize
                 ? normalizePublicGardenStacks(
-                      createAutumnLaunchFixture(autumnLaunchSize).stacks,
+                      createMatrixProfileStacks(matrixProfileSize),
                   )
-                : undefined,
-        [autumnLaunchSize],
+                : autumnLaunchSize
+                  ? normalizePublicGardenStacks(
+                        createAutumnLaunchFixture(autumnLaunchSize).stacks,
+                    )
+                  : undefined,
+        [autumnLaunchSize, matrixProfileSize],
     );
     const date = useMemo(
         () => restoreGameProfileDate(freezeTime),
@@ -115,13 +122,17 @@ export function ProfileGameScene({
         <GameScene
             {...gameSceneProps}
             enableGameProfileController={resolveGameProfileControllerEnabled(
-                gameSceneProps.enableGameProfileController,
+                matrixProfileSize
+                    ? true
+                    : gameSceneProps.enableGameProfileController,
                 cacheClearanceWitnessMode,
             )}
             localSandboxStorageKey={
-                autumnLaunchSize
-                    ? `gredice.debug.autumn-launch.v1.${autumnLaunchSize}`
-                    : undefined
+                matrixProfileSize
+                    ? `gredice.debug.matrix.${matrixProfileSize}`
+                    : autumnLaunchSize
+                      ? `gredice.debug.autumn-launch.v1.${autumnLaunchSize}`
+                      : undefined
             }
             localSandboxInitialStacks={launchStacks}
             freezeTime={date}
