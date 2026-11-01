@@ -427,12 +427,22 @@ export function resolveGameProfileRaisedBedTarget(
     };
 }
 
-export function GameProfileController() {
+export function GameProfileController({
+    displayedMatrixProfileSequence,
+}: {
+    displayedMatrixProfileSequence?: number;
+}) {
     const { data: garden } = useCurrentGarden();
     const queryClient = useQueryClient();
     const gameStateStore = useGameStateStore();
     const requestRender = useSceneRenderRequest();
     const matrixProfileSequence = useRef(0);
+    useEffect(() => {
+        if (displayedMatrixProfileSequence !== undefined)
+            updateGameProfileMetadata({
+                matrixProfileDisplayedSequence: displayedMatrixProfileSequence,
+            });
+    }, [displayedMatrixProfileSequence]);
     useEffect(() => {
         if (
             !garden ||

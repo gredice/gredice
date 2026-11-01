@@ -1,12 +1,80 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+    executeMatrixProfileCommand,
     isMatrixProfileReady,
     matrixProfileUrl,
     percentiles,
     sourceMapContents,
 } from './profile-chunk-matrices.mjs';
 import { summarizeMatrixRows } from './summarize-chunk-matrices.mjs';
+
+test('edits wait for the displayed revision and reject absent preparation work', async () => {
+    const names = [
+        'window',
+        'document',
+        'getComputedStyle',
+        '__grediceGameProfile',
+    ];
+    const previous = names.map((name) => globalThis[name]);
+    try {
+        for (const prepared of [64, 0]) {
+            const runtime = {
+                chunkCompiler: {
+                    pendingJobs: 0,
+                    matrixPreparationMs: 0,
+                    matrixPreparationInstances: 0,
+                },
+                renderPackets: { packetFallbackMeshes: 0 },
+                rendererStatsReceiptCount: 1,
+                sceneRootAnimations: { active: 0, pendingEvents: 0 },
+                matrixProfileDisplayedSequence: 0,
+            };
+            globalThis.__grediceGameProfile = runtime;
+            const events = new EventTarget();
+            globalThis.window = events;
+            globalThis.document = {
+                querySelector: () => ({
+                    getAttribute: () => 'true',
+                    getAnimations: () => [],
+                }),
+            };
+            globalThis.getComputedStyle = () => ({ opacity: '1' });
+            events.addEventListener('gredice:game-profile-matrix-edit', () => {
+                runtime.matrixProfileCommittedSequence = 1;
+                // Incoming QueryCache data precedes the displayed Canvas commit.
+                setTimeout(() => {
+                    runtime.matrixProfileDisplayedSequence = 1;
+                    runtime.chunkCompiler.matrixPreparationInstances = prepared;
+                }, 15);
+            });
+            events.addEventListener(
+                'gredice:game-profile-render-receipt-request',
+                () => {
+                    assert.equal(runtime.matrixProfileDisplayedSequence, 1);
+                    setTimeout(() => {
+                        runtime.rendererStatsReceiptCount++;
+                        runtime.rendererStatsPublishedAt = performance.now();
+                    }, 0);
+                },
+            );
+            const command = executeMatrixProfileCommand({
+                kind: 'edit',
+                count: 64,
+                sequence: 1,
+            });
+            if (prepared === 64)
+                assert.equal((await command).preparationInstances, 64);
+            else
+                await assert.rejects(command, /Edit preparation work mismatch/);
+        }
+    } finally {
+        names.forEach((name, index) => {
+            if (previous[index] === undefined) delete globalThis[name];
+            else globalThis[name] = previous[index];
+        });
+    }
+});
 
 test('switch diagnostics enable the real route listener without replacing the garden fixture', () => {
     for (const kind of ['edit8', 'edit64', 'switch']) {

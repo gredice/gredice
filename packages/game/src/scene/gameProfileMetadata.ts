@@ -367,6 +367,7 @@ export function bindRuntimeFrameLoopProfileTelemetry(
 export type GameProfileMetadata = {
     matrixProfileCommand?: { count: number; sequence: number; changed: number };
     matrixProfileCommittedSequence?: number;
+    matrixProfileDisplayedSequence?: number;
     chunkCompiler?: ChunkCompilerMetrics;
     gardenSceneLifecycle?: GardenSceneLifecycleSnapshot;
     gardenSceneManifest?: GardenSceneManifestProfile;

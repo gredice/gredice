@@ -49,6 +49,8 @@ multi-source Float64 compiler preparation are exercised. An immutable local
 query-cache edit changes only selected top-block rotations; it never writes
 garden or account data. The command is enabled only for the explicit matrix
 debug fixture and isolated local sandbox namespace.
+Each edit waits for its revision to commit in the displayed Canvas tree, not
+only the incoming query, and must prepare exactly 64 or 4,096 instances.
 Each pass receives four unmeasured warmup commands before a fresh capture and
 collection boundary. `--smoke-only` runs a one-round High-quality diagnostic;
 the summarizer rejects smoke/setup reports as primary acceptance.

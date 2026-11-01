@@ -180,6 +180,8 @@ async function snapshot(page) {
             sceneOpacity: scene ? getComputedStyle(scene).opacity : null,
             sceneTransitions: scene?.getAnimations().length,
             sceneRootAnimations: p?.sceneRootAnimations,
+            matrixProfileCommittedSequence: p?.matrixProfileCommittedSequence,
+            matrixProfileDisplayedSequence: p?.matrixProfileDisplayedSequence,
             pending: p?.chunkCompiler?.pendingJobs,
             fallback: p?.renderPackets?.packetFallbackMeshes,
             receipt: p?.rendererStatsReceiptCount,
@@ -215,111 +217,114 @@ async function settle(page) {
     );
 }
 
-async function command(page, { kind, count, profile }, sequence) {
-    return page.evaluate(
-        async ({ kind, count, profile, sequence }) => {
-            const before =
-                globalThis.__grediceGameProfile.rendererStatsReceiptCount;
-            const compilerBefore = {
-                ...globalThis.__grediceGameProfile.chunkCompiler,
+export async function executeMatrixProfileCommand({
+    kind,
+    count,
+    profile,
+    sequence,
+}) {
+    const before = globalThis.__grediceGameProfile.rendererStatsReceiptCount;
+    const compilerBefore = {
+        ...globalThis.__grediceGameProfile.chunkCompiler,
+    };
+    const startedAt = performance.now();
+    if (kind === 'edit')
+        window.dispatchEvent(
+            new CustomEvent('gredice:game-profile-matrix-edit', {
+                detail: { count, sequence },
+            }),
+        );
+    else
+        window.dispatchEvent(
+            new CustomEvent('gredice:game-profile-garden-switch', {
+                detail: { profile },
+            }),
+        );
+    const deadline = startedAt + 60000;
+    const expectedGarden = profile === 'fauna-heavy' ? 99995 : 99996;
+    while (performance.now() < deadline) {
+        const p = globalThis.__grediceGameProfile;
+        const scene = document.querySelector('[data-scene-garden-id]');
+        const accepted =
+            kind === 'edit'
+                ? p.matrixProfileCommittedSequence === sequence &&
+                  p.matrixProfileDisplayedSequence === sequence
+                : p.profileGardenId === expectedGarden &&
+                  scene?.getAttribute('data-scene-garden-id') ===
+                      String(expectedGarden);
+        if (
+            accepted &&
+            scene?.getAttribute('data-scene-visible') === 'true' &&
+            getComputedStyle(scene).opacity === '1' &&
+            scene.getAnimations().length === 0 &&
+            p.chunkCompiler.pendingJobs === 0 &&
+            p.renderPackets.packetFallbackMeshes === 0
+        ) {
+            let receipt = p.rendererStatsReceiptCount;
+            const camera = {
+                position: [-100, 100, -100],
+                target: [0, 0, 0],
+                zoom: 100,
             };
-            const startedAt = performance.now();
-            if (kind === 'edit')
-                window.dispatchEvent(
-                    new CustomEvent('gredice:game-profile-matrix-edit', {
-                        detail: { count, sequence },
-                    }),
-                );
-            else
-                window.dispatchEvent(
-                    new CustomEvent('gredice:game-profile-garden-switch', {
-                        detail: { profile },
-                    }),
-                );
-            const deadline = startedAt + 60000;
-            const expectedGarden = profile === 'fauna-heavy' ? 99995 : 99996;
+            window.dispatchEvent(
+                new Event('gredice:game-profile-render-receipt-request'),
+            );
+            window.dispatchEvent(
+                new CustomEvent('gredice:game-profile-camera-restore-command', {
+                    detail: camera,
+                }),
+            );
             while (performance.now() < deadline) {
-                const p = globalThis.__grediceGameProfile;
-                const scene = document.querySelector('[data-scene-garden-id]');
-                const accepted =
-                    kind === 'edit'
-                        ? p.matrixProfileCommittedSequence === sequence
-                        : p.profileGardenId === expectedGarden &&
-                          scene?.getAttribute('data-scene-garden-id') ===
-                              String(expectedGarden);
+                const next = globalThis.__grediceGameProfile;
                 if (
-                    accepted &&
-                    scene?.getAttribute('data-scene-visible') === 'true' &&
-                    getComputedStyle(scene).opacity === '1' &&
-                    scene.getAnimations().length === 0 &&
-                    p.chunkCompiler.pendingJobs === 0 &&
-                    p.renderPackets.packetFallbackMeshes === 0
+                    next.rendererStatsReceiptCount >
+                        Math.max(before, receipt) &&
+                    next.chunkCompiler.pendingJobs === 0 &&
+                    next.renderPackets.packetFallbackMeshes === 0
                 ) {
-                    let receipt = p.rendererStatsReceiptCount;
-                    const camera = {
-                        position: [-100, 100, -100],
-                        target: [0, 0, 0],
-                        zoom: 100,
-                    };
-                    window.dispatchEvent(
-                        new Event(
-                            'gredice:game-profile-render-receipt-request',
-                        ),
-                    );
-                    window.dispatchEvent(
-                        new CustomEvent(
-                            'gredice:game-profile-camera-restore-command',
-                            { detail: camera },
-                        ),
-                    );
-                    while (performance.now() < deadline) {
-                        const next = globalThis.__grediceGameProfile;
-                        if (
-                            next.rendererStatsReceiptCount >
-                                Math.max(before, receipt) &&
-                            next.chunkCompiler.pendingJobs === 0 &&
-                            next.renderPackets.packetFallbackMeshes === 0
-                        ) {
-                            if (
-                                next.sceneRootAnimations?.active !== 0 ||
-                                next.sceneRootAnimations?.pendingEvents !== 0
-                            ) {
-                                receipt = next.rendererStatsReceiptCount;
-                                window.dispatchEvent(
-                                    new Event(
-                                        'gredice:game-profile-render-receipt-request',
-                                    ),
-                                );
-                                await new Promise((resolve) =>
-                                    setTimeout(resolve, 1),
-                                );
-                                continue;
-                            }
-                            return {
-                                durationMs:
-                                    next.rendererStatsPublishedAt - startedAt,
-                                receipt: next.rendererStatsReceiptCount,
-                                compiler: { ...next.chunkCompiler },
-                                preparationMs:
-                                    next.chunkCompiler.matrixPreparationMs -
-                                    compilerBefore.matrixPreparationMs,
-                                preparationInstances:
-                                    next.chunkCompiler
-                                        .matrixPreparationInstances -
-                                    compilerBefore.matrixPreparationInstances,
-                            };
-                        }
+                    if (
+                        next.sceneRootAnimations?.active !== 0 ||
+                        next.sceneRootAnimations?.pendingEvents !== 0
+                    ) {
+                        receipt = next.rendererStatsReceiptCount;
+                        window.dispatchEvent(
+                            new Event(
+                                'gredice:game-profile-render-receipt-request',
+                            ),
+                        );
                         await new Promise((resolve) => setTimeout(resolve, 1));
+                        continue;
                     }
+                    const preparationInstances =
+                        next.chunkCompiler.matrixPreparationInstances -
+                        compilerBefore.matrixPreparationInstances;
+                    if (kind === 'edit' && preparationInstances !== count)
+                        throw new Error(
+                            `Edit preparation work mismatch: expected ${count}, observed ${preparationInstances}`,
+                        );
+                    return {
+                        durationMs: next.rendererStatsPublishedAt - startedAt,
+                        receipt: next.rendererStatsReceiptCount,
+                        compiler: { ...next.chunkCompiler },
+                        preparationMs:
+                            next.chunkCompiler.matrixPreparationMs -
+                            compilerBefore.matrixPreparationMs,
+                        preparationInstances,
+                    };
                 }
                 await new Promise((resolve) => setTimeout(resolve, 1));
             }
-            throw new Error(
-                'Matrix command did not reach a settled submitted frame',
-            );
-        },
-        { kind, count, profile, sequence },
-    );
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1));
+    }
+    throw new Error('Matrix command did not reach a settled submitted frame');
+}
+
+async function command(page, parameters, sequence) {
+    return page.evaluate(executeMatrixProfileCommand, {
+        ...parameters,
+        sequence,
+    });
 }
 
 async function traceStop(cdp) {
@@ -380,7 +385,7 @@ export async function run(options) {
                 rounds: 4,
                 samplesPerRound: 5,
                 endpoint:
-                    'query edit/switch to settled post-render receipt with unchanged-camera fence',
+                    'displayed revision and settled animation/compilation to post-render receipt at fixed comparison camera',
                 browser: browser.version(),
                 harnessSha256: hash(await readFile(new URL(import.meta.url))),
                 smoke: options.smoke === true,
