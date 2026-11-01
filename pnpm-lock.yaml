@@ -223,8 +223,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui
       '@hono/mcp':
-        specifier: 0.3.2
-        version: 0.3.2(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(hono-rate-limiter@0.5.4(hono@4.13.14))(hono@4.13.14)(zod@4.6.7)
+        specifier: 0.3.3
+        version: 0.3.3(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(hono-rate-limiter@0.5.4(hono@4.13.14))(hono@4.13.14)(zod@4.6.7)
       '@hono/standard-validator':
         specifier: 0.4.1
         version: 0.4.1(@standard-schema/spec@1.1.0)(hono@4.13.14)
@@ -3081,8 +3081,8 @@ packages:
     peerDependencies:
       vue: ^3.2.0
 
-  '@hono/mcp@0.3.2':
-    resolution: {integrity: sha512-IJQ4RazhwFLRwcTM95Dj9YfNBYXwOQzd1IfnDy4S3hiaBbtnVY0sWiT83auOOnhaCiE0TTbud4JV9UD30zknXA==}
+  '@hono/mcp@0.3.3':
+    resolution: {integrity: sha512-vNZbRKPnuFLXaWkanJPMKo+GKexzxLRAuWJLZjfP6ckHCqApaY5ksxkFsNGLtqZYC38bTYVQfnr3XIBwfZcFOw==}
     peerDependencies:
       '@modelcontextprotocol/sdk': ^1.29.0
       hono: '*'
@@ -11927,7 +11927,7 @@ snapshots:
       '@tanstack/vue-virtual': 3.13.39(vue@3.5.44(typescript@7.0.2))
       vue: 3.5.44(typescript@7.0.2)
 
-  '@hono/mcp@0.3.2(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(hono-rate-limiter@0.5.4(hono@4.13.14))(hono@4.13.14)(zod@4.6.7)':
+  '@hono/mcp@0.3.3(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(hono-rate-limiter@0.5.4(hono@4.13.14))(hono@4.13.14)(zod@4.6.7)':
     dependencies:
       '@modelcontextprotocol/sdk': 1.32.2(supports-color@10.2.2)(zod@4.6.7)
       hono: 4.13.14
