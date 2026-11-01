@@ -158,6 +158,7 @@ async function sourceWitness(page, subject, outDir, loadedScripts) {
 async function snapshot(page) {
     return page.evaluate(() => {
         const p = globalThis.__grediceGameProfile;
+        const scene = document.querySelector('[data-scene-garden-id]');
         const canvas = document.querySelector('canvas');
         const gl = canvas?.getContext('webgl2');
         const info = gl?.getExtension('WEBGL_debug_renderer_info');
@@ -174,6 +175,10 @@ async function snapshot(page) {
             stacks: p?.profileGardenStackCount,
             blocks: p?.profileGardenBlockCount,
             garden: p?.profileGardenId,
+            displayedGarden: scene?.getAttribute('data-scene-garden-id'),
+            sceneVisible: scene?.getAttribute('data-scene-visible'),
+            sceneOpacity: scene ? getComputedStyle(scene).opacity : null,
+            sceneTransitions: scene?.getAnimations().length,
             pending: p?.chunkCompiler?.pendingJobs,
             fallback: p?.renderPackets?.packetFallbackMeshes,
             receipt: p?.rendererStatsReceiptCount,
@@ -234,17 +239,27 @@ async function command(page, { kind, count, profile }, sequence) {
             const expectedGarden = profile === 'fauna-heavy' ? 99995 : 99996;
             while (performance.now() < deadline) {
                 const p = globalThis.__grediceGameProfile;
+                const scene = document.querySelector('[data-scene-garden-id]');
                 const accepted =
                     kind === 'edit'
                         ? p.matrixProfileCommittedSequence === sequence
-                        : p.profileGardenId === expectedGarden;
+                        : p.profileGardenId === expectedGarden &&
+                          scene?.getAttribute('data-scene-garden-id') ===
+                              String(expectedGarden);
                 if (
                     accepted &&
+                    scene?.getAttribute('data-scene-visible') === 'true' &&
+                    getComputedStyle(scene).opacity === '1' &&
+                    scene.getAnimations().length === 0 &&
                     p.chunkCompiler.pendingJobs === 0 &&
                     p.renderPackets.packetFallbackMeshes === 0
                 ) {
                     const receipt = p.rendererStatsReceiptCount;
-                    const camera = p.gameCameraSnapshot;
+                    const camera = {
+                        position: [-100, 100, -100],
+                        target: [0, 0, 0],
+                        zoom: 100,
+                    };
                     window.dispatchEvent(
                         new Event(
                             'gredice:game-profile-render-receipt-request',

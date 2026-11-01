@@ -61,8 +61,9 @@ improvements:
   unpacking. Browser wrappers time WebGL buffer upload **submission**, not GPU
   execution or upload completion. Unpacking is not reported as GPU upload.
 - **Latency:** observers and upload wrappers are off. The endpoint is a settled
-  compiled scene plus a fresh post-render receipt, fenced by restoring the
-  unchanged camera pose. A one-shot receipt request bypasses the ordinary 500 ms
+  compiled and displayed scene, including its CSS garden transition, plus a fresh
+  post-render receipt at the fixed camera pose (position −100/100/−100, target
+  0/0/0, zoom 100). A one-shot receipt request bypasses the ordinary 500 ms
   statistics reporting throttle without changing rendering or the normal
   reporting interval. It is renderer edit/switch latency, not network,
   physical display latency, or FPS. Twenty samples retain absolute p50/p95 and
