@@ -310,8 +310,8 @@ an existing production asset server; keep the canonical profiling checkout
 untouched:
 
 ```bash
-GREDICE_GARDEN_BASE_URL=http://localhost:3917 GREDICE_PLAYWRIGHT_REUSE_SERVER=true FAUNA_TRAJECTORY_MODE=baseline FAUNA_TRAJECTORY_OUTPUT=/tmp/fauna-baseline.json pnpm --filter garden exec playwright test tests/fauna-trajectory.spec.tsx --project=chromium-webgl --workers=1
-GREDICE_GARDEN_BASE_URL=http://localhost:3917 GREDICE_PLAYWRIGHT_REUSE_SERVER=true FAUNA_TRAJECTORY_REFERENCE=/tmp/fauna-baseline.json FAUNA_TRAJECTORY_OUTPUT=/tmp/fauna-candidate.json pnpm --filter garden exec playwright test tests/fauna-trajectory.spec.tsx --project=chromium-webgl --workers=1
+GREDICE_GARDEN_BASE_URL=http://localhost:3917 GREDICE_PLAYWRIGHT_REUSE_SERVER=true FAUNA_TRAJECTORY_MODE=baseline FAUNA_TRAJECTORY_OUTPUT=/tmp/fauna-baseline.json pnpm --filter garden exec playwright test --config=playwright/fauna-trajectory.config.ts --project=chromium-webgl --workers=1
+GREDICE_GARDEN_BASE_URL=http://localhost:3917 GREDICE_PLAYWRIGHT_REUSE_SERVER=true FAUNA_TRAJECTORY_REFERENCE=/tmp/fauna-baseline.json FAUNA_TRAJECTORY_OUTPUT=/tmp/fauna-candidate.json pnpm --filter garden exec playwright test --config=playwright/fauna-trajectory.config.ts --project=chromium-webgl --workers=1
 node --test apps/garden/scripts/fauna-trajectory-contract.unit.mjs
 ```
 
