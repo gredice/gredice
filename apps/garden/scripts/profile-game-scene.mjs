@@ -4,6 +4,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from '@playwright/test';
 import sharp from 'sharp';
+import { createGameProfileCheckpoint } from './game-profile-checkpoint.mjs';
 import { assertSafeGameProfileOutputDirectory } from './game-profile-output.mjs';
 import {
     allowMissingStaticCacheShadowPopulation,
@@ -4523,7 +4524,11 @@ async function measurePlantCloseup({ cdp, options, page, scenario }) {
     };
 }
 
-async function waitForGardenSwitchFixture(page, profile) {
+async function waitForGardenSwitchFixture(
+    page,
+    profile,
+    expectedQualityTier = 'high',
+) {
     await page.waitForFunction(
         ({
             expectedBlockCount,
@@ -4533,6 +4538,7 @@ async function waitForGardenSwitchFixture(page, profile) {
             expectedRaisedBedCount,
             expectedSpeciesCounts,
             expectedStackCount,
+            expectedQualityTier,
             profile,
         }) => {
             const runtime = globalThis.__grediceGameProfile;
@@ -4550,7 +4556,7 @@ async function waitForGardenSwitchFixture(page, profile) {
                         ),
                 );
             const baseReady =
-                runtime?.qualityTier === 'high' &&
+                runtime?.qualityTier === expectedQualityTier &&
                 runtime.profileGardenId === expectedGardenId &&
                 runtime.profileGardenStackCount === expectedStackCount &&
                 runtime.profileGardenBlockCount === expectedBlockCount &&
@@ -4595,6 +4601,7 @@ async function waitForGardenSwitchFixture(page, profile) {
             expectedSpeciesCounts: faunaHeavyExpectedFixedSpeciesCounts,
             expectedStackCount:
                 gardenSwitchExpectedFixtures[profile].stackCount,
+            expectedQualityTier,
             profile,
         },
         { timeout: 60_000 },
@@ -6465,13 +6472,14 @@ function isLifecycleRendererStatsMeasurementValid(resources, mode) {
 }
 
 async function captureLifecycleActiveControl({
+    expectedQualityTier = 'high',
     lifecycleRendererStatsMode,
     page,
     persistentCanvas,
     persistentContext,
     screenshotPath,
 }) {
-    await waitForGardenSwitchFixture(page, 'high-target');
+    await waitForGardenSwitchFixture(page, 'high-target', expectedQualityTier);
     await hideLifecycleOutline(page);
     const rendererStatsWitness = await waitForLifecycleRendererStatsBarrier(
         page,
@@ -8105,6 +8113,10 @@ function evaluateLifecycleAcceptance({
 }
 
 async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
+    const expectedQualityTier =
+        scenario.staticCacheClearance === true
+            ? scenario.expectedQualityTier
+            : 'high';
     const context = await browser.newContext({
         deviceScaleFactor: scenario.dpr,
         hasTouch: scenario.isMobile,
@@ -8220,7 +8232,11 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
             undefined,
             { timeout: 60_000 },
         );
-        await waitForGardenSwitchFixture(page, 'high-target');
+        await waitForGardenSwitchFixture(
+            page,
+            'high-target',
+            expectedQualityTier,
+        );
         const fixtureReadyMs = await page.evaluate(() => performance.now());
         await waitForRuntimeFrameLoopState(page, {
             canvasVisible: true,
@@ -8413,6 +8429,7 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
         const offscreenResumedIntersection =
             await readLifecycleIntersectionWitness(page);
         const offscreenResumedControl = await captureLifecycleActiveControl({
+            expectedQualityTier,
             lifecycleRendererStatsMode,
             page,
             persistentCanvas: sceneCanvas,
@@ -8550,6 +8567,7 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
             visibilityState: document.visibilityState,
         }));
         const hiddenResumedControl = await captureLifecycleActiveControl({
+            expectedQualityTier,
             lifecycleRendererStatsMode,
             page,
             persistentCanvas: sceneCanvas,
@@ -8661,7 +8679,11 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
                 { timeout: lifecycleContextEventTimeoutMs },
             );
         }
-        await waitForGardenSwitchFixture(page, 'high-target');
+        await waitForGardenSwitchFixture(
+            page,
+            'high-target',
+            expectedQualityTier,
+        );
         await waitForRuntimeFrameLoopState(page, {
             canvasVisible: true,
             documentVisible: true,
@@ -8669,6 +8691,7 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
             loopActive: true,
         });
         const restoredControl = await captureLifecycleActiveControl({
+            expectedQualityTier,
             lifecycleRendererStatsMode,
             page,
             persistentCanvas: sceneCanvas,
@@ -19968,6 +19991,14 @@ async function main() {
         const runQueue = buildScenarioRunQueue(profileScenarios, {
             closeupRepeat: options.closeupRepeat,
         });
+        const checkpoint = await createGameProfileCheckpoint(options.outDir, {
+            harness: harnessProvenance,
+            totalRuns: runQueue.length,
+            scenarioSet: options.scenarioSet,
+            sampleMs: options.sampleMs,
+            warmupMs: options.warmupMs,
+        });
+        console.log(`Raw run checkpoints: ${checkpoint.path}`);
         for (const {
             baseScenario,
             repeat,
@@ -19977,29 +20008,44 @@ async function main() {
             console.log(
                 `Profiling ${baseScenario.name}${repeat > 1 ? ` (${runIndex}/${repeat})` : ''}...`,
             );
-            const result = baseScenario.lifecycleProfile
-                ? await measureLifecycleScenario(
-                      browser,
-                      options.baseUrl,
-                      runScenario,
-                      options,
-                  )
-                : baseScenario.gardenSwitchProfile
-                  ? await measureGardenSwitchScenario(
-                        browser,
-                        options.baseUrl,
-                        runScenario,
-                        options,
-                    )
-                  : await measureScenario(
-                        browser,
-                        options.baseUrl,
-                        runScenario,
-                        options,
-                    );
+            await checkpoint.record({
+                type: 'started',
+                name: runScenario.name,
+            });
+            let result;
+            try {
+                result = baseScenario.lifecycleProfile
+                    ? await measureLifecycleScenario(
+                          browser,
+                          options.baseUrl,
+                          runScenario,
+                          options,
+                      )
+                    : baseScenario.gardenSwitchProfile
+                      ? await measureGardenSwitchScenario(
+                            browser,
+                            options.baseUrl,
+                            runScenario,
+                            options,
+                        )
+                      : await measureScenario(
+                            browser,
+                            options.baseUrl,
+                            runScenario,
+                            options,
+                        );
+            } catch (error) {
+                await checkpoint.record({
+                    type: 'failed',
+                    name: runScenario.name,
+                    message: String(error),
+                });
+                throw error;
+            }
             result.baseName = baseScenario.name;
             result.profileRun = runIndex;
             scenarios.push(result);
+            await checkpoint.record({ type: 'completed', result });
         }
 
         const highTargetMedians = buildHighTargetMedians(scenarios);
@@ -20073,6 +20119,7 @@ async function main() {
         };
 
         await writeReports(report, options.outDir);
+        await checkpoint.record({ type: 'finished', summary: report.summary });
 
         console.log(`Wrote ${resolve(options.outDir, 'latest.md')}`);
         console.log(
@@ -20189,6 +20236,7 @@ export {
     shouldFailProfileRun,
     shouldObserveRuntimeFrameLoopDuringRaf,
     shouldReadRuntimeOwnerLeaseRafSnapshot,
+    waitForGardenSwitchFixture,
     writeReports,
 };
 

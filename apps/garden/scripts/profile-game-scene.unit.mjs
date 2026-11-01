@@ -93,11 +93,91 @@ import {
     shouldFailProfileRun,
     shouldObserveRuntimeFrameLoopDuringRaf,
     shouldReadRuntimeOwnerLeaseRafSnapshot,
+    waitForGardenSwitchFixture,
     writeReports,
 } from './profile-game-scene.mjs';
 import { allowMissingStaticCacheShadowPopulation } from './static-cache-clearance.mjs';
 
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
+test('fixture readiness binds the requested resolved tier and preserves the canonical High default', async () => {
+    const saved = ['document', '__grediceGameProfile'].map((key) => [
+        key,
+        Object.getOwnPropertyDescriptor(globalThis, key),
+    ]);
+    try {
+        for (const { actualTier, expectedTier, ready, wrongCount = false } of [
+            { actualTier: 'high', ready: true },
+            { actualTier: 'low', ready: false },
+            ...['low', 'medium', 'high', 'auto-constrained'].map((tier) => ({
+                actualTier: tier,
+                expectedTier: tier,
+                ready: true,
+            })),
+            { actualTier: 'high', expectedTier: 'low', ready: false },
+            {
+                actualTier: 'low',
+                expectedTier: 'low',
+                ready: false,
+                wrongCount: true,
+            },
+        ]) {
+            await waitForGardenSwitchFixture(
+                {
+                    async waitForFunction(predicate, expected) {
+                        Object.defineProperty(
+                            globalThis,
+                            '__grediceGameProfile',
+                            {
+                                configurable: true,
+                                value: {
+                                    qualityTier: actualTier,
+                                    profileGardenId: expected.expectedGardenId,
+                                    profileGardenStackCount:
+                                        expected.expectedStackCount -
+                                        (wrongCount ? 1 : 0),
+                                    profileGardenBlockCount:
+                                        expected.expectedBlockCount,
+                                    profileGardenRaisedBedCount:
+                                        expected.expectedRaisedBedCount,
+                                    generatedPlantFieldCount:
+                                        expected.expectedFieldCount,
+                                    generatedPlantExpectedInstanceCount:
+                                        expected.expectedInstanceCount,
+                                    generatedPlantInstanceCount:
+                                        expected.expectedInstanceCount,
+                                    generatedPlantVisibleFieldCount:
+                                        expected.expectedFieldCount,
+                                    generatedPlantVisibleInstanceCount:
+                                        expected.expectedInstanceCount,
+                                },
+                            },
+                        );
+                        Object.defineProperty(globalThis, 'document', {
+                            configurable: true,
+                            value: {
+                                querySelector: () => ({
+                                    getAttribute: (name) =>
+                                        name === 'data-scene-visible'
+                                            ? 'true'
+                                            : String(expected.expectedGardenId),
+                                }),
+                            },
+                        });
+                        assert.equal(predicate(expected), ready);
+                    },
+                },
+                'high-target',
+                expectedTier,
+            );
+        }
+    } finally {
+        for (const [key, descriptor] of saved) {
+            if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+            else Reflect.deleteProperty(globalThis, key);
+        }
+    }
+});
 
 test('profiler output defaults to durable evidence outside Playwright cleanup', (t) => {
     const previous = process.env.GAME_PROFILE_OUT_DIR;

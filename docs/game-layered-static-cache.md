@@ -175,6 +175,13 @@ Run the complete production-build supplemental matrix with
 `pnpm --filter garden profile:game:static-cache-clearance`. It contains 240 runs
 across the five resolved profiles; it retains the existing budgets and paired
 limits and records failed savings comparisons separately from safe live no-ops.
+The lifecycle readiness barrier binds each supplemental scenario's resolved
+quality tier, including resume and restoration; canonical garden-switch and
+lifecycle scenarios retain their High requirement. Fixture cardinality checks
+are unchanged. Every invocation also writes a uniquely named `.runs.jsonl`
+checkpoint file before sampling and appends each completed run outside its timed
+window. Later setup failures preserve earlier raw evidence. Checkpoints are
+partial evidence, not a passing acceptance report.
 
 The supplemental profiler observes the cache's own render-pass queries without
 claiming the WebGL query slot. Its explicit `cache-owned-render-pass-v1` mode
