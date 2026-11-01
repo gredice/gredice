@@ -8,6 +8,15 @@ still allocates an independent Float64 buffer for every compiler request.
 Stable instance updates use the same writer. There is no Wasm runtime or
 shared transferable output buffer.
 
+Real-scene parity also exposed cached shadows that could be captured before
+asynchronous packet replacement finished. Compilation now owns a lease in its
+Canvas runtime until the resulting geometry commits, or cancellation/fallback
+settles it. The shadow controller coalesces committed geometry revisions with
+the existing deferred placement refresh and waits for pending geometry before
+capturing the final map. Unchanged scenes retain their cached shadow map.
+Post-render receipts report the committed and applied shadow revisions so a
+profiling command can verify that the displayed result includes fresh shadows.
+
 ## Integrated production measurement
 
 `profile-chunk-matrices.mjs` compares two separately built production subjects.

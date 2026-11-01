@@ -1,4 +1,5 @@
 import type { RootStore } from '@react-three/fiber';
+import { SceneGeometryUpdates } from './sceneGeometryUpdates';
 
 type SceneAnimation = {
     readonly idle: boolean;
@@ -11,6 +12,7 @@ const maximumFrameDeltaMs = 64;
 
 /** Owns demand work independently of R3F's module-global loop. */
 export class SceneRootRuntime {
+    readonly geometryUpdates = new SceneGeometryUpdates();
     private visible = false;
     private connected = false;
     private rendering = false;

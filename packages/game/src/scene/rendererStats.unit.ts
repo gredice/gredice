@@ -86,15 +86,20 @@ test('opt-in animation activity is read at the post-render boundary', () => {
     const callbacks: Array<() => void> = [];
     const publications: Array<Record<string, unknown>> = [];
     let activity = { active: 3, pendingEvents: 2 };
+    let geometry = { pending: 2, revision: 3 };
     const publisher = createRendererStatsPublisher({
         enqueue: (callback) => callbacks.push(callback),
         publish: (metadata) => publications.push(metadata),
         readSceneAnimations: () => activity,
+        readSceneGeometryActivity: () => geometry,
     });
     publisher.schedule(renderer());
     activity = { active: 0, pendingEvents: 0 };
+    geometry = { pending: 0, revision: 5 };
     callbacks.shift()?.();
     assert.deepEqual(publications[0]?.sceneRootAnimations, activity);
+    assert.equal(publications[0]?.sceneGeometryPending, 0);
+    assert.equal(publications[0]?.sceneGeometryRevision, 5);
 });
 
 test('renderer stats remain monotonic across StrictMode cleanup and remount', () => {

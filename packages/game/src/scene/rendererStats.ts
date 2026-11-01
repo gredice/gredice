@@ -9,6 +9,7 @@ type RendererStatsPublisherOptions = {
     publish: (metadata: GameProfileMetadata) => void;
     readCurrentReceipt?: () => number | undefined;
     readSceneAnimations?: () => GameProfileMetadata['sceneRootAnimations'];
+    readSceneGeometryActivity?: () => { pending: number; revision: number };
 };
 
 export function createRendererStatsPublisher({
@@ -17,6 +18,7 @@ export function createRendererStatsPublisher({
     publish,
     readCurrentReceipt = () => undefined,
     readSceneAnimations,
+    readSceneGeometryActivity,
 }: RendererStatsPublisherOptions) {
     let active = true;
     let receiptCount = 0;
@@ -37,6 +39,7 @@ export function createRendererStatsPublisher({
                     return;
                 }
                 const currentReceipt = readCurrentReceipt();
+                const geometryActivity = readSceneGeometryActivity?.();
                 receiptCount =
                     Math.max(
                         receiptCount,
@@ -59,6 +62,15 @@ export function createRendererStatsPublisher({
                     rendererTriangles: gl.info.render.triangles,
                     ...(readSceneAnimations
                         ? { sceneRootAnimations: readSceneAnimations() }
+                        : {}),
+                    ...(geometryActivity
+                        ? {
+                              sceneGeometryPending: geometryActivity.pending,
+                              sceneGeometryRevision: geometryActivity.revision,
+                          }
+                        : {}),
+                    ...(gl.shadowMap
+                        ? { shadowMapNeedsUpdate: gl.shadowMap.needsUpdate }
                         : {}),
                 });
             });

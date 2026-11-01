@@ -27,6 +27,7 @@ test('edits wait for the displayed revision and reject absent preparation work',
                 },
                 renderPackets: { packetFallbackMeshes: 0 },
                 rendererStatsReceiptCount: 1,
+                sceneGeometryPending: 0,
                 sceneRootAnimations: { active: 0, pendingEvents: 0 },
                 matrixProfileDisplayedSequence: 0,
             };
@@ -129,12 +130,28 @@ test('readiness uses the actual packet telemetry and rejects pending or fallback
             renderPackets: { packetFallbackMeshes: 0 },
             gameCameraSnapshot: {},
             rendererStatsReceiptCount: 1,
+            sceneGeometryPending: 0,
         };
         assert.equal(isMatrixProfileReady(), true);
         globalThis.__grediceGameProfile.chunkCompiler.pendingJobs = 1;
         assert.equal(isMatrixProfileReady(), false);
         globalThis.__grediceGameProfile.chunkCompiler.pendingJobs = 0;
         globalThis.__grediceGameProfile.renderPackets.packetFallbackMeshes = 1;
+        assert.equal(isMatrixProfileReady(), false);
+        globalThis.__grediceGameProfile.renderPackets.packetFallbackMeshes = 0;
+        globalThis.__grediceGameProfile.sceneGeometryPending = 1;
+        assert.equal(isMatrixProfileReady(), false);
+        Object.assign(globalThis.__grediceGameProfile, {
+            sceneGeometryPending: 0,
+            shadowsEnabled: true,
+            sceneGeometryRevision: 2,
+            shadowGeometryRevision: 1,
+            shadowMapNeedsUpdate: false,
+        });
+        assert.equal(isMatrixProfileReady(), false);
+        globalThis.__grediceGameProfile.shadowGeometryRevision = 2;
+        assert.equal(isMatrixProfileReady(), true);
+        globalThis.__grediceGameProfile.shadowMapNeedsUpdate = true;
         assert.equal(isMatrixProfileReady(), false);
     } finally {
         globalThis.__grediceGameProfile = before;

@@ -174,6 +174,10 @@ function RendererStatsReporter() {
             readCurrentReceipt: () =>
                 readGameProfileMetadata()?.rendererStatsReceiptCount,
             readSceneAnimations: runtime.readAnimationActivity,
+            readSceneGeometryActivity: () => ({
+                pending: runtime.geometryUpdates.pendingCount,
+                revision: runtime.geometryUpdates.revision,
+            }),
         });
         publisherRef.current = publisher;
         const requestReceipt = () => {

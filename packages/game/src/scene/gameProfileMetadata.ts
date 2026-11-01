@@ -571,6 +571,10 @@ export type GameProfileMetadata = {
     rendererTextures?: number;
     rendererTriangles?: number;
     sceneRootAnimations?: { active: number; pendingEvents: number };
+    sceneGeometryPending?: number;
+    sceneGeometryRevision?: number;
+    shadowGeometryRevision?: number;
+    shadowMapNeedsUpdate?: boolean;
     runtimeFrameLoop?: RuntimeFrameLoopProfileTelemetry;
     shadowMapAutoUpdate?: boolean;
     shadowMapDynamicRefreshMs?: number;

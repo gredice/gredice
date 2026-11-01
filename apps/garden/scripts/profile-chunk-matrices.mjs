@@ -31,6 +31,10 @@ export function isMatrixProfileReady() {
     const p = globalThis.__grediceGameProfile;
     return (
         p?.chunkCompiler?.pendingJobs === 0 &&
+        p?.sceneGeometryPending === 0 &&
+        (!p.shadowsEnabled ||
+            (p.shadowGeometryRevision === p.sceneGeometryRevision &&
+                p.shadowMapNeedsUpdate === false)) &&
         p?.renderPackets?.packetFallbackMeshes === 0 &&
         Boolean(p?.gameCameraSnapshot) &&
         p?.rendererStatsReceiptCount > 0
@@ -180,6 +184,10 @@ async function snapshot(page) {
             sceneOpacity: scene ? getComputedStyle(scene).opacity : null,
             sceneTransitions: scene?.getAnimations().length,
             sceneRootAnimations: p?.sceneRootAnimations,
+            sceneGeometryPending: p?.sceneGeometryPending,
+            sceneGeometryRevision: p?.sceneGeometryRevision,
+            shadowGeometryRevision: p?.shadowGeometryRevision,
+            shadowMapNeedsUpdate: p?.shadowMapNeedsUpdate,
             matrixProfileCommittedSequence: p?.matrixProfileCommittedSequence,
             matrixProfileDisplayedSequence: p?.matrixProfileDisplayedSequence,
             pending: p?.chunkCompiler?.pendingJobs,
@@ -284,7 +292,12 @@ export async function executeMatrixProfileCommand({
                 ) {
                     if (
                         next.sceneRootAnimations?.active !== 0 ||
-                        next.sceneRootAnimations?.pendingEvents !== 0
+                        next.sceneRootAnimations?.pendingEvents !== 0 ||
+                        next.sceneGeometryPending !== 0 ||
+                        (next.shadowsEnabled &&
+                            (next.shadowGeometryRevision !==
+                                next.sceneGeometryRevision ||
+                                next.shadowMapNeedsUpdate !== false))
                     ) {
                         receipt = next.rendererStatsReceiptCount;
                         window.dispatchEvent(

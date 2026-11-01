@@ -1,9 +1,10 @@
 'use client';
 
-import { useFrame, useThree } from '@react-three/fiber';
+import { useFrame, useStore, useThree } from '@react-three/fiber';
 import { useCallback, useLayoutEffect, useRef } from 'react';
 import { updateGameProfileMetadata } from './gameProfileMetadata';
 import { useSceneRenderRequest, useSceneResume } from './SceneTime';
+import { getSceneRootRuntime } from './sceneRootRuntime';
 import {
     consumeDeferredShadowRefresh,
     createDeferredShadowRefreshState,
@@ -23,6 +24,7 @@ export function ShadowMapController({
     invalidationKey: string;
 }) {
     const gl = useThree((state) => state.gl);
+    const geometryUpdates = getSceneRootRuntime(useStore()).geometryUpdates;
     const requestRender = useSceneRenderRequest();
     const activePlacementCountRef = useRef(activePlacementCount);
     activePlacementCountRef.current = activePlacementCount;
@@ -35,6 +37,8 @@ export function ShadowMapController({
     const previousGeometryKeyRef = useRef(geometryKey);
     const previousInvalidationKeyRef = useRef(invalidationKey);
     const refreshCountRef = useRef(0);
+    const previousGeometryRevisionRef = useRef(geometryUpdates.revision);
+    const appliedGeometryRevisionRef = useRef(geometryUpdates.revision);
 
     const reportShadowMapState = useCallback(() => {
         updateGameProfileMetadata({
@@ -47,6 +51,7 @@ export function ShadowMapController({
             shadowMapAutoUpdate: gl.shadowMap.autoUpdate,
             shadowMapDynamicRefreshMs: 0,
             shadowMapInvalidationCount: invalidationCountRef.current,
+            shadowGeometryRevision: appliedGeometryRevisionRef.current,
         });
     }, [gl]);
 
@@ -61,12 +66,13 @@ export function ShadowMapController({
                 enabled,
                 refreshCountRef.current,
             );
+            appliedGeometryRevisionRef.current = geometryUpdates.revision;
             if (invalidateFrame) {
                 requestRender('primary-shadow-refresh');
             }
             reportShadowMapState();
         },
-        [enabled, gl, reportShadowMapState, requestRender],
+        [enabled, geometryUpdates, gl, reportShadowMapState, requestRender],
     );
 
     const queueDeferredRefresh = useCallback(
@@ -151,12 +157,17 @@ export function ShadowMapController({
     ]);
 
     useFrame(() => {
+        if (previousGeometryRevisionRef.current !== geometryUpdates.revision) {
+            previousGeometryRevisionRef.current = geometryUpdates.revision;
+            queueDeferredRefresh({ geometryChanged: true });
+        }
         if (!enabled) {
             return;
         }
 
         const consumption = consumeDeferredShadowRefresh(
             deferredRefreshRef.current,
+            geometryUpdates.pendingCount,
         );
         if (!consumption.shouldRefresh) {
             return;
