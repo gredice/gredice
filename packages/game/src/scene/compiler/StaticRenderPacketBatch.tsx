@@ -23,6 +23,7 @@ import {
     StaticOpaqueSceneCacheBoundary,
     type StaticOpaqueSceneCacheGroup,
 } from '../StaticOpaqueSceneCache';
+import { groupStaticRenderPacketsForCache } from './staticRenderPacketCacheGroups';
 import {
     recordStaticRenderPacketCompile,
     recordStaticRenderPacketFallbackComponent,
@@ -104,31 +105,12 @@ export function useStaticRenderPacketContributions(
 }
 
 function useRetainedGroups(packets: readonly StaticRenderPacket[]) {
-    const previous = useRef(
-        new Map<
-            StaticOpaqueSceneCacheGroup | undefined,
-            StaticRenderPacket[]
-        >(),
-    );
+    const previous = useRef(new Map<string, StaticRenderPacket[]>());
     return useMemo(() => {
-        const next = new Map<
-            StaticOpaqueSceneCacheGroup | undefined,
-            StaticRenderPacket[]
-        >();
-        for (const packet of packets) {
-            const group = next.get(packet.cacheGroup);
-            if (group) group.push(packet);
-            else next.set(packet.cacheGroup, [packet]);
-        }
-        for (const [key, group] of next) {
-            const old = previous.current.get(key);
-            if (
-                old &&
-                old.length === group.length &&
-                old.every((packet, index) => packet === group[index])
-            )
-                next.set(key, old);
-        }
+        const next = groupStaticRenderPacketsForCache(
+            packets,
+            previous.current,
+        );
         previous.current = next;
         return next;
     }, [packets]);
@@ -152,10 +134,10 @@ function StaticRenderPackets({
         [drawRanges, gl],
     );
 
-    return [...groups].map(([group, groupPackets]) => (
+    return [...groups].map(([key, groupPackets]) => (
         <StaticRenderPacketGroup
-            key={group ?? 'live'}
-            group={group}
+            key={key}
+            group={groupPackets[0]?.cacheGroup}
             packets={groupPackets}
             drawRanges={drawRanges}
         />

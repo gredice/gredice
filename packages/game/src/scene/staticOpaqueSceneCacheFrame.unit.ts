@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { WebGLRenderTarget } from 'three';
 import {
     createStaticOpaqueSceneCacheBenefitState,
     invalidateStaticOpaqueSceneCacheBenefitGpuSamples,
@@ -11,6 +12,8 @@ import {
 } from './staticOpaqueSceneCacheBenefit';
 import {
     buildStaticOpaqueSceneCacheObservedLiveMetadata,
+    buildStaticOpaqueSceneCacheRejectedMetadata,
+    releaseStaticOpaqueSceneCacheTargets,
     renderStaticOpaqueSceneCacheFrame,
     staticOpaqueSceneCacheObserverWindowId,
 } from './staticOpaqueSceneCacheFrame';
@@ -21,17 +24,20 @@ function drawFrame({
     observed = true,
     queryAvailable = true,
     throwRender = false,
+    canRenderCache = true,
 }: {
     enabled: boolean;
     observed?: boolean;
     queryAvailable?: boolean;
     throwRender?: boolean;
+    canRenderCache?: boolean;
 }) {
     const events: string[] = [];
     const samples: StaticOpaqueSceneCacheGpuSample[] = [];
     const run = () =>
         renderStaticOpaqueSceneCacheFrame({
             enabled,
+            canRenderCache: () => canRenderCache,
             nowMs: 100,
             gpuTimer: {
                 evidenceEpoch: 3,
@@ -119,6 +125,72 @@ test('disabled live render never ends an unavailable or unobserved query', () =>
         assert.equal(frame.events.includes('scan-registry'), false);
         assert.equal(frame.events.at(-1), 'publish');
     }
+});
+
+test('a rejected requested cache renders live without cache scans throughout cooldown', () => {
+    const rejected = drawFrame({ enabled: true, canRenderCache: false });
+    rejected.run();
+    assert.deepEqual(rejected.events, [
+        'poll',
+        'consume',
+        'release-targets',
+        'begin',
+        'render-live',
+        'end',
+        'publish',
+    ]);
+    const resumed = drawFrame({ enabled: true, canRenderCache: true });
+    resumed.run();
+    assert.equal(resumed.events.includes('scan-registry'), true);
+});
+
+test('target release disposes full attachments immediately and is idempotent without a next frame', () => {
+    const targets = [
+        new WebGLRenderTarget(1280, 720),
+        new WebGLRenderTarget(1280, 720),
+    ];
+    const disposals: number[] = [];
+    for (const [index, target] of targets.entries())
+        target.addEventListener('dispose', () => disposals.push(index));
+    releaseStaticOpaqueSceneCacheTargets(targets);
+    assert.deepEqual(disposals, [0, 1]);
+    assert.deepEqual(
+        targets.map(({ width, height }) => [width, height]),
+        [
+            [1, 1],
+            [1, 1],
+        ],
+    );
+    releaseStaticOpaqueSceneCacheTargets(targets);
+    assert.deepEqual(disposals, [0, 1]);
+});
+
+test('a rejected receipt keeps the request and measured loss while clearing replay ownership', () => {
+    const benefit = {
+        ...createStaticOpaqueSceneCacheBenefitState(),
+        evaluations: 2,
+        lastNetGpuMsPerFrame: -1,
+        reason: 'gpu-cost',
+        status: 'disabled',
+    } satisfies ReturnType<typeof createStaticOpaqueSceneCacheBenefitState>;
+    const receipt = buildStaticOpaqueSceneCacheRejectedMetadata(
+        {
+            staticOpaqueSceneCacheBudgetBytes: 80_000_000,
+            staticOpaqueSceneCachePeakTargetBytes: 40_000_000,
+            staticOpaqueSceneCacheGpuSampleCount: 60,
+            staticOpaqueSceneCacheGpuTimingSupported: true,
+            staticOpaqueSceneCacheLiveFrameCount: 4,
+        },
+        benefit,
+    );
+    assert.equal(receipt.staticOpaqueSceneCacheEnabled, true);
+    assert.equal(receipt.staticOpaqueSceneCacheBenefitStatus, 'disabled');
+    assert.equal(receipt.staticOpaqueSceneCacheBenefitReason, 'gpu-cost');
+    assert.equal(receipt.staticOpaqueSceneCacheBenefitEvaluationCount, 2);
+    assert.equal(receipt.staticOpaqueSceneCacheBenefitNetGpuMsPerFrame, -1);
+    assert.equal(receipt.staticOpaqueSceneCacheAllocatedTargetBytes, 0);
+    assert.equal(receipt.staticOpaqueSceneCachePeakTargetBytes, 40_000_000);
+    assert.equal(receipt.staticOpaqueSceneCacheReplayStatus, 'disabled');
 });
 
 test('a failed observed render closes only its own query before propagating failure', () => {

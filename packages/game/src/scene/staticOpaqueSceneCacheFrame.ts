@@ -1,3 +1,4 @@
+import type { StaticOpaqueSceneCacheBenefitState } from './staticOpaqueSceneCacheBenefit';
 import type {
     StaticOpaqueSceneCacheGpuSample,
     StaticOpaqueSceneCacheGpuTimer,
@@ -67,9 +68,44 @@ export function buildStaticOpaqueSceneCacheObservedLiveMetadata(
     return { ...staticOpaqueSceneCacheDisabledMetadata, ...diagnostics };
 }
 
+/** Requested caching can reject a probe without changing the user's preference. */
+export function buildStaticOpaqueSceneCacheRejectedMetadata(
+    diagnostics: Parameters<
+        typeof buildStaticOpaqueSceneCacheObservedLiveMetadata
+    >[0],
+    benefit: StaticOpaqueSceneCacheBenefitState,
+) {
+    return {
+        ...buildStaticOpaqueSceneCacheObservedLiveMetadata(diagnostics),
+        staticOpaqueSceneCacheEnabled: true,
+        staticOpaqueSceneCacheState: 'bypass',
+        staticOpaqueSceneCacheReason: 'low-benefit',
+        staticOpaqueSceneCacheBenefitStatus: benefit.status,
+        staticOpaqueSceneCacheBenefitReason: benefit.reason,
+        staticOpaqueSceneCacheBenefitEvaluationCount: benefit.evaluations,
+        staticOpaqueSceneCacheBenefitNetGpuMsPerFrame:
+            benefit.lastNetGpuMsPerFrame,
+        staticOpaqueSceneCacheBenefitNetWorkPerFrame:
+            benefit.lastNetWorkPerFrame,
+    } satisfies GameProfileMetadata;
+}
+
+/** Release attachments now: demand rendering need not deliver another frame. */
+export function releaseStaticOpaqueSceneCacheTargets(
+    targets: readonly {
+        width: number;
+        height: number;
+        setSize(width: number, height: number): void;
+    }[],
+) {
+    for (const target of targets)
+        if (target.width !== 1 || target.height !== 1) target.setSize(1, 1);
+}
+
 /** Polling stays identical; the disabled observer never enters cache work. */
 export function renderStaticOpaqueSceneCacheFrame({
     enabled,
+    canRenderCache = () => true,
     gpuTimer,
     nowMs,
     consumeGpuSamples,
@@ -79,6 +115,7 @@ export function renderStaticOpaqueSceneCacheFrame({
     renderLive,
 }: {
     enabled: boolean;
+    canRenderCache?: (nowMs: number) => boolean;
     gpuTimer: Pick<
         StaticOpaqueSceneCacheGpuTimer,
         'poll' | 'evidenceEpoch' | 'isProfileObserved' | 'begin' | 'end'
@@ -94,7 +131,7 @@ export function renderStaticOpaqueSceneCacheFrame({
     publishLive: () => void;
 }) {
     consumeGpuSamples(gpuTimer.poll(nowMs), gpuTimer.evidenceEpoch);
-    if (enabled) {
+    if (enabled && canRenderCache(nowMs)) {
         renderCache(nowMs);
         return;
     }

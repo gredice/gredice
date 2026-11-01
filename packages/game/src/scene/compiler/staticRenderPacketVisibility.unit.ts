@@ -692,7 +692,7 @@ describe('original-source visibility on shared compiled buffers', () => {
         assert.deepEqual(s.geometry.getAttribute('position').array, original);
         assert.equal(s.geometry.boundingSphere, sphere);
     });
-    it('restores ranges after main and shadow draws and excludes callback meshes from cache replay', () => {
+    it('restores ranges after main and shadow draws and admits only exact packet callbacks to replay', () => {
         const p = plan([source('a', 0), source('b', 4)]);
         const range = p.meshes[2];
         const original = { ...p.geometry.drawRange };
@@ -705,10 +705,16 @@ describe('original-source visibility on shared compiled buffers', () => {
         range.onAfterShadow();
         assert.deepEqual(p.geometry.drawRange, original);
         assert.ok(
-            p.meshes.every(
-                (mesh) => !isStaticOpaqueSceneCacheReplayEligible(mesh),
+            p.meshes.every((mesh) =>
+                isStaticOpaqueSceneCacheReplayEligible(mesh),
             ),
         );
+        const originalBefore = range.onBeforeRender;
+        range.onBeforeRender = () => {};
+        assert.equal(isStaticOpaqueSceneCacheReplayEligible(range), false);
+        range.onBeforeRender = originalBefore;
+        range.onAfterRender = () => {};
+        assert.equal(isStaticOpaqueSceneCacheReplayEligible(range), false);
     });
     it('restores interrupted and nested render ranges without disposing borrowed resources', () => {
         const p = plan([source('a', 0), source('b', 4)]);
