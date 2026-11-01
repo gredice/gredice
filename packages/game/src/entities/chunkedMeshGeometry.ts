@@ -1,4 +1,5 @@
 import { BufferGeometry, Euler, Matrix4, Quaternion, Vector3 } from 'three';
+import { chunkCompilerProfileObserver } from '../scene/compiler/chunkCompilerProfile';
 import {
     compileMeshBuffers,
     packMeshGeometry,
@@ -111,6 +112,9 @@ export function writeMeshInstanceMatrices(
 ) {
     if (instances.length === 0) return;
 
+    const observer = chunkCompilerProfileObserver();
+    const startedAt = observer ? performance.now() : 0;
+
     const rootPosition = new Vector3();
     const rootQuaternion = new Quaternion();
     const rootAxis = new Vector3(0, 1, 0);
@@ -136,6 +140,11 @@ export function writeMeshInstanceMatrices(
         rootMatrix.multiply(localMatrix);
         write(rootMatrix, index);
     }
+    observer?.({
+        stage: 'write',
+        durationMs: performance.now() - startedAt,
+        instances: instances.length,
+    });
 }
 
 export function createMergedChunkGeometry<T extends ChunkedMeshInstance>({

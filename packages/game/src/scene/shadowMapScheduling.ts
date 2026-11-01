@@ -139,8 +139,13 @@ export function transitionDeferredShadowRefresh(
 
 export function consumeDeferredShadowRefresh(
     state: DeferredShadowRefreshState,
+    pendingGeometryUpdates = 0,
 ) {
-    if (state.activePlacementCount > 0 || !state.dirty) {
+    if (
+        state.activePlacementCount > 0 ||
+        pendingGeometryUpdates > 0 ||
+        !state.dirty
+    ) {
         return {
             placementFlush: false,
             shouldRefresh: false,

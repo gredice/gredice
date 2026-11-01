@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { WebGLProgram, WebGLRenderer } from 'three';
 import {
+    createRendererFrameEpoch,
     createRendererStatsPublisher,
     rendererStatsMeasurementMode,
 } from './rendererStats';
@@ -82,6 +83,26 @@ test('renderer stats coalesce queued reads and ignore stale work after disposal'
     assert.equal(callbacks.length, 0);
 });
 
+test('opt-in animation activity is read at the post-render boundary', () => {
+    const callbacks: Array<() => void> = [];
+    const publications: Array<Record<string, unknown>> = [];
+    let activity = { active: 3, pendingEvents: 2 };
+    let geometry = { pending: 2, revision: 3 };
+    const publisher = createRendererStatsPublisher({
+        enqueue: (callback) => callbacks.push(callback),
+        publish: (metadata) => publications.push(metadata),
+        readSceneAnimations: () => activity,
+        readSceneGeometryActivity: () => geometry,
+    });
+    publisher.schedule(renderer());
+    activity = { active: 0, pendingEvents: 0 };
+    geometry = { pending: 0, revision: 5 };
+    callbacks.shift()?.();
+    assert.deepEqual(publications[0]?.sceneRootAnimations, activity);
+    assert.equal(publications[0]?.sceneGeometryPending, 0);
+    assert.equal(publications[0]?.sceneGeometryRevision, 5);
+});
+
 test('renderer stats remain monotonic across StrictMode cleanup and remount', () => {
     const callbacks: Array<() => void> = [];
     const publications: Array<Record<string, unknown>> = [];
@@ -107,4 +128,50 @@ test('renderer stats remain monotonic across StrictMode cleanup and remount', ()
     remounted.schedule(gl);
     callbacks.shift()?.();
     assert.equal(currentReceipt(), 2);
+});
+
+test('frame epochs are Canvas owned and obsolete cleanup cannot erase a replacement', () => {
+    const first = createRendererFrameEpoch();
+    const second = createRendererFrameEpoch();
+    const release = first.set({ gardenId: 1, matrixSequence: 2 });
+    const releaseNew = first.set({ gardenId: 1, matrixSequence: 3 });
+    release();
+    assert.deepEqual(first.read(), { gardenId: 1, matrixSequence: 3 });
+    assert.equal(second.read(), undefined);
+    releaseNew();
+    assert.equal(first.read(), undefined);
+});
+
+test('a frame receipt cannot relabel an old draw with an after-frame commit', () => {
+    const callbacks: Array<() => void> = [];
+    const publications: Array<Record<string, unknown>> = [];
+    const epoch = createRendererFrameEpoch();
+    let geometry = { pending: 1, revision: 5 };
+    epoch.set({ gardenId: 1, matrixSequence: 2 });
+    const publisher = createRendererStatsPublisher({
+        enqueue: (callback) => callbacks.push(callback),
+        publish: (metadata) => publications.push(metadata),
+        readFrameEpoch: epoch.read,
+        readSceneGeometryActivity: () => geometry,
+        readSceneAnimations: () => ({ active: 0, pendingEvents: 0 }),
+    });
+    publisher.schedule(renderer());
+    epoch.set({ gardenId: 1, matrixSequence: 3 });
+    geometry = { pending: 0, revision: 6 };
+    callbacks.shift()?.();
+    assert.deepEqual(publications[0]?.rendererStatsFrameState, {
+        epoch: { gardenId: 1, matrixSequence: 2 },
+        geometry: { pending: 1, revision: 5 },
+        animations: { active: 0, pendingEvents: 0 },
+    });
+    assert.equal(publications[0]?.sceneGeometryRevision, 6);
+    const release = epoch.set({ gardenId: 2 });
+    release();
+    publisher.schedule(renderer());
+    callbacks.shift()?.();
+    assert.deepEqual(publications[1]?.rendererStatsFrameState, {
+        epoch: undefined,
+        geometry: { pending: 0, revision: 6 },
+        animations: { active: 0, pendingEvents: 0 },
+    });
 });

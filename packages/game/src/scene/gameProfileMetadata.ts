@@ -365,6 +365,9 @@ export function bindRuntimeFrameLoopProfileTelemetry(
 }
 
 export type GameProfileMetadata = {
+    matrixProfileCommand?: { count: number; sequence: number; changed: number };
+    matrixProfileCommittedSequence?: number;
+    matrixProfileDisplayedSequence?: number;
     chunkCompiler?: ChunkCompilerMetrics;
     gardenSceneLifecycle?: GardenSceneLifecycleSnapshot;
     gardenSceneManifest?: GardenSceneManifestProfile;
@@ -565,8 +568,18 @@ export type GameProfileMetadata = {
     rendererStatsPublishedAt?: number;
     rendererStatsReceiptCount?: number;
     rendererStatsRenderFrame?: number;
+    rendererStatsFrameState?: {
+        epoch?: { gardenId?: number; matrixSequence?: number };
+        geometry?: { pending: number; revision: number };
+        animations?: { active: number; pendingEvents: number };
+    };
     rendererTextures?: number;
     rendererTriangles?: number;
+    sceneRootAnimations?: { active: number; pendingEvents: number };
+    sceneGeometryPending?: number;
+    sceneGeometryRevision?: number;
+    shadowGeometryRevision?: number;
+    shadowMapNeedsUpdate?: boolean;
     runtimeFrameLoop?: RuntimeFrameLoopProfileTelemetry;
     shadowMapAutoUpdate?: boolean;
     shadowMapDynamicRefreshMs?: number;

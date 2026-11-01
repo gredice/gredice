@@ -1,4 +1,6 @@
 import type { RootStore } from '@react-three/fiber';
+import { createRendererFrameEpoch } from './rendererStats';
+import { SceneGeometryUpdates } from './sceneGeometryUpdates';
 
 type SceneAnimation = {
     readonly idle: boolean;
@@ -11,6 +13,8 @@ const maximumFrameDeltaMs = 64;
 
 /** Owns demand work independently of R3F's module-global loop. */
 export class SceneRootRuntime {
+    readonly geometryUpdates = new SceneGeometryUpdates();
+    readonly frameEpoch = createRendererFrameEpoch();
     private visible = false;
     private connected = false;
     private rendering = false;
@@ -24,6 +28,14 @@ export class SceneRootRuntime {
     constructor(private readonly store: RootStore) {}
 
     isVisible = () => this.visible;
+
+    readAnimationActivity = () => {
+        let active = 0;
+        for (const animation of this.animations) {
+            if (!animation.idle) active++;
+        }
+        return { active, pendingEvents: this.animationEvents.length };
+    };
 
     invalidate = (frames = 1) => {
         if (!Number.isFinite(frames) || frames <= 0 || this.rendering) return;

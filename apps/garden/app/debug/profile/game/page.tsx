@@ -27,6 +27,7 @@ import {
     resolveGameProfileStaticSceneCacheOcclusionFixture,
     resolveGameProfileWeatherSurface,
 } from './profileFlags';
+import { resolveMatrixProfileSize } from './profileMatrix';
 import {
     gameProfileClearWeather,
     gameProfileCloudyWeather,
@@ -360,9 +361,13 @@ export default async function GameProfilePage({
         firstValue(params.date),
         resolveFreezeTime(mode),
     );
+    const matrixProfileSize = resolveMatrixProfileSize(
+        firstValue(params.matrixProfile),
+    );
 
     return (
         <main
+            data-game-profile-matrix={matrixProfileSize ? '1' : undefined}
             className="relative h-screen w-screen overflow-hidden bg-[#e7e2cc]"
             data-game-profile-mode={mode}
             data-game-profile-autumn-launch={
@@ -424,6 +429,7 @@ export default async function GameProfilePage({
             }
         >
             <ProfileGameScene
+                matrixProfileSize={matrixProfileSize}
                 cacheClearanceWitnessMode={
                     firstValue(params.staticCacheWitness) === '1'
                         ? mode

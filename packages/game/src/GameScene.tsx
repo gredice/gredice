@@ -399,6 +399,9 @@ export function GameScene({
     const { isPending: isBlockVariantPending, mutate: updateBlockVariant } =
         useBlockVariant();
     const garden = useSceneCurrentGarden(transitionedGardenData);
+    const matrixProfileSequence: unknown = garden
+        ? Reflect.get(garden, 'matrixProfileSequence')
+        : undefined;
     const retainedScene = useRetainedGardenScene(garden?.stacks, blockData);
     const appBaseUrl = useGameState((state) => state.appBaseUrl);
     const sceneDetailsRendered = renderDetails && zoom !== 'far';
@@ -609,7 +612,14 @@ export function GameScene({
                     data-scene-visible={sceneVisible}
                 >
                     {enableGameProfileController ? (
-                        <GameProfileController />
+                        <GameProfileController
+                            displayedGardenId={garden?.id}
+                            displayedMatrixProfileSequence={
+                                typeof matrixProfileSequence === 'number'
+                                    ? matrixProfileSequence
+                                    : undefined
+                            }
+                        />
                     ) : null}
                     <GardenSceneResourceController
                         appBaseUrl={appBaseUrl}

@@ -5,6 +5,7 @@ import {
     type Vector3 as FiberVector3,
     type Frameloop,
     useFrame,
+    useStore,
     useThree,
 } from '@react-three/fiber';
 import {
@@ -59,6 +60,7 @@ import {
 } from './SceneTime';
 import { StaticOpaqueSceneCacheProvider } from './StaticOpaqueSceneCache';
 import { SteamSourcesProvider } from './SteamSources';
+import { getSceneRootRuntime } from './sceneRootRuntime';
 import { WeatherSurfaceUniformProvider } from './WeatherSurfaceUniformProvider';
 
 export type SceneProps = HTMLAttributes<HTMLDivElement> &
@@ -158,32 +160,83 @@ function restoreWireframeOverride(
 }
 
 function RendererStatsReporter() {
+    const runtime = getSceneRootRuntime(useStore());
+    const requestRender = useSceneRenderRequest();
     const lastUpdateRef = useRef(0);
+    const receiptRequestedRef = useRef(false);
+    const frameProbeActiveRef = useRef(false);
     const publisherRef = useRef<ReturnType<
         typeof createRendererStatsPublisher
     > | null>(null);
 
     useEffect(() => {
         const publisher = createRendererStatsPublisher({
-            publish: updateGameProfileMetadata,
+            publish: (metadata) => {
+                updateGameProfileMetadata(metadata);
+                // Observe natural frames only; the probe never requests rendering.
+                if (frameProbeActiveRef.current)
+                    window.dispatchEvent(
+                        new CustomEvent('gredice:game-profile-frame-receipt', {
+                            detail: readGameProfileMetadata(),
+                        }),
+                    );
+            },
+            readFrameEpoch: runtime.frameEpoch.read,
             readCurrentReceipt: () =>
                 readGameProfileMetadata()?.rendererStatsReceiptCount,
+            readSceneAnimations: runtime.readAnimationActivity,
+            readSceneGeometryActivity: () => ({
+                pending: runtime.geometryUpdates.pendingCount,
+                revision: runtime.geometryUpdates.revision,
+            }),
         });
         publisherRef.current = publisher;
+        const setFrameProbe = (event: Event) => {
+            if (
+                event instanceof CustomEvent &&
+                typeof event.detail === 'boolean'
+            )
+                frameProbeActiveRef.current = event.detail;
+        };
+        window.addEventListener(
+            'gredice:game-profile-frame-probe',
+            setFrameProbe,
+        );
+        const requestReceipt = () => {
+            receiptRequestedRef.current = true;
+            requestRender('profile-render-receipt', 1);
+        };
+        window.addEventListener(
+            'gredice:game-profile-render-receipt-request',
+            requestReceipt,
+        );
         return () => {
+            window.removeEventListener(
+                'gredice:game-profile-frame-probe',
+                setFrameProbe,
+            );
+            window.removeEventListener(
+                'gredice:game-profile-render-receipt-request',
+                requestReceipt,
+            );
             publisher.dispose();
             if (publisherRef.current === publisher) {
                 publisherRef.current = null;
             }
         };
-    }, []);
+    }, [requestRender, runtime]);
 
     useFrame(({ gl }) => {
         const now = performance.now();
-        if (now - lastUpdateRef.current < rendererStatsUpdateMs) {
+        if (
+            !receiptRequestedRef.current &&
+            !frameProbeActiveRef.current &&
+            now - lastUpdateRef.current < rendererStatsUpdateMs
+        ) {
             return;
         }
 
+        receiptRequestedRef.current = false;
         lastUpdateRef.current = now;
         publisherRef.current?.schedule(gl);
     });

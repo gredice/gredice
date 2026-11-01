@@ -222,7 +222,7 @@
   "sourceInputs": [
     {
       "path": "apps/api/lib/garden/autumnStarterPackEvidence.reviewed.json",
-      "sha256": "48b1309bc6969fa84478bd569977fb40bc7c37aa66dbd6c2bbfa0a8b5d03f4df"
+      "sha256": "408309e38c11f500e6cff9865c7053a2d1ba870e58315a9aa9b73a32c5dcb322"
     },
     {
       "path": "apps/api/lib/garden/autumnStarterPackEvidence.ts",
@@ -246,15 +246,15 @@
     },
     {
       "path": "docs/autumn-arrangements-2026/evening-seat.json",
-      "sha256": "ea0036dd1cf2cb5610de56800adc0d7a1b4326a9842ac853305b81ac14a1df83"
+      "sha256": "18d9e35fff93d38f792bcfc40710a8a4a43c485fcdb00e74f5f1876df8a31e31"
     },
     {
       "path": "docs/autumn-arrangements-2026/harvest-corner.json",
-      "sha256": "34f58a91831cd713cc219342ddad022d21b6ce58f6d39f855a0c5e37b14390f8"
+      "sha256": "a985c23a99b1a2b136dbffb876b4a0560c5646af177ed605d888d0fa84f95318"
     },
     {
       "path": "docs/autumn-arrangements-2026/woodland-path.json",
-      "sha256": "d4fac46954d3dd6d0fdd0d5ae81d02f2264a82dcb6bdd8f463c42323369465e8"
+      "sha256": "1e8e3738d61decaddb76525f963cfa110230f9abd2c90437f680cdc1cbadfd57"
     },
     {
       "path": "docs/autumn-aster-pots-2026/release-manifest.json",
@@ -486,7 +486,7 @@
     },
     {
       "path": "packages/game/src/scene/Scene.tsx",
-      "sha256": "dd303a06cdb5a4cc7ee0910ce3940efed10eea422f6d2ac7af933b84fabc0dac"
+      "sha256": "c00e91080bc9b42e85da783626a95febcd81e1b2e3190777baf02f0143a400c2"
     },
     {
       "path": "packages/game/src/scene/SteamEmitter.tsx",
@@ -567,6 +567,22 @@
     {
       "path": "packages/js/src/harvestWheelbarrow/index.ts",
       "sha256": "b34f62c533c56fa4e7ab3c5ecc738597de81b6007d4229ee5c311afd620b200c"
+    },
+    {
+      "path": "packages/game/src/scene/ShadowMapController.tsx",
+      "sha256": "28cb47b924c551af5641ca4f213b656aa984cec32580007136c750b804ea5c9b"
+    },
+    {
+      "path": "packages/game/src/scene/shadowMapScheduling.ts",
+      "sha256": "d82a3e2921f2cbaf09263d4d8a3d03d7d849f7018c312e7140d13391c246edc3"
+    },
+    {
+      "path": "packages/game/src/scene/sceneRootRuntime.ts",
+      "sha256": "c22b36c6f0603c7b43928bf293b43633ae26357015f75cbe34c73b79c1c8723d"
+    },
+    {
+      "path": "packages/game/src/scene/sceneGeometryUpdates.ts",
+      "sha256": "4487bd39e8ece01632f6a4b5f36b89cf255b679f1bb25d5ada4bb5a0416e364b"
     }
   ],
   "pickerMembers": [

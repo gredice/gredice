@@ -3,11 +3,33 @@ import type { GameProfileMetadata } from './gameProfileMetadata';
 
 export const rendererStatsMeasurementMode = 'post-render-microtask-v1';
 
+export type RendererFrameEpoch = Readonly<{
+    gardenId?: number;
+    matrixSequence?: number;
+}>;
+
+/** A displayed epoch belongs to one Canvas; an old cleanup cannot clear its successor. */
+export function createRendererFrameEpoch() {
+    let current: RendererFrameEpoch | undefined;
+    return {
+        read: () => current,
+        set: (epoch: RendererFrameEpoch) => {
+            current = epoch;
+            return () => {
+                if (current === epoch) current = undefined;
+            };
+        },
+    };
+}
+
 type RendererStatsPublisherOptions = {
     enqueue?: (callback: () => void) => void;
     now?: () => number;
     publish: (metadata: GameProfileMetadata) => void;
     readCurrentReceipt?: () => number | undefined;
+    readSceneAnimations?: () => GameProfileMetadata['sceneRootAnimations'];
+    readSceneGeometryActivity?: () => { pending: number; revision: number };
+    readFrameEpoch?: () => RendererFrameEpoch | undefined;
 };
 
 export function createRendererStatsPublisher({
@@ -15,6 +37,9 @@ export function createRendererStatsPublisher({
     now = () => performance.now(),
     publish,
     readCurrentReceipt = () => undefined,
+    readSceneAnimations,
+    readSceneGeometryActivity,
+    readFrameEpoch,
 }: RendererStatsPublisherOptions) {
     let active = true;
     let receiptCount = 0;
@@ -29,12 +54,21 @@ export function createRendererStatsPublisher({
                 return;
             }
             scheduled = true;
+            // Capture the state entering the draw, before after-frame commits can replace it.
+            const frameState = readFrameEpoch
+                ? {
+                      epoch: readFrameEpoch(),
+                      geometry: readSceneGeometryActivity?.(),
+                      animations: readSceneAnimations?.(),
+                  }
+                : undefined;
             enqueue(() => {
                 scheduled = false;
                 if (!active) {
                     return;
                 }
                 const currentReceipt = readCurrentReceipt();
+                const geometryActivity = readSceneGeometryActivity?.();
                 receiptCount =
                     Math.max(
                         receiptCount,
@@ -53,8 +87,23 @@ export function createRendererStatsPublisher({
                     rendererStatsPublishedAt: now(),
                     rendererStatsReceiptCount: receiptCount,
                     rendererStatsRenderFrame: gl.info.render.frame,
+                    ...(readFrameEpoch
+                        ? { rendererStatsFrameState: frameState }
+                        : {}),
                     rendererTextures: gl.info.memory.textures,
                     rendererTriangles: gl.info.render.triangles,
+                    ...(readSceneAnimations
+                        ? { sceneRootAnimations: readSceneAnimations() }
+                        : {}),
+                    ...(geometryActivity
+                        ? {
+                              sceneGeometryPending: geometryActivity.pending,
+                              sceneGeometryRevision: geometryActivity.revision,
+                          }
+                        : {}),
+                    ...(gl.shadowMap
+                        ? { shadowMapNeedsUpdate: gl.shadowMap.needsUpdate }
+                        : {}),
                 });
             });
         },
