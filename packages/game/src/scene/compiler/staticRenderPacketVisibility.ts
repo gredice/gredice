@@ -1,10 +1,11 @@
 import {
+    ArrayCamera,
     Box3,
     type BufferAttribute,
     type BufferGeometry,
     type Camera,
     Euler,
-    type Frustum,
+    Frustum,
     type FrustumArray,
     InstancedMesh,
     type InterleavedBufferAttribute,
@@ -28,6 +29,10 @@ type PacketRange = DrawRange & {
     positionCount: number;
 };
 type RangeOwner = { geometry: BufferGeometry; range: DrawRange };
+type RangeStack = {
+    depth: number;
+    entries: { owner: RangeOwner; range: DrawRange }[];
+};
 
 /** Morph bounds and partial authored ranges retain the pre-stock path. */
 export function supportsStaticPacketVisibility(geometry: BufferGeometry) {
@@ -46,10 +51,15 @@ export function supportsStaticPacketVisibility(geometry: BufferGeometry) {
 /** Shared buffers need their original range restored even when a draw throws. */
 export class StaticRenderPacketDrawRanges {
     private readonly fullRanges = new WeakMap<BufferGeometry, DrawRange>();
-    private readonly stacks = new WeakMap<BufferGeometry, RangeOwner[]>();
+    private readonly stacks = new WeakMap<BufferGeometry, RangeStack>();
     private readonly activeGeometries = new Set<BufferGeometry>();
     private readonly scopes: Map<BufferGeometry, number>[] = [];
     private depth = 0;
+    private readonly cameraModes: boolean[] = [];
+
+    get allowsRangeCoalescing() {
+        return this.cameraModes[this.depth - 1] ?? true;
+    }
     private preparation:
         | ((scene: Object3D, camera: Camera) => void)
         | undefined;
@@ -73,36 +83,51 @@ export class StaticRenderPacketDrawRanges {
             this.fullRanges.set(geometry, { ...geometry.drawRange });
         let stack = this.stacks.get(geometry);
         if (!stack) {
-            stack = [];
+            stack = { depth: 0, entries: [] };
             this.stacks.set(geometry, stack);
         }
         const scope = this.scopes[this.depth - 1];
-        if (scope && !scope.has(geometry)) scope.set(geometry, stack.length);
-        stack.push(owner);
+        if (scope && !scope.has(geometry)) scope.set(geometry, stack.depth);
+        // Snapshot the selected span: nested draws can select another camera's
+        // span on the same mesh. Reuse entries after their stack frame exits.
+        let entry = stack.entries[stack.depth++];
+        if (!entry) {
+            entry = { owner, range: { ...owner.range } };
+            stack.entries.push(entry);
+        } else {
+            entry.owner = owner;
+            entry.range.start = owner.range.start;
+            entry.range.count = owner.range.count;
+        }
         this.activeGeometries.add(geometry);
         geometry.setDrawRange(owner.range.start, owner.range.count);
     }
 
     leave(owner: RangeOwner) {
         const stack = this.stacks.get(owner.geometry);
-        if (stack?.at(-1) !== owner) return;
-        stack.pop();
+        if (!stack || stack.entries[stack.depth - 1]?.owner !== owner) return;
+        stack.depth--;
         this.restore(owner.geometry, stack);
     }
 
-    private restore(geometry: BufferGeometry, stack: RangeOwner[]) {
-        const range = stack.at(-1)?.range ?? this.fullRanges.get(geometry);
+    private restore(geometry: BufferGeometry, stack: RangeStack) {
+        const range =
+            stack.entries[stack.depth - 1]?.range ??
+            this.fullRanges.get(geometry);
         if (range) geometry.setDrawRange(range.start, range.count);
-        if (stack.length === 0) this.activeGeometries.delete(geometry);
+        if (stack.depth === 0) this.activeGeometries.delete(geometry);
     }
 
-    beginRender() {
+    beginRender(camera?: Camera) {
         let scope = this.scopes[this.depth];
         if (!scope) {
             scope = new Map();
             this.scopes[this.depth] = scope;
         }
         scope.clear();
+        this.cameraModes[this.depth] = camera
+            ? !(camera instanceof ArrayCamera)
+            : this.allowsRangeCoalescing;
         this.depth++;
     }
 
@@ -111,7 +136,7 @@ export class StaticRenderPacketDrawRanges {
         for (const [geometry, depth] of scope) {
             const stack = this.stacks.get(geometry);
             if (!stack) continue;
-            stack.length = depth;
+            stack.depth = depth;
             this.restore(geometry, stack);
         }
         scope.clear();
@@ -130,7 +155,7 @@ export class StaticRenderPacketDrawRanges {
         for (const geometry of this.activeGeometries) {
             const stack = this.stacks.get(geometry);
             if (!stack) continue;
-            stack.length = 0;
+            stack.depth = 0;
             this.restore(geometry, stack);
         }
     }
@@ -159,7 +184,7 @@ export function guardStaticRenderPacketDrawRanges(
         const state = { original, users, owners: [ranges], guarded: original };
         const guarded: WebGLRenderer['render'] = (...args) => {
             const owners = state.owners;
-            for (const owner of owners) owner.beginRender();
+            for (const owner of owners) owner.beginRender(args[1]);
             try {
                 for (const owner of owners) owner.prepareRender(...args);
                 return original.apply(renderer, args);
@@ -278,7 +303,57 @@ type Visibility = {
     values: Uint8Array;
     matrix: Matrix4;
     planes: Float64Array;
+    counts?: Float64Array;
+    countsReady: boolean;
 };
+
+// Cameras are borrowed. Cache only their current matrices, with no frame-loop
+// subscription or GPU resource; moving lights (including cube faces) refresh it.
+const cameraFrusta = new WeakMap<
+    Camera,
+    {
+        projection: Matrix4;
+        inverse: Matrix4;
+        reversedDepth: boolean;
+        coordinateSystem: Camera['coordinateSystem'];
+        frustum: Frustum;
+        matrix: Matrix4;
+    }
+>();
+
+function cameraFrustum(camera: Camera) {
+    let entry = cameraFrusta.get(camera);
+    if (!entry) {
+        entry = {
+            projection: new Matrix4(),
+            inverse: new Matrix4(),
+            reversedDepth: camera.reversedDepth,
+            coordinateSystem: camera.coordinateSystem,
+            frustum: new Frustum(),
+            matrix: new Matrix4(),
+        };
+        // Force the first calculation even for identity cameras.
+        entry.projection.elements.fill(Number.NaN);
+        cameraFrusta.set(camera, entry);
+    }
+    if (
+        !entry.projection.equals(camera.projectionMatrix) ||
+        !entry.inverse.equals(camera.matrixWorldInverse) ||
+        entry.reversedDepth !== camera.reversedDepth ||
+        entry.coordinateSystem !== camera.coordinateSystem
+    ) {
+        entry.projection.copy(camera.projectionMatrix);
+        entry.inverse.copy(camera.matrixWorldInverse);
+        entry.reversedDepth = camera.reversedDepth;
+        entry.coordinateSystem = camera.coordinateSystem;
+        entry.frustum.setFromProjectionMatrix(
+            entry.matrix.multiplyMatrices(entry.projection, entry.inverse),
+            camera.coordinateSystem,
+            camera.reversedDepth,
+        );
+    }
+    return entry.frustum;
+}
 
 class PacketVisibility {
     private readonly entries = new WeakMap<
@@ -287,7 +362,44 @@ class PacketVisibility {
     >();
     private readonly worldSphere = new Sphere();
 
-    constructor(readonly groups: readonly Sphere[]) {}
+    constructor(
+        readonly groups: readonly Sphere[],
+        private readonly ranges: readonly PacketRange[],
+    ) {}
+
+    drawCount(index: number, camera: Camera, matrix: Matrix4) {
+        return this.drawCountInFrustum(index, cameraFrustum(camera), matrix);
+    }
+
+    drawCountInFrustum(index: number, frustum: Frustum, matrix: Matrix4) {
+        const entry = this.read(frustum, matrix);
+        entry.counts ??= new Float64Array(this.ranges.length);
+        const counts = entry.counts;
+        if (!entry.countsReady) {
+            // Preserve source order and never cross an invisible or empty range.
+            // Only the first source in a visible run submits the combined span.
+            let leader = -1;
+            let end = -1;
+            for (let index = 0; index < this.ranges.length; index++) {
+                const range = this.ranges[index];
+                counts[index] = 0;
+                if (!entry.values[range.group] || range.count === 0) {
+                    leader = -1;
+                    end = -1;
+                    continue;
+                }
+                if (leader >= 0 && range.start === end)
+                    counts[leader] += range.count;
+                else {
+                    leader = index;
+                    counts[index] = range.count;
+                }
+                end = range.start + range.count;
+            }
+            entry.countsReady = true;
+        }
+        return counts[index];
+    }
 
     read(frustum: Frustum | FrustumArray, matrix: Matrix4) {
         let entry = this.entries.get(frustum);
@@ -297,6 +409,7 @@ class PacketVisibility {
                 values: new Uint8Array(this.groups.length),
                 matrix: new Matrix4(),
                 planes: new Float64Array(24).fill(Number.NaN),
+                countsReady: false,
             };
             this.entries.set(frustum, entry);
         }
@@ -319,6 +432,7 @@ class PacketVisibility {
             }
         } else unchanged = false;
         if (unchanged) return entry;
+        entry.countsReady = false;
         entry.matrix.copy(matrix);
         entry.all = true;
         for (let index = 0; index < this.groups.length; index++) {
@@ -342,6 +456,7 @@ export class StaticRenderPacketVisibilityMesh extends Mesh<
     Material
 > {
     private presentationEnabled = true;
+    private readonly drawOwner: RangeOwner;
 
     setPresentationEnabled(enabled: boolean) {
         this.presentationEnabled = enabled;
@@ -354,8 +469,10 @@ export class StaticRenderPacketVisibilityMesh extends Mesh<
         private readonly group: number | undefined,
         private readonly visibility: PacketVisibility,
         private readonly ranges: StaticRenderPacketDrawRanges,
+        private readonly rangeIndex?: number,
     ) {
         super(geometry, material);
+        this.drawOwner = { geometry, range: { ...range } };
     }
 
     override intersectsFrustum(frustum: Frustum | FrustumArray) {
@@ -363,7 +480,16 @@ export class StaticRenderPacketVisibilityMesh extends Mesh<
         const visible = this.visibility.read(frustum, this.matrixWorld);
         return this.group === undefined
             ? visible.all
-            : !visible.all && visible.values[this.group] === 1;
+            : !visible.all &&
+                  visible.values[this.group] === 1 &&
+                  (!this.ranges.allowsRangeCoalescing ||
+                      this.rangeIndex === undefined ||
+                      !('planes' in frustum) ||
+                      this.visibility.drawCountInFrustum(
+                          this.rangeIndex,
+                          frustum,
+                          this.matrixWorld,
+                      ) > 0);
     }
 
     override raycast(raycaster: Raycaster, intersections: Intersection[]) {
@@ -383,20 +509,41 @@ export class StaticRenderPacketVisibilityMesh extends Mesh<
         }
     }
 
-    override onBeforeRender() {
-        this.ranges.enter(this);
+    override onBeforeRender(
+        _renderer?: WebGLRenderer,
+        _scene?: Object3D,
+        camera?: Camera,
+    ) {
+        this.drawOwner.range.count =
+            camera &&
+            this.rangeIndex !== undefined &&
+            this.frustumCulled &&
+            this.ranges.allowsRangeCoalescing &&
+            !(camera instanceof ArrayCamera)
+                ? this.visibility.drawCount(
+                      this.rangeIndex,
+                      camera,
+                      this.matrixWorld,
+                  )
+                : this.range.count;
+        this.ranges.enter(this.drawOwner);
     }
 
     override onAfterRender() {
-        this.ranges.leave(this);
+        this.ranges.leave(this.drawOwner);
     }
 
-    override onBeforeShadow() {
-        this.ranges.enter(this);
+    override onBeforeShadow(
+        renderer?: WebGLRenderer,
+        object?: Object3D,
+        _camera?: Camera,
+        shadowCamera?: Camera,
+    ) {
+        this.onBeforeRender(renderer, object, shadowCamera);
     }
 
     override onAfterShadow() {
-        this.ranges.leave(this);
+        this.ranges.leave(this.drawOwner);
     }
 }
 
@@ -406,6 +553,7 @@ export class StaticRenderPacketVisibilityInstancedMesh extends InstancedMesh<
     Material
 > {
     private presentationEnabled = true;
+    private readonly drawOwner: RangeOwner;
 
     setPresentationEnabled(enabled: boolean) {
         this.presentationEnabled = enabled;
@@ -419,9 +567,11 @@ export class StaticRenderPacketVisibilityInstancedMesh extends InstancedMesh<
         private readonly group: number | undefined,
         private readonly visibility: PacketVisibility,
         private readonly ranges: StaticRenderPacketDrawRanges,
+        private readonly rangeIndex?: number,
     ) {
         super(geometry, material, 1);
         this.matrixAutoUpdate = false;
+        this.drawOwner = { geometry, range: { ...range } };
     }
 
     override intersectsFrustum(frustum: Frustum | FrustumArray) {
@@ -429,7 +579,16 @@ export class StaticRenderPacketVisibilityInstancedMesh extends InstancedMesh<
         const visible = this.visibility.read(frustum, this.matrixWorld);
         return this.group === undefined
             ? visible.all
-            : !visible.all && visible.values[this.group] === 1;
+            : !visible.all &&
+                  visible.values[this.group] === 1 &&
+                  (!this.ranges.allowsRangeCoalescing ||
+                      this.rangeIndex === undefined ||
+                      !('planes' in frustum) ||
+                      this.visibility.drawCountInFrustum(
+                          this.rangeIndex,
+                          frustum,
+                          this.matrixWorld,
+                      ) > 0);
     }
 
     override raycast(raycaster: Raycaster, intersections: Intersection[]) {
@@ -449,20 +608,41 @@ export class StaticRenderPacketVisibilityInstancedMesh extends InstancedMesh<
         }
     }
 
-    override onBeforeRender() {
-        this.ranges.enter(this);
+    override onBeforeRender(
+        _renderer?: WebGLRenderer,
+        _scene?: Object3D,
+        camera?: Camera,
+    ) {
+        this.drawOwner.range.count =
+            camera &&
+            this.rangeIndex !== undefined &&
+            this.frustumCulled &&
+            this.ranges.allowsRangeCoalescing &&
+            !(camera instanceof ArrayCamera)
+                ? this.visibility.drawCount(
+                      this.rangeIndex,
+                      camera,
+                      this.matrixWorld,
+                  )
+                : this.range.count;
+        this.ranges.enter(this.drawOwner);
     }
 
     override onAfterRender() {
-        this.ranges.leave(this);
+        this.ranges.leave(this.drawOwner);
     }
 
-    override onBeforeShadow() {
-        this.ranges.enter(this);
+    override onBeforeShadow(
+        renderer?: WebGLRenderer,
+        object?: Object3D,
+        _camera?: Camera,
+        shadowCamera?: Camera,
+    ) {
+        this.onBeforeRender(renderer, object, shadowCamera);
     }
 
     override onAfterShadow() {
-        this.ranges.leave(this);
+        this.ranges.leave(this.drawOwner);
     }
 }
 
@@ -506,7 +686,7 @@ export function createStaticRenderPacketVisibilityMeshes(
     const position = geometry.getAttribute('position');
     for (const [group, ranges] of compiledGroups)
         groups[group].copy(sphereFromPositionRanges(position, ranges));
-    const visibility = new PacketVisibility(groups);
+    const visibility = new PacketVisibility(groups, ranges);
     const VisibilityMesh = packet.contributions.every(
         ({ originalVisibilityMode, sourceBoundsCulling }) =>
             sourceBoundsCulling && originalVisibilityMode === 'instanced',
@@ -523,7 +703,7 @@ export function createStaticRenderPacketVisibilityMeshes(
             drawRanges,
         ),
         ...ranges.map(
-            (range) =>
+            (range, index) =>
                 new VisibilityMesh(
                     geometry,
                     packet.material,
@@ -531,6 +711,7 @@ export function createStaticRenderPacketVisibilityMeshes(
                     range.group,
                     visibility,
                     drawRanges,
+                    index,
                 ),
         ),
     ];

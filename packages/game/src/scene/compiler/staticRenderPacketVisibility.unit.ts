@@ -6,6 +6,7 @@ import {
     BoxGeometry,
     BufferAttribute,
     BufferGeometry,
+    type Camera,
     DoubleSide,
     Frustum,
     FrustumArray,
@@ -15,6 +16,7 @@ import {
     Matrix4,
     Mesh,
     MeshStandardMaterial,
+    type Object3D,
     OrthographicCamera,
     PerspectiveCamera,
     Raycaster,
@@ -101,10 +103,7 @@ function plan(sources: StaticRenderPacketContribution[]) {
     return { packet, geometry, material, ranges, meshes };
 }
 function frustum(x = 0) {
-    const camera = new OrthographicCamera(-1, 1, 1, -1, 0.1, 20);
-    camera.position.set(x, 0, 5);
-    camera.lookAt(x, 0, 0);
-    camera.updateMatrixWorld(true);
+    const camera = viewCamera(x);
     return new Frustum().setFromProjectionMatrix(
         new Matrix4().multiplyMatrices(
             camera.projectionMatrix,
@@ -112,11 +111,157 @@ function frustum(x = 0) {
         ),
     );
 }
+function viewCamera(x = 0, half = 1) {
+    const camera = new OrthographicCamera(-half, half, half, -half, 0.1, 20);
+    camera.position.set(x, 0, 5);
+    camera.lookAt(x, 0, 0);
+    camera.updateMatrixWorld(true);
+    return camera;
+}
 function visible(meshes: ReturnType<typeof plan>['meshes'], view: Frustum) {
     return meshes.map((mesh) => mesh.intersectsFrustum(view));
 }
 
 describe('original-source visibility on shared compiled buffers', () => {
+    for (const stock of [false, true]) {
+        for (const indexed of [false, true]) {
+            it(`coalesces adjacent visible spans independently per camera (stock=${stock}, indexed=${indexed})`, () => {
+                const box = new BoxGeometry(0.2, 0.2, 0.2);
+                const geometry = indexed ? box : box.toNonIndexed();
+                const p = plan(
+                    [0, 1, 4, 5].map((x, index) =>
+                        source(String(index), x, {
+                            geometry,
+                            sourceBoundsCulling: stock,
+                            originalVisibilityMode: stock
+                                ? 'instanced'
+                                : 'compiled',
+                        }),
+                    ),
+                );
+                const main = viewCamera(0.5);
+                const shadow = viewCamera(4.5);
+                const full = { ...p.geometry.drawRange };
+                const authored = p.meshes
+                    .slice(1)
+                    .map((mesh) => ({ ...mesh.range }));
+                const draws = (
+                    camera: OrthographicCamera,
+                    pass: 'main' | 'shadow',
+                ) =>
+                    p.meshes.slice(1).map((mesh) => {
+                        if (pass === 'main')
+                            mesh.onBeforeRender(undefined, undefined, camera);
+                        else
+                            mesh.onBeforeShadow(
+                                undefined,
+                                undefined,
+                                main,
+                                camera,
+                            );
+                        const range = { ...p.geometry.drawRange };
+                        if (pass === 'main') mesh.onAfterRender();
+                        else mesh.onAfterShadow();
+                        return range;
+                    });
+                assert.deepEqual(draws(main, 'main'), [
+                    { start: 0, count: 72 },
+                    { start: 36, count: 0 },
+                    { start: 72, count: 0 },
+                    { start: 108, count: 0 },
+                ]);
+                assert.deepEqual(draws(shadow, 'shadow'), [
+                    { start: 0, count: 0 },
+                    { start: 36, count: 0 },
+                    { start: 72, count: 72 },
+                    { start: 108, count: 0 },
+                ]);
+                assert.equal(draws(main, 'main')[0]?.count, 72);
+                // Mutate the same camera, including projection: no compiler or
+                // buffer replacement may be needed to select a different run.
+                main.copy(shadow);
+                assert.equal(draws(main, 'main')[2]?.count, 72);
+                main.left = -10;
+                main.right = 10;
+                main.updateProjectionMatrix();
+                assert.equal(draws(main, 'main')[0]?.count, 144);
+                assert.deepEqual(
+                    p.meshes.slice(1).map((mesh) => mesh.range),
+                    authored,
+                );
+                assert.deepEqual(p.geometry.drawRange, full);
+                for (const x of [0, 1, 4, 5]) {
+                    const raycaster = new Raycaster(
+                        new Vector3(x + 0.025, 0.035, 5),
+                        new Vector3(0, 0, -1),
+                    );
+                    assert.equal(
+                        raycaster.intersectObjects(p.meshes, false).length,
+                        1,
+                    );
+                }
+            });
+        }
+    }
+    it('never joins visible spans across an invisible source or a zero-count barrier', () => {
+        const empty = new BufferGeometry();
+        empty.setIndex([]);
+        for (const [name, size] of [
+            ['position', 3],
+            ['normal', 3],
+            ['uv', 2],
+        ] as const)
+            empty.setAttribute(
+                name,
+                new BufferAttribute(new Float32Array(), size),
+            );
+        for (const middle of [
+            source('b', 4),
+            source('b', 0, { geometry: empty }),
+        ]) {
+            const p = plan([source('a', 0), middle, source('c', 0.5)]);
+            const counts = p.meshes.slice(1).map((mesh) => {
+                mesh.onBeforeRender(undefined, undefined, viewCamera());
+                const count = p.geometry.drawRange.count;
+                mesh.onAfterRender();
+                return count;
+            });
+            assert.deepEqual(counts, [36, 0, 36]);
+        }
+    });
+    it('restores a coalesced outer span after nested shadow rendering, picking and failure', () => {
+        const p = plan([source('a', 0), source('b', 1), source('c', 4)]);
+        const mesh = p.meshes[1];
+        const main = viewCamera(0.5),
+            shadow = viewCamera(4);
+        const full = { ...p.geometry.drawRange };
+        p.ranges.render(() => {
+            mesh.onBeforeRender(undefined, undefined, main);
+            const outer = { start: 0, count: 72 };
+            assert.deepEqual(p.geometry.drawRange, outer);
+            assert.throws(
+                () =>
+                    p.ranges.render(() => {
+                        mesh.onBeforeShadow(undefined, undefined, main, shadow);
+                        assert.deepEqual(p.geometry.drawRange, {
+                            start: 0,
+                            count: 0,
+                        });
+                        throw new Error('shadow draw');
+                    }),
+                /shadow draw/,
+            );
+            assert.deepEqual(p.geometry.drawRange, outer);
+            const hits = new Raycaster(
+                new Vector3(1.025, 0.035, 5),
+                new Vector3(0, 0, -1),
+            ).intersectObjects(p.meshes, false);
+            assert.equal(hits.length, 1);
+            assert.deepEqual(p.geometry.drawRange, outer);
+            mesh.onAfterRender();
+        });
+        assert.deepEqual(p.geometry.drawRange, full);
+    });
     it('retains stock instancing without changing compiled range picking or parent transforms', () => {
         const a = source('a', 0),
             b = source('b', 4);
@@ -476,15 +621,58 @@ describe('original-source visibility on shared compiled buffers', () => {
         assert.deepEqual(visible(p.meshes, frustum()), [
             false,
             true,
-            true,
+            false,
             false,
         ]);
         assert.deepEqual(visible(p.meshes, frustum(4)), [
             false,
             true,
-            true,
+            false,
             false,
         ]);
+        for (const x of [0, 4]) {
+            p.meshes[1].onBeforeRender(undefined, undefined, viewCamera(x));
+            // The old combined bound still admits both sources even though
+            // only one source's actual positions intersect this view.
+            assert.deepEqual(p.geometry.drawRange, { start: 0, count: 72 });
+            p.meshes[1].onAfterRender();
+        }
+    });
+    it('keeps array-camera source draws intact and restores the mode after a nested mono render', () => {
+        const p = plan([source('a', 0), source('b', 0.5), source('c', 4)]);
+        const camera = viewCamera();
+        const stereo = new ArrayCamera([
+            new PerspectiveCamera(),
+            new PerspectiveCamera(),
+        ]);
+        let nested = false;
+        const renderer = {
+            render: (_scene: Object3D, current: Camera) => {
+                const expected =
+                    current === stereo
+                        ? [false, true, true, false]
+                        : [false, true, false, false];
+                assert.deepEqual(visible(p.meshes, frustum()), expected);
+                p.meshes[1].onBeforeRender(undefined, undefined, camera);
+                assert.equal(
+                    p.geometry.drawRange.count,
+                    current === stereo ? 36 : 72,
+                );
+                p.meshes[1].onAfterRender();
+                if (current === stereo && !nested) {
+                    nested = true;
+                    renderer.render(new Scene(), camera);
+                    assert.deepEqual(visible(p.meshes, frustum()), expected);
+                    p.meshes[1].onBeforeRender(undefined, undefined, camera);
+                    assert.equal(p.geometry.drawRange.count, 36);
+                    p.meshes[1].onAfterRender();
+                }
+            },
+        } satisfies Pick<WebGLRenderer, 'render'>;
+        const release = guardStaticRenderPacketDrawRanges(renderer, p.ranges);
+        renderer.render(new Scene(), stereo);
+        assert.equal(p.ranges.allowsRangeCoalescing, true);
+        release();
     });
     it('rejects morph and partial-range palette migration while leaving borrowed geometry untouched', () => {
         const geometry = new BoxGeometry();

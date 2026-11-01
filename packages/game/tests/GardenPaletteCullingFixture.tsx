@@ -11,7 +11,12 @@ import {
     GardenPaletteCullingScene,
 } from './GardenPaletteCullingScene';
 
-export type GardenPaletteCullingView = 'mixed' | 'all' | 'none' | 'opposite';
+export type GardenPaletteCullingView =
+    | 'mixed'
+    | 'adjacent'
+    | 'all'
+    | 'none'
+    | 'opposite';
 
 export function GardenPaletteCullingFixture({
     batch = false,
@@ -22,6 +27,7 @@ export function GardenPaletteCullingFixture({
     transitionWitness = false,
     shaderRevision = 0,
     restoreContext = false,
+    quality = 'high',
 }: {
     batch?: boolean;
     view?: GardenPaletteCullingView;
@@ -31,6 +37,7 @@ export function GardenPaletteCullingFixture({
     transitionWitness?: boolean;
     shaderRevision?: number;
     restoreContext?: boolean;
+    quality?: keyof typeof gameQualityProfiles | 'auto';
 }) {
     const [store] = useState(() =>
         createGameState({
@@ -59,7 +66,11 @@ export function GardenPaletteCullingFixture({
                         position={[0, 0, 8]}
                         zoom={100}
                         pixelRatio={1}
-                        quality={gameQualityProfiles.high}
+                        quality={
+                            quality === 'auto'
+                                ? undefined
+                                : gameQualityProfiles[quality]
+                        }
                         frameloop="always"
                         fixedTimeSeconds={43200}
                         baseFramesPerSecond={60}

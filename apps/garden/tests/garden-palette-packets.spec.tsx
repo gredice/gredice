@@ -685,6 +685,135 @@ for (const equalUniforms of [false, true]) {
     });
 }
 
+for (const quality of ['low', 'medium', 'high', 'auto'] as const) {
+    test(`adjacent partial packet spans reduce native draws with pixel and picking parity (${quality})`, async ({
+        mount,
+        page,
+    }, testInfo) => {
+        test.setTimeout(90_000);
+        const errors: string[] = [];
+        page.on('pageerror', (error) => errors.push(error.message));
+        const fixture = await mount(
+            <GardenPaletteCullingFixture
+                equalUniforms
+                view="adjacent"
+                quality={quality}
+            />,
+        );
+        await expect(fixture).toHaveAttribute(
+            'data-ready',
+            'false:adjacent:equal',
+        );
+        const source = JSON.parse(
+            (await fixture.getAttribute('data-result')) ?? '{}',
+        );
+        const sourcePng = await fixture.locator('canvas').screenshot();
+        const graphics = await fixture.locator('canvas').evaluate((canvas) => {
+            if (!(canvas instanceof HTMLCanvasElement))
+                throw new Error('A WebGL Canvas is required.');
+            const gl = canvas.getContext('webgl2');
+            if (!gl) throw new Error('A WebGL2 context is required.');
+            const extension = gl.getExtension('WEBGL_debug_renderer_info');
+            return {
+                renderer: extension
+                    ? gl.getParameter(extension.UNMASKED_RENDERER_WEBGL)
+                    : null,
+                vendor: extension
+                    ? gl.getParameter(extension.UNMASKED_VENDOR_WEBGL)
+                    : null,
+                width: gl.drawingBufferWidth,
+                height: gl.drawingBufferHeight,
+            };
+        });
+        await fixture.update(
+            <GardenPaletteCullingFixture
+                batch
+                equalUniforms
+                view="adjacent"
+                quality={quality}
+            />,
+        );
+        await expect(fixture).toHaveAttribute(
+            'data-ready',
+            'true:adjacent:equal',
+        );
+        const candidate = JSON.parse(
+            (await fixture.getAttribute('data-result')) ?? '{}',
+        );
+        const candidatePng = await fixture.locator('canvas').screenshot();
+        const parity = compare(
+            await pixels(sourcePng),
+            await pixels(candidatePng),
+        );
+        for (const pass of ['main', 'shadow']) {
+            const original = source.receipts.filter(
+                (row: { pass: string }) => row.pass === pass,
+            );
+            const joined = candidate.receipts.filter(
+                (row: { pass: string; calls: number }) =>
+                    row.pass === pass && row.calls > 0,
+            );
+            const shadows = pass === 'shadow' && quality !== 'low';
+            const enabled = pass === 'main' || shadows;
+            expect(
+                original.reduce(
+                    (sum: number, row: { calls: number }) => sum + row.calls,
+                    0,
+                ),
+            ).toBe(enabled ? 2 : 0);
+            expect(joined).toHaveLength(enabled ? 1 : 0);
+            expect(
+                joined.reduce(
+                    (sum: number, row: { triangles: number }) =>
+                        sum + row.triangles,
+                    0,
+                ),
+            ).toBe(enabled ? 24 : 0);
+            if (enabled) {
+                expect(joined[0].start).toBe(pass === 'main' ? 0 : 36);
+                expect(joined[0].count).toBe(72);
+            }
+        }
+        expect(candidate.sceneRaycastHits).toHaveLength(
+            source.sceneRaycastHits.length,
+        );
+        for (let ray = 0; ray < source.sceneRaycastHits.length; ray++) {
+            const authored = source.sceneRaycastHits[ray];
+            const compiled = candidate.sceneRaycastHits[ray];
+            expect(authored).toHaveLength(1);
+            expect(compiled).toHaveLength(1);
+            expect(compiled[0].distance).toBeCloseTo(authored[0].distance, 6);
+            for (let axis = 0; axis < 3; axis++)
+                expect(compiled[0].point[axis]).toBeCloseTo(
+                    authored[0].point[axis],
+                    6,
+                );
+            for (let axis = 0; axis < 2; axis++)
+                expect(compiled[0].uv[axis]).toBeCloseTo(
+                    authored[0].uv[axis],
+                    6,
+                );
+        }
+        expect(candidate.rangesRestored).toBe(true);
+        expect(candidate.sourceDisposals).toBe(0);
+        expect(parity.differentPixelRatio).toBeLessThan(0.001);
+        expect(parity.maxChannelError).toBeLessThanOrEqual(8);
+        await testInfo.attach('partial-span-draws-and-pixels', {
+            body: JSON.stringify({ source, candidate, parity, graphics }),
+            contentType: 'application/json',
+        });
+        await testInfo.attach('partial-span-authored', {
+            body: sourcePng,
+            contentType: 'image/png',
+        });
+        await testInfo.attach('partial-span-compiled', {
+            body: candidatePng,
+            contentType: 'image/png',
+        });
+        expect(errors).toEqual([]);
+    });
+}
+
 test('unsupported partial-range sources retain the original explicit merged path', async ({
     mount,
     page,

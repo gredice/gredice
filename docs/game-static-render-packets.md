@@ -115,6 +115,23 @@ groups through contiguous ranges of the same compiled buffer and material.
 No visible groups means no native draw. Main and shadow camera decisions are
 independent; camera motion does not recompile or allocate additional buffers.
 
+Partially visible packets also join adjacent visible source ranges into one
+native draw. A hidden or empty source ends a run; disconnected visible ranges
+stay separate. Culling admits only the first source in each visible run; its
+actual main/shadow draw callback selects the combined range. Other sources in
+that run never enter the render list, avoiding both native calls and duplicate
+triangles. Stereo/array-camera renders retain their original per-source path.
+Range selection uses the current camera projection and
+view matrices, including moved lights and cube faces. The all-visible path keeps
+its existing single full-buffer draw.
+
+Picking continues to intersect each original source range once, independently
+of the current camera. Nested render/raycast scopes snapshot selected spans in
+reusable stack entries so a different shadow camera or an interrupted nested
+render cannot overwrite the outer range. Camera/frustum and span-count caches
+own no GPU resources; material, geometry, cache, and placement ownership stay
+with their existing owners.
+
 Paired main/shadow callbacks select a range and restore it after drawing. A
 renderer-keyed, refcounted guard restores ranges in `finally`, including callback
 failures, nested renders and sibling cleanup. Whole-scene raycasts skip the full
@@ -150,6 +167,19 @@ source material identities and no stock clone. Culling fixtures retain
 mixed/all/none/opposite main and shadow views, unique whole-scene raycasts, native ranges/triangles and unchanged
 buffer identities. Light-change/context-restoration receipts capture pixels in
 the actual submitted frame. No shader-warmup delay remains.
+
+The adjacent-range fixture uses opposite overlapping main/shadow views: each
+sees two of three sources, with a different combined buffer span. It compares
+authored versus compiled native draws, triangles, pixels, and scene raycasts in
+Low, Medium, High, and Automatic. This is a deterministic Chromium WebGL semantic
+and submission witness; it does not establish a whole-game GPU-time or latency
+improvement. Run it with the rest of the material, weather, interaction, lifetime,
+and context-restoration controls:
+
+```bash
+pnpm --filter garden exec playwright test tests/garden-palette-packets.spec.tsx \
+  --project chromium-webgl --workers 1
+```
 
 The real Tree/GardenBox interaction controls retain hover, pickup, selection,
 drag, active drop and settled drop states. A separate Stool case exercises the

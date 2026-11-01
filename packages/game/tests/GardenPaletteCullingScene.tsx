@@ -196,12 +196,14 @@ export function GardenPaletteCullingScene({
         const center =
             view === 'all'
                 ? 3
-                : view === 'none'
-                  ? 15
-                  : view === 'opposite'
-                    ? 6
-                    : 0.5;
-        const half = view === 'all' ? 7 : 1;
+                : view === 'adjacent'
+                  ? 1.75
+                  : view === 'none'
+                    ? 15
+                    : view === 'opposite'
+                      ? 6
+                      : 0.5;
+        const half = view === 'all' ? 7 : view === 'adjacent' ? 1.9 : 1;
         camera.position.set(center, 0, 8);
         camera.lookAt(center, 0, 0);
         camera.left = -half;
@@ -215,11 +217,13 @@ export function GardenPaletteCullingScene({
             const shadowCenter =
                 view === 'all'
                     ? 3
-                    : view === 'none'
-                      ? 15
-                      : view === 'opposite'
-                        ? 0.5
-                        : 6;
+                    : view === 'adjacent'
+                      ? 4.5
+                      : view === 'none'
+                        ? 15
+                        : view === 'opposite'
+                          ? 0.5
+                          : 6;
             light.current.position.set(shadowCenter, 0, 8);
             light.current.target.position.set(shadowCenter, 0, 0);
             light.current.target.updateMatrixWorld(true);
