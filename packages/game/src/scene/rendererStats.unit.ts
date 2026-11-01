@@ -82,6 +82,21 @@ test('renderer stats coalesce queued reads and ignore stale work after disposal'
     assert.equal(callbacks.length, 0);
 });
 
+test('opt-in animation activity is read at the post-render boundary', () => {
+    const callbacks: Array<() => void> = [];
+    const publications: Array<Record<string, unknown>> = [];
+    let activity = { active: 3, pendingEvents: 2 };
+    const publisher = createRendererStatsPublisher({
+        enqueue: (callback) => callbacks.push(callback),
+        publish: (metadata) => publications.push(metadata),
+        readSceneAnimations: () => activity,
+    });
+    publisher.schedule(renderer());
+    activity = { active: 0, pendingEvents: 0 };
+    callbacks.shift()?.();
+    assert.deepEqual(publications[0]?.sceneRootAnimations, activity);
+});
+
 test('renderer stats remain monotonic across StrictMode cleanup and remount', () => {
     const callbacks: Array<() => void> = [];
     const publications: Array<Record<string, unknown>> = [];

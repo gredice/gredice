@@ -8,6 +8,7 @@ type RendererStatsPublisherOptions = {
     now?: () => number;
     publish: (metadata: GameProfileMetadata) => void;
     readCurrentReceipt?: () => number | undefined;
+    readSceneAnimations?: () => GameProfileMetadata['sceneRootAnimations'];
 };
 
 export function createRendererStatsPublisher({
@@ -15,6 +16,7 @@ export function createRendererStatsPublisher({
     now = () => performance.now(),
     publish,
     readCurrentReceipt = () => undefined,
+    readSceneAnimations,
 }: RendererStatsPublisherOptions) {
     let active = true;
     let receiptCount = 0;
@@ -55,6 +57,9 @@ export function createRendererStatsPublisher({
                     rendererStatsRenderFrame: gl.info.render.frame,
                     rendererTextures: gl.info.memory.textures,
                     rendererTriangles: gl.info.render.triangles,
+                    ...(readSceneAnimations
+                        ? { sceneRootAnimations: readSceneAnimations() }
+                        : {}),
                 });
             });
         },

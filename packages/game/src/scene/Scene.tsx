@@ -5,6 +5,7 @@ import {
     type Vector3 as FiberVector3,
     type Frameloop,
     useFrame,
+    useStore,
     useThree,
 } from '@react-three/fiber';
 import {
@@ -59,6 +60,7 @@ import {
 } from './SceneTime';
 import { StaticOpaqueSceneCacheProvider } from './StaticOpaqueSceneCache';
 import { SteamSourcesProvider } from './SteamSources';
+import { getSceneRootRuntime } from './sceneRootRuntime';
 import { WeatherSurfaceUniformProvider } from './WeatherSurfaceUniformProvider';
 
 export type SceneProps = HTMLAttributes<HTMLDivElement> &
@@ -158,6 +160,8 @@ function restoreWireframeOverride(
 }
 
 function RendererStatsReporter() {
+    const runtime = getSceneRootRuntime(useStore());
+    const requestRender = useSceneRenderRequest();
     const lastUpdateRef = useRef(0);
     const receiptRequestedRef = useRef(false);
     const publisherRef = useRef<ReturnType<
@@ -169,10 +173,12 @@ function RendererStatsReporter() {
             publish: updateGameProfileMetadata,
             readCurrentReceipt: () =>
                 readGameProfileMetadata()?.rendererStatsReceiptCount,
+            readSceneAnimations: runtime.readAnimationActivity,
         });
         publisherRef.current = publisher;
         const requestReceipt = () => {
             receiptRequestedRef.current = true;
+            requestRender('profile-render-receipt', 1);
         };
         window.addEventListener(
             'gredice:game-profile-render-receipt-request',
@@ -188,7 +194,7 @@ function RendererStatsReporter() {
                 publisherRef.current = null;
             }
         };
-    }, []);
+    }, [requestRender, runtime]);
 
     useFrame(({ gl }) => {
         const now = performance.now();

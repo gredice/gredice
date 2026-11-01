@@ -25,6 +25,14 @@ export class SceneRootRuntime {
 
     isVisible = () => this.visible;
 
+    readAnimationActivity = () => {
+        let active = 0;
+        for (const animation of this.animations) {
+            if (!animation.idle) active++;
+        }
+        return { active, pendingEvents: this.animationEvents.length };
+    };
+
     invalidate = (frames = 1) => {
         if (!Number.isFinite(frames) || frames <= 0 || this.rendering) return;
         if (!this.connected || !this.visible) return;

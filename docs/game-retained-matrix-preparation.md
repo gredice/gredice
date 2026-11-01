@@ -61,7 +61,8 @@ improvements:
   unpacking. Browser wrappers time WebGL buffer upload **submission**, not GPU
   execution or upload completion. Unpacking is not reported as GPU upload.
 - **Latency:** observers and upload wrappers are off. The endpoint is a settled
-  compiled and displayed scene, including its CSS garden transition, plus a fresh
+  compiled and displayed scene, including its CSS garden transition and owned
+  rotation springs, plus a fresh
   post-render receipt at the fixed camera pose (position −100/100/−100, target
   0/0/0, zoom 100). A one-shot receipt request bypasses the ordinary 500 ms
   statistics reporting throttle without changing rendering or the normal

@@ -179,6 +179,7 @@ async function snapshot(page) {
             sceneVisible: scene?.getAttribute('data-scene-visible'),
             sceneOpacity: scene ? getComputedStyle(scene).opacity : null,
             sceneTransitions: scene?.getAnimations().length,
+            sceneRootAnimations: p?.sceneRootAnimations,
             pending: p?.chunkCompiler?.pendingJobs,
             fallback: p?.renderPackets?.packetFallbackMeshes,
             receipt: p?.rendererStatsReceiptCount,
@@ -254,7 +255,7 @@ async function command(page, { kind, count, profile }, sequence) {
                     p.chunkCompiler.pendingJobs === 0 &&
                     p.renderPackets.packetFallbackMeshes === 0
                 ) {
-                    const receipt = p.rendererStatsReceiptCount;
+                    let receipt = p.rendererStatsReceiptCount;
                     const camera = {
                         position: [-100, 100, -100],
                         target: [0, 0, 0],
@@ -278,7 +279,22 @@ async function command(page, { kind, count, profile }, sequence) {
                                 Math.max(before, receipt) &&
                             next.chunkCompiler.pendingJobs === 0 &&
                             next.renderPackets.packetFallbackMeshes === 0
-                        )
+                        ) {
+                            if (
+                                next.sceneRootAnimations?.active !== 0 ||
+                                next.sceneRootAnimations?.pendingEvents !== 0
+                            ) {
+                                receipt = next.rendererStatsReceiptCount;
+                                window.dispatchEvent(
+                                    new Event(
+                                        'gredice:game-profile-render-receipt-request',
+                                    ),
+                                );
+                                await new Promise((resolve) =>
+                                    setTimeout(resolve, 1),
+                                );
+                                continue;
+                            }
                             return {
                                 durationMs:
                                     next.rendererStatsPublishedAt - startedAt,
@@ -292,6 +308,7 @@ async function command(page, { kind, count, profile }, sequence) {
                                         .matrixPreparationInstances -
                                     compilerBefore.matrixPreparationInstances,
                             };
+                        }
                         await new Promise((resolve) => setTimeout(resolve, 1));
                     }
                 }
