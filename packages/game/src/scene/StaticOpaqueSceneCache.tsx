@@ -121,6 +121,7 @@ type StaticOpaqueSceneCacheRegistrySnapshot = {
 };
 
 export class StaticOpaqueSceneCacheRegistry {
+    private pendingReason: StaticOpaqueSceneCacheReason | undefined;
     private readonly boundaries = new Map<
         symbol,
         StaticOpaqueSceneCacheBoundaryEntry
@@ -149,7 +150,17 @@ export class StaticOpaqueSceneCacheRegistry {
         this.bump('boundary-change');
     };
 
-    getSnapshot = () => this.snapshot;
+    getSnapshot = () => {
+        if (this.pendingReason) this.bump(this.pendingReason, false);
+        return this.snapshot;
+    };
+
+    /** Compiler handoffs coalesce until the next draw, after all layout effects. */
+    markContentDirty = () => {
+        if (this.pendingReason) return;
+        this.pendingReason = 'boundary-change';
+        this.onInvalidate();
+    };
 
     invalidate = (reason: StaticOpaqueSceneCacheReason) => {
         this.bump(reason);
@@ -176,7 +187,8 @@ export class StaticOpaqueSceneCacheRegistry {
         this.bump('boundary-change');
     };
 
-    private bump(reason: StaticOpaqueSceneCacheReason) {
+    private bump(reason: StaticOpaqueSceneCacheReason, requestRender = true) {
+        this.pendingReason = undefined;
         const mountedBoundaries = [...this.boundaries.values()].filter(
             (boundary) => boundary.root.parent !== null,
         );
@@ -227,12 +239,26 @@ export class StaticOpaqueSceneCacheRegistry {
             submissionCount,
             triangleCount,
         };
-        this.onInvalidate();
+        if (requestRender) this.onInvalidate();
     }
 }
 
 const StaticOpaqueSceneCacheContext =
     createContext<StaticOpaqueSceneCacheRegistry | null>(null);
+
+/** Refresh retained renderable references when compiled geometry replaces fallback meshes. */
+export function useStaticOpaqueSceneCacheContent(
+    key: unknown,
+    enabled: boolean,
+) {
+    const registry = useContext(StaticOpaqueSceneCacheContext);
+    // biome-ignore lint/correctness/useExhaustiveDependencies: the immutable geometry identity is the commit key.
+    useLayoutEffect(() => {
+        if (!enabled || !registry) return;
+        registry.markContentDirty();
+        return registry.markContentDirty;
+    }, [enabled, key, registry]);
+}
 
 export function StaticOpaqueSceneCacheBoundary({
     children,
@@ -1670,6 +1696,7 @@ function StaticOpaqueSceneCacheRenderer({
             releaseStaticOpaqueSceneCacheTargets(cacheTargets);
             allocatedTargetBytes = 0;
             replayStatusRef.current = 'disabled';
+            cachedFrame = false;
         }
         updateGameProfileMetadata({
             staticOpaqueSceneCacheAllocatedTargetBytes: allocatedTargetBytes,
@@ -1716,18 +1743,24 @@ function StaticOpaqueSceneCacheRenderer({
             staticOpaqueSceneCacheMeshCount: boundaryMetrics.meshes,
             staticOpaqueSceneCachePeakTargetBytes: peakTargetBytesRef.current,
             staticOpaqueSceneCacheProbeFrameCount: counters.probeFrames,
-            staticOpaqueSceneCacheReason: capturedStateReason(
-                transition.reason,
-                cachePathSupportedRef.current,
-            ),
+            staticOpaqueSceneCacheReason:
+                benefit.status === 'disabled'
+                    ? 'low-benefit'
+                    : capturedStateReason(
+                          transition.reason,
+                          cachePathSupportedRef.current,
+                      ),
             staticOpaqueSceneCacheSavedSubmissionCount:
                 counters.savedSubmissions,
             staticOpaqueSceneCacheSavedTriangleCount: counters.savedTriangles,
-            staticOpaqueSceneCacheState: !cachePathSupportedRef.current
-                ? 'unsupported'
-                : transition.action === 'capture'
-                  ? 'capturing'
-                  : transition.state,
+            staticOpaqueSceneCacheState:
+                benefit.status === 'disabled'
+                    ? 'bypass'
+                    : !cachePathSupportedRef.current
+                      ? 'unsupported'
+                      : transition.action === 'capture'
+                        ? 'capturing'
+                        : transition.state,
             staticOpaqueSceneCacheStaticPropsLayer: resolveLayerState(
                 'static-props',
                 boundaries,

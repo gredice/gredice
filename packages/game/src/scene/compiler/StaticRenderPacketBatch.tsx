@@ -22,6 +22,7 @@ import { useGardenPacketFallbackResources } from '../gardenPacketFallbackResourc
 import {
     StaticOpaqueSceneCacheBoundary,
     type StaticOpaqueSceneCacheGroup,
+    useStaticOpaqueSceneCacheContent,
 } from '../StaticOpaqueSceneCache';
 import { groupStaticRenderPacketsForCache } from './staticRenderPacketCacheGroups';
 import {
@@ -225,6 +226,10 @@ const StaticRenderPacketCompiledMesh = memo(
         drawRanges: StaticRenderPacketDrawRanges;
     }) {
         const build = useCompiledChunkSources(packet.sources);
+        useStaticOpaqueSceneCacheContent(
+            build?.geometry,
+            packet.cacheGroup !== undefined,
+        );
         const previousBuild = useRef<StaticRenderPacket | undefined>(undefined);
         const recordedBuild = useRef<typeof build>(undefined);
         useEffect(() => {

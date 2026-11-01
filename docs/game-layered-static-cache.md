@@ -31,7 +31,11 @@ cache off for them.
 ## Layers
 
 Boundaries register under a layer group: `base-terrain` or `static-props`.
-#4721 renders each group's static render packets under one boundary. Each
+#4721 renders each group's static render packets under material-compatible
+boundaries. Opaque replayable packets and unsupported/cutout packets have
+separate boundaries, so one unsupported shader does not exclude the layer's
+other packets. Unchanged partitions retain their packet and compiler identities.
+Each
 frame, every mounted boundary is either:
 
 - **cached**: all of its renderables pass the opaque material and replay
@@ -60,6 +64,13 @@ change a cached layer's pixels is already covered elsewhere:
 
 Camera and pointer interaction, close-up view, wireframe, XR, scene override
 materials, and auto-updating shadow maps still render live.
+
+Compiled packet captures admit only the known main/shadow range callbacks.
+Unknown or replaced callbacks remain unsupported. Capture uses the same actual
+renderer, camera and nested range guard as live drawing; picking keeps its
+original source ranges. Compiler replacement of pending meshes marks content
+dirty once for the next draw, refreshing the registry's geometry/material
+references after layout effects have committed.
 
 ## Gates
 
@@ -104,8 +115,13 @@ for the garden avatar. Each frame checks these gates in order:
    Sample arrays are bounded to the 60-frame window. Unsupported render paths
    and the diagnostic legacy path retain 1×1 targets.
 
-   A losing window disables the cache with `low-benefit`, shrinks its targets
-   to 1×1 so their memory is released, and waits 30 seconds. Each consecutive
+   A losing window disables the cache with `low-benefit` and shrinks its targets
+   to 1×1 in that same frame. Their release does not depend on another demanded
+   frame. Captured contents are invalidated before shrinking, so a later probe
+   must capture fresh data. Cooldown frames render live without registry-tree,
+   lighting, geometry or material signature scans, while diagnostic query
+   ownership and cumulative counters are preserved. The first cooldown lasts
+   30 seconds. Each consecutive
    loss doubles that cooldown, up to 5 minutes. The cache then probes again.
 
 ## Diagnostics
@@ -151,9 +167,14 @@ Run against a separately built production server after the optimized live scene
 has established an opportunity. For example:
 
 ```bash
-node apps/garden/scripts/profile-game-scene.mjs --base-url http://localhost:3101 \
+pnpm --filter garden exec node scripts/profile-game-scene.mjs --base-url http://localhost:3101 \
   --scenario-set static-cache-depth --out-dir .game-profile-results/cache-depth
 ```
+
+Run the complete production-build supplemental matrix with
+`pnpm --filter garden profile:game:static-cache-clearance`. It contains 240 runs
+across the five resolved profiles; it retains the existing budgets and paired
+limits and records failed savings comparisons separately from safe live no-ops.
 
 The supplemental profiler observes the cache's own render-pass queries without
 claiming the WebGL query slot. Its explicit `cache-owned-render-pass-v1` mode
