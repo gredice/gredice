@@ -49,6 +49,26 @@ export function sourceMapContents(map) {
     ];
 }
 
+export function matrixProfileUrl(baseUrl, profilePath, kind) {
+    const url = new URL('/debug/profile/game', baseUrl);
+    url.search = new URLSearchParams({
+        mode: 'details',
+        profile: 'high-target',
+        quality: new URL(profilePath, baseUrl).searchParams.get('quality'),
+        controls: '0',
+        details: '1',
+        hud: '0',
+        debugHud: '0',
+        staticSceneCache: 'legacy',
+        date: '2026-06-01',
+        fixedTimeSeconds: '43200',
+        ...(kind === 'switch'
+            ? { gardenSwitch: '1' }
+            : { matrixProfile: kind === 'edit64' ? '64' : '8' }),
+    }).toString();
+    return url;
+}
+
 function installCapture() {
     const original = {};
     globalThis.__matrixCapture = { stages: [], uploads: [], overflow: false };
@@ -226,7 +246,9 @@ async function command(page, { kind, count, profile }, sequence) {
                     const receipt = p.rendererStatsReceiptCount;
                     const camera = p.gameCameraSnapshot;
                     window.dispatchEvent(
-                        new Event('gredice:game-profile-render-receipt-request'),
+                        new Event(
+                            'gredice:game-profile-render-receipt-request',
+                        ),
                     );
                     window.dispatchEvent(
                         new CustomEvent(
@@ -382,32 +404,11 @@ export async function run(options) {
                             await page.addInitScript(installCapture);
                             const cdp = await context.newCDPSession(page);
                             const size = kind === 'edit64' ? 64 : 8;
-                            const url = new URL(
-                                '/debug/profile/game',
+                            const url = matrixProfileUrl(
                                 subject.url,
-                            );
-                            const quality = new URL(
                                 profile.path,
-                                subject.url,
-                            ).searchParams.get('quality');
-                            url.search = new URLSearchParams({
-                                mode: 'details',
-                                profile:
-                                    kind === 'switch'
-                                        ? 'garden-switch'
-                                        : 'high-target',
-                                quality,
-                                controls: '0',
-                                details: '1',
-                                hud: '0',
-                                debugHud: '0',
-                                staticSceneCache: 'legacy',
-                                date: '2026-06-01',
-                                fixedTimeSeconds: '43200',
-                                ...(kind === 'switch'
-                                    ? {}
-                                    : { matrixProfile: String(size) }),
-                            }).toString();
+                                kind,
+                            );
                             await page.goto(url.href, {
                                 waitUntil: 'domcontentloaded',
                             });

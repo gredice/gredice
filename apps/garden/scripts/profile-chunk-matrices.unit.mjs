@@ -2,10 +2,32 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
     isMatrixProfileReady,
+    matrixProfileUrl,
     percentiles,
     sourceMapContents,
 } from './profile-chunk-matrices.mjs';
 import { summarizeMatrixRows } from './summarize-chunk-matrices.mjs';
+
+test('switch diagnostics enable the real route listener without replacing the garden fixture', () => {
+    for (const kind of ['edit8', 'edit64', 'switch']) {
+        const params = matrixProfileUrl(
+            'http://localhost:3101',
+            '/debug/profile/game?quality=auto',
+            kind,
+        ).searchParams;
+        assert.equal(params.get('profile'), 'high-target');
+        assert.equal(params.get('quality'), 'auto');
+        assert.equal(params.get('date'), '2026-06-01');
+        assert.equal(
+            params.get('gardenSwitch'),
+            kind === 'switch' ? '1' : null,
+        );
+        assert.equal(
+            params.get('matrixProfile'),
+            kind === 'switch' ? null : kind === 'edit64' ? '64' : '8',
+        );
+    }
+});
 
 test('matrix reports retain nearest-rank tails and indexed source contents', () => {
     assert.throws(() => percentiles([NaN]), /Non-finite/);
