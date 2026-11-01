@@ -187,7 +187,7 @@ export function acquireRigidFaunaBatches(
                         boundingSphere: lease.bounds.clone(),
                     },
                 );
-                batch.name = `FaunaRigidBatch:${name}:${batches.length}`;
+                batch.name = `FaunaRigidBatch:${batches.length}`;
                 batch.castShadow = first.mesh.castShadow;
                 batch.receiveShadow = first.mesh.receiveShadow;
                 batch.renderOrder = first.mesh.renderOrder;

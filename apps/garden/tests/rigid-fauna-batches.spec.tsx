@@ -10,7 +10,7 @@ const appBaseUrl = getPlaywrightBaseUrl(getAppByName('garden'));
 
 const qualities: NonNullable<
     Parameters<typeof RigidFaunaBatchFixture>[0]['quality']
->[] = ['low', 'medium', 'high', 'auto'];
+>[] = ['low', 'medium', 'high', 'auto', 'auto-constrained'];
 
 function readReceipt(raw: string | null) {
     const value: unknown = JSON.parse(raw ?? '{}');

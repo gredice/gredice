@@ -11,7 +11,10 @@ import { type Group, InstancedMesh, Mesh } from 'three';
 import { useActorGroundingShadow } from '../src/entities/animals/ActorGroundingShadows';
 import { useFaunaRenderFrame } from '../src/entities/animals/FaunaRuntimeProvider';
 import { useFaunaActorCulling } from '../src/entities/animals/useFaunaActorCulling';
-import { gameQualityProfiles } from '../src/scene/gameQuality';
+import {
+    gameQualityProfiles,
+    resolveGameQualityProfile,
+} from '../src/scene/gameQuality';
 import { Scene } from '../src/scene/Scene';
 import { useSceneAfterFrame } from '../src/scene/useSceneAfterFrame';
 import {
@@ -152,7 +155,7 @@ export function RigidFaunaBatchFixture({
     appBaseUrl: string;
     batch: boolean;
     pose?: number;
-    quality?: keyof typeof gameQualityProfiles | 'auto';
+    quality?: keyof typeof gameQualityProfiles | 'auto' | 'auto-constrained';
     night?: boolean;
 }) {
     const [store] = useState(() =>
@@ -175,8 +178,14 @@ export function RigidFaunaBatchFixture({
                     zoom={155}
                     pixelRatio={1}
                     quality={
-                        quality === 'auto'
-                            ? undefined
+                        quality === 'auto' || quality === 'auto-constrained'
+                            ? resolveGameQualityProfile('auto', undefined, {
+                                  coarsePointer: false,
+                                  coreCount: quality === 'auto' ? 8 : 4,
+                                  dpr: 2,
+                                  memoryGb: quality === 'auto' ? 8 : 4,
+                                  narrowViewport: false,
+                              })
                             : gameQualityProfiles[quality]
                     }
                     baseFramesPerSecond={60}
