@@ -531,8 +531,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui
       '@mdxeditor/editor':
-        specifier: 4.3.3
-        version: 4.3.3(@codemirror/language@6.13.1)(@lezer/highlight@1.2.5)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@10.2.2)(typescript@7.0.2)(yjs@13.6.27)
+        specifier: 4.3.4
+        version: 4.3.4(@codemirror/language@6.13.1)(@lezer/highlight@1.2.5)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@10.2.2)(typescript@7.0.2)(yjs@13.6.27)
       '@playwright/experimental-ct-react':
         specifier: 1.62.1
         version: 1.62.1(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.106.1)(tsx@4.23.15)(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.106.1)(tsx@4.23.15)(yaml@2.9.1))(yaml@2.9.1)
@@ -706,7 +706,7 @@ importers:
         version: 0.9.0(@types/react@19.3.0)(@vercel/functions@3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3))(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.5)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.106.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@posthog/react':
         specifier: 1.11.3
-        version: 1.11.3(@types/react@19.3.0)(posthog-js@1.439.0(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)
+        version: 1.11.3(@types/react@19.3.0)(posthog-js@1.439.2(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)
       '@vercel/blob':
         specifier: 2.8.2
         version: 2.8.2
@@ -726,8 +726,8 @@ importers:
         specifier: 8.23.1
         version: 8.23.1
       posthog-js:
-        specifier: 1.439.0
-        version: 1.439.0(@types/react@19.3.0)(react@19.3.1)
+        specifier: 1.439.2
+        version: 1.439.2(@types/react@19.3.0)(react@19.3.1)
       react:
         specifier: 19.3.1
         version: 19.3.1
@@ -1120,8 +1120,8 @@ importers:
         specifier: 2.1.3
         version: 2.1.3
       '@mdxeditor/editor':
-        specifier: 4.3.3
-        version: 4.3.3(@codemirror/language@6.13.1)(@lezer/highlight@1.2.5)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@10.2.2)(typescript@7.0.2)(yjs@13.6.27)
+        specifier: 4.3.4
+        version: 4.3.4(@codemirror/language@6.13.1)(@lezer/highlight@1.2.5)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@10.2.2)(typescript@7.0.2)(yjs@13.6.27)
       '@opentelemetry/api':
         specifier: 1.10.0
         version: 1.10.0
@@ -3554,8 +3554,8 @@ packages:
       '@types/react': 19.3.0
       react: 19.3.1
 
-  '@mdxeditor/editor@4.3.3':
-    resolution: {integrity: sha512-/RyVGEC66xqxU0smO7pk3Yq0o1IBOUB5OYv3AD+G3TNDQLLnv/mpD6cx1U1O6rfoAAXJ2VwEMhf/NI2PZvIkYw==}
+  '@mdxeditor/editor@4.3.4':
+    resolution: {integrity: sha512-5uznLE4SklF78/sTDp067d8zO5zZzsDq1B0uui+5toiYcuu4L61iJcfiITwHK3G6B2Zd8Q2zkOb/mQqFVPSLqw==}
     engines: {node: '>=16'}
     peerDependencies:
       react: 19.3.1
@@ -9126,8 +9126,8 @@ packages:
     resolution: {integrity: sha512-9ZhXKM/rw350N1ovuWHbGxnGh/SNJ4cnxHiM0rxE4VN41wsg8P8zWn9hv/buK00RP4WvlOyr/RBDiptyxVbkZQ==}
     engines: {node: '>=0.10.0'}
 
-  posthog-js@1.439.0:
-    resolution: {integrity: sha512-hsLOuGv0BuixMf5pblWBdw3qjVvLYSNvdqRA0Di94crGtlcfW4mTQEupl9LQcKSNH0iOnsOlBZ8aB5CMKAGh3A==}
+  posthog-js@1.439.2:
+    resolution: {integrity: sha512-9/Pz+nJOdgcNdNE0Kxsgahmsa2uEDnQLZv865G2DBIpUqhevn6dIb6rBgvzGlpfcmGrF0Y3ejFL3GRjyXOMhyQ==}
     peerDependencies:
       '@types/react': 19.3.0
       react: 19.3.1
@@ -12432,7 +12432,7 @@ snapshots:
       '@types/react': 19.3.0
       react: 19.3.1
 
-  '@mdxeditor/editor@4.3.3(@codemirror/language@6.13.1)(@lezer/highlight@1.2.5)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@10.2.2)(typescript@7.0.2)(yjs@13.6.27)':
+  '@mdxeditor/editor@4.3.4(@codemirror/language@6.13.1)(@lezer/highlight@1.2.5)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@10.2.2)(typescript@7.0.2)(yjs@13.6.27)':
     dependencies:
       '@codemirror/commands': 6.11.1
       '@codemirror/lang-markdown': 6.5.2
@@ -12984,7 +12984,7 @@ snapshots:
 
   '@posthog/browser-common@0.9.12':
     dependencies:
-      '@posthog/core': 1.60.1
+      '@posthog/core': 1.62.0
       '@posthog/types': 1.418.0
       preact: 10.29.8
     transitivePeerDependencies:
@@ -13001,9 +13001,9 @@ snapshots:
   '@posthog/next@0.9.0(@types/react@19.3.0)(@vercel/functions@3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3))(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.5)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.106.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
       '@posthog/core': 1.60.1
-      '@posthog/react': 1.11.3(@types/react@19.3.0)(posthog-js@1.439.0(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)
+      '@posthog/react': 1.11.3(@types/react@19.3.0)(posthog-js@1.439.2(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)
       next: 16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.5)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.106.1)
-      posthog-js: 1.439.0(@types/react@19.3.0)(react@19.3.1)
+      posthog-js: 1.439.2(@types/react@19.3.0)(react@19.3.1)
       posthog-node: 5.52.5
       react: 19.3.1
       react-dom: 19.3.1(react@19.3.1)
@@ -13015,9 +13015,9 @@ snapshots:
       - preact-render-to-string
       - rxjs
 
-  '@posthog/react@1.11.3(@types/react@19.3.0)(posthog-js@1.439.0(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)':
+  '@posthog/react@1.11.3(@types/react@19.3.0)(posthog-js@1.439.2(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)':
     dependencies:
-      posthog-js: 1.439.0(@types/react@19.3.0)(react@19.3.1)
+      posthog-js: 1.439.2(@types/react@19.3.0)(react@19.3.1)
       react: 19.3.1
     optionalDependencies:
       '@types/react': 19.3.0
@@ -18504,7 +18504,7 @@ snapshots:
     dependencies:
       xtend: 4.0.2
 
-  posthog-js@1.439.0(@types/react@19.3.0)(react@19.3.1):
+  posthog-js@1.439.2(@types/react@19.3.0)(react@19.3.1):
     dependencies:
       '@posthog/browser-common': 0.9.12
       '@posthog/core': 1.62.0
