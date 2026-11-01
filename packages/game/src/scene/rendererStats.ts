@@ -3,6 +3,25 @@ import type { GameProfileMetadata } from './gameProfileMetadata';
 
 export const rendererStatsMeasurementMode = 'post-render-microtask-v1';
 
+export type RendererFrameEpoch = Readonly<{
+    gardenId?: number;
+    matrixSequence?: number;
+}>;
+
+/** A displayed epoch belongs to one Canvas; an old cleanup cannot clear its successor. */
+export function createRendererFrameEpoch() {
+    let current: RendererFrameEpoch | undefined;
+    return {
+        read: () => current,
+        set: (epoch: RendererFrameEpoch) => {
+            current = epoch;
+            return () => {
+                if (current === epoch) current = undefined;
+            };
+        },
+    };
+}
+
 type RendererStatsPublisherOptions = {
     enqueue?: (callback: () => void) => void;
     now?: () => number;
@@ -10,6 +29,7 @@ type RendererStatsPublisherOptions = {
     readCurrentReceipt?: () => number | undefined;
     readSceneAnimations?: () => GameProfileMetadata['sceneRootAnimations'];
     readSceneGeometryActivity?: () => { pending: number; revision: number };
+    readFrameEpoch?: () => RendererFrameEpoch | undefined;
 };
 
 export function createRendererStatsPublisher({
@@ -19,6 +39,7 @@ export function createRendererStatsPublisher({
     readCurrentReceipt = () => undefined,
     readSceneAnimations,
     readSceneGeometryActivity,
+    readFrameEpoch,
 }: RendererStatsPublisherOptions) {
     let active = true;
     let receiptCount = 0;
@@ -58,6 +79,9 @@ export function createRendererStatsPublisher({
                     rendererStatsPublishedAt: now(),
                     rendererStatsReceiptCount: receiptCount,
                     rendererStatsRenderFrame: gl.info.render.frame,
+                    ...(readFrameEpoch
+                        ? { rendererStatsFrameEpoch: readFrameEpoch() }
+                        : {}),
                     rendererTextures: gl.info.memory.textures,
                     rendererTriangles: gl.info.render.triangles,
                     ...(readSceneAnimations

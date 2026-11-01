@@ -387,11 +387,112 @@ export async function executeMatrixProfileCommand({
     throw new Error('Matrix command did not reach a settled submitted frame');
 }
 
-async function command(page, parameters, sequence) {
-    return page.evaluate(executeMatrixProfileCommand, {
-        ...parameters,
-        sequence,
-    });
+/** Passive edit endpoint: retain the first matching naturally submitted frame. */
+export async function executePassiveMatrixEdit({
+    count,
+    sequence,
+    dispatchDelayMs,
+}) {
+    let dispatchFrameAt;
+    if (dispatchDelayMs !== undefined) {
+        dispatchFrameAt = await new Promise(requestAnimationFrame);
+        await new Promise((resolve) => setTimeout(resolve, dispatchDelayMs));
+    }
+    const before = globalThis.__grediceGameProfile.rendererStatsReceiptCount;
+    const compilerBefore = { ...globalThis.__grediceGameProfile.chunkCompiler };
+    let first;
+    let startedAt = 0;
+    const receive = (event) => {
+        if (first || !(event instanceof CustomEvent)) return;
+        const next = event.detail;
+        const scene = document.querySelector('[data-scene-garden-id]');
+        if (
+            !next ||
+            next.rendererStatsReceiptCount <= before ||
+            next.rendererStatsPublishedAt < startedAt ||
+            next.rendererStatsFrameEpoch?.matrixSequence !== sequence ||
+            next.rendererStatsFrameEpoch?.gardenId !==
+                Number(scene?.getAttribute('data-scene-garden-id')) ||
+            next.matrixProfileCommittedSequence !== sequence ||
+            next.matrixProfileDisplayedSequence !== sequence ||
+            scene?.getAttribute('data-scene-visible') !== 'true' ||
+            getComputedStyle(scene).opacity !== '1' ||
+            scene.getAnimations().length !== 0 ||
+            next.chunkCompiler.pendingJobs !== 0 ||
+            next.renderPackets.packetFallbackMeshes !== 0 ||
+            next.sceneGeometryPending !== 0 ||
+            next.sceneRootAnimations?.active !== 0 ||
+            next.sceneRootAnimations?.pendingEvents !== 0 ||
+            (next.shadowsEnabled &&
+                (next.shadowGeometryRevision !== next.sceneGeometryRevision ||
+                    next.shadowMapNeedsUpdate !== false))
+        )
+            return;
+        first = next;
+    };
+    window.addEventListener('gredice:game-profile-frame-receipt', receive);
+    try {
+        window.dispatchEvent(
+            new CustomEvent('gredice:game-profile-frame-probe', {
+                detail: true,
+            }),
+        );
+        startedAt = performance.now();
+        window.dispatchEvent(
+            new CustomEvent('gredice:game-profile-matrix-edit', {
+                detail: { count, sequence },
+            }),
+        );
+        while (!first && performance.now() < startedAt + 60000)
+            await new Promise((resolve) => setTimeout(resolve, 1));
+        if (!first)
+            throw new Error(
+                'Matrix edit did not reach a matching natural frame',
+            );
+        const preparationInstances =
+            first.chunkCompiler.matrixPreparationInstances -
+            compilerBefore.matrixPreparationInstances;
+        if (preparationInstances !== count * 2)
+            throw new Error(
+                `Edit preparation work mismatch: expected ${count * 2}, observed ${preparationInstances}`,
+            );
+        return {
+            durationMs: first.rendererStatsPublishedAt - startedAt,
+            startedAt,
+            submittedAt: first.rendererStatsPublishedAt,
+            dispatchFrameAt,
+            dispatchDelayMs,
+            receipt: first.rendererStatsReceiptCount,
+            compiler: { ...first.chunkCompiler },
+            preparationMs:
+                first.chunkCompiler.matrixPreparationMs -
+                compilerBefore.matrixPreparationMs,
+            preparationInstances,
+            frameEpoch: first.rendererStatsFrameEpoch,
+        };
+    } finally {
+        window.removeEventListener(
+            'gredice:game-profile-frame-receipt',
+            receive,
+        );
+        window.dispatchEvent(
+            new CustomEvent('gredice:game-profile-frame-probe', {
+                detail: false,
+            }),
+        );
+    }
+}
+
+async function command(page, parameters, sequence, editEndpoint) {
+    return page.evaluate(
+        parameters.kind === 'edit' && editEndpoint === 'natural'
+            ? executePassiveMatrixEdit
+            : executeMatrixProfileCommand,
+        {
+            ...parameters,
+            sequence,
+        },
+    );
 }
 
 async function traceStop(cdp) {
@@ -411,6 +512,9 @@ async function traceStop(cdp) {
 }
 
 export async function run(options) {
+    const editEndpoint = options.editEndpoint ?? 'natural';
+    if (!['natural', 'fenced'].includes(editEndpoint))
+        throw new Error('Edit endpoint must be natural or fenced');
     const latencySamplesPerRound = options.latencySamplesPerRound ?? 5;
     if (
         !Number.isInteger(latencySamplesPerRound) ||
@@ -461,8 +565,11 @@ export async function run(options) {
                 samplesPerRound: 5,
                 latencySamplesPerRound,
                 varyLatencyDispatch: options.varyLatencyDispatch === true,
+                editEndpoint,
                 endpoint:
-                    'displayed revision and settled animation/compilation to post-render receipt at fixed comparison camera',
+                    editEndpoint === 'natural'
+                        ? 'edits: first natural submitted frame bound to the displayed Canvas epoch at the previously fixed camera; switches: displayed revision and settled animation/compilation plus camera fence'
+                        : 'displayed revision and settled animation/compilation to post-render receipt at fixed comparison camera',
                 browser: browser.version(),
                 harnessSha256: hash(await readFile(new URL(import.meta.url))),
                 smoke: options.smoke === true,
@@ -526,6 +633,25 @@ export async function run(options) {
                             await page.goto(url.href, {
                                 waitUntil: 'domcontentloaded',
                             });
+                            await settleMatrixProfile(
+                                page,
+                                kind === 'switch' ? 0 : size * size * 2,
+                            );
+                            // Fix the camera outside all measured edit windows.
+                            await page.evaluate(() =>
+                                window.dispatchEvent(
+                                    new CustomEvent(
+                                        'gredice:game-profile-camera-restore-command',
+                                        {
+                                            detail: {
+                                                position: [-100, 100, -100],
+                                                target: [0, 0, 0],
+                                                zoom: 100,
+                                            },
+                                        },
+                                    ),
+                                ),
+                            );
                             await settleMatrixProfile(
                                 page,
                                 kind === 'switch' ? 0 : size * size * 2,
@@ -616,6 +742,7 @@ export async function run(options) {
                                                 : 'fauna-heavy',
                                     },
                                     ++seq,
+                                    editEndpoint,
                                 );
                             await page.evaluate(() =>
                                 globalThis.__matrixCaptureStart('off'),
@@ -628,6 +755,54 @@ export async function run(options) {
                             });
                             await cdp.send('HeapProfiler.stopSampling');
                             if (options.preflight) {
+                                let idleProbe;
+                                if (
+                                    editEndpoint === 'natural' &&
+                                    profile.expectedQualityTier === 'low'
+                                ) {
+                                    idleProbe = await page.evaluate(
+                                        async () => {
+                                            const before = {
+                                                ...globalThis.__grediceGameProfile,
+                                            };
+                                            window.dispatchEvent(
+                                                new CustomEvent(
+                                                    'gredice:game-profile-frame-probe',
+                                                    { detail: true },
+                                                ),
+                                            );
+                                            try {
+                                                await new Promise((resolve) =>
+                                                    setTimeout(resolve, 200),
+                                                );
+                                                const after =
+                                                    globalThis.__grediceGameProfile;
+                                                return {
+                                                    receiptDelta:
+                                                        after.rendererStatsReceiptCount -
+                                                        before.rendererStatsReceiptCount,
+                                                    frameDelta:
+                                                        after.rendererStatsRenderFrame -
+                                                        before.rendererStatsRenderFrame,
+                                                };
+                                            } finally {
+                                                window.dispatchEvent(
+                                                    new CustomEvent(
+                                                        'gredice:game-profile-frame-probe',
+                                                        { detail: false },
+                                                    ),
+                                                );
+                                            }
+                                        },
+                                    );
+                                    if (
+                                        idleProbe.receiptDelta !== 0 ||
+                                        idleProbe.frameDelta !== 0
+                                    )
+                                        throw new Error(
+                                            `Passive probe woke an idle Low scene: ${JSON.stringify(idleProbe)}`,
+                                        );
+                                }
                                 if (errors.length)
                                     throw new Error(
                                         `Unexpected responses/page errors: ${errors}`,
@@ -641,6 +816,7 @@ export async function run(options) {
                                         {
                                             initial,
                                             capture,
+                                            idleProbe,
                                             sourceManifest,
                                             errors,
                                         },
@@ -868,6 +1044,9 @@ if (import.meta.url === pathToFileURL(resolve(process.argv[1] ?? '')).href) {
             ? Number(value('--latency-samples-per-round'))
             : 5,
         varyLatencyDispatch: args.includes('--vary-latency-dispatch'),
+        editEndpoint: args.includes('--edit-endpoint')
+            ? value('--edit-endpoint')
+            : 'natural',
     }).catch((error) => {
         console.error(error);
         process.exitCode = 1;

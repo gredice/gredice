@@ -613,6 +613,7 @@ export function GameScene({
                 >
                     {enableGameProfileController ? (
                         <GameProfileController
+                            displayedGardenId={garden?.id}
                             displayedMatrixProfileSequence={
                                 typeof matrixProfileSequence === 'number'
                                     ? matrixProfileSequence

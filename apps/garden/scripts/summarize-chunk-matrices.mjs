@@ -274,8 +274,9 @@ export async function summarizeFile(input, output) {
             allocation:
                 'V8 sampled JS heap bytes with a mapped transform ancestor, including collected objects; not exact allocation or external buffer bytes',
             gc: 'observed renderer-main GC events; nested categories are not summed or assigned a cause',
-            endpoint:
-                'query edit/switch to settled submitted frame; not display photon latency or FPS',
+            endpoint: report.endpoint,
+            editEndpoint: report.editEndpoint ?? 'fenced',
+            scope: 'renderer submission latency; not display photon latency or FPS',
         },
         summary,
     };

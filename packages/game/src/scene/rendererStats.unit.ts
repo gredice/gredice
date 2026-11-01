@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { WebGLProgram, WebGLRenderer } from 'three';
 import {
+    createRendererFrameEpoch,
     createRendererStatsPublisher,
     rendererStatsMeasurementMode,
 } from './rendererStats';
@@ -127,4 +128,41 @@ test('renderer stats remain monotonic across StrictMode cleanup and remount', ()
     remounted.schedule(gl);
     callbacks.shift()?.();
     assert.equal(currentReceipt(), 2);
+});
+
+test('frame epochs are Canvas owned and obsolete cleanup cannot erase a replacement', () => {
+    const first = createRendererFrameEpoch();
+    const second = createRendererFrameEpoch();
+    const release = first.set({ gardenId: 1, matrixSequence: 2 });
+    const releaseNew = first.set({ gardenId: 1, matrixSequence: 3 });
+    release();
+    assert.deepEqual(first.read(), { gardenId: 1, matrixSequence: 3 });
+    assert.equal(second.read(), undefined);
+    releaseNew();
+    assert.equal(first.read(), undefined);
+});
+
+test('a frame receipt records its own displayed epoch at the post-render boundary', () => {
+    const callbacks: Array<() => void> = [];
+    const publications: Array<Record<string, unknown>> = [];
+    const epoch = createRendererFrameEpoch();
+    epoch.set({ gardenId: 1, matrixSequence: 2 });
+    const publisher = createRendererStatsPublisher({
+        enqueue: (callback) => callbacks.push(callback),
+        publish: (metadata) => publications.push(metadata),
+        readFrameEpoch: epoch.read,
+    });
+    publisher.schedule(renderer());
+    epoch.set({ gardenId: 1, matrixSequence: 3 });
+    callbacks.shift()?.();
+    assert.deepEqual(publications[0]?.rendererStatsFrameEpoch, {
+        gardenId: 1,
+        matrixSequence: 3,
+    });
+    const release = epoch.set({ gardenId: 2 });
+    release();
+    publisher.schedule(renderer());
+    callbacks.shift()?.();
+    assert.ok(Object.hasOwn(publications[1] ?? {}, 'rendererStatsFrameEpoch'));
+    assert.equal(publications[1]?.rendererStatsFrameEpoch, undefined);
 });

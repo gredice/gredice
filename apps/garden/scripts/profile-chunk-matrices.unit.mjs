@@ -10,6 +10,7 @@ import {
 } from './matrix-profile-report.mjs';
 import {
     executeMatrixProfileCommand,
+    executePassiveMatrixEdit,
     isMatrixProfileReady,
     matrixProfileUrl,
     percentiles,
@@ -373,4 +374,116 @@ test('a fast preparation kernel cannot hide an end-to-end latency regression or 
             .complete,
         false,
     );
+});
+
+test('passive edits retain the first matching Canvas receipt without requesting camera or render work', async () => {
+    const names = [
+        'window',
+        'document',
+        'getComputedStyle',
+        '__grediceGameProfile',
+    ];
+    const previous = names.map((name) => globalThis[name]);
+    try {
+        for (const prepared of [128, 0]) {
+            let active = false;
+            let firstTime;
+            let received = 0;
+            const events = new EventTarget();
+            globalThis.window = events;
+            globalThis.document = {
+                querySelector: () => ({
+                    getAttribute: (name) =>
+                        name === 'data-scene-garden-id' ? '99996' : 'true',
+                    getAnimations: () => [],
+                }),
+            };
+            globalThis.getComputedStyle = () => ({ opacity: '1' });
+            let runtime = {
+                chunkCompiler: {
+                    pendingJobs: 0,
+                    matrixPreparationInstances: 0,
+                    matrixPreparationMs: 0,
+                },
+                renderPackets: { packetFallbackMeshes: 0 },
+                rendererStatsReceiptCount: 1,
+                sceneGeometryPending: 0,
+                sceneRootAnimations: { active: 0, pendingEvents: 0 },
+                matrixProfileCommittedSequence: 0,
+                matrixProfileDisplayedSequence: 0,
+            };
+            globalThis.__grediceGameProfile = runtime;
+            for (const name of [
+                'gredice:game-profile-render-receipt-request',
+                'gredice:game-profile-camera-restore-command',
+            ])
+                events.addEventListener(name, () =>
+                    assert.fail(
+                        'Passive edit must not request a render/camera fence',
+                    ),
+                );
+            events.addEventListener(
+                'gredice:game-profile-frame-probe',
+                (event) => {
+                    active = event.detail;
+                },
+            );
+            events.addEventListener('gredice:game-profile-matrix-edit', () => {
+                assert.equal(active, true);
+                runtime = {
+                    ...runtime,
+                    matrixProfileCommittedSequence: 1,
+                    matrixProfileDisplayedSequence: 1,
+                };
+                setTimeout(() => {
+                    const submit = (matrixSequence) => {
+                        const frame = {
+                            ...runtime,
+                            rendererStatsReceiptCount: ++received + 1,
+                            rendererStatsPublishedAt: performance.now(),
+                            rendererStatsFrameEpoch: {
+                                gardenId: 99996,
+                                matrixSequence,
+                            },
+                            chunkCompiler: {
+                                ...runtime.chunkCompiler,
+                                matrixPreparationInstances: prepared,
+                            },
+                        };
+                        globalThis.__grediceGameProfile = frame;
+                        events.dispatchEvent(
+                            new CustomEvent(
+                                'gredice:game-profile-frame-receipt',
+                                { detail: frame },
+                            ),
+                        );
+                        return frame;
+                    };
+                    submit(0); // Incoming data alone cannot identify the displayed frame.
+                    const first = submit(1);
+                    firstTime = first.rendererStatsPublishedAt;
+                    // A later publication must not inflate latency if the timer resumes late.
+                    globalThis.__grediceGameProfile = {
+                        ...submit(1),
+                        rendererStatsPublishedAt: firstTime + 999,
+                    };
+                }, 5);
+            });
+            const result = executePassiveMatrixEdit({ count: 64, sequence: 1 });
+            if (prepared === 128) {
+                const receipt = await result;
+                assert.equal(receipt.submittedAt, firstTime);
+                assert.deepEqual(receipt.frameEpoch, {
+                    gardenId: 99996,
+                    matrixSequence: 1,
+                });
+            } else await assert.rejects(result, /preparation work mismatch/);
+            assert.equal(active, false);
+        }
+    } finally {
+        names.forEach((name, i) => {
+            if (previous[i] === undefined) delete globalThis[name];
+            else globalThis[name] = previous[i];
+        });
+    }
 });

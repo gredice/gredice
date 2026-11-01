@@ -46,6 +46,9 @@ actual loaded JS/source maps, the writer hash, camera, source commit, resolved
 quality, DPR, shadows, fixed date, compiler readiness and heap-sampling protocol
 across all five canonical profiles. Setup requests a fresh receipt so a fully
 idle Low scene cannot retain stale statistics from before compilation committed.
+The camera is fixed during setup. For the natural edit endpoint, Low preflight
+also enables the passive probe without a command and requires zero additional
+receipts or renderer frames.
 Pass dates as `YYYY-MM-DD`; the old rejected ISO-timestamp route input is not
 accepted. Fixture query positions are plain data, not renderer Vector3 objects.
 Authenticated garden queries stay disabled; unexpected response/page errors
@@ -86,16 +89,22 @@ improvements:
   packing, transfer submission, worker execution, synchronous execution and
   unpacking. Browser wrappers time WebGL buffer upload **submission**, not GPU
   execution or upload completion. Unpacking is not reported as GPU upload.
-- **Latency:** observers and upload wrappers are off. The endpoint is a settled
-  compiled and displayed scene, including its CSS garden transition and owned
-  rotation springs, plus a fresh
-  post-render receipt at the fixed camera pose (position −100/100/−100, target
-  0/0/0, zoom 100). A one-shot receipt request bypasses the ordinary 500 ms
-  statistics reporting throttle without changing rendering or the normal
-  reporting interval. It is renderer edit/switch latency, not network,
-  physical display latency, or FPS. Twenty samples retain absolute p50/p95 and
-  full ranges. Prospectively, p50 and p95 must be no more than reference ×1.05
-  plus 1 ms; a faster kernel cannot waive an end-to-end regression.
+- **Latency:** writer observations and upload wrappers are off. By default,
+  edits retain the first naturally submitted frame matching their displayed
+  Canvas epoch, with compilation, shadows and owned rotation springs settled.
+  A passive probe publishes each naturally scheduled frame during the command;
+  it requests no render or camera work. Its immutable first matching receipt
+  cannot be replaced by a later frame if polling resumes late. The camera was
+  fixed before timing (position −100/100/−100, target 0/0/0, zoom 100).
+  Garden switches retain the existing endpoint: CSS transition and compilation
+  settle, followed by a fresh receipt at the restored comparison camera.
+  `--edit-endpoint fenced` retains that earlier camera/render fence for edits
+  as well. The ordinary 500 ms statistics interval is unchanged outside a probe.
+  These are renderer submission endpoints, not network, physical display
+  latency or FPS. Twenty samples (or eighty with the explicit confirmation
+  option) retain absolute p50/p95 and full ranges. Prospectively, p50 and p95
+  must be no more than reference ×1.05 plus 1 ms; a faster kernel cannot waive
+  an end-to-end regression.
 - **Allocation/GC:** V8 sampled heap profiles include collected objects and retain
   original call trees/source maps. Allocation attributed to a transform ancestor
   is an estimate, not exact bytes or external Float64 backing-store accounting.
@@ -108,6 +117,16 @@ tests remain required, together with Game and consumer typechecks, real WebGL
 component coverage and unchanged canonical production profiling gates. Native
 desktop measurements and browser hardware overrides do not establish phone
 thermal behavior or an FPS gain.
+
+Two complete fenced-endpoint captures remain unsuccessful acceptance cohorts:
+the twenty-sample cohort missed two latency gates and the eighty-sample cohort
+missed four. Both improved larger-rebuild preparation and sampled allocation,
+and all visual pairs passed. Those observations do not override the failed
+latency gates. Source review showed that the fence explicitly requests render
+and camera work after readiness; it measures beyond the first matching natural
+frame. That does not establish the cause of any tail difference. The passive
+edit endpoint is a separately declared method, with the same numerical limits;
+it cannot relabel either earlier capture as a pass.
 
 The dedicated High-target placement diagnostic exposed a stale content pin:
 both allocating and scratch production builds reported thirteen grounding

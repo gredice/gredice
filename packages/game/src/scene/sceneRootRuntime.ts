@@ -1,4 +1,5 @@
 import type { RootStore } from '@react-three/fiber';
+import { createRendererFrameEpoch } from './rendererStats';
 import { SceneGeometryUpdates } from './sceneGeometryUpdates';
 
 type SceneAnimation = {
@@ -13,6 +14,7 @@ const maximumFrameDeltaMs = 64;
 /** Owns demand work independently of R3F's module-global loop. */
 export class SceneRootRuntime {
     readonly geometryUpdates = new SceneGeometryUpdates();
+    readonly frameEpoch = createRendererFrameEpoch();
     private visible = false;
     private connected = false;
     private rendering = false;

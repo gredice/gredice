@@ -1,7 +1,8 @@
 'use client';
 
+import { useStore } from '@react-three/fiber';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import type { GameCameraSnapshot } from '../controls/GameCameraRigApi';
 import { useHoveredBlockStore } from '../controls/useHoveredBlockStore';
 import {
@@ -34,6 +35,7 @@ import {
     startGeneratedPlantProfile,
 } from './generatedPlantProfileMetrics';
 import { useSceneRenderRequest } from './SceneTime';
+import { getSceneRootRuntime } from './sceneRootRuntime';
 
 export const gameProfileCloseupCommandEventName =
     'gredice:game-profile-closeup-command';
@@ -428,8 +430,10 @@ export function resolveGameProfileRaisedBedTarget(
 }
 
 export function GameProfileController({
+    displayedGardenId,
     displayedMatrixProfileSequence,
 }: {
+    displayedGardenId?: number;
     displayedMatrixProfileSequence?: number;
 }) {
     const { data: garden } = useCurrentGarden();
@@ -437,12 +441,17 @@ export function GameProfileController({
     const gameStateStore = useGameStateStore();
     const requestRender = useSceneRenderRequest();
     const matrixProfileSequence = useRef(0);
-    useEffect(() => {
+    const runtime = getSceneRootRuntime(useStore());
+    useLayoutEffect(() => {
         if (displayedMatrixProfileSequence !== undefined)
             updateGameProfileMetadata({
                 matrixProfileDisplayedSequence: displayedMatrixProfileSequence,
             });
-    }, [displayedMatrixProfileSequence]);
+        return runtime.frameEpoch.set({
+            gardenId: displayedGardenId,
+            matrixSequence: displayedMatrixProfileSequence,
+        });
+    }, [displayedGardenId, displayedMatrixProfileSequence, runtime]);
     useEffect(() => {
         if (
             !garden ||
