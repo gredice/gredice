@@ -9,7 +9,10 @@ import {
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { meshGeometryLayoutSignature } from '../../scene/compiler/meshBuffers';
 import { getGardenMaterialSignature } from '../../scene/gardenMaterials';
-import { faunaCullingBoundsScale } from './faunaActorCulling';
+import {
+    faunaCullingBoundsScale,
+    hasRigidFaunaRenderCallbacks,
+} from './faunaActorCulling';
 
 type GeometryEntry = {
     geometry: BufferGeometry;
@@ -28,6 +31,7 @@ function rigidSource(object: Object3D) {
         !object.visible ||
         object.castShadow ||
         object.children.length > 0 ||
+        !hasRigidFaunaRenderCallbacks(object) ||
         !(object.material instanceof MeshStandardMaterial) ||
         object.material.type !== 'MeshStandardMaterial' ||
         object.material.transparent

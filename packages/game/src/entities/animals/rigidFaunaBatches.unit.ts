@@ -158,6 +158,9 @@ for (const change of [
     'hidden',
     'render-order',
     'shadow-caster',
+    'render-callback',
+    'after-render-callback',
+    'raycast-callback',
 ]) {
     test(`rigid batches retain the authored ${change} fallback`, () => {
         const { root, right } = rig();
@@ -175,6 +178,9 @@ for (const change of [
         if (change === 'hidden') right.visible = false;
         if (change === 'render-order') right.renderOrder = 1;
         if (change === 'shadow-caster') right.castShadow = true;
+        if (change === 'render-callback') right.onBeforeRender = () => {};
+        if (change === 'after-render-callback') right.onAfterRender = () => {};
+        if (change === 'raycast-callback') right.raycast = () => {};
         const visible = right.visible;
         const lease = acquireRigidFaunaBatches(
             root,
