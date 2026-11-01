@@ -192,10 +192,16 @@ test('edits wait for the displayed revision and reject absent preparation work',
         'window',
         'document',
         'getComputedStyle',
+        'requestAnimationFrame',
         '__grediceGameProfile',
     ];
     const previous = names.map((name) => globalThis[name]);
     try {
+        let dispatchFrameAt;
+        globalThis.requestAnimationFrame = (callback) => {
+            dispatchFrameAt = performance.now();
+            callback(dispatchFrameAt);
+        };
         for (const prepared of [128, 0]) {
             const runtime = {
                 chunkCompiler: {
@@ -241,10 +247,19 @@ test('edits wait for the displayed revision and reject absent preparation work',
                 kind: 'edit',
                 count: 64,
                 sequence: 1,
+                dispatchDelayMs: 5,
             });
-            if (prepared === 128)
-                assert.equal((await command).preparationInstances, 128);
-            else
+            if (prepared === 128) {
+                const result = await command;
+                assert.equal(result.preparationInstances, 128);
+                assert.equal(result.dispatchFrameAt, dispatchFrameAt);
+                assert.equal(result.dispatchDelayMs, 5);
+                assert.ok(result.startedAt >= result.dispatchFrameAt);
+                assert.equal(
+                    result.durationMs,
+                    result.submittedAt - result.startedAt,
+                );
+            } else
                 await assert.rejects(command, /Edit preparation work mismatch/);
         }
     } finally {

@@ -1,7 +1,7 @@
 {
     "harvest-corner": {
         "sourceCommit": "c48974bd2e21316ae5c3034b9d305350aa479cd4",
-        "captureSha256": "34f58a91831cd713cc219342ddad022d21b6ce58f6d39f855a0c5e37b14390f8",
+        "captureSha256": "730033d06faeafeecd4a1a298f247dc285d5c722f996ad96e71120fb1e9ac0e1",
         "included": [
             {
                 "entityName": "HarvestPumpkinGroupOrange",
@@ -742,7 +742,7 @@
             },
             {
                 "path": "packages/game/src/scene/Scene.tsx",
-                "sha256": "dd303a06cdb5a4cc7ee0910ce3940efed10eea422f6d2ac7af933b84fabc0dac"
+                "sha256": "c656fcbb5cdc79e9acc64976515772617036fe0e18e088170c80cd34ad6c4707"
             },
             {
                 "path": "packages/game/src/scene/SteamEmitter.tsx",
@@ -819,22 +819,38 @@
             {
                 "path": "packages/js/src/harvestPumpkins/index.ts",
                 "sha256": "c5b0d9331754c40a42c2b81499c0bc64236542779fac2fd698fc8b994f14ca62"
+            },
+            {
+                "path": "packages/game/src/scene/ShadowMapController.tsx",
+                "sha256": "28cb47b924c551af5641ca4f213b656aa984cec32580007136c750b804ea5c9b"
+            },
+            {
+                "path": "packages/game/src/scene/shadowMapScheduling.ts",
+                "sha256": "d82a3e2921f2cbaf09263d4d8a3d03d7d849f7018c312e7140d13391c246edc3"
+            },
+            {
+                "path": "packages/game/src/scene/sceneRootRuntime.ts",
+                "sha256": "4eea0c8b76aac543517eb24a3ee6e941fdd9f8e6bf3ed839f9bfb8530f6f46dd"
+            },
+            {
+                "path": "packages/game/src/scene/sceneGeometryUpdates.ts",
+                "sha256": "4487bd39e8ece01632f6a4b5f36b89cf255b679f1bb25d5ada4bb5a0416e364b"
             }
         ],
         "captureRecordCommit": "deca1575e69ddc52eb2f3ff89ca3333b714239fd",
         "recapture": {
             "source": {
-                "commit": "7d5f2d878d6a88fe6618168a3f16ca27348f374e",
-                "tree": "5b27798caca6f4f1d35447326f8915d9378efa2b",
+                "commit": "86b6f4c438d3970f00e4229f4b40a82dd64b60fe",
+                "tree": "6237802889455861a85a30d9369b31ac74d13c45",
                 "status": ""
             },
-            "previousCaptureSha256": "fd5da939da6318cab25e83200dcb3a7aa66f5203e3b1f9443149078bce6a7f64",
+            "previousCaptureSha256": "34f58a91831cd713cc219342ddad022d21b6ce58f6d39f855a0c5e37b14390f8",
             "previousPreviewSha256": "ed1b245678a3613a093026ecdfadd3a416a3332972f926ab9aa3a552bb95c2e2"
         }
     },
     "woodland-path": {
         "sourceCommit": "c48974bd2e21316ae5c3034b9d305350aa479cd4",
-        "captureSha256": "d4fac46954d3dd6d0fdd0d5ae81d02f2264a82dcb6bdd8f463c42323369465e8",
+        "captureSha256": "0936ee6dd67a9cd6018abb4ed38317f2e101a1294967c8f5fa366de268285403",
         "included": [
             {
                 "entityName": "WoodlandMushrooms",
@@ -1582,7 +1598,7 @@
             },
             {
                 "path": "packages/game/src/scene/Scene.tsx",
-                "sha256": "dd303a06cdb5a4cc7ee0910ce3940efed10eea422f6d2ac7af933b84fabc0dac"
+                "sha256": "c656fcbb5cdc79e9acc64976515772617036fe0e18e088170c80cd34ad6c4707"
             },
             {
                 "path": "packages/game/src/scene/SteamEmitter.tsx",
@@ -1659,22 +1675,38 @@
             {
                 "path": "packages/js/src/gardenBlocks/index.ts",
                 "sha256": "48716a80b03d5242ab31ba48f75db6a2ee9b69774ebde1b1e21f8efe3d561a73"
+            },
+            {
+                "path": "packages/game/src/scene/ShadowMapController.tsx",
+                "sha256": "28cb47b924c551af5641ca4f213b656aa984cec32580007136c750b804ea5c9b"
+            },
+            {
+                "path": "packages/game/src/scene/shadowMapScheduling.ts",
+                "sha256": "d82a3e2921f2cbaf09263d4d8a3d03d7d849f7018c312e7140d13391c246edc3"
+            },
+            {
+                "path": "packages/game/src/scene/sceneRootRuntime.ts",
+                "sha256": "4eea0c8b76aac543517eb24a3ee6e941fdd9f8e6bf3ed839f9bfb8530f6f46dd"
+            },
+            {
+                "path": "packages/game/src/scene/sceneGeometryUpdates.ts",
+                "sha256": "4487bd39e8ece01632f6a4b5f36b89cf255b679f1bb25d5ada4bb5a0416e364b"
             }
         ],
         "captureRecordCommit": "deca1575e69ddc52eb2f3ff89ca3333b714239fd",
         "recapture": {
             "source": {
-                "commit": "7d5f2d878d6a88fe6618168a3f16ca27348f374e",
-                "tree": "5b27798caca6f4f1d35447326f8915d9378efa2b",
+                "commit": "86b6f4c438d3970f00e4229f4b40a82dd64b60fe",
+                "tree": "6237802889455861a85a30d9369b31ac74d13c45",
                 "status": ""
             },
-            "previousCaptureSha256": "45250e85d7ed1dedb8d7b25c0bb121c17924454fb116f7fa1ba42a2c1925ac50",
+            "previousCaptureSha256": "d4fac46954d3dd6d0fdd0d5ae81d02f2264a82dcb6bdd8f463c42323369465e8",
             "previousPreviewSha256": "2f21c98172611d2e3d37d71d4fd5c5c7685c044239f406a271a09d5e775c5e55"
         }
     },
     "evening-seat": {
         "sourceCommit": "c48974bd2e21316ae5c3034b9d305350aa479cd4",
-        "captureSha256": "ea0036dd1cf2cb5610de56800adc0d7a1b4326a9842ac853305b81ac14a1df83",
+        "captureSha256": "e4bd361c00f7972f8c47c39b18f75387da9326bd975f88722c7011d4fc719e8b",
         "included": [
             {
                 "entityName": "AutumnBlanketBench",
@@ -2423,7 +2455,7 @@
             },
             {
                 "path": "packages/game/src/scene/Scene.tsx",
-                "sha256": "dd303a06cdb5a4cc7ee0910ce3940efed10eea422f6d2ac7af933b84fabc0dac"
+                "sha256": "c656fcbb5cdc79e9acc64976515772617036fe0e18e088170c80cd34ad6c4707"
             },
             {
                 "path": "packages/game/src/scene/SteamEmitter.tsx",
@@ -2504,17 +2536,33 @@
             {
                 "path": "packages/js/src/gardenTeaTable/index.ts",
                 "sha256": "00371804bba753c64ba88235e2ca9bba285c5dce78f0b1fb1d41f3de2c0e0744"
+            },
+            {
+                "path": "packages/game/src/scene/ShadowMapController.tsx",
+                "sha256": "28cb47b924c551af5641ca4f213b656aa984cec32580007136c750b804ea5c9b"
+            },
+            {
+                "path": "packages/game/src/scene/shadowMapScheduling.ts",
+                "sha256": "d82a3e2921f2cbaf09263d4d8a3d03d7d849f7018c312e7140d13391c246edc3"
+            },
+            {
+                "path": "packages/game/src/scene/sceneRootRuntime.ts",
+                "sha256": "4eea0c8b76aac543517eb24a3ee6e941fdd9f8e6bf3ed839f9bfb8530f6f46dd"
+            },
+            {
+                "path": "packages/game/src/scene/sceneGeometryUpdates.ts",
+                "sha256": "4487bd39e8ece01632f6a4b5f36b89cf255b679f1bb25d5ada4bb5a0416e364b"
             }
         ],
         "captureRecordCommit": "deca1575e69ddc52eb2f3ff89ca3333b714239fd",
         "recapture": {
             "source": {
-                "commit": "7d5f2d878d6a88fe6618168a3f16ca27348f374e",
-                "tree": "5b27798caca6f4f1d35447326f8915d9378efa2b",
+                "commit": "86b6f4c438d3970f00e4229f4b40a82dd64b60fe",
+                "tree": "6237802889455861a85a30d9369b31ac74d13c45",
                 "status": ""
             },
-            "previousCaptureSha256": "59de1448b3c9888297a565f3b6b3bb8c1a63a2207bd7a66beba446c56ade3ad4",
-            "previousPreviewSha256": "48325aa58a719dafebafa403c3b3f51565d3128d9bbbac9ce80d93e539d434d7"
+            "previousCaptureSha256": "ea0036dd1cf2cb5610de56800adc0d7a1b4326a9842ac853305b81ac14a1df83",
+            "previousPreviewSha256": "e3eccaa634461ae5f76792283c481e253ba43b964389c26fc7c71a6cb4942cd0"
         }
     }
 }

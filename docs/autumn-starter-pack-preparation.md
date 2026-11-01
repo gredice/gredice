@@ -46,6 +46,16 @@ The reader compares current PNG/capture JSON, included and scenery GLB/Blender s
 
 ## Observed publication blocker and validation limits
 
+The retained-matrix profiling work (#5067) recaptured all three desktop/high
+arrangements from clean `86b6f4c438d3970f00e4229f4b40a82dd64b60fe`.
+All 36 scene images and three public previews are byte-identical and decoded
+pixel-identical; all non-source capture JSON fields match. The public previews
+were also visually inspected. The 36 mobile images were retained unchanged,
+not recaptured. `matrix-profile-recapture.json` records the comparisons and
+selected Scene/shadow helper pins; `pre-matrix-profiling/` preserves the previous
+manifest and capture records. This refresh changes no image, layout, catalogue
+entry or purchased immutable version.
+
 The read-only public export observed **2026-10-02T18:28:09Z**, SHA256 `8c4fff1ebe0a5ac9f90f9ba52436d263c70b16f9cb5a85f1cc018b4674c88cde`, contained 144 rows. It was a CDN-cached public response (`X-Vercel-Cache: HIT`, `Age: 108`, `Cache-Control: public, max-age=3600`), not a direct database audit. Among the twelve included models, only StoneMedium (140, 5 sunflowers) and EnamelGardenLamp (758, 80 sunflowers) were present. Preparation is blocked for all three products by the other ten missing models. These observations are dated evidence, not configured production prices or IDs.
 
 Tests use an explicitly synthetic directory and published fixture versions solely inside isolated PGlite service/repository tests and browser mocks. They cover all three derived products: four-unit grants, partial exact placement, readback, independent repeat purchases, placement after catalogue withdrawal without extra charge and original-value idempotent refund. Three actual storefront card reviews cover mobile/keyboard input, precise pieces, excluded scenery, individual prices without invented savings and no automatic purchase/placement.

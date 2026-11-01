@@ -108,3 +108,10 @@ tests remain required, together with Game and consumer typechecks, real WebGL
 component coverage and unchanged canonical production profiling gates. Native
 desktop measurements and browser hardware overrides do not establish phone
 thermal behavior or an FPS gain.
+
+The dedicated High-target placement diagnostic exposed a stale content pin:
+both allocating and scratch production builds reported thirteen grounding
+shadows (five birds/mammals and eight insects), while its old guard expected
+five. All six runs already produced exactly one final placement flush and one
+primary shadow refresh. The content pin now requires thirteen; the unit rejects
+the obsolete count. Frame, memory, draw, placement and latency limits are unchanged.
