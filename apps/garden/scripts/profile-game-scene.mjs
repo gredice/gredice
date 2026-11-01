@@ -11,6 +11,7 @@ import {
     buildStaticCacheClearanceScenarioSets,
     captureResolvedStaticCacheWitness,
     classifyStaticCacheWitness,
+    collectStaticCacheResourceWarmup,
     evaluateStaticCacheClearance,
     installStaticCacheGpuMetrics,
     readStaticCacheWitness,
@@ -9398,6 +9399,21 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             ],
             soakMs: 0,
         };
+        if (scenario.staticCacheSoak === true) {
+            const resourceWarmup = await collectStaticCacheResourceWarmup({
+                initialWitness: staticCacheEvidence.witnesses[0],
+                capture: () =>
+                    captureStaticCacheWitness(
+                        page,
+                        crossTierRendererStatsMode,
+                        scenario.expectedShadows,
+                        request.staticSceneCache,
+                    ),
+                wait,
+            });
+            staticCacheEvidence.resourceWarmup = resourceWarmup;
+            staticCacheEvidence.witnesses = [resourceWarmup.witnesses.at(-1)];
+        }
     }
     if (
         scenario.staticCacheClearance !== true &&

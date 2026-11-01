@@ -4,6 +4,7 @@ import {
     buildStaticCacheClearanceScenarioSets,
     captureResolvedStaticCacheWitness,
     classifyStaticCacheWitness,
+    collectStaticCacheResourceWarmup,
     evaluateStaticCacheClearance,
     installStaticCacheGpuMetrics,
     staticCacheClearanceMinimumSoakMs,
@@ -754,11 +755,30 @@ test('depth keeps canonical leak, match and verified-hit thresholds', () => {
     assert.equal(evaluateStaticCacheClearance(input).pass, false);
 });
 
-test('soak needs a full duration, periodic witnesses and bounded resource growth', () => {
+test('soak retains first-use warmup but rejects growth in the following full measured minute', async () => {
+    let atMs = 0;
+    const resourceWarmup = await collectStaticCacheResourceWarmup({
+        now: () => atMs,
+        wait: async (durationMs) => {
+            atMs += durationMs;
+        },
+        capture: async () => ({
+            ...measured,
+            atMs,
+            rendererGeometries: atMs < 35_000 ? 100 : 155,
+        }),
+    });
+    assert.equal(resourceWarmup.durationMs, 60_000);
+    assert.equal(resourceWarmup.witnesses.length, 13);
+    const baseline = resourceWarmup.witnesses.at(-1);
     const input = fixture({
         requested: { ...fixture().requested, staticCacheSoak: true },
         evidence: {
-            witnesses: Array.from({ length: 4 }, () => ({ ...measured })),
+            resourceWarmup,
+            witnesses: Array.from({ length: 4 }, (_, index) => ({
+                ...baseline,
+                atMs: 60_000 + index * 20_000,
+            })),
             soakMs: 60_000,
         },
     });
@@ -766,8 +786,45 @@ test('soak needs a full duration, periodic witnesses and bounded resource growth
     input.evidence.soakMs = 59_999;
     assert.equal(evaluateStaticCacheClearance(input).pass, false);
     input.evidence.soakMs = 60_000;
+    input.evidence.witnesses[3].rendererGeometries += 3;
+    assert.equal(evaluateStaticCacheClearance(input).pass, false);
+    input.evidence.witnesses[3].rendererGeometries -= 3;
     input.evidence.witnesses[3].rendererTextures = 25;
     assert.equal(evaluateStaticCacheClearance(input).pass, false);
+
+    const missing = structuredClone(input);
+    delete missing.evidence.resourceWarmup;
+    assert.equal(
+        evaluateStaticCacheClearance(missing).checks.find(
+            (check) => check.name === 'cacheClearanceSoakResourceWarmup',
+        ).pass,
+        false,
+    );
+    const tooShort = structuredClone(input);
+    tooShort.evidence.resourceWarmup.durationMs = 59_999;
+    assert.equal(
+        evaluateStaticCacheClearance(tooShort).checks.find(
+            (check) => check.name === 'cacheClearanceSoakResourceWarmup',
+        ).pass,
+        false,
+    );
+    const staleBoundary = structuredClone(input);
+    staleBoundary.evidence.witnesses[0].atMs += 1;
+    assert.equal(
+        evaluateStaticCacheClearance(staleBoundary).checks.find(
+            (check) => check.name === 'cacheClearanceSoakWarmupBoundary',
+        ).pass,
+        false,
+    );
+    const unsafeWarmup = structuredClone(input);
+    unsafeWarmup.evidence.resourceWarmup.witnesses[0].staticOpaqueSceneCachePeakTargetBytes =
+        Number.MAX_SAFE_INTEGER;
+    assert.equal(
+        evaluateStaticCacheClearance(unsafeWarmup).checks.find(
+            (check) => check.name === 'cacheClearanceResourceBudget',
+        ).pass,
+        false,
+    );
 });
 
 test('cache query observer preserves frame kind and excludes samples outside the window', async (t) => {

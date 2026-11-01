@@ -1,6 +1,28 @@
 /** Supplemental only: canonical cross-tier scenarios and comparison contract stay fixed. */
 export const staticCacheClearanceMeasurementMode = 'cache-owned-render-pass-v1';
 export const staticCacheClearanceMinimumSoakMs = 60_000;
+export const staticCacheClearanceResourceWarmupMs = 60_000;
+
+/** Retain first-use uploads separately from the following steady resource soak. */
+export async function collectStaticCacheResourceWarmup({
+    capture,
+    wait,
+    initialWitness,
+    now = Date.now,
+}) {
+    const startedAt = now();
+    const witnesses = [initialWitness ?? (await capture())];
+    while (now() - startedAt < staticCacheClearanceResourceWarmupMs) {
+        await wait(
+            Math.min(
+                5_000,
+                staticCacheClearanceResourceWarmupMs - (now() - startedAt),
+            ),
+        );
+        witnesses.push(await capture());
+    }
+    return { durationMs: now() - startedAt, witnesses };
+}
 
 /** The canonical resource barrier observes shadow registrations, not all fauna. */
 export function allowMissingStaticCacheShadowPopulation(
@@ -429,7 +451,9 @@ export function evaluateStaticCacheClearance({
     const checks = [];
     const add = (name, actual, pass, limit) =>
         checks.push({ name, actual, limit, pass });
-    const all = evidence?.witnesses ?? [];
+    const measuredWitnesses = evidence?.witnesses ?? [];
+    const warmupWitnesses = evidence?.resourceWarmup?.witnesses ?? [];
+    const all = [...warmupWitnesses, ...measuredWitnesses];
     const final = all.at(-1);
     const outcome = classifyStaticCacheWitness(final);
     const requestedCache = requested.staticSceneCache;
@@ -801,19 +825,44 @@ export function evaluateStaticCacheClearance({
         }
     }
     if (requested.staticCacheSoak) {
+        const warmupSpan =
+            warmupWitnesses.at(-1)?.atMs - warmupWitnesses[0]?.atMs;
+        add(
+            'cacheClearanceSoakResourceWarmup',
+            evidence?.resourceWarmup?.durationMs,
+            evidence?.resourceWarmup?.durationMs >=
+                staticCacheClearanceResourceWarmupMs &&
+                warmupWitnesses.length >= 4 &&
+                Number.isFinite(warmupSpan) &&
+                warmupSpan >= staticCacheClearanceResourceWarmupMs,
+            staticCacheClearanceResourceWarmupMs,
+        );
+        add(
+            'cacheClearanceSoakWarmupBoundary',
+            measuredWitnesses[0]?.atMs,
+            warmupWitnesses.length > 0 &&
+                JSON.stringify(warmupWitnesses.at(-1)) ===
+                    JSON.stringify(measuredWitnesses[0]),
+            warmupWitnesses.at(-1)?.atMs,
+        );
         add(
             'cacheClearanceSoakDuration',
             evidence?.soakMs,
             evidence?.soakMs >= staticCacheClearanceMinimumSoakMs,
             staticCacheClearanceMinimumSoakMs,
         );
-        add('cacheClearanceSoakSamples', all.length, all.length >= 4, 4);
+        add(
+            'cacheClearanceSoakSamples',
+            measuredWitnesses.length,
+            measuredWitnesses.length >= 4,
+            4,
+        );
         for (const [key, maximumGrowth] of [
             ['rendererShaders', 1],
             ['rendererTextures', 4],
             ['rendererGeometries', 2],
         ]) {
-            const values = all.map((witness) => witness[key]);
+            const values = measuredWitnesses.map((witness) => witness[key]);
             const growth = values.every(Number.isFinite)
                 ? Math.max(...values) - values[0]
                 : null;

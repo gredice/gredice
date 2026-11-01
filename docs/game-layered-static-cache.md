@@ -214,6 +214,12 @@ windows. The target byte estimate already includes the 36-byte replay triangle;
 do not add that replay again. All snapshots must fit the reported per-device
 budget, and rejected probes must release their targets. Soak resource growth
 is bounded to one program, four textures and two geometries after warmup.
+Soak runs first retain a separate 60-second resource warmup, including lazy
+first-use actor uploads. Every warmup witness must still satisfy cache role,
+quality, weather, GPU decision and device memory checks. Its final fresh receipt
+is the first measured soak receipt. The following full 60-second soak retains
+the same resource-growth limits; warmup allocations are preserved in
+`staticCacheEvidence.resourceWarmup`, rather than discarded or counted as leaks.
 Lifecycle retains the canonical suspension/context requirements and adds cache
 admission and resource witnesses before suspension and after restoration.
 Every supplemental witness binds the original URL's cache role, quality setting
