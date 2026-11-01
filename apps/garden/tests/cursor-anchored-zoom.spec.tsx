@@ -1,6 +1,17 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import { CursorAnchoredZoomFixture } from '../../../packages/game/tests/CursorAnchoredZoomFixture';
 import '../../../packages/game/tests/cameraRenderedState';
+import type { CameraRenderedWitness } from '../../../packages/game/tests/cameraRenderedState';
+
+function expectCurrentSubmission(
+    sample: ReturnType<CameraRenderedWitness['snapshot']> | undefined,
+) {
+    expect(sample?.frames).toBeGreaterThan(0);
+    expect(sample?.shadowSubmissions).toBeGreaterThan(0);
+    expect(sample?.snapshotMismatches).toBe(0);
+    expect(sample?.matrixMismatches).toBe(0);
+    expect(sample?.publishedCamera).toEqual(sample?.submittedCamera);
+}
 
 test('keeps the world position beneath the cursor fixed while wheel zooming', async ({
     mount,
@@ -108,6 +119,7 @@ test('submits camera rotation on the owned 30 FPS frame without urgent follow-up
         true,
     );
     expect(pixelsAfter).not.toEqual(pixelsBefore);
+    expectCurrentSubmission(after);
 });
 
 test('keyboard pan and focus animation submit camera changes, then immediate actions wake the idle scene', async ({
@@ -140,6 +152,7 @@ test('keyboard pan and focus animation submit camera changes, then immediate act
         idle?.submittedCamera?.target,
     );
     expect(panned?.cameraChangeRequests).toBe(0);
+    expectCurrentSubmission(panned);
     expect(panned?.targetFramesPerSecond).toHaveLength(panned?.frames ?? 0);
     expect(panned?.targetFramesPerSecond.every((value) => value === 60)).toBe(
         true,
@@ -155,10 +168,31 @@ test('keyboard pan and focus animation submit camera changes, then immediate act
     expect(focused?.frames).toBeGreaterThan(1);
     expect(focused?.submittedCamera?.target).toEqual([1, 0, 1]);
     expect(focused?.cameraChangeRequests).toBe(0);
+    expectCurrentSubmission(focused);
+    expect(
+        focused?.submittedCameras.some(
+            (snapshot) => snapshot.target[0] > 0 && snapshot.target[0] < 1,
+        ),
+    ).toBe(true);
     await page.clock.runFor(320);
     expect(
         await page.evaluate(() => window.cameraRenderedWitness?.snapshot()),
     ).toEqual(focused);
+
+    await page.evaluate(() => window.cameraRenderedWitness?.reset());
+    await fixture.getByRole('button', { name: 'Animate restore' }).click();
+    await page.clock.runFor(1200);
+    const restored = await page.evaluate(() =>
+        window.cameraRenderedWitness?.snapshot(),
+    );
+    expectCurrentSubmission(restored);
+    expect(restored?.submittedCamera?.position).toEqual([-10, 10, -10]);
+    expect(restored?.submittedCamera?.target).toEqual([0, 0, 0]);
+    expect(restored?.cameraChangeRequests).toBe(0);
+    await page.clock.runFor(320);
+    expect(
+        await page.evaluate(() => window.cameraRenderedWitness?.snapshot()),
+    ).toEqual(restored);
 
     for (const { name, target } of [
         { name: 'Restore immediately', target: [0, 0, 0] },
@@ -173,9 +207,64 @@ test('keyboard pan and focus animation submit camera changes, then immediate act
         expect(changed?.frames).toBeGreaterThan(0);
         expect(changed?.submittedCamera?.target).toEqual(target);
         expect(changed?.cameraChangeRequests).toBeGreaterThan(0);
+        expectCurrentSubmission(changed);
         await page.clock.runFor(320);
         expect(
             await page.evaluate(() => window.cameraRenderedWitness?.snapshot()),
         ).toEqual(changed);
+    }
+});
+
+test('wheel and drag wake an idle camera, submit current shadows and snapshots, and return to idle', async ({
+    mount,
+    page,
+}) => {
+    await page.clock.install();
+    const fixture = await mount(<CursorAnchoredZoomFixture observeFrames />);
+    await expect(fixture.getByTestId('camera-projection')).toHaveAttribute(
+        'data-ready',
+        'true',
+    );
+    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
+    await page.clock.runFor(1000);
+    const canvas = fixture.locator('canvas');
+    const bounds = await canvas.boundingBox();
+    expect(bounds).not.toBeNull();
+    if (!bounds) throw new Error('Camera canvas is missing');
+    await page.mouse.move(
+        bounds.x + bounds.width / 2,
+        bounds.y + bounds.height / 2,
+    );
+    for (const action of ['wheel', 'drag']) {
+        const before = await page.evaluate(() =>
+            window.cameraRenderedWitness?.snapshot(),
+        );
+        await page.clock.runFor(320);
+        expect(
+            await page.evaluate(() => window.cameraRenderedWitness?.snapshot()),
+        ).toEqual(before);
+        await page.evaluate(() => window.cameraRenderedWitness?.reset());
+        if (action === 'wheel') {
+            await page.mouse.wheel(0, -200);
+        } else {
+            await page.mouse.down();
+            await page.mouse.move(
+                bounds.x + bounds.width / 2 + 40,
+                bounds.y + bounds.height / 2 + 20,
+                { steps: 4 },
+            );
+            await page.mouse.up();
+        }
+        await page.clock.runFor(240);
+        const after = await page.evaluate(() =>
+            window.cameraRenderedWitness?.snapshot(),
+        );
+        expectCurrentSubmission(after);
+        expect(after?.submittedCamera).not.toEqual(before?.submittedCamera);
+        expect(after?.cameraChangeRequests).toBeGreaterThan(0);
+        await page.clock.runFor(320);
+        expect(
+            await page.evaluate(() => window.cameraRenderedWitness?.snapshot()),
+        ).toEqual(after);
     }
 });
