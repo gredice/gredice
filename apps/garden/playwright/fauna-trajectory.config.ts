@@ -1,6 +1,10 @@
 import { defineConfig, devices } from '@playwright/experimental-ct-react';
 import { faunaPoseOraclePlugin } from './faunaPoseOraclePlugin.mjs';
 
+const oracleEnabled =
+    process.env.FAUNA_TRAJECTORY_MODE === 'baseline' ||
+    Boolean(process.env.FAUNA_TRAJECTORY_REFERENCE);
+
 // This witness also runs in the frozen legacy checkout. Keep its configuration
 // independent of app/server helpers introduced after that runtime revision.
 export default defineConfig({
@@ -14,6 +18,9 @@ export default defineConfig({
     use: {
         ctPort: 3145,
         ctTemplateDir: '.',
+        // Playwright's source-timestamp cache omits Vite plugin/environment
+        // changes. Never reuse ordinary CT output or an uninstrumented build.
+        ctCacheDir: `../.cache/fauna-trajectory/${oracleEnabled ? 'oracle' : 'plain'}`,
         ctViteConfig: {
             legacy: { inconsistentCjsInterop: true },
             plugins: [faunaPoseOraclePlugin()],

@@ -304,6 +304,10 @@ all eight witness files, browser configuration and asset-server environment,
 then checks them again after capture. The candidate must be clean; an isolated
 legacy reference permits only the named witness files and browser configuration
 addition. Source edits during capture invalidate the report.
+The dedicated configuration isolates oracle-enabled Vite output from ordinary
+component tests and uninstrumented runs. Playwright's source-timestamp cache
+does not include the plugin environment; sharing that cache can otherwise run
+unwrapped pose functions and correctly fail the independent pose witness.
 
 Run the same fixture files in isolated baseline and candidate checkouts with
 an existing production asset server; keep the canonical profiling checkout
