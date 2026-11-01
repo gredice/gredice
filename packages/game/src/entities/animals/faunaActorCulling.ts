@@ -8,6 +8,7 @@ import { InstancedMesh, Mesh, type Object3D, Sphere } from 'three';
 export const faunaCullingBoundsScale = 1.75;
 
 export type FaunaActorCulling = {
+    markRendered: () => void;
     /**
      * Returns whether any actor mesh was submitted by a render since the
      * previous call. Actors start as rendered so their first pose is applied
@@ -69,6 +70,9 @@ export function configureFaunaActorCulling(
     });
 
     const culling: FaunaActorCulling = {
+        markRendered: () => {
+            renderedSinceCheck = true;
+        },
         consumeRendered: () => {
             const rendered = renderedSinceCheck;
             renderedSinceCheck = false;

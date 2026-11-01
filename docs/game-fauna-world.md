@@ -125,6 +125,31 @@ fast-forwards after a hidden period.
 
 ## Shared simulation and rendered poses
 
+Bee and Ladybug can batch opaque rigid siblings within explicitly named manual
+rig pivots. Their articulation groups and logical source nodes stay in place;
+each batch inherits its original parent transform. Exact stock material values,
+geometry attribute layout, shadow-receiving state, layer and render order must
+match. Transparent wings, primary shadow-map casters, skinned/morph geometry,
+mirrored children and unsupported primitives retain their authored rendering.
+The separate projected grounding-shadow batch is unchanged.
+
+Batch geometry is acquired in layout effects and shared only between active
+clones of the same source asset and immutable local layout. The final lease
+disposes the owned output; borrowed GLTF geometry and materials keep their
+existing owners. Cleanup restores logical visibility and raycasts before a
+StrictMode replay. The rendered batch marks the existing culling observer, so
+pose sleeping still follows actual submissions. Raycasts use the batched
+geometry once rather than also intersecting hidden logical source meshes.
+
+The actual GLB unit controls retain every pivot and reduce potential rigid leaf
+submissions by 17 per Bee and six per Ladybug. This is a source-geometry count,
+not a whole-scene GPU-time claim. The `rigid-fauna-batches.spec.tsx` WebGL control
+compares authored and batched pixels in Low, Medium, High and Automatic through
+articulated poses and day/night lighting, with the production projected-shadow
+policy. Primary-caster geometry remains a tested fallback after its separate
+prototype exceeded the unchanged pixel limit. Full production profiling decides
+the net performance benefit.
+
 `FaunaRuntimeProvider` owns one retained dispatcher per Canvas. All current
 species and the beach ball register their existing behavior/path/movement
 callbacks with `useFaunaFrame`. Registration order stays stable across React

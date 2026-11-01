@@ -850,6 +850,8 @@ function createBeeDebugEntry({
     };
 }
 
+const beeRigidParents = ['Bee_HeadPivot', 'Bee_BodyPivot'];
+
 function Bee({ habitat }: { habitat: BeeHabitat }) {
     const gltf = useGameGLTF('Bee');
     const { enableDebugHudFlag = false } = useGameFlags();
@@ -889,7 +891,10 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
             scene: clone,
         };
     }, [gltf.scene]);
-    useFaunaActorCulling(beeModel.scene);
+    useFaunaActorCulling(beeModel.scene, {
+        rigidSource: gltf.scene,
+        rigidParents: beeRigidParents,
+    });
     const updateGroundingShadow = useActorGroundingShadow({
         id: `bee:${habitat.id}`,
         primaryCasterCount: beeModel.primaryCasterCount,
