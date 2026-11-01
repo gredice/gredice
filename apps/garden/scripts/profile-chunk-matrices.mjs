@@ -541,6 +541,17 @@ export async function run(options) {
                                         globalThis.__matrixCaptureStart(mode),
                                     mode,
                                 );
+                                for (let warmup = 0; warmup < 4; warmup++)
+                                    await action();
+                                await page.evaluate(() =>
+                                    globalThis.__matrixCaptureStart('off'),
+                                );
+                                await cdp.send('HeapProfiler.collectGarbage');
+                                await page.evaluate(
+                                    (mode) =>
+                                        globalThis.__matrixCaptureStart(mode),
+                                    mode,
+                                );
                                 if (mode === 'allocation') {
                                     await cdp.send(
                                         'HeapProfiler.startSampling',

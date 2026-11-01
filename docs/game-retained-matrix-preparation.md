@@ -49,6 +49,9 @@ multi-source Float64 compiler preparation are exercised. An immutable local
 query-cache edit changes only selected top-block rotations; it never writes
 garden or account data. The command is enabled only for the explicit matrix
 debug fixture and isolated local sandbox namespace.
+Each pass receives four unmeasured warmup commands before a fresh capture and
+collection boundary. `--smoke-only` runs a one-round High-quality diagnostic;
+the summarizer rejects smoke/setup reports as primary acceptance.
 
 Three separate passes prevent profiler costs from being called application
 improvements:
