@@ -1,3 +1,4 @@
+import { useThree } from '@react-three/fiber';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
@@ -165,6 +166,18 @@ export function CursorAnchoredZoomFixture({
                         <button
                             type="button"
                             onClick={() =>
+                                gameStore.getState().gameCamera?.restore({
+                                    position: [-10, 10, -10],
+                                    target: [0, 0, 0],
+                                    zoom: initialZoom,
+                                })
+                            }
+                        >
+                            Animate restore
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() =>
                                 gameStore.getState().gameCamera?.restore(
                                     {
                                         position: [-10, 10, -10],
@@ -183,5 +196,3 @@ export function CursorAnchoredZoomFixture({
         </NuqsTestingAdapter>
     );
 }
-
-import { useThree } from '@react-three/fiber';

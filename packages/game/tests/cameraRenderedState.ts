@@ -7,6 +7,11 @@ export type CameraRenderedWitness = {
         cameraChangeRequests: number;
         targetFramesPerSecond: number[];
         submittedCamera: GameCameraSnapshot | null;
+        submittedCameras: GameCameraSnapshot[];
+        publishedCamera: GameCameraSnapshot | null;
+        snapshotMismatches: number;
+        matrixMismatches: number;
+        shadowSubmissions: number;
     };
 };
 

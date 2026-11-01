@@ -226,6 +226,7 @@ class FakeRuntimeQueue {
 }
 
 function createScheduler({
+    beforeFrameCallback,
     frameCallbackTimes = [],
     invalidations = [],
     options,
@@ -233,6 +234,7 @@ function createScheduler({
     simulateFrameCallbacks = false,
     snapshots,
 }: {
+    beforeFrameCallback?: (scheduler: GameRuntimeScheduler) => void;
     frameCallbackTimes?: number[];
     invalidations?: number[];
     options?: Partial<GameRuntimeSchedulerOptions>;
@@ -254,6 +256,7 @@ function createScheduler({
             framePending = false;
             frameHandle = null;
             frameCallbackTimes.push(displayTimestamp ?? queue.currentTime);
+            beforeFrameCallback?.(scheduler);
             scheduler.recordFrameCallback(displayTimestamp);
         });
     };
@@ -350,6 +353,85 @@ function createDeterministicCallbackDelays(
 }
 
 describe('GameRuntimeScheduler idle and cadence', () => {
+    for (const framesPerSecond of [30, 60]) {
+        it(`preserves owned camera cadence at ${framesPerSecond} Hz under identical late callbacks`, (context) => {
+            const run = (redundantCameraDemand: boolean) => {
+                // Both subjects receive the same 30 Hz display, 4 ms timer
+                // lateness and 2 ms receipt work. Only the in-frame demand differs.
+                const queue = new FakeRuntimeQueue(30, [], Array(1000).fill(2));
+                const requestedRates: number[] = [];
+                const { scheduler, frameCallbackTimes } = createScheduler({
+                    queue,
+                    simulateFrameCallbacks: true,
+                    beforeFrameCallback: (runtime) => {
+                        if (redundantCameraDemand)
+                            runtime.requestRender('camera-change');
+                        requestedRates.push(
+                            runtime.getSnapshot().targetFramesPerSecond,
+                        );
+                    },
+                    options: {
+                        setTimeout: (callback, delayMs) =>
+                            queue.setTimeout(() => {
+                                queue.currentTime += 4;
+                                callback();
+                            }, delayMs),
+                    },
+                });
+                const release = scheduler.acquireRenderLease(
+                    'camera-work',
+                    framesPerSecond,
+                );
+                queue.runUntil(6000);
+                const receipts = frameCallbackTimes.filter(
+                    (time) =>
+                        time > 1000 + timingToleranceMs &&
+                        time <= 6000 + timingToleranceMs,
+                ).length;
+                const final = scheduler.getSnapshot();
+                release();
+                scheduler.dispose();
+                return { receipts, requestedRates, final };
+            };
+            const owned = run(false);
+            const redundant = run(true);
+            context.diagnostic(
+                JSON.stringify({
+                    framesPerSecond,
+                    owned: owned.receipts,
+                    redundant: redundant.receipts,
+                }),
+            );
+            assert.ok(
+                owned.receipts >= 149,
+                JSON.stringify({
+                    framesPerSecond,
+                    owned: owned.receipts,
+                    redundant: redundant.receipts,
+                }),
+            );
+            if (framesPerSecond === 30)
+                assert.ok(redundant.receipts < owned.receipts);
+            else assert.equal(redundant.receipts, owned.receipts);
+            assert.ok(
+                owned.requestedRates.every((rate) => rate === framesPerSecond),
+            );
+            // The public target reports the lease cadence, not urgent demand.
+            assert.ok(
+                redundant.requestedRates.every(
+                    (rate) => rate === framesPerSecond,
+                ),
+            );
+            assert.equal(owned.final.targetFramesPerSecond, framesPerSecond);
+            assert.equal(
+                redundant.final.targetFramesPerSecond,
+                framesPerSecond,
+            );
+            assertWakeupClassificationConserved(owned.final);
+            assertWakeupClassificationConserved(redundant.final);
+        });
+    }
+
     it('is inert by default and performs zero idle work', () => {
         const queue = new FakeRuntimeQueue();
         const snapshots: GameRuntimeSchedulerSnapshot[] = [];
