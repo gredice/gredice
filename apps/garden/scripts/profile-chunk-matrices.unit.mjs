@@ -1,9 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { percentiles, sourceMapContents } from './profile-chunk-matrices.mjs';
+import {
+    isMatrixProfileReady,
+    percentiles,
+    sourceMapContents,
+} from './profile-chunk-matrices.mjs';
 import { summarizeMatrixRows } from './summarize-chunk-matrices.mjs';
 
 test('matrix reports retain nearest-rank tails and indexed source contents', () => {
+    assert.throws(() => percentiles([NaN]), /Non-finite/);
     assert.deepEqual(percentiles([3, 1, 2, 0]), {
         count: 4,
         p50: 1,
@@ -24,6 +29,26 @@ test('matrix reports retain nearest-rank tails and indexed source contents', () 
             { source: 'b.ts', content: 'b' },
         ],
     );
+});
+
+test('readiness uses the actual packet telemetry and rejects pending or fallback geometry', () => {
+    const before = globalThis.__grediceGameProfile;
+    try {
+        globalThis.__grediceGameProfile = {
+            chunkCompiler: { pendingJobs: 0 },
+            renderPackets: { packetFallbackMeshes: 0 },
+            gameCameraSnapshot: {},
+            rendererStatsReceiptCount: 1,
+        };
+        assert.equal(isMatrixProfileReady(), true);
+        globalThis.__grediceGameProfile.chunkCompiler.pendingJobs = 1;
+        assert.equal(isMatrixProfileReady(), false);
+        globalThis.__grediceGameProfile.chunkCompiler.pendingJobs = 0;
+        globalThis.__grediceGameProfile.renderPackets.packetFallbackMeshes = 1;
+        assert.equal(isMatrixProfileReady(), false);
+    } finally {
+        globalThis.__grediceGameProfile = before;
+    }
 });
 
 test('a fast preparation kernel cannot hide an end-to-end latency regression or missing repetitions', () => {

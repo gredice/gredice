@@ -2,7 +2,9 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { SourceMap } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import sharp from 'sharp';
 import { percentiles } from './profile-chunk-matrices.mjs';
+import { measureStaticSceneCacheImageParity } from './profile-game-scene.mjs';
 
 export function summarizeMatrixRows(rows, labels) {
     const groups = Map.groupBy(rows, (row) => `${row.profile}:${row.kind}`);
@@ -88,6 +90,8 @@ export function summarizeMatrixRows(rows, labels) {
 
 export async function summarizeFile(input, output) {
     const report = JSON.parse(await readFile(input, 'utf8'));
+    if (report.preflight || report.smoke)
+        throw new Error('Setup/smoke data cannot become primary acceptance');
     for (const row of report.rows.filter((row) => row.mode === 'allocation')) {
         const mappings = new Map();
         for (const source of row.sourceManifest) {
@@ -102,11 +106,13 @@ export async function summarizeFile(input, output) {
                 new SourceMap(JSON.parse(await readFile(path, 'utf8'))),
             );
         }
+        let mappedNodes = 0;
         const visit = (node, inTransform = false) => {
             const frame = node.callFrame;
             const mapped = mappings
                 .get(frame.url)
                 ?.findEntry(frame.lineNumber, frame.columnNumber);
+            if (mapped?.originalSource) mappedNodes++;
             const included =
                 inTransform ||
                 mapped?.originalSource?.includes(
@@ -121,6 +127,10 @@ export async function summarizeFile(input, output) {
             );
         };
         row.transformAllocatedBytes = visit(row.allocation.profile.head);
+        if (mappedNodes === 0)
+            throw new Error(
+                'No allocation frames mapped to loaded production sources',
+            );
         const marker = row.trace.traceEvents.find(
             (event) => event.name === 'matrix-allocation-start',
         );
@@ -152,7 +162,51 @@ export async function summarizeFile(input, output) {
         report.rows,
         report.subjects.map((s) => s.label),
     );
+    for (const [name, value] of Object.entries(summary)) {
+        const [profile, kind] = name.split(':');
+        const pairs = [];
+        for (let round = 0; round < 4; round++) {
+            const images = await Promise.all(
+                report.subjects.map((subject) =>
+                    sharp(
+                        resolve(
+                            dirname(input),
+                            `${subject.label}-${profile}-${kind}-${round}.png`,
+                        ),
+                    )
+                        .ensureAlpha()
+                        .raw()
+                        .toBuffer({ resolveWithObject: true }),
+                ),
+            );
+            pairs.push(measureStaticSceneCacheImageParity(...images));
+        }
+        value.visualParity = {
+            pairs,
+            pass: pairs.every(
+                (pair) =>
+                    pair.valid &&
+                    pair.mismatchRatio <= 0.01 &&
+                    pair.p99ByteError <= 8,
+            ),
+        };
+        const [reference, candidate] = report.subjects.map(
+            (subject) => value.subjects[subject.label],
+        );
+        value.preparationAndAllocationImproved =
+            kind !== 'edit64' ||
+            (reference.sampledTransformBytes > 0 &&
+                candidate.sampledTransformBytes <
+                    reference.sampledTransformBytes &&
+                candidate.preparationMs.p50 < reference.preparationMs.p50);
+        value.pass =
+            value.complete &&
+            value.noLatencyRegression &&
+            value.visualParity.pass &&
+            value.preparationAndAllocationImproved;
+    }
     const result = {
+        pass: Object.values(summary).every((value) => value.pass),
         subjects: report.subjects,
         method: {
             samplesPerSubjectCase: 20,
@@ -188,7 +242,11 @@ export async function summarizeFile(input, output) {
 }
 
 if (import.meta.url === pathToFileURL(resolve(process.argv[1] ?? '')).href)
-    summarizeFile(process.argv[2], process.argv[3]).catch((error) => {
-        console.error(error);
-        process.exitCode = 1;
-    });
+    summarizeFile(process.argv[2], process.argv[3])
+        .then((result) => {
+            if (!result.pass) process.exitCode = 1;
+        })
+        .catch((error) => {
+            console.error(error);
+            process.exitCode = 1;
+        });

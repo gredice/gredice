@@ -11,6 +11,8 @@ import {
 
 const hash = (value) => createHash('sha256').update(value).digest('hex');
 export function percentiles(values) {
+    if (!values.every(Number.isFinite))
+        throw new Error('Non-finite timing sample');
     const sorted = values.toSorted((a, b) => a - b);
     const at = (p) =>
         sorted.length
@@ -23,6 +25,16 @@ export function percentiles(values) {
         min: at(0),
         max: at(1),
     };
+}
+
+export function isMatrixProfileReady() {
+    const p = globalThis.__grediceGameProfile;
+    return (
+        p?.chunkCompiler?.pendingJobs === 0 &&
+        p?.renderPackets?.packetFallbackMeshes === 0 &&
+        Boolean(p?.gameCameraSnapshot) &&
+        p?.rendererStatsReceiptCount > 0
+    );
 }
 
 export function sourceMapContents(map) {
@@ -143,7 +155,7 @@ async function snapshot(page) {
             blocks: p?.profileGardenBlockCount,
             garden: p?.profileGardenId,
             pending: p?.chunkCompiler?.pendingJobs,
-            fallback: p?.staticRenderPackets?.packetFallbackMeshes,
+            fallback: p?.renderPackets?.packetFallbackMeshes,
             receipt: p?.rendererStatsReceiptCount,
             publishedAt: p?.rendererStatsPublishedAt,
             compiler: p?.chunkCompiler,
@@ -166,19 +178,9 @@ async function snapshot(page) {
 }
 
 async function settle(page) {
-    await page.waitForFunction(
-        () => {
-            const p = globalThis.__grediceGameProfile;
-            return (
-                p?.chunkCompiler?.pendingJobs === 0 &&
-                p?.staticRenderPackets?.packetFallbackMeshes === 0 &&
-                p?.gameCameraSnapshot &&
-                p?.rendererStatsReceiptCount > 0
-            );
-        },
-        undefined,
-        { timeout: 60000 },
-    );
+    await page.waitForFunction(isMatrixProfileReady, undefined, {
+        timeout: 60000,
+    });
     await page.evaluate(
         () =>
             new Promise((resolve) =>
@@ -219,7 +221,7 @@ async function command(page, { kind, count, profile }, sequence) {
                 if (
                     accepted &&
                     p.chunkCompiler.pendingJobs === 0 &&
-                    p.staticRenderPackets.packetFallbackMeshes === 0
+                    p.renderPackets.packetFallbackMeshes === 0
                 ) {
                     const receipt = p.rendererStatsReceiptCount;
                     const camera = p.gameCameraSnapshot;
@@ -235,7 +237,7 @@ async function command(page, { kind, count, profile }, sequence) {
                             next.rendererStatsReceiptCount >
                                 Math.max(before, receipt) &&
                             next.chunkCompiler.pendingJobs === 0 &&
-                            next.staticRenderPackets.packetFallbackMeshes === 0
+                            next.renderPackets.packetFallbackMeshes === 0
                         )
                             return {
                                 durationMs:
@@ -287,7 +289,17 @@ export async function run(options) {
     const subjects = JSON.parse(await readFile(options.subjects, 'utf8'));
     if (
         subjects.length !== 2 ||
-        new Set(subjects.map((s) => s.label)).size !== 2
+        new Set(subjects.map((s) => s.label)).size !== 2 ||
+        subjects.some(
+            (s) =>
+                !/^[a-z0-9_-]+$/i.test(s.label) ||
+                !/^[a-f0-9]{40}$/i.test(s.sourceCommit) ||
+                !/^[a-f0-9]{64}$/i.test(s.writerSourceSha) ||
+                !['localhost', '127.0.0.1'].includes(new URL(s.url).hostname),
+        ) ||
+        (!options.preflight &&
+            (new Set(subjects.map((s) => s.url)).size !== 2 ||
+                new Set(subjects.map((s) => s.writerSourceSha)).size !== 2))
     )
         throw new Error('Two declared production subjects are required');
     const profiles = resolveScenarios('cross-tier').filter((s) => !s.motion);
@@ -313,10 +325,12 @@ export async function run(options) {
                 endpoint:
                     'query edit/switch to settled post-render receipt with unchanged-camera fence',
                 browser: browser.version(),
+                harnessSha256: hash(await readFile(new URL(import.meta.url))),
+                smoke: options.smoke === true,
             })}\n`,
             { flag: 'wx' },
         );
-        for (const profile of options.preflight
+        for (const profile of options.preflight || options.smoke
             ? profiles.filter((p) => p.expectedQualityTier === 'high')
             : profiles)
             for (const kind of options.preflight
@@ -324,7 +338,7 @@ export async function run(options) {
                 : ['edit8', 'edit64', 'switch'])
                 for (
                     let round = 0;
-                    round < (options.preflight ? 1 : 4);
+                    round < (options.preflight || options.smoke ? 1 : 4);
                     round++
                 ) {
                     const order =
@@ -334,10 +348,10 @@ export async function run(options) {
                             viewport: { width: 1280, height: 720 },
                             deviceScaleFactor: 2,
                         });
+                        const page = await context.newPage();
+                        const errors = [];
+                        const loadedScripts = new Set();
                         try {
-                            const page = await context.newPage();
-                            const errors = [];
-                            const loadedScripts = new Set();
                             page.on('pageerror', (error) =>
                                 errors.push(String(error)),
                             );
@@ -484,6 +498,28 @@ export async function run(options) {
                                     throw new Error(
                                         `Unexpected responses/page errors: ${errors}`,
                                     );
+                                await writeFile(
+                                    resolve(
+                                        outDir,
+                                        `preflight-${subject.label}.json`,
+                                    ),
+                                    JSON.stringify(
+                                        {
+                                            initial,
+                                            capture,
+                                            sourceManifest,
+                                            errors,
+                                        },
+                                        null,
+                                        2,
+                                    ),
+                                );
+                                await page.screenshot({
+                                    path: resolve(
+                                        outDir,
+                                        `preflight-${subject.label}.png`,
+                                    ),
+                                });
                                 console.log(
                                     `Preflight ${subject.label}: verified loaded source, fixture, compiler, camera and sampling protocol`,
                                 );
@@ -545,6 +581,30 @@ export async function run(options) {
                                         `Capture overflow/page errors: ${errors}`,
                                     );
                                 const final = await snapshot(page);
+                                if (
+                                    final.quality !== initial.quality ||
+                                    final.dpr !== initial.dpr ||
+                                    final.shadows !== initial.shadows ||
+                                    final.shadowMapSize !==
+                                        initial.shadowMapSize ||
+                                    final.sceneSeconds !==
+                                        initial.sceneSeconds ||
+                                    final.canvas.width !==
+                                        initial.canvas.width ||
+                                    final.canvas.height !==
+                                        initial.canvas.height ||
+                                    final.compiler.workerFailures !==
+                                        initial.compiler.workerFailures ||
+                                    !samples.every(
+                                        (s) =>
+                                            Number.isFinite(s.durationMs) &&
+                                            s.durationMs >= 0 &&
+                                            Number.isFinite(s.preparationMs),
+                                    )
+                                )
+                                    throw new Error(
+                                        'Runtime/input/worker/timing contract changed',
+                                    );
                                 const row = {
                                     subject: subject.label,
                                     profile: profile.name,
@@ -575,6 +635,48 @@ export async function run(options) {
                                     `${subject.label}-${profile.name}-${kind}-${round}.png`,
                                 ),
                             });
+                        } catch (error) {
+                            const failureDir = resolve(
+                                outDir,
+                                'failures',
+                                subject.label,
+                                profile.name,
+                                kind,
+                                String(round),
+                            );
+                            await mkdir(failureDir, { recursive: true });
+                            await writeFile(
+                                resolve(failureDir, 'failure.json'),
+                                JSON.stringify(
+                                    {
+                                        message: String(error),
+                                        errors,
+                                        snapshot: await snapshot(page).catch(
+                                            () => null,
+                                        ),
+                                        capture: await page
+                                            .evaluate(
+                                                () =>
+                                                    globalThis.__matrixCapture,
+                                            )
+                                            .catch(() => null),
+                                    },
+                                    null,
+                                    2,
+                                ),
+                            );
+                            await sourceWitness(
+                                page,
+                                subject,
+                                failureDir,
+                                loadedScripts,
+                            ).catch(async (sourceError) =>
+                                writeFile(
+                                    resolve(failureDir, 'source-error.txt'),
+                                    String(sourceError),
+                                ),
+                            );
+                            throw error;
                         } finally {
                             await context.close();
                         }
@@ -583,7 +685,12 @@ export async function run(options) {
         await writeFile(
             resolve(outDir, 'latest.json'),
             JSON.stringify(
-                { subjects, preflight: options.preflight, rows },
+                {
+                    subjects,
+                    preflight: options.preflight,
+                    smoke: options.smoke === true,
+                    rows,
+                },
                 null,
                 2,
             ),
@@ -600,6 +707,7 @@ if (import.meta.url === pathToFileURL(resolve(process.argv[1] ?? '')).href) {
         subjects: value('--subjects'),
         outDir: value('--out-dir'),
         preflight: args.includes('--preflight-only'),
+        smoke: args.includes('--smoke-only'),
     }).catch((error) => {
         console.error(error);
         process.exitCode = 1;
