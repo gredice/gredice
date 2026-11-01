@@ -16,6 +16,9 @@ export const staticOpaqueSceneCacheBenefitEnabledWindowFrames = 120;
 export const staticOpaqueSceneCacheBenefitWindowCaptures = 8;
 // GPU samples needed per kind before caching can be admitted.
 export const staticOpaqueSceneCacheBenefitMinimumGpuSamples = 3;
+// Sub-millisecond fields need a useful margin before retaining large GPU targets.
+export const staticOpaqueSceneCacheBenefitMinimumGpuSavingsMs = 0.1;
+export const staticOpaqueSceneCacheBenefitMinimumGpuSavingsRatio = 0.05;
 // A live probe frame is rendered after this many consecutive hits.
 export const staticOpaqueSceneCacheBenefitProbeInterval = 30;
 // Hits before the first probes, so the first live samples arrive early.
@@ -327,14 +330,18 @@ export function recordStaticOpaqueSceneCacheBenefitFrame(
     }
 
     const netGpuMs = resolveNetGpuMs(window);
-    const profitable = netGpuMs !== null && netGpuMs > 0;
+    const gpuFrames = Math.max(1, window.gpuCaptures + window.gpuHits);
+    const minimumNetGpuMs =
+        Math.max(
+            staticOpaqueSceneCacheBenefitMinimumGpuSavingsMs,
+            average(window.liveGpuMs) *
+                staticOpaqueSceneCacheBenefitMinimumGpuSavingsRatio,
+        ) * gpuFrames;
+    const profitable = netGpuMs !== null && netGpuMs >= minimumNetGpuMs;
     const evaluated = {
         ...next,
         evaluations: state.evaluations + 1,
-        lastNetGpuMsPerFrame:
-            netGpuMs === null
-                ? null
-                : netGpuMs / Math.max(1, window.gpuCaptures + window.gpuHits),
+        lastNetGpuMsPerFrame: netGpuMs === null ? null : netGpuMs / gpuFrames,
         lastNetWorkPerFrame: window.workUnits / frames,
         window: createWindow(),
         windowId: state.windowId + 1,

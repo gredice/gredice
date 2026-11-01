@@ -104,6 +104,10 @@ for the garden avatar. Each frame checks these gates in order:
      without repeating the initial probe burst and inflating the P95 tail.
      The window keeps the cache only when
      `hits × (live − hit) − captures × (capture − live)` is positive.
+     Retaining targets also requires net savings per cached frame of at least
+     0.1 ms and 5% of the measured live cost. Smaller positive estimates report
+     `gpu-cost` and release targets rather than retaining memory for marginal
+     timing differences. Diagnostics keep the actual net estimate.
    - **Submitted work diagnostic.** It estimates static work from submissions,
      triangles, and a full-screen shading term. Negative work can reject capture
      churn, but positive work does not establish a GPU saving. At the end of

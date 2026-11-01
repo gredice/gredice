@@ -243,6 +243,24 @@ describe('static opaque scene cache benefit gate', () => {
         assert.equal(state.status, 'disabled');
     });
 
+    it('rejects marginal positive GPU savings before retaining large targets', () => {
+        for (const samples of [
+            { capture: 0.5, hit: 0.48, live: 0.5 },
+            { capture: 10, hit: 9.6, live: 10 },
+        ]) {
+            const state = record(
+                withGpuSamples(
+                    createStaticOpaqueSceneCacheBenefitState(),
+                    samples,
+                ),
+                [capture, ...repeat(hit, 59)],
+            );
+            assert.ok((state.lastNetGpuMsPerFrame ?? 0) > 0);
+            assert.equal(state.status, 'disabled');
+            assert.equal(state.reason, 'gpu-cost');
+        }
+    });
+
     it('ignores late samples from an earlier evaluation window', () => {
         const state = record(
             withGpuSamples(createStaticOpaqueSceneCacheBenefitState(), {
