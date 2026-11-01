@@ -137,8 +137,13 @@ renderer-keyed, refcounted guard restores ranges in `finally`, including callbac
 failures, nested renders and sibling cleanup. Whole-scene raycasts skip the full
 render-only mesh and raycast each source range once under the same range guard.
 Distance, UV, face, side and near/far semantics remain inherited from Three;
-raycasting can still hit an offscreen source. These callbacks remain rejected
-by static-cache replay until a separately tested range-aware integration exists.
+raycasting can still hit an offscreen source. Static-cache replay accepts only
+the exact packet main/shadow range callbacks; replacing any callback restores
+the unsupported path. Captures use the real renderer and camera under the same
+range guard, preserving source culling and captured depth. Packet material
+partitions keep unsupported/cutout shaders live without excluding compatible
+opaque packets in the same layer. Committed compiler handoffs refresh the
+registry's renderable references before the next draw.
 
 ## Diagnostics and validation
 

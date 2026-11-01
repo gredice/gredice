@@ -14,6 +14,7 @@ import {
 } from 'three';
 import { hasStaticGroundPatchMaterialShaderHooks } from '../entities/helpers/groundPatchMaterial';
 import { getMaterialShaderHooksWithoutCloudShadowAttenuation } from './cloudShadowAttenuation';
+import { hasStaticRenderPacketVisibilityCallbacks } from './compiler/staticRenderPacketVisibility';
 
 export type StaticOpaqueSceneCacheReplay = {
     dispose: () => void;
@@ -58,7 +59,9 @@ function hasCacheStableShaderHooks(material: Material) {
     );
 }
 
-function isReplayMaterialEligible(material: Material) {
+export function isStaticOpaqueSceneCacheReplayMaterialEligible(
+    material: Material,
+) {
     const clippingPlanes = material.clippingPlanes;
     const supportedBuiltInMaterial =
         Reflect.get(material, 'isMeshBasicMaterial') === true ||
@@ -88,7 +91,8 @@ export function isStaticOpaqueSceneCacheReplayEligible(object: Object3D) {
         Reflect.get(object, 'isBatchedMesh') === true ||
         Reflect.get(object, 'isSkinnedMesh') === true ||
         Array.isArray(Reflect.get(object, 'morphTargetInfluences')) ||
-        object.onBeforeRender !== Object3D.prototype.onBeforeRender
+        (object.onBeforeRender !== Object3D.prototype.onBeforeRender &&
+            !hasStaticRenderPacketVisibilityCallbacks(object))
     ) {
         return false;
     }
@@ -103,7 +107,7 @@ export function isStaticOpaqueSceneCacheReplayEligible(object: Object3D) {
         position &&
             position.itemSize >= 3 &&
             materials.length > 0 &&
-            materials.every(isReplayMaterialEligible),
+            materials.every(isStaticOpaqueSceneCacheReplayMaterialEligible),
     );
 }
 

@@ -67,6 +67,8 @@ import {
 } from './staticOpaqueSceneCacheBudget';
 import {
     buildStaticOpaqueSceneCacheObservedLiveMetadata,
+    buildStaticOpaqueSceneCacheRejectedMetadata,
+    releaseStaticOpaqueSceneCacheTargets,
     renderStaticOpaqueSceneCacheFrame,
     staticOpaqueSceneCacheDisabledMetadata,
     staticOpaqueSceneCacheObserverWindowId,
@@ -119,6 +121,7 @@ type StaticOpaqueSceneCacheRegistrySnapshot = {
 };
 
 export class StaticOpaqueSceneCacheRegistry {
+    private pendingReason: StaticOpaqueSceneCacheReason | undefined;
     private readonly boundaries = new Map<
         symbol,
         StaticOpaqueSceneCacheBoundaryEntry
@@ -147,7 +150,17 @@ export class StaticOpaqueSceneCacheRegistry {
         this.bump('boundary-change');
     };
 
-    getSnapshot = () => this.snapshot;
+    getSnapshot = () => {
+        if (this.pendingReason) this.bump(this.pendingReason, false);
+        return this.snapshot;
+    };
+
+    /** Compiler handoffs coalesce until the next draw, after all layout effects. */
+    markContentDirty = () => {
+        if (this.pendingReason) return;
+        this.pendingReason = 'boundary-change';
+        this.onInvalidate();
+    };
 
     invalidate = (reason: StaticOpaqueSceneCacheReason) => {
         this.bump(reason);
@@ -174,7 +187,8 @@ export class StaticOpaqueSceneCacheRegistry {
         this.bump('boundary-change');
     };
 
-    private bump(reason: StaticOpaqueSceneCacheReason) {
+    private bump(reason: StaticOpaqueSceneCacheReason, requestRender = true) {
+        this.pendingReason = undefined;
         const mountedBoundaries = [...this.boundaries.values()].filter(
             (boundary) => boundary.root.parent !== null,
         );
@@ -225,12 +239,26 @@ export class StaticOpaqueSceneCacheRegistry {
             submissionCount,
             triangleCount,
         };
-        this.onInvalidate();
+        if (requestRender) this.onInvalidate();
     }
 }
 
 const StaticOpaqueSceneCacheContext =
     createContext<StaticOpaqueSceneCacheRegistry | null>(null);
+
+/** Refresh retained renderable references when compiled geometry replaces fallback meshes. */
+export function useStaticOpaqueSceneCacheContent(
+    key: unknown,
+    enabled: boolean,
+) {
+    const registry = useContext(StaticOpaqueSceneCacheContext);
+    // biome-ignore lint/correctness/useExhaustiveDependencies: the immutable geometry identity is the commit key.
+    useLayoutEffect(() => {
+        if (!enabled || !registry) return;
+        registry.markContentDirty();
+        return registry.markContentDirty;
+    }, [enabled, key, registry]);
+}
 
 export function StaticOpaqueSceneCacheBoundary({
     children,
@@ -1210,6 +1238,10 @@ function StaticOpaqueSceneCacheRenderer({
         [],
     );
     const cloudFullResponseTarget = useMemo(createCloudResponseTarget, []);
+    const cacheTargets = useMemo(
+        () => [target, cloudFullResponseTarget],
+        [target, cloudFullResponseTarget],
+    );
     const cloudFullResponseMask = useMemo(createCloudResponseMaskTexture, []);
     const inverseViewProjection = useMemo(() => new Matrix4(), []);
     const cacheReplayMaterial = useMemo(() => {
@@ -1380,7 +1412,7 @@ function StaticOpaqueSceneCacheRenderer({
             registrySnapshot.boundaries.length > 0;
         const targetWidth = allocateTarget ? targetConfig.width : 1;
         const targetHeight = allocateTarget ? targetConfig.height : 1;
-        const allocatedTargetBytes = allocateTarget
+        let allocatedTargetBytes = allocateTarget
             ? targetConfig.estimatedBytes
             : 0;
         peakTargetBytesRef.current = Math.max(
@@ -1657,6 +1689,15 @@ function StaticOpaqueSceneCacheRenderer({
         }
 
         const benefit = benefitRef.current;
+        if (benefit.status === 'disabled') {
+            // The last demanded frame may be the one that rejects the cache.
+            // Invalidate the captured contents before shrinking their targets.
+            runtimeRef.current = createStaticOpaqueSceneCacheRuntime();
+            releaseStaticOpaqueSceneCacheTargets(cacheTargets);
+            allocatedTargetBytes = 0;
+            replayStatusRef.current = 'disabled';
+            cachedFrame = false;
+        }
         updateGameProfileMetadata({
             staticOpaqueSceneCacheAllocatedTargetBytes: allocatedTargetBytes,
             staticOpaqueSceneCacheBaseTerrainLayer: resolveLayerState(
@@ -1702,18 +1743,24 @@ function StaticOpaqueSceneCacheRenderer({
             staticOpaqueSceneCacheMeshCount: boundaryMetrics.meshes,
             staticOpaqueSceneCachePeakTargetBytes: peakTargetBytesRef.current,
             staticOpaqueSceneCacheProbeFrameCount: counters.probeFrames,
-            staticOpaqueSceneCacheReason: capturedStateReason(
-                transition.reason,
-                cachePathSupportedRef.current,
-            ),
+            staticOpaqueSceneCacheReason:
+                benefit.status === 'disabled'
+                    ? 'low-benefit'
+                    : capturedStateReason(
+                          transition.reason,
+                          cachePathSupportedRef.current,
+                      ),
             staticOpaqueSceneCacheSavedSubmissionCount:
                 counters.savedSubmissions,
             staticOpaqueSceneCacheSavedTriangleCount: counters.savedTriangles,
-            staticOpaqueSceneCacheState: !cachePathSupportedRef.current
-                ? 'unsupported'
-                : transition.action === 'capture'
-                  ? 'capturing'
-                  : transition.state,
+            staticOpaqueSceneCacheState:
+                benefit.status === 'disabled'
+                    ? 'bypass'
+                    : !cachePathSupportedRef.current
+                      ? 'unsupported'
+                      : transition.action === 'capture'
+                        ? 'capturing'
+                        : transition.state,
             staticOpaqueSceneCacheStaticPropsLayer: resolveLayerState(
                 'static-props',
                 boundaries,
@@ -1736,6 +1783,11 @@ function StaticOpaqueSceneCacheRenderer({
     useFrame(() => {
         renderStaticOpaqueSceneCacheFrame({
             enabled,
+            canRenderCache: (nowMs) =>
+                isStaticOpaqueSceneCacheBenefitAllowed(
+                    benefitRef.current,
+                    nowMs,
+                ),
             gpuTimer,
             nowMs: performance.now(),
             consumeGpuSamples,
@@ -1743,14 +1795,8 @@ function StaticOpaqueSceneCacheRenderer({
             prepareLive: () => {
                 // Switching back to live releases cache targets without any
                 // registry, lighting, geometry or material traversal.
-                if (target.width !== 1 || target.height !== 1)
-                    target.setSize(1, 1);
-                if (
-                    cloudFullResponseTarget.width !== 1 ||
-                    cloudFullResponseTarget.height !== 1
-                )
-                    cloudFullResponseTarget.setSize(1, 1);
-                if (cacheWasEnabledRef.current) {
+                releaseStaticOpaqueSceneCacheTargets(cacheTargets);
+                if (!enabled && cacheWasEnabledRef.current) {
                     runtimeRef.current = createStaticOpaqueSceneCacheRuntime();
                     benefitRef.current = restartStaticOpaqueSceneCacheBenefit(
                         benefitRef.current,
@@ -1770,22 +1816,67 @@ function StaticOpaqueSceneCacheRenderer({
                     gl.info.autoReset = previousInfoAutoReset;
                 }
                 countersRef.current.liveFrames += 1;
+                if (enabled) countersRef.current.bypassFrames += 1;
             },
             publishLive: () => {
-                updateGameProfileMetadata(
-                    buildStaticOpaqueSceneCacheObservedLiveMetadata({
-                        staticOpaqueSceneCachePeakTargetBytes:
-                            peakTargetBytesRef.current,
-                        staticOpaqueSceneCacheBudgetBytes: budget.bytes,
-                        staticOpaqueSceneCacheBudgetSource: budget.source,
-                        staticOpaqueSceneCacheGpuSampleCount:
-                            gpuSampleCountRef.current,
-                        staticOpaqueSceneCacheGpuTimingSupported:
-                            gpuTimer.supported,
-                        staticOpaqueSceneCacheLiveFrameCount:
-                            countersRef.current.liveFrames,
-                    }),
-                );
+                const diagnostics = {
+                    staticOpaqueSceneCachePeakTargetBytes:
+                        peakTargetBytesRef.current,
+                    staticOpaqueSceneCacheBudgetBytes: budget.bytes,
+                    staticOpaqueSceneCacheBudgetSource: budget.source,
+                    staticOpaqueSceneCacheGpuSampleCount:
+                        gpuSampleCountRef.current,
+                    staticOpaqueSceneCacheGpuTimingSupported:
+                        gpuTimer.supported,
+                    staticOpaqueSceneCacheLiveFrameCount:
+                        countersRef.current.liveFrames,
+                };
+                if (!enabled) {
+                    updateGameProfileMetadata(
+                        buildStaticOpaqueSceneCacheObservedLiveMetadata(
+                            diagnostics,
+                        ),
+                    );
+                    return;
+                }
+                const snapshot = registry.getSnapshot();
+                const counters = countersRef.current;
+                updateGameProfileMetadata({
+                    ...buildStaticOpaqueSceneCacheRejectedMetadata(
+                        diagnostics,
+                        benefitRef.current,
+                    ),
+                    staticOpaqueSceneCacheBaseTerrainLayer: resolveLayerState(
+                        'base-terrain',
+                        snapshot.boundaries,
+                        snapshot.liveBoundaries,
+                        false,
+                    ),
+                    staticOpaqueSceneCacheStaticPropsLayer: resolveLayerState(
+                        'static-props',
+                        snapshot.boundaries,
+                        snapshot.liveBoundaries,
+                        false,
+                    ),
+                    staticOpaqueSceneCacheLiveBoundaryCount:
+                        snapshot.boundaries.length +
+                        snapshot.liveBoundaries.length,
+                    staticOpaqueSceneCacheBypassFrameCount:
+                        counters.bypassFrames,
+                    staticOpaqueSceneCacheCaptureCount: counters.captures,
+                    staticOpaqueSceneCacheCompositePassCount:
+                        counters.compositePasses,
+                    staticOpaqueSceneCacheHitFrameCount: counters.hitFrames,
+                    staticOpaqueSceneCacheInvalidationCount:
+                        counters.invalidations,
+                    staticOpaqueSceneCacheLastInvalidationReason:
+                        counters.lastInvalidationReason,
+                    staticOpaqueSceneCacheProbeFrameCount: counters.probeFrames,
+                    staticOpaqueSceneCacheSavedSubmissionCount:
+                        counters.savedSubmissions,
+                    staticOpaqueSceneCacheSavedTriangleCount:
+                        counters.savedTriangles,
+                });
             },
         });
     }, 1);

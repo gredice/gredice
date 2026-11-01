@@ -56,6 +56,35 @@ function createLayeredScene() {
 }
 
 describe('layered static opaque scene cache', () => {
+    it('refreshes replaced compiler renderables once after all committed handoffs', () => {
+        const { registry, props, invalidations } = createLayeredScene();
+        const before = registry.getSnapshot();
+        const replaced = new Mesh(
+            new BoxGeometry(),
+            new MeshStandardMaterial(),
+        );
+        props.entry.root.remove(props.mesh);
+        props.entry.root.add(replaced);
+        const requests = invalidations();
+        registry.markContentDirty();
+        registry.markContentDirty();
+        registry.markContentDirty();
+        assert.equal(invalidations(), requests + 1);
+        const after = registry.getSnapshot();
+        assert.equal(
+            invalidations(),
+            requests + 1,
+            'reading the committed snapshot must not request another frame',
+        );
+        assert.equal(after.revision, before.revision + 1);
+        assert.equal(after.renderables.includes(props.mesh), false);
+        assert.equal(after.renderables.includes(replaced), true);
+        assert.equal(
+            after.boundaries.find(({ root }) => root === props.entry.root),
+            props.entry,
+        );
+        assert.equal(registry.getSnapshot(), after);
+    });
     it('caches every eligible layer', () => {
         const { registry } = createLayeredScene();
         const snapshot = registry.getSnapshot();

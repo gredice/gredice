@@ -646,6 +646,23 @@ export class StaticRenderPacketVisibilityInstancedMesh extends InstancedMesh<
     }
 }
 
+/** Only our exact range callbacks are static; other custom callbacks fail closed. */
+export function hasStaticRenderPacketVisibilityCallbacks(object: Object3D) {
+    const prototype =
+        object instanceof StaticRenderPacketVisibilityInstancedMesh
+            ? StaticRenderPacketVisibilityInstancedMesh.prototype
+            : object instanceof StaticRenderPacketVisibilityMesh
+              ? StaticRenderPacketVisibilityMesh.prototype
+              : undefined;
+    return Boolean(
+        prototype &&
+            object.onBeforeRender === prototype.onBeforeRender &&
+            object.onAfterRender === prototype.onAfterRender &&
+            object.onBeforeShadow === prototype.onBeforeShadow &&
+            object.onAfterShadow === prototype.onAfterShadow,
+    );
+}
+
 export function createStaticRenderPacketVisibilityMeshes(
     packet: StaticRenderPacket,
     geometry: BufferGeometry,

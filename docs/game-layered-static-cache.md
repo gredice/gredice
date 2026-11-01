@@ -31,7 +31,11 @@ cache off for them.
 ## Layers
 
 Boundaries register under a layer group: `base-terrain` or `static-props`.
-#4721 renders each group's static render packets under one boundary. Each
+#4721 renders each group's static render packets under material-compatible
+boundaries. Opaque replayable packets and unsupported/cutout packets have
+separate boundaries, so one unsupported shader does not exclude the layer's
+other packets. Unchanged partitions retain their packet and compiler identities.
+Each
 frame, every mounted boundary is either:
 
 - **cached**: all of its renderables pass the opaque material and replay
@@ -61,6 +65,13 @@ change a cached layer's pixels is already covered elsewhere:
 Camera and pointer interaction, close-up view, wireframe, XR, scene override
 materials, and auto-updating shadow maps still render live.
 
+Compiled packet captures admit only the known main/shadow range callbacks.
+Unknown or replaced callbacks remain unsupported. Capture uses the same actual
+renderer, camera and nested range guard as live drawing; picking keeps its
+original source ranges. Compiler replacement of pending meshes marks content
+dirty once for the next draw, refreshing the registry's geometry/material
+references after layout effects have committed.
+
 ## Gates
 
 The cache is offered on every quality tier. `GameScene` still turns it off
@@ -81,14 +92,22 @@ for the garden avatar. Each frame checks these gates in order:
    The target estimate includes resolved RGBA8 color and cloud response, D24
    depth, and 8 bytes per pixel for each MSAA sample. A drawing buffer above
    the budget reports `target-budget` and keeps 1×1 targets.
-3. **Benefit**: `staticOpaqueSceneCacheBenefit.ts` judges windows of 60 hits
-   and captures, or ends a window early after 8 captures:
+3. **Benefit**: `staticOpaqueSceneCacheBenefit.ts` judges an initial window of
+   60 hits and captures, then 120-hit admitted windows, or ends a window early
+   after 8 captures:
    - **Measured GPU time.** Used when `EXT_disjoint_timer_query_webgl2` is
      available and no other owner holds the only timer query. Adaptive High
      and the profiler's external timer both hold it. Capture and hit frames
-     are timed. Every 30th consecutive hit renders live as a probe, and the
-     first probe comes after 4 hits. The window keeps the cache only when
+     are timed. Initial admission probes after 4 hits until three live samples
+     arrive. Admitted caches probe every 30 hits, including across window
+     boundaries. Their longer bounded window collects three spaced live samples
+     without repeating the initial probe burst and inflating the P95 tail.
+     The window keeps the cache only when
      `hits × (live − hit) − captures × (capture − live)` is positive.
+     Retaining targets also requires net savings per cached frame of at least
+     0.1 ms and 5% of the measured live cost. Smaller positive estimates report
+     `gpu-cost` and release targets rather than retaining memory for marginal
+     timing differences. Diagnostics keep the actual net estimate.
    - **Submitted work diagnostic.** It estimates static work from submissions,
      triangles, and a full-screen shading term. Negative work can reject capture
      churn, but positive work does not establish a GPU saving. At the end of
@@ -101,11 +120,16 @@ for the garden avatar. Each frame checks these gates in order:
    decision. Scene changes and disjoint results clear GPU evidence and its
    matching frame counts without extending the probe. The net GPU rate is per
    cached frame in that unchanged scene; paired timing also includes live probes.
-   Sample arrays are bounded to the 60-frame window. Unsupported render paths
+   Sample arrays are bounded to their 60- or 120-frame window. Unsupported render paths
    and the diagnostic legacy path retain 1×1 targets.
 
-   A losing window disables the cache with `low-benefit`, shrinks its targets
-   to 1×1 so their memory is released, and waits 30 seconds. Each consecutive
+   A losing window disables the cache with `low-benefit` and shrinks its targets
+   to 1×1 in that same frame. Their release does not depend on another demanded
+   frame. Captured contents are invalidated before shrinking, so a later probe
+   must capture fresh data. Cooldown frames render live without registry-tree,
+   lighting, geometry or material signature scans, while diagnostic query
+   ownership and cumulative counters are preserved. The first cooldown lasts
+   30 seconds. Each consecutive
    loss doubles that cooldown, up to 5 minutes. The cache then probes again.
 
 ## Diagnostics
@@ -151,9 +175,29 @@ Run against a separately built production server after the optimized live scene
 has established an opportunity. For example:
 
 ```bash
-node apps/garden/scripts/profile-game-scene.mjs --base-url http://localhost:3101 \
+pnpm --filter garden exec node scripts/profile-game-scene.mjs --base-url http://localhost:3101 \
   --scenario-set static-cache-depth --out-dir .game-profile-results/cache-depth
 ```
+
+Run the complete production-build supplemental matrix with
+`pnpm --filter garden profile:game:static-cache-clearance`. It contains 240 runs
+across the five resolved profiles; it retains the existing budgets and paired
+limits and records failed savings comparisons separately from safe live no-ops.
+The lifecycle readiness barrier binds each supplemental scenario's resolved
+quality tier, including resume and restoration; canonical garden-switch and
+lifecycle scenarios retain their High requirement. Fixture cardinality checks
+are unchanged. Lifecycle screenshots retain browser DPR 2 independently of the
+quality-capped Canvas backing buffer. Resource captures wait for a resolved
+decision and retry if their render receipt crosses a cooldown boundary into a
+fresh probe; an unmeasured probe still cannot pass clearance.
+Every invocation also writes a uniquely named `.runs.jsonl`
+checkpoint file before sampling and appends each completed run outside its timed
+window. Later setup failures preserve earlier raw evidence. Checkpoints are
+partial evidence, not a passing acceptance report.
+
+Fixed-time scenes seed each snow field independently from their fixed scene time.
+Particle capacity, density, motion and normal live-scene randomness are unchanged;
+paired captures compare identical flakes rather than unrelated random layouts.
 
 The supplemental profiler observes the cache's own render-pass queries without
 claiming the WebGL query slot. Its explicit `cache-owned-render-pass-v1` mode
@@ -182,6 +226,12 @@ windows. The target byte estimate already includes the 36-byte replay triangle;
 do not add that replay again. All snapshots must fit the reported per-device
 budget, and rejected probes must release their targets. Soak resource growth
 is bounded to one program, four textures and two geometries after warmup.
+Soak runs first retain a separate 60-second resource warmup, including lazy
+first-use actor uploads. Every warmup witness must still satisfy cache role,
+quality, weather, GPU decision and device memory checks. Its final fresh receipt
+is the first measured soak receipt. The following full 60-second soak retains
+the same resource-growth limits; warmup allocations are preserved in
+`staticCacheEvidence.resourceWarmup`, rather than discarded or counted as leaks.
 Lifecycle retains the canonical suspension/context requirements and adds cache
 admission and resource witnesses before suspension and after restoration.
 Every supplemental witness binds the original URL's cache role, quality setting

@@ -55,6 +55,34 @@ test('creates capacity-sized random-only snow attributes', () => {
     assert.equal(attributes.shapeAttributes[0], Math.fround(0.08));
 });
 
+test('fixed scene seeds reproduce every snow attribute independently of other field creation', () => {
+    const options = {
+        capacity: 8,
+        flakeSize: 0.08,
+        heightRange: 15,
+        size: 30,
+        seed: 43_200,
+    };
+    const first = createSnowParticleAttributes(options);
+    const other = createSnowParticleAttributes({ ...options, seed: 0 });
+    const repeated = createSnowParticleAttributes(options);
+    assert.deepEqual(first, repeated);
+    assert.notDeepEqual(first.baseAttributes, other.baseAttributes);
+    const larger = createSnowParticleAttributes({ ...options, capacity: 16 });
+    assert.deepEqual(
+        first.baseAttributes,
+        larger.baseAttributes.slice(0, first.baseAttributes.length),
+    );
+    assert.deepEqual(
+        first.motionAttributes,
+        larger.motionAttributes.slice(0, first.motionAttributes.length),
+    );
+    assert.deepEqual(
+        first.shapeAttributes,
+        larger.shapeAttributes.slice(0, first.shapeAttributes.length),
+    );
+});
+
 test('resolves cardinal wind velocities using the existing scene convention', () => {
     const north = resolveSnowWeatherMotion({
         gravity: 0.002,

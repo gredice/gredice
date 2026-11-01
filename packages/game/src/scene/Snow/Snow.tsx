@@ -2,7 +2,11 @@ import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { updateGameProfileMetadata } from '../gameProfileMetadata';
 import { createPrecipitationMaterial } from '../PrecipitationMaterial';
-import { useSceneTimeInvalidation, useSceneTimeUniform } from '../SceneTime';
+import {
+    useSceneFixedTimeSeconds,
+    useSceneTimeInvalidation,
+    useSceneTimeUniform,
+} from '../SceneTime';
 import { usePrecipitationFieldPosition } from '../usePrecipitationFieldPosition';
 import {
     advanceSnowMotionOffset,
@@ -160,6 +164,7 @@ const Snow = ({
     const meshRef = useRef<THREE.InstancedMesh>(null);
     usePrecipitationFieldPosition({ fieldRef: fref, followCamera });
     const timeUniform = useSceneTimeUniform();
+    const fixedTimeSeconds = useSceneFixedTimeSeconds();
     useSceneTimeInvalidation('snow-particles');
     const heightRange = Math.max(0.001, height + heightOffset - groundLevel);
     const requestedActiveCount = activeCount ?? count;
@@ -181,6 +186,7 @@ const Snow = ({
                 capacity: particleCapacity,
                 flakeSize,
                 heightRange,
+                seed: fixedTimeSeconds,
                 size,
             });
 
@@ -198,7 +204,7 @@ const Snow = ({
         );
 
         return snowGeometry;
-    }, [flakeSize, heightRange, particleCapacity, size]);
+    }, [fixedTimeSeconds, flakeSize, heightRange, particleCapacity, size]);
 
     useEffect(() => {
         if (!reportedSnowParticleGeometries.has(geometry)) {

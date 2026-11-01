@@ -93,11 +93,91 @@ import {
     shouldFailProfileRun,
     shouldObserveRuntimeFrameLoopDuringRaf,
     shouldReadRuntimeOwnerLeaseRafSnapshot,
+    waitForGardenSwitchFixture,
     writeReports,
 } from './profile-game-scene.mjs';
 import { allowMissingStaticCacheShadowPopulation } from './static-cache-clearance.mjs';
 
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
+test('fixture readiness binds the requested resolved tier and preserves the canonical High default', async () => {
+    const saved = ['document', '__grediceGameProfile'].map((key) => [
+        key,
+        Object.getOwnPropertyDescriptor(globalThis, key),
+    ]);
+    try {
+        for (const { actualTier, expectedTier, ready, wrongCount = false } of [
+            { actualTier: 'high', ready: true },
+            { actualTier: 'low', ready: false },
+            ...['low', 'medium', 'high', 'auto-constrained'].map((tier) => ({
+                actualTier: tier,
+                expectedTier: tier,
+                ready: true,
+            })),
+            { actualTier: 'high', expectedTier: 'low', ready: false },
+            {
+                actualTier: 'low',
+                expectedTier: 'low',
+                ready: false,
+                wrongCount: true,
+            },
+        ]) {
+            await waitForGardenSwitchFixture(
+                {
+                    async waitForFunction(predicate, expected) {
+                        Object.defineProperty(
+                            globalThis,
+                            '__grediceGameProfile',
+                            {
+                                configurable: true,
+                                value: {
+                                    qualityTier: actualTier,
+                                    profileGardenId: expected.expectedGardenId,
+                                    profileGardenStackCount:
+                                        expected.expectedStackCount -
+                                        (wrongCount ? 1 : 0),
+                                    profileGardenBlockCount:
+                                        expected.expectedBlockCount,
+                                    profileGardenRaisedBedCount:
+                                        expected.expectedRaisedBedCount,
+                                    generatedPlantFieldCount:
+                                        expected.expectedFieldCount,
+                                    generatedPlantExpectedInstanceCount:
+                                        expected.expectedInstanceCount,
+                                    generatedPlantInstanceCount:
+                                        expected.expectedInstanceCount,
+                                    generatedPlantVisibleFieldCount:
+                                        expected.expectedFieldCount,
+                                    generatedPlantVisibleInstanceCount:
+                                        expected.expectedInstanceCount,
+                                },
+                            },
+                        );
+                        Object.defineProperty(globalThis, 'document', {
+                            configurable: true,
+                            value: {
+                                querySelector: () => ({
+                                    getAttribute: (name) =>
+                                        name === 'data-scene-visible'
+                                            ? 'true'
+                                            : String(expected.expectedGardenId),
+                                }),
+                            },
+                        });
+                        assert.equal(predicate(expected), ready);
+                    },
+                },
+                'high-target',
+                expectedTier,
+            );
+        }
+    } finally {
+        for (const [key, descriptor] of saved) {
+            if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+            else Reflect.deleteProperty(globalThis, key);
+        }
+    }
+});
 
 test('profiler output defaults to durable evidence outside Playwright cleanup', (t) => {
     const previous = process.env.GAME_PROFILE_OUT_DIR;
@@ -6390,6 +6470,76 @@ test('legacy lifecycle acceptance explicitly requires pre-receipt telemetry whil
         )?.pass,
         false,
     );
+});
+
+test('supplemental lifecycle screenshots retain browser DPR while Canvas dimensions follow quality caps', () => {
+    for (const [tier, dprCap, shadows, shadowMapSize] of [
+        ['low', 1, false, 0],
+        ['medium', 1.5, true, 2_048],
+        ['high', 2, true, 4_096],
+    ]) {
+        const input = createPassingLifecycleAcceptanceInput();
+        Object.assign(input.requested, {
+            expectedDprCap: dprCap,
+            expectedQualitySetting: tier,
+            expectedQualityTier: tier,
+            expectedShadowMapSize: shadowMapSize,
+            expectedShadows: shadows,
+            quality: tier,
+            staticCacheClearance: true,
+            staticSceneCache: 'cache',
+        });
+        Object.assign(input.resolved, {
+            dprCap,
+            qualityTier: tier,
+            shadowMapSize,
+            shadowsEnabled: shadows,
+        });
+        const canvasSize = {
+            height: Math.round(720 * dprCap),
+            width: Math.round(1_280 * dprCap),
+        };
+        Object.assign(input.cold.canvasSize, canvasSize);
+        for (const fixture of [
+            input.fixture,
+            input.cold.fixture,
+            input.offscreen.resumedControl.fixture,
+            input.hidden.resumedControl.fixture,
+            input.context.restoredControl.fixture,
+        ]) {
+            Object.assign(fixture.canvas, canvasSize);
+            fixture.resources.staticOpaqueSceneCacheEnabled = true;
+        }
+        const acceptance = evaluateLifecycleAcceptance(input);
+        assert.equal(
+            acceptance.pass,
+            true,
+            acceptance.checks
+                .filter((check) => !check.pass)
+                .map((check) => check.name)
+                .join(', '),
+        );
+
+        input.cold.screenshotWitness.width = 1_280;
+        assert.equal(
+            lifecycleAcceptanceCheck(input, 'lifecycleColdScreenshotWidth')
+                .pass,
+            false,
+        );
+        input.offscreen.resumedControl.screenshotWitness.height = 720;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                input,
+                'lifecycleOffscreenResumedScreenshotHeight',
+            ).pass,
+            false,
+        );
+        input.fixture.canvas.width += 1;
+        assert.equal(
+            lifecycleAcceptanceCheck(input, 'lifecycleCanvasWidth').pass,
+            false,
+        );
+    }
 });
 
 function lifecycleAcceptanceCheck(input, name) {
