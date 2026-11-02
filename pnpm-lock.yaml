@@ -1635,8 +1635,8 @@ importers:
   packages/label-printer:
     dependencies:
       '@mmote/niimbluelib':
-        specifier: 0.47.1
-        version: 0.47.1
+        specifier: 0.48.0
+        version: 0.48.0
       qrcode:
         specifier: 1.5.4
         version: 1.5.4
@@ -3582,8 +3582,8 @@ packages:
   '@microsoft/tsdoc@0.17.0':
     resolution: {integrity: sha512-p68VexhnH7ojf3U27RdryUDqnKJgKaWUbCL96vJR7N0mqDuhKG5OIECk3sCPPdynxjk+yoVhRkScqtv5KQjzsw==}
 
-  '@mmote/niimbluelib@0.47.1':
-    resolution: {integrity: sha512-fimKNas6YyTPh5GIVbPJ090+8ieszTBLdBIX8xwzsYqjrfdxCOEmE914gBc0knqqoA2EgBU0K34BLrheTu6GrQ==}
+  '@mmote/niimbluelib@0.48.0':
+    resolution: {integrity: sha512-t6rDA2xBfV9ma7MyLDSN9CnfNc1GMl6y8r8QaVTyA/mDJN46wlD/yN7XlDYiFwxuXMNcj176e2J+1M2MFgGT+w==}
 
   '@modelcontextprotocol/sdk@1.32.2':
     resolution: {integrity: sha512-SWsVtH/0vULSQStoZ6xxH2K09Li8fXYTMC64ZeogCdpZ3XSi1eCPOByV1OpuJxuI3OcmHhosDWYyii07tpPsLw==}
@@ -12529,7 +12529,7 @@ snapshots:
 
   '@microsoft/tsdoc@0.17.0': {}
 
-  '@mmote/niimbluelib@0.47.1':
+  '@mmote/niimbluelib@0.48.0':
     dependencies:
       '@capacitor-community/bluetooth-le': 8.3.0(@capacitor/core@8.5.2)
       '@capacitor/core': 8.5.2
