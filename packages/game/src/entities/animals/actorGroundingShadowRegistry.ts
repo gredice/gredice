@@ -344,6 +344,7 @@ export class ActorGroundingShadowRegistry {
     private placementUpdateCount = 0;
     private updateCount = 0;
     private version = 0;
+    private membershipVersion = 0;
 
     constructor(readonly capacity = actorGroundingShadowCapacity) {
         if (!Number.isInteger(capacity) || capacity < 1) {
@@ -398,6 +399,10 @@ export class ActorGroundingShadowRegistry {
         return this.version;
     }
 
+    getMembershipVersion() {
+        return this.membershipVersion;
+    }
+
     register(
         registration:
             | ActorGroundingShadowRegistration
@@ -436,7 +441,7 @@ export class ActorGroundingShadowRegistry {
             if (registration.kind === 'placement') {
                 this.placementDroppedCount += 1;
             }
-            this.publishChange();
+            this.publishMembershipChange();
 
             let registered = true;
             return {
@@ -448,7 +453,7 @@ export class ActorGroundingShadowRegistry {
 
                     registered = false;
                     this.droppedIds.delete(id);
-                    this.publishChange();
+                    this.publishMembershipChange();
                 },
             };
         }
@@ -474,7 +479,7 @@ export class ActorGroundingShadowRegistry {
                       state: hiddenActorGroundingShadowState,
                   };
         this.entries.set(id, entry);
-        this.publishChange();
+        this.publishMembershipChange();
 
         let registered = true;
         return {
@@ -488,7 +493,7 @@ export class ActorGroundingShadowRegistry {
                 this.entries.delete(id);
                 this.freeSlots.push(slot);
                 this.freeSlots.sort((left, right) => left - right);
-                this.publishChange();
+                this.publishMembershipChange();
             },
         };
     }
@@ -507,6 +512,11 @@ export class ActorGroundingShadowRegistry {
         }
         this.publishChange();
         return true;
+    }
+
+    private publishMembershipChange() {
+        this.membershipVersion += 1;
+        this.publishChange();
     }
 
     private publishChange() {

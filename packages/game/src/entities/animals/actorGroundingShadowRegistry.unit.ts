@@ -430,3 +430,41 @@ describe('ActorGroundingShadowRegistry', () => {
         assert.equal(registry.getStats().placementRegisteredCount, 0);
     });
 });
+
+describe('grounding-shadow membership revisions', () => {
+    it('separates membership and overflow changes from frequent transforms and idempotent cleanup', () => {
+        const registry = new ActorGroundingShadowRegistry(1);
+        assert.equal(registry.getMembershipVersion(), 0);
+        const cow = registry.register({
+            id: 'cow',
+            species: 'cow',
+            primaryCasterCount: 2,
+        });
+        assert.equal(registry.getMembershipVersion(), 1);
+        for (let x = 0; x < 10; x++)
+            registry.update('cow', { ...groundedState, x });
+        assert.equal(registry.getMembershipVersion(), 1);
+        const overflow = registry.register({
+            id: 'goat',
+            species: 'goat',
+            primaryCasterCount: 1,
+        });
+        assert.equal(registry.getMembershipVersion(), 2);
+        overflow.unregister();
+        assert.equal(registry.getMembershipVersion(), 3);
+        overflow.unregister();
+        assert.equal(registry.getMembershipVersion(), 3);
+        cow.unregister();
+        assert.equal(registry.getMembershipVersion(), 4);
+        cow.unregister();
+        assert.equal(registry.getMembershipVersion(), 4);
+        const replacement = registry.register({
+            id: 'goat',
+            species: 'goat',
+            primaryCasterCount: 1,
+        });
+        assert.equal(replacement.slot, 0);
+        assert.equal(registry.getMembershipVersion(), 5);
+        assert.deepEqual(registry.getSpeciesCounts(), { goat: 1 });
+    });
+});

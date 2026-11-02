@@ -7,6 +7,8 @@ import {
     Euler,
     Frustum,
     type FrustumArray,
+    InstancedBufferAttribute,
+    InstancedInterleavedBuffer,
     InstancedMesh,
     type InterleavedBufferAttribute,
     type Intersection,
@@ -20,6 +22,7 @@ import {
     Vector3,
     type WebGLRenderer,
 } from 'three';
+import { writeMeshInstanceMatrices } from '../../entities/chunkedMeshGeometry';
 import type { StaticRenderPacket } from './staticRenderPackets';
 
 type DrawRange = { start: number; count: number };
@@ -33,6 +36,47 @@ type RangeStack = {
     depth: number;
     entries: { owner: RangeOwner; range: DrawRange }[];
 };
+
+class InstanceCountScopes {
+    private readonly stacks = new WeakMap<InstancedMesh, number[]>();
+    private readonly active = new Set<InstancedMesh>();
+    private readonly scopes: Map<InstancedMesh, number>[] = [];
+    private depth = 0;
+
+    begin() {
+        const scope =
+            this.scopes[this.depth] ?? new Map<InstancedMesh, number>();
+        this.scopes[this.depth++] = scope;
+        scope.clear();
+    }
+    enter(mesh: InstancedMesh, count: number) {
+        const stack = this.stacks.get(mesh) ?? [];
+        this.stacks.set(mesh, stack);
+        const scope = this.scopes[this.depth - 1];
+        if (scope && !scope.has(mesh)) scope.set(mesh, stack.length);
+        stack.push(mesh.count);
+        mesh.count = count;
+        this.active.add(mesh);
+    }
+    leave(mesh: InstancedMesh) {
+        const stack = this.stacks.get(mesh);
+        if (stack?.length) this.restore(mesh, stack.length - 1);
+    }
+    private restore(mesh: InstancedMesh, depth: number) {
+        const stack = this.stacks.get(mesh);
+        if (!stack) return;
+        while (stack.length > depth) mesh.count = stack.pop() ?? mesh.count;
+        if (stack.length === 0) this.active.delete(mesh);
+    }
+    end() {
+        const scope = this.scopes[--this.depth];
+        for (const [mesh, depth] of scope) this.restore(mesh, depth);
+        scope.clear();
+    }
+    restoreAll() {
+        for (const mesh of this.active) this.restore(mesh, 0);
+    }
+}
 
 /** Morph bounds and partial authored ranges retain the pre-stock path. */
 export function supportsStaticPacketVisibility(geometry: BufferGeometry) {
@@ -50,6 +94,7 @@ export function supportsStaticPacketVisibility(geometry: BufferGeometry) {
 
 /** Shared buffers need their original range restored even when a draw throws. */
 export class StaticRenderPacketDrawRanges {
+    private readonly instanceCounts = new InstanceCountScopes();
     private readonly fullRanges = new WeakMap<BufferGeometry, DrawRange>();
     private readonly stacks = new WeakMap<BufferGeometry, RangeStack>();
     private readonly activeGeometries = new Set<BufferGeometry>();
@@ -59,6 +104,12 @@ export class StaticRenderPacketDrawRanges {
 
     get allowsRangeCoalescing() {
         return this.cameraModes[this.depth - 1] ?? true;
+    }
+    enterInstances(mesh: InstancedMesh, count: number) {
+        this.instanceCounts.enter(mesh, count);
+    }
+    leaveInstances(mesh: InstancedMesh) {
+        this.instanceCounts.leave(mesh);
     }
     private preparation:
         | ((scene: Object3D, camera: Camera) => void)
@@ -119,6 +170,7 @@ export class StaticRenderPacketDrawRanges {
     }
 
     beginRender(camera?: Camera) {
+        this.instanceCounts.begin();
         let scope = this.scopes[this.depth];
         if (!scope) {
             scope = new Map();
@@ -132,6 +184,7 @@ export class StaticRenderPacketDrawRanges {
     }
 
     endRender() {
+        this.instanceCounts.end();
         const scope = this.scopes[--this.depth];
         for (const [geometry, depth] of scope) {
             const stack = this.stacks.get(geometry);
@@ -152,6 +205,7 @@ export class StaticRenderPacketDrawRanges {
     }
 
     restoreAll() {
+        this.instanceCounts.restoreAll();
         for (const geometry of this.activeGeometries) {
             const stack = this.stacks.get(geometry);
             if (!stack) continue;
@@ -649,11 +703,13 @@ export class StaticRenderPacketVisibilityInstancedMesh extends InstancedMesh<
 /** Only our exact range callbacks are static; other custom callbacks fail closed. */
 export function hasStaticRenderPacketVisibilityCallbacks(object: Object3D) {
     const prototype =
-        object instanceof StaticRenderPacketVisibilityInstancedMesh
-            ? StaticRenderPacketVisibilityInstancedMesh.prototype
-            : object instanceof StaticRenderPacketVisibilityMesh
-              ? StaticRenderPacketVisibilityMesh.prototype
-              : undefined;
+        object instanceof NativeStaticRenderPacketMesh
+            ? NativeStaticRenderPacketMesh.prototype
+            : object instanceof StaticRenderPacketVisibilityInstancedMesh
+              ? StaticRenderPacketVisibilityInstancedMesh.prototype
+              : object instanceof StaticRenderPacketVisibilityMesh
+                ? StaticRenderPacketVisibilityMesh.prototype
+                : undefined;
     return Boolean(
         prototype &&
             object.onBeforeRender === prototype.onBeforeRender &&
@@ -738,6 +794,198 @@ export function createStaticRenderPacketVisibilityMeshes(
         mesh.receiveShadow = packet.receiveShadow;
         mesh.renderOrder = packet.renderOrder ?? 0;
         mesh.setPresentationEnabled(presentationEnabled);
+    }
+    return meshes;
+}
+
+/** Identical immutable sources can retain native instancing instead of baking vertices. */
+export function supportsNativeStaticRenderPacket(packet: StaticRenderPacket) {
+    const first = packet.contributions[0];
+    if (!first || packet.contributions.length < 2) return false;
+    const groups = new Set<string>();
+    return packet.contributions.every((source) => {
+        const group = source.originalVisibilityGroup ?? source.id;
+        if (groups.has(group)) return false;
+        groups.add(group);
+        return (
+            source.geometry === first.geometry &&
+            source.sourceBoundsCulling &&
+            source.originalVisibilityMode === 'instanced' &&
+            supportsStaticPacketVisibility(source.geometry)
+        );
+    });
+}
+
+class NativeStaticRenderPacketMesh extends InstancedMesh<
+    BufferGeometry,
+    Material
+> {
+    constructor(
+        geometry: BufferGeometry,
+        material: Material,
+        private readonly authoredCount: number,
+        private readonly group: number | undefined,
+        private readonly visibility: PacketVisibility,
+        private readonly ranges: StaticRenderPacketDrawRanges,
+    ) {
+        super(geometry, material, authoredCount);
+        this.matrixAutoUpdate = false;
+    }
+    override intersectsFrustum(frustum: Frustum | FrustumArray) {
+        const visible = this.visibility.read(frustum, this.matrixWorld);
+        return this.group === undefined
+            ? visible.all
+            : !visible.all &&
+                  visible.values[this.group] === 1 &&
+                  (!this.ranges.allowsRangeCoalescing ||
+                      !('planes' in frustum) ||
+                      this.visibility.drawCountInFrustum(
+                          this.group,
+                          frustum,
+                          this.matrixWorld,
+                      ) > 0);
+    }
+    override raycast(raycaster: Raycaster, intersections: Intersection[]) {
+        if (this.group === undefined) return;
+        const count = this.count;
+        this.count = this.authoredCount;
+        try {
+            super.raycast(raycaster, intersections);
+        } finally {
+            this.count = count;
+        }
+    }
+    override onBeforeRender(
+        _renderer?: WebGLRenderer,
+        _scene?: Object3D,
+        camera?: Camera,
+    ) {
+        const count =
+            this.group !== undefined &&
+            camera &&
+            this.ranges.allowsRangeCoalescing &&
+            !(camera instanceof ArrayCamera)
+                ? this.visibility.drawCount(
+                      this.group,
+                      camera,
+                      this.matrixWorld,
+                  )
+                : this.authoredCount;
+        this.ranges.enterInstances(this, count);
+    }
+    override onAfterRender() {
+        this.ranges.leaveInstances(this);
+    }
+    override onBeforeShadow(
+        renderer?: WebGLRenderer,
+        scene?: Object3D,
+        _camera?: Camera,
+        shadowCamera?: Camera,
+    ) {
+        this.onBeforeRender(renderer, scene, shadowCamera);
+    }
+    override onAfterShadow() {
+        this.ranges.leaveInstances(this);
+    }
+}
+
+function nativeInstanceMatrices(
+    data: InstancedInterleavedBuffer,
+    firstInstance: number,
+) {
+    // InstancedMesh declares a plain attribute, while Three's binding/attribute
+    // managers also support interleaved instance data. Keep its normal CPU view
+    // for getMatrixAt/raycast and bind the same GPU buffer at this source offset.
+    return Object.assign(
+        new InstancedBufferAttribute(
+            data.array.subarray(firstInstance * 16),
+            16,
+        ),
+        {
+            isInterleavedBufferAttribute: true,
+            data,
+            offset: firstInstance * 16,
+        },
+    );
+}
+
+/** Borrow geometry/materials; one immutable matrix buffer serves all visible spans. */
+export function createNativeStaticRenderPacketMeshes(
+    packet: StaticRenderPacket,
+    name: string,
+    drawRanges = new StaticRenderPacketDrawRanges(),
+) {
+    if (!supportsNativeStaticRenderPacket(packet))
+        throw new Error(
+            'Native packets require identical eligible source geometry',
+        );
+    const first = packet.contributions[0];
+    if (!first) throw new Error('Empty native packet');
+    let start = 0;
+    const ranges = packet.contributions.map((source, group) => {
+        const range = {
+            start,
+            count: source.instances.length,
+            group,
+            positionStart: 0,
+            positionCount: 0,
+        };
+        start += range.count;
+        return range;
+    });
+    const visibility = new PacketVisibility(
+        packet.contributions.map(originalInstancedSphere),
+        ranges,
+    );
+    const data = new InstancedInterleavedBuffer(
+        new Float32Array(packet.instanceCount * 16),
+        16,
+        1,
+    );
+    const aggregate = new NativeStaticRenderPacketMesh(
+        first.geometry,
+        packet.material,
+        packet.instanceCount,
+        undefined,
+        visibility,
+        drawRanges,
+    );
+    aggregate.instanceMatrix = nativeInstanceMatrices(data, 0);
+    const originals = packet.contributions.map((source, index) => {
+        const mesh = new NativeStaticRenderPacketMesh(
+            source.geometry,
+            packet.material,
+            source.instances.length,
+            index,
+            visibility,
+            drawRanges,
+        );
+        mesh.instanceMatrix = nativeInstanceMatrices(data, ranges[index].start);
+        return mesh;
+    });
+    let offset = 0;
+    for (const source of packet.contributions) {
+        writeMeshInstanceMatrices(
+            source.instances,
+            source.localTransform,
+            source.scale,
+            (matrix, instance) =>
+                aggregate.setMatrixAt(offset + instance, matrix),
+        );
+        offset += source.instances.length;
+    }
+    data.needsUpdate = true;
+    const meshes = [aggregate, ...originals];
+    for (const [index, mesh] of meshes.entries()) {
+        mesh.name =
+            index === 0
+                ? `${name}:native-instances`
+                : `${name}:visible-range:${index - 1}`;
+        mesh.castShadow = packet.castShadow;
+        mesh.receiveShadow = packet.receiveShadow;
+        mesh.renderOrder = packet.renderOrder ?? 0;
+        mesh.computeBoundingBox();
+        mesh.computeBoundingSphere();
     }
     return meshes;
 }

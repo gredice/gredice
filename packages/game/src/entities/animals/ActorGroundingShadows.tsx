@@ -220,6 +220,7 @@ function ActorGroundingShadowBatch({
     const lastSnowCoverageRef = useRef(Number.NaN);
     const lastProfileReportAtRef = useRef(Number.NEGATIVE_INFINITY);
     const lastVersionRef = useRef(-1);
+    const lastReportedMembershipRef = useRef(-1);
     const placementPeakCountRef = useRef(0);
     const previousDrawCountRef = useRef(0);
     const profileReportPendingRef = useRef(false);
@@ -262,6 +263,7 @@ function ActorGroundingShadowBatch({
         }
 
         const version = registry.getVersion();
+        const membershipVersion = registry.getMembershipVersion();
         const matricesChanged =
             lastVersionRef.current !== version ||
             !Object.is(lastSnowCoverageRef.current, snowCoverage);
@@ -331,11 +333,15 @@ function ActorGroundingShadowBatch({
             profileReportPendingRef.current = true;
         }
 
+        // Structural counts identify the buffer just written above. Keeping
+        // them behind the motion-statistics throttle makes readiness stale.
         if (
             profileReportPendingRef.current &&
-            clock.elapsedTime - lastProfileReportAtRef.current >=
-                actorGroundingShadowProfileReportIntervalSeconds
+            (membershipVersion !== lastReportedMembershipRef.current ||
+                clock.elapsedTime - lastProfileReportAtRef.current >=
+                    actorGroundingShadowProfileReportIntervalSeconds)
         ) {
+            lastReportedMembershipRef.current = membershipVersion;
             lastProfileReportAtRef.current = clock.elapsedTime;
             profileReportPendingRef.current = false;
             reportActorGroundingShadowProfile({

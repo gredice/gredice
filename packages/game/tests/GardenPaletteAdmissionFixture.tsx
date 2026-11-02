@@ -19,6 +19,7 @@ export function GardenPaletteAdmissionFixture({
     sources = 3,
     placementTelemetry = 'none',
     nativeProgramWitness = false,
+    nativeInstances = false,
 }: {
     batch?: boolean;
     mutated?: boolean;
@@ -28,6 +29,7 @@ export function GardenPaletteAdmissionFixture({
     sources?: 1 | 3;
     placementTelemetry?: GardenPaletteAdmissionPlacementTelemetry;
     nativeProgramWitness?: boolean;
+    nativeInstances?: boolean;
 }) {
     const [store] = useState(() =>
         createGameState({
@@ -45,7 +47,7 @@ export function GardenPaletteAdmissionFixture({
         (value: { key: string; [key: string]: unknown }) => setResult(value),
         [],
     );
-    const key = `${batch}:${mutated}:${patched}:${mounted}${aggregate ? `:aggregate:${sources}` : ''}${placementTelemetry === 'none' ? '' : `:placement:${placementTelemetry}`}`;
+    const key = `${batch}:${mutated}:${patched}:${mounted}${aggregate ? `:aggregate:${sources}` : ''}${placementTelemetry === 'none' ? '' : `:placement:${placementTelemetry}`}${nativeInstances ? ':native' : ''}`;
     return (
         <div
             data-testid="garden-palette-admission"
@@ -79,6 +81,7 @@ export function GardenPaletteAdmissionFixture({
                             mounted={mounted}
                             placementTelemetry={placementTelemetry}
                             nativeProgramWitness={nativeProgramWitness}
+                            nativeInstances={nativeInstances}
                             onReadback={report}
                         />
                     </Scene>

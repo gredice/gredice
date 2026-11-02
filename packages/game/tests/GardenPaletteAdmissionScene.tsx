@@ -97,6 +97,7 @@ export function GardenPaletteAdmissionScene({
     mounted,
     placementTelemetry,
     nativeProgramWitness,
+    nativeInstances,
     onReadback,
 }: {
     batch: boolean;
@@ -107,6 +108,7 @@ export function GardenPaletteAdmissionScene({
     mounted: boolean;
     placementTelemetry: GardenPaletteAdmissionPlacementTelemetry;
     nativeProgramWitness: boolean;
+    nativeInstances: boolean;
     onReadback: (value: { key: string; [key: string]: unknown }) => void;
 }) {
     const { scene, gl, camera } = useThree();
@@ -195,7 +197,7 @@ export function GardenPaletteAdmissionScene({
         () => (patched ? resources.roof.slice(1) : resources.roof),
         [patched, resources.roof],
     );
-    const key = `${batch}:${mutated}:${patched}:${mounted}${aggregate ? `:aggregate:${sources}` : ''}${placementTelemetry === 'none' ? '' : `:placement:${placementTelemetry}`}`;
+    const key = `${batch}:${mutated}:${patched}:${mounted}${aggregate ? `:aggregate:${sources}` : ''}${placementTelemetry === 'none' ? '' : `:placement:${placementTelemetry}`}${nativeInstances ? ':native' : ''}`;
     const frames = useRef({
         key: '',
         count: 0,
@@ -435,7 +437,11 @@ export function GardenPaletteAdmissionScene({
                                 <EntityInstancesGeometry
                                     instanceKey="admission:metal"
                                     instances={resources.metal}
-                                    geometry={resources.workerGeometry}
+                                    geometry={
+                                        nativeInstances
+                                            ? resources.geometry
+                                            : resources.workerGeometry
+                                    }
                                     batchStaticMaterial={batch}
                                     renderSnow={false}
                                     material={resources.material}

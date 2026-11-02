@@ -20,6 +20,7 @@ export type GardenPaletteCullingView =
 
 export function GardenPaletteCullingFixture({
     batch = false,
+    distinctGeometry = false,
     view = 'mixed',
     equalUniforms = false,
     unsupportedRange = false,
@@ -30,6 +31,7 @@ export function GardenPaletteCullingFixture({
     quality = 'high',
 }: {
     batch?: boolean;
+    distinctGeometry?: boolean;
     view?: GardenPaletteCullingView;
     equalUniforms?: boolean;
     unsupportedRange?: boolean;
@@ -52,7 +54,7 @@ export function GardenPaletteCullingFixture({
         (next: GardenPaletteCullingReadback) => setResult(next),
         [],
     );
-    const key = `${batch}:${view}${equalUniforms ? ':equal' : ''}${unsupportedRange ? ':legacy-range' : ''}${legacyMerged ? ':legacy-merged' : ''}${transitionWitness ? `:transition:${shaderRevision}:${restoreContext}` : ''}`;
+    const key = `${batch}:${view}${distinctGeometry ? ':distinct' : ''}${equalUniforms ? ':equal' : ''}${unsupportedRange ? ':legacy-range' : ''}${legacyMerged ? ':legacy-merged' : ''}${transitionWitness ? `:transition:${shaderRevision}:${restoreContext}` : ''}`;
     return (
         <div
             data-testid="palette-culling"
@@ -84,6 +86,7 @@ export function GardenPaletteCullingFixture({
                     >
                         <GardenPaletteCullingScene
                             batch={batch}
+                            distinctGeometry={distinctGeometry}
                             view={view}
                             equalUniforms={equalUniforms}
                             unsupportedRange={unsupportedRange}
