@@ -219,7 +219,7 @@ export function createFaunaPoseOracle(
                 if (!Number.isFinite(error) || error > 1e-10) {
                     frame.pass = false;
                     throw new Error(
-                        `${model.id}:${actual.name}:${key} independent frozen pose drift ${error}`,
+                        `${model.id}:${actual.name}:${key} independent frozen pose drift ${error}; ${JSON.stringify({ now, delta, actual: left, expected: right, known: model.known.get(actual), call: frame.calls.at(-1) })}`,
                     );
                 }
             }

@@ -8,6 +8,7 @@ import { InstancedMesh, Mesh, type Object3D, Sphere } from 'three';
 export const faunaCullingBoundsScale = 1.75;
 
 export type FaunaActorCulling = {
+    markRendered: () => void;
     /**
      * Returns whether any actor mesh was submitted by a render since the
      * previous call. Actors start as rendered so their first pose is applied
@@ -18,6 +19,17 @@ export type FaunaActorCulling = {
 };
 
 const cullingByRoot = new WeakMap<Object3D, FaunaActorCulling>();
+const rigidRenderCallbacks = new WeakMap<Mesh, Mesh['onBeforeRender']>();
+
+/** Only the culling wrapper may replace a rigid source's default draw hooks. */
+export function hasRigidFaunaRenderCallbacks(mesh: Mesh) {
+    return (
+        (mesh.onBeforeRender === Mesh.prototype.onBeforeRender ||
+            mesh.onBeforeRender === rigidRenderCallbacks.get(mesh)) &&
+        mesh.onAfterRender === Mesh.prototype.onAfterRender &&
+        mesh.raycast === Mesh.prototype.raycast
+    );
+}
 
 function conservativeMeshBounds(mesh: Mesh, boundsScale: number) {
     const geometry = mesh.geometry;
@@ -66,9 +78,14 @@ export function configureFaunaActorCulling(
             renderedSinceCheck = true;
             previousOnBeforeRender.apply(this, args);
         };
+        if (previousOnBeforeRender === Mesh.prototype.onBeforeRender)
+            rigidRenderCallbacks.set(object, object.onBeforeRender);
     });
 
     const culling: FaunaActorCulling = {
+        markRendered: () => {
+            renderedSinceCheck = true;
+        },
         consumeRendered: () => {
             const rendered = renderedSinceCheck;
             renderedSinceCheck = false;

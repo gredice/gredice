@@ -38,7 +38,7 @@ const fixtureFiles = [
 async function readFaunaProvenance() {
     const allowedWitnessEdits = new Set([
         ...fixtureFiles,
-        'apps/garden/playwright.config.ts',
+        'apps/garden/playwright/fauna-trajectory.config.ts',
     ]);
     const dirtyPaths = execFileSync(
         'git',
@@ -93,7 +93,10 @@ async function readFaunaProvenance() {
         configHash: createHash('sha256')
             .update(
                 await readFile(
-                    path.join(sourceRoot, 'apps/garden/playwright.config.ts'),
+                    path.join(
+                        sourceRoot,
+                        'apps/garden/playwright/fauna-trajectory.config.ts',
+                    ),
                 ),
             )
             .digest('hex'),

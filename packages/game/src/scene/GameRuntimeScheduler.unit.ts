@@ -4,6 +4,7 @@ import {
     GameRuntimeScheduler,
     type GameRuntimeSchedulerOptions,
     type GameRuntimeSchedulerSnapshot,
+    type GameRuntimeUnexpectedWakeup,
 } from './GameRuntimeScheduler';
 
 const timingToleranceMs = 0.01;
@@ -2428,7 +2429,13 @@ describe('GameRuntimeScheduler semantic work', () => {
     it('fails closed if a browser timeout fires before its semantic due time', () => {
         const queue = new FakeRuntimeQueue();
         queue.browserLongTimeoutDelays = true;
-        const { scheduler } = createScheduler({ queue });
+        const events: GameRuntimeUnexpectedWakeup[] = [];
+        const { scheduler } = createScheduler({
+            queue,
+            options: {
+                onUnexpectedWakeup: (event) => events.push(event),
+            },
+        });
         const delivered: number[] = [];
 
         scheduler.scheduleDeadline('early-deadline', 100.75, ({ nowMs }) =>
@@ -2444,6 +2451,11 @@ describe('GameRuntimeScheduler semantic work', () => {
         assert.equal(snapshot.unexpectedNoWorkWakeupCount, 1);
         assert.equal(snapshot.pendingCallbackDueAt, 100.75);
         assertWakeupClassificationConserved(snapshot);
+        assert.equal(events.length, 1);
+        assert.equal(events[0]?.reason, 'early-timeout');
+        assert.equal(events[0]?.nowMs, 100.5);
+        assert.equal(events[0]?.callbackDueAt, 100.75);
+        assert.equal(events[0]?.snapshot.unexpectedNoWorkWakeupCount, 1);
 
         queue.runNext();
         snapshot = scheduler.getSnapshot();
@@ -2452,6 +2464,36 @@ describe('GameRuntimeScheduler semantic work', () => {
         assert.equal(snapshot.productiveWakeupCount, 1);
         assert.equal(snapshot.retainedTimeoutReconciliationWakeupCount, 0);
         assert.equal(snapshot.unexpectedNoWorkWakeupCount, 1);
+        assert.equal(events.length, 1);
+        assertWakeupClassificationConserved(snapshot);
+    });
+
+    it('keeps deadline delivery scheduled when an unexpected-wakeup observer throws', () => {
+        const queue = new FakeRuntimeQueue();
+        queue.browserLongTimeoutDelays = true;
+        let observed = 0;
+        const { scheduler } = createScheduler({
+            queue,
+            options: {
+                onUnexpectedWakeup: () => {
+                    observed++;
+                    throw new Error('Diagnostic observer failed');
+                },
+            },
+        });
+        const delivered: number[] = [];
+        scheduler.scheduleDeadline('early-deadline', 100.75, ({ nowMs }) =>
+            delivered.push(nowMs),
+        );
+        assert.doesNotThrow(() => queue.runNext(100.5));
+        assert.equal(scheduler.getSnapshot().pendingCallbackDueAt, 100.75);
+        queue.runUntil(200);
+        assert.deepEqual(delivered, [101.5]);
+        assert.equal(observed, 1);
+        assert.equal(queue.pendingTaskCount, 0);
+        const snapshot = scheduler.getSnapshot();
+        assert.equal(snapshot.unexpectedNoWorkWakeupCount, 1);
+        assert.equal(snapshot.productiveWakeupCount, 1);
         assertWakeupClassificationConserved(snapshot);
     });
 

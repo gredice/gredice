@@ -807,6 +807,13 @@ function createDebugEntry({
     };
 }
 
+const ladybugRigidParents = [
+    'Ladybug_ElytraPivot_L',
+    'Ladybug_ElytraPivot_R',
+    'Ladybug_HeadPivot',
+    'Ladybug_BodyPivot',
+];
+
 function LadybugActor({
     active,
     assignment,
@@ -878,7 +885,10 @@ function LadybugActor({
             scene,
         };
     }, [gltf.scene]);
-    useFaunaActorCulling(model.scene);
+    useFaunaActorCulling(model.scene, {
+        rigidSource: gltf.scene,
+        rigidParents: ladybugRigidParents,
+    });
     const updateGroundingShadow = useActorGroundingShadow({
         id: actorId,
         primaryCasterCount: model.primaryCasterCount,

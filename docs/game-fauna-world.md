@@ -125,6 +125,31 @@ fast-forwards after a hidden period.
 
 ## Shared simulation and rendered poses
 
+Bee and Ladybug can batch opaque rigid siblings within explicitly named manual
+rig pivots. Their articulation groups and logical source nodes stay in place;
+each batch inherits its original parent transform. Exact stock material values,
+geometry attribute layout, shadow-receiving state, layer and render order must
+match. Transparent wings, primary shadow-map casters, skinned/morph geometry,
+mirrored children and unsupported primitives retain their authored rendering.
+The separate projected grounding-shadow batch is unchanged.
+
+Batch geometry is acquired in layout effects and shared only between active
+clones of the same source asset and immutable local layout. The final lease
+disposes the owned output; borrowed GLTF geometry and materials keep their
+existing owners. Cleanup restores logical visibility and raycasts before a
+StrictMode replay. The rendered batch marks the existing culling observer, so
+pose sleeping still follows actual submissions. Raycasts use the batched
+geometry once rather than also intersecting hidden logical source meshes.
+
+The actual GLB unit controls retain every pivot and reduce potential rigid leaf
+submissions by 17 per Bee and six per Ladybug. This is a source-geometry count,
+not a whole-scene GPU-time claim. The `rigid-fauna-batches.spec.tsx` WebGL control
+compares authored and batched pixels in Low, Medium, High and Automatic through
+articulated poses and day/night lighting, with the production projected-shadow
+policy. Primary-caster geometry remains a tested fallback after its separate
+prototype exceeded the unchanged pixel limit. Full production profiling decides
+the net performance benefit.
+
 `FaunaRuntimeProvider` owns one retained dispatcher per Canvas. All current
 species and the beach ball register their existing behavior/path/movement
 callbacks with `useFaunaFrame`. Registration order stays stable across React
@@ -279,14 +304,18 @@ all eight witness files, browser configuration and asset-server environment,
 then checks them again after capture. The candidate must be clean; an isolated
 legacy reference permits only the named witness files and browser configuration
 addition. Source edits during capture invalidate the report.
+The dedicated configuration isolates oracle-enabled Vite output from ordinary
+component tests and uninstrumented runs. Playwright's source-timestamp cache
+does not include the plugin environment; sharing that cache can otherwise run
+unwrapped pose functions and correctly fail the independent pose witness.
 
 Run the same fixture files in isolated baseline and candidate checkouts with
 an existing production asset server; keep the canonical profiling checkout
 untouched:
 
 ```bash
-GREDICE_GARDEN_BASE_URL=http://localhost:3917 GREDICE_PLAYWRIGHT_REUSE_SERVER=true FAUNA_TRAJECTORY_MODE=baseline FAUNA_TRAJECTORY_OUTPUT=/tmp/fauna-baseline.json pnpm --filter garden exec playwright test tests/fauna-trajectory.spec.tsx --project=chromium-webgl --workers=1
-GREDICE_GARDEN_BASE_URL=http://localhost:3917 GREDICE_PLAYWRIGHT_REUSE_SERVER=true FAUNA_TRAJECTORY_REFERENCE=/tmp/fauna-baseline.json FAUNA_TRAJECTORY_OUTPUT=/tmp/fauna-candidate.json pnpm --filter garden exec playwright test tests/fauna-trajectory.spec.tsx --project=chromium-webgl --workers=1
+GREDICE_GARDEN_BASE_URL=http://localhost:3917 GREDICE_PLAYWRIGHT_REUSE_SERVER=true FAUNA_TRAJECTORY_MODE=baseline FAUNA_TRAJECTORY_OUTPUT=/tmp/fauna-baseline.json pnpm --filter garden exec playwright test --config=playwright/fauna-trajectory.config.ts --project=chromium-webgl --workers=1
+GREDICE_GARDEN_BASE_URL=http://localhost:3917 GREDICE_PLAYWRIGHT_REUSE_SERVER=true FAUNA_TRAJECTORY_REFERENCE=/tmp/fauna-baseline.json FAUNA_TRAJECTORY_OUTPUT=/tmp/fauna-candidate.json pnpm --filter garden exec playwright test --config=playwright/fauna-trajectory.config.ts --project=chromium-webgl --workers=1
 node --test apps/garden/scripts/fauna-trajectory-contract.unit.mjs
 ```
 
@@ -308,3 +337,51 @@ scope; canonical production lifecycle captures prove real suspension scheduling.
 Per-species instanced skinning stays conditional on fauna-heavy profiles still
 showing draw pressure after CPU centralization and actor culling. It changes
 rendering architecture and needs its own measured justification.
+
+## Integrated fauna acceptance, 2026-11-02
+
+The complete canonical symmetric 2×2 comparison passes for rigid fauna batching:
+344 measured comparisons and 42 invariants, zero reproduced regressions,
+zero unresolved replications, and `diagnostic: false`. Each of the four bundles
+contains all 39 canonical runs. The public comparator uses its existing clocks,
+windows, scene/quality controls and numerical gates without partial, same-source
+or legacy-scheduler waivers. Early switching screenings remain in the reports;
+they did not reproduce under the unchanged confirmation contract.
+
+| Profile | Steady draws before, two bundle medians | After, two bundle medians |
+| --- | ---: | ---: |
+| Low | 281.3 / 283.9 | 239.8 / 240.2 |
+| Medium | 288.4 / 287.9 | 246.8 / 246.3 |
+| High | 284.7 / 285.1 | 244.1 / 244.2 |
+| Automatic standard | 287.9 / 287.9 | 246.8 / 246.8 |
+| Automatic constrained | 278.7 / 279.0 | 241.5 / 241.5 |
+| Fauna-heavy High | 599.1 / 599.2 | 564.2 / 564.1 |
+
+The current-renderer control is `62b0635eb9b42baeab6058aa90c51f2b0c057e2a`;
+the candidate and common profiler are
+`ca6627d9e5147d5dd19911c3253aca4f0915be80`. Both use Node 26.12.1,
+pnpm 12.16.1 and the same installed 30-workspace dependency graph,
+environment-file hashes and production assets. Native Chromium uses ANGLE Metal
+on an AC-powered Mac16,11. The later observer-exception guard changes only
+failure handling for optional diagnostics; its regression test preserves deadline
+delivery, counters and reconciliation. The measured rendering path is unchanged.
+
+The independent legacy witness covers all 17 species across six 24-second
+day/night/post-rain captures at 30/60 Hz: 40,934 actor samples, 257 decisions and
+1,286,523 joint samples. Root-position error is below `1e-12`; existing per-joint
+phase budgets and independent frozen-helper precision remain unchanged. Five
+resolved-profile paired pixel cases preserve articulated poses and projected
+shadows. Manual hidden replay and real canonical lifecycle evidence retain
+their separate scopes.
+
+The canonical lifecycle active/restored GPU metrics and seven switching
+ScriptDuration metrics remain equally unavailable in both subjects: nine metric
+groups, 27 sample identities and 108 availability entries across the four pairs.
+They are retained as unavailable; no measurement is invented. The native raw
+bundles, full comparisons, source guards, plans and trajectory reports are
+retained outside Playwright scratch output under
+`~/.local/state/gredice/issue-4715/2026-11-02/`.
+
+This clears fauna integration in #4720. The separate authored-material comparison
+still rejects first-fauna visibility latency and final-High GPU p95 in #4721;
+it does not clear #4715. Physical-device clearance remains separate in #4344.

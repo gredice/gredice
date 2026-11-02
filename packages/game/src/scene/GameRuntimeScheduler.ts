@@ -15,6 +15,19 @@ const maximumRequestedFrames = 60;
 
 type SchedulerHandle = unknown;
 
+export type GameRuntimeUnexpectedWakeup = {
+    reason: 'early-timeout' | 'hidden' | 'no-due-work';
+    nowMs: number;
+    callbackDueAt: number | null;
+    callbackKind: 'frame' | 'timeout';
+    retainedForReconciliation: boolean;
+    taggedReceiptGeneration: number | null;
+    receiptGeneration: number;
+    reconciledReceiptGeneration: number;
+    nextRenderTargetAt: number | null;
+    snapshot: GameRuntimeSchedulerSnapshot;
+};
+
 export type GameRuntimeSchedulerPendingCallback = 'frame' | 'none' | 'timeout';
 
 export type GameRuntimeSchedulerVisibility = {
@@ -86,6 +99,8 @@ export type GameRuntimeSchedulerOptions = {
     maxDeliveredDeltaMs?: number;
     now: () => number;
     onSnapshot?: (snapshot: GameRuntimeSchedulerSnapshot) => void;
+    /** Optional diagnostic observer; no history is retained by the scheduler. */
+    onUnexpectedWakeup?: (event: GameRuntimeUnexpectedWakeup) => void;
     requestFrame: (
         callback: (displayTimestampMs?: number) => void,
     ) => SchedulerHandle;
@@ -293,6 +308,7 @@ export class GameRuntimeScheduler {
     private onSnapshotEffect:
         | ((snapshot: GameRuntimeSchedulerSnapshot) => void)
         | undefined;
+    private readonly onUnexpectedWakeupEffect;
     private pendingCallback: PendingCallback | null = null;
     private readonly coalescedRenderRequests = new Map<string, number>();
     private readonly renderLeases = new Map<symbol, RenderLease>();
@@ -328,6 +344,7 @@ export class GameRuntimeScheduler {
         );
         this.nowEffect = options.now;
         this.onSnapshotEffect = options.onSnapshot;
+        this.onUnexpectedWakeupEffect = options.onUnexpectedWakeup;
         this.requestFrameEffect = options.requestFrame;
         this.setTimeoutEffect = options.setTimeout;
         this.refreshTargetFramesPerSecond();
@@ -1401,12 +1418,41 @@ export class GameRuntimeScheduler {
         this.counters.cancelledCallbackCount += 1;
     }
 
+    private recordUnexpectedWakeup(
+        reason: GameRuntimeUnexpectedWakeup['reason'],
+        now: number,
+        callback: PendingCallback,
+    ) {
+        this.counters.unexpectedNoWorkWakeupCount += 1;
+        if (!this.onUnexpectedWakeupEffect) return;
+        const event = {
+            reason,
+            nowMs: now,
+            callbackDueAt: callback.dueAt,
+            callbackKind: callback.kind,
+            retainedForReconciliation: callback.retainedForReconciliation,
+            taggedReceiptGeneration:
+                callback.frameReceiptReconciliationGeneration,
+            receiptGeneration: this.frameReceiptReconciliationGeneration,
+            reconciledReceiptGeneration:
+                this.lastReconciledFrameReceiptGeneration,
+            nextRenderTargetAt: this.nextRenderFrameTargetAt,
+            snapshot: this.getSnapshot(),
+        };
+        try {
+            this.onUnexpectedWakeupEffect(event);
+        } catch {
+            // Optional diagnostics cannot interrupt deadline/frame reconciliation.
+        }
+    }
+
     private handleScheduledCallback(id: number, displayTimestampMs?: number) {
         if (this.disposed || this.pendingCallback?.id !== id) {
             return;
         }
 
-        const callbackKind = this.pendingCallback.kind;
+        const pendingCallback = this.pendingCallback;
+        const callbackKind = pendingCallback.kind;
         const callbackDueAt = this.pendingCallback.dueAt;
         const frameReceiptReconciliationGeneration =
             this.pendingCallback.frameReceiptReconciliationGeneration;
@@ -1429,14 +1475,18 @@ export class GameRuntimeScheduler {
         if (!this.isEffectivelyVisible()) {
             this.recordNonessentialHiddenWork();
             if (timeoutFiredBeforeDue) {
-                this.counters.unexpectedNoWorkWakeupCount += 1;
+                this.recordUnexpectedWakeup(
+                    'early-timeout',
+                    now,
+                    pendingCallback,
+                );
             } else if (
                 callbackKind === 'timeout' &&
                 retainedForReconciliation
             ) {
                 this.counters.retainedTimeoutReconciliationWakeupCount += 1;
             } else {
-                this.counters.unexpectedNoWorkWakeupCount += 1;
+                this.recordUnexpectedWakeup('hidden', now, pendingCallback);
             }
             this.emitSnapshot();
             return;
@@ -1446,7 +1496,7 @@ export class GameRuntimeScheduler {
             // Do not let the delivery tolerance turn an unexpectedly early
             // browser callback into productive semantic work. The profiler's
             // exact-zero unexpected-wakeup gate must expose this invariant.
-            this.counters.unexpectedNoWorkWakeupCount += 1;
+            this.recordUnexpectedWakeup('early-timeout', now, pendingCallback);
             this.reconcileSchedule();
             return;
         }
@@ -1494,7 +1544,11 @@ export class GameRuntimeScheduler {
                     frameReceiptReconciliationGeneration;
                 this.counters.pendingFrameReceiptReconciliationWakeupCount += 1;
             } else {
-                this.counters.unexpectedNoWorkWakeupCount += 1;
+                this.recordUnexpectedWakeup(
+                    'no-due-work',
+                    now,
+                    pendingCallback,
+                );
             }
             this.reconcileSchedule();
         }
