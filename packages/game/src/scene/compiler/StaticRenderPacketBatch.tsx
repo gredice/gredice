@@ -1,4 +1,4 @@
-import { useThree } from '@react-three/fiber';
+import { useStore, useThree } from '@react-three/fiber';
 import {
     createContext,
     memo,
@@ -19,11 +19,13 @@ import {
     shouldRecordPlacementAnimationChunkRebuild,
 } from '../../entities/placementAnimationProfileMetrics';
 import { useGardenPacketFallbackResources } from '../gardenPacketFallbackResources';
+import { useSceneRenderRequest } from '../SceneTime';
 import {
     StaticOpaqueSceneCacheBoundary,
     type StaticOpaqueSceneCacheGroup,
     useStaticOpaqueSceneCacheContent,
 } from '../StaticOpaqueSceneCache';
+import { getSceneRootRuntime } from '../sceneRootRuntime';
 import { groupStaticRenderPacketsForCache } from './staticRenderPacketCacheGroups';
 import {
     recordStaticRenderPacketCompile,
@@ -35,9 +37,11 @@ import {
     StaticRenderPacketRegistry,
 } from './staticRenderPackets';
 import {
+    createNativeStaticRenderPacketMeshes,
     createStaticRenderPacketVisibilityMeshes,
     guardStaticRenderPacketDrawRanges,
     StaticRenderPacketDrawRanges,
+    supportsNativeStaticRenderPacket,
 } from './staticRenderPacketVisibility';
 import { useCompiledChunkSources } from './useCompiledChunk';
 
@@ -193,6 +197,13 @@ const StaticRenderPacketMesh = memo(function StaticRenderPacketMesh({
     drawRanges: StaticRenderPacketDrawRanges;
 }) {
     const singleton = packet.contributions[0];
+    if (supportsNativeStaticRenderPacket(packet))
+        return (
+            <StaticRenderPacketNativeMesh
+                packet={packet}
+                drawRanges={drawRanges}
+            />
+        );
     if (
         packet.contributions.length === 1 &&
         singleton?.sourceBoundsCulling &&
@@ -216,6 +227,42 @@ const StaticRenderPacketMesh = memo(function StaticRenderPacketMesh({
         />
     );
 });
+
+const StaticRenderPacketNativeMesh = memo(
+    function StaticRenderPacketNativeMesh({
+        packet,
+        drawRanges,
+    }: {
+        packet: StaticRenderPacket;
+        drawRanges: StaticRenderPacketDrawRanges;
+    }) {
+        const geometryUpdates = getSceneRootRuntime(useStore()).geometryUpdates;
+        const requestRender = useSceneRenderRequest();
+        const meshes = useMemo(
+            () =>
+                createNativeStaticRenderPacketMeshes(
+                    packet,
+                    `StaticRenderPacket:${packet.chunkKey}:${packet.material.name || packet.material.type}:sources:${packet.contributions.length}:count:${packet.instanceCount}`,
+                    drawRanges,
+                ),
+            [drawRanges, packet],
+        );
+        useStaticOpaqueSceneCacheContent(
+            meshes,
+            packet.cacheGroup !== undefined,
+        );
+        useLayoutEffect(() => {
+            geometryUpdates.begin()(true);
+            requestRender('native-static-packet-ready', 1);
+            return () => {
+                for (const mesh of meshes) mesh.dispose();
+            };
+        }, [geometryUpdates, meshes, requestRender]);
+        return meshes.map((mesh) => (
+            <primitive key={mesh.uuid} object={mesh} />
+        ));
+    },
+);
 
 const StaticRenderPacketCompiledMesh = memo(
     function StaticRenderPacketCompiledMesh({

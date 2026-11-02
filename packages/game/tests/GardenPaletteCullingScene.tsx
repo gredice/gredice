@@ -3,6 +3,7 @@ import { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
 import {
     BoxGeometry,
     DirectionalLight,
+    InstancedMesh,
     Mesh,
     MeshStandardMaterial,
     OrthographicCamera,
@@ -30,6 +31,8 @@ type Receipt = {
     pass: 'main' | 'shadow';
     start: number;
     count: number;
+    instances: number;
+    instanceOffset: number;
     triangles: number;
     calls: number;
     geometry: string;
@@ -97,6 +100,7 @@ function instances(id: string, x: number): EntityBlockInstance[] {
 
 export function GardenPaletteCullingScene({
     batch,
+    distinctGeometry,
     view,
     equalUniforms,
     unsupportedRange,
@@ -107,6 +111,7 @@ export function GardenPaletteCullingScene({
     onReadback,
 }: {
     batch: boolean;
+    distinctGeometry: boolean;
     view: GardenPaletteCullingView;
     equalUniforms: boolean;
     unsupportedRange: boolean;
@@ -134,7 +139,11 @@ export function GardenPaletteCullingScene({
         const geometry = new BoxGeometry(0.8, 0.8, 0.8);
         if (unsupportedRange) geometry.setDrawRange(0, 18);
         return {
-            geometry,
+            geometries: [
+                geometry,
+                distinctGeometry ? geometry.clone() : geometry,
+                distinctGeometry ? geometry.clone() : geometry,
+            ],
             materials: ['#d84e39', '#409c6d', '#3f72b1'].map(
                 (color) =>
                     new MeshStandardMaterial({
@@ -148,8 +157,8 @@ export function GardenPaletteCullingScene({
                 instances('c', 6),
             ],
         };
-    }, [equalUniforms, unsupportedRange]);
-    const key = `${batch}:${view}${equalUniforms ? ':equal' : ''}${unsupportedRange ? ':legacy-range' : ''}${legacyMerged ? ':legacy-merged' : ''}${transitionWitness ? `:transition:${shaderRevision}:${restoreContext}` : ''}`;
+    }, [distinctGeometry, equalUniforms, unsupportedRange]);
+    const key = `${batch}:${view}${distinctGeometry ? ':distinct' : ''}${equalUniforms ? ':equal' : ''}${unsupportedRange ? ':legacy-range' : ''}${legacyMerged ? ':legacy-merged' : ''}${transitionWitness ? `:transition:${shaderRevision}:${restoreContext}` : ''}`;
     useLayoutEffect(() => {
         if (!transitionWitness || shaderRevision === 0) return;
         // Zero intensity preserves pixels while changing the real shader's
@@ -179,14 +188,17 @@ export function GardenPaletteCullingScene({
     }, [gl, restoreContext, transitionWitness]);
     useLayoutEffect(() => {
         const disposed = () => disposals.current++;
-        resources.geometry.addEventListener('dispose', disposed);
+        for (const geometry of new Set(resources.geometries))
+            geometry.addEventListener('dispose', disposed);
         for (const material of resources.materials)
             material.addEventListener('dispose', disposed);
         return () => {
-            resources.geometry.removeEventListener('dispose', disposed);
+            for (const geometry of new Set(resources.geometries))
+                geometry.removeEventListener('dispose', disposed);
             for (const material of resources.materials)
                 material.removeEventListener('dispose', disposed);
-            resources.geometry.dispose();
+            for (const geometry of new Set(resources.geometries))
+                geometry.dispose();
             for (const material of resources.materials) material.dispose();
         };
     }, [resources]);
@@ -291,6 +303,14 @@ export function GardenPaletteCullingScene({
                         geometry.index?.count ??
                             geometry.getAttribute('position').count,
                     ),
+                    instances:
+                        object instanceof InstancedMesh ? object.count : 1,
+                    instanceOffset:
+                        object instanceof InstancedMesh &&
+                        'offset' in object.instanceMatrix &&
+                        typeof object.instanceMatrix.offset === 'number'
+                            ? object.instanceMatrix.offset
+                            : 0,
                     triangles: gl.info.render.triangles - triangles,
                     calls: gl.info.render.calls - calls,
                     geometry: geometry.uuid,
@@ -536,7 +556,7 @@ export function GardenPaletteCullingScene({
         <EntityInstancesGeometry
             key={value[0].id}
             instanceKey={`culling:${index}`}
-            geometry={resources.geometry}
+            geometry={resources.geometries[index]}
             material={resources.materials[index]}
             instances={value}
             batchStaticMaterial={batch}

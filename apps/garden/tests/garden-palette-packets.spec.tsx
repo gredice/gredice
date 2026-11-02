@@ -15,6 +15,133 @@ async function pixels(png: Buffer) {
     return sharp(png).ensureAlpha().raw().toBuffer();
 }
 
+test('identical packet sources retain native pixels, picking and context restoration without compiler jobs', async ({
+    mount,
+    page,
+}, testInfo) => {
+    test.setTimeout(90_000);
+    const fixture = await mount(
+        <GardenPaletteAdmissionFixture
+            aggregate
+            nativeInstances
+            nativeProgramWitness
+        />,
+    );
+    const counter = (value: unknown, key: string): number => {
+        if (!value || typeof value !== 'object')
+            throw new Error(`Missing ${key} owner`);
+        const field: unknown = Reflect.get(value, key);
+        if (typeof field !== 'number')
+            throw new Error(`Missing ${key} counter`);
+        return field;
+    };
+    for (const restored of [false, true]) {
+        if (restored) {
+            await page.evaluate(async () => {
+                const canvas = document.querySelector('canvas');
+                const extension = canvas
+                    ?.getContext('webgl2')
+                    ?.getExtension('WEBGL_lose_context');
+                if (!canvas || !extension)
+                    throw new Error('WebGL restoration required');
+                await new Promise<void>((resolve) => {
+                    canvas.addEventListener(
+                        'webglcontextrestored',
+                        () => resolve(),
+                        { once: true },
+                    );
+                    extension.loseContext();
+                    setTimeout(() => extension.restoreContext(), 100);
+                });
+            });
+        }
+        await fixture.update(
+            <GardenPaletteAdmissionFixture
+                aggregate
+                nativeInstances
+                nativeProgramWitness
+            />,
+        );
+        await expect(fixture).toHaveAttribute(
+            'data-ready',
+            'false:false:false:true:aggregate:3:native',
+        );
+        const before = await fixture.locator('canvas').screenshot();
+        const authored: unknown = JSON.parse(
+            (await fixture.getAttribute('data-result')) ?? '{}',
+        );
+        await fixture.update(
+            <GardenPaletteAdmissionFixture
+                aggregate
+                nativeInstances
+                nativeProgramWitness
+                batch
+            />,
+        );
+        await expect(fixture).toHaveAttribute(
+            'data-ready',
+            'true:false:false:true:aggregate:3:native',
+        );
+        const after = await fixture.locator('canvas').screenshot();
+        const native: unknown = JSON.parse(
+            (await fixture.getAttribute('data-result')) ?? '{}',
+        );
+        if (
+            !native ||
+            typeof native !== 'object' ||
+            !authored ||
+            typeof authored !== 'object'
+        )
+            throw new Error('Missing native packet receipts');
+        expect(counter(Reflect.get(native, 'compiler'), 'syncCompiles')).toBe(
+            0,
+        );
+        expect(
+            counter(Reflect.get(native, 'packets'), 'packetFallbackMeshes'),
+        ).toBe(0);
+        expect(counter(native, 'borrowedSourceDisposals')).toBe(0);
+        expect(Reflect.get(native, 'hit')).toEqual(
+            Reflect.get(authored, 'hit'),
+        );
+        expect(counter(Reflect.get(native, 'compiler'), 'workerCompiles')).toBe(
+            0,
+        );
+        const programs = readGardenPacketNativeProgramWitness(
+            Reflect.get(native, 'nativePrograms'),
+        );
+        const draws = programs.draws.filter(
+            (draw) => draw.kind === 'compiled' && draw.pass === 'main',
+        );
+        expect(draws.length).toBeGreaterThan(0);
+        expect(
+            draws.every(
+                (draw) =>
+                    draw.instancing &&
+                    draw.shaderInstancing &&
+                    draw.instanceCount === 3,
+            ),
+        ).toBe(true);
+        const a = await pixels(before),
+            b = await pixels(after);
+        let changed = 0,
+            maximum = 0;
+        expect(a.length).toBe(b.length);
+        for (let i = 0; i < a.length; i += 4) {
+            let delta = 0;
+            for (let c = 0; c < 3; c++)
+                delta = Math.max(delta, Math.abs(a[i + c] - b[i + c]));
+            if (delta > 3) changed++;
+            maximum = Math.max(maximum, delta);
+        }
+        expect(changed / (a.length / 4)).toBeLessThan(0.001);
+        expect(maximum).toBeLessThanOrEqual(8);
+        await testInfo.attach(
+            `native-instances-${restored ? 'restored' : 'initial'}.png`,
+            { body: after, contentType: 'image/png' },
+        );
+    }
+});
+
 function submittedCanvasPng(value: unknown) {
     const prefix = 'data:image/png;base64,';
     if (typeof value !== 'string' || !value.startsWith(prefix))
@@ -685,133 +812,154 @@ for (const equalUniforms of [false, true]) {
     });
 }
 
-for (const quality of ['low', 'medium', 'high', 'auto'] as const) {
-    test(`adjacent partial packet spans reduce native draws with pixel and picking parity (${quality})`, async ({
-        mount,
-        page,
-    }, testInfo) => {
-        test.setTimeout(90_000);
-        const errors: string[] = [];
-        page.on('pageerror', (error) => errors.push(error.message));
-        const fixture = await mount(
-            <GardenPaletteCullingFixture
-                equalUniforms
-                view="adjacent"
-                quality={quality}
-            />,
-        );
-        await expect(fixture).toHaveAttribute(
-            'data-ready',
-            'false:adjacent:equal',
-        );
-        const source = JSON.parse(
-            (await fixture.getAttribute('data-result')) ?? '{}',
-        );
-        const sourcePng = await fixture.locator('canvas').screenshot();
-        const graphics = await fixture.locator('canvas').evaluate((canvas) => {
-            if (!(canvas instanceof HTMLCanvasElement))
-                throw new Error('A WebGL Canvas is required.');
-            const gl = canvas.getContext('webgl2');
-            if (!gl) throw new Error('A WebGL2 context is required.');
-            const extension = gl.getExtension('WEBGL_debug_renderer_info');
-            return {
-                renderer: extension
-                    ? gl.getParameter(extension.UNMASKED_RENDERER_WEBGL)
-                    : null,
-                vendor: extension
-                    ? gl.getParameter(extension.UNMASKED_VENDOR_WEBGL)
-                    : null,
-                width: gl.drawingBufferWidth,
-                height: gl.drawingBufferHeight,
-            };
-        });
-        await fixture.update(
-            <GardenPaletteCullingFixture
-                batch
-                equalUniforms
-                view="adjacent"
-                quality={quality}
-            />,
-        );
-        await expect(fixture).toHaveAttribute(
-            'data-ready',
-            'true:adjacent:equal',
-        );
-        const candidate = JSON.parse(
-            (await fixture.getAttribute('data-result')) ?? '{}',
-        );
-        const candidatePng = await fixture.locator('canvas').screenshot();
-        const parity = compare(
-            await pixels(sourcePng),
-            await pixels(candidatePng),
-        );
-        for (const pass of ['main', 'shadow']) {
-            const original = source.receipts.filter(
-                (row: { pass: string }) => row.pass === pass,
+for (const distinctGeometry of [true, false]) {
+    for (const quality of ['low', 'medium', 'high', 'auto'] as const) {
+        test(`adjacent partial packet spans reduce native draws with pixel and picking parity (${quality}, ${distinctGeometry ? 'compiled' : 'native'})`, async ({
+            mount,
+            page,
+        }, testInfo) => {
+            test.setTimeout(90_000);
+            const errors: string[] = [];
+            page.on('pageerror', (error) => errors.push(error.message));
+            const fixture = await mount(
+                <GardenPaletteCullingFixture
+                    equalUniforms
+                    distinctGeometry={distinctGeometry}
+                    view="adjacent"
+                    quality={quality}
+                />,
             );
-            const joined = candidate.receipts.filter(
-                (row: { pass: string; calls: number }) =>
-                    row.pass === pass && row.calls > 0,
+            await expect(fixture).toHaveAttribute(
+                'data-ready',
+                `false:adjacent${distinctGeometry ? ':distinct' : ''}:equal`,
             );
-            const shadows = pass === 'shadow' && quality !== 'low';
-            const enabled = pass === 'main' || shadows;
-            expect(
-                original.reduce(
-                    (sum: number, row: { calls: number }) => sum + row.calls,
-                    0,
-                ),
-            ).toBe(enabled ? 2 : 0);
-            expect(joined).toHaveLength(enabled ? 1 : 0);
-            expect(
-                joined.reduce(
-                    (sum: number, row: { triangles: number }) =>
-                        sum + row.triangles,
-                    0,
-                ),
-            ).toBe(enabled ? 24 : 0);
-            if (enabled) {
-                expect(joined[0].start).toBe(pass === 'main' ? 0 : 36);
-                expect(joined[0].count).toBe(72);
+            const source = JSON.parse(
+                (await fixture.getAttribute('data-result')) ?? '{}',
+            );
+            const sourcePng = await fixture.locator('canvas').screenshot();
+            const graphics = await fixture
+                .locator('canvas')
+                .evaluate((canvas) => {
+                    if (!(canvas instanceof HTMLCanvasElement))
+                        throw new Error('A WebGL Canvas is required.');
+                    const gl = canvas.getContext('webgl2');
+                    if (!gl) throw new Error('A WebGL2 context is required.');
+                    const extension = gl.getExtension(
+                        'WEBGL_debug_renderer_info',
+                    );
+                    return {
+                        renderer: extension
+                            ? gl.getParameter(extension.UNMASKED_RENDERER_WEBGL)
+                            : null,
+                        vendor: extension
+                            ? gl.getParameter(extension.UNMASKED_VENDOR_WEBGL)
+                            : null,
+                        width: gl.drawingBufferWidth,
+                        height: gl.drawingBufferHeight,
+                    };
+                });
+            await fixture.update(
+                <GardenPaletteCullingFixture
+                    batch
+                    equalUniforms
+                    distinctGeometry={distinctGeometry}
+                    view="adjacent"
+                    quality={quality}
+                />,
+            );
+            await expect(fixture).toHaveAttribute(
+                'data-ready',
+                `true:adjacent${distinctGeometry ? ':distinct' : ''}:equal`,
+            );
+            const candidate = JSON.parse(
+                (await fixture.getAttribute('data-result')) ?? '{}',
+            );
+            const candidatePng = await fixture.locator('canvas').screenshot();
+            const parity = compare(
+                await pixels(sourcePng),
+                await pixels(candidatePng),
+            );
+            for (const pass of ['main', 'shadow']) {
+                const original = source.receipts.filter(
+                    (row: { pass: string }) => row.pass === pass,
+                );
+                const joined = candidate.receipts.filter(
+                    (row: { pass: string; calls: number }) =>
+                        row.pass === pass && row.calls > 0,
+                );
+                const shadows = pass === 'shadow' && quality !== 'low';
+                const enabled = pass === 'main' || shadows;
+                expect(
+                    original.reduce(
+                        (sum: number, row: { calls: number }) =>
+                            sum + row.calls,
+                        0,
+                    ),
+                ).toBe(enabled ? 2 : 0);
+                expect(joined).toHaveLength(enabled ? 1 : 0);
+                expect(
+                    joined.reduce(
+                        (sum: number, row: { triangles: number }) =>
+                            sum + row.triangles,
+                        0,
+                    ),
+                ).toBe(enabled ? 24 : 0);
+                if (enabled) {
+                    if (distinctGeometry) {
+                        expect(joined[0].start).toBe(pass === 'main' ? 0 : 36);
+                        expect(joined[0].count).toBe(72);
+                    } else {
+                        expect(joined[0].start).toBe(0);
+                        expect(joined[0].count).toBe(36);
+                        expect(joined[0].instances).toBe(2);
+                        expect(joined[0].instanceOffset).toBe(
+                            pass === 'main' ? 0 : 16,
+                        );
+                    }
+                }
             }
-        }
-        expect(candidate.sceneRaycastHits).toHaveLength(
-            source.sceneRaycastHits.length,
-        );
-        for (let ray = 0; ray < source.sceneRaycastHits.length; ray++) {
-            const authored = source.sceneRaycastHits[ray];
-            const compiled = candidate.sceneRaycastHits[ray];
-            expect(authored).toHaveLength(1);
-            expect(compiled).toHaveLength(1);
-            expect(compiled[0].distance).toBeCloseTo(authored[0].distance, 6);
-            for (let axis = 0; axis < 3; axis++)
-                expect(compiled[0].point[axis]).toBeCloseTo(
-                    authored[0].point[axis],
+            expect(candidate.sceneRaycastHits).toHaveLength(
+                source.sceneRaycastHits.length,
+            );
+            for (let ray = 0; ray < source.sceneRaycastHits.length; ray++) {
+                const authored = source.sceneRaycastHits[ray];
+                const compiled = candidate.sceneRaycastHits[ray];
+                expect(authored).toHaveLength(1);
+                expect(compiled).toHaveLength(1);
+                expect(compiled[0].distance).toBeCloseTo(
+                    authored[0].distance,
                     6,
                 );
-            for (let axis = 0; axis < 2; axis++)
-                expect(compiled[0].uv[axis]).toBeCloseTo(
-                    authored[0].uv[axis],
-                    6,
-                );
-        }
-        expect(candidate.rangesRestored).toBe(true);
-        expect(candidate.sourceDisposals).toBe(0);
-        expect(parity.differentPixelRatio).toBeLessThan(0.001);
-        expect(parity.maxChannelError).toBeLessThanOrEqual(8);
-        await testInfo.attach('partial-span-draws-and-pixels', {
-            body: JSON.stringify({ source, candidate, parity, graphics }),
-            contentType: 'application/json',
+                for (let axis = 0; axis < 3; axis++)
+                    expect(compiled[0].point[axis]).toBeCloseTo(
+                        authored[0].point[axis],
+                        6,
+                    );
+                for (let axis = 0; axis < 2; axis++)
+                    expect(compiled[0].uv[axis]).toBeCloseTo(
+                        authored[0].uv[axis],
+                        6,
+                    );
+            }
+            expect(candidate.rangesRestored).toBe(true);
+            expect(candidate.sourceDisposals).toBe(0);
+            expect(parity.differentPixelRatio).toBeLessThan(0.001);
+            expect(parity.maxChannelError).toBeLessThanOrEqual(8);
+            await testInfo.attach('partial-span-draws-and-pixels', {
+                body: JSON.stringify({ source, candidate, parity, graphics }),
+                contentType: 'application/json',
+            });
+            await testInfo.attach('partial-span-authored', {
+                body: sourcePng,
+                contentType: 'image/png',
+            });
+            await testInfo.attach('partial-span-compiled', {
+                body: candidatePng,
+                contentType: 'image/png',
+            });
+            expect(errors).toEqual([]);
         });
-        await testInfo.attach('partial-span-authored', {
-            body: sourcePng,
-            contentType: 'image/png',
-        });
-        await testInfo.attach('partial-span-compiled', {
-            body: candidatePng,
-            contentType: 'image/png',
-        });
-        expect(errors).toEqual([]);
-    });
+    }
 }
 
 test('unsupported partial-range sources retain the original explicit merged path', async ({
