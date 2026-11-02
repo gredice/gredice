@@ -274,8 +274,51 @@ Nine metric/phase groups remain unavailable: script duration for the seven garde
 arrivals and GPU timing in the active/context-restored lifecycle windows. Their
 108 raw skip entries are preserved across captures and pairings. All available
 CPU/GPU, cold, switching, lifecycle, resource, cadence and content gates pass.
-Native rain/camera and layered-cache integration evidence is tracked separately.
-These are desktop measurements; physical-device/thermal clearance remains #4344.
+Fauna-heavy High draws are 589.2 / 589.1 in the authored control and
+564.2 / 564.1 in the shared-packet candidate, with common rigid fauna.
+
+### Native rain/camera and cache integration
+
+All 30 supplemental rain/camera runs pass their original producer and cadence
+gates. Both subjects retain 270 stacks, 297 blocks, three raised beds and identical
+resolved settings. Minimum delivery ratios are 0.995 at 30 fps and 0.945 at 60 fps,
+against the unchanged 0.85 minimum. Median submitted draws per rendered frame are:
+
+| Profile | Authored | Shared packets |
+| --- | ---: | ---: |
+| Low | 163.8 | 154.9 |
+| Medium | 166.9 | 158.2 |
+| High | 169.6 | 160.8 |
+| Automatic, standard | 166.9 | 158.8 |
+| Automatic, constrained | 169.3 | 156.9 |
+
+These descriptive live-work observations accompany the complete canonical relative
+clearance. Camera/population exposure can change triangle medians. The generic
+comparative CLI rejects this supplemental report schema's missing canonical
+inventory aliases; that invalid diagnostic is retained. Independent checks verify
+the original `profileGarden*` inventory and settings without rewriting reports.
+
+The first 15-run control failed its 60 fps gate while the real 60 Hz display was
+asleep and Chromium delivered 50 Hz. Those failures remain retained. A temporary
+display-wake assertion restored native 16.7 ms cadence, verified before the new
+30-run cohort with the same headless ANGLE/Metal arguments. Clock, frame-rate flag,
+quality, sample-window and threshold settings stayed unchanged.
+
+All 19 cache integration runs pass: cached depth on all five profiles, three High
+lifecycle/context-restoration runs, a sustained High cloudy soak, and five cloudy
+live/cache pairs. Cloudy GPU p95 medians fall from 17.69 to 6.91 ms; paired median
+ratio is 0.3974 and the worst pair is 0.4642. Submitted draws fall from 167.1 to
+132.5 and the triangle ratio is 0.5265. The existing cache image gates pass with
+maximum mismatch 0.6715% and P99 channel error 1. After 60.536 seconds of resource
+warmup, the 60.337-second soak has zero geometry, shader or texture growth.
+
+Raw reports, images, original-runtime trajectories, source guards, plans and all
+rejections are retained outside the worktree in
+`issue-4715-performance-evidence-2026-11-02.tar.gz`, SHA-256
+`6ce375334a817c8a1b729ac2c56ac7426e0a42899840bc724afd32f0869aec9e`.
+Independent verification checked all 4,471 regular/hard-linked file entries against
+the source manifest. These are desktop measurements; physical-device/thermal
+clearance remains #4344.
 
 ### Retained rejected candidates
 
