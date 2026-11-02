@@ -65,6 +65,45 @@ Accounts without that history continue through the existing retryable cleanup.
 - Vercel Blob, S3/R2, PostHog, OpenTelemetry, Redis, and external APIs should be called through existing helper packages or app-local wrappers.
 - Network failures should not corrupt local state.
 
+### Homepage featured-garden challenge recovery
+
+The WWW homepage keeps its public API request and three-second total budget.
+Only an unredirected HTML `403`/`429` with `x-vercel-mitigated: challenge`, no
+Vercel error header and no API handler trace/timing may recover via
+the server-only `getFeaturedPublicGardenSummaries` storage read. Application
+denials, Deployment Protection errors and other failures retain the empty
+landing fallback. No security bypass credentials or firewall changes are needed.
+
+Recovery rechecks current public/non-deleted visibility and selects only the
+carousel's public fields. It never caches or replays the finished response.
+WWW already has `POSTGRES_URL`; the shared reader also works without the
+optional Gredice Redis credentials. A cold read can exceed the remaining budget,
+in which case the landing fallback renders. The deadline stops waiting; it
+cannot cancel an already-started database read. Late failures stay handled.
+Recovered challenges log a warning with the API edge request ID. Failed local
+reads log only the error name, timing, phase and bounded API diagnostics.
+
+On 1 November 2026 at 12:06:12Z and 12:12:03Z, the API edge IDs
+`fra1::1793534772-Rdrm9dPL373QPJtoGJcKyT84RcJIbL9O` and
+`fra1::1793535123-qEmeA5vVs9HS1KvY1zc7ig1FOC3tdgQ8` returned challenge HTML
+without API timing or matching handler traces. This identifies an edge security
+challenge, separate from Deployment Protection. A read of
+`vercel.firewall_action.count`, filtered to the summary endpoint for
+12:00–12:15Z and grouped by `waf_action`, `waf_rule_id` and `rule_category`,
+identified exactly two challenges from `sys_dos_mitigation` in the
+`system_mitigation` category, one in each incident's five-minute bucket.
+These are automatic DDoS mitigations; ordinary request metrics omit them.
+The metric has no edge-request-ID dimension, so the correlation uses endpoint,
+time, action and count rather than a direct request-ID lookup. A local
+read-only production-database smoke with a simulated challenge returned ten
+current summaries in 1.4 seconds without Redis credentials; this is one sample,
+not a Vercel runtime latency guarantee.
+
+Run the targeted recovery regression with
+`pnpm --filter www test:landing-featured-gardens`. The existing storage regression
+`pnpm --filter @gredice/storage test:node featuredPublicGardenSummaries.node.spec.ts`
+checks visibility changes even when ranking invalidation is lost.
+
 ## Generated assets and models
 
 - Use existing scripts for generated game assets and model types.

@@ -1,7 +1,18 @@
 import assert from 'node:assert/strict';
-import test, { type TestContext } from 'node:test';
+import test, { mock, type TestContext } from 'node:test';
 import { setImmediate } from 'node:timers/promises';
 import { getLandingFeaturedGardens } from './getLandingFeaturedGardens';
+
+const storageFallback = {
+    async read(): Promise<ReturnType<typeof summary>[]> {
+        throw new Error('Unexpected storage fallback');
+    },
+};
+mock.module('@gredice/storage', {
+    namedExports: {
+        getFeaturedPublicGardenSummaries: () => storageFallback.read(),
+    },
+});
 
 function summary(id: number) {
     return {
@@ -335,4 +346,170 @@ test('keeps carousel fields and excludes unexpected scene/private payload fields
         }),
     );
     assert.deepEqual(await getLandingFeaturedGardens(), [item]);
+});
+
+function edgeChallenge(status = 403) {
+    return new Response('private challenge body', {
+        status,
+        headers: {
+            'content-type': 'text/html; charset=utf-8',
+            'x-vercel-mitigated': 'challenge',
+            'x-vercel-id': 'fra1::1793534772-Rdrm9dPL373QPJtoGJcKyT84RcJIbL9O',
+            'set-cookie': 'private-cookie=value',
+            'x-vercel-challenge-token': 'private-token',
+        },
+    });
+}
+
+for (const status of [403, 429]) {
+    test(`recovers a ${status} edge challenge using only current public summaries without another HTTP request`, async (t) => {
+        const items = Array.from({ length: 12 }, (_, index) =>
+            summary(12 - index),
+        );
+        const read = t.mock.method(storageFallback, 'read', async () =>
+            items.map((item) => ({
+                ...item,
+                garden: { ...item.garden, accountId: 'private-account' },
+                owner: item.owner
+                    ? { ...item.owner, email: 'private@example.com' }
+                    : null,
+                extra: 'private-scene',
+            })),
+        );
+        const response = edgeChallenge(status);
+        const { requests, timeout, warnings, errors } = mockRequests(
+            t,
+            () => response,
+        );
+        assert.deepEqual(await getLandingFeaturedGardens(), items.slice(0, 10));
+        assert.equal(requests.length, 1);
+        assert.equal(read.mock.callCount(), 1);
+        assert.equal(response.bodyUsed, false);
+        assert.deepEqual(
+            timeout.mock.calls.map(({ arguments: args }) => args),
+            [[3_000]],
+        );
+        assert.equal(errors.mock.callCount(), 0);
+        assert.equal(
+            warnings.mock.calls[0]?.arguments[0],
+            'Recovered featured gardens after edge challenge',
+        );
+        assert.partialDeepStrictEqual(warnings.mock.calls[0]?.arguments[1], {
+            status,
+            apiRequestId: 'fra1::1793534772-Rdrm9dPL373QPJtoGJcKyT84RcJIbL9O',
+            apiMitigation: 'challenge',
+            apiTraceMatched: false,
+        });
+        assert.doesNotMatch(JSON.stringify(warnings.mock.calls), /private/u);
+    });
+}
+
+for (const rejection of [
+    'deny',
+    'deployment-protection',
+    'unrecognized-error',
+    'handler',
+    'unmatched-handler-trace',
+    'handler-timing',
+    'json',
+    'redirect',
+    'unauthorized',
+    'server-error',
+]) {
+    test(`does not recover a ${rejection} rejection through storage`, async (t) => {
+        const read = t.mock.method(storageFallback, 'read', async () => [
+            summary(1),
+        ]);
+        const response = edgeChallenge(
+            rejection === 'unauthorized'
+                ? 401
+                : rejection === 'server-error'
+                  ? 503
+                  : 403,
+        );
+        if (rejection === 'deny')
+            response.headers.set('x-vercel-mitigated', 'deny');
+        if (rejection === 'deployment-protection')
+            response.headers.set(
+                'x-vercel-error',
+                'TRUSTED_SOURCES_ENVIRONMENT_MISMATCH',
+            );
+        if (rejection === 'unrecognized-error')
+            response.headers.set('x-vercel-error', 'private-unrecognized-code');
+        if (rejection === 'unmatched-handler-trace')
+            response.headers.set('x-gredice-featured-trace', 'other-trace');
+        if (rejection === 'handler-timing')
+            response.headers.set('server-timing', 'featured-summaries;dur=1.0');
+        if (rejection === 'json')
+            response.headers.set('content-type', 'application/json');
+        if (rejection === 'redirect')
+            t.mock.getter(response, 'redirected', () => true);
+        const { requests } = mockRequests(t, () => {
+            if (rejection === 'handler')
+                response.headers.set(
+                    'x-gredice-featured-trace',
+                    requests[0]?.traceId ?? '',
+                );
+            return response;
+        });
+        assert.deepEqual(await getLandingFeaturedGardens(), []);
+        assert.equal(requests.length, 1);
+        assert.equal(read.mock.callCount(), 0);
+        assert.equal(response.bodyUsed, false);
+    });
+}
+
+test('an empty current public read never replays an earlier successful recovery', async (t) => {
+    let items = [summary(1)];
+    const read = t.mock.method(storageFallback, 'read', async () => items);
+    mockRequests(t, () => edgeChallenge());
+    assert.deepEqual(await getLandingFeaturedGardens(), items);
+    items = [];
+    assert.deepEqual(await getLandingFeaturedGardens(), []);
+    assert.equal(read.mock.callCount(), 2);
+});
+
+test('a failed recovery preserves the landing fallback and sanitizes storage errors', async (t) => {
+    t.mock.method(storageFallback, 'read', async () => {
+        throw new Error('private connection string');
+    });
+    const { errors } = mockRequests(t, () => edgeChallenge());
+    assert.deepEqual(await getLandingFeaturedGardens(), []);
+    assert.partialDeepStrictEqual(errors.mock.calls[0]?.arguments[1], {
+        listPhase: 'storage-fallback',
+        errorName: 'Error',
+        timedOut: false,
+        apiMitigation: 'challenge',
+    });
+    assert.doesNotMatch(JSON.stringify(errors.mock.calls), /private/u);
+});
+
+test('recovery shares the original three-second deadline and handles late storage failure', async (t) => {
+    const pending = Promise.withResolvers<ReturnType<typeof summary>[]>();
+    const read = t.mock.method(storageFallback, 'read', () => pending.promise);
+    const { requests, errors } = mockRequests(t, async (_id, signal) => {
+        await delayedResponse(signal, 1_000, {});
+        return edgeChallenge();
+    });
+    let settled = false;
+    const result = getLandingFeaturedGardens().then((items) => {
+        settled = true;
+        return items;
+    });
+    await advanceTime(t, 1_000);
+    assert.equal(read.mock.callCount(), 1);
+    await advanceTime(t, 1_999);
+    assert.equal(settled, false);
+    await advanceTime(t, 1);
+    assert.deepEqual(await result, []);
+    assert.equal(requests.length, 1);
+    assert.partialDeepStrictEqual(errors.mock.calls[0]?.arguments[1], {
+        elapsedMs: 3_000,
+        listHeadersMs: 1_000,
+        listPhase: 'storage-fallback',
+        timedOut: true,
+    });
+    pending.reject(new Error('private late failure'));
+    await advanceTime(t);
+    assert.equal(errors.mock.callCount(), 1);
 });
