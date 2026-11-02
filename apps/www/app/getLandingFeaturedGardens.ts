@@ -1,4 +1,5 @@
 import { clientPublic } from '@gredice/client';
+import type { getFeaturedPublicGardenSummaries } from '@gredice/storage';
 import 'server-only';
 import {
     type LandingFeaturedGarden,
@@ -6,6 +7,44 @@ import {
 } from './landingGardenCarousel';
 
 const landingFeaturedGardensListTimeoutMs = 3_000;
+
+function selectLandingFeaturedGardens(
+    items: Awaited<ReturnType<typeof getFeaturedPublicGardenSummaries>>,
+): LandingFeaturedGarden[] {
+    return items.slice(0, landingFeaturedGardenLimit).map((item) => ({
+        garden: { id: item.garden.id, name: item.garden.name },
+        owner: item.owner
+            ? {
+                  publicId: item.owner.publicId,
+                  displayName: item.owner.displayName,
+                  avatarUrl: item.owner.avatarUrl,
+                  achievementCount: item.owner.achievementCount,
+              }
+            : null,
+        dayPreviewImageUrl: item.dayPreviewImageUrl,
+        nightPreviewImageUrl: item.nightPreviewImageUrl,
+    }));
+}
+
+async function readPublicSummariesWithinDeadline(signal: AbortSignal) {
+    signal.throwIfAborted();
+    const aborted = Promise.withResolvers<never>();
+    const onAbort = () => aborted.reject(signal.reason);
+    signal.addEventListener('abort', onAbort, { once: true });
+    try {
+        return await Promise.race([
+            import('@gredice/storage').then(
+                ({ getFeaturedPublicGardenSummaries }) => {
+                    signal.throwIfAborted();
+                    return getFeaturedPublicGardenSummaries();
+                },
+            ),
+            aborted.promise,
+        ]);
+    } finally {
+        signal.removeEventListener('abort', onAbort);
+    }
+}
 
 function featuredResponseDiagnostics(traceId: string, response?: Response) {
     const contentType = response?.headers
@@ -80,6 +119,34 @@ export async function getLandingFeaturedGardens(): Promise<
         listHeadersMs = Date.now() - startedAt;
         apiDiagnostics = featuredResponseDiagnostics(traceId, response);
         if (!response.ok) {
+            if (
+                [403, 429].includes(response.status) &&
+                apiDiagnostics.apiMitigation === 'challenge' &&
+                apiDiagnostics.apiContentType === 'text/html' &&
+                !response.headers.has('x-vercel-error') &&
+                !response.headers.has('x-gredice-featured-trace') &&
+                apiDiagnostics.apiTiming === null &&
+                !response.redirected
+            ) {
+                // Recover only this server-side public read. Reuse the API's
+                // current visibility gate; never replay a cached response or
+                // send credentials that bypass external security controls.
+                listPhase = 'storage-fallback';
+                const items =
+                    await readPublicSummariesWithinDeadline(listSignal);
+                console.warn(
+                    'Recovered featured gardens after edge challenge',
+                    {
+                        status: response.status,
+                        elapsedMs: Date.now() - startedAt,
+                        listHeadersMs,
+                        apiHost,
+                        ...apiDiagnostics,
+                        traceId,
+                    },
+                );
+                return selectLandingFeaturedGardens(items);
+            }
             // A status alone cannot identify an application, deployment
             // protection or edge rejection. Keep bounded metadata for
             // correlation; never log response bodies, cookies or bypass tokens.
@@ -108,22 +175,12 @@ export async function getLandingFeaturedGardens(): Promise<
             });
         }
         listPhase = 'complete';
-        return items.slice(0, landingFeaturedGardenLimit).map((item) => ({
-            garden: { id: item.garden.id, name: item.garden.name },
-            owner: item.owner
-                ? {
-                      publicId: item.owner.publicId,
-                      displayName: item.owner.displayName,
-                      avatarUrl: item.owner.avatarUrl,
-                      achievementCount: item.owner.achievementCount,
-                  }
-                : null,
-            dayPreviewImageUrl: item.dayPreviewImageUrl,
-            nightPreviewImageUrl: item.nightPreviewImageUrl,
-        }));
+        return selectLandingFeaturedGardens(items);
     } catch (error) {
         console.error('Failed to prepare featured gardens for landing', {
-            error,
+            ...(listPhase === 'storage-fallback'
+                ? { errorName: error instanceof Error ? error.name : 'Unknown' }
+                : { error }),
             elapsedMs: Date.now() - startedAt,
             listPhase,
             listHeadersMs,
