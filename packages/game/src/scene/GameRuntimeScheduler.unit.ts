@@ -2468,6 +2468,35 @@ describe('GameRuntimeScheduler semantic work', () => {
         assertWakeupClassificationConserved(snapshot);
     });
 
+    it('keeps deadline delivery scheduled when an unexpected-wakeup observer throws', () => {
+        const queue = new FakeRuntimeQueue();
+        queue.browserLongTimeoutDelays = true;
+        let observed = 0;
+        const { scheduler } = createScheduler({
+            queue,
+            options: {
+                onUnexpectedWakeup: () => {
+                    observed++;
+                    throw new Error('Diagnostic observer failed');
+                },
+            },
+        });
+        const delivered: number[] = [];
+        scheduler.scheduleDeadline('early-deadline', 100.75, ({ nowMs }) =>
+            delivered.push(nowMs),
+        );
+        assert.doesNotThrow(() => queue.runNext(100.5));
+        assert.equal(scheduler.getSnapshot().pendingCallbackDueAt, 100.75);
+        queue.runUntil(200);
+        assert.deepEqual(delivered, [101.5]);
+        assert.equal(observed, 1);
+        assert.equal(queue.pendingTaskCount, 0);
+        const snapshot = scheduler.getSnapshot();
+        assert.equal(snapshot.unexpectedNoWorkWakeupCount, 1);
+        assert.equal(snapshot.productiveWakeupCount, 1);
+        assertWakeupClassificationConserved(snapshot);
+    });
+
     it('chunks a deadline beyond the maximum browser timeout', () => {
         const maximumBrowserTimeoutMs = 2_147_483_647;
         const queue = new FakeRuntimeQueue();

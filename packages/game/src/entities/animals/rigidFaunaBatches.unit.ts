@@ -163,21 +163,30 @@ for (const change of [
     'raycast-callback',
 ]) {
     test(`rigid batches retain the authored ${change} fallback`, () => {
-        const { root, right } = rig();
-        if (change === 'transparent') right.material.transparent = true;
+        const { root, left, right } = rig();
+        if (change === 'transparent') {
+            left.material.transparent = true;
+            right.material.transparent = true;
+        }
         if (change === 'roughness') right.material.roughness = 0.2;
         if (change === 'mirror') right.scale.x = -1;
-        if (change === 'morph') right.geometry = right.geometry.clone();
-        if (change === 'morph')
-            right.geometry.morphAttributes.position = [
-                new Float32BufferAttribute(new Float32Array(72), 3),
-            ];
+        if (change === 'morph') {
+            for (const mesh of [left, right]) {
+                mesh.geometry = mesh.geometry.clone();
+                mesh.geometry.morphAttributes.position = [
+                    new Float32BufferAttribute(new Float32Array(72), 3),
+                ];
+            }
+        }
         if (change === 'partial') right.geometry = right.geometry.clone();
         if (change === 'partial') right.geometry.setDrawRange(0, 3);
         if (change === 'children') right.add(new Group());
         if (change === 'hidden') right.visible = false;
         if (change === 'render-order') right.renderOrder = 1;
-        if (change === 'shadow-caster') right.castShadow = true;
+        if (change === 'shadow-caster') {
+            left.castShadow = true;
+            right.castShadow = true;
+        }
         if (change === 'render-callback') right.onBeforeRender = () => {};
         if (change === 'after-render-callback') right.onAfterRender = () => {};
         if (change === 'raycast-callback') right.raycast = () => {};

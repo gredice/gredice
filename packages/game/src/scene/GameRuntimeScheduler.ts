@@ -1425,7 +1425,7 @@ export class GameRuntimeScheduler {
     ) {
         this.counters.unexpectedNoWorkWakeupCount += 1;
         if (!this.onUnexpectedWakeupEffect) return;
-        this.onUnexpectedWakeupEffect({
+        const event = {
             reason,
             nowMs: now,
             callbackDueAt: callback.dueAt,
@@ -1438,7 +1438,12 @@ export class GameRuntimeScheduler {
                 this.lastReconciledFrameReceiptGeneration,
             nextRenderTargetAt: this.nextRenderFrameTargetAt,
             snapshot: this.getSnapshot(),
-        });
+        };
+        try {
+            this.onUnexpectedWakeupEffect(event);
+        } catch {
+            // Optional diagnostics cannot interrupt deadline/frame reconciliation.
+        }
     }
 
     private handleScheduledCallback(id: number, displayTimestampMs?: number) {
