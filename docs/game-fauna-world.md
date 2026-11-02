@@ -337,3 +337,51 @@ scope; canonical production lifecycle captures prove real suspension scheduling.
 Per-species instanced skinning stays conditional on fauna-heavy profiles still
 showing draw pressure after CPU centralization and actor culling. It changes
 rendering architecture and needs its own measured justification.
+
+## Integrated fauna acceptance, 2026-11-02
+
+The complete canonical symmetric 2×2 comparison passes for rigid fauna batching:
+344 measured comparisons and 42 invariants, zero reproduced regressions,
+zero unresolved replications, and `diagnostic: false`. Each of the four bundles
+contains all 39 canonical runs. The public comparator uses its existing clocks,
+windows, scene/quality controls and numerical gates without partial, same-source
+or legacy-scheduler waivers. Early switching screenings remain in the reports;
+they did not reproduce under the unchanged confirmation contract.
+
+| Profile | Steady draws before, two bundle medians | After, two bundle medians |
+| --- | ---: | ---: |
+| Low | 281.3 / 283.9 | 239.8 / 240.2 |
+| Medium | 288.4 / 287.9 | 246.8 / 246.3 |
+| High | 284.7 / 285.1 | 244.1 / 244.2 |
+| Automatic standard | 287.9 / 287.9 | 246.8 / 246.8 |
+| Automatic constrained | 278.7 / 279.0 | 241.5 / 241.5 |
+| Fauna-heavy High | 599.1 / 599.2 | 564.2 / 564.1 |
+
+The current-renderer control is `62b0635eb9b42baeab6058aa90c51f2b0c057e2a`;
+the candidate and common profiler are
+`ca6627d9e5147d5dd19911c3253aca4f0915be80`. Both use Node 26.12.1,
+pnpm 12.16.1 and the same installed 30-workspace dependency graph,
+environment-file hashes and production assets. Native Chromium uses ANGLE Metal
+on an AC-powered Mac16,11. The later observer-exception guard changes only
+failure handling for optional diagnostics; its regression test preserves deadline
+delivery, counters and reconciliation. The measured rendering path is unchanged.
+
+The independent legacy witness covers all 17 species across six 24-second
+day/night/post-rain captures at 30/60 Hz: 40,934 actor samples, 257 decisions and
+1,286,523 joint samples. Root-position error is below `1e-12`; existing per-joint
+phase budgets and independent frozen-helper precision remain unchanged. Five
+resolved-profile paired pixel cases preserve articulated poses and projected
+shadows. Manual hidden replay and real canonical lifecycle evidence retain
+their separate scopes.
+
+The canonical lifecycle active/restored GPU metrics and seven switching
+ScriptDuration metrics remain equally unavailable in both subjects: nine metric
+groups, 27 sample identities and 108 availability entries across the four pairs.
+They are retained as unavailable; no measurement is invented. The native raw
+bundles, full comparisons, source guards, plans and trajectory reports are
+retained outside Playwright scratch output under
+`~/.local/state/gredice/issue-4715/2026-11-02/`.
+
+This clears fauna integration in #4720. The separate authored-material comparison
+still rejects first-fauna visibility latency and final-High GPU p95 in #4721;
+it does not clear #4715. Physical-device clearance remains separate in #4344.
