@@ -123,6 +123,23 @@ Hidden documents and offscreen canvases are still suspended by the runtime
 scheduler, which consumes the clock gap on resume. Fauna therefore never
 fast-forwards after a hidden period.
 
+
+### Shadow membership reporting
+
+The grounding-shadow registry tracks membership separately from frequent transform
+updates. Registrations, removals and overflow changes publish their structural
+counts with the current instance-buffer update; motion statistics keep their
+250 ms reporting interval. Simulation, shadow matrices and frame ownership retain
+their existing clocks. This prevents the garden-switch readiness check from waiting
+for stale species counts after the new buffer is already rendering.
+
+A real WebGL regression holds only its isolated reporting-test clock inside that
+interval. It requires matching first-submitted instance counts, triangles, matrices
+and published species through additions, removals and slot reuse, while motion-only
+statistics remain throttled. Before the correction, the positive two-instance draw
+still reported one species. Canonical performance captures continue using their
+original clocks, settle period, sample windows and numerical gates.
+
 ## Shared simulation and rendered poses
 
 Bee and Ladybug can batch opaque rigid siblings within explicitly named manual
