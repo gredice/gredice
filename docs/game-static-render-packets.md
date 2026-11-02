@@ -77,10 +77,38 @@ source-list identities so untouched aggregate chunks keep compiled geometry.
 A supported singleton whose original presentation is instanced renders one
 `InstancedMesh` with borrowed immutable geometry and its leased stock material.
 It never mounts a compiler hook, queues a job or allocates a merged buffer.
-Joining compatible contributors mounts compilation; returning to a singleton
-cancels pending work and releases the aggregate's owned geometry. Matrix updates
+Joining contributors with different geometry objects mounts compilation;
+returning to a singleton cancels pending work and releases the aggregate's owned
+geometry. Identical eligible geometry objects use native instancing instead. Matrix updates
 retain the original placement rebuild duration and transformed-instance counters;
 first mounts remain uncounted as before.
+
+
+### Identical geometry stays instanced
+
+An aggregate whose contributors borrow the same immutable geometry object keeps
+one native `InstancedMesh` presentation instead of baking repeated vertices.
+Every contributor must already use original instanced visibility, opt into source
+bounds, have a distinct visibility group and cover its complete unmorphed geometry.
+Equal vertex data in different geometry objects still uses compilation; there is
+no content hash, worker-residency cache or cross-root output cache.
+
+One immutable instance-matrix buffer contains the existing Float32 transforms in
+source order. The aggregate and source proxies bind that same GPU buffer at fixed
+source offsets. The pinned Three WebGL attribute/binding managers support the
+interleaved instanced buffer; normal source-relative CPU views preserve native
+`getMatrixAt`, bounds and raycasting. Camera motion changes draw counts, without
+rewriting or uploading matrices. Adjacent visible sources form one instance span;
+a hidden or empty source breaks it. Array cameras retain independent source draws.
+
+Main and shadow callbacks select their actual camera's span. The existing renderer
+guard also restores instance counts after nested or interrupted renders. Picking
+always tests only the proxy's authored instances, even during a coalesced draw;
+the all-visible aggregate does not raycast. Original source bounds and parent
+transforms remain unchanged. Disposal releases owned instance buffers and never
+borrowed geometry, materials or textures. A committed native packet advances the
+existing geometry revision and requests one owned presentation frame, preserving
+cache/shadow invalidation without mounting a compiler hook or transient fallback.
 
 The existing compiler copies source arrays and matrices for each dispatched
 job. It never transfers live GLTF buffers and has no worker source-ID protocol
@@ -173,12 +201,18 @@ mixed/all/none/opposite main and shadow views, unique whole-scene raycasts, nati
 buffer identities. Light-change/context-restoration receipts capture pixels in
 the actual submitted frame. No shader-warmup delay remains.
 
-The adjacent-range fixture uses opposite overlapping main/shadow views: each
+The adjacent-range fixtures exercise both distinct geometry objects through the
+compiler and shared geometry through native instancing. They use opposite
+overlapping main/shadow views: each
 sees two of three sources, with a different combined buffer span. It compares
-authored versus compiled native draws, triangles, pixels, and scene raycasts in
+authored versus packet native draws, triangles, pixels, and scene raycasts in
 Low, Medium, High, and Automatic. This is a deterministic Chromium WebGL semantic
 and submission witness; it does not establish a whole-game GPU-time or latency
-improvement. Run it with the rest of the material, weather, interaction, lifetime,
+improvement. Native readbacks additionally require exactly two instances with the
+correct fixed source offset, one draw and 24 triangles per enabled pass. A shared
+geometry admission control requires native shader instancing, zero compiler jobs,
+source geometry survival and matching pixels/picking after context restoration.
+The current complete material suite has 38 cases. Run it with the rest of the material, weather, interaction, lifetime,
 and context-restoration controls:
 
 ```bash
