@@ -39,7 +39,7 @@ jobs:
 
   changes:
     name: "Detect changes"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     permissions:
       pull-requests: read
       contents: read
@@ -304,7 +304,7 @@ jobs:
     name: "Validate plugins"
     needs: changes
     if: success() && needs.changes.outputs.plugin_package == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-node@v7.1.0
@@ -577,7 +577,7 @@ jobs:
 
   ci_filter_check:
     name: "CI - verify app package filters"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - uses: actions/checkout@v7.0.1
 
@@ -612,7 +612,7 @@ jobs:
         ci_filter_check,
       ]
     if: ${{ always() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - run: exit 1
         if: ${{ always() && (contains(needs.*.result, 'failure') ||

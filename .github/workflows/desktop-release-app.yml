@@ -33,7 +33,7 @@ permissions:
 jobs:
   resolve_version:
     name: "Resolve release version"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     timeout-minutes: 2
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -151,7 +151,7 @@ jobs:
   release:
     name: "Publish GitHub Release"
     needs: [resolve_version, build]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     timeout-minutes: 10
     steps:
       - name: 📥 Download DMG artifacts
