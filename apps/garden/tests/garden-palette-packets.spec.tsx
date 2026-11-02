@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import sharp from 'sharp';
+import { ActorShadowMembershipFixture } from '../../../packages/game/tests/ActorShadowMembershipFixture';
 import { GardenPacketLifetimeFixture } from '../../../packages/game/tests/GardenPacketLifetimeFixture';
 import { GardenPaletteAdmissionFixture } from '../../../packages/game/tests/GardenPaletteAdmissionFixture';
 import { GardenPaletteCullingFixture } from '../../../packages/game/tests/GardenPaletteCullingFixture';
@@ -14,6 +15,38 @@ import {
 async function pixels(png: Buffer) {
     return sharp(png).ensureAlpha().raw().toBuffer();
 }
+
+test('shadow membership reports match the first submitted buffer without unthrottling motion statistics', async ({
+    mount,
+}, testInfo) => {
+    const fixture = await mount(<ActorShadowMembershipFixture />);
+    const receipts = [];
+    for (let stage = 0; stage <= 5; stage++) {
+        if (stage)
+            await fixture.update(
+                <ActorShadowMembershipFixture stage={stage} />,
+            );
+        await expect(fixture).toHaveAttribute('data-ready', String(stage));
+        const result = JSON.parse(
+            (await fixture.getAttribute('data-result')) ?? '{}',
+        );
+        receipts.push(result);
+        expect(result.instances).toBe(stage === 0 || stage === 4 ? 1 : 2);
+        expect(result.calls).toBe(1);
+        expect(result.triangles).toBe(result.instances * 2);
+        expect(result.firstX).toBe(Math.min(stage, 2));
+        expect(result.species).toEqual(
+            stage === 0 || stage === 4 ? { cow: 1 } : { cow: 1, goat: 1 },
+        );
+        if (stage === 2) expect(result.updates).toBe(receipts[1].updates);
+        if (stage === 3)
+            expect(result.updates).toBeGreaterThan(receipts[2].updates);
+    }
+    await testInfo.attach('first-submitted-membership-and-motion-throttle', {
+        body: JSON.stringify(receipts),
+        contentType: 'application/json',
+    });
+});
 
 test('identical packet sources retain native pixels, picking and context restoration without compiler jobs', async ({
     mount,
