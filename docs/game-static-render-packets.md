@@ -77,10 +77,38 @@ source-list identities so untouched aggregate chunks keep compiled geometry.
 A supported singleton whose original presentation is instanced renders one
 `InstancedMesh` with borrowed immutable geometry and its leased stock material.
 It never mounts a compiler hook, queues a job or allocates a merged buffer.
-Joining compatible contributors mounts compilation; returning to a singleton
-cancels pending work and releases the aggregate's owned geometry. Matrix updates
+Joining contributors with different geometry objects mounts compilation;
+returning to a singleton cancels pending work and releases the aggregate's owned
+geometry. Identical eligible geometry objects use native instancing instead. Matrix updates
 retain the original placement rebuild duration and transformed-instance counters;
 first mounts remain uncounted as before.
+
+
+### Identical geometry stays instanced
+
+An aggregate whose contributors borrow the same immutable geometry object keeps
+one native `InstancedMesh` presentation instead of baking repeated vertices.
+Every contributor must already use original instanced visibility, opt into source
+bounds, have a distinct visibility group and cover its complete unmorphed geometry.
+Equal vertex data in different geometry objects still uses compilation; there is
+no content hash, worker-residency cache or cross-root output cache.
+
+One immutable instance-matrix buffer contains the existing Float32 transforms in
+source order. The aggregate and source proxies bind that same GPU buffer at fixed
+source offsets. The pinned Three WebGL attribute/binding managers support the
+interleaved instanced buffer; normal source-relative CPU views preserve native
+`getMatrixAt`, bounds and raycasting. Camera motion changes draw counts, without
+rewriting or uploading matrices. Adjacent visible sources form one instance span;
+a hidden or empty source breaks it. Array cameras retain independent source draws.
+
+Main and shadow callbacks select their actual camera's span. The existing renderer
+guard also restores instance counts after nested or interrupted renders. Picking
+always tests only the proxy's authored instances, even during a coalesced draw;
+the all-visible aggregate does not raycast. Original source bounds and parent
+transforms remain unchanged. Disposal releases owned instance buffers and never
+borrowed geometry, materials or textures. A committed native packet advances the
+existing geometry revision and requests one owned presentation frame, preserving
+cache/shadow invalidation without mounting a compiler hook or transient fallback.
 
 The existing compiler copies source arrays and matrices for each dispatched
 job. It never transfers live GLTF buffers and has no worker source-ID protocol
@@ -173,12 +201,18 @@ mixed/all/none/opposite main and shadow views, unique whole-scene raycasts, nati
 buffer identities. Light-change/context-restoration receipts capture pixels in
 the actual submitted frame. No shader-warmup delay remains.
 
-The adjacent-range fixture uses opposite overlapping main/shadow views: each
+The adjacent-range fixtures exercise both distinct geometry objects through the
+compiler and shared geometry through native instancing. They use opposite
+overlapping main/shadow views: each
 sees two of three sources, with a different combined buffer span. It compares
-authored versus compiled native draws, triangles, pixels, and scene raycasts in
+authored versus packet native draws, triangles, pixels, and scene raycasts in
 Low, Medium, High, and Automatic. This is a deterministic Chromium WebGL semantic
 and submission witness; it does not establish a whole-game GPU-time or latency
-improvement. Run it with the rest of the material, weather, interaction, lifetime,
+improvement. Native readbacks additionally require exactly two instances with the
+correct fixed source offset, one draw and 24 triangles per enabled pass. A shared
+geometry admission control requires native shader instancing, zero compiler jobs,
+source geometry survival and matching pixels/picking after context restoration.
+The current complete material suite has 38 cases. Run it with the rest of the material, weather, interaction, lifetime,
 and context-restoration controls:
 
 ```bash
@@ -212,6 +246,90 @@ production guarantee that every render interval is 16 ms.
 
 ## Performance acceptance
 
+
+### Integrated canonical acceptance (2026-11-02)
+
+Candidate `a31175bfdbfd9c1d23810e993d8b2b3853b5a68c` and authored-material
+control `ecadc8ff576fd274598051dfac5f7f1811d9ea73` pass the complete symmetric
+2x2 comparison: all 344 metrics and 42 invariants, with zero screening,
+reproduced or unresolved failures. Each of the four independent bundles contains
+all 39 canonical runs. The control differs only by the null packet provider;
+rigid fauna batching and current shadow-membership reporting are common to both.
+
+The canonical profiler, quality settings, content, clocks, five-second warmup and
+sample windows, and numerical gates are unchanged. Both subjects use the same
+30-workspace installed graph, Node 26.12.1, pnpm 12.16.1 and Chromium
+151.0.7922.34 with native ANGLE/Metal on Apple M4 Pro. Per-profile steady native
+draw medians from the two independent bundles are:
+
+| Resolved profile | Authored material draws | Shared packet draws |
+| --- | ---: | ---: |
+| Low | 249.7 / 249.3 | 240.2 / 240.3 |
+| Medium | 255.9 / 254.6 | 246.9 / 246.3 |
+| High | 253.2 / 253.4 | 244.2 / 244.4 |
+| Automatic, standard classification | 256.4 / 256.4 | 247.4 / 246.9 |
+| Automatic, constrained classification | 250.2 / 250.5 | 241.2 / 241.5 |
+
+Nine metric/phase groups remain unavailable: script duration for the seven garden
+arrivals and GPU timing in the active/context-restored lifecycle windows. Their
+108 raw skip entries are preserved across captures and pairings. All available
+CPU/GPU, cold, switching, lifecycle, resource, cadence and content gates pass.
+Fauna-heavy High draws are 589.2 / 589.1 in the authored control and
+564.2 / 564.1 in the shared-packet candidate, with common rigid fauna.
+
+### Native rain/camera and cache integration
+
+All 30 supplemental rain/camera runs pass their original producer and cadence
+gates. Both subjects retain 270 stacks, 297 blocks, three raised beds and identical
+resolved settings. Minimum delivery ratios are 0.995 at 30 fps and 0.945 at 60 fps,
+against the unchanged 0.85 minimum. Median submitted draws per rendered frame are:
+
+| Profile | Authored | Shared packets |
+| --- | ---: | ---: |
+| Low | 163.8 | 154.9 |
+| Medium | 166.9 | 158.2 |
+| High | 169.6 | 160.8 |
+| Automatic, standard | 166.9 | 158.8 |
+| Automatic, constrained | 169.3 | 156.9 |
+
+These descriptive live-work observations accompany the complete canonical relative
+clearance. Camera/population exposure can change triangle medians. The generic
+comparative CLI rejects this supplemental report schema's missing canonical
+inventory aliases; that invalid diagnostic is retained. Independent checks verify
+the original `profileGarden*` inventory and settings without rewriting reports.
+
+The first 15-run control failed its 60 fps gate while the real 60 Hz display was
+asleep and Chromium delivered 50 Hz. Those failures remain retained. A temporary
+display-wake assertion restored native 16.7 ms cadence, verified before the new
+30-run cohort with the same headless ANGLE/Metal arguments. Clock, frame-rate flag,
+quality, sample-window and threshold settings stayed unchanged.
+
+All 19 cache integration runs pass: cached depth on all five profiles, three High
+lifecycle/context-restoration runs, a sustained High cloudy soak, and five cloudy
+live/cache pairs. Cloudy GPU p95 medians fall from 17.69 to 6.91 ms; paired median
+ratio is 0.3974 and the worst pair is 0.4642. Submitted draws fall from 167.1 to
+132.5 and the triangle ratio is 0.5265. The existing cache image gates pass with
+maximum mismatch 0.6715% and P99 channel error 1. After 60.536 seconds of resource
+warmup, the 60.337-second soak has zero geometry, shader or texture growth.
+
+Raw reports, images, original-runtime trajectories, source guards, plans and all
+rejections are retained outside the worktree in
+`issue-4715-performance-evidence-2026-11-02.tar.gz`, SHA-256
+`6ce375334a817c8a1b729ac2c56ac7426e0a42899840bc724afd32f0869aec9e`.
+Independent verification checked all 4,471 regular/hard-linked file entries against
+the source manifest. These are desktop measurements; physical-device/thermal
+clearance remains #4344.
+
+### Retained rejected candidates
+
+The prior integrated material cohort reproduced visible-switch latency and a GPU
+tail regression. The native-instancing cohort then passed 343/344 relative metrics
+and all 42 invariants but reproduced fauna-switch settled latency. Both rejected
+cohorts remain intact. Registry, metadata and native-shadow submission traces
+identified the stale membership-reporting interval; the submitted-buffer regression
+fails before the correction and passes afterward. The accepted cohort above is a
+fresh complete comparison after that common source correction.
+
 The stock candidate `f191ad05` passed all 39 absolute/comparability scenarios but
 failed original-cost admission with 24 binding relative exceptions: 13 geometry
 rows and 11 switch/cold rows. Exact canonical inventories reproduced the geometry
@@ -223,8 +341,8 @@ all 39 absolute/comparability scenarios and 343 of 344 original-cost metrics wit
 all 42 invariants, but cold garden-switch canvas readiness remained rejected:
 483 to 610 ms exceeded both unchanged relative limits. The later signed-empty
 placement metadata/build accounting repair and the prospective input control
-have current semantic proof; matched native admission remains pending. Neither
-change is claimed to repair the retained cold rejection.
+had semantic proof while matched native admission remained pending at that point.
+Those original cold-rejection artifacts remain retained.
 
 The earlier custom-PBR palette and async-warmup candidate `a62d2277` is rejected:
 its full canonical matrix has a retained telemetry 500 failure and 18 binding
