@@ -246,6 +246,47 @@ production guarantee that every render interval is 16 ms.
 
 ## Performance acceptance
 
+
+### Integrated canonical acceptance (2026-11-02)
+
+Candidate `a31175bfdbfd9c1d23810e993d8b2b3853b5a68c` and authored-material
+control `ecadc8ff576fd274598051dfac5f7f1811d9ea73` pass the complete symmetric
+2x2 comparison: all 344 metrics and 42 invariants, with zero screening,
+reproduced or unresolved failures. Each of the four independent bundles contains
+all 39 canonical runs. The control differs only by the null packet provider;
+rigid fauna batching and current shadow-membership reporting are common to both.
+
+The canonical profiler, quality settings, content, clocks, five-second warmup and
+sample windows, and numerical gates are unchanged. Both subjects use the same
+30-workspace installed graph, Node 26.12.1, pnpm 12.16.1 and Chromium
+151.0.7922.34 with native ANGLE/Metal on Apple M4 Pro. Per-profile steady native
+draw medians from the two independent bundles are:
+
+| Resolved profile | Authored material draws | Shared packet draws |
+| --- | ---: | ---: |
+| Low | 249.7 / 249.3 | 240.2 / 240.3 |
+| Medium | 255.9 / 254.6 | 246.9 / 246.3 |
+| High | 253.2 / 253.4 | 244.2 / 244.4 |
+| Automatic, standard classification | 256.4 / 256.4 | 247.4 / 246.9 |
+| Automatic, constrained classification | 250.2 / 250.5 | 241.2 / 241.5 |
+
+Nine metric/phase groups remain unavailable: script duration for the seven garden
+arrivals and GPU timing in the active/context-restored lifecycle windows. Their
+108 raw skip entries are preserved across captures and pairings. All available
+CPU/GPU, cold, switching, lifecycle, resource, cadence and content gates pass.
+Native rain/camera and layered-cache integration evidence is tracked separately.
+These are desktop measurements; physical-device/thermal clearance remains #4344.
+
+### Retained rejected candidates
+
+The prior integrated material cohort reproduced visible-switch latency and a GPU
+tail regression. The native-instancing cohort then passed 343/344 relative metrics
+and all 42 invariants but reproduced fauna-switch settled latency. Both rejected
+cohorts remain intact. Registry, metadata and native-shadow submission traces
+identified the stale membership-reporting interval; the submitted-buffer regression
+fails before the correction and passes afterward. The accepted cohort above is a
+fresh complete comparison after that common source correction.
+
 The stock candidate `f191ad05` passed all 39 absolute/comparability scenarios but
 failed original-cost admission with 24 binding relative exceptions: 13 geometry
 rows and 11 switch/cold rows. Exact canonical inventories reproduced the geometry
@@ -257,8 +298,8 @@ all 39 absolute/comparability scenarios and 343 of 344 original-cost metrics wit
 all 42 invariants, but cold garden-switch canvas readiness remained rejected:
 483 to 610 ms exceeded both unchanged relative limits. The later signed-empty
 placement metadata/build accounting repair and the prospective input control
-have current semantic proof; matched native admission remains pending. Neither
-change is claimed to repair the retained cold rejection.
+had semantic proof while matched native admission remained pending at that point.
+Those original cold-rejection artifacts remain retained.
 
 The earlier custom-PBR palette and async-warmup candidate `a62d2277` is rejected:
 its full canonical matrix has a retained telemetry 500 failure and 18 binding
