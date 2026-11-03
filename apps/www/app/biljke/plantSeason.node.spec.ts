@@ -62,11 +62,19 @@ const kale = plant('Kelj pupčar', {
 });
 const horseradish = plant('Hren', { sowing: [{ start: 10, end: 11 }] }, false);
 
-test('sowing months follow the "Vrijeme za sijanje" rule for every month', () => {
+test('sowing months match the calendar bars, including mid-month starts', () => {
     assert.equal(isPlantSowableInMonth(garlic, 11), true);
     assert.equal(isPlantSowableInMonth(garlic, 5), false);
     assert.equal(isPlantSowableInMonth(tomato, 3), true);
     assert.equal(isPlantSowableInMonth(tomato, 7), false);
+    const midMarch = plant('Bosiljak', { sowing: [{ start: 3.5, end: 5 }] });
+    assert.equal(isPlantSowableInMonth(midMarch, 2), false);
+    assert.equal(isPlantSowableInMonth(midMarch, 3), true);
+    assert.equal(isPlantSowableInMonth(midMarch, 5), true);
+    assert.equal(isPlantSowableInMonth(midMarch, 6), false);
+    const overWinter = plant('Špinat', { sowing: [{ start: 11, end: 1 }] });
+    assert.equal(isPlantSowableInMonth(overWinter, 12), true);
+    assert.equal(isPlantSowableInMonth(overWinter, 1), true);
 });
 
 test('harvest months include windows that wrap past December', () => {

@@ -23,7 +23,7 @@ export function PlantCardFacts({
         growthMin && growthMax
             ? `${growthMin}–${growthMax} d`
             : growthMin || growthMax
-              ? `${growthMin ?? growthMax} d`
+              ? `${growthMin || growthMax} d`
               : '—';
 
     return (

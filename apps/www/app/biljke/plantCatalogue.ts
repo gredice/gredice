@@ -108,10 +108,16 @@ export function cataloguePlantMatchesSearch(
     );
 }
 
+// One collator for every sort; localeCompare with a locale can build one per call.
+const cataloguePlantNameCollator = new Intl.Collator('hr');
+
 /** Croatian collation keeps Č, Ć, Đ, Š and Ž after their base letters. */
 export function compareCataloguePlantNames(
     a: { information: { name: string } },
     b: { information: { name: string } },
 ) {
-    return a.information.name.localeCompare(b.information.name, 'hr');
+    return cataloguePlantNameCollator.compare(
+        a.information.name,
+        b.information.name,
+    );
 }
