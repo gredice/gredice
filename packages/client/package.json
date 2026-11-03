@@ -20,7 +20,7 @@
         "@gredice/storage": "workspace:*"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.6.3",
+        "@biomejs/biome": "2.6.4",
         "@types/node": "26.6.6",
         "api": "workspace:*",
         "hono": "4.13.14",
