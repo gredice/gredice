@@ -243,12 +243,19 @@ export function buildRegionalCalendar(
         rows: crops.flatMap((crop) => crop.rows),
         ready:
             crops.length === regionalCalendarPilotSlugs.length &&
-            crops.every(
-                (crop) =>
-                    crop.status === 'reviewed' &&
-                    crop.rows.some((row) => row.ranges.length > 0),
-            ),
+            crops.every(isRegionalCalendarCropReady),
     };
+}
+
+/** A crop counts towards readiness only with a current review and a reviewed period. */
+export function isRegionalCalendarCropReady(crop: {
+    status: RegionalCalendarStatus;
+    rows: readonly { ranges: readonly unknown[] }[];
+}) {
+    return (
+        crop.status === 'reviewed' &&
+        crop.rows.some((row) => row.ranges.length > 0)
+    );
 }
 
 export type RegionalCalendarCrop = ReturnType<

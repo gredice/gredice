@@ -45,9 +45,13 @@ import {
 } from '../../lib/plants/getRegionalCalendarData';
 import {
     filterRegionalCalendarRows,
+    isRegionalCalendarCropReady,
     type RegionalCalendarCrop,
 } from '../../lib/plants/regionalCalendar';
-import { regionalCalendarRegion } from '../../lib/plants/regionalCalendarReviews';
+import {
+    regionalCalendarPilotSlugs,
+    regionalCalendarRegion,
+} from '../../lib/plants/regionalCalendarReviews';
 import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
 
@@ -284,8 +288,8 @@ export default async function SowingCalendarPage({
             month: 'numeric',
         }).format(new Date()),
     );
-    const reviewedCount = calendar.crops.filter(
-        (crop) => crop.status === 'reviewed',
+    const readyCropCount = calendar.crops.filter(
+        isRegionalCalendarCropReady,
     ).length;
 
     return (
@@ -452,10 +456,11 @@ export default async function SowingCalendarPage({
                                     Regionalna provjera kalendara još nije
                                     dovršena
                                 </strong>{' '}
-                                ({reviewedCount} od {calendar.crops.length}{' '}
-                                kultura). Za biljke bez aktualne provjere
-                                uzgajivača termini ostaju nenavedeni. Dostupnost
-                                za narudžbu možeš provjeriti zasebno u nastavku.
+                                ({readyCropCount} od{' '}
+                                {regionalCalendarPilotSlugs.length} kultura). Za
+                                biljke bez aktualne provjere uzgajivača termini
+                                ostaju nenavedeni. Dostupnost za narudžbu možeš
+                                provjeriti zasebno u nastavku.
                             </p>
                         </Alert>
                     )}
