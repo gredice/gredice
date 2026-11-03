@@ -2,13 +2,14 @@
 
 import { Popover as PopoverPrimitive } from '@base-ui/react/popover';
 import type { HTMLAttributes, ReactNode } from 'react';
-import { isValidElement, useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 import type {
     UiAlign,
     UiCollisionPadding,
     UiSide,
     UiVirtualElementRef,
 } from '../lib/primitiveTypes';
+import { getTriggerRender } from '../lib/triggerRender';
 import { cx } from '../utils';
 
 function getCollisionBoundary(
@@ -94,7 +95,7 @@ export function Popper({
     const resolvedSideOffset = sideOffset ?? 4;
     const resolvedAlignOffset =
         alignOffset ?? (align === 'center' ? 0 : align === 'start' ? -4 : 4);
-    const triggerRender = isValidElement(trigger) ? trigger : undefined;
+    const triggerRender = getTriggerRender(trigger);
     const [modalPortalContainer, setModalPortalContainer] =
         useState<HTMLElement>();
     const registerTriggerElement = useCallback(
