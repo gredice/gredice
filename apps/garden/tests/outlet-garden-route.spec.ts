@@ -555,7 +555,19 @@ async function expectOutletCanvasToFillScene(page: Page) {
                         Math.abs(canvasBounds.bottom - mainBounds.bottom) <=
                             edgeTolerance;
 
-                    return fillsViewport && fillsScene;
+                    if (fillsViewport && fillsScene) {
+                        return true;
+                    }
+
+                    return {
+                        viewport: {
+                            width: window.innerWidth,
+                            height: window.innerHeight,
+                        },
+                        root: rootBounds.toJSON(),
+                        scene: mainBounds.toJSON(),
+                        canvas: canvasBounds.toJSON(),
+                    };
                 })
                 .catch(() => false);
         })
