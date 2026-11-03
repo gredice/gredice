@@ -27,6 +27,8 @@ import { KnownPages } from '../../../src/KnownPages';
 import { BlockAttributeCards } from './BlockAttributeCards';
 import { BlocksList } from './BlocksList';
 
+const pageCategory = 'Vrtni blok';
+
 export const revalidate = 43200; // 12 hours
 
 export async function generateMetadata(
@@ -43,7 +45,7 @@ export async function generateMetadata(
         title: blockPageTitle(block),
         description: blockPageDescription(block),
         path: KnownPages.Block(getBlockRouteAlias(block)),
-        category: 'Vrtni blok',
+        category: pageCategory,
         imageUrl: block.image?.cover?.url,
         imageAlt: `Prikaz bloka ${block.information.label}`,
     });
@@ -85,6 +87,7 @@ export default async function BlockPage(props: PageProps<'/blokovi/[alias]'>) {
                                 height={172}
                             />
                         }
+                        tagline={pageCategory}
                         header={entity.information.label}
                         subHeader={entity.information.shortDescription}
                     >

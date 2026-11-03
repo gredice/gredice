@@ -55,6 +55,8 @@ import {
 import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
 
+const pageCategory = 'Planiranje vrta';
+
 const activitySteps = {
     propagating: {
         icon: GameSeedlingIcon,
@@ -256,7 +258,7 @@ export async function generateMetadata({
         description:
             'Planiraj sjetvu, presađivanje i berbu povrća po mjesecima. Kalendar za kontinentalnu Hrvatsku uz objašnjenja sorti, uvjeta uzgoja i sezone.',
         path: KnownPages.SowingCalendar,
-        category: 'Planiranje vrta',
+        category: pageCategory,
         robots: {
             index: calendar.ready && !Object.keys(params).length,
             follow: true,
@@ -303,6 +305,7 @@ export default async function SowingCalendarPage({
                         ]}
                     />
                     <PageHeader
+                        tagline={pageCategory}
                         header="Kalendar sjetve i sadnje za kontinentalnu Hrvatsku"
                         subHeader="Što i kada planirati u vrtu: sjetva, presađivanje i berba po mjesecima, uz objašnjenje svake radnje."
                         visual={

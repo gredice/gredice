@@ -1,12 +1,15 @@
 import type { Route } from 'next';
+import type { PlantSeasonActivity } from './plantSeason';
 
 export function plantArchivePath({
+    activity = 'sijanje',
+    month = null,
     search,
-    seedTimeOnly,
     view,
 }: {
+    activity?: PlantSeasonActivity;
+    month?: number | null;
     search: string;
-    seedTimeOnly: boolean;
     view: 'kalendar' | 'popis';
 }): Route {
     const params = new URLSearchParams();
@@ -16,8 +19,11 @@ export function plantArchivePath({
     if (search) {
         params.set('pretraga', search);
     }
-    if (seedTimeOnly) {
-        params.set('vrijemeZaSijanje', '1');
+    if (month) {
+        params.set('mjesec', month.toString());
+    }
+    if (activity === 'berba') {
+        params.set('aktivnost', activity);
     }
 
     const query = params.toString();

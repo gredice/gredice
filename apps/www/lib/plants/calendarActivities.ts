@@ -60,3 +60,19 @@ export const calendarMonthShortNames = [
     'Stu',
     'Pro',
 ];
+
+/** Locative forms for phrases such as "Sijanje u studenom". */
+export const calendarMonthLocativeNames = [
+    'siječnju',
+    'veljači',
+    'ožujku',
+    'travnju',
+    'svibnju',
+    'lipnju',
+    'srpnju',
+    'kolovozu',
+    'rujnu',
+    'listopadu',
+    'studenom',
+    'prosincu',
+];

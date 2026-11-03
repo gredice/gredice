@@ -5,11 +5,11 @@ import { Card, CardOverflow } from '../../components/shared/Card';
 import { PlantsCalendar } from './PlantsCalendar';
 import { PlantsGallery } from './PlantsGallery';
 import type { PlantCatalogueItem } from './plantCatalogue';
+import type { PlantArchiveFilterDefaults } from './usePlantArchiveFilters';
 
 export function PlantsCatalogue(props: {
+    filters: PlantArchiveFilterDefaults;
     plants: PlantCatalogueItem[];
-    initialSearch: string;
-    initialSeedTimeFilter: string;
 }) {
     return (
         <>

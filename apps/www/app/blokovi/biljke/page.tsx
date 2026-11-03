@@ -8,13 +8,15 @@ import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
 import { KnownPages } from '../../../src/KnownPages';
 import { PlantBlockGallery } from '../PlantBlockGallery';
 
+const pageCategory = '3D prikaz biljaka';
+
 export const revalidate = 43200; // 12 hours
 
 export const metadata: Metadata = createPublicMetadata({
     title: 'Biljke - 3D prikaz',
     description: 'Pregledaj kako biljke rastu u 3D prikazu.',
     path: KnownPages.BlockPlants,
-    category: '3D prikaz biljaka',
+    category: pageCategory,
 });
 
 export default async function BlockPlantsPage() {
@@ -23,6 +25,7 @@ export default async function BlockPlantsPage() {
         <Stack>
             <PageHeader
                 padded
+                tagline={pageCategory}
                 header="Biljke"
                 subHeader="Pregledaj kako biljke rastu u 3D prikazu."
             >

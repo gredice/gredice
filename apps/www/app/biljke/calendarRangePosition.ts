@@ -93,3 +93,53 @@ export function getCalendarRangePosition(
         right: isEnd ? `${Math.min(75, (1 - maxEndFraction) * 100)}%` : '0px',
     };
 }
+
+export type CalendarRangeSegment = {
+    /** Offset from January 1st as a fraction of the year (0–1). */
+    start: number;
+    /** Width as a fraction of the year (0–1). */
+    width: number;
+};
+
+/**
+ * Year-track segments for one activity, using the same month boundaries as
+ * the month-cell calendar; ranges that wrap past December split in two.
+ */
+export function getCalendarRangeSegments(
+    ranges: readonly CalendarRangeInput[] | undefined,
+): CalendarRangeSegment[] {
+    const segments: CalendarRangeSegment[] = [];
+    const push = (segment: CalendarRangeSegment) => {
+        // Directory data sometimes repeats a window; draw it once.
+        if (
+            !segments.some(
+                ({ start, width }) =>
+                    start === segment.start && width === segment.width,
+            )
+        ) {
+            segments.push(segment);
+        }
+    };
+    for (const range of ranges ?? []) {
+        const normalized = normalizeRange(range);
+        if (!normalized) {
+            continue;
+        }
+
+        const start =
+            (normalized.start.month - 1 + normalized.start.fraction) / 12;
+        const end =
+            (normalized.end.month -
+                1 +
+                Math.max(0.25, normalized.end.fraction)) /
+            12;
+        if (normalized.start.month <= normalized.end.month) {
+            push({ start, width: Math.max(0, end - start) });
+        } else {
+            push({ start, width: 1 - start });
+            push({ start: 0, width: end });
+        }
+    }
+
+    return segments;
+}

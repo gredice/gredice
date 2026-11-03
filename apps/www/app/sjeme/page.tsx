@@ -14,6 +14,7 @@ import { seedPrimaryImageUrl } from './seedPresentation';
 const pageTitle = 'Sjeme';
 const pageDescription =
     'Pregledaj sva evidentirana pakiranja sjemena i pretraži ih prema nazivu, biljci, sorti, brendu, podrijetlu ili barkodu.';
+const pageCategory = 'Katalog sjemena';
 
 export const revalidate = 3600;
 
@@ -21,7 +22,7 @@ export const metadata: Metadata = createPublicMetadata({
     title: pageTitle,
     description: pageDescription,
     path: KnownPages.Seeds,
-    category: 'Katalog sjemena',
+    category: pageCategory,
     robots: {
         index: true,
         follow: true,
@@ -78,7 +79,12 @@ export default async function SeedsPage({ searchParams }: PageProps<'/sjeme'>) {
                     ],
                 }}
             />
-            <PageHeader header={pageTitle} subHeader={pageDescription} padded>
+            <PageHeader
+                tagline={pageCategory}
+                header={pageTitle}
+                subHeader={pageDescription}
+                padded
+            >
                 <div className="flex w-full flex-col items-start gap-3 md:items-end">
                     <NavigatingButton
                         href={KnownPages.SeedBrands}

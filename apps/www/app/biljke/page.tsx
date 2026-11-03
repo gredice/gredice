@@ -1,13 +1,10 @@
 import { orderBy } from '@gredice/js/arrays';
+import { Card } from '@gredice/ui/Card';
 import { PageHeader } from '@gredice/ui/PageHeader';
-import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Tabs } from '@gredice/ui/Tabs';
-import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { Suspense } from 'react';
-import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { PageFilterInputNoSSR } from '../../components/shared/PageFilterInputNoSSR';
 import { StructuredDataScript } from '../../components/shared/seo/StructuredDataScript';
 import { getPlantSortsData } from '../../lib/plants/getPlantSortsData';
@@ -15,19 +12,28 @@ import { getPlantsData } from '../../lib/plants/getPlantsData';
 import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
 import { publicHtmlGrowthFixture } from '../../tests/publicHtmlGrowthFixture';
-import { CalendarInfoChip } from './CalendarInfoChip';
+import { PlantsActiveFilters } from './PlantsActiveFilters';
+import { PlantsArchiveLinks } from './PlantsArchiveLinks';
 import { PlantsCatalogue } from './PlantsCatalogue';
-import { PlantsSeedTimeFilterToggle } from './PlantsSeedTimeFilterToggle';
+import { PlantsMonthChart } from './PlantsMonthChart';
+import { PlantsSeasonPanel } from './PlantsSeasonPanel';
 import { PlantsViewTabs } from './PlantsViewTabs';
-import { toPlantCatalogue } from './plantCatalogue';
+import { compareCataloguePlantNames, toPlantCatalogue } from './plantCatalogue';
+import { parsePlantArchiveMonth, plantArchiveResultsId } from './plantSeason';
+
+const pageCategory = 'Katalog biljaka';
 
 export const metadata: Metadata = createPublicMetadata({
     title: 'Biljke',
     description:
         'Za tebe smo pripremili opširnu listu biljaka koje možeš pronaći u našem asortimanu.',
     path: KnownPages.Plants,
-    category: 'Katalog biljaka',
+    category: pageCategory,
 });
+
+function firstParam(value: string | string[] | undefined) {
+    return Array.isArray(value) ? (value[0] ?? '') : (value ?? '');
+}
 
 export default async function PlantsPage({
     searchParams,
@@ -35,27 +41,30 @@ export default async function PlantsPage({
     const params = await searchParams;
     const viewParam = params.pregled;
     const view = Array.isArray(viewParam) ? viewParam[0] : viewParam;
-    const search = Array.isArray(params.pretraga)
-        ? (params.pretraga[0] ?? '')
-        : (params.pretraga ?? '');
-    const seedTimeFilter = params.vrijemeZaSijanje;
-    const seedTimeFilterValue = Array.isArray(seedTimeFilter)
-        ? (seedTimeFilter[0] ?? '')
-        : (seedTimeFilter ?? '');
-    const isSeedTimeFilterEnabled = seedTimeFilterValue === '1';
+    const search = firstParam(params.pretraga);
+    const seedTimeFilterValue = firstParam(params.vrijemeZaSijanje);
+    const monthValue = firstParam(params.mjesec);
+    const filters = {
+        currentMonth: new Date().getMonth() + 1,
+        initialActivity: firstParam(params.aktivnost),
+        initialMonth: monthValue,
+        initialSearch: search,
+        initialSeedTimeFilter: seedTimeFilterValue,
+    };
     const [entities, sorts] = await Promise.all([
         getPlantsData(),
         getPlantSortsData(),
     ]);
-    const isCanonicalView = !search && !isSeedTimeFilterEnabled;
+    const isCanonicalView =
+        !search &&
+        seedTimeFilterValue !== '1' &&
+        parsePlantArchiveMonth(monthValue) === null;
     const catalogue = toPlantCatalogue(entities, sorts);
     const plants =
         process.env.GREDICE_PLAYWRIGHT_CATALOGUE_GROWTH_FIXTURE === 'true'
             ? publicHtmlGrowthFixture(catalogue)
             : catalogue;
-    const sortedEntities = orderBy(plants, (a, b) =>
-        a.information.name.localeCompare(b.information.name),
-    );
+    const sortedEntities = orderBy(plants, compareCataloguePlantNames);
     return (
         <Stack>
             {isCanonicalView && (
@@ -78,67 +87,51 @@ export default async function PlantsPage({
                     }}
                 />
             )}
-            <PageHeader
-                padded
-                header="Biljke"
-                subHeader="Za tebe smo pripremili opširnu listu biljaka koje možeš pronaći u našem asortimanu."
-            >
-                <Suspense>
-                    <PageFilterInputNoSSR
-                        searchParamName="pretraga"
-                        fieldName="plant-search"
-                        initialValue={search}
-                        className="lg:flex items-start justify-end"
-                    />
-                </Suspense>
-            </PageHeader>
-            <Tabs value={view} defaultValue="popis" className="w-full">
-                <div className="mt-2 flex flex-col gap-2 md:flex-row md:items-center">
-                    <PlantsViewTabs
-                        search={search}
-                        seedTimeOnly={isSeedTimeFilterEnabled}
-                    />
-                    {view === 'kalendar' && <CalendarInfoChip />}
-                    <div className="flex flex-col gap-2 md:ml-auto md:flex-row md:items-center">
-                        <Suspense>
-                            <PlantsSeedTimeFilterToggle
-                                initialValue={seedTimeFilterValue}
-                            />
-                        </Suspense>
-                    </div>
-                </div>
-                <PlantsCatalogue
-                    plants={plants}
-                    initialSearch={search}
-                    initialSeedTimeFilter={seedTimeFilterValue}
+            <div className="pt-8 pb-6 md:pt-12">
+                <PageHeader
+                    tagline={pageCategory}
+                    header="Biljke"
+                    subHeader="Odaberi što želiš uzgajati u svojoj gredici. Za svaku biljku vidiš kada se sije, koliko rodi i koliko košta sijanje."
                 />
+            </div>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch">
+                <PlantsMonthChart
+                    className="lg:flex-[2] lg:min-w-0"
+                    filters={filters}
+                    plants={plants}
+                />
+                <PlantsSeasonPanel
+                    className="lg:flex-1 lg:min-w-80"
+                    filters={filters}
+                    plants={plants}
+                />
+            </div>
+            <Tabs
+                value={view}
+                defaultValue="popis"
+                className="mt-6 w-full scroll-mt-24"
+                id={plantArchiveResultsId}
+            >
+                <Card className="flex flex-col gap-2 p-2.5 md:flex-row md:items-center">
+                    <Suspense>
+                        <PageFilterInputNoSSR
+                            searchParamName="pretraga"
+                            fieldName="plant-search"
+                            initialValue={search}
+                            placeholder="Pretraži biljke ili sorte…"
+                            className="w-full md:max-w-sm"
+                        />
+                    </Suspense>
+                    <div className="md:ml-auto">
+                        <PlantsViewTabs filters={filters} />
+                    </div>
+                </Card>
+                <div className="mt-2 empty:hidden">
+                    <PlantsActiveFilters filters={filters} />
+                </div>
+                <PlantsCatalogue filters={filters} plants={plants} />
             </Tabs>
-            <Typography level="body1" className="mt-6">
-                Za objašnjenja radnji i regionalnih termina otvori{' '}
-                <Link
-                    href={KnownPages.SowingCalendar}
-                    className="font-medium text-primary underline"
-                >
-                    kalendar sjetve i sadnje za kontinentalnu Hrvatsku
-                </Link>
-                .
-            </Typography>
-            <Typography level="body1" className="mt-8">
-                Odaberi što želiš uzgajati, a zatim provjeri kako funkcionira{' '}
-                <Link
-                    className="font-medium text-primary underline"
-                    href={KnownPages.DeliveryZagreb}
-                >
-                    dostava povrća u Zagrebu iz tvoje gredice
-                </Link>
-                .
-            </Typography>
-            <Row spacing={4} className="mt-12">
-                <Typography level="body1">
-                    Sviđa ti se odabir ili nema biljke koja te zanima?
-                </Typography>
-                <FeedbackModal topic="www/plants" />
-            </Row>
+            <PlantsArchiveLinks />
         </Stack>
     );
 }

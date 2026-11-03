@@ -49,7 +49,7 @@
         "test:llms": "node --experimental-strip-types --test ./app/llms-routes.spec.ts",
         "test:public-profile": "node --import tsx --test ./tests/publicProfile.node.spec.ts ./app/postignuca/achievementAvailability.node.spec.ts && playwright test --config playwright.profile.config.ts",
         "faq-categories:sync-images": "node --import tsx --conditions=react-server --env-file=../../packages/storage/.env ./generate/sync-faq-category-images.ts",
-        "test:plant-catalogue": "node --import tsx --test ./app/biljke/plantCatalogue.node.spec.ts",
+        "test:plant-catalogue": "node --import tsx --test ./app/biljke/plantCatalogue.node.spec.ts ./app/biljke/plantSeason.node.spec.ts",
         "test:public-html": "playwright test --config playwright.public-html.config.ts",
         "test:image-variants": "node --import tsx --test ./lib/images/generatedBlockImageLoader.node.spec.ts"
     },

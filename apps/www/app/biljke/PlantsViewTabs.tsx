@@ -4,28 +4,26 @@ import { GameCalendarIcon, GameGardenPlanIcon } from '@gredice/ui/GameIcons';
 import { Row } from '@gredice/ui/Row';
 import { TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import Link from 'next/link';
-import { useClientSearchParam } from '../../hooks/useClientSearchParam';
 import { plantArchivePath } from './plantArchivePath';
+import {
+    type PlantArchiveFilterDefaults,
+    usePlantArchiveFilters,
+} from './usePlantArchiveFilters';
 
 export function PlantsViewTabs({
-    search,
-    seedTimeOnly,
+    filters,
 }: {
-    search: string;
-    seedTimeOnly: boolean;
+    filters: PlantArchiveFilterDefaults;
 }) {
-    const [currentSearch] = useClientSearchParam('pretraga', search);
-    const [seedTimeFilter] = useClientSearchParam(
-        'vrijemeZaSijanje',
-        seedTimeOnly ? '1' : '',
-    );
+    const { activity, month, search } = usePlantArchiveFilters(filters);
     return (
         <TabsList className="grid grid-cols-2 w-fit border">
             <TabsTrigger value="popis" className="w-full" asChild>
                 <Link
                     href={plantArchivePath({
-                        search: currentSearch,
-                        seedTimeOnly: seedTimeFilter === '1',
+                        activity,
+                        month,
+                        search,
                         view: 'popis',
                     })}
                     prefetch
@@ -42,8 +40,9 @@ export function PlantsViewTabs({
             <TabsTrigger value="kalendar" className="w-full" asChild>
                 <Link
                     href={plantArchivePath({
-                        search: currentSearch,
-                        seedTimeOnly: seedTimeFilter === '1',
+                        activity,
+                        month,
+                        search,
                         view: 'kalendar',
                     })}
                     prefetch

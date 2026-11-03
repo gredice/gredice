@@ -9,12 +9,14 @@ import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
 import { BlockPlantGalleries } from './BlockPlantGalleries';
 
+const pageCategory = '3D vrt';
+
 export const revalidate = 43200; // 12 hours
 export const metadata: Metadata = createPublicMetadata({
     title: 'Blokovi',
     description: 'Pregledaj sve blokove koje možeš koristiti u svom vrtu.',
     path: KnownPages.Blocks,
-    category: '3D vrt',
+    category: pageCategory,
 });
 
 export default async function BlocksPage() {
@@ -26,6 +28,7 @@ export default async function BlocksPage() {
         <Stack>
             <PageHeader
                 padded
+                tagline={pageCategory}
                 header="Blokovi"
                 subHeader="Pregledaj sve blokove koje možeš koristiti u svom vrtu."
             >

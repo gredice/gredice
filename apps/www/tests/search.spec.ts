@@ -452,7 +452,12 @@ test.describe('public search filters', () => {
         await typeSearch(searchInput, 'rajcica');
 
         await expectSearchParam(page, 'pretraga', 'rajcica');
-        await expect(page.getByText('Rajčica', { exact: true })).toBeVisible();
+        // The season panel above the results can list the same plant.
+        await expect(
+            page
+                .locator('#popis-biljaka')
+                .getByText('Rajčica', { exact: true }),
+        ).toBeVisible();
         await expect(page.getByText('Nema rezultata pretrage.')).toBeHidden();
     });
 

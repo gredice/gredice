@@ -141,7 +141,7 @@ for (const device of ['Desktop Chrome', 'Pixel 7']) {
     }
 }
 
-test('archive search, seed-time filter and calendar switching retain the same plant', async ({
+test('archive search, month filter and calendar switching retain the same plant', async ({
     page,
 }) => {
     test.setTimeout(60_000);
@@ -157,14 +157,16 @@ test('archive search, seed-time filter and calendar switching retain the same pl
         page.locator('main a[href="/biljke/rajcica"]').first(),
     ).toBeVisible();
     await search.fill('');
-    const filter = page.getByRole('switch', {
-        name: /filter vrijeme za sijanje/,
-    });
-    await filter.click();
-    await expect(filter).toHaveAttribute('aria-checked', 'true');
+    const april = page.getByRole('button', { name: /^Travanj/u });
+    await april.click();
+    await expect(april).toHaveAttribute('aria-pressed', 'true');
+    await expect(page).toHaveURL(/mjesec=4/u);
+    await expect(
+        page.getByRole('button', { name: 'Ukloni filter: Sijanje u travnju' }),
+    ).toBeVisible();
     await page.getByRole('tab', { name: 'Popis' }).click();
-    await expect(page).toHaveURL(/vrijemeZaSijanje=1/u);
-    await expect(filter).toHaveAttribute('aria-checked', 'true');
+    await expect(page).toHaveURL(/mjesec=4/u);
+    await expect(april).toHaveAttribute('aria-pressed', 'true');
     await search.fill('zzzz-no-plant');
-    await expect(page.getByText('Nema rezultata pretrage.')).toBeVisible();
+    await expect(page.getByText('Nema biljaka za ovaj odabir.')).toBeVisible();
 });

@@ -699,6 +699,7 @@ function OperationsDashboardShowcase() {
                     ]}
                 />
                 <PageHeader
+                    tagline="Nadzorna ploča"
                     header="Operativni pregled"
                     alternativeName="Farm and delivery control room"
                     subHeader="Dense dashboard composed from shared Gredice primitives."

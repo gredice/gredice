@@ -3,13 +3,22 @@ import { plantMatchesSearch } from '../../lib/plants/plantSearch';
 import { normalizeSearchText } from '../../lib/search/normalizeSearchText';
 
 type PlantCardSource = Pick<PlantData, 'id' | 'image' | 'prices'> & {
-    information: Pick<PlantData['information'], 'name' | 'alternativeName'> & {
+    information: Pick<
+        PlantData['information'],
+        'name' | 'alternativeName' | 'latinName'
+    > & {
         label?: string;
     };
     attributes?: Pick<
         PlantData['attributes'],
-        'seedingDistance' | 'yieldMin' | 'yieldMax' | 'yieldType'
+        | 'seedingDistance'
+        | 'yieldMin'
+        | 'yieldMax'
+        | 'yieldType'
+        | 'growthWindowMin'
+        | 'growthWindowMax'
     >;
+    store?: Pick<PlantData['store'], 'availableInStore'>;
     isRecommended?: boolean;
 };
 
@@ -21,6 +30,7 @@ export function toPlantCard(plant: PlantCardSource) {
             name: plant.information.name,
             label: plant.information.label,
             alternativeName: plant.information.alternativeName,
+            latinName: plant.information.latinName,
         },
         image: { cover: { url: plant.image?.cover?.url } },
         attributes: plant.attributes
@@ -29,9 +39,14 @@ export function toPlantCard(plant: PlantCardSource) {
                   yieldMin: plant.attributes.yieldMin,
                   yieldMax: plant.attributes.yieldMax,
                   yieldType: plant.attributes.yieldType,
+                  growthWindowMin: plant.attributes.growthWindowMin,
+                  growthWindowMax: plant.attributes.growthWindowMax,
               }
             : undefined,
         prices: plant.prices ? { perPlant: plant.prices.perPlant } : undefined,
+        store: plant.store
+            ? { availableInStore: plant.store.availableInStore }
+            : undefined,
         isRecommended: plant.isRecommended,
     };
 }
@@ -90,5 +105,19 @@ export function cataloguePlantMatchesSearch(
     return (
         plantMatchesSearch(plant, normalizedSearch) ||
         Boolean(matchingCatalogueSortName(plant, normalizedSearch))
+    );
+}
+
+// One collator for every sort; localeCompare with a locale can build one per call.
+const cataloguePlantNameCollator = new Intl.Collator('hr');
+
+/** Croatian collation keeps Č, Ć, Đ, Š and Ž after their base letters. */
+export function compareCataloguePlantNames(
+    a: { information: { name: string } },
+    b: { information: { name: string } },
+) {
+    return cataloguePlantNameCollator.compare(
+        a.information.name,
+        b.information.name,
     );
 }
