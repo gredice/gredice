@@ -76,3 +76,21 @@ export const WithFilters: Story = {
         ),
     },
 };
+
+export const FiveColumns: Story = {
+    args: {
+        maxColumns: 5,
+        items: Array.from({ length: 10 }, (_, index) => ({
+            id: `plant-${index}`,
+            label: `Biljka ${index + 1}`,
+            description: 'Kartica s više podataka',
+        })),
+    },
+    parameters: {
+        docs: {
+            description: {
+                story: 'Content-heavy cards, such as the plant archive, cap the grid at five columns on extra-large screens so card details have room.',
+            },
+        },
+    },
+};

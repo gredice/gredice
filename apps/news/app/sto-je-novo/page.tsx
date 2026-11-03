@@ -1,4 +1,5 @@
 import { Container } from '@gredice/ui/Container';
+import { PageHeader } from '@gredice/ui/PageHeader';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { NewsArchiveNavigation } from '../../components/NewsArchiveNavigation';
@@ -29,16 +30,12 @@ export default async function WhatsNewPage() {
     const weeks = buildChangelogWeeks(entries);
 
     return (
-        <Container className="grid gap-8 py-10">
-            <section className="grid gap-3">
-                <h1 className="max-w-3xl text-3xl font-bold leading-tight md:text-4xl">
-                    Promjene i nove mogućnosti
-                </h1>
-                <p className="max-w-2xl text-lg text-muted-foreground">
-                    Tjedni sažeci nadogradnji, poboljšanja i novih značajki u
-                    Gredicama, s poveznicama na svaku promjenu.
-                </p>
-            </section>
+        <Container className="grid gap-8 pt-8 pb-10 md:pt-12">
+            <PageHeader
+                tagline="Što je novo"
+                header="Promjene i nove mogućnosti"
+                subHeader="Tjedni sažeci nadogradnji, poboljšanja i novih značajki u Gredicama, s poveznicama na svaku promjenu."
+            />
             <NewsArchiveNavigation active="changelog" />
             <Suspense
                 fallback={

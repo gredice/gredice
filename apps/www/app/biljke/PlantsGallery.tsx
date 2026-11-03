@@ -59,6 +59,7 @@ export function PlantsGallery({
                 gridHeader=""
                 items={items}
                 itemComponent={PlantsGalleryItem}
+                maxColumns={5}
             />
         </>
     );

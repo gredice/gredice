@@ -14,12 +14,14 @@ import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
 
 export const revalidate = 3600; // 1 hour
+const pageEyebrow = 'Pomoć i podrška';
+
 export const metadata = createPublicMetadata({
     title: 'Česta pitanja',
     description:
         'Od prve sadnje do dostave: pronađi odgovor za svoj sljedeći korak.',
     path: KnownPages.FAQ,
-    eyebrow: 'Pomoć i podrška',
+    eyebrow: pageEyebrow,
 });
 
 export default async function FaqPage() {
@@ -28,17 +30,20 @@ export default async function FaqPage() {
 
     return (
         <Stack>
+            <div className="pt-8 md:pt-12">
+                <PageHeader
+                    tagline={pageEyebrow}
+                    header="Česta pitanja"
+                    subHeader="Od prve sadnje do dostave: pronađi odgovor za svoj sljedeći korak."
+                />
+            </div>
             <PageSectionNav
                 label="Kategorije čestih pitanja"
                 items={sections.map(({ category }) => ({
                     id: category.information.name,
                     label: category.information.label,
                 }))}
-                className="mt-8 mb-8 md:mt-12"
-            />
-            <PageHeader
-                header="Česta pitanja"
-                subHeader="Od prve sadnje do dostave: pronađi odgovor za svoj sljedeći korak."
+                className="mt-6"
             />
             <Stack spacing={8} className="mt-8">
                 <Stack spacing={3}>
