@@ -135,6 +135,41 @@ test('restores document ambience styles when the provider unmounts', async ({
     ).toEqual({ baseHue: '50', environmentHue: '60', sky: '' });
 });
 
+test('removes a restored sky when the provider unmounts', async ({
+    mount,
+    page,
+}) => {
+    await mockPublicEnvironmentRequests(page);
+    // Mirror the inline script, which paints before the provider mounts.
+    await page.evaluate(() => {
+        const root = document.documentElement;
+        root.style.setProperty('--baseHue', '202');
+        root.style.setProperty('--environmentHue', '202');
+        root.style.setProperty(
+            '--public-environment-sky',
+            'linear-gradient(180deg, rgb(86 165 218) 0%, rgb(142 204 235) 32%, rgb(220 235 231) 72%, rgb(246 235 205) 100%)',
+        );
+        root.dataset.publicEnvironment = 'on';
+        root.dataset.publicEnvironmentRestored = '';
+    });
+
+    const component = await mount(<PublicEnvironmentHarness />);
+    await expect(page.locator('html')).not.toHaveAttribute(
+        'data-public-environment-restored',
+    );
+    await component.unmount();
+
+    await expect(page.locator('html')).not.toHaveAttribute(
+        'data-public-environment',
+    );
+    expect(
+        await page.locator('html').evaluate((root) => ({
+            baseHue: root.style.getPropertyValue('--baseHue'),
+            sky: root.style.getPropertyValue('--public-environment-sky'),
+        })),
+    ).toEqual({ baseHue: '', sky: '' });
+});
+
 test('stores the live sky for the next full page load', async ({
     mount,
     page,
@@ -154,6 +189,43 @@ test('stores the live sky for the next full page load', async ({
         );
     expect(rootSky).toMatch(/^linear-gradient\(180deg, rgb\(/u);
     expect(await storedPaint()).toContain(JSON.stringify(rootSky));
+});
+
+test('does not refresh the stored sky when weather fails', async ({
+    mount,
+    page,
+}) => {
+    await mockPublicEnvironmentRequests(page, false);
+    await page.route('**/api/data/weather/now', async (route) => {
+        await route.fulfill({ status: 503, json: { error: 'Unavailable' } });
+    });
+    const storedPaint = JSON.stringify({
+        at: Date.now() - 60_000,
+        contrastBoost: 0.03,
+        sky: 'linear-gradient(180deg, rgb(86 165 218) 0%, rgb(142 204 235) 32%, rgb(220 235 231) 72%, rgb(246 235 205) 100%)',
+        themeHue: 202,
+        weather: { cloudy: 0, foggy: 0, rainy: 0.8, snowy: 0, thundery: 0 },
+    });
+    await page.evaluate((paint) => {
+        localStorage.setItem('gredice-public-environment-paint', paint);
+    }, storedPaint);
+
+    const weatherResponse = page.waitForResponse('**/api/data/weather/now');
+    await mount(<PublicEnvironmentHarness />);
+    await weatherResponse;
+    // Let React commit the settled weather query before reading storage.
+    await page.evaluate(
+        () =>
+            new Promise((resolve) =>
+                requestAnimationFrame(() => requestAnimationFrame(resolve)),
+            ),
+    );
+
+    expect(
+        await page.evaluate(() =>
+            localStorage.getItem('gredice-public-environment-paint'),
+        ),
+    ).toBe(storedPaint);
 });
 
 test('keeps the stored weather until live weather loads', async ({

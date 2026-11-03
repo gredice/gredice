@@ -22,10 +22,10 @@ import {
     publicEnvironmentPaintScript,
     publicEnvironmentPaintStorageKey,
     publicEnvironmentWeatherPresets,
+    readPublicEnvironmentPaint,
     resolvePublicEnvironmentDateAtMinutes,
     resolvePublicEnvironmentPaint,
     resolvePublicEnvironmentSnapshot,
-    restorePublicEnvironmentPaint,
 } from './publicEnvironment';
 
 type PublicEnvironmentContextValue = {
@@ -150,21 +150,29 @@ export function PublicEnvironmentProvider({
         () => resolvePublicEnvironmentPaint({ snapshot, weather }),
         [snapshot, weather],
     );
-    // Only a settled, live sky is worth restoring on the next page load.
-    const persistPaint =
-        weatherQuery.isFetched &&
-        (!debugEnabled || (debugMinutes === null && weatherKind === 'live'));
+    // Only a sky with live weather is worth restoring on the next page load.
+    // Stamping it with the weather's fetch time lets failed weather requests
+    // age it out instead of keeping old weather fresh.
+    const persistedPaintAt =
+        weatherQuery.data &&
+        (!debugEnabled || (debugMinutes === null && weatherKind === 'live'))
+            ? weatherQuery.dataUpdatedAt
+            : null;
 
     useLayoutEffect(() => {
         const root = document.documentElement;
+        // Values the inline script restored belong to this provider, not to
+        // the document, so cleanup must not put them back.
+        const restored = root.hasAttribute('data-public-environment-restored');
+        root.removeAttribute('data-public-environment-restored');
         const properties = publicEnvironmentRootProperties.map((property) => ({
-            priority: root.style.getPropertyPriority(property),
+            priority: restored ? '' : root.style.getPropertyPriority(property),
             property,
-            value: root.style.getPropertyValue(property),
+            value: restored ? '' : root.style.getPropertyValue(property),
         }));
-        const environmentAttribute = root.getAttribute(
-            'data-public-environment',
-        );
+        const environmentAttribute = restored
+            ? null
+            : root.getAttribute('data-public-environment');
 
         return () => {
             for (const { priority, property, value } of properties) {
@@ -190,17 +198,17 @@ export function PublicEnvironmentProvider({
     useLayoutEffect(() => {
         setRestoredWeather(
             parsePublicEnvironmentWeather(
-                restorePublicEnvironmentPaint(
+                readPublicEnvironmentPaint(
                     publicEnvironmentPaintStorageKey,
                     publicEnvironmentPaintMaxAge,
-                ),
+                )?.weather,
             ),
         );
     }, []);
 
     // Apply reading colors before the new sky is painted. ThemeProvider also
     // suppresses transitions when switching between the light/dark palettes.
-    // Keep this in sync with restorePublicEnvironmentPaint.
+    // Keep this in sync with applyPublicEnvironmentPaint.
     useLayoutEffect(() => {
         const root = document.documentElement;
         const hue = String(paint.themeHue);
@@ -216,16 +224,16 @@ export function PublicEnvironmentProvider({
     }, [paint, setTheme, snapshot.dark]);
 
     useEffect(() => {
-        if (!persistPaint) return;
+        if (persistedPaintAt === null) return;
         try {
             localStorage.setItem(
                 publicEnvironmentPaintStorageKey,
-                JSON.stringify({ ...paint, at: Date.now() }),
+                JSON.stringify({ ...paint, at: persistedPaintAt }),
             );
         } catch {
             // Storage can be unavailable; the sky then starts from default.
         }
-    }, [paint, persistPaint]);
+    }, [paint, persistedPaintAt]);
 
     const value = useMemo(
         () => ({

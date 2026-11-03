@@ -440,14 +440,10 @@ export function resolvePublicEnvironmentPaint({
 }
 
 /**
- * Applies the last stored sky to the root element and returns its weather.
- * It also runs as an inline script before the first paint, so it must not
- * reference anything outside its own body.
+ * Reads the stored sky when it is fresh and well formed. It is also inlined
+ * into the paint script, so it must not reference anything outside its body.
  */
-export function restorePublicEnvironmentPaint(
-    storageKey: string,
-    maxAge: number,
-): unknown {
+export function readPublicEnvironmentPaint(storageKey: string, maxAge: number) {
     try {
         const paint: unknown = JSON.parse(
             localStorage.getItem(storageKey) ?? 'null',
@@ -473,22 +469,40 @@ export function restorePublicEnvironmentPaint(
             return null;
         }
 
-        const root = document.documentElement;
-        root.style.setProperty('--baseHue', String(themeHue));
-        root.style.setProperty('--environmentHue', String(themeHue));
-        root.style.setProperty(
-            '--public-environment-contrast-boost',
-            String(contrastBoost),
-        );
-        root.style.setProperty('--public-environment-sky', sky);
-        root.dataset.publicEnvironment = 'on';
-        return Reflect.get(paint, 'weather');
+        return {
+            contrastBoost,
+            sky,
+            themeHue,
+            weather: Reflect.get(paint, 'weather'),
+        };
     } catch {
         return null;
     }
 }
 
-export const publicEnvironmentPaintScript = `(${restorePublicEnvironmentPaint.toString()})(${JSON.stringify(publicEnvironmentPaintStorageKey)},${publicEnvironmentPaintMaxAge})`;
+/**
+ * Applies a stored sky to the root before the first paint. It runs as an
+ * inline script, so it must not reference anything outside its own body.
+ * The marker tells the provider these values are not the document's own.
+ */
+export function applyPublicEnvironmentPaint(
+    paint: ReturnType<typeof readPublicEnvironmentPaint>,
+) {
+    if (!paint) return;
+
+    const root = document.documentElement;
+    root.style.setProperty('--baseHue', String(paint.themeHue));
+    root.style.setProperty('--environmentHue', String(paint.themeHue));
+    root.style.setProperty(
+        '--public-environment-contrast-boost',
+        String(paint.contrastBoost),
+    );
+    root.style.setProperty('--public-environment-sky', paint.sky);
+    root.dataset.publicEnvironment = 'on';
+    root.dataset.publicEnvironmentRestored = '';
+}
+
+export const publicEnvironmentPaintScript = `(${applyPublicEnvironmentPaint.toString()})((${readPublicEnvironmentPaint.toString()})(${JSON.stringify(publicEnvironmentPaintStorageKey)},${publicEnvironmentPaintMaxAge}))`;
 
 export function resolvePublicEnvironmentSnapshot({
     date,

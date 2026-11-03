@@ -9,6 +9,7 @@ import {
     publicEnvironmentPaintMaxAge,
     publicEnvironmentPaintScript,
     publicEnvironmentPaintStorageKey,
+    readPublicEnvironmentPaint,
     resolvePublicEnvironmentDateAtMinutes,
     resolvePublicEnvironmentPaint,
     resolvePublicEnvironmentSnapshot,
@@ -198,6 +199,7 @@ test('restores a fresh stored sky before hydration', () => {
     );
 
     assert.equal(dataset.publicEnvironment, 'on');
+    assert.equal(dataset.publicEnvironmentRestored, '');
     assert.equal(properties.get('--public-environment-sky'), paint.sky);
     assert.equal(properties.get('--baseHue'), String(paint.themeHue));
     assert.equal(properties.get('--environmentHue'), String(paint.themeHue));
@@ -232,7 +234,52 @@ test('ignores stale, malformed, or unsafe stored skies', () => {
     ]) {
         const { dataset, properties } =
             runPublicEnvironmentPaintScript(storedPaint);
-        assert.equal(dataset.publicEnvironment, undefined);
+        assert.deepEqual(dataset, {});
         assert.equal(properties.size, 0);
+    }
+});
+
+test('reads the stored weather for the provider without painting', () => {
+    const weather = { ...clearWeather, rainy: 0.7 };
+    const paint = resolvePublicEnvironmentPaint({
+        snapshot: resolvePublicEnvironmentSnapshot({
+            date: new Date('2026-08-24T12:00:00+02:00'),
+            weather,
+        }),
+        weather,
+    });
+    const storage = new Map([
+        [
+            publicEnvironmentPaintStorageKey,
+            JSON.stringify({ ...paint, at: Date.now() }),
+        ],
+    ]);
+    const originalLocalStorage = Object.getOwnPropertyDescriptor(
+        globalThis,
+        'localStorage',
+    );
+    Object.defineProperty(globalThis, 'localStorage', {
+        configurable: true,
+        value: { getItem: (key: string) => storage.get(key) ?? null },
+    });
+
+    try {
+        assert.deepEqual(
+            readPublicEnvironmentPaint(
+                publicEnvironmentPaintStorageKey,
+                publicEnvironmentPaintMaxAge,
+            )?.weather,
+            weather,
+        );
+    } finally {
+        if (originalLocalStorage) {
+            Object.defineProperty(
+                globalThis,
+                'localStorage',
+                originalLocalStorage,
+            );
+        } else {
+            Reflect.deleteProperty(globalThis, 'localStorage');
+        }
     }
 });
