@@ -1,11 +1,14 @@
 import { Button } from '@gredice/ui/Button';
+import { IconButton } from '@gredice/ui/IconButton';
 import { Input } from '@gredice/ui/Input';
+import { Info } from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
 import { SelectItems } from '@gredice/ui/SelectItems';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
-import { type ComponentProps, useState } from 'react';
+import { type ComponentProps, Suspense, useState } from 'react';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 const meta = {
     title: 'packages/ui/Overlays/Modal',
@@ -185,3 +188,54 @@ function NestedSelectionModal(args: ComponentProps<typeof Modal>) {
         </Modal>
     );
 }
+
+// Stands in for a trigger passed from a Server Component, which can reach
+// the client as a lazy node while its client modules are still loading.
+const deferredInfoTrigger = Promise.resolve(
+    <IconButton
+        aria-label="Više informacija o cijeni"
+        size="lg"
+        variant="plain"
+    >
+        <Info />
+    </IconButton>,
+);
+
+export const DeferredTrigger: Story = {
+    parameters: {
+        docs: {
+            description: {
+                story: 'A trigger that resolves after the first render, like an element passed from a Server Component, still renders as a single Base UI trigger button instead of being wrapped in another `<button>`.',
+            },
+        },
+    },
+    args: {
+        title: 'Cijena',
+        description: 'Objašnjenje kako se računa cijena.',
+    },
+    render: (args) => (
+        <Suspense>
+            <Modal {...args} trigger={deferredInfoTrigger}>
+                <Stack spacing={2}>
+                    <Typography level="h5">Cijena</Typography>
+                    <Typography level="body2" secondary>
+                        Cijena uključuje troškove sjemena i pripreme tla.
+                    </Typography>
+                </Stack>
+            </Modal>
+        </Suspense>
+    ),
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const trigger = await canvas.findByRole('button', {
+            name: 'Više informacija o cijeni',
+        });
+        await expect(canvasElement.querySelector('button button')).toBeNull();
+        await userEvent.click(trigger);
+        await waitFor(async () => {
+            await expect(
+                within(document.body).getByRole('dialog'),
+            ).toBeVisible();
+        });
+    },
+};
