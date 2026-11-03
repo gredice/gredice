@@ -1,5 +1,17 @@
 @source "../node_modules/streamdown/dist/*.js";
 
+/* Gredice brand green, matching the logotype in each theme
+   (#2E6F40 light, #68BA7F dark). */
+:root {
+    --brand: 136.6 41.4% 30.8%;
+    --brand-foreground: 0 0% 100%;
+}
+
+.dark {
+    --brand: 136.8 37.3% 56.9%;
+    --brand-foreground: 137 45% 11%;
+}
+
 body[data-gredice-ui-portal-root] {
     position: relative;
 }

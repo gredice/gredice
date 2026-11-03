@@ -54,7 +54,7 @@ export async function OperationApplicationsList({
                                     type: 'operation',
                                     operationId,
                                 })}
-                                className="bg-green-800 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 text-white"
+                                color="brand"
                             >
                                 Moj vrt
                             </NavigatingButton>
