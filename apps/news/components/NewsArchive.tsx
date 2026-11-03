@@ -1,4 +1,5 @@
 import { Container } from '@gredice/ui/Container';
+import { PageHeader } from '@gredice/ui/PageHeader';
 import { Timeline, TimelineEntry, TimelineGroup } from '@gredice/ui/Timeline';
 import type { Route } from 'next';
 import { permanentRedirect } from 'next/navigation';
@@ -58,15 +59,12 @@ export async function NewsArchive({
     let itemIndex = 0;
 
     return (
-        <Container className="grid gap-8 py-10">
-            <section className="grid gap-3">
-                <h1 className="max-w-3xl text-3xl font-bold leading-tight md:text-4xl">
-                    Novosti iz Gredica
-                </h1>
-                <p className="max-w-2xl text-lg text-muted-foreground">
-                    Priče, korisni vodiči i tjedni pregled razvoja Gredica.
-                </p>
-            </section>
+        <Container className="grid gap-8 pt-8 pb-10 md:pt-12">
+            <PageHeader
+                tagline="Blog i tjedni pregledi"
+                header="Novosti iz Gredica"
+                subHeader="Priče, korisni vodiči i tjedni pregled razvoja Gredica."
+            />
             <NewsArchiveNavigation active={activeCategory ? undefined : 'news'}>
                 <NewsCategoryFilter
                     activeCategory={activeCategory}

@@ -84,8 +84,8 @@ export function PageHeader({
                     spacing={4}
                     className={
                         isContainerResponsive
-                            ? '@[48rem]/cms:max-w-96'
-                            : 'md:max-w-96'
+                            ? '@[48rem]/cms:max-w-xl'
+                            : 'md:max-w-xl'
                     }
                 >
                     <Stack spacing={1}>
@@ -116,8 +116,8 @@ export function PageHeader({
                             className={cx(
                                 'public-page-description',
                                 isContainerResponsive
-                                    ? 'text-pretty @[40rem]/cms:text-balance'
-                                    : 'text-pretty sm:text-balance',
+                                    ? 'text-pretty @[40rem]/cms:text-balance @[48rem]/cms:text-lg'
+                                    : 'text-pretty sm:text-balance md:text-lg',
                             )}
                         >
                             {subHeader}
