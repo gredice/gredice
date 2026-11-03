@@ -9,6 +9,11 @@ import { KnownPages } from '../src/KnownPages';
 import { PlantsGalleryItem } from './biljke/PlantsGalleryItem';
 import { toPlantCard, toPlantCatalogue } from './biljke/plantCatalogue';
 
+// The plant cards carry a season strip and facts row, so fewer, wider cards
+// read better: 2×2 on phones, two cards and the tile on tablets, three and
+// the tile from lg up.
+const shownPlants = 3;
+
 export async function PlantsShowcase() {
     const entities = await getPlantsData();
     const plants = entities
@@ -17,7 +22,7 @@ export async function PlantsShowcase() {
             (first, second) =>
                 Number(second.isRecommended) - Number(first.isRecommended),
         )
-        ?.slice(0, 4);
+        ?.slice(0, shownPlants);
     const extraPlants = entities
         ?.filter((plant) => !plants?.some((entry) => entry.id === plant.id))
         ?.slice(0, 24);
@@ -25,14 +30,11 @@ export async function PlantsShowcase() {
 
     return (
         <div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
                 {toPlantCatalogue(plants ?? [], []).map((plant, plantIndex) => (
                     <div
                         key={plant.id}
-                        className={cx(
-                            plantIndex === 3 &&
-                                'hidden sm:block md:hidden lg:block',
-                        )}
+                        className={cx(plantIndex === 2 && 'md:hidden lg:block')}
                     >
                         <PlantsGalleryItem
                             key={plant.information.name}
