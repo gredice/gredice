@@ -1,5 +1,8 @@
 import { RegionalCalendarTable } from '@apps/www/components/plants/RegionalCalendarTable';
-import type { RegionalCalendarRow } from '@apps/www/lib/plants/regionalCalendar';
+import type {
+    RegionalCalendarCrop,
+    RegionalCalendarRow,
+} from '@apps/www/lib/plants/regionalCalendar';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 
 // Illustrative fixture only. This is not regional planting advice.
@@ -31,6 +34,18 @@ const exampleRow: RegionalCalendarRow = {
     period: 'rujan – listopad',
 };
 
+const exampleCrop: RegionalCalendarCrop = {
+    plantId: 0,
+    slug: 'salata',
+    name: 'Salata (primjer prikaza)',
+    image: undefined,
+    status: 'reviewed',
+    // The table only reads the status, so the fixture carries no review record.
+    review: undefined,
+    rows: [exampleRow],
+    availableSorts: [],
+};
+
 const meta = {
     title: 'apps/www/Plants/RegionalCalendarTable',
     component: RegionalCalendarTable,
@@ -40,11 +55,11 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'Server-rendered month table with keyboard scrolling. All story dates are illustrative fixtures, not grower-reviewed recommendations.',
+                    'Server-rendered month table grouped by crop, with keyboard scrolling. All story dates are illustrative fixtures, not grower-reviewed recommendations.',
             },
         },
     },
-    args: { rows: [exampleRow] },
+    args: { crops: [exampleCrop], currentMonth: 9 },
     decorators: [
         (Story) => (
             <div className="p-4">
@@ -58,20 +73,29 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const ReviewedPeriodExample: Story = {};
+export const SelectedMonth: Story = { args: { selectedMonth: 10 } };
 export const Unspecified: Story = {
     args: {
-        rows: [
+        crops: [
             {
-                ...exampleRow,
-                ranges: [],
-                months: Array.from({ length: 12 }, () => false),
-                environment: 'Nije potvrđeno',
-                period: 'Nije navedeno',
+                ...exampleCrop,
+                status: 'missing',
+                rows: [
+                    {
+                        ...exampleRow,
+                        ranges: [],
+                        months: Array.from({ length: 12 }, () => false),
+                        environment: 'Nije potvrđeno',
+                        period: 'Nije navedeno',
+                    },
+                ],
             },
         ],
     },
 };
-export const EmptyFilter: Story = { args: { rows: [] } };
+export const EmptyFilter: Story = {
+    args: { crops: [{ ...exampleCrop, rows: [] }] },
+};
 export const Mobile: Story = {
     decorators: [
         (Story) => (
