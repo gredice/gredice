@@ -2,6 +2,8 @@ import { Button } from '@gredice/ui/Button';
 import { ModalConfirm } from '@gredice/ui/ModalConfirm';
 import { Typography } from '@gredice/ui/Typography';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
+import { Suspense } from 'react';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 const meta = {
     title: 'packages/ui/Overlays/ModalConfirm',
@@ -62,5 +64,39 @@ export const RichContent: Story = {
                 Brisanjem se uklanjaju povezani podaci iz aktivnog prikaza.
             </Typography>
         ),
+    },
+};
+
+// Stands in for a trigger passed from a Server Component, which can reach
+// the client as a lazy node while its client modules are still loading.
+const deferredTrigger = Promise.resolve(
+    <Button color="danger" variant="outlined">
+        Obrisi
+    </Button>,
+);
+
+export const DeferredTrigger: Story = {
+    parameters: {
+        docs: {
+            description: {
+                story: 'A trigger that resolves after the first render, like an element passed from a Server Component, still renders as a single Base UI trigger button instead of being wrapped in another `<button>`.',
+            },
+        },
+    },
+    render: (args) => (
+        <Suspense>
+            <ModalConfirm {...args} trigger={deferredTrigger} />
+        </Suspense>
+    ),
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const trigger = await canvas.findByRole('button', { name: 'Obrisi' });
+        await expect(canvasElement.querySelector('button button')).toBeNull();
+        await userEvent.click(trigger);
+        await waitFor(async () => {
+            await expect(
+                within(document.body).getByRole('alertdialog'),
+            ).toBeVisible();
+        });
     },
 };

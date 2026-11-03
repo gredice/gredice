@@ -2,9 +2,10 @@
 
 import { AlertDialog as AlertDialogPrimitive } from '@base-ui/react/alert-dialog';
 import type { FormEvent, HTMLAttributes, MouseEvent, ReactNode } from 'react';
-import { isValidElement, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '../Button';
 import { Input } from '../Input';
+import { getTriggerRender } from '../lib/triggerRender';
 import { Row } from '../Row';
 import { Stack } from '../Stack';
 import { Typography } from '../Typography';
@@ -73,7 +74,7 @@ export function ModalConfirm({
         typeof children === 'string' &&
         children.trim().length > 0;
     const hiddenDescription = hasExplicitDescription ? description : title;
-    const triggerRender = isValidElement(trigger) ? trigger : undefined;
+    const triggerRender = getTriggerRender(trigger);
 
     useEffect(() => {
         if (!currentOpen) {

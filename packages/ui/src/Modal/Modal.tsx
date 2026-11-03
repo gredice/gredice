@@ -4,12 +4,12 @@ import { Dialog as DialogPrimitive } from '@base-ui/react/dialog';
 import { Drawer as DrawerPrimitive } from '@base-ui/react/drawer';
 import {
     type HTMLAttributes,
-    isValidElement,
     type ReactNode,
     useLayoutEffect,
     useState,
 } from 'react';
 import { Close } from '../icons';
+import { getTriggerRender } from '../lib/triggerRender';
 import { cx } from '../utils';
 
 export type ModalProps = Omit<HTMLAttributes<HTMLDivElement>, 'title'> & {
@@ -98,7 +98,7 @@ function DesktopModal({
     ...rest
 }: Omit<ModalProps, 'disableMobile' | 'mobileOverride'>) {
     const hasDescription = hasAccessibleDescription(description);
-    const triggerRender = isValidElement(trigger) ? trigger : undefined;
+    const triggerRender = getTriggerRender(trigger);
 
     function handleOpenChange(
         nextOpen: boolean,
@@ -179,7 +179,7 @@ function MobileModal({
     ...rest
 }: Omit<ModalProps, 'disableMobile' | 'hideClose' | 'mobileOverride'>) {
     const hasDescription = hasAccessibleDescription(description);
-    const triggerRender = isValidElement(trigger) ? trigger : undefined;
+    const triggerRender = getTriggerRender(trigger);
 
     function handleOpenChange(
         nextOpen: boolean,
