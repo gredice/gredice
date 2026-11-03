@@ -238,7 +238,11 @@ test('direct public route and real Link transition fence private reads while pre
     ).toHaveCount(0);
     // Let the guest bootstrap settle first. Its closing router.refresh()
     // would otherwise queue behind the Link navigation and hold its commit.
+    // The loading text also clears on failure, so require the ready state.
     await expect(page.getByText('Pripremamo tvoj vrt...')).toHaveCount(0);
+    await expect(
+        page.getByText('Nismo uspjeli pripremiti privremeni vrt.'),
+    ).toHaveCount(0);
     await expect(
         page.getByRole('link', { name: 'Posjeti Kestenijadu' }),
     ).toBeVisible();
