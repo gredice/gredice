@@ -1,4 +1,5 @@
 import { orderBy } from '@gredice/js/arrays';
+import { Card } from '@gredice/ui/Card';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Stack } from '@gredice/ui/Stack';
 import { Tabs } from '@gredice/ui/Tabs';
@@ -111,7 +112,7 @@ export default async function PlantsPage({
                 className="mt-6 w-full scroll-mt-24"
                 id={plantArchiveResultsId}
             >
-                <div className="flex flex-col gap-2 md:flex-row md:items-center">
+                <Card className="flex flex-col gap-2 p-2.5 md:flex-row md:items-center">
                     <Suspense>
                         <PageFilterInputNoSSR
                             searchParamName="pretraga"
@@ -124,7 +125,7 @@ export default async function PlantsPage({
                     <div className="md:ml-auto">
                         <PlantsViewTabs filters={filters} />
                     </div>
-                </div>
+                </Card>
                 <div className="mt-2 empty:hidden">
                     <PlantsActiveFilters filters={filters} />
                 </div>
