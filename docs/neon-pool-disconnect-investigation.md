@@ -37,8 +37,13 @@ The isolated loopback fixture uses the real Neon driver and pool, real
 WebSocket connections, and a minimal PostgreSQL peer. It answers startup and
 simple queries, and ends TCP upon Terminate without a WebSocket close handshake.
 Evicting seven idle clients with native WebSocket reproduces seven pool errors
-with precisely the recorded kind, absent code, and zero counts. The regression
-fails against the old storage transport and passes with the targeted change.
+with the recorded kind and absent code. Pool counts reach zero after every
+client finishes teardown; an individual error can arrive while other clients
+are still in the pool because idle timers and socket events can interleave.
+The fixture covers concurrent eviction and a deterministic staggered case that
+keeps the remaining clients checked out until each eviction completes. The
+regression fails against the old storage transport and passes with the targeted
+change.
 
 The retained production diagnostics intentionally omit raw messages, socket
 state, and close details. They cannot retrospectively establish whether the
