@@ -1,4 +1,3 @@
-import { isPlantRecommended } from '../../../../packages/js/src/plants/isPlantRecommended';
 import { getCalendarRangePosition } from './calendarRangePosition';
 import type { PlantCatalogueItem } from './plantCatalogue';
 
@@ -31,16 +30,15 @@ export function formatPlantCount(count: number) {
     return `${count} biljaka`;
 }
 
-/** Same rule as the "Vrijeme za sijanje" badge, for any month. */
+/**
+ * Month-level membership, matching the calendar bars: a sowing or
+ * propagating window that starts mid-month (e.g. 3.5) counts for that month,
+ * and windows that run past December wrap.
+ */
 export function isPlantSowableInMonth(plant: PlantSeasonSource, month: number) {
-    return isPlantRecommended(
-        {
-            calendar: {
-                sowing: plant.calendar.sowing,
-                propagating: plant.calendar.propagating,
-            },
-        },
-        month,
+    return (
+        getCalendarRangePosition(plant.calendar.sowing, month) !== null ||
+        getCalendarRangePosition(plant.calendar.propagating, month) !== null
     );
 }
 
