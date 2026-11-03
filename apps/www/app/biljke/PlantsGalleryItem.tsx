@@ -1,4 +1,7 @@
 import { formatPrice } from '@gredice/js/currency';
+import { gardenActionUrl } from '@gredice/js/gardenActions';
+import { Button } from '@gredice/ui/Button';
+import { Add } from '@gredice/ui/icons';
 import { PlantOrSortImage, SeedTimeInformationBadge } from '@gredice/ui/plants';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -62,12 +65,18 @@ export function PlantsGalleryItem(props: PlantsGalleryItemProps) {
                         plant={props}
                         currentMonth={currentMonth}
                     />
+                </Stack>
+            }
+            footer={
+                <Stack spacing={2.5} className="pt-1">
                     <PlantCardFacts plant={props} />
                     <Row
                         justifyContent="space-between"
-                        className="border-t pt-2"
+                        spacing={2}
+                        className="flex-wrap border-t pt-2"
                     >
-                        {isAvailable ? (
+                        {(isAvailable ||
+                            typeof prices?.perPlant === 'number') && (
                             <Stack>
                                 <Typography className="font-bold">
                                     {formatPrice(prices?.perPlant)}
@@ -76,14 +85,42 @@ export function PlantsGalleryItem(props: PlantsGalleryItemProps) {
                                     cijena sijanja
                                 </Typography>
                             </Stack>
+                        )}
+                        {isAvailable ? (
+                            <Button
+                                href={gardenActionUrl(KnownPages.GardenApp, {
+                                    type: 'sow',
+                                    plantId: Number(id),
+                                })}
+                                navigation="document"
+                                size="sm"
+                                startDecorator={
+                                    <Add
+                                        aria-hidden
+                                        className="size-4 shrink-0"
+                                    />
+                                }
+                                aria-label={`Posadi u gredicu: ${information.name}`}
+                                className="ml-auto shrink-0 bg-green-800 text-white hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600"
+                            >
+                                Posadi
+                            </Button>
                         ) : (
-                            <Typography level="body2">
-                                Trenutno nedostupno
-                            </Typography>
+                            <Button
+                                type="button"
+                                disabled
+                                size="sm"
+                                variant="outlined"
+                                aria-label={`Nedostupno za sjetvu: ${information.name}`}
+                                className="ml-auto shrink-0"
+                            >
+                                Nedostupno
+                            </Button>
                         )}
                     </Row>
                 </Stack>
             }
+            badge={isSowingTime && <SeedTimeInformationBadge size="sm" />}
             href={KnownPages.Plant(information.name)}
             mediaViewTransitionName={getPlantImageViewTransitionName(id)}
         >
@@ -92,11 +129,6 @@ export function PlantsGalleryItem(props: PlantsGalleryItemProps) {
                 fill
                 sizes="(min-width: 1280px) 16vw, (min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
             />
-            {isSowingTime && (
-                <div className="absolute top-1 right-1">
-                    <SeedTimeInformationBadge size="sm" />
-                </div>
-            )}
         </ItemCard>
     );
 }
