@@ -241,8 +241,8 @@ importers:
         specifier: 3.0.0
         version: 3.0.0(@opentelemetry/api@1.10.0)
       '@posthog/next':
-        specifier: 0.9.0
-        version: 0.9.0(@types/react@19.3.0)(@vercel/functions@3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3))(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        specifier: 0.10.0
+        version: 0.10.0(@opentelemetry/api@1.10.0)(@types/react@19.3.0)(@vercel/functions@3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3))(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@scalar/api-reference-react':
         specifier: 0.9.85
         version: 0.9.85(@oxc-project/types@0.155.0)(axios@1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2))(change-case@5.4.4)(esbuild@0.28.2)(jwt-decode@4.0.0)(lightningcss@1.33.0)(oxc-parser@0.127.0)(qrcode@1.5.4)(react@19.3.1)(rolldown@1.2.15)(rollup@4.62.2)(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.107.0)(tsx@4.23.15)(yaml@2.9.1))(zod@4.6.7)
@@ -416,8 +416,8 @@ importers:
   apps/app:
     dependencies:
       '@aws-sdk/client-s3':
-        specifier: 3.1158.0
-        version: 3.1158.0
+        specifier: 3.1159.0
+        version: 3.1159.0
       '@azure/communication-email':
         specifier: 1.1.0
         version: 1.1.0(supports-color@10.2.2)
@@ -443,8 +443,8 @@ importers:
         specifier: 3.0.0
         version: 3.0.0(@opentelemetry/api@1.10.0)
       '@posthog/next':
-        specifier: 0.9.0
-        version: 0.9.0(@types/react@19.3.0)(@vercel/functions@3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3))(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        specifier: 0.10.0
+        version: 0.10.0(@opentelemetry/api@1.10.0)(@types/react@19.3.0)(@vercel/functions@3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3))(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@vercel/blob':
         specifier: 2.8.2
         version: 2.8.2
@@ -452,8 +452,8 @@ importers:
         specifier: 3.10.4
         version: 3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3)
       '@vvo/tzdb':
-        specifier: 6.201.1
-        version: 6.201.1
+        specifier: 6.202.0
+        version: 6.202.0
       '@xyflow/react':
         specifier: 12.12.0
         version: 12.12.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(immer@11.1.18)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -702,8 +702,8 @@ importers:
         specifier: 3.0.0
         version: 3.0.0(@opentelemetry/api@1.10.0)
       '@posthog/next':
-        specifier: 0.9.0
-        version: 0.9.0(@types/react@19.3.0)(@vercel/functions@3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3))(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        specifier: 0.10.0
+        version: 0.10.0(@opentelemetry/api@1.10.0)(@types/react@19.3.0)(@vercel/functions@3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3))(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@posthog/react':
         specifier: 1.11.3
         version: 1.11.3(@types/react@19.3.0)(posthog-js@1.441.2(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)
@@ -817,8 +817,8 @@ importers:
         specifier: 3.0.0
         version: 3.0.0(@opentelemetry/api@1.10.0)
       '@posthog/next':
-        specifier: 0.9.0
-        version: 0.9.0(@types/react@19.3.0)(@vercel/functions@3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3))(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        specifier: 0.10.0
+        version: 0.10.0(@opentelemetry/api@1.10.0)(@types/react@19.3.0)(@vercel/functions@3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3))(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@vercel/functions':
         specifier: 3.10.4
         version: 3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3)
@@ -919,8 +919,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/js
       '@posthog/next':
-        specifier: 0.9.0
-        version: 0.9.0(@types/react@19.3.0)(@vercel/functions@3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3))(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        specifier: 0.10.0
+        version: 0.10.0(@opentelemetry/api@1.10.0)(@types/react@19.3.0)(@vercel/functions@3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3))(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@vercel/analytics':
         specifier: 2.0.1
         version: 2.0.1(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react@19.3.1)(vue@3.5.44(typescript@7.0.2))
@@ -1132,8 +1132,8 @@ importers:
         specifier: 3.0.0
         version: 3.0.0(@opentelemetry/api@1.10.0)
       '@posthog/next':
-        specifier: 0.9.0
-        version: 0.9.0(@types/react@19.3.0)(@vercel/functions@3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3))(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        specifier: 0.10.0
+        version: 0.10.0(@opentelemetry/api@1.10.0)(@types/react@19.3.0)(@vercel/functions@3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3))(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@vercel/blob':
         specifier: 2.8.2
         version: 2.8.2
@@ -1281,8 +1281,8 @@ importers:
   packages/cdn:
     devDependencies:
       '@aws-sdk/client-s3':
-        specifier: 3.1158.0
-        version: 3.1158.0
+        specifier: 3.1159.0
+        version: 3.1159.0
       '@biomejs/biome':
         specifier: 2.6.4
         version: 2.6.4
@@ -1450,8 +1450,8 @@ importers:
         specifier: 4.0.160
         version: 4.0.160(react@19.3.1)(zod@4.6.7)
       '@vvo/tzdb':
-        specifier: 6.201.1
-        version: 6.201.1
+        specifier: 6.202.0
+        version: 6.202.0
       ai:
         specifier: 7.0.156
         version: 7.0.156(zod@4.6.7)
@@ -1862,8 +1862,8 @@ importers:
         specifier: workspace:*
         version: link:../js
       '@posthog/next':
-        specifier: 0.9.0
-        version: 0.9.0(@types/react@19.3.0)(@vercel/functions@3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3))(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        specifier: 0.10.0
+        version: 0.10.0(@opentelemetry/api@1.10.0)(@types/react@19.3.0)(@vercel/functions@3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3))(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@shadcn/react':
         specifier: 0.3.1
         version: 0.3.1(@types/react@19.3.0)(react@19.3.1)
@@ -2022,8 +2022,8 @@ packages:
     resolution: {integrity: sha512-CXNESwkQC9jdrUG6cKXBfudVt1frGcYQykcCYbNclVrsewuGMbo3PlFjRteMe4OftNAqhyc3xC2jTz7SUqLasQ==}
     engines: {node: '>=20.0.0'}
 
-  '@aws-sdk/client-s3@3.1158.0':
-    resolution: {integrity: sha512-ytaS0QeydANmiLo20kXtAKHKxEriqVgtIC7WnRXfjYEgH3yfjxaxJvYEWQKLU0g8Fpb1Um287KfBIO/eg6aqXA==}
+  '@aws-sdk/client-s3@3.1159.0':
+    resolution: {integrity: sha512-el/Ihylk4PjJh/uJvYUeAzBiVLR6zt0xBOPIbciybePABWD/cOcxinHEPQslogm61LI2etnRrixSQltX94gzLA==}
     engines: {node: '>=20.0.0'}
 
   '@aws-sdk/core@3.979.1':
@@ -4105,20 +4105,20 @@ packages:
   '@posthog/browser-common@0.10.2':
     resolution: {integrity: sha512-ieHSMmY4xG+HfkMTrT9yZoG0NMBWyA4aXMFPCuOOV+xRe706+zoPuwqmNHXv7LGXfi6CvOv4qksEoPNWfP359Q==}
 
-  '@posthog/core@1.60.1':
-    resolution: {integrity: sha512-UpswaG2957O6Ywfx1aCeI8BbXcfoKduKwq1ytBml80AQuAmgK672OmhDcldA7wg4vGP49LpDTgxcNbLvZwQOqw==}
-
   '@posthog/core@1.62.0':
     resolution: {integrity: sha512-KjNwGC7s0141wnWWHubNMdg1lOhZjqKRw2OTNstuzdVvNDfvv2RbFJQSSvvABmbCmTXwlMpdnbb/M/aAigDnNQ==}
 
-  '@posthog/next@0.9.0':
-    resolution: {integrity: sha512-NcyMepJO87DWDm/EaZsTP/p+1W52e72CbYcmk4bNGoBTJwWpe9vyqqaoQwg2M9pnoW2R8knhFme+DiJjVglbng==}
+  '@posthog/next@0.10.0':
+    resolution: {integrity: sha512-pEu/wswK76q2wmzjcVVGiIzGbGuWTWJf6dM3g9Z1OmJnn1t8CIpie3TI2WocfG50eUWcy58V3y06DxVcAE8aAw==}
     peerDependencies:
+      '@opentelemetry/api': ^1.9.0
       '@vercel/functions': '>=1.0.0'
       next: '>=13.0.0'
       react: 19.3.1
       react-dom: 19.3.1
     peerDependenciesMeta:
+      '@opentelemetry/api':
+        optional: true
       '@vercel/functions':
         optional: true
 
@@ -4132,11 +4132,11 @@ packages:
       '@types/react':
         optional: true
 
-  '@posthog/types@1.416.0':
-    resolution: {integrity: sha512-0/9+02s/0uDyrH4G/qUg1yyl6gXUg8Uuxw/PlDad3KLzo9FFS9zS/kAQaEshx/saVGupj1aAy/4EUBxWisBogw==}
-
   '@posthog/types@1.418.0':
     resolution: {integrity: sha512-WqDXUWH1R8OilBp2PfDpQIRZSCs3QyOnw7H3YK7lvZLCMIsOqSZAKJrrqYWt4f7FvnVCACRuNGCC0HKh3J/HWw==}
+
+  '@posthog/types@1.419.0':
+    resolution: {integrity: sha512-XX7zRYt/vK8AzaD6V+oDquAzacZf5exJv971dja9En8Qf6g84Qvc3rpT0w6hDYYLWrjaSSkdjFfvvoXI0ouJDg==}
 
   '@preact/signals-core@1.14.4':
     resolution: {integrity: sha512-HNB6HYeYKhQbJ1aKl+YRjrS4+QWHLKX6qKoUsfS/m0vqzsVaEBiZiaKbG/e+NKk2ch5ALQr/ihWaMHxiCuuWHA==}
@@ -6153,8 +6153,8 @@ packages:
     peerDependencies:
       vue: ^3.5.0
 
-  '@vvo/tzdb@6.201.1':
-    resolution: {integrity: sha512-ib7ymHHyiGD9N/WWGMX5951hmxaFnOP3W8l0ATUxaH0Y/NczPHWS4cQgJUd1S9zyjCq0od8WXxRHlnjlHNPdNg==}
+  '@vvo/tzdb@6.202.0':
+    resolution: {integrity: sha512-MGsedU65ypk/Y7yrp+oOLBzhQj/124xvyoUzx7csPiBSf1b3lgTp5imatuWU4SF6s1Ue3I6GxC+GxE8R5O1l0w==}
 
   '@webcontainer/env@1.1.1':
     resolution: {integrity: sha512-6aN99yL695Hi9SuIk1oC88l9o0gmxL1nGWWQ/kNy81HigJ0FoaoTXpytCj6ItzgyCEwA9kF1wixsTuv5cjsgng==}
@@ -9056,12 +9056,26 @@ packages:
       react:
         optional: true
 
-  posthog-node@5.52.5:
-    resolution: {integrity: sha512-r4KRXh2MvcHYh1s3NUca022GqujkJjpmD4qbRzWOLVTu8BfN3fqZj+MyKIxvHPXsS8sKsNVX+MlKk2qzW0Y4GQ==}
+  posthog-js@1.444.0:
+    resolution: {integrity: sha512-4m+QsAFi1h5Zt8eFq6ciJGD8bcLMt1P/O1cLlo26RrX5F4oMOIKZsNIlf1SIMZWlRNNCFemSpzn6HhwtkZMrnA==}
+    peerDependencies:
+      '@types/react': 19.3.0
+      react: 19.3.1
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      react:
+        optional: true
+
+  posthog-node@5.61.1:
+    resolution: {integrity: sha512-Az2H3hHyxxZ5PQpQAQEoJfa9FrLsM4OnuyIQwzi9hei5mtN0/mepw1yvLtAmPAbEkC6+muWXiBShBnVMKeBSXw==}
     engines: {node: ^20.20.0 || >=22.22.0}
     peerDependencies:
+      '@opentelemetry/api': ^1.2.0
       rxjs: ^7.0.0
     peerDependenciesMeta:
+      '@opentelemetry/api':
+        optional: true
       rxjs:
         optional: true
 
@@ -10607,7 +10621,7 @@ snapshots:
       '@smithy/types': 4.19.0
       tslib: 2.8.1
 
-  '@aws-sdk/client-s3@3.1158.0':
+  '@aws-sdk/client-s3@3.1159.0':
     dependencies:
       '@aws-sdk/checksums': 3.1002.1
       '@aws-sdk/core': 3.979.1
@@ -12871,30 +12885,27 @@ snapshots:
   '@posthog/browser-common@0.10.2':
     dependencies:
       '@posthog/core': 1.62.0
-      '@posthog/types': 1.418.0
+      '@posthog/types': 1.419.0
       preact: 10.29.8
     transitivePeerDependencies:
       - preact-render-to-string
-
-  '@posthog/core@1.60.1':
-    dependencies:
-      '@posthog/types': 1.416.0
 
   '@posthog/core@1.62.0':
     dependencies:
       '@posthog/types': 1.418.0
 
-  '@posthog/next@0.9.0(@types/react@19.3.0)(@vercel/functions@3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3))(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
+  '@posthog/next@0.10.0(@opentelemetry/api@1.10.0)(@types/react@19.3.0)(@vercel/functions@3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3))(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
-      '@posthog/core': 1.60.1
-      '@posthog/react': 1.11.3(@types/react@19.3.0)(posthog-js@1.441.2(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)
+      '@posthog/core': 1.62.0
+      '@posthog/react': 1.11.3(@types/react@19.3.0)(posthog-js@1.444.0(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)
       next: 16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0)
-      posthog-js: 1.441.2(@types/react@19.3.0)(react@19.3.1)
-      posthog-node: 5.52.5
+      posthog-js: 1.444.0(@types/react@19.3.0)(react@19.3.1)
+      posthog-node: 5.61.1(@opentelemetry/api@1.10.0)
       react: 19.3.1
       react-dom: 19.3.1(react@19.3.1)
       server-only: 0.0.1
     optionalDependencies:
+      '@opentelemetry/api': 1.10.0
       '@vercel/functions': 3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3)
     transitivePeerDependencies:
       - '@types/react'
@@ -12908,9 +12919,16 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.3.0
 
-  '@posthog/types@1.416.0': {}
+  '@posthog/react@1.11.3(@types/react@19.3.0)(posthog-js@1.444.0(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)':
+    dependencies:
+      posthog-js: 1.444.0(@types/react@19.3.0)(react@19.3.1)
+      react: 19.3.1
+    optionalDependencies:
+      '@types/react': 19.3.0
 
   '@posthog/types@1.418.0': {}
+
+  '@posthog/types@1.419.0': {}
 
   '@preact/signals-core@1.14.4': {}
 
@@ -15122,7 +15140,7 @@ snapshots:
     dependencies:
       vue: 3.5.44(typescript@7.0.2)
 
-  '@vvo/tzdb@6.201.1': {}
+  '@vvo/tzdb@6.202.0': {}
 
   '@webcontainer/env@1.1.1': {}
 
@@ -18361,7 +18379,7 @@ snapshots:
     dependencies:
       '@posthog/browser-common': 0.10.2
       '@posthog/core': 1.62.0
-      '@posthog/types': 1.418.0
+      '@posthog/types': 1.419.0
       core-js: 3.50.0
       dompurify: 3.4.15
       fflate: 0.4.9
@@ -18375,9 +18393,29 @@ snapshots:
     transitivePeerDependencies:
       - preact-render-to-string
 
-  posthog-node@5.52.5:
+  posthog-js@1.444.0(@types/react@19.3.0)(react@19.3.1):
     dependencies:
-      '@posthog/core': 1.60.1
+      '@posthog/browser-common': 0.10.2
+      '@posthog/core': 1.62.0
+      '@posthog/types': 1.419.0
+      core-js: 3.50.0
+      dompurify: 3.4.15
+      fflate: 0.4.9
+      preact: 10.29.8
+      query-selector-shadow-dom: 1.0.1
+      web-vitals: 6.2.2
+      web-vitals-soft-navs: web-vitals@6.2.1
+    optionalDependencies:
+      '@types/react': 19.3.0
+      react: 19.3.1
+    transitivePeerDependencies:
+      - preact-render-to-string
+
+  posthog-node@5.61.1(@opentelemetry/api@1.10.0):
+    dependencies:
+      '@posthog/core': 1.62.0
+    optionalDependencies:
+      '@opentelemetry/api': 1.10.0
 
   postject@1.0.0-alpha.6:
     dependencies:
