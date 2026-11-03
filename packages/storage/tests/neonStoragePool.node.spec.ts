@@ -188,7 +188,7 @@ for (const fixture of [
     {
         name: 'production Neon transport avoids idle teardown errors and propagates real failures',
         file: 'neonStorageTransport.ts',
-        tests: 5,
+        tests: 6,
     },
 ]) {
     test(fixture.name, () => {

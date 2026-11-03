@@ -103,40 +103,61 @@ test('real WebSocket transport distinguishes pool teardown from failures', async
     });
     const nativeWebSocket = globalThis.WebSocket;
 
-    await t.test(
-        'native transport reproduces seven errors after idle eviction',
-        async () => {
-            const pool = new Pool({
-                connectionString: process.env.POSTGRES_URL,
-                idleTimeoutMillis: 10,
-            });
-            const errors: unknown[] = [];
-            pool.on('error', (error: unknown) => {
-                errors.push(error);
+    for (const staggered of [false, true]) {
+        await t.test(
+            `native transport reproduces seven errors after ${staggered ? 'staggered' : 'concurrent'} idle eviction`,
+            async (t) => {
+                const initialTerminations = terminations;
+                const pool = new Pool({
+                    connectionString: process.env.POSTGRES_URL,
+                    idleTimeoutMillis: 10,
+                });
+                const errors: unknown[] = [];
+                pool.on('error', (error: unknown) => {
+                    errors.push(error);
+                });
+                t.after(() => pool.end());
+                const clients = await Promise.all(
+                    Array.from({ length: 7 }, () => pool.connect()),
+                );
+                const ended = clients.map(
+                    (client) =>
+                        new Promise<void>((resolve) =>
+                            client.once('end', resolve),
+                        ),
+                );
+                for (const [index, client] of clients.entries()) {
+                    client.release();
+                    if (staggered) {
+                        // Keep the other clients checked out until this eviction
+                        // completes, forcing errors before the whole pool is empty.
+                        await ended[index];
+                        assert.equal(errors.length, index + 1);
+                        assert.equal(
+                            pool.totalCount,
+                            clients.length - index - 1,
+                        );
+                        assert.equal(pool.idleCount, 0);
+                        assert.equal(pool.waitingCount, 0);
+                    }
+                }
+                await Promise.all(ended);
+                // Idle timers and socket events can interleave. The entire pool is
+                // empty only after every client has finished its own teardown.
                 assert.equal(pool.totalCount, 0);
                 assert.equal(pool.idleCount, 0);
                 assert.equal(pool.waitingCount, 0);
-            });
-            t.after(() => pool.end());
-            const clients = await Promise.all(
-                Array.from({ length: 7 }, () => pool.connect()),
-            );
-            const ended = clients.map(
-                (client) =>
-                    new Promise<void>((resolve) => client.once('end', resolve)),
-            );
-            for (const client of clients) client.release();
-            await Promise.all(ended);
-            assert.equal(terminations, 7);
-            assert.equal(errors.length, 7);
-            for (const error of errors) {
-                assert.deepEqual(neonPoolErrorDetails(error), {
-                    kind: 'error-event',
-                    code: undefined,
-                });
-            }
-        },
-    );
+                assert.equal(terminations - initialTerminations, 7);
+                assert.equal(errors.length, 7);
+                for (const error of errors) {
+                    assert.deepEqual(neonPoolErrorDetails(error), {
+                        kind: 'error-event',
+                        code: undefined,
+                    });
+                }
+            },
+        );
+    }
 
     const db = storage();
     assert.ok('$client' in db && db.$client instanceof Pool);
@@ -147,6 +168,7 @@ test('real WebSocket transport distinguishes pool teardown from failures', async
     await t.test(
         'storage transport does not report its own idle teardown as a failure',
         async () => {
+            const initialTerminations = terminations;
             assert.equal(globalThis.WebSocket, nativeWebSocket);
             const clients = await Promise.all(
                 Array.from({ length: 7 }, () => pool.connect()),
@@ -154,7 +176,7 @@ test('real WebSocket transport distinguishes pool teardown from failures', async
             const ended = clients.map((client) => once(client, 'end'));
             for (const client of clients) client.release();
             await Promise.all(ended);
-            assert.equal(terminations, 14);
+            assert.equal(terminations - initialTerminations, 7);
             assert.equal(logs.mock.callCount(), 0);
             assert.equal(pool.totalCount, 0);
             await pool.query('select 1');
