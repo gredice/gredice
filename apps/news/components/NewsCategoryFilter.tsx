@@ -46,7 +46,7 @@ export function NewsCategoryFilter({
                                 <span
                                     className={`flex min-h-6 min-w-6 shrink-0 items-center justify-center rounded-full px-1.5 text-xs tabular-nums ${
                                         isActive
-                                            ? 'bg-brand-foreground/15'
+                                            ? 'bg-black/15 dark:bg-white/20'
                                             : 'bg-brand/10'
                                     }`}
                                 >
