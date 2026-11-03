@@ -1,66 +1,63 @@
 'use client';
 
-import { orderBy } from '@gredice/js/arrays';
+import { Button } from '@gredice/ui/Button';
 import { Gallery } from '@gredice/ui/Gallery';
 import { GameSeedlingIcon } from '@gredice/ui/GameIcons';
 import { PublicEmptyState } from '../../components/shared/placeholders/PublicEmptyState';
-import { useClientSearchParam } from '../../hooks/useClientSearchParam';
 import { matchingPlantAlternativeName } from '../../lib/plants/plantSearch';
-import { normalizeSearchText } from '../../lib/search/normalizeSearchText';
 import { PlantsGalleryItem } from './PlantsGalleryItem';
+import { filterPlantArchive } from './plantArchiveFilter';
 import {
-    cataloguePlantMatchesSearch,
     matchingCatalogueSortName,
     type PlantCatalogueItem,
 } from './plantCatalogue';
+import {
+    type PlantArchiveFilterDefaults,
+    usePlantArchiveFilters,
+} from './usePlantArchiveFilters';
 
 export function PlantsGallery({
-    initialSearch = '',
-    initialSeedTimeFilter = '',
+    filters,
     plants,
 }: {
-    initialSearch?: string;
-    initialSeedTimeFilter?: string;
+    filters: PlantArchiveFilterDefaults;
     plants: PlantCatalogueItem[];
 }) {
-    const [search] = useClientSearchParam('pretraga', initialSearch);
-    const [seedTimeFilter] = useClientSearchParam(
-        'vrijemeZaSijanje',
-        initialSeedTimeFilter,
-    );
-    const normalizedSearch = normalizeSearchText(search);
-    const onlySeedTimePlants = seedTimeFilter === '1';
-    const filteredPlants = orderBy(plants ?? [], (a, b) =>
-        a.information.name.localeCompare(b.information.name),
-    )
-        .filter((plant) => !onlySeedTimePlants || plant.isRecommended)
-        .filter((plant) => cataloguePlantMatchesSearch(plant, normalizedSearch))
-        .map((plant) => {
-            const matchingSortName = matchingCatalogueSortName(
-                plant,
-                normalizedSearch,
-            );
-            return {
-                ...plant,
-                id: plant.id.toString(),
-                matchingAlternativeName: matchingPlantAlternativeName(
-                    plant,
-                    normalizedSearch,
-                ),
-                matchingSortName,
-            };
-        });
+    const { activity, clearFilters, month, search } =
+        usePlantArchiveFilters(filters);
+    const { filtered, normalizedSearch } = filterPlantArchive(plants, {
+        activity,
+        month,
+        search,
+    });
+    const items = filtered.map((plant) => ({
+        ...plant,
+        id: plant.id.toString(),
+        currentMonth: filters.currentMonth,
+        matchingAlternativeName: matchingPlantAlternativeName(
+            plant,
+            normalizedSearch,
+        ),
+        matchingSortName: matchingCatalogueSortName(plant, normalizedSearch),
+    }));
 
     return (
         <>
-            {filteredPlants.length === 0 && (
-                <PublicEmptyState icon={GameSeedlingIcon}>
-                    Nema rezultata pretrage.
-                </PublicEmptyState>
+            {items.length === 0 && (
+                <div className="flex flex-col items-center gap-2 pb-6">
+                    <PublicEmptyState icon={GameSeedlingIcon}>
+                        {month
+                            ? 'Nema biljaka za ovaj odabir.'
+                            : 'Nema rezultata pretrage.'}
+                    </PublicEmptyState>
+                    <Button variant="outlined" onClick={clearFilters}>
+                        Očisti filtere
+                    </Button>
+                </div>
             )}
             <Gallery
                 gridHeader=""
-                items={filteredPlants}
+                items={items}
                 itemComponent={PlantsGalleryItem}
             />
         </>

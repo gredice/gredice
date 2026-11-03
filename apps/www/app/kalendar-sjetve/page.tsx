@@ -20,6 +20,8 @@ import { regionalCalendarRegion } from '../../lib/plants/regionalCalendarReviews
 import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
 
+const pageCategory = 'Planiranje vrta';
+
 function first(value: string | string[] | undefined) {
     return (Array.isArray(value) ? value[0] : value) ?? '';
 }
@@ -36,7 +38,7 @@ export async function generateMetadata({
         description:
             'Planiraj sjetvu, presađivanje i berbu povrća po mjesecima. Kalendar za kontinentalnu Hrvatsku uz objašnjenja sorti, uvjeta uzgoja i sezone.',
         path: KnownPages.SowingCalendar,
-        category: 'Planiranje vrta',
+        category: pageCategory,
         robots: {
             index: calendar.ready && !Object.keys(params).length,
             follow: true,
@@ -69,7 +71,10 @@ export default async function SowingCalendarPage({
                         { label: 'Kalendar sjetve i sadnje' },
                     ]}
                 />
-                <PageHeader header="Kalendar sjetve i sadnje za kontinentalnu Hrvatsku" />
+                <PageHeader
+                    tagline={pageCategory}
+                    header="Kalendar sjetve i sadnje za kontinentalnu Hrvatsku"
+                />
                 <StyledHtml>
                     <p>
                         Kalendar ti pomaže odlučiti što planirati, ali konačan

@@ -1,5 +1,6 @@
 import { PlantsViewTabs } from '@apps/www/app/biljke/PlantsViewTabs';
 import { Tabs } from '@gredice/ui/Tabs';
+import { plantArchiveStoryFilters } from './plantArchiveStoryData';
 
 export function StyledPlantTabsExample() {
     return (
@@ -10,7 +11,9 @@ export function StyledPlantTabsExample() {
             <div className="flex flex-wrap gap-6">
                 {['popis', 'kalendar'].map((view) => (
                     <Tabs key={view} value={view}>
-                        <PlantsViewTabs search="" seedTimeOnly={false} />
+                        <PlantsViewTabs
+                            filters={plantArchiveStoryFilters(11)}
+                        />
                     </Tabs>
                 ))}
             </div>

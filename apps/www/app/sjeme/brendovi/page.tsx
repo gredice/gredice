@@ -13,6 +13,7 @@ import { SeedBrandsGallery } from './SeedBrandsGallery';
 const pageTitle = 'Brendovi sjemena';
 const pageDescription =
     'Pregledaj brendove sjemena u Gredice katalogu i otvori njihove osnovne podatke te popis evidentiranih pakiranja sjemena.';
+const pageCategory = 'Katalog sjemena';
 
 export const revalidate = 3600;
 
@@ -20,7 +21,7 @@ export const metadata: Metadata = createPublicMetadata({
     title: pageTitle,
     description: pageDescription,
     path: KnownPages.SeedBrands,
-    category: 'Katalog sjemena',
+    category: pageCategory,
     robots: {
         index: true,
         follow: true,
@@ -79,7 +80,12 @@ export default async function SeedBrandsPage() {
                     { label: pageTitle },
                 ]}
             />
-            <PageHeader header={pageTitle} subHeader={pageDescription} padded>
+            <PageHeader
+                tagline={pageCategory}
+                header={pageTitle}
+                subHeader={pageDescription}
+                padded
+            >
                 <div className="flex items-start md:justify-end">
                     <NavigatingButton
                         href={KnownPages.Seeds}

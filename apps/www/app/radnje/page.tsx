@@ -23,12 +23,13 @@ import {
 } from './operationFilters';
 
 const pageDescription = `Sve što trebaš znati o radnjama koje možeš obavljati u svojim gredicama.`;
+const pageCategory = 'Vrtlarske radnje';
 export const revalidate = 43200; // 12 hours
 export const metadata: Metadata = createPublicMetadata({
     title: 'Radnje',
     description: pageDescription,
     path: KnownPages.Operations,
-    category: 'Vrtlarske radnje',
+    category: pageCategory,
 });
 
 export default async function OperationsPage({
@@ -130,7 +131,11 @@ export default async function OperationsPage({
                 initialSearch={search}
                 className="mt-8 md:mt-12"
             />
-            <PageHeader header="Radnje" subHeader={pageDescription}>
+            <PageHeader
+                tagline={pageCategory}
+                header="Radnje"
+                subHeader={pageDescription}
+            >
                 <div className="flex w-full flex-col items-start gap-3 md:items-end">
                     <CommunityEntitySuggestionButton
                         kind="operation"

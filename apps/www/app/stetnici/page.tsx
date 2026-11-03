@@ -20,13 +20,14 @@ import { KnownPages } from '../../src/KnownPages';
 
 const pageDescription =
     'Pregled štetnika koji mogu napasti biljke u gredicama, s pogođenim biljkama i preporučenim radnjama.';
+const pageCategory = 'Zdravlje biljaka';
 
 export const revalidate = 3600;
 export const metadata: Metadata = createPublicMetadata({
     title: 'Štetnici biljaka',
     description: pageDescription,
     path: KnownPages.PlantPests,
-    category: 'Zdravlje biljaka',
+    category: pageCategory,
 });
 
 export default async function PlantPestsPage({
@@ -77,6 +78,7 @@ export default async function PlantPestsPage({
                 }}
             />
             <PageHeader
+                tagline={pageCategory}
                 header="Štetnici biljaka"
                 subHeader={pageDescription}
                 padded

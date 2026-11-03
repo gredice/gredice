@@ -20,13 +20,14 @@ import { KnownPages } from '../../src/KnownPages';
 
 const pageDescription =
     'Pregled bolesti biljaka koje se mogu pojaviti u gredicama, s pogođenim biljkama i preporučenim radnjama.';
+const pageCategory = 'Zdravlje biljaka';
 
 export const revalidate = 3600;
 export const metadata: Metadata = createPublicMetadata({
     title: 'Bolesti biljaka',
     description: pageDescription,
     path: KnownPages.PlantDiseases,
-    category: 'Zdravlje biljaka',
+    category: pageCategory,
 });
 
 export default async function PlantDiseasesPage({
@@ -77,6 +78,7 @@ export default async function PlantDiseasesPage({
                 }}
             />
             <PageHeader
+                tagline={pageCategory}
                 header="Bolesti biljaka"
                 subHeader={pageDescription}
                 padded

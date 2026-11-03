@@ -19,6 +19,7 @@ import { OtherGardenResidents } from './OtherGardenResidents';
 
 const pageDescription =
     'Svaki ljubimac stiže u vrt sa svojim domom ili sigurnim početnim mjestom, a zatim sam istražuje okolicu i brine se za svoj dan.';
+const pageCategory = '3D vrt';
 
 export const revalidate = 43200; // 12 hours
 
@@ -26,7 +27,7 @@ export const metadata: Metadata = createPublicMetadata({
     title: 'Ljubimci',
     description: pageDescription,
     path: KnownPages.BlockPets,
-    category: '3D vrt',
+    category: pageCategory,
 });
 
 export default async function GardenPetsPage() {
@@ -61,7 +62,11 @@ export default async function GardenPetsPage() {
                         { label: 'Ljubimci' },
                     ]}
                 />
-                <PageHeader header="Ljubimci" subHeader={pageDescription} />
+                <PageHeader
+                    tagline={pageCategory}
+                    header="Ljubimci"
+                    subHeader={pageDescription}
+                />
                 <GardenPetsIntro />
             </Stack>
             <Stack spacing={4}>

@@ -198,7 +198,6 @@ test('the default plant list does not emit a duplicate view query', () => {
     assert.equal(
         plantArchivePath({
             search: '',
-            seedTimeOnly: false,
             view: 'popis',
         }),
         '/biljke',
@@ -206,15 +205,14 @@ test('the default plant list does not emit a duplicate view query', () => {
     assert.equal(
         plantArchivePath({
             search: 'rajčica',
-            seedTimeOnly: true,
+            month: 4,
             view: 'popis',
         }),
-        '/biljke?pretraga=raj%C4%8Dica&vrijemeZaSijanje=1',
+        '/biljke?pretraga=raj%C4%8Dica&mjesec=4',
     );
     assert.equal(
         plantArchivePath({
             search: '',
-            seedTimeOnly: false,
             view: 'kalendar',
         }),
         '/biljke?pregled=kalendar',

@@ -31,6 +31,8 @@ import { getOperationImageViewTransitionName } from '../operationViewTransition'
 import { OperationApplicationsList } from './OperationApplicationsList';
 import { OperationAttributesCards } from './OperationAttributesCards';
 
+const pageCategory = 'Vrtlarska radnja';
+
 export const revalidate = 43200; // 12 hours
 
 export async function generateMetadata(
@@ -51,7 +53,7 @@ export async function generateMetadata(
         path: KnownPages.Operation(
             operation.slug || operation.information.label,
         ),
-        category: 'Vrtlarska radnja',
+        category: pageCategory,
         imageUrl: operation.image?.cover?.url,
         imageAlt: `Prikaz radnje ${operation.information.label}`,
     });
@@ -146,6 +148,7 @@ export default async function OperationPage(
                             />
                         </span>
                     }
+                    tagline={pageCategory}
                     header={operation.information.label}
                     subHeader={operation.information.shortDescription}
                     headerChildren={

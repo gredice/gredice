@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { getPlantsData } from '../lib/plants/getPlantsData';
 import { KnownPages } from '../src/KnownPages';
 import { PlantsGalleryItem } from './biljke/PlantsGalleryItem';
-import { toPlantCard } from './biljke/plantCatalogue';
+import { toPlantCard, toPlantCatalogue } from './biljke/plantCatalogue';
 
 export async function PlantsShowcase() {
     const entities = await getPlantsData();
@@ -21,11 +21,12 @@ export async function PlantsShowcase() {
     const extraPlants = entities
         ?.filter((plant) => !plants?.some((entry) => entry.id === plant.id))
         ?.slice(0, 24);
+    const currentMonth = new Date().getMonth() + 1;
 
     return (
         <div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {plants?.map((plant, plantIndex) => (
+                {toPlantCatalogue(plants ?? [], []).map((plant, plantIndex) => (
                     <div
                         key={plant.id}
                         className={cx(
@@ -35,8 +36,9 @@ export async function PlantsShowcase() {
                     >
                         <PlantsGalleryItem
                             key={plant.information.name}
-                            {...toPlantCard(plant)}
+                            {...plant}
                             id={plant.id.toString()}
+                            currentMonth={currentMonth}
                         />
                     </div>
                 ))}

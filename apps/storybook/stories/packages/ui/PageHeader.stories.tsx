@@ -45,6 +45,17 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
+export const WithTagline: Story = {
+    args: {
+        alternativeName: undefined,
+        header: 'Biljke',
+        subHeader:
+            'Odaberi što želiš uzgajati u svojoj gredici. Za svaku biljku vidiš kada se sije, koliko rodi i koliko košta sijanje.',
+        tagline: 'Katalog biljaka',
+        visual: undefined,
+    },
+};
+
 export const CmsSection: Story = {
     render: () => (
         <div className="mx-auto max-w-5xl px-6 py-8">

@@ -5,6 +5,7 @@ import { normalizeSearchText } from '../../lib/search/normalizeSearchText';
 import { publicHtmlGrowthFixture } from '../../tests/publicHtmlGrowthFixture';
 import {
     cataloguePlantMatchesSearch,
+    compareCataloguePlantNames,
     matchingCatalogueSortName,
     toPlantCatalogue,
 } from './plantCatalogue';
@@ -15,6 +16,7 @@ const plant = {
         name: 'Rajčica',
         label: 'Rajčica',
         alternativeName: ['Paradajz', 'Pomidor'],
+        latinName: 'Solanum lycopersicum',
         description: 'Description only needed on the detail page. '.repeat(
             10_000,
         ),
@@ -26,8 +28,11 @@ const plant = {
         yieldMin: 1000,
         yieldMax: 2000,
         yieldType: 'perPlant',
+        growthWindowMin: 60,
+        growthWindowMax: 90,
     },
     prices: { perPlant: 1.25 },
+    store: { availableInStore: false },
     calendar: {
         sowing: [{ start: 3.5, end: 5 }],
         harvest: [{ start: 7, end: 10 }],
@@ -56,10 +61,12 @@ test('preserves every displayed card field, range and variety without descriptio
         name: 'Rajčica',
         label: 'Rajčica',
         alternativeName: ['Paradajz', 'Pomidor'],
+        latinName: 'Solanum lycopersicum',
     });
     assert.deepEqual(card.image, plant.image);
     assert.deepEqual(card.attributes, plant.attributes);
     assert.deepEqual(card.prices, plant.prices);
+    assert.deepEqual(card.store, plant.store);
     assert.deepEqual(card.calendar, plant.calendar);
     assert.deepEqual(card.sortNames, ['Volovsko srce', 'Šljivar']);
     assert.equal(card.isRecommended, true);
@@ -110,4 +117,29 @@ test('growth fixture triples cards and searchable data with unique ids and links
         assert.deepEqual(card.calendar, plant.calendar);
         assert.deepEqual(card.sortNames, catalogue[0]?.sortNames);
     }
+});
+
+test('orders names with Croatian collation', () => {
+    const names = [
+        'Češnjak',
+        'Cikla',
+        'Celer',
+        'Đumbir',
+        'Dinja',
+        'Špinat',
+        'Salata',
+    ];
+    const sorted = names
+        .map((name) => ({ information: { name } }))
+        .sort(compareCataloguePlantNames)
+        .map(({ information }) => information.name);
+    assert.deepEqual(sorted, [
+        'Celer',
+        'Cikla',
+        'Češnjak',
+        'Dinja',
+        'Đumbir',
+        'Salata',
+        'Špinat',
+    ]);
 });

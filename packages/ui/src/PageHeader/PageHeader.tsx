@@ -8,6 +8,8 @@ export type PageHeaderProps = {
     padded?: boolean;
     responsive?: 'container' | 'viewport';
     visual?: ReactNode;
+    /** Short page category shown above the title, e.g. "Katalog biljaka". */
+    tagline?: string | null;
     header: string;
     alternativeName?: ReactNode | string | null;
     subHeader?: string | null;
@@ -19,6 +21,7 @@ export function PageHeader({
     padded,
     responsive = 'viewport',
     visual,
+    tagline,
     header,
     alternativeName,
     subHeader,
@@ -85,9 +88,19 @@ export function PageHeader({
                             : 'md:max-w-96'
                     }
                 >
-                    <Typography level="h2" component="h1">
-                        {header}
-                    </Typography>
+                    <Stack spacing={1}>
+                        {tagline && (
+                            <Typography
+                                level="body2"
+                                className="font-semibold uppercase tracking-wider text-green-800 dark:text-green-500"
+                            >
+                                {tagline}
+                            </Typography>
+                        )}
+                        <Typography level="h2" component="h1">
+                            {header}
+                        </Typography>
+                    </Stack>
                     {alternativeName &&
                         (typeof alternativeName === 'string' ? (
                             <Typography level="body2" secondary>

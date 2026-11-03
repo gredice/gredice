@@ -12,6 +12,7 @@ import { getPublicGardensForWww } from './publicGardenData';
 
 const pageDescription =
     'Pregledaj Gredice vrtove koje su vlasnici učinili vidljivima i zaviri u biljke, gredice i planirane radnje.';
+const pageCategory = 'Javni vrtovi';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +20,7 @@ export const metadata: Metadata = createPublicMetadata({
     title: 'Vrtovi',
     description: pageDescription,
     path: KnownPages.PublicGardens,
-    category: 'Javni vrtovi',
+    category: pageCategory,
 });
 
 export default async function PublicGardensPage() {
@@ -31,7 +32,12 @@ export default async function PublicGardensPage() {
             {publicGardenIds.length > 0 ? (
                 <PublicGardenPreviewBackfill gardenIds={publicGardenIds} />
             ) : null}
-            <PageHeader padded header="Vrtovi" subHeader={pageDescription} />
+            <PageHeader
+                padded
+                tagline={pageCategory}
+                header="Vrtovi"
+                subHeader={pageDescription}
+            />
             {gardens.items.length > 0 ? (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {gardens.items.map((garden, gardenIndex) => (
