@@ -452,8 +452,8 @@ importers:
         specifier: 3.10.4
         version: 3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3)
       '@vvo/tzdb':
-        specifier: 6.201.1
-        version: 6.201.1
+        specifier: 6.202.0
+        version: 6.202.0
       '@xyflow/react':
         specifier: 12.12.0
         version: 12.12.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(immer@11.1.18)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -1450,8 +1450,8 @@ importers:
         specifier: 4.0.160
         version: 4.0.160(react@19.3.1)(zod@4.6.7)
       '@vvo/tzdb':
-        specifier: 6.201.1
-        version: 6.201.1
+        specifier: 6.202.0
+        version: 6.202.0
       ai:
         specifier: 7.0.156
         version: 7.0.156(zod@4.6.7)
@@ -6156,8 +6156,8 @@ packages:
     peerDependencies:
       vue: ^3.5.0
 
-  '@vvo/tzdb@6.201.1':
-    resolution: {integrity: sha512-ib7ymHHyiGD9N/WWGMX5951hmxaFnOP3W8l0ATUxaH0Y/NczPHWS4cQgJUd1S9zyjCq0od8WXxRHlnjlHNPdNg==}
+  '@vvo/tzdb@6.202.0':
+    resolution: {integrity: sha512-MGsedU65ypk/Y7yrp+oOLBzhQj/124xvyoUzx7csPiBSf1b3lgTp5imatuWU4SF6s1Ue3I6GxC+GxE8R5O1l0w==}
 
   '@webcontainer/env@1.1.1':
     resolution: {integrity: sha512-6aN99yL695Hi9SuIk1oC88l9o0gmxL1nGWWQ/kNy81HigJ0FoaoTXpytCj6ItzgyCEwA9kF1wixsTuv5cjsgng==}
@@ -15151,7 +15151,7 @@ snapshots:
     dependencies:
       vue: 3.5.44(typescript@7.0.2)
 
-  '@vvo/tzdb@6.201.1': {}
+  '@vvo/tzdb@6.202.0': {}
 
   '@webcontainer/env@1.1.1': {}
 
