@@ -1053,6 +1053,14 @@ function PublicContentShowcase() {
                 <IconButton aria-label="Pretraga">
                     <Search className="size-5" />
                 </IconButton>
+                <Button
+                    href="/vrt"
+                    navigation="document"
+                    color="brand"
+                    className="rounded-full"
+                >
+                    Moj vrt
+                </Button>
             </PageNav>
 
             <Container className="pt-24 pb-12" maxWidth="xl">
