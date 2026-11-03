@@ -45,3 +45,18 @@ export const calendarMonthNames = [
     'Studeni',
     'Prosinac',
 ];
+
+export const calendarMonthShortNames = [
+    'Sij',
+    'Velj',
+    'Ožu',
+    'Tra',
+    'Svi',
+    'Lip',
+    'Srp',
+    'Kol',
+    'Ruj',
+    'Lis',
+    'Stu',
+    'Pro',
+];
