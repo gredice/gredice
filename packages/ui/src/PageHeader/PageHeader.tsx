@@ -92,7 +92,7 @@ export function PageHeader({
                         {tagline && (
                             <Typography
                                 level="body2"
-                                className="font-semibold uppercase tracking-wider text-green-800 dark:text-green-500"
+                                className="font-semibold uppercase tracking-wider text-brand"
                             >
                                 {tagline}
                             </Typography>

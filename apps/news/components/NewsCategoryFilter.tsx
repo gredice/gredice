@@ -32,8 +32,8 @@ export function NewsCategoryFilter({
                                 aria-current={isActive ? 'page' : undefined}
                                 className={`flex min-h-11 items-center gap-2 rounded-full border py-2 pl-4 pr-2 text-sm font-semibold transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                                     isActive
-                                        ? 'border-green-800 bg-green-800 text-white dark:border-green-200 dark:bg-green-200 dark:text-green-950'
-                                        : 'border-green-800/20 bg-green-50 text-green-900 hover:border-green-800/40 hover:bg-green-100 dark:border-green-200/25 dark:bg-green-200/10 dark:text-green-100 dark:hover:bg-green-200/20'
+                                        ? 'border-brand bg-brand text-brand-foreground'
+                                        : 'border-brand/20 bg-brand/5 text-foreground hover:border-brand/40 hover:bg-brand/10'
                                 }`}
                                 href={{
                                     pathname: '/',
@@ -46,8 +46,8 @@ export function NewsCategoryFilter({
                                 <span
                                     className={`flex min-h-6 min-w-6 shrink-0 items-center justify-center rounded-full px-1.5 text-xs tabular-nums ${
                                         isActive
-                                            ? 'bg-white/15 dark:bg-green-950/10'
-                                            : 'bg-green-800/10 dark:bg-green-200/15'
+                                            ? 'bg-black/15 dark:bg-white/20'
+                                            : 'bg-brand/10'
                                     }`}
                                 >
                                     <span className="sr-only">

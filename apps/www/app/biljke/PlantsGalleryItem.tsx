@@ -108,7 +108,8 @@ export function PlantsGalleryItem(props: PlantsGalleryItemProps) {
                                     />
                                 }
                                 aria-label={`Posadi u gredicu: ${information.name}`}
-                                className="ml-auto shrink-0 bg-green-800 text-white hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600"
+                                color="brand"
+                                className="ml-auto shrink-0"
                             >
                                 Posadi
                             </Button>

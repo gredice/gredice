@@ -21,6 +21,10 @@ const themeExtend = {
             DEFAULT: 'hsl(var(--tertiary))',
             foreground: 'hsl(var(--tertiary-foreground))',
         },
+        brand: {
+            DEFAULT: 'hsl(var(--brand))',
+            foreground: 'hsl(var(--brand-foreground))',
+        },
         destructive: {
             DEFAULT: 'hsl(var(--destructive))',
             foreground: 'hsl(var(--destructive-foreground))',

@@ -29,6 +29,7 @@ const meta = {
                 'info',
                 'success',
                 'neutral',
+                'brand',
             ],
         },
         variant: {
@@ -162,6 +163,7 @@ export const Colors: Story = {
                 <Button color="primary">Primary</Button>
                 <Button color="secondary">Secondary</Button>
                 <Button color="neutral">Neutral</Button>
+                <Button color="brand">Brand</Button>
             </Row>
             <Row className="flex-wrap" spacing={3}>
                 <Button color="success" variant="soft">

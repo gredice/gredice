@@ -16,10 +16,7 @@ export function PlantsArchiveLinks() {
         >
             <Link href={KnownPages.SowingCalendar} className="rounded-lg">
                 <Card className={linkCardClassName}>
-                    <Calendar
-                        aria-hidden
-                        className="size-6 text-green-800 dark:text-green-400"
-                    />
+                    <Calendar aria-hidden className="size-6 text-brand" />
                     <Typography className="font-semibold">
                         Kalendar sjetve i sadnje
                     </Typography>
@@ -29,7 +26,7 @@ export function PlantsArchiveLinks() {
                     </Typography>
                     <Typography
                         level="body2"
-                        className="mt-auto font-semibold text-green-800 dark:text-green-400"
+                        className="mt-auto font-semibold text-brand"
                     >
                         Otvori kalendar →
                     </Typography>
@@ -37,10 +34,7 @@ export function PlantsArchiveLinks() {
             </Link>
             <Link href={KnownPages.DeliveryZagreb} className="rounded-lg">
                 <Card className={linkCardClassName}>
-                    <Truck
-                        aria-hidden
-                        className="size-6 text-green-800 dark:text-green-400"
-                    />
+                    <Truck aria-hidden className="size-6 text-brand" />
                     <Typography className="font-semibold">
                         Dostava povrća u Zagrebu
                     </Typography>
@@ -50,17 +44,14 @@ export function PlantsArchiveLinks() {
                     </Typography>
                     <Typography
                         level="body2"
-                        className="mt-auto font-semibold text-green-800 dark:text-green-400"
+                        className="mt-auto font-semibold text-brand"
                     >
                         Kako funkcionira dostava →
                     </Typography>
                 </Card>
             </Link>
             <Card className="flex h-full flex-col gap-2 p-5">
-                <Comment
-                    aria-hidden
-                    className="size-6 text-green-800 dark:text-green-400"
-                />
+                <Comment aria-hidden className="size-6 text-brand" />
                 <Typography className="font-semibold">
                     Nema biljke koja te zanima?
                 </Typography>

@@ -236,14 +236,25 @@ test('direct public route and real Link transition fence private reads while pre
     await expect(
         page.getByRole('dialog', { name: 'Prijava', exact: true }),
     ).toHaveCount(0);
+    // Let the guest bootstrap settle first. Its closing router.refresh()
+    // would otherwise queue behind the Link navigation and hold its commit.
+    // The loading text also clears on failure, so require the ready state.
+    await expect(page.getByText('Pripremamo tvoj vrt...')).toHaveCount(0);
+    await expect(
+        page.getByText('Nismo uspjeli pripremiti privremeni vrt.'),
+    ).toHaveCount(0);
     await expect(
         page.getByRole('link', { name: 'Posjeti Kestenijadu' }),
     ).toBeVisible();
     await page.getByRole('link', { name: 'Posjeti Kestenijadu' }).click();
-    await expect(page).toHaveURL(/\/kestenijada$/);
+    // The private home scene starts software WebGL as the guest settles, and
+    // the transition commits only once that main-thread work yields.
+    await expect(page).toHaveURL(/\/kestenijada$/, {
+        timeout: canvasStartupTimeout,
+    });
     await expect(
         page.getByRole('heading', { name: 'Kestenijada', exact: true }),
-    ).toBeVisible();
+    ).toBeVisible({ timeout: canvasStartupTimeout });
     const publicMounted = privateRequests.length;
     await page.waitForTimeout(1500);
     expect(privateRequests.slice(publicMounted)).toEqual([]);

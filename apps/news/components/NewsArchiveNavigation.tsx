@@ -33,8 +33,8 @@ export function NewsArchiveNavigation({
                                     aria-current={isActive ? 'page' : undefined}
                                     className={`flex min-h-11 items-center border-b-2 px-0.5 py-2 text-sm font-semibold transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                                         isActive
-                                            ? 'border-green-800 text-green-900 dark:border-green-200 dark:text-green-100'
-                                            : 'border-transparent text-muted-foreground hover:border-green-800/30 hover:text-foreground dark:hover:border-green-200/40'
+                                            ? 'border-brand text-foreground'
+                                            : 'border-transparent text-muted-foreground hover:border-brand/30 hover:text-foreground'
                                     }`}
                                     href={archive.href}
                                 >

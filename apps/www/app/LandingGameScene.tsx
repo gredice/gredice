@@ -314,7 +314,8 @@ export function LandingGameSignupCta() {
         >
             <NavigatingButton
                 href={gardenBaseUrl}
-                className="rounded-full bg-green-800 hover:bg-green-700 dark:bg-green-700 dark:text-white dark:hover:bg-green-600"
+                color="brand"
+                className="rounded-full"
                 endDecorator={
                     <SquareArrowRightEnter aria-hidden className="size-4" />
                 }

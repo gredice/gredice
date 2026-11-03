@@ -19,7 +19,8 @@ export type ButtonColor =
     | 'warning'
     | 'info'
     | 'success'
-    | 'neutral';
+    | 'neutral'
+    | 'brand';
 
 const buttonClassNames = cva(
     'relative inline-flex min-w-0 items-center justify-center gap-2 rounded-md text-sm font-medium transition-[color,background-color,border-color,text-decoration-color,fill,stroke,transform,translate,scale,rotate] duration-150 ease-out focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50',
@@ -101,6 +102,7 @@ const buttonColorClassNames = {
         success:
             'bg-green-600 text-white hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600',
         neutral: 'bg-muted text-foreground hover:bg-muted/80',
+        brand: 'bg-brand text-brand-foreground hover:bg-brand/90',
     },
     outlined: {
         primary: 'text-primary hover:bg-primary/10',
@@ -113,6 +115,7 @@ const buttonColorClassNames = {
         success:
             'border-green-300 text-green-700 hover:bg-green-50 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-950',
         neutral: '',
+        brand: 'border-brand/40 text-brand hover:bg-brand/10',
     },
     soft: {
         primary: 'bg-primary/10 text-primary hover:bg-primary/15',
@@ -125,6 +128,7 @@ const buttonColorClassNames = {
         success:
             'bg-green-100 text-green-900 hover:bg-green-200 dark:bg-green-950 dark:text-green-200 dark:hover:bg-green-900',
         neutral: '',
+        brand: 'bg-brand/10 text-brand hover:bg-brand/15',
     },
     plain: {
         primary: 'text-primary hover:bg-primary/10',
@@ -137,6 +141,7 @@ const buttonColorClassNames = {
         success:
             'text-green-700 hover:bg-green-50 dark:text-green-300 dark:hover:bg-green-950',
         neutral: '',
+        brand: 'text-brand hover:bg-brand/10',
     },
     link: {
         primary: '',
@@ -147,6 +152,7 @@ const buttonColorClassNames = {
         info: 'text-blue-700 dark:text-blue-300',
         success: 'text-green-700 dark:text-green-300',
         neutral: 'text-muted-foreground',
+        brand: 'text-brand',
     },
 } satisfies Record<VariantKeys | 'link', Record<ButtonColor, string>>;
 

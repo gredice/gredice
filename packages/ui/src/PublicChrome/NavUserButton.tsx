@@ -39,7 +39,8 @@ export function NavUserButton({
             ) : null}
             <NavigatingButton
                 href={href}
-                className="shrink-0 whitespace-nowrap rounded-full bg-green-800 px-3 hover:bg-green-700 dark:bg-green-700 dark:text-white dark:hover:bg-green-600 sm:pl-4"
+                color="brand"
+                className="shrink-0 whitespace-nowrap rounded-full px-3 sm:pl-4"
                 endDecorator={
                     <span className="hidden pl-1 sm:inline-flex">
                         <SquareArrowRightEnter aria-hidden className="size-4" />
