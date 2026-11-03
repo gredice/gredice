@@ -30,11 +30,14 @@ for (const signedIn of [false, true]) {
         const privateRequests: string[] = [];
         page.on('pageerror', (error) => pageErrors.push(error.message));
         // The signed-out login dialog makes the background inert. This
-        // prerender check still verifies that the discovery link is painted.
-        const discoveryLink = page.getByRole('link', {
-            name: 'Posjeti Kestenijadu',
-            includeHidden: !signedIn,
-        });
+        // prerender check still verifies that the discovery link is painted,
+        // excluding hidden prerender copies retained during a reload.
+        const discoveryLink = page
+            .getByRole('link', {
+                name: 'Posjeti Kestenijadu',
+                includeHidden: !signedIn,
+            })
+            .filter({ visible: true });
         const user = {
             id: 'prerender-test-user',
             userName: 'prerender-test-user',
