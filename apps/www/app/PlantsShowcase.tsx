@@ -13,6 +13,9 @@ import { toPlantCard, toPlantCatalogue } from './biljke/plantCatalogue';
 // read better: 2×2 on phones, two cards and the tile on tablets, three and
 // the tile from lg up.
 const shownPlants = 3;
+// Four columns inside the 1280px container make each card ~300px wide.
+const showcaseImageSizes =
+    '(min-width: 1280px) 300px, (min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw';
 
 export async function PlantsShowcase() {
     const entities = await getPlantsData();
@@ -41,6 +44,7 @@ export async function PlantsShowcase() {
                             {...plant}
                             id={plant.id.toString()}
                             currentMonth={currentMonth}
+                            imageSizes={showcaseImageSizes}
                         />
                     </div>
                 ))}
