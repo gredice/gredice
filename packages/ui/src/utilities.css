@@ -271,6 +271,21 @@ html[data-public-environment="on"] body {
     isolation: isolate;
 }
 
+/* Root stand-ins for the backdrop sky and veil. They paint the stored sky on
+   full page loads, before the backdrop hydrates, and stay hidden beneath it. */
+html[data-public-environment="on"]::before,
+html[data-public-environment="on"]::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+}
+
+html[data-public-environment="on"]::before {
+    background: var(--public-environment-sky);
+}
+
 /* Public copy must remain readable over every part of the sky, including
    the outer edges and the bright horizon in the dark theme. */
 [data-public-environment="on"] {
@@ -419,7 +434,8 @@ html[data-public-environment="on"] body {
     );
 }
 
-.public-environment-contrast-veil {
+.public-environment-contrast-veil,
+html[data-public-environment="on"]::after {
     --veil-opacity: calc(0.68 + var(--public-environment-contrast-boost, 0));
     /* A continuous reading surface, with a little more sky at the edges.
        The base wash protects text even outside the central content column. */
@@ -439,7 +455,8 @@ html[data-public-environment="on"] body {
         );
 }
 
-.dark .public-environment-contrast-veil {
+.dark .public-environment-contrast-veil,
+html.dark[data-public-environment="on"]::after {
     --veil-opacity: calc(
         0.8 +
         var(--public-environment-contrast-boost, 0) *

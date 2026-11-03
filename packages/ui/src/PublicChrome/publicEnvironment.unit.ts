@@ -6,7 +6,12 @@ import {
     getPublicEnvironmentMinutes,
     parsePublicEnvironmentWeather,
     publicEnvironmentDefaultLocation,
+    publicEnvironmentPaintMaxAge,
+    publicEnvironmentPaintScript,
+    publicEnvironmentPaintStorageKey,
+    readPublicEnvironmentPaint,
     resolvePublicEnvironmentDateAtMinutes,
+    resolvePublicEnvironmentPaint,
     resolvePublicEnvironmentSnapshot,
 } from './publicEnvironment';
 
@@ -152,4 +157,129 @@ test('parses and clamps the public weather response safely', () => {
         },
     );
     assert.equal(parsePublicEnvironmentWeather(null), null);
+});
+
+function runPublicEnvironmentPaintScript(storedPaint: string | null) {
+    const properties = new Map<string, string>();
+    const dataset: Record<string, string> = {};
+    const document = {
+        documentElement: {
+            dataset,
+            style: {
+                setProperty: (property: string, value: string) => {
+                    properties.set(property, value);
+                },
+            },
+        },
+    };
+    const localStorage = {
+        getItem: (key: string) =>
+            key === publicEnvironmentPaintStorageKey ? storedPaint : null,
+    };
+    // Run the exact inline script; shadowing the globals also proves that
+    // it does not depend on anything outside its own body.
+    new Function('document', 'localStorage', publicEnvironmentPaintScript)(
+        document,
+        localStorage,
+    );
+    return { dataset, properties };
+}
+
+test('restores a fresh stored sky before hydration', () => {
+    const weather = { ...clearWeather, cloudy: 0.5 };
+    const paint = resolvePublicEnvironmentPaint({
+        snapshot: resolvePublicEnvironmentSnapshot({
+            date: new Date('2026-08-24T20:00:00+02:00'),
+            weather,
+        }),
+        weather,
+    });
+    const { dataset, properties } = runPublicEnvironmentPaintScript(
+        JSON.stringify({ ...paint, at: Date.now() }),
+    );
+
+    assert.equal(dataset.publicEnvironment, 'on');
+    assert.equal(dataset.publicEnvironmentRestored, '');
+    assert.equal(properties.get('--public-environment-sky'), paint.sky);
+    assert.equal(properties.get('--baseHue'), String(paint.themeHue));
+    assert.equal(properties.get('--environmentHue'), String(paint.themeHue));
+    assert.equal(
+        properties.get('--public-environment-contrast-boost'),
+        String(paint.contrastBoost),
+    );
+});
+
+test('ignores stale, malformed, or unsafe stored skies', () => {
+    const paint = resolvePublicEnvironmentPaint({
+        snapshot: resolvePublicEnvironmentSnapshot({
+            date: new Date('2026-08-24T12:00:00+02:00'),
+            weather: clearWeather,
+        }),
+        weather: clearWeather,
+    });
+
+    for (const storedPaint of [
+        null,
+        'not json',
+        JSON.stringify({
+            ...paint,
+            at: Date.now() - publicEnvironmentPaintMaxAge - 1,
+        }),
+        JSON.stringify({ ...paint, at: Date.now(), themeHue: '200' }),
+        JSON.stringify({
+            ...paint,
+            at: Date.now(),
+            sky: 'url(https://example.com/sky.png)',
+        }),
+    ]) {
+        const { dataset, properties } =
+            runPublicEnvironmentPaintScript(storedPaint);
+        assert.deepEqual(dataset, {});
+        assert.equal(properties.size, 0);
+    }
+});
+
+test('reads the stored weather for the provider without painting', () => {
+    const weather = { ...clearWeather, rainy: 0.7 };
+    const paint = resolvePublicEnvironmentPaint({
+        snapshot: resolvePublicEnvironmentSnapshot({
+            date: new Date('2026-08-24T12:00:00+02:00'),
+            weather,
+        }),
+        weather,
+    });
+    const storage = new Map([
+        [
+            publicEnvironmentPaintStorageKey,
+            JSON.stringify({ ...paint, at: Date.now() }),
+        ],
+    ]);
+    const originalLocalStorage = Object.getOwnPropertyDescriptor(
+        globalThis,
+        'localStorage',
+    );
+    Object.defineProperty(globalThis, 'localStorage', {
+        configurable: true,
+        value: { getItem: (key: string) => storage.get(key) ?? null },
+    });
+
+    try {
+        assert.deepEqual(
+            readPublicEnvironmentPaint(
+                publicEnvironmentPaintStorageKey,
+                publicEnvironmentPaintMaxAge,
+            )?.weather,
+            weather,
+        );
+    } finally {
+        if (originalLocalStorage) {
+            Object.defineProperty(
+                globalThis,
+                'localStorage',
+                originalLocalStorage,
+            );
+        } else {
+            Reflect.deleteProperty(globalThis, 'localStorage');
+        }
+    }
 });
