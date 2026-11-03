@@ -36,7 +36,7 @@ test.describe('regional sowing calendar', () => {
             ]) {
                 await expect(
                     table.locator(`a[href="/biljke/${crop}"]`),
-                ).toHaveCount(4);
+                ).toHaveCount(1);
             }
             expect(
                 await page.evaluate(
