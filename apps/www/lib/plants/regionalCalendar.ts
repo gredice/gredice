@@ -18,6 +18,7 @@ import {
 import { resolvePlantSowingPrice } from './resolvePlantSowingPrice.ts';
 
 type CalendarPlant = Pick<PlantData, 'id'> & {
+    image?: PlantData['image'];
     information: Pick<PlantData['information'], 'name'>;
     calendar: Partial<
         Record<keyof PlantData['calendar'], readonly CalendarRangeInput[]>
@@ -82,11 +83,18 @@ function isPublicSource(source: RegionalCalendarReview['sources'][number]) {
     }
 }
 
+export type RegionalCalendarStatus =
+    | 'missing'
+    | 'incomplete'
+    | 'changed'
+    | 'expired'
+    | 'reviewed';
+
 function reviewStatus(
     plant: CalendarPlant,
     review: RegionalCalendarReview | undefined,
     today: string,
-) {
+): RegionalCalendarStatus {
     if (!review) return 'missing';
     if (
         review.region !== regionalCalendarRegion ||
@@ -219,6 +227,7 @@ export function buildRegionalCalendar(
                 plantId: plant.id,
                 slug,
                 name: plant.information.name,
+                image: plant.image,
                 status,
                 review: currentReview,
                 rows,
@@ -234,17 +243,26 @@ export function buildRegionalCalendar(
         rows: crops.flatMap((crop) => crop.rows),
         ready:
             crops.length === regionalCalendarPilotSlugs.length &&
-            crops.every(
-                (crop) =>
-                    crop.status === 'reviewed' &&
-                    crop.rows.some((row) => row.ranges.length > 0),
-            ),
+            crops.every(isRegionalCalendarCropReady),
     };
 }
 
-export type RegionalCalendarRow = ReturnType<
+/** A crop counts towards readiness only with a current review and a reviewed period. */
+export function isRegionalCalendarCropReady(crop: {
+    status: RegionalCalendarStatus;
+    rows: readonly { ranges: readonly unknown[] }[];
+}) {
+    return (
+        crop.status === 'reviewed' &&
+        crop.rows.some((row) => row.ranges.length > 0)
+    );
+}
+
+export type RegionalCalendarCrop = ReturnType<
     typeof buildRegionalCalendar
->['rows'][number];
+>['crops'][number];
+
+export type RegionalCalendarRow = RegionalCalendarCrop['rows'][number];
 
 export function filterRegionalCalendarRows(
     rows: readonly RegionalCalendarRow[],

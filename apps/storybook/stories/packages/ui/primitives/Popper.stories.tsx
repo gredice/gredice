@@ -3,7 +3,8 @@ import { Popper } from '@gredice/ui/Popper';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 const meta = {
     title: 'packages/ui/Overlays/Popper',
@@ -90,4 +91,44 @@ export const CollisionEdge: Story = {
             </div>
         ),
     ],
+};
+
+// Stands in for a trigger passed from a Server Component, which can reach
+// the client as a lazy node while its client modules are still loading.
+const deferredTrigger = Promise.resolve(
+    <Button variant="outlined">Prikazi detalje</Button>,
+);
+
+export const DeferredTrigger: Story = {
+    parameters: {
+        docs: {
+            description: {
+                story: 'A trigger that resolves after the first render, like an element passed from a Server Component, still renders as a single Base UI trigger button instead of being wrapped in another `<button>`.',
+            },
+        },
+    },
+    render: (args) => (
+        <Suspense>
+            <Popper {...args} trigger={deferredTrigger}>
+                <Stack className="p-3" spacing={2}>
+                    <Typography level="body2" semiBold>
+                        Odgođeni okidač
+                    </Typography>
+                </Stack>
+            </Popper>
+        </Suspense>
+    ),
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const trigger = await canvas.findByRole('button', {
+            name: 'Prikazi detalje',
+        });
+        await expect(canvasElement.querySelector('button button')).toBeNull();
+        await userEvent.click(trigger);
+        await waitFor(async () => {
+            await expect(
+                within(document.body).getByText('Odgođeni okidač'),
+            ).toBeVisible();
+        });
+    },
 };
