@@ -542,9 +542,10 @@ export function OutletGardenViewer({
         [selectOffer],
     );
 
+    // Keep fade timing separate from transitions so viewport height updates immediately.
     return (
         <div
-            className={`relative grid h-[100dvh] grid-cols-1 grid-rows-1 overflow-hidden bg-[#cfeaca] ${exitTarget ? 'motion-safe:animate-out motion-safe:fade-out-0 motion-safe:duration-200' : 'motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-500'}`}
+            className={`relative grid h-[100dvh] grid-cols-1 grid-rows-1 overflow-hidden bg-[#cfeaca] ${exitTarget ? 'motion-safe:animate-out motion-safe:fade-out-0 motion-safe:[animation-duration:200ms]' : 'motion-safe:animate-in motion-safe:fade-in-0 motion-safe:[animation-duration:500ms]'}`}
             data-outlet-garden
             data-outlet-garden-avatar-view={visibleAvatarView}
             data-outlet-garden-display-count={displayUnits.length}

@@ -531,7 +531,13 @@ async function expectOutletCanvasToFillScene(page: Page) {
                     const main = outletGarden.querySelector('main');
                     const canvas = main?.querySelector('canvas');
                     if (!main || !canvas) {
-                        return false;
+                        return {
+                            renderer: outletGarden.getAttribute(
+                                'data-outlet-garden-renderer',
+                            ),
+                            hasScene: Boolean(main),
+                            hasCanvas: Boolean(canvas),
+                        };
                     }
 
                     const rootBounds = outletGarden.getBoundingClientRect();
@@ -569,7 +575,7 @@ async function expectOutletCanvasToFillScene(page: Page) {
                         canvas: canvasBounds.toJSON(),
                     };
                 })
-                .catch(() => false);
+                .catch((error: unknown) => String(error));
         })
         .toBe(true);
 }
@@ -907,7 +913,27 @@ async function runOutletGardenLayoutTest({ page }: { page: Page }) {
         (toggleBox?.x ?? 0) + (toggleBox?.width ?? 0),
     );
     const screenshotViewport = { height: 288, width: 376 };
+    await page.locator('[data-outlet-garden]').evaluate((outletGarden) => {
+        window.addEventListener(
+            'resize',
+            () => {
+                const bounds = outletGarden.getBoundingClientRect();
+                outletGarden.setAttribute(
+                    'data-test-resized-viewport',
+                    JSON.stringify({
+                        height: bounds.height,
+                        width: bounds.width,
+                    }),
+                );
+            },
+            { once: true },
+        );
+    });
     await page.setViewportSize(screenshotViewport);
+    await expect(page.locator('[data-outlet-garden]')).toHaveAttribute(
+        'data-test-resized-viewport',
+        JSON.stringify(screenshotViewport),
+    );
     await expect
         .poll(() => page.evaluate(() => window.innerWidth))
         .toBe(screenshotViewport.width);
