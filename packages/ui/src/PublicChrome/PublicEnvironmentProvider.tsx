@@ -18,9 +18,14 @@ import {
     type PublicEnvironmentWeather,
     type PublicEnvironmentWeatherKind,
     parsePublicEnvironmentWeather,
+    publicEnvironmentPaintMaxAge,
+    publicEnvironmentPaintScript,
+    publicEnvironmentPaintStorageKey,
     publicEnvironmentWeatherPresets,
     resolvePublicEnvironmentDateAtMinutes,
+    resolvePublicEnvironmentPaint,
     resolvePublicEnvironmentSnapshot,
+    restorePublicEnvironmentPaint,
 } from './publicEnvironment';
 
 type PublicEnvironmentContextValue = {
@@ -37,6 +42,13 @@ type PublicEnvironmentContextValue = {
 
 const PublicEnvironmentContext =
     createContext<PublicEnvironmentContextValue | null>(null);
+
+const publicEnvironmentRootProperties = [
+    '--baseHue',
+    '--environmentHue',
+    '--public-environment-contrast-boost',
+    '--public-environment-sky',
+];
 
 function readDebugFlag(value: unknown) {
     if (!value || typeof value !== 'object') {
@@ -70,6 +82,8 @@ export function PublicEnvironmentProvider({
     const [debugMinutes, setDebugMinutes] = useState<number | null>(null);
     const [weatherKind, setWeatherKind] =
         useState<PublicEnvironmentWeatherKind>('live');
+    const [restoredWeather, setRestoredWeather] =
+        useState<PublicEnvironmentWeather | null>(null);
 
     useEffect(() => setHydrated(true), []);
 
@@ -121,39 +135,44 @@ export function PublicEnvironmentProvider({
         if (debugEnabled && weatherKind !== 'live') {
             return publicEnvironmentWeatherPresets[weatherKind];
         }
-        return weatherQuery.data ?? clearPublicEnvironmentWeather;
-    }, [debugEnabled, weatherKind, weatherQuery.data]);
+        return (
+            weatherQuery.data ??
+            restoredWeather ??
+            clearPublicEnvironmentWeather
+        );
+    }, [debugEnabled, restoredWeather, weatherKind, weatherQuery.data]);
 
     const snapshot = useMemo(
         () => resolvePublicEnvironmentSnapshot({ date, weather }),
         [date, weather],
     );
+    const paint = useMemo(
+        () => resolvePublicEnvironmentPaint({ snapshot, weather }),
+        [snapshot, weather],
+    );
+    // Only a settled, live sky is worth restoring on the next page load.
+    const persistPaint =
+        weatherQuery.isFetched &&
+        (!debugEnabled || (debugMinutes === null && weatherKind === 'live'));
 
     useLayoutEffect(() => {
         const root = document.documentElement;
-        const baseHue = root.style.getPropertyValue('--baseHue');
-        const baseHuePriority = root.style.getPropertyPriority('--baseHue');
-        const environmentHue = root.style.getPropertyValue('--environmentHue');
-        const environmentHuePriority =
-            root.style.getPropertyPriority('--environmentHue');
+        const properties = publicEnvironmentRootProperties.map((property) => ({
+            priority: root.style.getPropertyPriority(property),
+            property,
+            value: root.style.getPropertyValue(property),
+        }));
         const environmentAttribute = root.getAttribute(
             'data-public-environment',
         );
 
         return () => {
-            if (baseHue) {
-                root.style.setProperty('--baseHue', baseHue, baseHuePriority);
-            } else {
-                root.style.removeProperty('--baseHue');
-            }
-            if (environmentHue) {
-                root.style.setProperty(
-                    '--environmentHue',
-                    environmentHue,
-                    environmentHuePriority,
-                );
-            } else {
-                root.style.removeProperty('--environmentHue');
+            for (const { priority, property, value } of properties) {
+                if (value) {
+                    root.style.setProperty(property, value, priority);
+                } else {
+                    root.style.removeProperty(property);
+                }
             }
             if (environmentAttribute === null) {
                 root.removeAttribute('data-public-environment');
@@ -166,16 +185,47 @@ export function PublicEnvironmentProvider({
         };
     }, []);
 
+    // The inline script already painted the stored sky. Adopt its weather
+    // before the first paint so the live sky does not flash clear first.
+    useLayoutEffect(() => {
+        setRestoredWeather(
+            parsePublicEnvironmentWeather(
+                restorePublicEnvironmentPaint(
+                    publicEnvironmentPaintStorageKey,
+                    publicEnvironmentPaintMaxAge,
+                ),
+            ),
+        );
+    }, []);
+
     // Apply reading colors before the new sky is painted. ThemeProvider also
     // suppresses transitions when switching between the light/dark palettes.
+    // Keep this in sync with restorePublicEnvironmentPaint.
     useLayoutEffect(() => {
         const root = document.documentElement;
-        const hue = String(snapshot.themeHue);
+        const hue = String(paint.themeHue);
         root.style.setProperty('--baseHue', hue);
         root.style.setProperty('--environmentHue', hue);
+        root.style.setProperty(
+            '--public-environment-contrast-boost',
+            String(paint.contrastBoost),
+        );
+        root.style.setProperty('--public-environment-sky', paint.sky);
         root.dataset.publicEnvironment = 'on';
         setTheme(snapshot.dark ? 'dark' : 'light');
-    }, [setTheme, snapshot.dark, snapshot.themeHue]);
+    }, [paint, setTheme, snapshot.dark]);
+
+    useEffect(() => {
+        if (!persistPaint) return;
+        try {
+            localStorage.setItem(
+                publicEnvironmentPaintStorageKey,
+                JSON.stringify({ ...paint, at: Date.now() }),
+            );
+        } catch {
+            // Storage can be unavailable; the sky then starts from default.
+        }
+    }, [paint, persistPaint]);
 
     const value = useMemo(
         () => ({
@@ -202,6 +252,14 @@ export function PublicEnvironmentProvider({
 
     return (
         <PublicEnvironmentContext.Provider value={value}>
+            {/* Paints the stored sky on full page loads before hydration. */}
+            <script
+                // biome-ignore lint/security/noDangerouslySetInnerHtml: static script built from local constants.
+                dangerouslySetInnerHTML={{
+                    __html: publicEnvironmentPaintScript,
+                }}
+                suppressHydrationWarning
+            />
             {hydrated ? (
                 <PublicSkyBackdrop snapshot={snapshot} weather={weather} />
             ) : null}

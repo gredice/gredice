@@ -399,6 +399,97 @@ export function parsePublicEnvironmentWeather(
     };
 }
 
+export function resolvePublicEnvironmentSkyGradient(
+    snapshot: PublicEnvironmentSnapshot,
+) {
+    return `linear-gradient(180deg, ${snapshot.zenith} 0%, ${snapshot.upper} 32%, ${snapshot.horizon} 72%, ${snapshot.lower} 100%)`;
+}
+
+export function resolvePublicEnvironmentContrastBoost(
+    snapshot: PublicEnvironmentSnapshot,
+    weather: PublicEnvironmentWeather,
+) {
+    const twilight =
+        snapshot.phase === 'sunrise' || snapshot.phase === 'sunset';
+    return Math.max(
+        twilight ? 0.1 : 0,
+        Math.max(weather.cloudy, weather.foggy, weather.thundery) * 0.06,
+    );
+}
+
+export const publicEnvironmentPaintStorageKey =
+    'gredice-public-environment-paint';
+
+// Long enough to bridge page loads, short enough that the stored sky is
+// still close to the one the provider will compute.
+export const publicEnvironmentPaintMaxAge = 15 * 60 * 1000;
+
+export function resolvePublicEnvironmentPaint({
+    snapshot,
+    weather,
+}: {
+    snapshot: PublicEnvironmentSnapshot;
+    weather: PublicEnvironmentWeather;
+}) {
+    return {
+        contrastBoost: resolvePublicEnvironmentContrastBoost(snapshot, weather),
+        sky: resolvePublicEnvironmentSkyGradient(snapshot),
+        themeHue: snapshot.themeHue,
+        weather,
+    };
+}
+
+/**
+ * Applies the last stored sky to the root element and returns its weather.
+ * It also runs as an inline script before the first paint, so it must not
+ * reference anything outside its own body.
+ */
+export function restorePublicEnvironmentPaint(
+    storageKey: string,
+    maxAge: number,
+): unknown {
+    try {
+        const paint: unknown = JSON.parse(
+            localStorage.getItem(storageKey) ?? 'null',
+        );
+        if (!paint || typeof paint !== 'object') return null;
+
+        const at = Reflect.get(paint, 'at');
+        const contrastBoost = Reflect.get(paint, 'contrastBoost');
+        const sky = Reflect.get(paint, 'sky');
+        const themeHue = Reflect.get(paint, 'themeHue');
+        if (
+            typeof at !== 'number' ||
+            !(Math.abs(Date.now() - at) <= maxAge) ||
+            typeof contrastBoost !== 'number' ||
+            !Number.isFinite(contrastBoost) ||
+            typeof themeHue !== 'number' ||
+            !Number.isFinite(themeHue) ||
+            typeof sky !== 'string' ||
+            !/^linear-gradient\(180deg(?:, rgb\(\d{1,3} \d{1,3} \d{1,3}\) \d{1,3}%){4}\)$/u.test(
+                sky,
+            )
+        ) {
+            return null;
+        }
+
+        const root = document.documentElement;
+        root.style.setProperty('--baseHue', String(themeHue));
+        root.style.setProperty('--environmentHue', String(themeHue));
+        root.style.setProperty(
+            '--public-environment-contrast-boost',
+            String(contrastBoost),
+        );
+        root.style.setProperty('--public-environment-sky', sky);
+        root.dataset.publicEnvironment = 'on';
+        return Reflect.get(paint, 'weather');
+    } catch {
+        return null;
+    }
+}
+
+export const publicEnvironmentPaintScript = `(${restorePublicEnvironmentPaint.toString()})(${JSON.stringify(publicEnvironmentPaintStorageKey)},${publicEnvironmentPaintMaxAge})`;
+
 export function resolvePublicEnvironmentSnapshot({
     date,
     weather,

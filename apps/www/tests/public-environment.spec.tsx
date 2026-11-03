@@ -130,8 +130,69 @@ test('restores document ambience styles when the provider unmounts', async ({
         await page.locator('html').evaluate((root) => ({
             baseHue: root.style.getPropertyValue('--baseHue'),
             environmentHue: root.style.getPropertyValue('--environmentHue'),
+            sky: root.style.getPropertyValue('--public-environment-sky'),
         })),
-    ).toEqual({ baseHue: '50', environmentHue: '60' });
+    ).toEqual({ baseHue: '50', environmentHue: '60', sky: '' });
+});
+
+test('stores the live sky for the next full page load', async ({
+    mount,
+    page,
+}) => {
+    await mockPublicEnvironmentRequests(page, false);
+    await mount(<PublicEnvironmentHarness />);
+
+    const storedPaint = () =>
+        page.evaluate(() =>
+            localStorage.getItem('gredice-public-environment-paint'),
+        );
+    await expect.poll(storedPaint).toContain('"cloudy":0.1');
+    const rootSky = await page
+        .locator('html')
+        .evaluate((root) =>
+            root.style.getPropertyValue('--public-environment-sky'),
+        );
+    expect(rootSky).toMatch(/^linear-gradient\(180deg, rgb\(/u);
+    expect(await storedPaint()).toContain(JSON.stringify(rootSky));
+});
+
+test('keeps the stored weather until live weather loads', async ({
+    mount,
+    page,
+}) => {
+    await mockPublicEnvironmentRequests(page, false);
+    await page.route('**/api/data/weather/now', async (route) => {
+        // Hold live weather back while the restored sky is checked.
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+        await route.fulfill({
+            status: 200,
+            json: { cloudy: 0, foggy: 0, rainy: 0, snowy: 0, thundery: 0 },
+        });
+    });
+    await page.evaluate(() => {
+        localStorage.setItem(
+            'gredice-public-environment-paint',
+            JSON.stringify({
+                at: Date.now(),
+                contrastBoost: 0.03,
+                sky: 'linear-gradient(180deg, rgb(86 165 218) 0%, rgb(142 204 235) 32%, rgb(220 235 231) 72%, rgb(246 235 205) 100%)',
+                themeHue: 202,
+                weather: {
+                    cloudy: 0.5,
+                    foggy: 0,
+                    rainy: 0,
+                    snowy: 0,
+                    thundery: 0,
+                },
+            }),
+        );
+    });
+    await mount(<PublicEnvironmentHarness />);
+
+    await expect(page.locator('.public-environment-clouds')).toHaveCSS(
+        'opacity',
+        '0.38',
+    );
 });
 
 test('fits the debug controls on mobile', async ({ mount, page }) => {
