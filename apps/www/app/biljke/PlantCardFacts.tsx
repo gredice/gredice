@@ -3,7 +3,10 @@ import { PlantGridIcon } from '@gredice/ui/GridIcons';
 import { PlantYieldTooltip } from '@gredice/ui/plants';
 import type { PlantCatalogueItem } from './plantCatalogue';
 
-/** Fixed three-cell row so card facts never wrap differently card to card. */
+/**
+ * Fixed three-cell row so card facts never wrap differently card to card.
+ * Positioned so its titles and yield tooltip sit above the card link overlay.
+ */
 export function PlantCardFacts({
     plant,
 }: {
@@ -24,7 +27,7 @@ export function PlantCardFacts({
               : '—';
 
     return (
-        <dl className="grid grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,1.3fr)] rounded-md bg-background/70 py-1.5 text-center">
+        <dl className="relative grid grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,1.3fr)] rounded-md bg-background/70 py-1.5 text-center">
             <div
                 title={`Očekivani prinos po polju ${FIELD_SIZE_LABEL}`}
                 className="flex min-w-0 flex-col items-center gap-0.5"

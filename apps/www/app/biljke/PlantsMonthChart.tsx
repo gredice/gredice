@@ -93,20 +93,23 @@ export function PlantsMonthChart({
                                 {count}
                             </span>
                             <span className="flex min-h-14 w-full flex-1 items-end justify-center">
-                                <span
-                                    className={cx(
-                                        'w-3/4 max-w-10 rounded-t-md rounded-b-sm',
-                                        activity === 'berba'
-                                            ? 'bg-lime-400'
-                                            : 'bg-yellow-400',
-                                        month !== null &&
-                                            !isSelected &&
-                                            'opacity-40',
-                                    )}
-                                    style={{
-                                        height: `${Math.max(4, Math.round((count / maxCount) * 100))}%`,
-                                    }}
-                                />
+                                {/* The 4% floor keeps small counts visible; empty months get no bar. */}
+                                {count > 0 && (
+                                    <span
+                                        className={cx(
+                                            'w-3/4 max-w-10 rounded-t-md rounded-b-sm',
+                                            activity === 'berba'
+                                                ? 'bg-lime-400'
+                                                : 'bg-yellow-400',
+                                            month !== null &&
+                                                !isSelected &&
+                                                'opacity-40',
+                                        )}
+                                        style={{
+                                            height: `${Math.max(4, Math.round((count / maxCount) * 100))}%`,
+                                        }}
+                                    />
+                                )}
                             </span>
                             <span
                                 className={cx(

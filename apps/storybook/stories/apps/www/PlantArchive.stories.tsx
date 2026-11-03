@@ -20,7 +20,7 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'The /biljke archive leads with the season: a month chart that filters by sowing or harvest month, and a panel for the current month that ranks plants whose sowing window closes first. Cards show a sowing/harvest strip and fixed facts; the calendar shows one row per plant.',
+                    'The /biljke archive leads with the season: a month chart that filters by sowing or harvest month, and a panel for the current month that ranks plants whose sowing window closes first. Cards show a sowing/harvest strip, fixed facts and a price row whose Posadi button opens the Garden with the plant ready to sow (Nedostupno, disabled, when the store has none); the calendar shows one row per plant.',
             },
         },
         layout: 'fullscreen',
@@ -52,6 +52,13 @@ export const NoSowingThisMonth: Story = {
 };
 
 export const Cards: Story = {
+    parameters: {
+        docs: {
+            description: {
+                story: 'Hren is not available in the store, so its card shows a disabled Nedostupno button in place of Posadi.',
+            },
+        },
+    },
     render: () => (
         <div className="mx-auto grid max-w-5xl grid-cols-2 gap-4 p-6 md:grid-cols-3">
             {plantArchiveStoryPlants.slice(0, 3).map((plant) => (

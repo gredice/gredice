@@ -110,6 +110,22 @@ for (const device of ['Desktop Chrome', 'Pixel 7']) {
                                 })
                                 .first(),
                         ).toBeAttached();
+                        // Cards plant straight into the Garden without nesting
+                        // controls inside the card link.
+                        await expect(
+                            page
+                                .locator(
+                                    'main a[href^="https://vrt.gredice.com/?sijanje="]',
+                                )
+                                .first(),
+                        ).toBeVisible();
+                        expect(
+                            await page
+                                .locator(
+                                    'main a[href^="/biljke/"] :is(a, button)',
+                                )
+                                .count(),
+                        ).toBe(0);
                     }
                 } else {
                     for (const text of [

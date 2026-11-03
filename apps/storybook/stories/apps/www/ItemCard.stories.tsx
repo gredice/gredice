@@ -1,4 +1,5 @@
 import { ItemCard } from '@apps/www/components/shared/ItemCard';
+import { Button } from '@gredice/ui/Button';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 
 const meta = {
@@ -38,6 +39,30 @@ export const Default: Story = {};
 export const WithLongLabel: Story = {
     args: {
         label: 'Cherry rajčica Gardeners Delight',
+    },
+};
+
+export const WithFooter: Story = {
+    args: {
+        footer: (
+            <div className="flex items-center justify-between gap-2 border-t pt-2">
+                <span className="font-bold">4.99€</span>
+                <Button
+                    href="https://vrt.gredice.com/?sijanje=1"
+                    navigation="document"
+                    size="sm"
+                >
+                    Posadi
+                </Button>
+            </div>
+        ),
+    },
+    parameters: {
+        docs: {
+            description: {
+                story: 'The footer sits outside the card link, so its controls are not nested in it; the rest of the card still opens the item.',
+            },
+        },
     },
 };
 
