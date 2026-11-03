@@ -129,7 +129,9 @@ export function PlantsCalendar({
                     </div>
                     {filtered.length === 0 && (
                         <Typography level="body2" center className="py-4">
-                            Nema rezultata pretrage.
+                            {month
+                                ? 'Nema biljaka za ovaj odabir.'
+                                : 'Nema rezultata pretrage.'}
                         </Typography>
                     )}
                     {filtered.map((plant) => {
