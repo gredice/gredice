@@ -90,7 +90,7 @@ export function PlantsGalleryItem(props: PlantsGalleryItemProps) {
             <PlantOrSortImage
                 plant={props}
                 fill
-                sizes="(min-width: 1280px) 20vw, (min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
+                sizes="(min-width: 1280px) 250px, (min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
             />
             {isSowingTime && (
                 <div className="absolute top-1 right-1">
