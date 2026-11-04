@@ -9,7 +9,7 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'ExpandableText clamps longer editorial content to a fixed height and lets readers expand or collapse it in place.',
+                    'ExpandableText clamps longer editorial content on phones and lets readers expand or collapse it in place. From the md breakpoint up the full text always shows. The fade masks the text itself, so it works over any background, and short content never collapses.',
             },
         },
     },
@@ -45,3 +45,16 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+export const ShortContent: Story = {
+    render: (args) => (
+        <div className="max-w-xl">
+            <ExpandableText {...args}>
+                <p className="text-sm leading-6 text-foreground">
+                    Short answers fit within the limit, so no fade or toggle
+                    appears.
+                </p>
+            </ExpandableText>
+        </div>
+    ),
+};
