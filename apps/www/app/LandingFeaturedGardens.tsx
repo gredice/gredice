@@ -399,8 +399,8 @@ export function LandingFeaturedGardens({
                         <div className="flex items-center gap-3 md:block">
                             <div className="min-w-0 flex-1">
                                 <Typography
-                                    className="text-xs font-medium tracking-wide text-tertiary-foreground uppercase md:text-3xl md:font-normal md:tracking-normal md:text-foreground md:normal-case"
-                                    component="h1"
+                                    className="text-xs font-medium tracking-wide text-tertiary-foreground uppercase md:text-2xl md:font-normal md:tracking-normal md:text-foreground md:normal-case"
+                                    component="h2"
                                     level="h3"
                                 >
                                     Vrtovi korisnika Gredica

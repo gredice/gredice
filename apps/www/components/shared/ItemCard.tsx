@@ -1,3 +1,4 @@
+import { cx } from '@gredice/ui/utils';
 import type { Route } from 'next';
 import type { PropsWithChildren, ReactElement, ReactNode } from 'react';
 import { Card, CardHeader, CardOverflow } from './Card';
@@ -8,6 +9,7 @@ export function ItemCard({
     badge,
     footer,
     href,
+    mediaClassName,
     mediaViewTransitionName,
 }: PropsWithChildren<{
     label: string | ReactElement;
@@ -16,6 +18,8 @@ export function ItemCard({
     /** Below the label, outside the link, so it can hold its own buttons or links. */
     footer?: ReactNode;
     href: Route;
+    /** Overrides the square media box, e.g. a shorter image in a one-column list. */
+    mediaClassName?: string;
     mediaViewTransitionName?: string;
 }>) {
     return (
@@ -27,7 +31,10 @@ export function ItemCard({
             )}
             <Card className="flex h-full flex-col overflow-hidden border-tertiary border-b-4 transition-all group-hover:bg-accent group-hover:text-accent-foreground group-hover:shadow-xl">
                 <CardOverflow
-                    className="public-content-card-view-transition mb-2 aspect-square shrink-0 overflow-hidden p-0"
+                    className={cx(
+                        'public-content-card-view-transition mb-2 aspect-square shrink-0 overflow-hidden p-0',
+                        mediaClassName,
+                    )}
                     style={
                         mediaViewTransitionName
                             ? { viewTransitionName: mediaViewTransitionName }

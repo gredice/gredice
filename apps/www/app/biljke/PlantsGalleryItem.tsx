@@ -17,6 +17,7 @@ import { getPlantImageViewTransitionName } from './plantViewTransition';
 export type PlantsGalleryItemProps = Omit<PlantCatalogueItem, 'id'> & {
     id: string;
     currentMonth: number;
+    mediaClassName?: string;
     matchingAlternativeName?: string;
     matchingSortName?: string;
 };
@@ -26,6 +27,7 @@ export function PlantsGalleryItem(props: PlantsGalleryItemProps) {
         id,
         currentMonth,
         information,
+        mediaClassName,
         prices,
         matchingAlternativeName,
         matchingSortName,
@@ -123,11 +125,13 @@ export function PlantsGalleryItem(props: PlantsGalleryItemProps) {
             }
             badge={isSowingTime && <SeedTimeInformationBadge size="sm" />}
             href={KnownPages.Plant(information.name)}
+            mediaClassName={mediaClassName}
             mediaViewTransitionName={getPlantImageViewTransitionName(id)}
         >
             <PlantOrSortImage
                 plant={props}
                 fill
+                className="object-contain"
                 sizes="(min-width: 1280px) 250px, (min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
             />
         </ItemCard>

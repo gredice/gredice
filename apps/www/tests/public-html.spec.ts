@@ -129,10 +129,10 @@ for (const device of ['Desktop Chrome', 'Pixel 7']) {
                     }
                 } else {
                     for (const text of [
-                        'Klikneš, mi sadimo - ti uživaš',
-                        'Zasadi',
-                        'Održavaj',
-                        'Uberi i uživaj',
+                        'Kako funkcionira',
+                        'Klikneš',
+                        'Mi sadimo',
+                        'Ti uživaš',
                         'Sve biljke',
                     ]) {
                         await expect(
