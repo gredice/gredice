@@ -4,7 +4,9 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { FaqCategorySection } from '../../components/faq/FaqCategorySection';
+import { FaqCategoryVisual } from '../../components/faq/FaqCategoryVisual';
 import { groupFaqCategories } from '../../components/faq/groupFaqCategories';
+import { CtaBand } from '../../components/shared/CtaBand';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { PageSectionNav } from '../../components/shared/PageSectionNav';
 import { NoDataPlaceholder } from '../../components/shared/placeholders/NoDataPlaceholder';
@@ -42,21 +44,17 @@ export default async function FaqPage() {
                 items={sections.map(({ category }) => ({
                     id: category.information.name,
                     label: category.information.label,
+                    icon: (
+                        <FaqCategoryVisual
+                            category={category}
+                            size={24}
+                            className="size-6"
+                        />
+                    ),
                 }))}
                 className="mt-6"
             />
             <Stack spacing={8} className="mt-8">
-                <Stack spacing={3}>
-                    <Typography level="h4" component="h2">
-                        Što ako biljka nije proklijala?
-                    </Typography>
-                    <Typography>{notSproutedRefundPolicy}</Typography>
-                    <Typography>
-                        <Link className="underline" href={KnownPages.Refunds}>
-                            Pravila povrata i suncokreta
-                        </Link>
-                    </Typography>
-                </Stack>
                 {!faq?.length && (
                     <div className=" border rounded py-4 md:col-span-2">
                         <NoDataPlaceholder>
@@ -85,6 +83,16 @@ export default async function FaqPage() {
                     <WhatsAppCard />
                 </Stack>
             </Stack>
+            <CtaBand
+                id="faq-cta-title"
+                title="Sve jasno? Složi prvu gredicu."
+                description="Odaberi biljke u aplikaciji, a mi se pobrinemo za sadnju, njegu i berbu."
+                secondaryAction={{
+                    href: KnownPages.Pricing,
+                    label: 'Pogledaj cjenik',
+                }}
+                className="mt-12"
+            />
             <Row spacing={4} className="mt-8">
                 <Typography level="body1">
                     Jesu li ti informacije korisne?
@@ -94,5 +102,3 @@ export default async function FaqPage() {
         </Stack>
     );
 }
-
-import { notSproutedRefundPolicy } from '@gredice/js/plants';

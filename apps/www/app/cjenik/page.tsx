@@ -18,7 +18,7 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
-import type { ReactNode } from 'react';
+import { type ReactNode, Suspense } from 'react';
 import { RelatedFaq } from '../../components/faq/RelatedFaq';
 import {
     Card,
@@ -26,8 +26,10 @@ import {
     CardHeader,
     CardTitle,
 } from '../../components/shared/Card';
+import { CtaBand } from '../../components/shared/CtaBand';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { PageSectionNav } from '../../components/shared/PageSectionNav';
+import { StartingPriceHighlightChip } from '../../components/shared/StartingPriceHighlightChip';
 import { formatPrice } from '../../lib/formatPrice';
 import { getHqLocationsData } from '../../lib/getHqLocationsData';
 import { getOperationsData } from '../../lib/plants/getOperationsData';
@@ -307,6 +309,11 @@ export default async function PricingPage() {
                 />
                 <Stack spacing={2} className="pb-6 md:pb-12">
                     <PageHeader
+                        highlight={
+                            <Suspense fallback={null}>
+                                <StartingPriceHighlightChip kind="planting" />
+                            </Suspense>
+                        }
                         header="Cjenik"
                         visual={
                             <GameReceiptIcon
@@ -573,6 +580,15 @@ export default async function PricingPage() {
                 </Card>
 
                 <RelatedFaq placement="pricing" />
+                <CtaBand
+                    id="pricing-cta-title"
+                    title="Kreni s prvom gredicom."
+                    description="Plaćaš samo biljke i radnje koje odabereš, a ukupni iznos vidiš prije potvrde."
+                    secondaryAction={{
+                        href: `${KnownPages.Landing}#kako-funkcionira`,
+                        label: 'Kako funkcionira',
+                    }}
+                />
                 <Row spacing={4} className="pt-4">
                     <Typography level="body1">
                         Jesu li ti informacije u cjeniku korisne?

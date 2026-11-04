@@ -5,6 +5,7 @@ import { animated } from '../scene/sceneSpring';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
+import { useGameState } from '../useGameState';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { useGroundPatchStandardMaterial } from './helpers/groundPatchMaterial';
@@ -162,6 +163,11 @@ export function BlockSnowFalling({
         return first?.x === stack.position.x && first?.z === stack.position.z;
     }, [garden?.stacks, stack.position.x, stack.position.z]);
 
+    // Weather visuals off (a player setting, or a preview capture) hides the
+    // falling flakes; a frozen frame would show them hanging in mid-air.
+    const weatherVisualizationDisabled = useGameState(
+        (state) => state.weatherVisualizationDisabled,
+    );
     const snowSize = Math.max(snowArea.width, snowArea.depth) * 1.2;
     const particleCount = Math.min(200, 50 * snowArea.width * snowArea.depth);
 
@@ -180,7 +186,7 @@ export function BlockSnowFalling({
                 geometry={nodes.Block_Sand_1.geometry}
                 {...snowPresets.snow}
             />
-            {isFirstInGroup && (
+            {isFirstInGroup && !weatherVisualizationDisabled && (
                 <group position={[snowArea.offsetX, 0, snowArea.offsetZ]}>
                     <Snow
                         count={particleCount}

@@ -8,6 +8,8 @@ export type PageHeaderProps = {
     padded?: boolean;
     responsive?: 'container' | 'viewport';
     visual?: ReactNode;
+    /** Timely highlight chip shown above the tagline, e.g. what is in season. */
+    highlight?: ReactNode;
     /** Short page category shown above the title, e.g. "Katalog biljaka". */
     tagline?: string | null;
     header: string;
@@ -21,6 +23,7 @@ export function PageHeader({
     padded,
     responsive = 'viewport',
     visual,
+    highlight,
     tagline,
     header,
     alternativeName,
@@ -88,6 +91,7 @@ export function PageHeader({
                             : 'md:max-w-xl'
                     }
                 >
+                    {highlight}
                     <Stack spacing={1}>
                         {tagline && (
                             <Typography

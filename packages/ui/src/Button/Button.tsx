@@ -45,6 +45,9 @@ const buttonClassNames = cva(
                 false: '',
             },
         },
+        // Size classes come after the variant, so without this the link
+        // variant's `p-0` loses to `px-*` and links sit indented.
+        compoundVariants: [{ variant: 'link', className: 'px-0' }],
         defaultVariants: {
             variant: 'solid',
             size: 'md',

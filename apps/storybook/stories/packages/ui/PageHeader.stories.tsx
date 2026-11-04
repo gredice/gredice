@@ -56,6 +56,25 @@ export const WithTagline: Story = {
     },
 };
 
+export const WithHighlight: Story = {
+    args: {
+        alternativeName: undefined,
+        header: 'Biljke',
+        highlight: (
+            <a
+                href="/biljke?mjesec=11"
+                className="inline-flex w-fit items-center gap-2 rounded-full border border-amber-300/70 bg-amber-100 px-3 py-1.5 text-sm font-medium text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200"
+            >
+                Sad u sezoni: češnjak i luk
+            </a>
+        ),
+        subHeader:
+            'Odaberi što želiš uzgajati u svojoj gredici. Za svaku biljku vidiš kada se sije, koliko rodi i koliko košta sijanje.',
+        tagline: 'Katalog biljaka',
+        visual: undefined,
+    },
+};
+
 export const CmsSection: Story = {
     render: () => (
         <div className="mx-auto max-w-5xl px-6 py-8">

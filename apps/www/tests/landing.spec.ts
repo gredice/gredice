@@ -190,10 +190,6 @@ test('navbar floats on scroll and landing game frame is rounded', async ({
     const featuredGardenCarousel = page.getByTestId('landing-featured-gardens');
     const hasFeaturedGardenCarousel =
         (await featuredGardenCarousel.count()) > 0;
-    await expect(page.getByTestId('landing-hero-card')).toHaveCSS(
-        'border-radius',
-        hasFeaturedGardenCarousel ? '16px' : '15px',
-    );
     await expect(
         page
             .getByTestId('landing-game-frame')
@@ -201,21 +197,35 @@ test('navbar floats on scroll and landing game frame is rounded', async ({
     ).toHaveCount(0);
 
     const frameBox = await page.getByTestId('landing-game-frame').boundingBox();
-    const heroCardBox = await page
-        .getByTestId('landing-hero-card')
-        .boundingBox();
     expect(frameBox).not.toBeNull();
-    expect(heroCardBox).not.toBeNull();
-    if (!frameBox || !heroCardBox) {
-        throw new Error('Expected landing game frame and hero card boxes.');
+    if (!frameBox) {
+        throw new Error('Expected landing game frame box.');
     }
 
-    const minimumCardInset = hasFeaturedGardenCarousel ? 12 : 23;
-    expect(heroCardBox.x - frameBox.x).toBeGreaterThanOrEqual(minimumCardInset);
-    expect(heroCardBox.y - frameBox.y).toBeGreaterThanOrEqual(minimumCardInset);
-    expect(
-        frameBox.x + frameBox.width - (heroCardBox.x + heroCardBox.width),
-    ).toBeGreaterThanOrEqual(minimumCardInset);
+    if (hasFeaturedGardenCarousel) {
+        await expect(page.getByTestId('landing-hero-card')).toHaveCSS(
+            'border-radius',
+            '16px',
+        );
+        const heroCardBox = await page
+            .getByTestId('landing-hero-card')
+            .boundingBox();
+        expect(heroCardBox).not.toBeNull();
+        if (!heroCardBox) {
+            throw new Error('Expected featured garden card box.');
+        }
+
+        const minimumCardInset = 12;
+        expect(heroCardBox.x - frameBox.x).toBeGreaterThanOrEqual(
+            minimumCardInset,
+        );
+        expect(heroCardBox.y - frameBox.y).toBeGreaterThanOrEqual(
+            minimumCardInset,
+        );
+        expect(
+            frameBox.x + frameBox.width - (heroCardBox.x + heroCardBox.width),
+        ).toBeGreaterThanOrEqual(minimumCardInset);
+    }
     expect(frameBox.height).toBeLessThanOrEqual(550);
     if (process.env.GREDICE_PLAYWRIGHT_FEATURED_GARDENS_FIXTURE === 'true') {
         const gardens = page.getByRole('region', {
@@ -229,26 +239,27 @@ test('navbar floats on scroll and landing game frame is rounded', async ({
         await expect(page.locator('canvas')).toBeVisible({ timeout: 35_000 });
     }
 
-    const signupCta = page.getByTestId('landing-game-signup-cta');
-    await expect(signupCta).toBeVisible();
+    const hero = page.getByTestId('landing-hero');
+    await expect(hero.getByRole('heading', { level: 1 })).toBeVisible();
     await expect(
-        signupCta.getByRole('link', { name: 'Započni svoj vrt' }),
-    ).toBeVisible();
-    const openAppCta = signupCta.getByRole('link', {
-        name: 'Otvori aplikaciju',
+        hero.getByRole('link', { name: 'Složi svoju gredicu' }),
+    ).toHaveAttribute('href', /^https:\/\/vrt\.gredice\.(com|test)/u);
+    const howItWorksCta = hero.getByRole('link', {
+        name: 'Kako funkcionira',
     });
-    await expect(openAppCta).toBeVisible();
-    await expectOpaqueBackground(openAppCta);
-    await openAppCta.hover();
-    await expectOpaqueBackground(openAppCta);
+    await expect(howItWorksCta).toHaveAttribute('href', '#kako-funkcionira');
+    await expectOpaqueBackground(howItWorksCta);
+    await howItWorksCta.hover();
+    await expectOpaqueBackground(howItWorksCta);
 
-    const signupCtaBox = await signupCta.boundingBox();
-    expect(signupCtaBox).not.toBeNull();
-    if (!signupCtaBox) {
-        throw new Error('Expected landing game signup CTA box.');
+    // On phones the offer reads first, then the garden scene.
+    const heroBox = await hero.boundingBox();
+    expect(heroBox).not.toBeNull();
+    if (!heroBox) {
+        throw new Error('Expected landing hero box.');
     }
 
-    expect(signupCtaBox.y).toBeGreaterThanOrEqual(frameBox.y + frameBox.height);
+    expect(heroBox.y + heroBox.height).toBeLessThanOrEqual(frameBox.y);
 
     if (process.env.GREDICE_PLAYWRIGHT_FEATURED_GARDENS_FIXTURE === 'true') {
         await expect(page.locator('canvas')).toHaveCount(0);

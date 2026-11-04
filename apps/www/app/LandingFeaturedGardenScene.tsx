@@ -5,6 +5,7 @@ import { getGardenBaseUrl } from '@gredice/js/urls';
 import { Button } from '@gredice/ui/Button';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { LandingGardenSceneBoundary } from './LandingGardenSceneBoundary';
 import { LandingPublicGardenViewer } from './LandingPublicGardenViewer';
 import type { LandingGarden } from './landingGardenCarousel';
 import { PublicGardenPreviewImage } from './vrtovi/PublicGardenPreviewImage';
@@ -44,15 +45,17 @@ export function LandingFeaturedGardenScene({
     return (
         <div className="relative size-full">
             {scene ? (
-                <LandingPublicGardenViewer
-                    appBaseUrl={getGardenBaseUrl()}
-                    className="size-full"
-                    deferDetails
-                    garden={scene}
-                    noControls
-                    noSound
-                    onSceneReady={() => setSceneReady(true)}
-                />
+                <LandingGardenSceneBoundary>
+                    <LandingPublicGardenViewer
+                        appBaseUrl={getGardenBaseUrl()}
+                        className="size-full"
+                        deferDetails
+                        garden={scene}
+                        noControls
+                        noSound
+                        onSceneReady={() => setSceneReady(true)}
+                    />
+                </LandingGardenSceneBoundary>
             ) : null}
             {!sceneReady && garden.source === 'featured' ? (
                 <div className="pointer-events-none absolute inset-0">

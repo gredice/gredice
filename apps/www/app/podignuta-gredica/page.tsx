@@ -1,13 +1,17 @@
 import { FIELD_SIZE_LABEL } from '@gredice/js/plants';
 import { Container } from '@gredice/ui/Container';
+import { Ruler } from '@gredice/ui/icons';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
+import RaisedBedMaintenance from '../../assets/RaisedBedMaintenance.webp';
 import { RelatedFaq } from '../../components/faq/RelatedFaq';
+import { CtaBand } from '../../components/shared/CtaBand';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
+import { HighlightChip } from '../../components/shared/HighlightChip';
 import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import raisedBedImage from '../../public/assets/blocks/Raised_Bed.webp';
 import { KnownPages } from '../../src/KnownPages';
@@ -25,6 +29,11 @@ export default function RaisedBedPage() {
         <Container maxWidth="md">
             <Stack>
                 <PageHeader
+                    highlight={
+                        <HighlightChip icon={<Ruler aria-hidden />}>
+                            2 × 1 m · 18 polja · samo tvoja
+                        </HighlightChip>
+                    }
                     visual={
                         <Image
                             src={raisedBedImage}
@@ -335,6 +344,17 @@ export default function RaisedBedPage() {
                     </p>
                 </StyledHtml>
                 <RelatedFaq placement="raisedBed" />
+                <CtaBand
+                    id="raised-bed-cta-title"
+                    title="Tvoja gredica od 2 m² čeka."
+                    description="Odaberi biljke u aplikaciji, a tim na OPG-u pripremi tlo, posadi ih i brine o njima."
+                    secondaryAction={{
+                        href: KnownPages.Pricing,
+                        label: 'Pogledaj cjenik',
+                    }}
+                    image={RaisedBedMaintenance}
+                    className="mt-12"
+                />
                 <Row spacing={4} className="mt-12">
                     <Typography level="body1">
                         Jesu li ti informacije o podignutim gredicama korisne?

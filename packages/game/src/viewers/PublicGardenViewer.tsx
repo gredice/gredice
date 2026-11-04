@@ -87,6 +87,7 @@ import { PublicGardenBlockInteractions } from './PublicGardenBlockInteractions';
 import {
     type PublicGardenCaptureOutput,
     PublicGardenCaptureProbe,
+    resolvePublicGardenCapturePixelRatio,
 } from './PublicGardenCaptureProbe';
 import { PublicGardenRaisedBedDetails } from './PublicGardenRaisedBedDetails';
 import { PublicGardenRaisedBedInteractions } from './PublicGardenRaisedBedInteractions';
@@ -587,7 +588,13 @@ function PublicGardenScene({
                     frameloop={resolvePublicGardenSceneFrameloop(
                         Boolean(capture),
                     )}
-                    pixelRatio={capture ? 1 : undefined}
+                    pixelRatio={
+                        capture
+                            ? resolvePublicGardenCapturePixelRatio(
+                                  capture.output,
+                              )
+                            : undefined
+                    }
                     position={initialView.cameraPosition}
                     quality={qualityProfile}
                     onContextLost={onSceneContextLost}
@@ -1068,6 +1075,11 @@ export function PublicGardenViewer({
             timeLocation: initialTimeLocation,
             winterMode: capture?.winterMode ?? 'summer',
         });
+        if (capture) {
+            // Falling snow would freeze mid-air in a still capture. Set on the
+            // store directly so the viewer's persisted setting stays untouched.
+            storeRef.current.setState({ weatherVisualizationDisabled: true });
+        }
     }
     useDisposeGameStateStore(storeRef.current);
 

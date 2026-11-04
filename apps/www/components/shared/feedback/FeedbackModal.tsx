@@ -10,7 +10,7 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useCurrentUser } from '../../../hooks/useCurrentUser';
 import {
     FeedbackTrigger,
@@ -51,6 +51,17 @@ export function FeedbackModal({
 }: FeedbackModalProps) {
     const [open, setOpen] = useState(false);
     const [score, setScore] = useState<FeedbackScore | null>(null);
+    // The thumbs row holds two real buttons, so it anchors the popover rather
+    // than acting as its (single, native-button) trigger.
+    const [anchorElement, setAnchorElement] = useState<HTMLDivElement | null>(
+        null,
+    );
+    const virtualRef = useMemo(
+        () => (anchorElement ? { current: anchorElement } : undefined),
+        [anchorElement],
+    );
+    const popupId = useId();
+    const activeThumbRef = useRef<HTMLButtonElement | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState(false);
     const { data: user } = useCurrentUser();
@@ -193,6 +204,7 @@ export function FeedbackModal({
 
     function handleDisplay(feedback: 'like' | 'dislike') {
         setScore(feedback);
+        setOpen(true);
         void queueFeedback({ score: feedback });
     }
 
@@ -201,83 +213,132 @@ export function FeedbackModal({
         void queueFeedback({ score: feedback });
     }
 
-    function handleOpenChange(nextOpen: boolean) {
+    function handleOpenChange(nextOpen: boolean, event: Event) {
+        // The thumbs only anchor the popover, so Base UI sees a press on (or
+        // focus moving to) the other thumb as leaving it. Keep it open so that
+        // press re-scores the same feedback instead of starting a new record.
+        const relatedTarget =
+            event instanceof FocusEvent ? event.relatedTarget : null;
+        const towardThumbs = [event.target, relatedTarget].some(
+            (target) =>
+                target instanceof Node && anchorElement?.contains(target),
+        );
+        if (!nextOpen && towardThumbs) {
+            return;
+        }
         setOpen(nextOpen);
         if (!nextOpen) {
             resetFeedbackInteraction();
         }
     }
 
+    function handleCloseAutoFocus(event: Event) {
+        // No trigger is registered, so return focus to the thumb that opened
+        // the popover, unless the visitor already moved focus elsewhere.
+        const thumb = activeThumbRef.current;
+        const activeElement = document.activeElement;
+        const focusMovedAway =
+            activeElement !== null &&
+            activeElement !== document.body &&
+            !document.getElementById(popupId)?.contains(activeElement);
+        if (!thumb?.isConnected || focusMovedAway) {
+            return;
+        }
+        event.preventDefault();
+        thumb.focus();
+    }
+
     return (
-        <Popper
-            open={open}
-            title={title ?? 'Tvoje mišljenje'}
-            onOpenChange={handleOpenChange}
-            trigger={<FeedbackTrigger onFeedback={handleDisplay} {...rest} />}
-        >
-            <form action={handleFeedback}>
-                <Stack spacing={4} className="p-4">
-                    <Typography level="body1" secondary>
-                        Kako ti se sviđa ovaj sadržaj?
-                    </Typography>
-                    <Row spacing={1} justifyContent="center">
-                        <IconButton
-                            type="button"
-                            variant="plain"
-                            className={cx(
-                                score === 'dislike' &&
-                                    'bg-red-200 text-red-800',
-                            )}
-                            title="Ne sviđa mi se"
-                            onClick={() => handleModalScoreChange('dislike')}
-                        >
-                            <SmileSad />
-                        </IconButton>
-                        <IconButton
-                            type="button"
-                            variant="plain"
-                            className={cx(
-                                score === 'neutral' &&
-                                    'bg-neutral-200 text-neutral-800',
-                            )}
-                            title="Ne znam"
-                            onClick={() => handleModalScoreChange('neutral')}
-                        >
-                            <SmileMeh />
-                        </IconButton>
-                        <IconButton
-                            type="button"
-                            variant="plain"
-                            className={cx(
-                                score === 'like' &&
-                                    'bg-green-200 text-green-800',
-                            )}
-                            title="Sviđa mi se"
-                            onClick={() => handleModalScoreChange('like')}
-                        >
-                            <SmileHappy />
-                        </IconButton>
-                    </Row>
-                    <Input
-                        name="comment"
-                        placeholder="Komentar"
-                        autoFocus={score !== 'neutral'}
-                    />
-                    {submitError ? (
-                        <Typography level="body2" className="text-red-700">
-                            Nismo uspjeli spremiti mišljenje. Pokušaj ponovno.
+        <>
+            <div ref={setAnchorElement} className="w-fit">
+                <FeedbackTrigger
+                    {...rest}
+                    onFeedback={handleDisplay}
+                    onClick={(event) => {
+                        activeThumbRef.current = event.currentTarget;
+                    }}
+                    aria-haspopup="dialog"
+                    aria-expanded={open}
+                    aria-controls={popupId}
+                />
+            </div>
+            <Popper
+                id={popupId}
+                open={open}
+                title={title ?? 'Tvoje mišljenje'}
+                onOpenChange={handleOpenChange}
+                onCloseAutoFocus={handleCloseAutoFocus}
+                virtualRef={virtualRef}
+            >
+                <form action={handleFeedback}>
+                    <Stack spacing={4} className="p-4">
+                        <Typography level="body1" secondary>
+                            Kako ti se sviđa ovaj sadržaj?
                         </Typography>
-                    ) : null}
-                    <Button
-                        variant="outlined"
-                        type="submit"
-                        disabled={isSubmitting}
-                        endDecorator={<Send className="size-4" />}
-                    >
-                        Pošalji
-                    </Button>
-                </Stack>
-            </form>
-        </Popper>
+                        <Row spacing={1} justifyContent="center">
+                            <IconButton
+                                type="button"
+                                variant="plain"
+                                className={cx(
+                                    score === 'dislike' &&
+                                        'bg-red-200 text-red-800',
+                                )}
+                                title="Ne sviđa mi se"
+                                onClick={() =>
+                                    handleModalScoreChange('dislike')
+                                }
+                            >
+                                <SmileSad />
+                            </IconButton>
+                            <IconButton
+                                type="button"
+                                variant="plain"
+                                className={cx(
+                                    score === 'neutral' &&
+                                        'bg-neutral-200 text-neutral-800',
+                                )}
+                                title="Ne znam"
+                                onClick={() =>
+                                    handleModalScoreChange('neutral')
+                                }
+                            >
+                                <SmileMeh />
+                            </IconButton>
+                            <IconButton
+                                type="button"
+                                variant="plain"
+                                className={cx(
+                                    score === 'like' &&
+                                        'bg-green-200 text-green-800',
+                                )}
+                                title="Sviđa mi se"
+                                onClick={() => handleModalScoreChange('like')}
+                            >
+                                <SmileHappy />
+                            </IconButton>
+                        </Row>
+                        <Input
+                            name="comment"
+                            placeholder="Komentar"
+                            autoFocus={score !== 'neutral'}
+                        />
+                        {submitError ? (
+                            <Typography level="body2" className="text-red-700">
+                                Nismo uspjeli spremiti mišljenje. Pokušaj
+                                ponovno.
+                            </Typography>
+                        ) : null}
+                        <Button
+                            variant="outlined"
+                            type="submit"
+                            disabled={isSubmitting}
+                            endDecorator={<Send className="size-4" />}
+                        >
+                            Pošalji
+                        </Button>
+                    </Stack>
+                </form>
+            </Popper>
+        </>
     );
 }

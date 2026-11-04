@@ -4,7 +4,7 @@ import { GameScene } from '@gredice/game';
 import { getGardenBaseUrl } from '@gredice/js/urls';
 import { Button } from '@gredice/ui/Button';
 import { IconButton } from '@gredice/ui/IconButton';
-import { Close, Navigate, SquareArrowRightEnter } from '@gredice/ui/icons';
+import { Close, Navigate } from '@gredice/ui/icons';
 import { NavigatingButton } from '@gredice/ui/NavigatingButton';
 import {
     isChristmasHolidaySeason,
@@ -296,40 +296,5 @@ export function LandingGameScene() {
                 </div>
             )}
         </>
-    );
-}
-
-export function LandingGameSignupCta() {
-    const gardenBaseUrl = getGardenBaseUrl();
-    const { data: user, isLoading } = useCurrentUser();
-
-    if (isLoading || user) {
-        return null;
-    }
-
-    return (
-        <div
-            className="mt-4 flex flex-col items-center justify-center gap-2 px-3 sm:flex-row md:mt-5"
-            data-testid="landing-game-signup-cta"
-        >
-            <NavigatingButton
-                href={gardenBaseUrl}
-                color="brand"
-                className="rounded-full"
-                endDecorator={
-                    <SquareArrowRightEnter aria-hidden className="size-4" />
-                }
-            >
-                Započni svoj vrt
-            </NavigatingButton>
-            <NavigatingButton
-                href={gardenBaseUrl}
-                color="neutral"
-                variant="outlined"
-                className="rounded-full bg-background text-primary shadow-sm"
-            >
-                Otvori aplikaciju
-            </NavigatingButton>
-        </div>
     );
 }

@@ -1,0 +1,13 @@
+{
+    "file": "PartnerFarmVisual.webp",
+    "generatedWith": "Codex CLI built-in image_gen (gpt-6-astra, xhigh reasoning)",
+    "references": [
+        "apps/www/assets/RaisedBedMaintenance.webp",
+        "apps/www/assets/SeedsAndTransplants.webp",
+        "apps/www/assets/DeliveryTruck.webp",
+        "apps/www/assets/NewsletterVisual.webp"
+    ],
+    "prompt": "Use case: new illustration in an existing set. All reference images are STYLE references: match their chunky low-poly geometry, broad clean polygon facets, bevelled edges, substantial 3D volume, matte tactile toy materials, soft upper-left lighting and coherent darker right sides. Subject: a small Croatian family farm (OPG) seen as ONE compact floating diorama tile of fresh green grass with a thin brown soil edge. On it, THREE wooden raised garden beds in a neat diagonal row, warm honey-orange planks with dark grey corner bolts like the first reference, each filled with dark brown soil and rows of young leafy green seedlings. Behind the beds, ONE small red-roofed wooden barn with a cream door, ONE rounded leafy tree at the right edge, and ONE green watering can with an orange handle resting beside the front bed. Palette: fresh leaf green grass, honey-orange wood, dark chocolate soil, brick-red roof, cream accents, slate-grey bolts. A balanced 3D still life in unified isometric perspective, beds occupying about half the silhouette, all objects fully visible with 8 percent transparent margin. Render on a genuinely transparent alpha background, no sky, no ground plane beyond the tile, no cast shadows outside the tile, no people or animals, no grain, no watercolor or clay finish, no extraneous floating bits, no badges, no letters, no numbers, no watermark. Landscape 16:10 composition intended to display at 320x208px and 640x416px on both cream and dark blue-gray cards.",
+    "inputRevision": "46642177b174b516641d5b2ccef48a1a5b3ab440",
+    "processing": "Generated at 1586x992 RGBA. Alpha values of 250-254 on the subject were snapped to fully opaque so dark cards do not show through; edge anti-aliasing kept. Resized to 1280px wide and encoded as WebP quality 90 (alpha quality 100) with sharp. No manual repainting or background removal."
+}

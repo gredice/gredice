@@ -5,7 +5,9 @@ import { Stack } from '@gredice/ui/Stack';
 import { Tabs } from '@gredice/ui/Tabs';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
+import { CtaBand } from '../../components/shared/CtaBand';
 import { PageFilterInputNoSSR } from '../../components/shared/PageFilterInputNoSSR';
+import { SeasonHighlightChip } from '../../components/shared/SeasonHighlightChip';
 import { StructuredDataScript } from '../../components/shared/seo/StructuredDataScript';
 import { getPlantSortsData } from '../../lib/plants/getPlantSortsData';
 import { getPlantsData } from '../../lib/plants/getPlantsData';
@@ -18,6 +20,7 @@ import { PlantsCatalogue } from './PlantsCatalogue';
 import { PlantsMonthChart } from './PlantsMonthChart';
 import { PlantsSeasonPanel } from './PlantsSeasonPanel';
 import { PlantsViewTabs } from './PlantsViewTabs';
+import { plantArchivePath } from './plantArchivePath';
 import { compareCataloguePlantNames, toPlantCatalogue } from './plantCatalogue';
 import { parsePlantArchiveMonth, plantArchiveResultsId } from './plantSeason';
 
@@ -89,6 +92,17 @@ export default async function PlantsPage({
             )}
             <div className="pt-8 pb-6 md:pt-12">
                 <PageHeader
+                    highlight={
+                        <Suspense fallback={null}>
+                            <SeasonHighlightChip
+                                href={plantArchivePath({
+                                    month: filters.currentMonth,
+                                    search: '',
+                                    view: 'popis',
+                                })}
+                            />
+                        </Suspense>
+                    }
                     tagline={pageCategory}
                     header="Biljke"
                     subHeader="Odaberi što želiš uzgajati u svojoj gredici. Za svaku biljku vidiš kada se sije, koliko rodi i koliko košta sijanje."
@@ -132,6 +146,16 @@ export default async function PlantsPage({
                 <PlantsCatalogue filters={filters} plants={plants} />
             </Tabs>
             <PlantsArchiveLinks />
+            <CtaBand
+                id="plants-cta-title"
+                title="Od kataloga do gredice u par klikova."
+                description="Odaberi biljke koje voliš, a mi ih posadimo i njegujemo na OPG-u."
+                secondaryAction={{
+                    href: KnownPages.SowingCalendar,
+                    label: 'Kalendar sjetve',
+                }}
+                className="mt-8"
+            />
         </Stack>
     );
 }

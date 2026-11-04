@@ -5,12 +5,12 @@ import type { PublicGardenViewerProps } from '@gredice/game';
 import {
     type GardenPreviewPhase,
     gardenPreviewContentType,
-    gardenPreviewHeight,
+    gardenPreviewLayoutHeight,
+    gardenPreviewLayoutWidth,
     gardenPreviewPhaseHeader,
     gardenPreviewRendererVersion,
     gardenPreviewRendererVersionHeader,
     gardenPreviewSourceRevisionHeader,
-    gardenPreviewWidth,
 } from '@gredice/js/gardenPreviews';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -289,13 +289,13 @@ export function PublicGardenPreviewBackfill({
             aria-hidden
             data-public-garden-preview-backfill={activeCapture.key}
             style={{
-                height: gardenPreviewHeight,
+                height: gardenPreviewLayoutHeight,
                 left: -20_000,
                 overflow: 'hidden',
                 pointerEvents: 'none',
                 position: 'fixed',
                 top: 0,
-                width: gardenPreviewWidth,
+                width: gardenPreviewLayoutWidth,
                 zIndex: -1,
             }}
         >

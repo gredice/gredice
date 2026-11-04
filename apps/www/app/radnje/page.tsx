@@ -9,6 +9,7 @@ import { CommunityEntitySuggestionButton } from '../../components/community-edit
 import { RelatedFaq } from '../../components/faq/RelatedFaq';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { PageFilterInput } from '../../components/shared/PageFilterInput';
+import { StartingPriceHighlightChip } from '../../components/shared/StartingPriceHighlightChip';
 import { StructuredDataScript } from '../../components/shared/seo/StructuredDataScript';
 import { getOperationPriceAvailability } from '../../lib/operationPricing';
 import { getOperationsData } from '../../lib/plants/getOperationsData';
@@ -132,6 +133,14 @@ export default async function OperationsPage({
                 className="mt-8 md:mt-12"
             />
             <PageHeader
+                highlight={
+                    <Suspense fallback={null}>
+                        <StartingPriceHighlightChip
+                            kind="operation"
+                            href={KnownPages.Pricing}
+                        />
+                    </Suspense>
+                }
                 tagline={pageCategory}
                 header="Radnje"
                 subHeader={pageDescription}

@@ -23,6 +23,7 @@ export type PlantsGalleryItemProps = Omit<PlantCatalogueItem, 'id'> & {
     currentMonth: number;
     /** `next/image` sizes for the card image; grids with other widths pass their own. */
     imageSizes?: string;
+    mediaClassName?: string;
     matchingAlternativeName?: string;
     matchingSortName?: string;
 };
@@ -33,6 +34,7 @@ export function PlantsGalleryItem(props: PlantsGalleryItemProps) {
         currentMonth,
         imageSizes = archiveImageSizes,
         information,
+        mediaClassName,
         prices,
         matchingAlternativeName,
         matchingSortName,
@@ -130,9 +132,15 @@ export function PlantsGalleryItem(props: PlantsGalleryItemProps) {
             }
             badge={isSowingTime && <SeedTimeInformationBadge size="sm" />}
             href={KnownPages.Plant(information.name)}
+            mediaClassName={mediaClassName}
             mediaViewTransitionName={getPlantImageViewTransitionName(id)}
         >
-            <PlantOrSortImage plant={props} fill sizes={imageSizes} />
+            <PlantOrSortImage
+                plant={props}
+                fill
+                className="object-contain"
+                sizes={imageSizes}
+            />
         </ItemCard>
     );
 }
