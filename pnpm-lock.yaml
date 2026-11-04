@@ -416,8 +416,8 @@ importers:
   apps/app:
     dependencies:
       '@aws-sdk/client-s3':
-        specifier: 3.1159.0
-        version: 3.1159.0
+        specifier: 3.1160.0
+        version: 3.1160.0
       '@azure/communication-email':
         specifier: 1.1.0
         version: 1.1.0(supports-color@10.2.2)
@@ -1281,8 +1281,8 @@ importers:
   packages/cdn:
     devDependencies:
       '@aws-sdk/client-s3':
-        specifier: 3.1159.0
-        version: 3.1159.0
+        specifier: 3.1160.0
+        version: 3.1160.0
       '@biomejs/biome':
         specifier: 2.6.4
         version: 2.6.4
@@ -2034,8 +2034,8 @@ packages:
     resolution: {integrity: sha512-CXNESwkQC9jdrUG6cKXBfudVt1frGcYQykcCYbNclVrsewuGMbo3PlFjRteMe4OftNAqhyc3xC2jTz7SUqLasQ==}
     engines: {node: '>=20.0.0'}
 
-  '@aws-sdk/client-s3@3.1159.0':
-    resolution: {integrity: sha512-el/Ihylk4PjJh/uJvYUeAzBiVLR6zt0xBOPIbciybePABWD/cOcxinHEPQslogm61LI2etnRrixSQltX94gzLA==}
+  '@aws-sdk/client-s3@3.1160.0':
+    resolution: {integrity: sha512-547MvuVvH0s2mcrQ0G+F3Q6STJp54JyI9IS40Hx2JYljkjJpoijT2TG0M8XsgFyuqbQAKWHESYXD/7hmdUNAvQ==}
     engines: {node: '>=20.0.0'}
 
   '@aws-sdk/core@3.979.1':
@@ -10688,7 +10688,7 @@ snapshots:
       '@smithy/types': 4.19.0
       tslib: 2.8.1
 
-  '@aws-sdk/client-s3@3.1159.0':
+  '@aws-sdk/client-s3@3.1160.0':
     dependencies:
       '@aws-sdk/checksums': 3.1002.1
       '@aws-sdk/core': 3.979.1
