@@ -2,6 +2,7 @@ import { getGardenBaseUrl } from '@gredice/js/urls';
 import { Home, Mobile, Sprout } from '@gredice/ui/icons';
 import { NavigatingButton } from '@gredice/ui/NavigatingButton';
 import { Typography } from '@gredice/ui/Typography';
+import Link from 'next/link';
 import { getLandingPricing } from '../../app/getLandingPricing';
 import DeliveryTruck from '../../assets/DeliveryTruck.webp';
 import RaisedBedMaintenance from '../../assets/RaisedBedMaintenance.webp';
@@ -135,7 +136,13 @@ export async function LandingHowItWorks() {
                         facts={
                             <>
                                 <LandingCheckItem>
-                                    Besplatna dostava u Gradu Zagrebu
+                                    Besplatna{' '}
+                                    <Link
+                                        href={KnownPages.DeliveryZagreb}
+                                        className="underline underline-offset-4"
+                                    >
+                                        dostava povrća u Gradu Zagrebu
+                                    </Link>
                                 </LandingCheckItem>
                                 {typeof deliveryZoneRadius === 'number' ? (
                                     <LandingCheckItem>

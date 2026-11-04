@@ -1073,10 +1073,13 @@ export function PublicGardenViewer({
                     : null),
             isMock: false,
             timeLocation: initialTimeLocation,
-            // Decorative particles (falling snow blocks) would freeze mid-air.
-            weatherVisualizationDisabled: capture ? true : undefined,
             winterMode: capture?.winterMode ?? 'summer',
         });
+        if (capture) {
+            // Falling snow would freeze mid-air in a still capture. Set on the
+            // store directly so the viewer's persisted setting stays untouched.
+            storeRef.current.setState({ weatherVisualizationDisabled: true });
+        }
     }
     useDisposeGameStateStore(storeRef.current);
 
