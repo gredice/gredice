@@ -10,12 +10,13 @@ import {
     GameReceiptIcon,
     GameSeedlingIcon,
 } from '@gredice/ui/GameIcons';
-import { Warning } from '@gredice/ui/icons';
+import { Truck, Warning } from '@gredice/ui/icons';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Typography } from '@gredice/ui/Typography';
+import DeliveryTruck from '../../assets/DeliveryTruck.webp';
 import { RelatedFaq } from '../../components/faq/RelatedFaq';
 import {
     Card,
@@ -23,7 +24,9 @@ import {
     CardHeader,
     CardTitle,
 } from '../../components/shared/Card';
+import { CtaBand } from '../../components/shared/CtaBand';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
+import { HighlightChip } from '../../components/shared/HighlightChip';
 import { WhatsAppCard } from '../../components/social/WhatsAppCard';
 import { PublicGardenIllustration } from '../../components/visuals/PublicGardenIllustration';
 import { formatPrice } from '../../lib/formatPrice';
@@ -61,6 +64,11 @@ export default function DeliveryPage() {
             <Stack>
                 <PageHeader
                     padded
+                    highlight={
+                        <HighlightChip icon={<Truck aria-hidden />}>
+                            Dostava u Gradu Zagrebu: 0 €
+                        </HighlightChip>
+                    }
                     header="Dostava"
                     visual={
                         <PublicGardenIllustration
@@ -421,6 +429,17 @@ export default function DeliveryPage() {
                 <WhatsAppCard />
             </Stack>
             <RelatedFaq placement="delivery" />
+            <CtaBand
+                id="delivery-cta-title"
+                title="Svježe iz tvoje gredice, ravno na prag."
+                description="Složi gredicu danas, a kad plodovi dozriju, dostavimo ih na tvoju adresu."
+                secondaryAction={{
+                    href: KnownPages.Pricing,
+                    label: 'Pogledaj cjenik',
+                }}
+                image={DeliveryTruck}
+                className="mt-12"
+            />
             <Row spacing={4} className="mt-8">
                 <Typography level="body1">
                     Jesu li ti informacije korisne?

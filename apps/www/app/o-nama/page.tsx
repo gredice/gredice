@@ -5,11 +5,14 @@ import {
     GameIdeaIcon,
     GameSeedlingIcon,
 } from '@gredice/ui/GameIcons';
+import { MapPin } from '@gredice/ui/icons';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import { CtaBand } from '../../components/shared/CtaBand';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
+import { HighlightChip } from '../../components/shared/HighlightChip';
 import { WhatsAppCard } from '../../components/social/WhatsAppCard';
 import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
@@ -49,6 +52,11 @@ export default function AboutUsPage() {
         <Container maxWidth="md">
             <Stack spacing={16}>
                 <PageHeader
+                    highlight={
+                        <HighlightChip icon={<MapPin aria-hidden />}>
+                            Partnerski OPG u Bosiljevu
+                        </HighlightChip>
+                    }
                     header="O nama"
                     subHeader="Tvoj vrt, gdje god bio 🌱"
                     padded
@@ -234,6 +242,16 @@ export default function AboutUsPage() {
                     </Typography>
                     <WhatsAppCard />
                 </Stack>
+
+                <CtaBand
+                    id="about-cta-title"
+                    title="Zasadi svoj vrt s nama."
+                    description="Složi svoju gredicu u aplikaciji, a tim na partnerskom OPG-u pobrinut će se za sve ostalo."
+                    secondaryAction={{
+                        href: `${KnownPages.Landing}#kako-funkcionira`,
+                        label: 'Kako funkcionira',
+                    }}
+                />
 
                 {/* Feedback */}
                 <Row spacing={4} className="mt-4">

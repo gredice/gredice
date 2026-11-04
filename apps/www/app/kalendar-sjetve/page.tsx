@@ -24,13 +24,14 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import Link from 'next/link';
-import type { ReactNode } from 'react';
+import { type ReactNode, Suspense } from 'react';
 import { RegionalCalendarStatusChip } from '../../components/plants/RegionalCalendarStatusChip';
 import {
     RegionalCalendarLegend,
     RegionalCalendarTable,
 } from '../../components/plants/RegionalCalendarTable';
 import { Card } from '../../components/shared/Card';
+import { SeasonHighlightChip } from '../../components/shared/SeasonHighlightChip';
 import { PublicBreadcrumbs } from '../../components/shared/seo/PublicBreadcrumbs';
 import { PublicGardenIllustration } from '../../components/visuals/PublicGardenIllustration';
 import {
@@ -54,6 +55,7 @@ import {
 } from '../../lib/plants/regionalCalendarReviews';
 import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
+import { plantArchivePath } from '../biljke/plantArchivePath';
 
 const pageCategory = 'Planiranje vrta';
 
@@ -305,6 +307,17 @@ export default async function SowingCalendarPage({
                         ]}
                     />
                     <PageHeader
+                        highlight={
+                            <Suspense fallback={null}>
+                                <SeasonHighlightChip
+                                    href={plantArchivePath({
+                                        month: new Date().getMonth() + 1,
+                                        search: '',
+                                        view: 'popis',
+                                    })}
+                                />
+                            </Suspense>
+                        }
                         tagline={pageCategory}
                         header="Kalendar sjetve i sadnje za kontinentalnu Hrvatsku"
                         subHeader="Što i kada planirati u vrtu: sjetva, presađivanje i berba po mjesecima, uz objašnjenje svake radnje."
