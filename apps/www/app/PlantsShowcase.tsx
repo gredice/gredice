@@ -17,6 +17,9 @@ const allPlantsTileClassName = 'md:col-span-2 lg:col-span-1';
 /** One row of six when the tile is wide and short, a 3×4 mosaic when tall, 6×2 when spanning. */
 const previewGridClassName =
     'grid grid-cols-6 gap-2 sm:grid-cols-3 md:grid-cols-6 lg:grid-cols-3';
+/** Matches the grid: one card per row on phones up to five (~250px) from xl. */
+const showcaseImageSizes =
+    '(min-width: 1280px) 250px, (min-width: 1024px) 25vw, (min-width: 768px) 33vw, (min-width: 640px) 50vw, 100vw';
 
 export function PlantsShowcase({
     plants,
@@ -41,6 +44,7 @@ export function PlantsShowcase({
                         {...plant}
                         id={plant.id.toString()}
                         currentMonth={currentMonth}
+                        imageSizes={showcaseImageSizes}
                         mediaClassName="aspect-[16/9] sm:aspect-square"
                     />
                 </div>

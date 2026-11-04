@@ -14,9 +14,15 @@ import type { PlantCatalogueItem } from './plantCatalogue';
 import { isPlantAvailableInStore, isPlantSowableInMonth } from './plantSeason';
 import { getPlantImageViewTransitionName } from './plantViewTransition';
 
+// The archive caps the grid at five ~243px cards inside the 1280px container.
+const archiveImageSizes =
+    '(min-width: 1280px) 250px, (min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw';
+
 export type PlantsGalleryItemProps = Omit<PlantCatalogueItem, 'id'> & {
     id: string;
     currentMonth: number;
+    /** `next/image` sizes for the card image; grids with other widths pass their own. */
+    imageSizes?: string;
     mediaClassName?: string;
     matchingAlternativeName?: string;
     matchingSortName?: string;
@@ -26,6 +32,7 @@ export function PlantsGalleryItem(props: PlantsGalleryItemProps) {
     const {
         id,
         currentMonth,
+        imageSizes = archiveImageSizes,
         information,
         mediaClassName,
         prices,
@@ -132,7 +139,7 @@ export function PlantsGalleryItem(props: PlantsGalleryItemProps) {
                 plant={props}
                 fill
                 className="object-contain"
-                sizes="(min-width: 1280px) 250px, (min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
+                sizes={imageSizes}
             />
         </ItemCard>
     );

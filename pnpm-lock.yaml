@@ -242,10 +242,10 @@ importers:
         version: 3.0.0(@opentelemetry/api@1.10.0)
       '@posthog/next':
         specifier: 0.10.0
-        version: 0.10.0(@opentelemetry/api@1.10.0)(@types/react@19.3.0)(@vercel/functions@3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3))(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        version: 0.10.0(@opentelemetry/api@1.10.0)(@types/react@19.3.0)(@vercel/functions@3.10.5(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3))(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@scalar/api-reference-react':
-        specifier: 0.9.85
-        version: 0.9.85(@oxc-project/types@0.155.0)(axios@1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2))(change-case@5.4.4)(esbuild@0.28.2)(jwt-decode@4.0.0)(lightningcss@1.33.0)(oxc-parser@0.127.0)(qrcode@1.5.4)(react@19.3.1)(rolldown@1.2.15)(rollup@4.62.2)(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.107.0)(tsx@4.23.15)(yaml@2.9.1))(zod@4.6.7)
+        specifier: 0.9.86
+        version: 0.9.86(@oxc-project/types@0.155.0)(axios@1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2))(change-case@5.4.4)(esbuild@0.28.2)(jwt-decode@4.0.0)(lightningcss@1.33.0)(oxc-parser@0.127.0)(qrcode@1.5.4)(react@19.3.1)(rolldown@1.2.15)(rollup@4.62.2)(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.107.0)(tsx@4.23.15)(yaml@2.9.1))(zod@4.6.7)
       '@standard-community/standard-json':
         specifier: 0.4.0
         version: 0.4.0(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(@valibot/to-json-schema@1.8.0(valibot@1.5.0(typescript@7.0.2)))(valibot@1.5.0(typescript@7.0.2))(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
@@ -262,14 +262,14 @@ importers:
         specifier: 2.8.2
         version: 2.8.2
       '@vercel/functions':
-        specifier: 3.10.4
-        version: 3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3)
+        specifier: 3.10.5
+        version: 3.10.5(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3)
       '@vercel/sandbox':
         specifier: 3.9.1
         version: 3.9.1
       ai:
-        specifier: 7.0.156
-        version: 7.0.156(zod@4.6.7)
+        specifier: 7.0.157
+        version: 7.0.157(zod@4.6.7)
       date-fns:
         specifier: 4.4.0
         version: 4.4.0
@@ -416,8 +416,8 @@ importers:
   apps/app:
     dependencies:
       '@aws-sdk/client-s3':
-        specifier: 3.1159.0
-        version: 3.1159.0
+        specifier: 3.1160.0
+        version: 3.1160.0
       '@azure/communication-email':
         specifier: 1.1.0
         version: 1.1.0(supports-color@10.2.2)
@@ -444,13 +444,13 @@ importers:
         version: 3.0.0(@opentelemetry/api@1.10.0)
       '@posthog/next':
         specifier: 0.10.0
-        version: 0.10.0(@opentelemetry/api@1.10.0)(@types/react@19.3.0)(@vercel/functions@3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3))(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        version: 0.10.0(@opentelemetry/api@1.10.0)(@types/react@19.3.0)(@vercel/functions@3.10.5(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3))(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@vercel/blob':
         specifier: 2.8.2
         version: 2.8.2
       '@vercel/functions':
-        specifier: 3.10.4
-        version: 3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3)
+        specifier: 3.10.5
+        version: 3.10.5(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3)
       '@vvo/tzdb':
         specifier: 6.202.0
         version: 6.202.0
@@ -703,16 +703,16 @@ importers:
         version: 3.0.0(@opentelemetry/api@1.10.0)
       '@posthog/next':
         specifier: 0.10.0
-        version: 0.10.0(@opentelemetry/api@1.10.0)(@types/react@19.3.0)(@vercel/functions@3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3))(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        version: 0.10.0(@opentelemetry/api@1.10.0)(@types/react@19.3.0)(@vercel/functions@3.10.5(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3))(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@posthog/react':
         specifier: 1.11.3
-        version: 1.11.3(@types/react@19.3.0)(posthog-js@1.442.0(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)
+        version: 1.11.3(@types/react@19.3.0)(posthog-js@1.442.1(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)
       '@vercel/blob':
         specifier: 2.8.2
         version: 2.8.2
       '@vercel/functions':
-        specifier: 3.10.4
-        version: 3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3)
+        specifier: 3.10.5
+        version: 3.10.5(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3)
       '@vercel/toolbar':
         specifier: 0.2.7
         version: 0.2.7(@vercel/analytics@2.0.1(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react@19.3.1)(vue@3.5.44(typescript@7.0.2)))(debug@4.4.3(supports-color@10.2.2))(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.107.0)(tsx@4.23.15)(yaml@2.9.1))
@@ -726,8 +726,8 @@ importers:
         specifier: 8.23.1
         version: 8.23.1
       posthog-js:
-        specifier: 1.442.0
-        version: 1.442.0(@types/react@19.3.0)(react@19.3.1)
+        specifier: 1.442.1
+        version: 1.442.1(@types/react@19.3.0)(react@19.3.1)
       react:
         specifier: 19.3.1
         version: 19.3.1
@@ -818,10 +818,10 @@ importers:
         version: 3.0.0(@opentelemetry/api@1.10.0)
       '@posthog/next':
         specifier: 0.10.0
-        version: 0.10.0(@opentelemetry/api@1.10.0)(@types/react@19.3.0)(@vercel/functions@3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3))(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        version: 0.10.0(@opentelemetry/api@1.10.0)(@types/react@19.3.0)(@vercel/functions@3.10.5(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3))(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@vercel/functions':
-        specifier: 3.10.4
-        version: 3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3)
+        specifier: 3.10.5
+        version: 3.10.5(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3)
       '@vercel/toolbar':
         specifier: 0.2.7
         version: 0.2.7(@vercel/analytics@2.0.1(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react@19.3.1)(vue@3.5.44(typescript@7.0.2)))(debug@4.4.3(supports-color@10.2.2))(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.107.0)(tsx@4.23.15)(yaml@2.9.1))
@@ -920,7 +920,7 @@ importers:
         version: link:../../packages/js
       '@posthog/next':
         specifier: 0.10.0
-        version: 0.10.0(@opentelemetry/api@1.10.0)(@types/react@19.3.0)(@vercel/functions@3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3))(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        version: 0.10.0(@opentelemetry/api@1.10.0)(@types/react@19.3.0)(@vercel/functions@3.10.5(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3))(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@vercel/analytics':
         specifier: 2.0.1
         version: 2.0.1(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react@19.3.1)(vue@3.5.44(typescript@7.0.2))
@@ -1133,13 +1133,13 @@ importers:
         version: 3.0.0(@opentelemetry/api@1.10.0)
       '@posthog/next':
         specifier: 0.10.0
-        version: 0.10.0(@opentelemetry/api@1.10.0)(@types/react@19.3.0)(@vercel/functions@3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3))(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        version: 0.10.0(@opentelemetry/api@1.10.0)(@types/react@19.3.0)(@vercel/functions@3.10.5(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3))(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@vercel/blob':
         specifier: 2.8.2
         version: 2.8.2
       '@vercel/functions':
-        specifier: 3.10.4
-        version: 3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3)
+        specifier: 3.10.5
+        version: 3.10.5(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3)
       '@vercel/toolbar':
         specifier: 0.2.7
         version: 0.2.7(@vercel/analytics@2.0.1(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react@19.3.1)(vue@3.5.44(typescript@7.0.2)))(debug@4.4.3(supports-color@10.2.2))(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.107.0)(tsx@4.23.15)(yaml@2.9.1))
@@ -1229,8 +1229,8 @@ importers:
         specifier: 18.0.9
         version: 18.0.9
       motion:
-        specifier: 14.7.1
-        version: 14.7.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        specifier: 14.8.0
+        version: 14.8.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       postcss:
         specifier: 8.5.32
         version: 8.5.32
@@ -1281,8 +1281,8 @@ importers:
   packages/cdn:
     devDependencies:
       '@aws-sdk/client-s3':
-        specifier: 3.1159.0
-        version: 3.1159.0
+        specifier: 3.1160.0
+        version: 3.1160.0
       '@biomejs/biome':
         specifier: 2.6.4
         version: 2.6.4
@@ -1447,14 +1447,14 @@ importers:
   packages/game:
     dependencies:
       '@ai-sdk/react':
-        specifier: 4.0.160
-        version: 4.0.160(react@19.3.1)(zod@4.6.7)
+        specifier: 4.0.161
+        version: 4.0.161(react@19.3.1)(zod@4.6.7)
       '@vvo/tzdb':
         specifier: 6.202.0
         version: 6.202.0
       ai:
-        specifier: 7.0.156
-        version: 7.0.156(zod@4.6.7)
+        specifier: 7.0.157
+        version: 7.0.157(zod@4.6.7)
       nuqs:
         specifier: 2.10.2
         version: 2.10.2(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react@19.3.1)
@@ -1740,8 +1740,8 @@ importers:
         specifier: 1.40.0
         version: 1.40.0
       ai:
-        specifier: 7.0.156
-        version: 7.0.156(zod@4.6.7)
+        specifier: 7.0.157
+        version: 7.0.157(zod@4.6.7)
       dotenv:
         specifier: 18.0.9
         version: 18.0.9
@@ -1863,7 +1863,7 @@ importers:
         version: link:../js
       '@posthog/next':
         specifier: 0.10.0
-        version: 0.10.0(@opentelemetry/api@1.10.0)(@types/react@19.3.0)(@vercel/functions@3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3))(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        version: 0.10.0(@opentelemetry/api@1.10.0)(@types/react@19.3.0)(@vercel/functions@3.10.5(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3))(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@shadcn/react':
         specifier: 0.3.1
         version: 0.3.1(@types/react@19.3.0)(react@19.3.1)
@@ -1877,11 +1877,11 @@ importers:
         specifier: 2.1.1
         version: 2.1.1
       lucide-react:
-        specifier: 1.64.0
-        version: 1.64.0(@types/react@19.3.0)(react@19.3.1)
+        specifier: 1.65.0
+        version: 1.65.0(@types/react@19.3.0)(react@19.3.1)
       motion:
-        specifier: 14.7.1
-        version: 14.7.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        specifier: 14.8.0
+        version: 14.8.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       next:
         specifier: 16.4.3
         version: 16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0)
@@ -1970,14 +1970,14 @@ packages:
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
-  '@ai-sdk/gateway@4.0.129':
-    resolution: {integrity: sha512-8JvaQBaIfM8jo54kg+picQpY9qBzP/hG+YIXJO9KDL+9RpdoTjzp0/mH7XjfaqNMHAf85dM2/tCBDOOyBN7Bgg==}
+  '@ai-sdk/gateway@4.0.130':
+    resolution: {integrity: sha512-TVcjwUeAUgp9HqzijFxy3skHhz4FKwjhO8TQi9SQMGEpc6k5INWntA3MYelgHWMUaK3ilQr7NX2ir2GBG/EIqg==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
-  '@ai-sdk/mcp@2.0.86':
-    resolution: {integrity: sha512-LHpJMW2CR0D6sb1nXsl8KZ4vWmGueYc1arvCRHSf+9wEBmL0X3Qc4Jwqta5UcodP1DVQcnr4OJD5LKYb2WsCBw==}
+  '@ai-sdk/mcp@2.0.87':
+    resolution: {integrity: sha512-Icqb5fhx0Qm8GO/cr82XaTkD2/9i7yu7Btij+TMXLf6mtEjLCwkwmg8NPaQRjaysp6/yXgHXIdYRkr9Dj4x95g==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -1988,8 +1988,8 @@ packages:
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
-  '@ai-sdk/provider-utils@5.0.70':
-    resolution: {integrity: sha512-nU213UNVHWDoEKIZ5Hm3uGPmfW7EBHC2GkIJJEDKh4HLQWgh/eizrW2jmY4efxWf7Tf/yTzKD0t6sd4kVUKlyQ==}
+  '@ai-sdk/provider-utils@5.0.71':
+    resolution: {integrity: sha512-up6vmxeWnAGgRdNM2q8XvC43rl9N7GRX3/MltKmy3qlNFWLZMgO9SoriOi7obuv9lOYrksOmpj4TG9+TdIGI8w==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -2002,8 +2002,8 @@ packages:
     resolution: {integrity: sha512-Ip7ZQBq/FiGpM1mmOVseTtX9PBjnzo0bLC41WTgBSBBRUBz6LhNFGbYaNUzI6hPm6ll1oNSPOAZc/q/z+3QZEQ==}
     engines: {node: '>=22'}
 
-  '@ai-sdk/react@4.0.160':
-    resolution: {integrity: sha512-SgvmRHKWbb2Wqs4zAPYqLAmiZTxpKItxG/EycbOkPr6KUxwzJemgaQ30RdRQBbJ5zerHh8c2T2cqm9eg8hl78A==}
+  '@ai-sdk/react@4.0.161':
+    resolution: {integrity: sha512-0Ddvb/HFKbV3CCS45pPt9MMGw/TvdZqNQNoI6rYgA4NslghhlB+p/rGolK0r3qQGgUtcAKBU9Yt7lITnWrLUWw==}
     engines: {node: '>=22'}
     peerDependencies:
       react: 19.3.1
@@ -2022,8 +2022,8 @@ packages:
     resolution: {integrity: sha512-CXNESwkQC9jdrUG6cKXBfudVt1frGcYQykcCYbNclVrsewuGMbo3PlFjRteMe4OftNAqhyc3xC2jTz7SUqLasQ==}
     engines: {node: '>=20.0.0'}
 
-  '@aws-sdk/client-s3@3.1159.0':
-    resolution: {integrity: sha512-el/Ihylk4PjJh/uJvYUeAzBiVLR6zt0xBOPIbciybePABWD/cOcxinHEPQslogm61LI2etnRrixSQltX94gzLA==}
+  '@aws-sdk/client-s3@3.1160.0':
+    resolution: {integrity: sha512-547MvuVvH0s2mcrQ0G+F3Q6STJp54JyI9IS40Hx2JYljkjJpoijT2TG0M8XsgFyuqbQAKWHESYXD/7hmdUNAvQ==}
     engines: {node: '>=20.0.0'}
 
   '@aws-sdk/core@3.979.1':
@@ -4906,42 +4906,42 @@ packages:
     resolution: {integrity: sha512-pIwhWawZXAT0nTXwvcE/InQ7uaVAgSeIzILMb2mBrI01Hz1yEvxrhV2+DE2Fzux8aZY9OJTdLsI+sk9kZDuAJw==}
     engines: {node: '>=20.9.0'}
 
-  '@scalar/agent-chat@0.12.48':
-    resolution: {integrity: sha512-BrVMm0d0yiduvRv6R8qOKV9/HpQNOQnur0uCfvz6pNv8vvZFmL0i6sFCjylO9yjkMn9J1cYMuy8o7tKjsEqZdw==}
+  '@scalar/agent-chat@0.12.49':
+    resolution: {integrity: sha512-ol4VbQSCAfRPsHitueK8G6pj0YRhTXqLqVY5ADn9WTKW7F0UVgjfq8HU8gg0Q6R43fBdmk74eVfI7DojAdBbxg==}
     engines: {node: '>=22'}
 
-  '@scalar/api-client@3.23.5':
-    resolution: {integrity: sha512-vuqtfAh5MmbL2PvAFeBrntSOubyJ5Fb4gIeLyv1U90OeFqBpw9dO4iBCyjpyJ+wej2dLa6vJaLHQZXQCxCg2Yg==}
+  '@scalar/api-client@3.23.6':
+    resolution: {integrity: sha512-VmMAB9kuY2D7v4E1IQnbo2IsHzSmof0vawfloRlribxlvKcRr5zCmtaRMxfvScuhiiutBE7fZ9nZn+88owWprQ==}
     engines: {node: '>=22'}
 
-  '@scalar/api-reference-react@0.9.85':
-    resolution: {integrity: sha512-TrA2DrPgShdxtOXWDd6Pq+1kKShmUoDv8xD4nxcEkmBXYLPzHqb0kK5O0smvD7CAY+NOx+QBuKHuM0CfJZwoFg==}
+  '@scalar/api-reference-react@0.9.86':
+    resolution: {integrity: sha512-NGwSDrYMOZ9XDd9MLb/+uqIiYlZP3RBUJWFnXE3Jvyo/gbkZdwhc+pRxPO6jTBzruaFkntg3Zt/tvTHe3UZjJA==}
     engines: {node: '>=22'}
     peerDependencies:
       react: 19.3.1
 
-  '@scalar/api-reference@1.76.2':
-    resolution: {integrity: sha512-u3DUNBp1PHl3MbkD9qAkiQXJvshK6uVJwuwsjYN9pG1w7eoeATrVSZLZb2nAS61g0MeOKwH4mjAQySi5lsFzUw==}
+  '@scalar/api-reference@1.76.3':
+    resolution: {integrity: sha512-LZCl/yJ1g6712QwW26JBjXYXNTZpF5/6sIq/ueoHyXhMMKOgAxSwDopDbMGE+5frpHV4icwN1Wp9PPt7TtlCfw==}
     engines: {node: '>=22'}
 
-  '@scalar/asyncapi-to-markdown@0.2.4':
-    resolution: {integrity: sha512-A+L2vW5Lly46eAn8p96VTQ12UUDpPWAaJAWVowv+lslsXzA6r8JkPAOlG54BlAvtqfPPoAQ1BWdi1w0xbiq8FQ==}
+  '@scalar/asyncapi-to-markdown@0.2.5':
+    resolution: {integrity: sha512-0t/r4ZtVsuUQhQjsRwaZH1cxBtwsPnTDjQjDAQ6CeA1mneBMwHG0ApexbcV4Hw4C+50romhXFF89jRYUdOvp4g==}
     engines: {node: '>=22'}
 
   '@scalar/asyncapi-upgrader@0.1.18':
     resolution: {integrity: sha512-jr+BW2c9mM2LNb6WP2xmi1lRopOg35E71AyNwPiMIbue+yoZp+K2q2vgCjCiltKF0sKJMFjdujyLWgBDWsb1nw==}
     engines: {node: '>=22'}
 
-  '@scalar/blocks@0.6.2':
-    resolution: {integrity: sha512-xPAWmeoOS++fUJRxgsjv8dQxWqoqPT4eFhxIQfD0WE9mS7Si/R6CpL6P6ZblGrDIm4iHCYzOPmEPXFdxPzxVSw==}
+  '@scalar/blocks@0.6.3':
+    resolution: {integrity: sha512-pnpOK6lgNx1WFDA9Ed1Y+Sa+YqDZOv3SWZqY9e95FxyAABcv1mM9Kh/cK5SLT422/dLMvyl7Qp3aa+FTGlmefg==}
     engines: {node: '>=22'}
 
   '@scalar/code-highlight@0.4.11':
     resolution: {integrity: sha512-wqlAgMW35CEXYmBTA2NakvM7a0y69hHIdMduMZEsA8Ftkc4mci3PThUgXC7YrL2nFL57PGW97Lxh2BoNgdv35Q==}
     engines: {node: '>=22'}
 
-  '@scalar/components@0.33.0':
-    resolution: {integrity: sha512-+JURKnZOkah3wLkO9YxpZcYPZF9lW9F+Zby6S4w09PRxPVB05F/I6bOmXfHDY6Tbt94Vd8T/NGcSVQI5Wm99jQ==}
+  '@scalar/components@0.33.1':
+    resolution: {integrity: sha512-tNhtJx1sfX44qPMnC1hgudbIuUuHDhvRW5DgB9s5iWtIIJVKA0TsdjpL65itz9Cz0reDx7eGdA7lEyr+MngDvw==}
     engines: {node: '>=22'}
 
   '@scalar/helpers@0.16.4':
@@ -4964,12 +4964,12 @@ packages:
     resolution: {integrity: sha512-aSdpoWWSH0EJ75LJ5zMNmh8HGMlnKEDdpylHRbr1VTMycxNuZZ0TCUSINu0EjOSFB+n883+pkx5cXllIAHU1MQ==}
     engines: {node: '>=22'}
 
-  '@scalar/oas-utils@0.20.17':
-    resolution: {integrity: sha512-k76Hz45dy1bA6hKINzW74VjyMoYxjVcdBeRgpe2TmRPHpzLG6Q3UwnqvpTHeh6ZxZmevvHm2W5Gj/Pdz713amw==}
+  '@scalar/oas-utils@0.20.18':
+    resolution: {integrity: sha512-O4nOkkTrbnWSyTf2T2WRDKoOQbNJ55H9rjY0V06sS/P/XNdo5QoJ/GraqcgWhiVD1jDWZ3MnzjUcAi6v8pxUaQ==}
     engines: {node: '>=22'}
 
-  '@scalar/openapi-to-markdown@1.7.2':
-    resolution: {integrity: sha512-nW3qtF5x79ulzrnU43wIUEuKs9ldPLYSq1OEWafIB/IlW8AQQ5yfxNwqfoFHLkGTB10pSAb70uMsrbq5YzJe8g==}
+  '@scalar/openapi-to-markdown@1.7.3':
+    resolution: {integrity: sha512-9vUFVo5g2YSD7Y8ZQhvxnVnQX/KGAiNwl+37xQvZeEcPr0gNrWyauQL9XK2G6UlHh69/rhV3AmYjTLqhVw8CvA==}
     engines: {node: '>=22.19.0'}
 
   '@scalar/openapi-types@0.9.8':
@@ -4980,27 +4980,27 @@ packages:
     resolution: {integrity: sha512-wkTbowGZAlDA5AhCAnBVft6y3veoE17P+okH/zrwM/BZWBSzPghGpa4BPTCg3+IzRmRP/8ZeaYO7LfxCDAEmcA==}
     engines: {node: '>=22'}
 
-  '@scalar/schemas@0.15.0':
-    resolution: {integrity: sha512-YxvmWVymAC536CFC84SGyt8PD57UqB5GOvr73y7Oj1Bjf8HMUUowzEt3AM3w9s21sR8ZKkncbt1R3r8sYsASnA==}
+  '@scalar/schemas@0.16.0':
+    resolution: {integrity: sha512-SHhRIH/9x86mRmJcyMgnMMWxDNzRtuyb93anz5zfWV2XuV7gZ1Br6E5Ll2Ygoc3HoKjOQkSdSVs11oKQxjvKMw==}
     engines: {node: '>=22'}
 
-  '@scalar/sidebar@0.12.5':
-    resolution: {integrity: sha512-GyEf6pyvhMBJVEQJMt7DaklCMAU/G30q8fl3iSISTDp2iizShyeEbbQV9+yEsBwFAxpqO7OzW/Ub/SvKnO7s1Q==}
+  '@scalar/sidebar@0.12.6':
+    resolution: {integrity: sha512-05lHQuJv18P4ctDW3xd2p1EqrgKhdufi6FBCX9K+TlDexOY5bYv+QvZvOgEnGseUEVWii6jGxixC6sQkxFwl7A==}
     engines: {node: '>=22'}
 
-  '@scalar/snippetz@0.10.13':
-    resolution: {integrity: sha512-0qZPv6k/eNFJRb/xdFIq2JDgJhJj4ym/OBduj3/+qdsQPiiS9+UEgYU5nREzuJCviNBeD6mofZnEVMiptiMddQ==}
+  '@scalar/snippetz@0.10.14':
+    resolution: {integrity: sha512-/1O75DNxK8fB6r8QdvlHsek6bMynhnCe88IY33qxHXbHfo3gQruD+HztJvqOV8IQYGAnjf33rnnz4aeSnfUABg==}
     engines: {node: '>=22'}
 
-  '@scalar/themes@0.19.3':
-    resolution: {integrity: sha512-tssbw6X8ts+WgBmEAiD6h9GJU5cL2Ki80ISQ3/tcJtsvBEM9R+/A9da1N9mvEt62udhU0Jp+a6L/t9G9PbcreA==}
+  '@scalar/themes@0.20.0':
+    resolution: {integrity: sha512-lYyZjcP6bThgtc3TtNeTiceOdDhlPNfodMi5lFCAxMNQxOcceJXi+f1WeLuePWcD15uG/ApgMLu/F7hTj+8kFQ==}
     engines: {node: '>=22'}
 
   '@scalar/typebox@0.1.3':
     resolution: {integrity: sha512-lU055AUccECZMIfGA0z/C1StYmboAYIPJLDFBzOO81yXBi35Pxdq+I4fWX6iUZ8qcoHneiLGk9jAUM1rA93iEg==}
 
-  '@scalar/types@0.25.2':
-    resolution: {integrity: sha512-3QGFX9DOvk8jAEPOcwCEbkLpagFvvjoeuUCTUyYUlsu1Mf5itUaw+RL4mfD3Udbqk9xfVTSlkm2Xa357vwWlxw==}
+  '@scalar/types@0.26.0':
+    resolution: {integrity: sha512-T78Dj1Q+W0E1RsMyPoydfR+L+p9IUIkntBCRYlWaRibM98jAxABRYGQoU/qDHX0PR1IAFdE+d7ZqslypZbJzcg==}
     engines: {node: '>=22'}
 
   '@scalar/use-codemirror@0.14.16':
@@ -5019,8 +5019,8 @@ packages:
     resolution: {integrity: sha512-xvmeYb0LOg9B598oVA/1fs9MvnMdtWjQYG3v2Wgftewizr7tQjsdDYT1TQahlDzqRG+r+ml6zlSkPrFiCE5jHQ==}
     engines: {node: '>=20'}
 
-  '@scalar/workspace-store@0.69.2':
-    resolution: {integrity: sha512-xK0irNlXn+mMiAl+A2l23oSuN5NKDcJH2N4JNrebyWrKOZSAIgJsYPHq2s4R7xispfrrh5tO/8fOdfFMk1mh1A==}
+  '@scalar/workspace-store@0.69.3':
+    resolution: {integrity: sha512-DNdnN0oxbFZkVb/rCC3G65pQkX/gtiuwlboUCe5VfvfcTtP7ebn2jS4MkzefK6ZGu7fHi+1Zw1srOSIiAOHrbQ==}
     engines: {node: '>=22.19.0'}
 
   '@selderee/plugin-htmlparser2@0.12.0':
@@ -5958,8 +5958,8 @@ packages:
   '@vercel/cli-config@0.3.1':
     resolution: {integrity: sha512-sISbygqlFXYb8qfPu/+2Cf/A8IjrlAuZePdag3EDQr2PRA455s7UZtl9Ro674CWsB/saBRmz3jEkw0YsQs8OoQ==}
 
-  '@vercel/cli-config@0.3.4':
-    resolution: {integrity: sha512-lkAn8NEC2I1EKN/Ni0M8b/VwWVMzZEcaF7lzT/B5NF51+5vPUx8bEkZGYqWmMUCVO2HFUyWCcX2pZlRDPrUsKQ==}
+  '@vercel/cli-config@0.3.5':
+    resolution: {integrity: sha512-O7y3EFzHENSLtE/3fjM3vIRqDpFFhZor2dMcZaND4G1d88gQk9u8yBcZhRR9CKnBowgzXdl0qcXkuINI05I72w==}
 
   '@vercel/cli-exec@1.0.1':
     resolution: {integrity: sha512-g9XerViJ/paZujufXYcu5XYI2vU2rtB4sgdpjUHde5RnOkdmpu0ngH46LCFGHoPXO/C+qDPSczIHIRN+8Q2YKQ==}
@@ -5984,8 +5984,8 @@ packages:
       next:
         optional: true
 
-  '@vercel/functions@3.10.4':
-    resolution: {integrity: sha512-4L74Vs/EYrEfLUKeAmKnlDFTvqqxb2KKKB15zIbc947DdFkq0j+wHxz3I5dHvlrhqfe2/n6U5A93ZTDNbmNVUA==}
+  '@vercel/functions@3.10.5':
+    resolution: {integrity: sha512-IDqsDlIbVjWk5zoV63N41vKSShH3LgJ8Y5gAQc+dq7HEkHRrVh3naJ/klZxit4B8G+8WEK7ezb/tkOU2g3UViw==}
     engines: {node: '>= 20'}
     peerDependencies:
       '@aws-sdk/credential-provider-web-identity': '*'
@@ -6039,8 +6039,8 @@ packages:
     resolution: {integrity: sha512-ko6ATeRUlHZMB5hLFdC7+/Q1dI2f3NX3gZHxtpALdkxurwjD5HFHGWYF+4o+4SF0E47jg6KzcHknmRpHcKgJ5A==}
     engines: {node: '>= 20'}
 
-  '@vercel/oidc@4.0.4':
-    resolution: {integrity: sha512-cWw+jlAXo7vFHU338hbmPdKOsU0SZflRr1+yfPkar8COC9VEm1qyBWxmfxpbuyhAytp0P2OIa5qUzeWGQ4PvkA==}
+  '@vercel/oidc@4.0.5':
+    resolution: {integrity: sha512-E+duTxv0W8r3qNCGUYxTLt0V0BlLUlrEqxYOu2OoFubIbxwGjwm4wofache+YgU6Sr0MwoAA/vsSrrNrrWjimw==}
     engines: {node: '>= 20'}
 
   '@vercel/sandbox@3.9.1':
@@ -6265,8 +6265,8 @@ packages:
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
-  ai@7.0.156:
-    resolution: {integrity: sha512-qtXze+Go5L2K4nOhrrg75ETZN++FVB2dWipm0bGo1bCh4JtMZ7xD6zSAZNSv/94e3Ks4LUZ5IWoBOIa+KHiIng==}
+  ai@7.0.157:
+    resolution: {integrity: sha512-yvEkoRtVgmJ9cxdy6UWg67haYzJT0r/khe74L0BnFtZhyQUSmiovuvzHiYWqSroMYT8pedsZrP4vB3+6nCeHYg==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -7481,15 +7481,18 @@ packages:
     resolution: {integrity: sha512-buRG0fpBtRHSTCOASe6hD258tEubFoRLb4ZNA6NxMVHNw2gOcwHo9wyablzMzOA5z9xA9L1KNjk/Nt6MT9aYow==}
     engines: {node: '>= 0.6'}
 
-  framer-motion@14.7.1:
-    resolution: {integrity: sha512-mFDYZxyfeZnpvL/zEQEqLZNYVA/ya47c9TBfZb/PEoNBBVSVvCLkMrCv9U38cuw72W161XENZwZB0+4nIBLEJg==}
+  framer-motion@14.8.0:
+    resolution: {integrity: sha512-PQsSx+UlaKiyPhADjVT5wALBErJJdbMeKQS4gQx6ibOrSNni7qjqfTKMvf6YHGG8pQWi6njs7AqrIG7R2hbnxA==}
     peerDependencies:
       react: 19.3.1
       react-dom: 19.3.1
+      remix: ^3.1.0
     peerDependenciesMeta:
       react:
         optional: true
       react-dom:
+        optional: true
+      remix:
         optional: true
 
   fresh@2.0.0:
@@ -8318,8 +8321,8 @@ packages:
     resolution: {integrity: sha512-Jo6dJ04CmSjuznwJSS3pUeWmd/H0ffTlkXXgwZi+eq1UCmqQwCh+eLsYOYCwY991i2Fah4h1BEMCx4qThGbsiA==}
     engines: {node: '>=10'}
 
-  lucide-react@1.64.0:
-    resolution: {integrity: sha512-v626F/bcLNvFom6vzztHILtG9tUgXXbgA5AGkd82YkV401+Ko/NHyrWafbPwGofa+6p/EgDJcvEkIwsMH9098w==}
+  lucide-react@1.65.0:
+    resolution: {integrity: sha512-roSdtzudEY39i2hn5LLjA8toYfhF2z4S10WSqZF4ubXpHlOmNTvaxMxZLdJfQDi6pEifQWX+cRmYihKSsvAxfA==}
     peerDependencies:
       '@types/react': 19.3.0
       react: 19.3.1
@@ -8657,21 +8660,24 @@ packages:
   module-alias@2.3.4:
     resolution: {integrity: sha512-bOclZt8hkpuGgSSoG07PKmvzTizROilUTvLNyrMqvlC9snhs7y7GzjNWAVbISIOlhCP1T14rH1PDAV9iNyBq/w==}
 
-  motion-dom@14.7.1:
-    resolution: {integrity: sha512-p9q9F7+HoijbQjUG/cSGNmWS2t1OaAKxkd2RG5gQJRoDwoTap/Khb7K1P5rLW90crnSmx0rcRXzh3Jd5UNrpEw==}
+  motion-dom@14.8.0:
+    resolution: {integrity: sha512-HzA41kvV7BgluM7L/XbW+gHFzDtJUbHnEsrlnIzPS9dqSfoPy9YzL6VKF7ai0TiQcykkkLUqvIxECAdwa9gwAw==}
 
   motion-utils@14.7.0:
     resolution: {integrity: sha512-woO0/Nb7ys75f94fjvQi/6leiHGvZUYkeHUPEZ3vxsV+9OpEVhkxp01x8MlRwX0zt31EqgXsKDAoBoJLC148Tw==}
 
-  motion@14.7.1:
-    resolution: {integrity: sha512-o+q7MExUC0RuCUF62HxF9v+fNVX7pUMYZqlyigQJJFAgAsmnnSlAOYeG41hGYkamxFR0rdBA0KXpaBJ28/GGAw==}
+  motion@14.8.0:
+    resolution: {integrity: sha512-4KUxmgq8Lt8o/4/m8WnRicBQ+mJUMHl5Gp00o0R0+uU3NDqLwQX3GuBiqVillZl0NzOrhPuC00c5ydP6lokjmQ==}
     peerDependencies:
       react: 19.3.1
       react-dom: 19.3.1
+      remix: ^3.1.0
     peerDependenciesMeta:
       react:
         optional: true
       react-dom:
+        optional: true
+      remix:
         optional: true
 
   mri@1.2.0:
@@ -9078,8 +9084,8 @@ packages:
     resolution: {integrity: sha512-9ZhXKM/rw350N1ovuWHbGxnGh/SNJ4cnxHiM0rxE4VN41wsg8P8zWn9hv/buK00RP4WvlOyr/RBDiptyxVbkZQ==}
     engines: {node: '>=0.10.0'}
 
-  posthog-js@1.442.0:
-    resolution: {integrity: sha512-RaZhFpqlPdoHU5VCkUCUR1c9oMQJAGZHvv0T1bl57smHxKEihTrfYP8ovny81XrrDmswNGkNYC35wTibY7P3OQ==}
+  posthog-js@1.442.1:
+    resolution: {integrity: sha512-tk75+K4Ti13cli/oMWRd69gjdU6zxD/pgGj956rX2Ke69pt6NrGuGMKhSozgQtVYUA4em6e0h8Q0ZxYhAvAvIA==}
     peerDependencies:
       '@types/react': 19.3.0
       react: 19.3.1
@@ -10581,17 +10587,17 @@ snapshots:
       '@vercel/oidc': 3.2.0
       zod: 4.6.7
 
-  '@ai-sdk/gateway@4.0.129(zod@4.6.7)':
+  '@ai-sdk/gateway@4.0.130(zod@4.6.7)':
     dependencies:
       '@ai-sdk/provider': 4.0.34
-      '@ai-sdk/provider-utils': 5.0.70(zod@4.6.7)
+      '@ai-sdk/provider-utils': 5.0.71(zod@4.6.7)
       '@vercel/oidc': 3.2.0
       zod: 4.6.7
 
-  '@ai-sdk/mcp@2.0.86(zod@4.6.7)':
+  '@ai-sdk/mcp@2.0.87(zod@4.6.7)':
     dependencies:
       '@ai-sdk/provider': 4.0.34
-      '@ai-sdk/provider-utils': 5.0.70(zod@4.6.7)
+      '@ai-sdk/provider-utils': 5.0.71(zod@4.6.7)
       cross-spawn: 7.0.6
       pkce-challenge: 5.0.1
       zod: 4.6.7
@@ -10605,7 +10611,7 @@ snapshots:
       undici: 7.30.1
       zod: 4.6.7
 
-  '@ai-sdk/provider-utils@5.0.70(zod@4.6.7)':
+  '@ai-sdk/provider-utils@5.0.71(zod@4.6.7)':
     dependencies:
       '@ai-sdk/provider': 4.0.34
       '@standard-schema/spec': 1.1.0
@@ -10622,12 +10628,12 @@ snapshots:
     dependencies:
       json-schema: 0.4.0
 
-  '@ai-sdk/react@4.0.160(react@19.3.1)(zod@4.6.7)':
+  '@ai-sdk/react@4.0.161(react@19.3.1)(zod@4.6.7)':
     dependencies:
-      '@ai-sdk/mcp': 2.0.86(zod@4.6.7)
+      '@ai-sdk/mcp': 2.0.87(zod@4.6.7)
       '@ai-sdk/provider': 4.0.34
-      '@ai-sdk/provider-utils': 5.0.70(zod@4.6.7)
-      ai: 7.0.156(zod@4.6.7)
+      '@ai-sdk/provider-utils': 5.0.71(zod@4.6.7)
+      ai: 7.0.157(zod@4.6.7)
       react: 19.3.1
       swr: 2.5.1(react@19.3.1)
       throttleit: 2.1.0
@@ -10654,7 +10660,7 @@ snapshots:
       '@smithy/types': 4.19.0
       tslib: 2.8.1
 
-  '@aws-sdk/client-s3@3.1159.0':
+  '@aws-sdk/client-s3@3.1160.0':
     dependencies:
       '@aws-sdk/checksums': 3.1002.1
       '@aws-sdk/core': 3.979.1
@@ -12927,7 +12933,7 @@ snapshots:
     dependencies:
       '@posthog/types': 1.418.0
 
-  '@posthog/next@0.10.0(@opentelemetry/api@1.10.0)(@types/react@19.3.0)(@vercel/functions@3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3))(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
+  '@posthog/next@0.10.0(@opentelemetry/api@1.10.0)(@types/react@19.3.0)(@vercel/functions@3.10.5(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3))(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
       '@posthog/core': 1.62.0
       '@posthog/react': 1.11.3(@types/react@19.3.0)(posthog-js@1.444.0(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)
@@ -12939,15 +12945,15 @@ snapshots:
       server-only: 0.0.1
     optionalDependencies:
       '@opentelemetry/api': 1.10.0
-      '@vercel/functions': 3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3)
+      '@vercel/functions': 3.10.5(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3)
     transitivePeerDependencies:
       - '@types/react'
       - preact-render-to-string
       - rxjs
 
-  '@posthog/react@1.11.3(@types/react@19.3.0)(posthog-js@1.442.0(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)':
+  '@posthog/react@1.11.3(@types/react@19.3.0)(posthog-js@1.442.1(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)':
     dependencies:
-      posthog-js: 1.442.0(@types/react@19.3.0)(react@19.3.1)
+      posthog-js: 1.442.1(@types/react@19.3.0)(react@19.3.1)
       react: 19.3.1
     optionalDependencies:
       '@types/react': 19.3.0
@@ -13665,21 +13671,21 @@ snapshots:
     transitivePeerDependencies:
       - '@types/node'
 
-  '@scalar/agent-chat@0.12.48(axios@1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2))(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)(zod@4.6.7)':
+  '@scalar/agent-chat@0.12.49(axios@1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2))(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)(zod@4.6.7)':
     dependencies:
       '@ai-sdk/vue': 4.0.142(vue@3.5.44(typescript@7.0.2))(zod@4.6.7)
-      '@scalar/api-client': 3.23.5(axios@1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2))(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)
-      '@scalar/components': 0.33.0(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)
+      '@scalar/api-client': 3.23.6(axios@1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2))(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)
+      '@scalar/components': 0.33.1(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)
       '@scalar/helpers': 0.16.4
       '@scalar/icons': 0.7.8(typescript@7.0.2)
       '@scalar/json-magic': 0.17.0
       '@scalar/openapi-types': 0.9.8
-      '@scalar/schemas': 0.15.0
-      '@scalar/themes': 0.19.3
-      '@scalar/types': 0.25.2
+      '@scalar/schemas': 0.16.0
+      '@scalar/themes': 0.20.0
+      '@scalar/types': 0.26.0
       '@scalar/use-toasts': 0.10.6(typescript@7.0.2)
       '@scalar/validation': 0.6.7
-      '@scalar/workspace-store': 0.69.2(typescript@7.0.2)
+      '@scalar/workspace-store': 0.69.3(typescript@7.0.2)
       '@vueuse/core': 15.0.0(vue@3.5.44(typescript@7.0.2))
       ai: 7.0.142(zod@4.6.7)
       js-base64: 3.9.4
@@ -13707,26 +13713,26 @@ snapshots:
       - universal-cookie
       - zod
 
-  '@scalar/api-client@3.23.5(axios@1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2))(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)':
+  '@scalar/api-client@3.23.6(axios@1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2))(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)':
     dependencies:
       '@headlessui/tailwindcss': 0.2.2(tailwindcss@4.3.3)
       '@headlessui/vue': 1.7.23(vue@3.5.44(typescript@7.0.2))
-      '@scalar/blocks': 0.6.2(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)
-      '@scalar/components': 0.33.0(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)
+      '@scalar/blocks': 0.6.3(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)
+      '@scalar/components': 0.33.1(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)
       '@scalar/helpers': 0.16.4
       '@scalar/icons': 0.7.8(typescript@7.0.2)
       '@scalar/localization': 0.2.9(typescript@7.0.2)
-      '@scalar/oas-utils': 0.20.17(typescript@7.0.2)
+      '@scalar/oas-utils': 0.20.18(typescript@7.0.2)
       '@scalar/openapi-types': 0.9.8
-      '@scalar/sidebar': 0.12.5(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)
-      '@scalar/snippetz': 0.10.13
-      '@scalar/themes': 0.19.3
+      '@scalar/sidebar': 0.12.6(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)
+      '@scalar/snippetz': 0.10.14
+      '@scalar/themes': 0.20.0
       '@scalar/typebox': 0.1.3
-      '@scalar/types': 0.25.2
+      '@scalar/types': 0.26.0
       '@scalar/use-codemirror': 0.14.16(typescript@7.0.2)
       '@scalar/use-hooks': 0.4.22(typescript@7.0.2)
       '@scalar/use-toasts': 0.10.6(typescript@7.0.2)
-      '@scalar/workspace-store': 0.69.2(typescript@7.0.2)
+      '@scalar/workspace-store': 0.69.3(typescript@7.0.2)
       '@vueuse/core': 15.0.0(vue@3.5.44(typescript@7.0.2))
       '@vueuse/integrations': 15.0.0(axios@1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2))(change-case@5.4.4)(focus-trap@8.2.4)(fuse.js@7.5.0)(jwt-decode@4.0.0)(qrcode@1.5.4)(vue@3.5.44(typescript@7.0.2))
       focus-trap: 8.2.4
@@ -13759,10 +13765,10 @@ snapshots:
       - typescript
       - universal-cookie
 
-  '@scalar/api-reference-react@0.9.85(@oxc-project/types@0.155.0)(axios@1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2))(change-case@5.4.4)(esbuild@0.28.2)(jwt-decode@4.0.0)(lightningcss@1.33.0)(oxc-parser@0.127.0)(qrcode@1.5.4)(react@19.3.1)(rolldown@1.2.15)(rollup@4.62.2)(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.107.0)(tsx@4.23.15)(yaml@2.9.1))(zod@4.6.7)':
+  '@scalar/api-reference-react@0.9.86(@oxc-project/types@0.155.0)(axios@1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2))(change-case@5.4.4)(esbuild@0.28.2)(jwt-decode@4.0.0)(lightningcss@1.33.0)(oxc-parser@0.127.0)(qrcode@1.5.4)(react@19.3.1)(rolldown@1.2.15)(rollup@4.62.2)(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.107.0)(tsx@4.23.15)(yaml@2.9.1))(zod@4.6.7)':
     dependencies:
-      '@scalar/api-reference': 1.76.2(@oxc-project/types@0.155.0)(axios@1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2))(change-case@5.4.4)(esbuild@0.28.2)(jwt-decode@4.0.0)(lightningcss@1.33.0)(oxc-parser@0.127.0)(qrcode@1.5.4)(rolldown@1.2.15)(rollup@4.62.2)(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.107.0)(tsx@4.23.15)(yaml@2.9.1))(zod@4.6.7)
-      '@scalar/types': 0.25.2
+      '@scalar/api-reference': 1.76.3(@oxc-project/types@0.155.0)(axios@1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2))(change-case@5.4.4)(esbuild@0.28.2)(jwt-decode@4.0.0)(lightningcss@1.33.0)(oxc-parser@0.127.0)(qrcode@1.5.4)(rolldown@1.2.15)(rollup@4.62.2)(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.107.0)(tsx@4.23.15)(yaml@2.9.1))(zod@4.6.7)
+      '@scalar/types': 0.26.0
       react: 19.3.1
     transitivePeerDependencies:
       - '@farmfe/core'
@@ -13800,29 +13806,29 @@ snapshots:
       - webpack
       - zod
 
-  '@scalar/api-reference@1.76.2(@oxc-project/types@0.155.0)(axios@1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2))(change-case@5.4.4)(esbuild@0.28.2)(jwt-decode@4.0.0)(lightningcss@1.33.0)(oxc-parser@0.127.0)(qrcode@1.5.4)(rolldown@1.2.15)(rollup@4.62.2)(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.107.0)(tsx@4.23.15)(yaml@2.9.1))(zod@4.6.7)':
+  '@scalar/api-reference@1.76.3(@oxc-project/types@0.155.0)(axios@1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2))(change-case@5.4.4)(esbuild@0.28.2)(jwt-decode@4.0.0)(lightningcss@1.33.0)(oxc-parser@0.127.0)(qrcode@1.5.4)(rolldown@1.2.15)(rollup@4.62.2)(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.107.0)(tsx@4.23.15)(yaml@2.9.1))(zod@4.6.7)':
     dependencies:
       '@headlessui/vue': 1.7.23(vue@3.5.44(typescript@7.0.2))
-      '@scalar/agent-chat': 0.12.48(axios@1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2))(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)(zod@4.6.7)
-      '@scalar/api-client': 3.23.5(axios@1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2))(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)
-      '@scalar/asyncapi-to-markdown': 0.2.4(supports-color@10.2.2)(typescript@7.0.2)
-      '@scalar/blocks': 0.6.2(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)
+      '@scalar/agent-chat': 0.12.49(axios@1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2))(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)(zod@4.6.7)
+      '@scalar/api-client': 3.23.6(axios@1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2))(change-case@5.4.4)(jwt-decode@4.0.0)(qrcode@1.5.4)(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)
+      '@scalar/asyncapi-to-markdown': 0.2.5(supports-color@10.2.2)(typescript@7.0.2)
+      '@scalar/blocks': 0.6.3(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)
       '@scalar/code-highlight': 0.4.11(supports-color@10.2.2)
-      '@scalar/components': 0.33.0(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)
+      '@scalar/components': 0.33.1(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)
       '@scalar/helpers': 0.16.4
       '@scalar/icons': 0.7.8(typescript@7.0.2)
       '@scalar/localization': 0.2.9(typescript@7.0.2)
-      '@scalar/oas-utils': 0.20.17(typescript@7.0.2)
-      '@scalar/openapi-to-markdown': 1.7.2(supports-color@10.2.2)(typescript@7.0.2)
-      '@scalar/schemas': 0.15.0
-      '@scalar/sidebar': 0.12.5(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)
-      '@scalar/snippetz': 0.10.13
-      '@scalar/themes': 0.19.3
-      '@scalar/types': 0.25.2
+      '@scalar/oas-utils': 0.20.18(typescript@7.0.2)
+      '@scalar/openapi-to-markdown': 1.7.3(supports-color@10.2.2)(typescript@7.0.2)
+      '@scalar/schemas': 0.16.0
+      '@scalar/sidebar': 0.12.6(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)
+      '@scalar/snippetz': 0.10.14
+      '@scalar/themes': 0.20.0
+      '@scalar/types': 0.26.0
       '@scalar/use-hooks': 0.4.22(typescript@7.0.2)
       '@scalar/use-toasts': 0.10.6(typescript@7.0.2)
       '@scalar/validation': 0.6.7
-      '@scalar/workspace-store': 0.69.2(typescript@7.0.2)
+      '@scalar/workspace-store': 0.69.3(typescript@7.0.2)
       '@unhead/vue': 3.4.3(@oxc-project/types@0.155.0)(esbuild@0.28.2)(lightningcss@1.33.0)(oxc-parser@0.127.0)(rolldown@1.2.15)(rollup@4.62.2)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.107.0)(tsx@4.23.15)(yaml@2.9.1))(vue@3.5.44(typescript@7.0.2))
       '@vueuse/core': 15.0.0(vue@3.5.44(typescript@7.0.2))
       fuse.js: 7.5.0
@@ -13866,14 +13872,14 @@ snapshots:
       - webpack
       - zod
 
-  '@scalar/asyncapi-to-markdown@0.2.4(supports-color@10.2.2)(typescript@7.0.2)':
+  '@scalar/asyncapi-to-markdown@0.2.5(supports-color@10.2.2)(typescript@7.0.2)':
     dependencies:
       '@scalar/asyncapi-upgrader': 0.1.18
       '@scalar/helpers': 0.16.4
       '@scalar/json-magic': 0.17.0
-      '@scalar/openapi-to-markdown': 1.7.2(supports-color@10.2.2)(typescript@7.0.2)
-      '@scalar/types': 0.25.2
-      '@scalar/workspace-store': 0.69.2(typescript@7.0.2)
+      '@scalar/openapi-to-markdown': 1.7.3(supports-color@10.2.2)(typescript@7.0.2)
+      '@scalar/types': 0.26.0
+      '@scalar/workspace-store': 0.69.3(typescript@7.0.2)
       remark-gfm: 4.0.1(supports-color@10.2.2)
       remark-stringify: 11.0.0
       unified: 11.0.5
@@ -13885,17 +13891,17 @@ snapshots:
     dependencies:
       '@scalar/helpers': 0.16.4
 
-  '@scalar/blocks@0.6.2(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)':
+  '@scalar/blocks@0.6.3(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)':
     dependencies:
-      '@scalar/components': 0.33.0(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)
+      '@scalar/components': 0.33.1(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)
       '@scalar/helpers': 0.16.4
       '@scalar/icons': 0.7.8(typescript@7.0.2)
       '@scalar/localization': 0.2.9(typescript@7.0.2)
-      '@scalar/snippetz': 0.10.13
-      '@scalar/themes': 0.19.3
-      '@scalar/types': 0.25.2
+      '@scalar/snippetz': 0.10.14
+      '@scalar/themes': 0.20.0
+      '@scalar/types': 0.26.0
       '@scalar/use-hooks': 0.4.22(typescript@7.0.2)
-      '@scalar/workspace-store': 0.69.2(typescript@7.0.2)
+      '@scalar/workspace-store': 0.69.3(typescript@7.0.2)
       '@types/har-format': 1.2.16
       '@vueuse/core': 15.0.0(vue@3.5.44(typescript@7.0.2))
       js-base64: 3.9.4
@@ -13929,7 +13935,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@scalar/components@0.33.0(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)':
+  '@scalar/components@0.33.1(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)':
     dependencies:
       '@floating-ui/utils': 0.2.12
       '@floating-ui/vue': 2.0.1(vue@3.5.44(typescript@7.0.2))
@@ -13939,7 +13945,7 @@ snapshots:
       '@scalar/helpers': 0.16.4
       '@scalar/highlight': 0.6.0
       '@scalar/icons': 0.7.8(typescript@7.0.2)
-      '@scalar/themes': 0.19.3
+      '@scalar/themes': 0.20.0
       '@scalar/use-hooks': 0.4.22(typescript@7.0.2)
       '@vueuse/core': 15.0.0(vue@3.5.44(typescript@7.0.2))
       cva: 1.0.0-beta.4(typescript@7.0.2)
@@ -13985,25 +13991,25 @@ snapshots:
     transitivePeerDependencies:
       - typescript
 
-  '@scalar/oas-utils@0.20.17(typescript@7.0.2)':
+  '@scalar/oas-utils@0.20.18(typescript@7.0.2)':
     dependencies:
       '@scalar/helpers': 0.16.4
-      '@scalar/themes': 0.19.3
-      '@scalar/types': 0.25.2
-      '@scalar/workspace-store': 0.69.2(typescript@7.0.2)
+      '@scalar/themes': 0.20.0
+      '@scalar/types': 0.26.0
+      '@scalar/workspace-store': 0.69.3(typescript@7.0.2)
       flatted: 3.4.4
       vue: 3.5.44(typescript@7.0.2)
       yaml: 2.9.1
     transitivePeerDependencies:
       - typescript
 
-  '@scalar/openapi-to-markdown@1.7.2(supports-color@10.2.2)(typescript@7.0.2)':
+  '@scalar/openapi-to-markdown@1.7.3(supports-color@10.2.2)(typescript@7.0.2)':
     dependencies:
       '@scalar/code-highlight': 0.4.11(supports-color@10.2.2)
       '@scalar/helpers': 0.16.4
       '@scalar/json-magic': 0.17.0
       '@scalar/openapi-upgrader': 0.4.6
-      '@scalar/workspace-store': 0.69.2(typescript@7.0.2)
+      '@scalar/workspace-store': 0.69.3(typescript@7.0.2)
       rehype-parse: 9.0.1
       rehype-remark: 10.0.1
       rehype-sanitize: 6.0.0
@@ -14022,19 +14028,20 @@ snapshots:
       '@scalar/helpers': 0.16.4
       '@scalar/openapi-types': 0.9.8
 
-  '@scalar/schemas@0.15.0':
+  '@scalar/schemas@0.16.0':
     dependencies:
       '@scalar/helpers': 0.16.4
+      '@scalar/types': 0.26.0
       '@scalar/validation': 0.6.7
 
-  '@scalar/sidebar@0.12.5(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)':
+  '@scalar/sidebar@0.12.6(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)':
     dependencies:
-      '@scalar/components': 0.33.0(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)
+      '@scalar/components': 0.33.1(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)
       '@scalar/helpers': 0.16.4
       '@scalar/icons': 0.7.8(typescript@7.0.2)
-      '@scalar/themes': 0.19.3
+      '@scalar/themes': 0.20.0
       '@scalar/use-hooks': 0.4.22(typescript@7.0.2)
-      '@scalar/workspace-store': 0.69.2(typescript@7.0.2)
+      '@scalar/workspace-store': 0.69.3(typescript@7.0.2)
       vue: 3.5.44(typescript@7.0.2)
     transitivePeerDependencies:
       - '@nuxt/kit'
@@ -14045,19 +14052,19 @@ snapshots:
       - tailwindcss
       - typescript
 
-  '@scalar/snippetz@0.10.13':
+  '@scalar/snippetz@0.10.14':
     dependencies:
       '@scalar/helpers': 0.16.4
-      '@scalar/types': 0.25.2
+      '@scalar/types': 0.26.0
       js-base64: 3.9.4
 
-  '@scalar/themes@0.19.3':
+  '@scalar/themes@0.20.0':
     dependencies:
       nanoid: 5.1.16
 
   '@scalar/typebox@0.1.3': {}
 
-  '@scalar/types@0.25.2':
+  '@scalar/types@0.26.0':
     dependencies:
       '@scalar/helpers': 0.16.4
       nanoid: 5.1.16
@@ -14110,16 +14117,16 @@ snapshots:
 
   '@scalar/validation@0.6.7': {}
 
-  '@scalar/workspace-store@0.69.2(typescript@7.0.2)':
+  '@scalar/workspace-store@0.69.3(typescript@7.0.2)':
     dependencies:
       '@scalar/asyncapi-upgrader': 0.1.18
       '@scalar/helpers': 0.16.4
       '@scalar/json-magic': 0.17.0
       '@scalar/openapi-upgrader': 0.4.6
-      '@scalar/schemas': 0.15.0
-      '@scalar/snippetz': 0.10.13
+      '@scalar/schemas': 0.16.0
+      '@scalar/snippetz': 0.10.14
       '@scalar/typebox': 0.1.3
-      '@scalar/types': 0.25.2
+      '@scalar/types': 0.26.0
       '@scalar/validation': 0.6.7
       js-base64: 3.9.4
       type-fest: 5.10.0
@@ -14952,7 +14959,7 @@ snapshots:
       xdg-app-paths: 5.1.0
       zod: 4.1.11
 
-  '@vercel/cli-config@0.3.4':
+  '@vercel/cli-config@0.3.5':
     dependencies:
       xdg-app-paths: 5.5.1
       zod: 4.1.11
@@ -14967,7 +14974,7 @@ snapshots:
 
   '@vercel/flags-core@1.10.3(@aws-sdk/credential-provider-web-identity@3.972.86)(next@16.4.3(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.0))(ws@8.21.3)':
     dependencies:
-      '@vercel/functions': 3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3)
+      '@vercel/functions': 3.10.5(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3)
       '@vercel/oidc': 3.5.0
       dequal: 2.0.3
       jose: 5.10.0
@@ -14978,9 +14985,9 @@ snapshots:
       - '@aws-sdk/credential-provider-web-identity'
       - ws
 
-  '@vercel/functions@3.10.4(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3)':
+  '@vercel/functions@3.10.5(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3)':
     dependencies:
-      '@vercel/oidc': 4.0.4
+      '@vercel/oidc': 4.0.5
     optionalDependencies:
       '@aws-sdk/credential-provider-web-identity': 3.972.86
       ws: 8.21.3
@@ -15024,9 +15031,9 @@ snapshots:
       '@vercel/cli-exec': 1.0.1
       jose: 5.10.0
 
-  '@vercel/oidc@4.0.4':
+  '@vercel/oidc@4.0.5':
     dependencies:
-      '@vercel/cli-config': 0.3.4
+      '@vercel/cli-config': 0.3.5
       '@vercel/cli-exec': 1.0.1
       jose: 5.10.0
 
@@ -15281,11 +15288,11 @@ snapshots:
       '@ai-sdk/provider-utils': 5.0.61(zod@4.6.7)
       zod: 4.6.7
 
-  ai@7.0.156(zod@4.6.7):
+  ai@7.0.157(zod@4.6.7):
     dependencies:
-      '@ai-sdk/gateway': 4.0.129(zod@4.6.7)
+      '@ai-sdk/gateway': 4.0.130(zod@4.6.7)
       '@ai-sdk/provider': 4.0.34
-      '@ai-sdk/provider-utils': 5.0.70(zod@4.6.7)
+      '@ai-sdk/provider-utils': 5.0.71(zod@4.6.7)
       zod: 4.6.7
 
   ajv-draft-04@1.0.0(ajv@8.20.0):
@@ -16545,9 +16552,9 @@ snapshots:
 
   forwarded@0.2.0: {}
 
-  framer-motion@14.7.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
+  framer-motion@14.8.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
     dependencies:
-      motion-dom: 14.7.1
+      motion-dom: 14.8.0
       motion-utils: 14.7.0
       tslib: 2.8.1
     optionalDependencies:
@@ -17411,7 +17418,7 @@ snapshots:
     dependencies:
       yallist: 4.0.0
 
-  lucide-react@1.64.0(@types/react@19.3.0)(react@19.3.1):
+  lucide-react@1.65.0(@types/react@19.3.0)(react@19.3.1):
     dependencies:
       react: 19.3.1
     optionalDependencies:
@@ -18020,15 +18027,15 @@ snapshots:
 
   module-alias@2.3.4: {}
 
-  motion-dom@14.7.1:
+  motion-dom@14.8.0:
     dependencies:
       motion-utils: 14.7.0
 
   motion-utils@14.7.0: {}
 
-  motion@14.7.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
+  motion@14.8.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
     dependencies:
-      framer-motion: 14.7.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      framer-motion: 14.8.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       tslib: 2.8.1
     optionalDependencies:
       react: 19.3.1
@@ -18430,7 +18437,7 @@ snapshots:
     dependencies:
       xtend: 4.0.2
 
-  posthog-js@1.442.0(@types/react@19.3.0)(react@19.3.1):
+  posthog-js@1.442.1(@types/react@19.3.0)(react@19.3.1):
     dependencies:
       '@posthog/browser-common': 0.10.2
       '@posthog/core': 1.62.0
