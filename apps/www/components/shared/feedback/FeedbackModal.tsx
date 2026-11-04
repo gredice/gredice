@@ -61,6 +61,7 @@ export function FeedbackModal({
         [anchorElement],
     );
     const popupId = useId();
+    const activeThumbRef = useRef<HTMLButtonElement | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState(false);
     const { data: user } = useCurrentUser();
@@ -212,11 +213,39 @@ export function FeedbackModal({
         void queueFeedback({ score: feedback });
     }
 
-    function handleOpenChange(nextOpen: boolean) {
+    function handleOpenChange(nextOpen: boolean, event: Event) {
+        // The thumbs only anchor the popover, so Base UI sees a press on (or
+        // focus moving to) the other thumb as leaving it. Keep it open so that
+        // press re-scores the same feedback instead of starting a new record.
+        const relatedTarget =
+            event instanceof FocusEvent ? event.relatedTarget : null;
+        const towardThumbs = [event.target, relatedTarget].some(
+            (target) =>
+                target instanceof Node && anchorElement?.contains(target),
+        );
+        if (!nextOpen && towardThumbs) {
+            return;
+        }
         setOpen(nextOpen);
         if (!nextOpen) {
             resetFeedbackInteraction();
         }
+    }
+
+    function handleCloseAutoFocus(event: Event) {
+        // No trigger is registered, so return focus to the thumb that opened
+        // the popover, unless the visitor already moved focus elsewhere.
+        const thumb = activeThumbRef.current;
+        const activeElement = document.activeElement;
+        const focusMovedAway =
+            activeElement !== null &&
+            activeElement !== document.body &&
+            !document.getElementById(popupId)?.contains(activeElement);
+        if (!thumb?.isConnected || focusMovedAway) {
+            return;
+        }
+        event.preventDefault();
+        thumb.focus();
     }
 
     return (
@@ -225,6 +254,9 @@ export function FeedbackModal({
                 <FeedbackTrigger
                     {...rest}
                     onFeedback={handleDisplay}
+                    onClick={(event) => {
+                        activeThumbRef.current = event.currentTarget;
+                    }}
                     aria-haspopup="dialog"
                     aria-expanded={open}
                     aria-controls={popupId}
@@ -235,6 +267,7 @@ export function FeedbackModal({
                 open={open}
                 title={title ?? 'Tvoje mišljenje'}
                 onOpenChange={handleOpenChange}
+                onCloseAutoFocus={handleCloseAutoFocus}
                 virtualRef={virtualRef}
             >
                 <form action={handleFeedback}>

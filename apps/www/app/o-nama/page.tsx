@@ -158,9 +158,9 @@ export default function AboutUsPage() {
                     </Typography>
                     <Typography level="body1">
                         Trenutno surađujemo s{' '}
-                        <strong>jednim OPG-om iz Moslavine</strong>, s kojim
-                        gradimo temelje cijelog sustava — od uzgoja do
-                        povjerenja.
+                        <strong>jednim OPG-om u Bosiljevu</strong>, u
+                        Bjelovarsko-bilogorskoj županiji, s kojim gradimo
+                        temelje cijelog sustava — od uzgoja do povjerenja.
                     </Typography>
                     <Typography level="body1">
                         Ne gradimo brzo, nego <strong>gradimo smisleno</strong>.

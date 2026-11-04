@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { gardenPreviewPixelRatio } from '../gardenPreview';
 import {
     createCaptureRootAdvanceScheduler,
     createCaptureStabilityState,
@@ -11,6 +12,7 @@ import {
     resolveCaptureCameraZoom,
     resolveCaptureContextUnpremultiplyAlpha,
     resolveCaptureFencePollOutcome,
+    resolvePublicGardenCapturePixelRatio,
 } from './PublicGardenCaptureProbe';
 
 function createFrameQueue() {
@@ -442,5 +444,33 @@ describe('resolveCaptureCameraZoom', () => {
 
         assert.ok(offCenter !== null && centered !== null);
         assert.ok(offCenter < centered);
+    });
+});
+
+describe('resolvePublicGardenCapturePixelRatio', () => {
+    it('keeps the preview ratio while the output uses preview dimensions', () => {
+        assert.equal(
+            resolvePublicGardenCapturePixelRatio(undefined),
+            gardenPreviewPixelRatio,
+        );
+        assert.equal(
+            resolvePublicGardenCapturePixelRatio({ quality: 0.8 }),
+            gardenPreviewPixelRatio,
+        );
+    });
+
+    it('renders custom-sized outputs at 1 unless they set a ratio', () => {
+        assert.equal(
+            resolvePublicGardenCapturePixelRatio({ width: 780, height: 600 }),
+            1,
+        );
+        assert.equal(
+            resolvePublicGardenCapturePixelRatio({
+                width: 780,
+                height: 600,
+                pixelRatio: 3,
+            }),
+            3,
+        );
     });
 });

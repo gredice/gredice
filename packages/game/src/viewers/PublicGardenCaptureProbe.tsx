@@ -36,13 +36,19 @@ export type PublicGardenCaptureOutput = {
 };
 
 /**
- * Garden previews (no explicit output) render at the shared preview pixel
- * ratio; explicit outputs such as wallpapers keep 1 unless they ask otherwise.
+ * Captures at the default preview size render at the shared preview pixel
+ * ratio, so the canvas matches those dimensions. Outputs with their own size,
+ * such as wallpapers, keep 1 unless they ask otherwise.
  */
 export function resolvePublicGardenCapturePixelRatio(
     output: PublicGardenCaptureOutput | undefined,
 ) {
-    return output ? (output.pixelRatio ?? 1) : gardenPreviewPixelRatio;
+    if (output?.pixelRatio !== undefined) {
+        return output.pixelRatio;
+    }
+    return output?.width === undefined && output?.height === undefined
+        ? gardenPreviewPixelRatio
+        : 1;
 }
 
 type PublicGardenCaptureProbeProps = {

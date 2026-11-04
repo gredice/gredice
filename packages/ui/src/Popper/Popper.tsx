@@ -47,7 +47,8 @@ export type PopperProps = Omit<HTMLAttributes<HTMLDivElement>, 'onSelect'> & {
     sideOffset?: number;
     align?: UiAlign;
     alignOffset?: number;
-    onOpenChange?: (open: boolean) => void;
+    /** `event` is what asked for the change, e.g. an outside press. */
+    onOpenChange?: (open: boolean, event: Event) => void;
     onOpenAutoFocus?(event: Event): void;
     onCloseAutoFocus?(event: Event): void;
     onEscapeKeyDown?(event: Event): void;
@@ -122,7 +123,7 @@ export function Popper({
                 }
             }
 
-            onOpenChange?.(nextOpen);
+            onOpenChange?.(nextOpen, eventDetails.event);
         },
         [onEscapeKeyDown, onOpenChange],
     );
