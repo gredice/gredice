@@ -38,9 +38,6 @@ export function ErrorFallback({
                         Oprosti, nešto je pošlo po krivu. Možeš pokušati ponovno
                         ili se vratiti na početnu stranicu.
                     </Typography>
-                    <Typography level="body3" className="break-all">
-                        Referenca greške: {correlationId}
-                    </Typography>
                     <Row
                         className="justify-center md:justify-start"
                         spacing={2}
@@ -52,6 +49,9 @@ export function ErrorFallback({
                             Idi na početnu
                         </Button>
                     </Row>
+                    <Typography level="body3" className="break-all">
+                        Referenca greške: {correlationId}
+                    </Typography>
                 </Stack>
             </div>
         </div>

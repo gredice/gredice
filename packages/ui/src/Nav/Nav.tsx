@@ -108,20 +108,32 @@ export function PageNav({
                 padded={false}
                 className={cx(
                     'transition-[padding] duration-300 ease-out',
-                    isFloating
-                        ? 'px-2 pt-2 md:px-4 md:pt-3'
-                        : 'px-0 pt-0 md:px-4',
+                    isFloating ? 'px-2 pt-2 md:px-4 md:pt-3' : 'px-0 pt-0',
                 )}
             >
                 <header
                     className={cx(
-                        'pointer-events-auto relative flex items-center transition-[height,border-color,background-color,box-shadow] duration-300 ease-out',
+                        // Stay pill-shaped in both states so the corners do not
+                        // snap square while the background fades out.
+                        'pointer-events-auto relative flex items-center rounded-full transition-[height,border-color,background-color,box-shadow] duration-300 ease-out',
                         isFloating
-                            ? 'h-14 rounded-full border border-border/70 bg-background/80 shadow-lg shadow-foreground/10 backdrop-blur-xl'
+                            ? 'h-14 border border-border/70 bg-background/80 shadow-lg shadow-foreground/10 backdrop-blur-xl'
                             : 'h-16 border-transparent bg-transparent',
                     )}
                 >
-                    <div className="relative flex h-full w-full min-w-0 items-center justify-between gap-1 px-2 sm:gap-2 sm:px-3 md:px-4">
+                    <div
+                        className={cx(
+                            'relative flex h-full w-full min-w-0 items-center justify-between gap-1 transition-[padding] duration-300 ease-out sm:gap-2',
+                            // Docked, the logo lines up with page content
+                            // (Container's px-4). Floating, the trailing
+                            // action keeps the same 7px inset on its right as
+                            // above and below it ((56px pill - 2px border -
+                            // 40px button) / 2), so it sits concentric.
+                            isFloating
+                                ? 'pr-1.75 pl-2 sm:pl-3 md:pl-4'
+                                : 'px-4',
+                        )}
+                    >
                         <div className="flex h-full min-w-0 flex-1 flex-col items-start justify-center md:flex-none">
                             <Link
                                 className="block min-w-0 [&>svg]:max-w-full"
