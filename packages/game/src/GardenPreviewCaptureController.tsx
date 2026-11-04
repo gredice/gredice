@@ -2,13 +2,13 @@
 
 import {
     type GardenPreviewPhase,
+    gardenPreviewLayoutHeight,
+    gardenPreviewLayoutWidth,
     gardenPreviewPhases,
 } from '@gredice/js/gardenPreviews';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-    gardenPreviewHeight,
-    gardenPreviewWidth,
     getGardenPreviewCaptureDelayMs,
     getGardenPreviewUploadHeaders,
     getGardenPreviewUploadUrl,
@@ -342,13 +342,13 @@ export function GardenPreviewCaptureController({
             aria-hidden
             data-garden-preview-capture={captureRequestKey}
             style={{
-                height: gardenPreviewHeight,
+                height: gardenPreviewLayoutHeight,
                 left: -20_000,
                 overflow: 'hidden',
                 pointerEvents: 'none',
                 position: 'fixed',
                 top: 0,
-                width: gardenPreviewWidth,
+                width: gardenPreviewLayoutWidth,
                 zIndex: -1,
             }}
         >

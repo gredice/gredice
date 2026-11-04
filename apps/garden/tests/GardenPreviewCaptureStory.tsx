@@ -1,5 +1,9 @@
 'use client';
 
+import {
+    gardenPreviewLayoutHeight,
+    gardenPreviewLayoutWidth,
+} from '@gredice/js/gardenPreviews';
 import { Canvas } from '@react-three/fiber';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -369,13 +373,13 @@ export function GardenPreviewCaptureStory() {
             <div
                 aria-hidden
                 style={{
-                    height: 630,
+                    height: gardenPreviewLayoutHeight,
                     left: -20_000,
                     overflow: 'hidden',
                     pointerEvents: 'none',
                     position: 'fixed',
                     top: 0,
-                    width: 1200,
+                    width: gardenPreviewLayoutWidth,
                     zIndex: -1,
                 }}
             >

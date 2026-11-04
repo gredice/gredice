@@ -16,6 +16,7 @@ export {
     gardenPreviewMaxSizeBytes,
     gardenPreviewPhaseHeader,
     gardenPreviewPhases,
+    gardenPreviewPixelRatio,
     gardenPreviewRendererVersion,
     gardenPreviewRendererVersionHeader,
     gardenPreviewSourceRevisionHeader,

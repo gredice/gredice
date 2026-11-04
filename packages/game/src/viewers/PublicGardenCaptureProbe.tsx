@@ -8,6 +8,7 @@ import { resolveCaptureCameraZoom } from '../controls/orthographicCameraFit';
 import {
     gardenPreviewHeight,
     gardenPreviewMaxSizeBytes,
+    gardenPreviewPixelRatio,
     gardenPreviewRendererVersion,
     gardenPreviewWidth,
 } from '../gardenPreview';
@@ -28,9 +29,21 @@ export type PublicGardenCaptureOutput = {
     contentType?: 'image/png' | 'image/webp';
     height?: number;
     maxSizeBytes?: number;
+    /** Canvas pixels per CSS pixel of the capture box; width/height are in canvas pixels. */
+    pixelRatio?: number;
     quality?: number;
     width?: number;
 };
+
+/**
+ * Garden previews (no explicit output) render at the shared preview pixel
+ * ratio; explicit outputs such as wallpapers keep 1 unless they ask otherwise.
+ */
+export function resolvePublicGardenCapturePixelRatio(
+    output: PublicGardenCaptureOutput | undefined,
+) {
+    return output ? (output.pixelRatio ?? 1) : gardenPreviewPixelRatio;
+}
 
 type PublicGardenCaptureProbeProps = {
     enabled: boolean;

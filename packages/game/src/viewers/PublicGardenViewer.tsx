@@ -87,6 +87,7 @@ import { PublicGardenBlockInteractions } from './PublicGardenBlockInteractions';
 import {
     type PublicGardenCaptureOutput,
     PublicGardenCaptureProbe,
+    resolvePublicGardenCapturePixelRatio,
 } from './PublicGardenCaptureProbe';
 import { PublicGardenRaisedBedDetails } from './PublicGardenRaisedBedDetails';
 import { PublicGardenRaisedBedInteractions } from './PublicGardenRaisedBedInteractions';
@@ -587,7 +588,13 @@ function PublicGardenScene({
                     frameloop={resolvePublicGardenSceneFrameloop(
                         Boolean(capture),
                     )}
-                    pixelRatio={capture ? 1 : undefined}
+                    pixelRatio={
+                        capture
+                            ? resolvePublicGardenCapturePixelRatio(
+                                  capture.output,
+                              )
+                            : undefined
+                    }
                     position={initialView.cameraPosition}
                     quality={qualityProfile}
                     onContextLost={onSceneContextLost}
@@ -1066,6 +1073,8 @@ export function PublicGardenViewer({
                     : null),
             isMock: false,
             timeLocation: initialTimeLocation,
+            // Decorative particles (falling snow blocks) would freeze mid-air.
+            weatherVisualizationDisabled: capture ? true : undefined,
             winterMode: capture?.winterMode ?? 'summer',
         });
     }

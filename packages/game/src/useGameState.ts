@@ -659,6 +659,7 @@ export function createGameState({
     mockGardenProfile,
     timeLocation: initialTimeLocation,
     visualPlacementEffectsEnabled = true,
+    weatherVisualizationDisabled: initialWeatherVisualizationDisabled,
     winterMode,
 }: {
     appBaseUrl: string;
@@ -676,6 +677,8 @@ export function createGameState({
     mockGardenProfile?: MockGardenProfile;
     timeLocation?: GameLocation;
     visualPlacementEffectsEnabled?: boolean;
+    /** Overrides the persisted setting, e.g. so captures never freeze weather effects. */
+    weatherVisualizationDisabled?: boolean;
     winterMode?: WinterMode;
 }) {
     const dayNightCycleDisabled =
@@ -688,7 +691,8 @@ export function createGameState({
     const initialBackgroundPaletteKey = getGameBackgroundPaletteKey(
         initialBackgroundPaletteIndex,
     );
-    const weatherVisualizationDisabled = isWeatherVisualizationDisabled();
+    const weatherVisualizationDisabled =
+        initialWeatherVisualizationDisabled ?? isWeatherVisualizationDisabled();
     const timeLocation = initialTimeLocation ?? defaultGameLocation;
     const now = freezeTime ?? new Date();
     const timeOfDay = resolveGameTimeOfDay(

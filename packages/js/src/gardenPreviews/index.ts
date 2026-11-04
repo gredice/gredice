@@ -1,9 +1,22 @@
-export const gardenPreviewWidth = 1200;
-export const gardenPreviewHeight = 630;
+/** CSS size the capture scene is laid out at; camera framing depends on it. */
+export const gardenPreviewLayoutWidth = 1200;
+export const gardenPreviewLayoutHeight = 630;
+/**
+ * Previews render at 2× the layout so they stay sharp on high-density screens
+ * and when cropped into taller frames such as the landing hero.
+ */
+export const gardenPreviewPixelRatio = 2;
+/** Stored WebP size in pixels. */
+export const gardenPreviewWidth =
+    gardenPreviewLayoutWidth * gardenPreviewPixelRatio;
+export const gardenPreviewHeight =
+    gardenPreviewLayoutHeight * gardenPreviewPixelRatio;
 export const gardenPreviewContentType = 'image/webp';
-export const gardenPreviewMaxSizeBytes = 2 * 1024 * 1024;
+/** Below Vercel's 4.5 MB request body limit for the upload route. */
+export const gardenPreviewMaxSizeBytes = 4 * 1024 * 1024;
 export const gardenPreviewMinimumUploadIntervalMs = 30 * 1000;
-export const gardenPreviewRendererVersion = 'garden-preview-v2';
+/** v3: 2× resolution and no decorative snowfall frozen into the image. */
+export const gardenPreviewRendererVersion = 'garden-preview-v3';
 export type GardenPreviewPhase = 'day' | 'night';
 export const gardenPreviewPhases: readonly GardenPreviewPhase[] = [
     'day',

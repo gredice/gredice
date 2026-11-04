@@ -1,3 +1,8 @@
+import {
+    gardenPreviewHeight,
+    gardenPreviewMaxSizeBytes,
+    gardenPreviewWidth,
+} from '@gredice/js/gardenPreviews';
 import { expect, test } from '@playwright/experimental-ct-react';
 import { getLocalSandboxBlockData } from '../../../packages/game/src/localSandboxBlockData';
 import { GardenPreviewCaptureStory } from './GardenPreviewCaptureStory';
@@ -43,7 +48,7 @@ const captureOperations = [
     },
 ];
 
-test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', async ({
+test('captures the real offscreen 3D garden as one nonblank 2400x1260 WebP', async ({
     mount,
     page,
 }) => {
@@ -225,14 +230,14 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
     expect(result.status, result.error).toBe('captured');
     expect(result).toMatchObject({
         count: 1,
-        height: 630,
+        height: gardenPreviewHeight,
         status: 'captured',
         type: 'image/webp',
-        width: 1200,
+        width: gardenPreviewWidth,
     });
     expect(result.error).toBeUndefined();
     expect(result.size).toBeGreaterThan(1_000);
-    expect(result.size).toBeLessThanOrEqual(2 * 1024 * 1024);
+    expect(result.size).toBeLessThanOrEqual(gardenPreviewMaxSizeBytes);
     expect(result.nonTransparentPixels).toBe(60 * 32);
     expect(result.uniqueColorCount).toBeGreaterThan(16);
     expect(result.activeRootMounted).toBe(true);
