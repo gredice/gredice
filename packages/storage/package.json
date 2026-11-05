@@ -76,7 +76,7 @@
     },
     "devDependencies": {
         "@biomejs/biome": "2.6.4",
-        "@electric-sql/pglite": "0.5.13",
+        "@electric-sql/pglite": "0.5.14",
         "@gredice/directory-types": "workspace:*",
         "@gredice/js": "workspace:*",
         "@neondatabase/serverless": "1.2.0",
