@@ -12,6 +12,8 @@ export type FieldOperationLabelData = {
     traceStatus?: 'active' | 'revoked';
 };
 
+export type FieldOperationLabelVersion = 'v1' | 'v2';
+
 export type HarvestLabelData = {
     raisedBedPhysicalId: string;
     fieldIndex: number;
