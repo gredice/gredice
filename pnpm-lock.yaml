@@ -706,7 +706,7 @@ importers:
         version: 0.10.0(@opentelemetry/api@1.10.0)(@types/react@19.3.0)(@vercel/functions@3.10.5(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3))(next@16.4.4(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@posthog/react':
         specifier: 1.11.3
-        version: 1.11.3(@types/react@19.3.0)(posthog-js@1.444.3(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)
+        version: 1.11.3(@types/react@19.3.0)(posthog-js@1.444.4(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)
       '@vercel/blob':
         specifier: 2.8.2
         version: 2.8.2
@@ -726,8 +726,8 @@ importers:
         specifier: 8.23.1
         version: 8.23.1
       posthog-js:
-        specifier: 1.444.3
-        version: 1.444.3(@types/react@19.3.0)(react@19.3.1)
+        specifier: 1.444.4
+        version: 1.444.4(@types/react@19.3.0)(react@19.3.1)
       react:
         specifier: 19.3.1
         version: 19.3.1
@@ -4192,9 +4192,6 @@ packages:
 
   '@posthog/types@1.418.0':
     resolution: {integrity: sha512-WqDXUWH1R8OilBp2PfDpQIRZSCs3QyOnw7H3YK7lvZLCMIsOqSZAKJrrqYWt4f7FvnVCACRuNGCC0HKh3J/HWw==}
-
-  '@posthog/types@1.419.0':
-    resolution: {integrity: sha512-XX7zRYt/vK8AzaD6V+oDquAzacZf5exJv971dja9En8Qf6g84Qvc3rpT0w6hDYYLWrjaSSkdjFfvvoXI0ouJDg==}
 
   '@posthog/types@1.421.1':
     resolution: {integrity: sha512-475eg+usYiQ2m7GfxgylnBTVa3aPsEfaE6gQoDvg5nEkWAjcNiGm1u3WsESOErfrFFUajpYcxc71JCzfdoJ8gg==}
@@ -9163,8 +9160,8 @@ packages:
     resolution: {integrity: sha512-9ZhXKM/rw350N1ovuWHbGxnGh/SNJ4cnxHiM0rxE4VN41wsg8P8zWn9hv/buK00RP4WvlOyr/RBDiptyxVbkZQ==}
     engines: {node: '>=0.10.0'}
 
-  posthog-js@1.444.3:
-    resolution: {integrity: sha512-O/A8vnAJcwozIIU6LZFMw71CnY6kmBNrwZAqXuAsLs/or7fBzAMCRpUfkIP30zToWSu7bO4q5h8USpS8uKz6HA==}
+  posthog-js@1.444.4:
+    resolution: {integrity: sha512-oZgy3ETGhygPewB+UNbdu9htO0u2b3EmTdGSdyc+jCpFyuhOW+Yd+3ZccifkhwouUchMAk1ps9R3vZd1iCB/wA==}
     peerDependencies:
       '@types/react': 19.3.0
       react: 19.3.1
@@ -13035,9 +13032,9 @@ snapshots:
   '@posthog/next@0.10.0(@opentelemetry/api@1.10.0)(@types/react@19.3.0)(@vercel/functions@3.10.5(@aws-sdk/credential-provider-web-identity@3.972.86)(ws@8.21.3))(next@16.4.4(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
       '@posthog/core': 1.62.0
-      '@posthog/react': 1.11.3(@types/react@19.3.0)(posthog-js@1.444.3(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)
+      '@posthog/react': 1.11.3(@types/react@19.3.0)(posthog-js@1.444.4(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)
       next: 16.4.4(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.107.1)
-      posthog-js: 1.444.3(@types/react@19.3.0)(react@19.3.1)
+      posthog-js: 1.444.4(@types/react@19.3.0)(react@19.3.1)
       posthog-node: 5.61.1(@opentelemetry/api@1.10.0)
       react: 19.3.1
       react-dom: 19.3.1(react@19.3.1)
@@ -13050,16 +13047,14 @@ snapshots:
       - preact-render-to-string
       - rxjs
 
-  '@posthog/react@1.11.3(@types/react@19.3.0)(posthog-js@1.444.3(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)':
+  '@posthog/react@1.11.3(@types/react@19.3.0)(posthog-js@1.444.4(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)':
     dependencies:
-      posthog-js: 1.444.3(@types/react@19.3.0)(react@19.3.1)
+      posthog-js: 1.444.4(@types/react@19.3.0)(react@19.3.1)
       react: 19.3.1
     optionalDependencies:
       '@types/react': 19.3.0
 
   '@posthog/types@1.418.0': {}
-
-  '@posthog/types@1.419.0': {}
 
   '@posthog/types@1.421.1': {}
 
@@ -18558,11 +18553,11 @@ snapshots:
     dependencies:
       xtend: 4.0.2
 
-  posthog-js@1.444.3(@types/react@19.3.0)(react@19.3.1):
+  posthog-js@1.444.4(@types/react@19.3.0)(react@19.3.1):
     dependencies:
       '@posthog/browser-common': 0.10.7
-      '@posthog/core': 1.62.0
-      '@posthog/types': 1.419.0
+      '@posthog/core': 1.64.1
+      '@posthog/types': 1.421.1
       core-js: 3.50.0
       dompurify: 3.4.15
       fflate: 0.4.9
