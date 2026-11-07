@@ -27,7 +27,7 @@
         "@vercel/functions": "3.10.5",
         "@vercel/toolbar": "0.2.7",
         "flags": "4.4.0",
-        "next": "16.4.3",
+        "next": "16.4.4",
         "pg": "8.23.1",
         "posthog-js": "1.444.1",
         "react": "19.3.1",
