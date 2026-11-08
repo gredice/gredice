@@ -17,10 +17,10 @@
         "@biomejs/biome": "2.6.4",
         "@gredice/ui": "workspace:*",
         "@react-email/ui": "6.11.6",
-        "@tailwindcss/postcss": "4.3.3",
+        "@tailwindcss/postcss": "4.3.4",
         "@types/node": "26.6.6",
         "@types/react": "19.3.0",
-        "tailwindcss": "4.3.3",
+        "tailwindcss": "4.3.4",
         "tsx": "4.23.15",
         "typescript": "7.0.2"
     },

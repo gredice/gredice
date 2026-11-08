@@ -39,7 +39,7 @@
         "@gredice/ui": "workspace:*",
         "@playwright/experimental-ct-react": "1.62.1",
         "@playwright/test": "1.62.1",
-        "@tailwindcss/postcss": "4.3.3",
+        "@tailwindcss/postcss": "4.3.4",
         "@tailwindcss/typography": "0.5.20",
         "@tanstack/react-query": "5.105.3",
         "@types/google.maps": "3.66.9",
@@ -50,7 +50,7 @@
         "@zxing/library": "0.23.0",
         "postcss": "8.5.32",
         "sharp": "0.35.5",
-        "tailwindcss": "4.3.3",
+        "tailwindcss": "4.3.4",
         "tsx": "4.23.15",
         "typescript": "7.0.2"
     },
