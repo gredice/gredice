@@ -37,7 +37,7 @@
     "plan:autumn-publication": "pnpm --filter api exec node --import tsx --conditions=react-server ../../scripts/autumn-publication-plan.ts"
   },
   "devDependencies": {
-    "rimraf": "6.1.3",
+    "rimraf": "6.1.4",
     "turbo": "2.11.10",
     "typescript": "7.0.2"
   },
