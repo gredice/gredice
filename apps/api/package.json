@@ -50,7 +50,7 @@
         "hono": "4.13.16",
         "hono-openapi": "1.5.0",
         "hono-rate-limiter": "0.5.4",
-        "next": "16.4.4",
+        "next": "16.4.5",
         "pg": "8.23.1",
         "prettier": "3.9.10",
         "react": "19.3.1",
