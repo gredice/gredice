@@ -14,7 +14,7 @@
         "dev": "email dev -p 4001"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.6.4",
+        "@biomejs/biome": "2.6.5",
         "@gredice/ui": "workspace:*",
         "@react-email/ui": "6.11.6",
         "@tailwindcss/postcss": "4.3.4",
