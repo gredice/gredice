@@ -19,7 +19,7 @@
     },
     "dependencies": {
         "@gredice/js": "workspace:*",
-        "@posthog/next": "0.10.0",
+        "@posthog/next": "0.11.0",
         "@vercel/analytics": "2.0.1",
         "@vercel/toolbar": "0.2.7",
         "flags": "4.4.0",
