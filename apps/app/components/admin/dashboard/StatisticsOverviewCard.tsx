@@ -19,7 +19,12 @@ export function StatisticsOverviewCard({
             <CardOverflow>
                 <Stack spacing={1} className="p-3">
                     <Typography level="body3">{title}</Typography>
-                    <Typography level="h4" semiBold className="tabular-nums">
+                    <Typography
+                        level="h4"
+                        component="p"
+                        semiBold
+                        className="tabular-nums"
+                    >
                         {value}
                     </Typography>
                     <Typography level="body3" className="text-muted-foreground">
