@@ -232,6 +232,8 @@ test('preserves confirmation cancellation, prompt validation, and form submissio
 
 async function swipeDrawerDown(page: Page) {
     const handle = page.locator('[data-modal-drawer-handle]');
+    // Wait for the opening animation before measuring the gesture's target.
+    await handle.hover();
     const bounds = await handle.boundingBox();
     if (!bounds) {
         throw new Error('Expected the mobile drawer handle to be visible.');

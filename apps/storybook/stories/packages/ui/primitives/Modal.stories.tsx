@@ -18,7 +18,7 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'Modal uses Base UI Dialog on desktop and a keyboard-aware, swipe-dismissible Base UI Drawer on mobile while preserving one responsive contract.',
+                    'Modal uses Base UI Dialog on desktop and a keyboard-aware, swipe-dismissible Base UI Drawer on mobile. It subscribes to the 768px breakpoint rather than every viewport resize, so keyboard and same-breakpoint resizes do not rerender each modal.',
             },
         },
     },

@@ -136,6 +136,38 @@ for (const [width, expectedSurface] of [
     });
 }
 
+test('switches modal surfaces only when crossing the mobile breakpoint', async ({
+    mount,
+    page,
+}) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.setViewportSize({ width: 375, height: 900 });
+    await mount(<ResponsiveModalIntegrationStory />);
+
+    const trigger = page.getByRole('button', {
+        name: 'Otvori responzivni modal',
+    });
+    await trigger.click();
+    const mobilePopup = await page.getByRole('dialog').elementHandle();
+    await page.setViewportSize({ width: 390, height: 600 });
+    expect(await mobilePopup?.evaluate((element) => element.isConnected)).toBe(
+        true,
+    );
+    await expect(page.locator('[data-modal-backdrop="mobile"]')).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    await page.setViewportSize({ width: 768, height: 900 });
+    await trigger.click();
+    await expect(page.locator('[data-modal-backdrop="desktop"]')).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    await page.setViewportSize({ width: 767, height: 900 });
+    await trigger.click();
+    await expect(page.locator('[data-modal-backdrop="mobile"]')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(trigger).toBeFocused();
+});
+
 test('has no serious accessibility violations across the combined overlay fixture', async ({
     mount,
     page,

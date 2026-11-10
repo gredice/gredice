@@ -1,13 +1,11 @@
-import { IconButton } from '@gredice/ui/IconButton';
-import { Info } from '@gredice/ui/icons';
 import { Markdown } from '@gredice/ui/Markdown';
-import { Modal } from '@gredice/ui/Modal';
 import { NavigatingButton } from '@gredice/ui/NavigatingButton';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { ReactNode } from 'react';
 import { Card, CardContent } from '../shared/Card';
+import { AttributeInfoButton } from './AttributeInfoButton';
 
 export type AttributeCardProps = {
     icon: ReactNode;
@@ -60,19 +58,7 @@ export function AttributeCard({
                 </Stack>
             </Row>
             {description && (
-                <Modal
-                    title={header}
-                    className="border border-tertiary border-b-4 max-w-xl"
-                    trigger={
-                        <IconButton
-                            size="lg"
-                            variant="plain"
-                            aria-label={`Više informacija o ${header}`}
-                        >
-                            <Info />
-                        </IconButton>
-                    }
-                >
+                <AttributeInfoButton title={header}>
                     <Stack spacing={4}>
                         <Row spacing={4}>
                             {icon}
@@ -95,7 +81,7 @@ export function AttributeCard({
                             </NavigatingButton>
                         )}
                     </Stack>
-                </Modal>
+                </AttributeInfoButton>
             )}
         </Card>
     );
