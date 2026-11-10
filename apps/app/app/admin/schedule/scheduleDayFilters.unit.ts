@@ -11,8 +11,10 @@ import { getScheduleOperationHref } from './scheduleOperationLinks.ts';
 import {
     isDayBulkFieldApprovalTargetVisible,
     isDayBulkFieldAssignmentTargetVisible,
+    isDayBulkFieldRescheduleTargetVisible,
     isDayBulkOperationApprovalTargetVisible,
     isDayBulkOperationAssignmentTargetVisible,
+    isDayBulkOperationRescheduleTargetVisible,
 } from './scheduleOptimisticHelpers.ts';
 import {
     activePlantCycleEventId,
@@ -470,6 +472,51 @@ test('day operation bulk actions honor optimistic terminal statuses', () => {
     assert.equal(
         isDayBulkOperationAssignmentTargetVisible({
             assignedUserId: 'farmer-1',
+        }),
+        false,
+    );
+});
+
+test('day operation bulk reschedule honors reschedule permissions', () => {
+    assert.equal(isDayBulkOperationRescheduleTargetVisible(undefined), true);
+    for (const status of ['new', 'planned', 'failed', 'blocked']) {
+        assert.equal(
+            isDayBulkOperationRescheduleTargetVisible({ status }),
+            true,
+        );
+    }
+    for (const status of ['completed', 'canceled', 'pendingVerification']) {
+        assert.equal(
+            isDayBulkOperationRescheduleTargetVisible({ status }),
+            false,
+        );
+    }
+    assert.equal(
+        isDayBulkOperationRescheduleTargetVisible({ isAccepted: true }),
+        false,
+    );
+});
+
+test('day planting bulk reschedule honors reschedule permissions', () => {
+    assert.equal(isDayBulkFieldRescheduleTargetVisible(undefined), true);
+    assert.equal(
+        isDayBulkFieldRescheduleTargetVisible({ plantStatus: 'new' }),
+        true,
+    );
+    assert.equal(
+        isDayBulkFieldRescheduleTargetVisible({ plantStatus: 'blocked' }),
+        true,
+    );
+    for (const plantStatus of ['planned', 'pendingVerification', 'sowed']) {
+        assert.equal(
+            isDayBulkFieldRescheduleTargetVisible({ plantStatus }),
+            false,
+        );
+    }
+    assert.equal(
+        isDayBulkFieldRescheduleTargetVisible({
+            isDeleted: true,
+            plantStatus: 'new',
         }),
         false,
     );

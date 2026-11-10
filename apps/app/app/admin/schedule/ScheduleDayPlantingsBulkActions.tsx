@@ -5,6 +5,7 @@ import {
     acceptRaisedBedFieldAction,
     assignRaisedBedFieldUserAction,
     cancelRaisedBedFieldAction,
+    rescheduleRaisedBedFieldAction,
 } from '../../(actions)/raisedBedFieldsActions';
 import { BulkApproveRaisedBedButton } from './BulkApproveRaisedBedButton';
 import { BulkAssignRaisedBedButton } from './BulkAssignRaisedBedButton';
@@ -12,11 +13,17 @@ import {
     BulkCancelRaisedBedButton,
     buildFieldCancelFormData,
 } from './BulkCancelRaisedBedButton';
-import { settleScheduleActions } from './scheduleActionQueue';
+import { BulkRescheduleRaisedBedButton } from './BulkRescheduleRaisedBedButton';
+import {
+    resolveScheduleFormVersion,
+    settleScheduleActions,
+} from './scheduleActionQueue';
 import {
     isDayBulkFieldApprovalTargetVisible,
     isDayBulkFieldAssignmentTargetVisible,
     isDayBulkFieldCancelTargetVisible,
+    isDayBulkFieldRescheduleTargetVisible,
+    parseScheduledDateInput,
 } from './scheduleOptimisticHelpers';
 import { useOptimisticScheduleActions } from './useOptimisticScheduleActions';
 
@@ -38,6 +45,15 @@ type FieldAssignmentTarget = {
     farmUsers: RaisedBedFieldAssignableFarmUser[];
 };
 
+type FieldRescheduleTarget = {
+    id: number;
+    raisedBedId: number;
+    positionIndex: number;
+    expectedPlantCycleEventId: number;
+    expectedPlantCycleVersionEventId: number;
+    expectedPlantSortId: number;
+};
+
 type FieldCancelTarget = {
     id: number;
     raisedBedId: number;
@@ -51,12 +67,14 @@ type FieldCancelTarget = {
 interface ScheduleDayPlantingsBulkActionsProps {
     fieldsToApprove: FieldApprovalTarget[];
     fieldsToAssign: FieldAssignmentTarget[];
+    fieldsToReschedule: FieldRescheduleTarget[];
     fieldsToCancel: FieldCancelTarget[];
 }
 
 export function ScheduleDayPlantingsBulkActions({
     fieldsToApprove,
     fieldsToAssign,
+    fieldsToReschedule,
     fieldsToCancel,
 }: ScheduleDayPlantingsBulkActionsProps) {
     const { getFieldPatch, runOptimisticAction } =
@@ -66,6 +84,9 @@ export function ScheduleDayPlantingsBulkActions({
     );
     const visibleFieldsToAssign = fieldsToAssign.filter((field) =>
         isDayBulkFieldAssignmentTargetVisible(getFieldPatch(field.id)),
+    );
+    const visibleFieldsToReschedule = fieldsToReschedule.filter((field) =>
+        isDayBulkFieldRescheduleTargetVisible(getFieldPatch(field.id)),
     );
     const visibleFieldsToCancel = fieldsToCancel.filter((field) =>
         isDayBulkFieldCancelTargetVisible(getFieldPatch(field.id)),
@@ -137,6 +158,66 @@ export function ScheduleDayPlantingsBulkActions({
                             'Failed to assign users for all day planting items:',
                         errorAlertMessage:
                             'Skupna dodjela sijanja nije uspjela. Promjena je vraćena.',
+                    })
+                }
+            />
+            <BulkRescheduleRaisedBedButton
+                physicalId="dan"
+                fields={visibleFieldsToReschedule}
+                operations={[]}
+                onSubmit={(scheduledDate) =>
+                    runOptimisticAction({
+                        fieldPatches: visibleFieldsToReschedule.map(
+                            (field) => ({
+                                id: field.id,
+                                patch: {
+                                    plantScheduledDate:
+                                        parseScheduledDateInput(scheduledDate),
+                                },
+                            }),
+                        ),
+                        action: (getVersion) =>
+                            settleScheduleActions(
+                                visibleFieldsToReschedule.map((field) => {
+                                    const formData = new FormData();
+                                    formData.set(
+                                        'raisedBedId',
+                                        field.raisedBedId.toString(),
+                                    );
+                                    formData.set(
+                                        'positionIndex',
+                                        field.positionIndex.toString(),
+                                    );
+                                    formData.set(
+                                        'expectedPlantCycleEventId',
+                                        field.expectedPlantCycleEventId.toString(),
+                                    );
+                                    formData.set(
+                                        'expectedPlantCycleVersionEventId',
+                                        field.expectedPlantCycleVersionEventId.toString(),
+                                    );
+                                    formData.set(
+                                        'expectedPlantSortId',
+                                        field.expectedPlantSortId.toString(),
+                                    );
+                                    formData.set(
+                                        'scheduledDate',
+                                        scheduledDate,
+                                    );
+                                    return rescheduleRaisedBedFieldAction(
+                                        resolveScheduleFormVersion(
+                                            formData,
+                                            `field:${field.id}`,
+                                            'expectedPlantCycleVersionEventId',
+                                            getVersion,
+                                        ),
+                                    );
+                                }),
+                            ),
+                        errorLogMessage:
+                            'Failed to reschedule all day planting items:',
+                        errorAlertMessage:
+                            'Skupno zakazivanje sijanja nije uspjelo. Promjena je vraćena.',
                     })
                 }
             />
