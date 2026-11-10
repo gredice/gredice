@@ -340,6 +340,16 @@ jobs:
       name: "news"
       path: "apps/news"
 
+  ci_storybook:
+    name: "CI - storybook"
+    needs: changes
+    if: success() && needs.changes.outputs.app_storybook == 'true'
+    uses: ./.github/workflows/nextjs_ci_reusable.yml
+    with:
+      name: "storybook"
+      path: "apps/storybook"
+      buildOnly: true
+
   ci_garden:
     name: "CI - garden"
     needs: changes
@@ -596,8 +606,10 @@ jobs:
       [
         ui_primitives,
         changes,
+        plugin_package,
         ci_www,
         ci_news,
+        ci_storybook,
         ci_garden,
         ci_garden_android,
         ci_farm,

@@ -18,6 +18,11 @@ on:
         type: boolean
         description: "Persist the experimental Turbopack build cache"
         default: false
+      buildOnly:
+        required: false
+        type: boolean
+        description: "Run the build for apps without a test script; build includes their typecheck"
+        default: false
       testShardMatrix:
         required: false
         type: string
@@ -170,7 +175,7 @@ jobs:
       - name: ⚒️ Test app
         run: |
           database_args=(--database)
-          if [ "${{ inputs.name }}" = "garden" ]; then database_args=(); fi
+          if [ "${{ inputs.name }}" = "garden" ] || [ "$CI_BUILD_ONLY" = "true" ]; then database_args=(); fi
           bash scripts/ci-isolated-tests.sh "${database_args[@]}" bash scripts/ci-test-app.sh
         env:
           TEST_ARGS: ${{ matrix.shard.args || (matrix.shard.total != 1 && format('--shard={0}/{1}', matrix.shard.index, matrix.shard.total)) || '' }}
@@ -178,3 +183,4 @@ jobs:
           CI_APP_PATH: ${{ inputs.path }}
           CI_PREPARE_SCRIPT: ${{ inputs.testShardPrepareScript }}
           CI_RUN_SCRIPT: ${{ inputs.testShardRunScript }}
+          CI_BUILD_ONLY: ${{ inputs.buildOnly }}
