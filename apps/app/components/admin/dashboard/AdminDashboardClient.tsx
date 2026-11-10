@@ -1,6 +1,5 @@
 'use client';
 
-import type { getAnalyticsTotals } from '@gredice/storage';
 import { Button } from '@gredice/ui/Button';
 import { Chip } from '@gredice/ui/Chip';
 import { Input } from '@gredice/ui/Input';
@@ -42,22 +41,22 @@ import {
     getDashboardQuickActionBadge,
 } from '../../../src/dashboardQuickActions';
 import { KnownPages } from '../../../src/KnownPages';
-import { FactCard } from '../cards/FactCard';
 import { EntityTypeIcon } from '../directories/EntityTypeIcon';
-import { DashboardDivider } from './DashboardDivider';
+import { ActiveUsersCard } from './ActiveUsersCard';
+import type { getAnalyticsData } from './actions';
+import type { AnalyticsWeekDay } from './analyticsDateRange';
+import { DashboardSection } from './DashboardSection';
+import { DashboardStatTile } from './DashboardStatTile';
+import { formatDashboardNumber } from './dashboardFormat';
 import type { OperationsDurationData } from './OperationsDurationCard';
-import { formatOperationsDuration } from './operationsDuration';
-import { StatisticsOverviewCard } from './StatisticsOverviewCard';
+import { OperationsWeekCard } from './OperationsWeekCard';
+import { RecordsOverviewCard } from './RecordsOverviewCard';
+import { RegistrationsWeekCard } from './RegistrationsWeekCard';
 import type { SunflowersDailyData } from './SunflowersDailyCard';
+import { SunflowersWeekCard } from './SunflowersWeekCard';
 import type { WeekdayRegistrationData } from './UsersRegistrationWeekdayCard';
 
-type EntityData = {
-    entityTypeName: string;
-    label: string;
-    count: number;
-    incompleteDraftCount: number;
-    incompletePublishedCount: number;
-};
+type AnalyticsData = Awaited<ReturnType<typeof getAnalyticsData>>;
 
 function getTodayDateValue() {
     const now = new Date();
@@ -66,12 +65,6 @@ function getTodayDateValue() {
     const day = `${now.getDate()}`.padStart(2, '0');
     return `${year}-${month}-${day}`;
 }
-
-type AiData = {
-    count: number;
-    totalTokens: number;
-    totalCostEur: number;
-};
 
 function quickActionIcon(quickAction: { href: string; icon?: string | null }) {
     if (quickAction.icon) {
@@ -148,18 +141,20 @@ export function AdminDashboardClient({
     initialSunflowersData,
     initialFrom,
     initialTo,
+    weekDays,
 }: {
-    initialAnalyticsData: Awaited<ReturnType<typeof getAnalyticsTotals>>;
+    initialAnalyticsData: AnalyticsData['analytics'];
     initialQuickActions: DashboardQuickActionOption[];
     initialQuickActionBadgeCounts: DashboardQuickActionBadgeCounts;
-    initialEntitiesData: EntityData[];
+    initialEntitiesData: AnalyticsData['entities'];
     initialPeriod?: string;
     initialOperationsDurationData: OperationsDurationData;
     initialWeekdayRegistrations: WeekdayRegistrationData[];
-    initialAiData: AiData;
+    initialAiData: AnalyticsData['ai'];
     initialSunflowersData: SunflowersDailyData[];
     initialFrom?: string;
     initialTo?: string;
+    weekDays: AnalyticsWeekDay[];
 }) {
     const [selectedPeriod, setSelectedPeriod] = useState(initialPeriod);
     const [customFrom, setCustomFrom] = useState(initialFrom ?? '');
@@ -260,33 +255,27 @@ export function AdminDashboardClient({
         deliveryRequestsBefore: deliveryRequestsBeforeCount,
         activeUsers,
     } = initialAnalyticsData;
-    const weeklyRegistrations = initialWeekdayRegistrations.reduce(
-        (total, item) => total + item.count,
-        0,
+    const periodSelect = (
+        <SelectItems
+            value={selectedPeriod}
+            onValueChange={(value) => handlePeriodChange(value || '7')}
+            items={periodOptions}
+            className="w-32"
+            placeholder="Odaberi period"
+            disabled={isPending}
+        />
     );
-    const weeklyActiveRegistrationDays = initialWeekdayRegistrations.filter(
-        (item) => item.count > 0,
-    ).length;
-    const totalRecords = initialEntitiesData.reduce(
-        (total, item) => total + item.count,
-        0,
-    );
-    const incompleteRecords = initialEntitiesData.reduce(
-        (total, item) =>
-            total + item.incompleteDraftCount + item.incompletePublishedCount,
-        0,
-    );
-    const weeklySunflowersSpent = initialSunflowersData.reduce(
-        (total, item) => total + item.spent,
-        0,
-    );
-    const weeklySunflowersEarned = initialSunflowersData.reduce(
-        (total, item) => total + item.earned,
-        0,
-    );
+    const aiAverageTokensDetail =
+        initialAiData.count > 0
+            ? `Prosječno ${formatDashboardNumber(Math.round(initialAiData.totalTokens / initialAiData.count))} po analizi`
+            : undefined;
+    const aiAverageCostDetail =
+        initialAiData.count > 0
+            ? `Prosječno ${formatAiCostEur(initialAiData.totalCostEur / initialAiData.count)} po analizi`
+            : undefined;
 
     return (
-        <Stack spacing={4}>
+        <Stack spacing={6}>
             <Row spacing={2} className="flex-wrap">
                 {initialQuickActions.map((quickAction) => {
                     const badge = getDashboardQuickActionBadge(
@@ -310,185 +299,175 @@ export function AdminDashboardClient({
                     );
                 })}
             </Row>
-            <Stack spacing={2}>
-                <Row justifyContent="space-between">
-                    <DashboardDivider>Računi i korisnici</DashboardDivider>
-                    <SelectItems
-                        value={selectedPeriod}
-                        onValueChange={(value) =>
-                            handlePeriodChange(value || '7')
-                        }
-                        items={periodOptions}
-                        className="w-32"
-                        placeholder="Odaberi period"
-                        disabled={isPending}
-                    />
-                </Row>
-                {selectedPeriod === 'custom' ? (
-                    <Stack spacing={1}>
-                        <Row spacing={2} className="items-end">
-                            <Input
-                                type="date"
-                                value={customFrom}
-                                onChange={(event) =>
-                                    setCustomFrom(event.target.value)
-                                }
-                                label="Od"
-                                className="max-w-48"
-                                disabled={isPending}
+            <DashboardSection
+                title="Računi i korisnici"
+                actions={periodSelect}
+                busy={isPending}
+            >
+                <Stack spacing={2}>
+                    {selectedPeriod === 'custom' ? (
+                        <Stack spacing={1}>
+                            <Row spacing={2} className="flex-wrap items-end">
+                                <Input
+                                    type="date"
+                                    value={customFrom}
+                                    onChange={(event) =>
+                                        setCustomFrom(event.target.value)
+                                    }
+                                    label="Od"
+                                    className="max-w-48"
+                                    disabled={isPending}
+                                />
+                                <Input
+                                    type="date"
+                                    value={customTo}
+                                    onChange={(event) =>
+                                        setCustomTo(event.target.value)
+                                    }
+                                    label="Do"
+                                    className="max-w-48"
+                                    disabled={isPending}
+                                />
+                                <Button
+                                    size="sm"
+                                    onClick={handleCustomRangeApply}
+                                    disabled={
+                                        !customFrom ||
+                                        !customTo ||
+                                        isCustomRangeInvalid ||
+                                        isPending
+                                    }
+                                >
+                                    Primijeni
+                                </Button>
+                            </Row>
+                            {isCustomRangeInvalid ? (
+                                <Typography
+                                    level="body3"
+                                    className="text-destructive"
+                                >
+                                    Datum početka mora biti prije datuma kraja.
+                                </Typography>
+                            ) : null}
+                        </Stack>
+                    ) : null}
+                    <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+                        <DashboardStatTile
+                            label="Računi"
+                            value={accountsCount}
+                            previousValue={accountsBeforeCount}
+                            href={KnownPages.Accounts}
+                        />
+                        <DashboardStatTile
+                            label="Korisnici"
+                            value={usersCount}
+                            previousValue={usersBeforeCount}
+                            href={KnownPages.Users}
+                        />
+                        <div className="col-span-2">
+                            <ActiveUsersCard
+                                daily={activeUsers.daily}
+                                weekly={activeUsers.weekly}
+                                monthly={activeUsers.monthly}
+                                users={usersCount}
                             />
-                            <Input
-                                type="date"
-                                value={customTo}
-                                onChange={(event) =>
-                                    setCustomTo(event.target.value)
-                                }
-                                label="Do"
-                                className="max-w-48"
-                                disabled={isPending}
-                            />
-                            <Button
-                                size="sm"
-                                onClick={handleCustomRangeApply}
-                                disabled={
-                                    !customFrom ||
-                                    !customTo ||
-                                    isCustomRangeInvalid ||
-                                    isPending
-                                }
-                            >
-                                Primijeni
-                            </Button>
-                        </Row>
-                        {isCustomRangeInvalid ? (
-                            <Typography
-                                level="body3"
-                                className="text-destructive"
-                            >
-                                Datum početka mora biti prije datuma kraja.
-                            </Typography>
-                        ) : null}
-                    </Stack>
-                ) : null}
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                    <FactCard
-                        header="Računi"
-                        value={accountsCount}
-                        href={KnownPages.Accounts}
-                        beforeValue={accountsBeforeCount}
-                    />
-                    <FactCard
-                        header="Korisnici"
-                        value={usersCount}
-                        href={KnownPages.Users}
-                        beforeValue={usersBeforeCount}
-                    />
-                    <FactCard header="DAU" value={activeUsers.daily} />
-                    <FactCard header="WAU" value={activeUsers.weekly} />
-                    <FactCard header="MAU" value={activeUsers.monthly} />
-                </div>
-                <DashboardDivider>Vrtovi</DashboardDivider>
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                    <FactCard
-                        header="Farme"
+                        </div>
+                    </div>
+                </Stack>
+            </DashboardSection>
+            <DashboardSection title="Vrtovi" busy={isPending}>
+                <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+                    <DashboardStatTile
+                        label="Farme"
                         value={farmsCount}
+                        previousValue={farmsBeforeCount}
                         href={KnownPages.Farms}
-                        beforeValue={farmsBeforeCount}
                     />
-                    <FactCard
-                        header="Vrtovi"
+                    <DashboardStatTile
+                        label="Vrtovi"
                         value={gardensCount}
+                        previousValue={gardensBeforeCount}
                         href={KnownPages.Gardens}
-                        beforeValue={gardensBeforeCount}
                     />
-                    <FactCard
-                        header="Blokovi"
+                    <DashboardStatTile
+                        label="Blokovi"
                         value={blocksCount}
-                        beforeValue={blocksBeforeCount}
+                        previousValue={blocksBeforeCount}
+                        detail={
+                            gardensCount > 0
+                                ? `Prosječno ${formatDashboardNumber(blocksCount / gardensCount)} po vrtu`
+                                : undefined
+                        }
                     />
-                    <FactCard
-                        header="Gredice"
+                    <DashboardStatTile
+                        label="Gredice"
                         value={raisedBedsCount}
+                        previousValue={raisedBedsBeforeCount}
                         href={KnownPages.RaisedBeds}
-                        beforeValue={raisedBedsBeforeCount}
                     />
                 </div>
-                <DashboardDivider>Ostalo</DashboardDivider>
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                    <FactCard
-                        header="Događaji"
-                        value={eventsCount}
-                        beforeValue={eventsBeforeCount}
+            </DashboardSection>
+            <div className="grid gap-6 xl:grid-cols-2">
+                <DashboardSection title="Ostalo" busy={isPending}>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                        <DashboardStatTile
+                            label="Događaji"
+                            value={eventsCount}
+                            previousValue={eventsBeforeCount}
+                        />
+                        <DashboardStatTile
+                            label="Transakcije"
+                            value={transactionsCount}
+                            previousValue={transactionsBeforeCount}
+                            href={KnownPages.Transactions}
+                        />
+                        <DashboardStatTile
+                            label="Zahtjevi za dostavu"
+                            value={deliveryRequestsCount}
+                            previousValue={deliveryRequestsBeforeCount}
+                            href={KnownPages.DeliveryRequests}
+                        />
+                    </div>
+                </DashboardSection>
+                <DashboardSection title="AI" busy={isPending}>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                        <DashboardStatTile
+                            label="AI analize"
+                            value={initialAiData.count}
+                            href={KnownPages.AiAnalytics}
+                        />
+                        <DashboardStatTile
+                            label="Ukupno tokena"
+                            value={initialAiData.totalTokens}
+                            href={KnownPages.AiAnalytics}
+                            detail={aiAverageTokensDetail}
+                        />
+                        <DashboardStatTile
+                            label="Trošak"
+                            value={formatAiCostEur(initialAiData.totalCostEur)}
+                            href={KnownPages.AiAnalytics}
+                            detail={aiAverageCostDetail}
+                        />
+                    </div>
+                </DashboardSection>
+            </div>
+            <DashboardSection title="Statistika">
+                <div className="grid gap-2 md:grid-cols-2 2xl:grid-cols-4">
+                    <RegistrationsWeekCard
+                        weekDays={weekDays}
+                        registrations={initialWeekdayRegistrations}
                     />
-                    <FactCard
-                        header="Transakcije"
-                        value={transactionsCount}
-                        href={KnownPages.Transactions}
-                        beforeValue={transactionsBeforeCount}
+                    <OperationsWeekCard
+                        weekDays={weekDays}
+                        data={initialOperationsDurationData}
                     />
-                    <FactCard
-                        header="Zahtjevi za dostavu"
-                        value={deliveryRequestsCount}
-                        href={KnownPages.DeliveryRequests}
-                        beforeValue={deliveryRequestsBeforeCount}
+                    <SunflowersWeekCard
+                        weekDays={weekDays}
+                        data={initialSunflowersData}
                     />
+                    <RecordsOverviewCard entities={initialEntitiesData} />
                 </div>
-            </Stack>
-            <Stack spacing={2}>
-                <DashboardDivider>AI</DashboardDivider>
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                    <FactCard
-                        header="AI analize"
-                        value={initialAiData.count}
-                        href={KnownPages.AiAnalytics}
-                    />
-                    <FactCard
-                        header="Ukupno tokena"
-                        value={initialAiData.totalTokens.toLocaleString(
-                            'hr-HR',
-                        )}
-                        href={KnownPages.AiAnalytics}
-                    />
-                    <FactCard
-                        header="Trošak"
-                        value={formatAiCostEur(initialAiData.totalCostEur)}
-                        href={KnownPages.AiAnalytics}
-                    />
-                </div>
-            </Stack>
-            <Stack spacing={2}>
-                <DashboardDivider>Statistika</DashboardDivider>
-                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                    <StatisticsOverviewCard
-                        title="Registracije"
-                        value={weeklyRegistrations.toLocaleString('hr-HR')}
-                        detail={`Ovaj tjedan · ${weeklyActiveRegistrationDays} aktivnih dana`}
-                        href={KnownPages.UsersStatistics}
-                    />
-                    <StatisticsOverviewCard
-                        title="Radnje"
-                        value={formatOperationsDuration(
-                            initialOperationsDurationData.totalMinutes,
-                        )}
-                        detail="Ukupno trajanje ovaj tjedan"
-                        href={KnownPages.OperationsStatistics}
-                    />
-                    <StatisticsOverviewCard
-                        title="Zapisi"
-                        value={totalRecords.toLocaleString('hr-HR')}
-                        detail={`${incompleteRecords} nepotpunih zapisa`}
-                        href={KnownPages.RecordsStatistics}
-                    />
-                    <StatisticsOverviewCard
-                        title="Suncokreti"
-                        value={(
-                            weeklySunflowersEarned - weeklySunflowersSpent
-                        ).toLocaleString('hr-HR')}
-                        detail={`Ovaj tjedan · +${weeklySunflowersEarned.toLocaleString('hr-HR')} / −${weeklySunflowersSpent.toLocaleString('hr-HR')}`}
-                        href={KnownPages.SunflowersStatistics}
-                    />
-                </div>
-            </Stack>
+            </DashboardSection>
         </Stack>
     );
 }

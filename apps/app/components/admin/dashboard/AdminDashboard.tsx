@@ -14,6 +14,7 @@ import {
 } from '../../../src/dashboardQuickActions';
 import { AdminDashboardClient } from './AdminDashboardClient';
 import { getAnalyticsData, getDashboardWeeklyStatisticsData } from './actions';
+import { createAnalyticsWeekDays } from './analyticsDateRange';
 
 type AdminDashboardProps = {
     searchParams?: Promise<{ period?: string; from?: string; to?: string }>;
@@ -78,6 +79,10 @@ export async function AdminDashboard({ searchParams }: AdminDashboardProps) {
             initialWeekdayRegistrations={weeklyData.weekdayRegistrations}
             initialAiData={data.ai}
             initialSunflowersData={weeklyData.sunflowers}
+            weekDays={createAnalyticsWeekDays(
+                currentWeek.pickerFrom,
+                currentWeek.pickerTo,
+            )}
             initialQuickActions={quickActions}
             initialQuickActionBadgeCounts={{
                 pendingCmsPagesReviewCount,
