@@ -166,7 +166,7 @@ jobs:
         run: ls -lR release-artifacts
 
       - name: 🚀 Create or update GitHub release
-        uses: softprops/action-gh-release@v3.0.3
+        uses: softprops/action-gh-release@v3.0.4
         with:
           name: "Gredice Garden Desktop ${{ needs.resolve_version.outputs.version }}"
           tag_name: ${{ needs.resolve_version.outputs.tag }}
