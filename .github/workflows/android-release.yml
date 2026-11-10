@@ -242,7 +242,7 @@ jobs:
 
       - name: 🚀 Create or update draft GitHub release
         if: inputs.createGithubRelease
-        uses: softprops/action-gh-release@v3.0.3
+        uses: softprops/action-gh-release@v3.0.4
         with:
           name: "Gredice ${{ inputs.app }} Android ${{ steps.version.outputs.version_name }}${{ steps.version.outputs.artifact_suffix }}"
           tag_name: ${{ steps.version.outputs.tag }}
