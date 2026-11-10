@@ -11,11 +11,13 @@ import { adminAppTitle } from '../src/adminDocumentTitle';
 
 export function generateMetadata(): Metadata {
     return {
+        metadataBase: new URL('https://app.gredice.com'),
         title: {
             default: adminAppTitle,
             template: `%s | ${adminAppTitle}`,
         },
-        description: 'Gredice admin - upravljanje gredicama',
+        description:
+            'Gredice admin za upravljanje korisnicima, vrtovima, gredicama, narudžbama, dostavom i sadržajem platforme.',
         appleWebApp: {
             title: adminAppTitle,
         },

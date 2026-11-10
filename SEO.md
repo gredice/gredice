@@ -23,6 +23,7 @@ SEO usually does not apply to authenticated `garden`, `farm`, `app`, or API rout
 ## Canonical URLs and routing
 
 - Preserve canonical path handling in `apps/www/proxy.ts`.
+- `apps/app` sets `metadataBase` to `https://app.gredice.com` in its root layout. Declare `alternates.canonical` per route (for example `/admin` on the admin dashboard page) rather than in a layout, so child routes never inherit a parent's canonical.
 - Do not create duplicate public routes for the same content without a canonical strategy.
 - Use stable slugs and aliases already present in directory/API data.
 - Redirect outdated paths rather than rendering duplicate content when the app already has redirect/proxy conventions.
