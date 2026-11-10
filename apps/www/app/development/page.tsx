@@ -116,6 +116,49 @@ function getDevelopmentSections(hosts: EnvironmentHosts): DevelopmentSection[] {
 
     return [
         {
+            title: 'Pregled sučelja',
+            description:
+                'Otvori javno sučelje s uključenom alatnom trakom za pregled i ostavljanje komentara. Pregled možeš završiti u alatnoj traci.',
+            resources: [
+                {
+                    title: 'Pregled WWW-a',
+                    description: 'Javne stranice, ponuda i trgovina.',
+                    href: `${hosts.www}/?review=true`,
+                    icon: '🌐',
+                },
+                {
+                    title: 'Pregled Novosti',
+                    description: 'Blog objave i novosti o Gredicama.',
+                    href: `${hosts.news}?review=true`,
+                    icon: '📰',
+                },
+                {
+                    title: 'Pregled Vrta',
+                    description: 'Vrt i korisnički tijekovi.',
+                    href: `${hosts.garden}/?review=true`,
+                    icon: '🌱',
+                },
+                {
+                    title: 'Pregled API dokumentacije',
+                    description: 'Javno sučelje dokumentacije API-ja.',
+                    href: `${hosts.api}/?review=true`,
+                    icon: '🔌',
+                },
+                {
+                    title: 'Pregled Statusa',
+                    description: 'Dostupnost servisa i obavijesti.',
+                    href: `${hosts.status}/?review=true`,
+                    icon: '🟢',
+                },
+                {
+                    title: 'Pregled Storybooka',
+                    description: 'Komponente i primjeri sučelja.',
+                    href: `${hosts.storybook}/?review=true`,
+                    icon: '📚',
+                },
+            ],
+        },
+        {
             title: 'Vrt debug i učinkovitost',
             description:
                 'Brzi pristup vrtnim debug scenama, pregledima elemenata i provjerama učinkovitosti iscrtavanja.',
@@ -419,6 +462,7 @@ export default function DevelopmentPage() {
                                             </Stack>
                                             <NavigatingButton
                                                 href={resource.href}
+                                                navigation="document"
                                                 className="w-fit"
                                             >
                                                 Otvori resurs

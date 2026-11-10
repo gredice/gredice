@@ -1,3 +1,4 @@
+import { UierReview } from '@gredice/ui/UierReview';
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import './globals.css';
@@ -32,7 +33,10 @@ export default function RootLayout({
 }>) {
     return (
         <html lang="hr">
-            <body className="antialiased">{children}</body>
+            <body className="antialiased">
+                {children}
+                <UierReview project="status" />
+            </body>
         </html>
     );
 }

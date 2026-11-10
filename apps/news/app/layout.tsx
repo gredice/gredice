@@ -3,6 +3,7 @@ import {
     PublicFooter,
     PublicHeader,
 } from '@gredice/ui/PublicChrome';
+import { UierReview } from '@gredice/ui/UierReview';
 import { Analytics } from '@vercel/analytics/react';
 import type { Metadata, Viewport } from 'next';
 import { Montserrat } from 'next/font/google';
@@ -64,6 +65,7 @@ export default function RootLayout({
                     </div>
                 </PublicChromeProvider>
                 <Analytics />
+                <UierReview project="news" />
             </body>
         </html>
     );

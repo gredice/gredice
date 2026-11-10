@@ -1,6 +1,7 @@
 import { Chip } from '@gredice/ui/Chip';
 import { Leaf, Shield, ShoppingCart, Truck, User } from '@gredice/ui/icons';
 import { Typography } from '@gredice/ui/Typography';
+import { UierReview, UierReviewToggle } from '@gredice/ui/UierReview';
 import { LogoutButton } from './auth/LogoutButton';
 
 export function DeliveryAppHeader({
@@ -31,6 +32,7 @@ export function DeliveryAppHeader({
         );
     return (
         <header className="sticky top-0 z-20 border-b bg-background/95 pb-3 [padding-top:calc(env(safe-area-inset-top,0px)+0.75rem)] [padding-right:calc(env(safe-area-inset-right,0px)+1rem)] [padding-left:calc(env(safe-area-inset-left,0px)+1rem)] backdrop-blur">
+            <UierReview project="delivery" />
             <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
                     <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
@@ -70,6 +72,9 @@ export function DeliveryAppHeader({
                     </Chip>
                     <LogoutButton userId={userId} />
                 </div>
+            </div>
+            <div className="mx-auto mt-2 flex w-full max-w-6xl justify-end">
+                <UierReviewToggle />
             </div>
         </header>
     );

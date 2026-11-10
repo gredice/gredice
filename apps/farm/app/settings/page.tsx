@@ -1,7 +1,9 @@
 import { safeUserDisplayName } from '@gredice/js/userDisplayName';
 import { getUser } from '@gredice/storage';
 import { AuthProtectedSection, SignedOut } from '@gredice/ui/auth/server';
+import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
 import { Typography } from '@gredice/ui/Typography';
+import { UierReviewToggle } from '@gredice/ui/UierReview';
 import LoginDialog from '../../components/auth/LoginDialog';
 import { auth } from '../../lib/auth/auth';
 import { FarmProfileSettings } from './_components/FarmProfileSettings';
@@ -35,6 +37,14 @@ async function FarmSettingsContent() {
             />
             <OperationCompletionSyncSettings />
             <NotificationSettings />
+            <Card>
+                <CardHeader>
+                    <CardTitle>Povratne informacije</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <UierReviewToggle />
+                </CardContent>
+            </Card>
         </main>
     );
 }

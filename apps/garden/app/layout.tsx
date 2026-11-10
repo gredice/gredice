@@ -1,6 +1,7 @@
 import { shouldInjectVercelAnalytics } from '@gredice/js/observability';
 import { ImpersonationBanner } from '@gredice/ui/ImpersonationBanner';
 import { UiApplicationRoot } from '@gredice/ui/PortalRoot';
+import { UierReview } from '@gredice/ui/UierReview';
 import { PostHogPageView, PostHogProvider } from '@posthog/next';
 import { Analytics } from '@vercel/analytics/react';
 import type { Metadata, Viewport } from 'next';
@@ -61,6 +62,7 @@ export default function RootLayout({
             </Suspense>
             {injectVercelAnalytics && <Analytics />}
             {shouldInjectToolbar && <VercelToolbar />}
+            <UierReview project="garden" />
         </>
     );
 

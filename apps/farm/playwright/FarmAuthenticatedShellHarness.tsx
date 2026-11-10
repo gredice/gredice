@@ -9,7 +9,11 @@ async function noCurrentUser() {
     return null;
 }
 
-export function FarmAuthenticatedShellHarness() {
+export function FarmAuthenticatedShellHarness({
+    authenticated = true,
+}: {
+    authenticated?: boolean;
+}) {
     const [queryClient] = useState(
         () =>
             new QueryClient({
@@ -22,7 +26,10 @@ export function FarmAuthenticatedShellHarness() {
     return (
         <QueryClientProvider client={queryClient}>
             <AuthProvider currentUserFactory={noCurrentUser}>
-                <FarmAuthenticatedShell pathname="/">
+                <FarmAuthenticatedShell
+                    authenticated={authenticated}
+                    pathname="/"
+                >
                     <main className="flex min-h-[60rem] flex-col justify-end p-2">
                         <button
                             className="min-h-11 w-full"

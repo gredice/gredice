@@ -20,6 +20,7 @@ import { Add, Check, Edit, Warning } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import { UierReviewToggle } from '@gredice/ui/UierReview';
 import Link from 'next/link';
 import { EntityTypeIcon } from '../../../components/admin/directories/EntityTypeIcon';
 import { auth } from '../../../lib/auth/auth';
@@ -61,6 +62,10 @@ const SETTINGS_SECTIONS = [
     {
         id: 'personal-notification-settings',
         title: 'Osobne obavijesti',
+    },
+    {
+        id: 'feedback-settings',
+        title: 'Povratne informacije',
     },
 ] as const;
 
@@ -533,6 +538,27 @@ export default async function SettingsPage() {
                                 </Typography>
                             </Stack>
                             <UserNotificationSettings />
+                        </Stack>
+                    </section>
+
+                    <section
+                        id="feedback-settings"
+                        className="scroll-mt-28"
+                        aria-labelledby="feedback-settings-heading"
+                    >
+                        <Stack spacing={6}>
+                            <Typography
+                                id="feedback-settings-heading"
+                                level="h2"
+                                semiBold
+                            >
+                                Povratne informacije
+                            </Typography>
+                            <Card>
+                                <CardContent noHeader>
+                                    <UierReviewToggle />
+                                </CardContent>
+                            </Card>
                         </Stack>
                     </section>
                 </div>

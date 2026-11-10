@@ -2,6 +2,7 @@ import {
     getEntityTypesOrganizedByCategories,
     getPendingCommunityEditRequestsCount,
 } from '@gredice/storage';
+import { UierReview } from '@gredice/ui/UierReview';
 import { type PropsWithChildren, Suspense } from 'react';
 import {
     AdminDesktopFrame,
@@ -69,6 +70,7 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
 
     return (
         <AuthAppProvider>
+            <UierReview project="app" />
             <AdminClientProvider
                 categorizedTypes={categorizedTypes}
                 uncategorizedTypes={uncategorizedTypes}

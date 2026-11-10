@@ -13,7 +13,8 @@ import { Input } from '@gredice/ui/Input';
 import { Mail, Truck, Warning } from '@gredice/ui/icons';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import { useActionState, useCallback, useState } from 'react';
+import { endUierReviewSession } from '@gredice/ui/UierReview';
+import { useActionState, useCallback, useEffect, useState } from 'react';
 import {
     buildDeliveryOAuthCallbackPath,
     type DeliveryLoginFailure,
@@ -39,6 +40,14 @@ export function LoginPanel({
     returnTarget: string;
     loginFailure?: DeliveryLoginFailure | null;
 }) {
+    useEffect(() => {
+        // A client-side auth refresh can show this panel without replacing
+        // the document that previously loaded the authenticated toolbar.
+        if (document.getElementById('gredice-uier-review')) {
+            endUierReviewSession('delivery');
+        }
+    }, []);
+
     const safeReturnTarget = safeDeliveryReturnTarget(returnTarget);
     const [emailExpanded, setEmailExpanded] = useState(false);
     const fetchLastLogin = useCallback(
