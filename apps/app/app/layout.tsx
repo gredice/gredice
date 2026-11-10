@@ -15,7 +15,8 @@ export function generateMetadata(): Metadata {
             default: adminAppTitle,
             template: `%s | ${adminAppTitle}`,
         },
-        description: 'Gredice admin - upravljanje gredicama',
+        description:
+            'Gredice admin za upravljanje korisnicima, vrtovima, gredicama, narudžbama, dostavom i sadržajem platforme.',
         appleWebApp: {
             title: adminAppTitle,
         },
