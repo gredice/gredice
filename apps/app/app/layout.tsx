@@ -11,6 +11,7 @@ import { adminAppTitle } from '../src/adminDocumentTitle';
 
 export function generateMetadata(): Metadata {
     return {
+        metadataBase: new URL('https://app.gredice.com'),
         title: {
             default: adminAppTitle,
             template: `%s | ${adminAppTitle}`,
