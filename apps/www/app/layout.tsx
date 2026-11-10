@@ -6,6 +6,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { PublicFooter, PublicHeader } from '@gredice/ui/PublicChrome';
 import { Stack } from '@gredice/ui/Stack';
+import { UierReview } from '@gredice/ui/UierReview';
 import { PostHogPageView, PostHogProvider } from '@posthog/next';
 import { VercelToolbar } from '@vercel/toolbar/next';
 import { Montserrat } from 'next/font/google';
@@ -131,6 +132,7 @@ export default async function RootLayout({
             {injectVercelAnalytics && <Analytics />}
             <PageViewTracker />
             {shouldInjectToolbar && <VercelToolbar />}
+            <UierReview project="www" />
         </ClientAppProvider>
     );
 

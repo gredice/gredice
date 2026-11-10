@@ -2,6 +2,7 @@ import {
     UI_PORTAL_ROOT_ATTRIBUTE,
     UiApplicationRoot,
 } from '@gredice/ui/PortalRoot';
+import { UierReview } from '@gredice/ui/UierReview';
 import type { Preview } from '@storybook/nextjs-vite';
 import { Analytics } from '@vercel/analytics/next';
 import { docsTheme } from './themes';
@@ -26,6 +27,7 @@ const preview: Preview = {
                 >
                     <Story />
                     <Analytics />
+                    <UierReview project="storybook" />
                 </UiApplicationRoot>
             );
         },

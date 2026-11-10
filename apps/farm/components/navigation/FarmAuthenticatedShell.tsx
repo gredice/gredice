@@ -1,6 +1,7 @@
 'use client';
 
-import type { PropsWithChildren } from 'react';
+import { endUierReviewSession, UierReview } from '@gredice/ui/UierReview';
+import { type PropsWithChildren, useEffect, useRef } from 'react';
 import { OperationCompletionSyncBanner } from '../offline/OperationCompletionSyncBanner';
 import { FarmAuthenticatedNavigation } from './FarmAuthenticatedNavigation';
 
@@ -14,8 +15,17 @@ export function FarmAuthenticatedShell({
     children,
     pathname,
 }: FarmAuthenticatedShellProps) {
+    const wasAuthenticated = useRef(authenticated);
+    useEffect(() => {
+        if (wasAuthenticated.current && !authenticated) {
+            endUierReviewSession('farm');
+        }
+        wasAuthenticated.current = authenticated;
+    }, [authenticated]);
+
     return (
         <div className="flex min-w-0 flex-1 flex-col" data-farm-app-shell>
+            {authenticated ? <UierReview project="farm" /> : null}
             <div
                 className={`min-w-0 flex-1 [padding-top:var(--farm-safe-area-top,0px)] [padding-left:var(--farm-safe-area-left,0px)] [padding-right:var(--farm-safe-area-right,0px)] md:pt-0 ${
                     authenticated

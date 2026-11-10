@@ -183,6 +183,45 @@ If automatic trust fails, import `root.crt` manually from the Caddy data directo
 
 After the certificate is trusted, browsers should accept the local `gredice.test` HTTPS domains.
 
+## UIer interface reviews
+
+UIer is opt-in. Admin has a **Povratne informacije** switch at
+`/admin/settings#feedback-settings`, Farm has the switch in `/settings`, and
+Delivery has it in the authenticated app header. Public review links for WWW,
+Novosti, Vrt, API documentation, Status, and Storybook are available from
+[the development center](https://www.gredice.com/development).
+
+Open a page with `?review=true` to enable its review toolbar, or
+`?review=false` to disable it. The switches reload the page when changing review
+mode so disabling also removes the vendor script and event handlers. Review
+state uses `sessionStorage` scoped to the browser tab and app project; normal
+visitors do not load the script. WWW and Novosti keep separate project sessions
+even though their public routes share an origin. UIer's **Exit** control also
+ends review mode.
+
+| App | Production address | UIer project |
+| --- | --- | --- |
+| WWW | <https://www.gredice.com> | [Gredice WWW](https://uier.io/app/projects/05lb2p3clzi9) |
+| Admin | <https://app.gredice.com/admin> | [Gredice Admin](https://uier.io/app/projects/5uauxu25b2es) |
+| Farm | <https://farma.gredice.com> | [Gredice Farm](https://uier.io/app/projects/u0ivn447swyj) |
+| Delivery | <https://dostava.gredice.com> | [Gredice Delivery](https://uier.io/app/projects/9lpfhdv02wr6) |
+| Garden | <https://vrt.gredice.com> | [Gredice Garden](https://uier.io/app/projects/gsa1vycznbo9) |
+| News | <https://www.gredice.com/novosti> | [Gredice News](https://uier.io/app/projects/9yzihw3xk5xq) |
+| Status | <https://status.gredice.com> | [Gredice Status](https://uier.io/app/projects/wl3q4fzid2uh) |
+| API documentation | <https://api.gredice.com> | [Gredice API](https://uier.io/app/projects/r74n9nr3hokr) |
+| Storybook | <https://storybook.dev.gredice.com> | [Gredice Storybook](https://uier.io/app/projects/a8isw8pjmxtj) |
+
+Allow each project its production address, the matching local host from
+`scripts/app-registry.ts`, and its app-specific
+`https://<app>-*.preview.gredice.com` preview pattern. Novosti also runs at
+`https://novosti.gredice.com/novosti`; its project must stay distinct from WWW
+when reviewing the shared public host. Desktop and Android wrappers reuse the
+projects of the web apps they open.
+
+Projects use private reviews with invited reviewers. Public install identifiers
+in `packages/ui/src/UierReview/projects.ts` are browser configuration, not
+credentials; keep account credentials and reviewer tokens out of source control.
+
 ## Environment setup
 
 Use the Vercel CLI for local environment files. If the apps are not linked on the current machine, log in and run the repo script before pulling env vars:

@@ -3,6 +3,7 @@
 import { authCurrentUserQueryKeys } from '@gredice/ui/auth';
 import { IconButton } from '@gredice/ui/IconButton';
 import { LogOut } from '@gredice/ui/icons';
+import { endUierReviewSession } from '@gredice/ui/UierReview';
 import { usePostHog } from '@posthog/next';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -103,7 +104,7 @@ export function LogoutButton({
                 queryKey: ['farm', 'notifications'],
             });
             posthog?.reset();
-            router.refresh();
+            if (!endUierReviewSession('farm')) router.refresh();
         } catch (cause) {
             console.error('Logout request failed', cause);
         } finally {

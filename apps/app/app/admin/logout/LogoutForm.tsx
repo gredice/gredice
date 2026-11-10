@@ -8,6 +8,7 @@ import { Row } from '@gredice/ui/Row';
 import { Spinner } from '@gredice/ui/Spinner';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import { endUierReviewSession } from '@gredice/ui/UierReview';
 import { useActionState } from 'react';
 import { queryClient } from '../../../components/providers/ClientAppProvider';
 
@@ -35,6 +36,7 @@ export function LogoutForm() {
         await queryClient.invalidateQueries({
             queryKey: authCurrentUserQueryKeys,
         });
+        endUierReviewSession('app', { navigate: false });
         window.location.href = getLandingUrl();
     }, null);
 

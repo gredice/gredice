@@ -5,6 +5,7 @@ import { Button } from '@gredice/ui/Button';
 import { Card, CardContent } from '@gredice/ui/Card';
 import { LoaderSpinner, Reset, Warning } from '@gredice/ui/icons';
 import { Typography } from '@gredice/ui/Typography';
+import { endUierReviewSession } from '@gredice/ui/UierReview';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -907,7 +908,9 @@ export function DeliveryDashboard({
             queryClient.removeQueries({ queryKey: ['delivery-dashboard'] });
         };
         const handleLocalLogout = () => clearVisibleSession();
-        const handleLogoutCompleted = () => router.refresh();
+        const handleLogoutCompleted = () => {
+            if (!endUierReviewSession('delivery')) router.refresh();
+        };
         const handleLogoutFailed = () => setLogoutState('failed');
         window.addEventListener(deliveryLogoutEvent, handleLocalLogout);
         window.addEventListener(

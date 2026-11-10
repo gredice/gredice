@@ -220,6 +220,7 @@ import { FarmerAvatarsPreview } from './FarmerAvatarsPreview';
 import { GameAccountMenuPreview } from './GameAccountMenuPreview';
 import { PlantCareHudPreview } from './PlantCareHudPreview';
 import { PublicEnvironmentPreview } from './PublicEnvironmentPreview';
+import { UierReviewTogglePreview } from './UierReviewTogglePreview';
 
 const sampleImages = [
     {
@@ -1893,6 +1894,7 @@ function AccountAndStatesShowcase() {
                         <CardContent>
                             <Stack spacing={4}>
                                 <EditableName />
+                                <UierReviewTogglePreview />
                                 <Input
                                     fullWidth
                                     label="Naziv prikaza"

@@ -1,5 +1,6 @@
 import { shouldInjectVercelAnalytics } from '@gredice/js/observability';
 import { Stack } from '@gredice/ui/Stack';
+import { UierReview } from '@gredice/ui/UierReview';
 import { PostHogPageView, PostHogProvider } from '@posthog/next';
 import { Analytics } from '@vercel/analytics/react';
 import type { Metadata, Viewport } from 'next';
@@ -60,6 +61,7 @@ export default function RootLayout({
                 {children}
             </Stack>
             {injectVercelAnalytics && <Analytics />}
+            <UierReview project="api" />
         </>
     );
 
