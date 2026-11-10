@@ -349,6 +349,7 @@ jobs:
       name: "storybook"
       path: "apps/storybook"
       buildOnly: true
+      installAllWorkspaces: true
 
   ci_garden:
     name: "CI - garden"

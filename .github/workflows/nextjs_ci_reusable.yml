@@ -23,6 +23,11 @@ on:
         type: boolean
         description: "Run the build for apps without a test script; build includes their typecheck"
         default: false
+      installAllWorkspaces:
+        required: false
+        type: boolean
+        description: "Install sibling app dependencies for Storybook source imports"
+        default: false
       testShardMatrix:
         required: false
         type: string
@@ -71,7 +76,14 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: 📦️ Install dependencies
-        run: pnpm install --frozen-lockfile --filter ${{ inputs.name }}... --filter @gredice/storage... --filter .
+        run: |
+          if [ "$CI_INSTALL_ALL_WORKSPACES" = "true" ]; then
+            pnpm install --frozen-lockfile
+          else
+            pnpm install --frozen-lockfile --filter ${{ inputs.name }}... --filter @gredice/storage... --filter .
+          fi
+        env:
+          CI_INSTALL_ALL_WORKSPACES: ${{ inputs.installAllWorkspaces }}
 
       - name: 🔎 Lint app
         run: pnpm lint --filter=${{ inputs.name }}
@@ -120,7 +132,14 @@ jobs:
             ${{ runner.os }}-isolated-nextjs-${{ inputs.name }}-${{ hashFiles('pnpm-lock.yaml') }}-
 
       - name: 📦️ Install dependencies
-        run: pnpm install --frozen-lockfile --filter ${{ inputs.name }}... --filter @gredice/storage... --filter .
+        run: |
+          if [ "$CI_INSTALL_ALL_WORKSPACES" = "true" ]; then
+            pnpm install --frozen-lockfile
+          else
+            pnpm install --frozen-lockfile --filter ${{ inputs.name }}... --filter @gredice/storage... --filter .
+          fi
+        env:
+          CI_INSTALL_ALL_WORKSPACES: ${{ inputs.installAllWorkspaces }}
 
       - name: 📦 Prepare offline package manager
         run: |
