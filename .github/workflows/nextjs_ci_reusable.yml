@@ -38,7 +38,7 @@ jobs:
   lint:
     timeout-minutes: 10
     runs-on: ubuntu-26.04
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -55,7 +55,7 @@ jobs:
       - name: ✨ Get pnpm store directory
         shell: bash
         run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+          echo "STORE_PATH=$(pnpm store path --silent)" >> "$GITHUB_ENV"
 
       - uses: actions/cache@v6.1.0
         name: ✨ Setup pnpm cache
@@ -73,7 +73,7 @@ jobs:
   test:
     timeout-minutes: ${{ matrix.shard.timeoutMinutes || 15 }}
     runs-on: ubuntu-26.04
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     name: "test${{ matrix.shard.name && format(' ({0})', matrix.shard.name) || (matrix.shard.total != 1 && format(' ({0}/{1})', matrix.shard.index, matrix.shard.total) || '') }}"
     strategy:
       fail-fast: false
@@ -95,7 +95,7 @@ jobs:
       - name: ✨ Get pnpm store directory
         shell: bash
         run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+          echo "STORE_PATH=$(pnpm store path --silent)" >> "$GITHUB_ENV"
 
       - uses: actions/cache@v6.1.0
         name: ✨ Setup pnpm cache
