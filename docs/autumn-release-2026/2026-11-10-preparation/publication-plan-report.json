@@ -1,0 +1,271 @@
+{
+  "mode": "plan",
+  "status": "plan-prepared",
+  "planDigest": "39b291dcc891359e3e44f36c2b5882e16b6f6a0fe1163ee12af4fe84b1cf25c5",
+  "sourceFingerprint": "86ee0ed2e40594b53955a6c535225b830d70836ff30a9a376435f3178a5cb7b8",
+  "inputs": [
+    {
+      "option": "--cms",
+      "sha256": "991b674502568e5a42369153032ac644417184ccdf42fb794f75426ee89926de",
+      "bytes": 108241
+    }
+  ],
+  "operations": [
+    {
+      "name": "AutumnAsterPotCream",
+      "id": 865,
+      "action": "publish",
+      "actualPrice": 45
+    },
+    {
+      "name": "AutumnAsterPotGold",
+      "id": 866,
+      "action": "publish",
+      "actualPrice": 45
+    },
+    {
+      "name": "AutumnAsterPotMauve",
+      "id": 864,
+      "action": "publish",
+      "actualPrice": 45
+    },
+    {
+      "name": "AutumnBlanketBench",
+      "id": 873,
+      "action": "publish",
+      "actualPrice": 80
+    },
+    {
+      "name": "AutumnLeafPileCrescent",
+      "id": 871,
+      "action": "publish",
+      "actualPrice": 30
+    },
+    {
+      "name": "AutumnLeafPileMound",
+      "id": 870,
+      "action": "publish",
+      "actualPrice": 25
+    },
+    {
+      "name": "AutumnShrub",
+      "id": 867,
+      "action": "publish",
+      "actualPrice": 55
+    },
+    {
+      "name": "FallenLog",
+      "id": 869,
+      "action": "publish",
+      "actualPrice": 55
+    },
+    {
+      "name": "GardenScarecrow",
+      "id": 860,
+      "action": "publish",
+      "actualPrice": 80
+    },
+    {
+      "name": "GardenTeaTable",
+      "id": 874,
+      "action": "publish",
+      "actualPrice": 70
+    },
+    {
+      "name": "HarvestCrate",
+      "id": 861,
+      "action": "publish",
+      "actualPrice": 60
+    },
+    {
+      "name": "HarvestCrateOrchard",
+      "id": 862,
+      "action": "publish",
+      "actualPrice": 60
+    },
+    {
+      "name": "HarvestPumpkinGourdCream",
+      "id": 855,
+      "action": "publish",
+      "actualPrice": 30
+    },
+    {
+      "name": "HarvestPumpkinGourdGreen",
+      "id": 856,
+      "action": "publish",
+      "actualPrice": 30
+    },
+    {
+      "name": "HarvestPumpkinGourdOrange",
+      "id": 854,
+      "action": "publish",
+      "actualPrice": 30
+    },
+    {
+      "name": "HarvestPumpkinGroupCream",
+      "id": 858,
+      "action": "publish",
+      "actualPrice": 60
+    },
+    {
+      "name": "HarvestPumpkinGroupGreen",
+      "id": 859,
+      "action": "publish",
+      "actualPrice": 60
+    },
+    {
+      "name": "HarvestPumpkinGroupOrange",
+      "id": 857,
+      "action": "publish",
+      "actualPrice": 60
+    },
+    {
+      "name": "HarvestPumpkinSquatCream",
+      "id": 852,
+      "action": "publish",
+      "actualPrice": 30
+    },
+    {
+      "name": "HarvestPumpkinSquatGreen",
+      "id": 853,
+      "action": "publish",
+      "actualPrice": 30
+    },
+    {
+      "name": "HarvestPumpkinSquatOrange",
+      "id": 851,
+      "action": "publish",
+      "actualPrice": 30
+    },
+    {
+      "name": "HarvestWheelbarrow",
+      "id": 863,
+      "action": "publish",
+      "actualPrice": 120
+    },
+    {
+      "name": "LeafRake",
+      "id": 872,
+      "action": "publish",
+      "actualPrice": 45
+    },
+    {
+      "name": "WoodlandMushrooms",
+      "id": 868,
+      "action": "publish",
+      "actualPrice": 35
+    }
+  ],
+  "legacyDependencies": [
+    {
+      "name": "StoneMedium",
+      "modelUrl": "/assets/models/StoneMedium.glb",
+      "catalogueId": null,
+      "files": [
+        {
+          "path": "assets/game-assets/StoneMedium.blend",
+          "sha256": "cc5eea0841783f9d2f08026711639b5a6d574d7b951421fca15c4a68307b0e4a"
+        },
+        {
+          "path": "apps/garden/public/assets/models/StoneMedium.glb",
+          "sha256": "8fe24b65423aa4fb217869b2ec7de575614eac4f9f29035050034616f4e5b00e"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/StoneMedium.webp",
+          "sha256": "eeb3dd930aabda52c037726f36c8e6bff372a7407ec15bb5bd9d091daea9a539"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/StoneMedium_1.webp",
+          "sha256": "eeb3dd930aabda52c037726f36c8e6bff372a7407ec15bb5bd9d091daea9a539"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/StoneMedium_2.webp",
+          "sha256": "b8dd368e7ed8d18b143d33b1af0c5c2987ef2e25cdc8172da34d23990634e397"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/StoneMedium_3.webp",
+          "sha256": "37b89e83af8618774cb1a0e5fe3ca7ee2489b4836529e205130f084e5f1825a8"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/StoneMedium_4.webp",
+          "sha256": "7baa193339c75ce2f55313a47b477b0dbaa72754b5852102cce58445883ff23b"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/StoneMedium_1.webp",
+          "sha256": "c70ec9a44516f49707100ff4a3d73a417652a55954e41ff93e75e8efc6584c1c"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/StoneMedium_2.webp",
+          "sha256": "a5a799a822e67a65527307cd7533cd8eb9113f00ab3710a734cda7d1371e641f"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/StoneMedium_3.webp",
+          "sha256": "2014d99484ecd59f989f88cc5326f283f96b1867c8c6ae60902881d2d5893ad1"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/StoneMedium_4.webp",
+          "sha256": "806fe355ac43fa3a0fbebf88646466a6f8d8cbd53eead77075f7839c0df59506"
+        }
+      ],
+      "note": "Existing included dependency. Unversioned StoneMedium is intentional. Only numbered top-down images exist; do not invent base filenames."
+    },
+    {
+      "name": "EnamelGardenLamp",
+      "modelUrl": "/assets/models/EnamelGardenLamp.glb?v=c945af2c0198",
+      "catalogueId": null,
+      "files": [
+        {
+          "path": "assets/game-assets/EnamelGardenLamp.blend",
+          "sha256": "27081a50ee24907d1096375774bde2e09cfd01e78be79e219f05f6c699855d9f"
+        },
+        {
+          "path": "apps/garden/public/assets/models/EnamelGardenLamp.glb",
+          "sha256": "c945af2c019864ee8644d6bcee80bbb0a8c428c321f8f26b71f251d23fabd7c3"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/EnamelGardenLamp.webp",
+          "sha256": "c92c5cfa53eac2c10e1400ca6a5e552e5fe652ce71e89c1e76df4f803d074b00"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/EnamelGardenLamp_1.webp",
+          "sha256": "c92c5cfa53eac2c10e1400ca6a5e552e5fe652ce71e89c1e76df4f803d074b00"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/EnamelGardenLamp_2.webp",
+          "sha256": "660b5f18ca72c3f79a114ff9799c9e665af0725f96a1c349ef9cea7c17b1e2d2"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/EnamelGardenLamp_3.webp",
+          "sha256": "e9f13caf4ac4cb0e275b4e410689d2fdc20e8828361d2e18361789f38e43e4e5"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/EnamelGardenLamp_4.webp",
+          "sha256": "52c3c879fcae11b91de295414e90f89ca5ada1965836665e4e4cdb6b2b797f0b"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/EnamelGardenLamp_1.webp",
+          "sha256": "b31f11dd6aab53417f9bc2da70a439e2911f44f95626fc209b1cbbc11b6a6069"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/EnamelGardenLamp_2.webp",
+          "sha256": "79fc130efd3563b6467c832d38dd6edbd3477c168f698c649fcc4294170cad38"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/EnamelGardenLamp_3.webp",
+          "sha256": "990c3a8ef932b2c8a39ff5a5fe03ae1b6b82cd80cbcb3647534886fd8349b80e"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/EnamelGardenLamp_4.webp",
+          "sha256": "4138fd846da242ff9c7fc52b873f4691c21e6416f0b8ad5065a3809e9b8dd42b"
+        }
+      ],
+      "note": "Existing included dependency. Unversioned StoneMedium is intentional. Only numbered top-down images exist; do not invent base filenames."
+    }
+  ],
+  "blockedUntil": [
+    "fresh deployed byte verification",
+    "current locked CMS comparison",
+    "published-directory readback for product candidates"
+  ],
+  "releaseReady": false
+}

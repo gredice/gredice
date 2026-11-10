@@ -1,0 +1,255 @@
+{
+  "sourceReportSha256": "14912018f95ee26c908eeb4b06beb67560b0f1bcf66afe77df4e77ec3a991b12",
+  "stats": {
+    "startTime": "2026-11-10T02:01:51.766Z",
+    "duration": 6196.857,
+    "expected": 22,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "tests": [
+    {
+      "name": "catalogue loading and HTTP failure preserve paid contents and retry the catalogue",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 467
+        }
+      ]
+    },
+    {
+      "name": "saved purchased contents are separate, keyboard accessible and fit mobile after remount",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 173
+        }
+      ]
+    },
+    {
+      "name": "missing models preserve owned counts and disable placement",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 131
+        }
+      ]
+    },
+    {
+      "name": "a rejected prepaid adapter receives exact next unit and leaves counts unchanged",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 142
+        }
+      ]
+    },
+    {
+      "name": "rollout hides packs and never requests owned inventory",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 88
+        }
+      ]
+    },
+    {
+      "name": "sandbox hides packs and never requests owned inventory",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 82
+        }
+      ]
+    },
+    {
+      "name": "anonymous hides packs and never requests owned inventory",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 93
+        }
+      ]
+    },
+    {
+      "name": "inventory loading, failure retry and empty states use actual API query",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 138
+        }
+      ]
+    },
+    {
+      "name": "owned pagination appends repeat purchases without losing earlier contents",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 155
+        }
+      ]
+    },
+    {
+      "name": "account switching clears visible previous-owner data and rejects mismatched response owners",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 161
+        }
+      ]
+    },
+    {
+      "name": "authoritative server rollout hides tab despite a public UI flag",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 105
+        }
+      ]
+    },
+    {
+      "name": "actual prepaid hook rolls back an uncertain response, retains exact retry, and never debits the account",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 228
+        }
+      ]
+    },
+    {
+      "name": "actual prepaid hook rejects a stale owner before calling the placement API",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 386
+        }
+      ]
+    },
+    {
+      "name": "inventory requests responsive plant thumbnails at their rendered size",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 111
+        }
+      ]
+    },
+    {
+      "name": "inventory HUD badge counts backpack items without garden box contents",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 98
+        }
+      ]
+    },
+    {
+      "name": "inventory can open directly on garden boxes tab",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 107
+        }
+      ]
+    },
+    {
+      "name": "garden box block item can be placed back into the garden",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 200
+        }
+      ]
+    },
+    {
+      "name": "inventory opens without a HUD shell for avatar garden box interactions",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 99
+        }
+      ]
+    },
+    {
+      "name": "exact stored units stay separate from ordinary blocks and retain retry identity after a lost response",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 300
+        }
+      ]
+    },
+    {
+      "name": "store hook retains an exact command after a lost response and clears it after a definitive rejection",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 211
+        }
+      ]
+    },
+    {
+      "name": "store hook rejects account changes during optimistic mutation before sending",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 137
+        }
+      ]
+    },
+    {
+      "name": "store hook rejects garden changes during optimistic mutation before sending",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 163
+        }
+      ]
+    }
+  ]
+}

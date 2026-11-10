@@ -1,0 +1,222 @@
+{
+  "sourceReportSha256": "993fb7a4c1d6d472a2dc703354080eeafdc0960fbcabe842fd45234083cdcd9c",
+  "stats": {
+    "startTime": "2026-11-10T02:01:44.961Z",
+    "duration": 6443.637,
+    "expected": 19,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "tests": [
+    {
+      "name": "Jesenski kutak: exact reviewed card and keyboard mobile purchase review",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 294
+        }
+      ]
+    },
+    {
+      "name": "Šumski kutak: exact reviewed card and keyboard mobile purchase review",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 151
+        }
+      ]
+    },
+    {
+      "name": "Topla večer: exact reviewed card and keyboard mobile purchase review",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 141
+        }
+      ]
+    },
+    {
+      "name": "mobile keyboard review shows exact included counts, separately labelled scenery and individual purchases",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 550
+        }
+      ]
+    },
+    {
+      "name": "normal confirmation refreshes owned and balance, opens inventory, and explicit repeat creates a new operation",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 640
+        }
+      ]
+    },
+    {
+      "name": "uncertain committed purchase survives close and remount with unchanged UUID and original quote",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 652
+        }
+      ]
+    },
+    {
+      "name": "insufficient balance blocks confirmation and stale quotes require explicit refreshed review",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 355
+        }
+      ]
+    },
+    {
+      "name": "empty catalogue, unverified art and invalid comparison never imply an offer or discount",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 204
+        }
+      ]
+    },
+    {
+      "name": "rollout never queries or shows storefront",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 88
+        }
+      ]
+    },
+    {
+      "name": "sandbox never queries or shows storefront",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 101
+        }
+      ]
+    },
+    {
+      "name": "anonymous never queries or shows storefront",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 92
+        }
+      ]
+    },
+    {
+      "name": "catalogue loading and temporary failures expose keyboard retry, expired offers disable purchase",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 183
+        }
+      ]
+    },
+    {
+      "name": "a lost response stays with its original owner across account switch and return",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 341
+        }
+      ]
+    },
+    {
+      "name": "server insufficient funds is readable and does not silently confirm or decrement inventory",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 273
+        }
+      ]
+    },
+    {
+      "name": "captured uncertain retry rejected by local owner preflight retains its original command",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 283
+        }
+      ]
+    },
+    {
+      "name": "5xx retains an unresolved original command for exact replay",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 305
+        }
+      ]
+    },
+    {
+      "name": "malformed-receipt retains an unresolved original command for exact replay",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 310
+        }
+      ]
+    },
+    {
+      "name": "reauthentication after a lost response cannot erase pending identity before remount and success",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 430
+        }
+      ]
+    },
+    {
+      "name": "shared cookie owner switching without any cache change cannot debit a second account and retains replay identity",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 415
+        }
+      ]
+    }
+  ]
+}

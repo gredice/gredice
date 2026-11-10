@@ -1,5 +1,13 @@
 # Autumn 2026 release verification
 
+Latest dated continuation: [10 November preparation and qualification](autumn-release-2026/2026-11-10-preparation/README.md).
+It records 24 actual unpublished CMS drafts, a guarded publication plan, 283
+matching deployed asset URLs, 120 passing selected browser cases and a clean
+18-case native-Metal production profile. Production pack storage, full hosted
+release-suite CI, physical-device/combined acceptance, catalogue/products and
+live commerce remain open. The October checkpoints below retain their original
+dates and limits.
+
 Evidence checkpoint: **2026-10-02**, baseline
 `047d73c46840954757a28bb43c039c05a02c1386` (storefront #5114).
 This advances [#4999](https://github.com/gredice/gredice/issues/4999) and

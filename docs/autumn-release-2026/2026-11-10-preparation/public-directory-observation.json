@@ -1,0 +1,15 @@
+{
+  "observedAt": "2026-11-10T01:53:55.675700+00:00",
+  "url": "https://api.gredice.com/api/directories/entities/block",
+  "status": 200,
+  "sha256": "8c4fff1ebe0a5ac9f90f9ba52436d263c70b16f9cb5a85f1cc018b4674c88cde",
+  "bytes": 138280,
+  "rows": 144,
+  "headers": {
+    "Date": "Tue, 10 Nov 2026 01:45:56 GMT",
+    "Age": "479",
+    "Cache-Control": "public, max-age=3600",
+    "X-Vercel-Cache": "HIT",
+    "ETag": null
+  }
+}

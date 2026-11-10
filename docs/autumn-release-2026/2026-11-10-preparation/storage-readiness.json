@@ -1,0 +1,14 @@
+{
+  "observedAt": "2026-11-10T01:55:21.562Z",
+  "kind": "read-only-production-pack-readiness",
+  "packStorageReady": false,
+  "placementStorageReady": false,
+  "lifecycleStorageReady": false,
+  "tables": [],
+  "configuration": {
+    "packsEnabled": false,
+    "salesEnabled": false,
+    "catalogueConfigured": false
+  },
+  "releaseReady": false
+}

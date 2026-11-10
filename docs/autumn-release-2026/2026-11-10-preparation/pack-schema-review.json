@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-11-10T01:57:05.544Z",
+  "sourceCommit": "2e02348ca21c18518ebade352d34eebb28e6fe4a",
+  "kind": "offline-fresh-pack-schema-review",
+  "tables": [
+    "public.garden_pack_lifecycle_receipts",
+    "public.garden_pack_product_versions",
+    "public.garden_pack_purchases",
+    "public.garden_pack_unit_events",
+    "public.garden_pack_unit_locations",
+    "public.garden_pack_units"
+  ],
+  "drizzleStatements": 21,
+  "guardFunctions": 9,
+  "guardTriggers": 17,
+  "applied": false,
+  "partialInstallSupported": false,
+  "requiresMaintainerReview": true
+}

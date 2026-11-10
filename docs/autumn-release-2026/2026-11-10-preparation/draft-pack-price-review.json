@@ -1,0 +1,91 @@
+{
+  "observedAt": "2026-11-10T02:06:19.339945+00:00",
+  "kind": "draft-price-review-only",
+  "products": [
+    {
+      "productId": "autumn-harvest",
+      "name": "Jesenski kutak",
+      "lines": [
+        {
+          "modelName": "HarvestPumpkinGroupOrange",
+          "quantity": 1,
+          "individualSunflowers": 60
+        },
+        {
+          "modelName": "HarvestPumpkinSquatCream",
+          "quantity": 1,
+          "individualSunflowers": 30
+        },
+        {
+          "modelName": "HarvestCrateOrchard",
+          "quantity": 1,
+          "individualSunflowers": 60
+        },
+        {
+          "modelName": "GardenScarecrow",
+          "quantity": 1,
+          "individualSunflowers": 80
+        }
+      ],
+      "proposedUndiscountedSunflowers": 230
+    },
+    {
+      "productId": "autumn-woodland",
+      "name": "Šumski kutak",
+      "lines": [
+        {
+          "modelName": "WoodlandMushrooms",
+          "quantity": 1,
+          "individualSunflowers": 35
+        },
+        {
+          "modelName": "StoneMedium",
+          "quantity": 1,
+          "individualSunflowers": 5
+        },
+        {
+          "modelName": "AutumnLeafPileCrescent",
+          "quantity": 1,
+          "individualSunflowers": 30
+        },
+        {
+          "modelName": "FallenLog",
+          "quantity": 1,
+          "individualSunflowers": 55
+        }
+      ],
+      "proposedUndiscountedSunflowers": 125
+    },
+    {
+      "productId": "autumn-evening",
+      "name": "Topla večer",
+      "lines": [
+        {
+          "modelName": "AutumnBlanketBench",
+          "quantity": 1,
+          "individualSunflowers": 80
+        },
+        {
+          "modelName": "GardenTeaTable",
+          "quantity": 1,
+          "individualSunflowers": 70
+        },
+        {
+          "modelName": "EnamelGardenLamp",
+          "quantity": 1,
+          "individualSunflowers": 80
+        },
+        {
+          "modelName": "AutumnAsterPotMauve",
+          "quantity": 1,
+          "individualSunflowers": 45
+        }
+      ],
+      "proposedUndiscountedSunflowers": 275
+    }
+  ],
+  "productVersionsMinted": false,
+  "configurationInstalled": false,
+  "salesEnabled": false,
+  "limits": "Sums use current unpublished draft prices plus the two published legacy dependencies. This is not a published-directory export, product candidate, immutable snapshot or sale offer. Regenerate actual products only after catalogue publication and explicit availability-window review."
+}
