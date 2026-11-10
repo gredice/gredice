@@ -7,7 +7,12 @@ const warningBudget = 1_000_000;
 const hardBudget = 1_800_000;
 
 for (const device of ['Desktop Chrome', 'Pixel 7']) {
-    for (const path of ['/', '/biljke', '/biljke?pregled=kalendar']) {
+    for (const path of [
+        '/',
+        '/biljke',
+        '/biljke?pregled=kalendar',
+        '/biljke/rastika',
+    ]) {
         test(`${device} ${path} preserves crawlable content within the HTML budget`, async ({
             browser,
             baseURL,
@@ -71,14 +76,28 @@ for (const device of ['Desktop Chrome', 'Pixel 7']) {
                     page.locator('link[rel="canonical"]'),
                 ).toHaveAttribute(
                     'href',
-                    `https://www.gredice.com${path === '/' ? '' : '/biljke'}`,
+                    `https://www.gredice.com${path === '/' ? '' : path.split('?')[0]}`,
                 );
                 await expect(page.locator('main h1')).toBeVisible();
-                if (path.startsWith('/biljke')) {
+                if (path === '/biljke/rastika') {
+                    await expect(page.locator('main h1')).toHaveText('Raštika');
+                    for (const heading of ['Sijanje', 'Rast', 'Berba']) {
+                        await expect(
+                            page.getByRole('heading', {
+                                name: heading,
+                                exact: true,
+                            }),
+                        ).toBeVisible();
+                    }
                     await expect(
-                        page.getByText(
-                            'Za tebe smo pripremili opširnu listu biljaka koje možeš pronaći u našem asortimanu.',
-                        ),
+                        page.getByRole('tab', { name: 'Kalendar sijanja' }),
+                    ).toHaveAttribute('aria-selected', 'true');
+                } else if (path.startsWith('/biljke')) {
+                    await expect(
+                        page.getByRole('heading', {
+                            name: 'Biljke',
+                            exact: true,
+                        }),
                     ).toBeVisible();
                     expect(
                         await page.locator('main a[href^="/biljke/"]').count(),

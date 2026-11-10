@@ -2,6 +2,78 @@ import { CommunityEditButtonHarness } from './CommunityEditButtonHarness';
 import { expect, test } from './component-fixtures';
 import '../app/globals.css';
 
+for (const width of [375, 1280]) {
+    test(`loads editing on demand and restores keyboard focus at ${width}px`, async ({
+        mount,
+        page,
+    }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        let authRequests = 0;
+        await page.route('**/api/gredice/api/auth/current-claims', (route) => {
+            authRequests += 1;
+            return route.fulfill({
+                status: 401,
+                json: { error: 'Unauthorized' },
+            });
+        });
+        await mount(
+            <CommunityEditButtonHarness
+                entityTypeName="plant"
+                entityId={1}
+                publicPath="/biljke/rajcica"
+                sectionKey="overview"
+            />,
+        );
+
+        const trigger = page.getByTitle('Predloži izmjenu', { exact: true });
+        await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+        expect(authRequests).toBe(0);
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+            await trigger.focus();
+            await page.keyboard.press('Enter');
+            await expect(page.getByRole('dialog')).toBeVisible();
+            await expect(
+                page.getByText('Za slanje prijedloga treba se prijaviti.'),
+            ).toBeVisible();
+            await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+            await page.keyboard.press('Escape');
+            await expect(page.getByRole('dialog')).toHaveCount(0);
+            await expect(trigger).toBeFocused();
+        }
+    });
+}
+
+test('reopens the matching edit dialog after an OAuth return', async ({
+    mount,
+    page,
+}) => {
+    await page.route('**/api/gredice/api/auth/current-claims', (route) =>
+        route.fulfill({ status: 401, json: { error: 'Unauthorized' } }),
+    );
+    await page.evaluate(() => {
+        window.history.replaceState(
+            window.history.state,
+            '',
+            '?communityEditEntity=plant%3A1&communityEditSection=overview&keep=1#rast',
+        );
+    });
+    await mount(
+        <CommunityEditButtonHarness
+            entityTypeName="plant"
+            entityId={1}
+            publicPath="/biljke/rajcica"
+            sectionKey="overview"
+        />,
+    );
+
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await expect(
+        page.getByText('Za slanje prijedloga treba se prijaviti.'),
+    ).toBeVisible();
+    await expect(page).toHaveURL(/\?keep=1#rast$/u);
+});
+
 test('prompts anonymous users before editing', async ({ mount, page }) => {
     await page.route('**/api/gredice/api/auth/current-claims', (route) =>
         route.fulfill({ status: 401, json: { error: 'Unauthorized' } }),

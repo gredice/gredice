@@ -5,8 +5,7 @@ import { Drawer as DrawerPrimitive } from '@base-ui/react/drawer';
 import {
     type HTMLAttributes,
     type ReactNode,
-    useLayoutEffect,
-    useState,
+    useSyncExternalStore,
 } from 'react';
 import { Close } from '../icons';
 import { getTriggerRender } from '../lib/triggerRender';
@@ -42,8 +41,11 @@ export function Modal({
     trigger,
     ...rest
 }: ModalProps) {
-    const viewport = useViewport();
-    const isMobile = viewport ? viewport.width < 768 : false;
+    const isMobile = useSyncExternalStore(
+        subscribeToMobileViewport,
+        isMobileViewport,
+        isServerMobileViewport,
+    );
 
     if (mobileOverride || (isMobile && !disableMobile)) {
         return (
@@ -256,25 +258,20 @@ function MobileModal({
     );
 }
 
-function useViewport() {
-    const [viewport, setViewport] = useState<
-        { width: number; height: number } | undefined
-    >(undefined);
+const mobileViewportQuery = '(max-width: 767px)';
 
-    useLayoutEffect(() => {
-        function updateViewport() {
-            setViewport({
-                width: window.innerWidth,
-                height: window.innerHeight,
-            });
-        }
+function subscribeToMobileViewport(onChange: () => void) {
+    const query = window.matchMedia(mobileViewportQuery);
+    query.addEventListener('change', onChange);
+    return () => query.removeEventListener('change', onChange);
+}
 
-        updateViewport();
-        window.addEventListener('resize', updateViewport);
-        return () => window.removeEventListener('resize', updateViewport);
-    }, []);
+function isMobileViewport() {
+    return window.matchMedia(mobileViewportQuery).matches;
+}
 
-    return viewport;
+function isServerMobileViewport() {
+    return false;
 }
 
 function hasAccessibleDescription(description: ReactNode) {
