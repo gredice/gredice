@@ -40,7 +40,7 @@
         "storybook": "10.6.5",
         "tailwindcss": "4.3.4",
         "typescript": "7.0.2",
-        "vite": "8.3.5"
+        "vite": "8.3.6"
     },
     "engines": {
         "node": "26.x"
