@@ -404,11 +404,6 @@ export function AdminDashboardClient({
                         value={raisedBedsCount}
                         previousValue={raisedBedsBeforeCount}
                         href={KnownPages.RaisedBeds}
-                        detail={
-                            gardensCount > 0
-                                ? `Prosječno ${formatDashboardNumber(raisedBedsCount / gardensCount)} po vrtu`
-                                : undefined
-                        }
                     />
                 </div>
             </DashboardSection>

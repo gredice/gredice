@@ -33,7 +33,7 @@ function stackTotal<TKey extends string>(
 
 /**
  * Small stacked column chart for dashboard cards. The columns are a visual
- * summary only; screen readers get the same values from a hidden table.
+ * summary; the expandable data table exposes exact values to all users.
  */
 export function DashboardColumnChart<TKey extends string>({
     title,
@@ -228,36 +228,43 @@ export function DashboardColumnChart<TKey extends string>({
                 ))}
             </div>
             {hasData ? (
-                // Tables ignore the 1px sr-only width, so the wrapper hides it.
-                <div className="sr-only">
-                    <table>
-                        <caption>{title}</caption>
-                        <thead>
-                            <tr>
-                                <th scope="col">Dan</th>
-                                {series.map((item) => (
-                                    <th key={item.key} scope="col">
-                                        {item.label}
-                                    </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {dataColumns.map((column) => (
-                                <tr key={column.key}>
-                                    <th scope="row">{column.description}</th>
+                <details className="mt-2 min-w-0 text-xs">
+                    <summary className="w-fit cursor-pointer rounded-sm text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+                        Prikaži podatke
+                    </summary>
+                    <div className="mt-2 overflow-x-auto">
+                        <table className="w-full text-left tabular-nums [&_th]:px-2 [&_th]:py-1 [&_td]:px-2 [&_td]:py-1">
+                            <caption>{title}</caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col">Dan</th>
                                     {series.map((item) => (
-                                        <td key={item.key}>
-                                            {formatValue(
-                                                column.values?.[item.key] ?? 0,
-                                            )}
-                                        </td>
+                                        <th key={item.key} scope="col">
+                                            {item.label}
+                                        </th>
                                     ))}
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                            </thead>
+                            <tbody>
+                                {dataColumns.map((column) => (
+                                    <tr key={column.key}>
+                                        <th scope="row">
+                                            {column.description}
+                                        </th>
+                                        {series.map((item) => (
+                                            <td key={item.key}>
+                                                {formatValue(
+                                                    column.values?.[item.key] ??
+                                                        0,
+                                                )}
+                                            </td>
+                                        ))}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </details>
             ) : null}
         </div>
     );
