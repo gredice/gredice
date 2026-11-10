@@ -1,0 +1,101 @@
+{
+  "sourceReportSha256": "f650075c68a9daf0add9322080f414a132ad7dd1759acb5a0b5aab85d34581f3",
+  "stats": {
+    "startTime": "2026-11-10T02:04:34.074Z",
+    "duration": 8524.926,
+    "expected": 8,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "tests": [
+    {
+      "name": "autumn collections remain readable and keyboard reachable on mobile",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 781
+        }
+      ]
+    },
+    {
+      "name": "unpublished variants and optional event groups stay out of autumn discovery",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 624
+        }
+      ]
+    },
+    {
+      "name": "autumn offers retain the ordinary price, shortage state and exact drag identity",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 955
+        }
+      ]
+    },
+    {
+      "name": "arrangement harvest-corner has exact lists and fits a small screen",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 666
+        }
+      ]
+    },
+    {
+      "name": "arrangement woodland-path has exact lists and fits a small screen",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 691
+        }
+      ]
+    },
+    {
+      "name": "arrangement evening-seat has exact lists and fits a small screen",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 689
+        }
+      ]
+    },
+    {
+      "name": "arrangement missing a published prop does not load a preview",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 639
+        }
+      ]
+    },
+    {
+      "name": "embedded garden example loads its image from the configured game asset host",
+      "project": "chromium",
+      "expectedStatus": "passed",
+      "results": [
+        {
+          "status": "passed",
+          "duration": 808
+        }
+      ]
+    }
+  ]
+}

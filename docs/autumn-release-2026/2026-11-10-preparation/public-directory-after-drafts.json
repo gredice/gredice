@@ -1,0 +1,16 @@
+{
+  "observedAt": "2026-11-10T02:15:28.662740+00:00",
+  "url": "https://api.gredice.com/api/directories/entities/block",
+  "status": 200,
+  "sha256": "8c4fff1ebe0a5ac9f90f9ba52436d263c70b16f9cb5a85f1cc018b4674c88cde",
+  "bytes": 138280,
+  "rows": 144,
+  "selectedNewItemsPresent": [],
+  "headers": {
+    "Date": "Tue, 10 Nov 2026 01:45:56 GMT",
+    "Age": "1772",
+    "Cache-Control": "public, max-age=3600",
+    "X-Vercel-Cache": "HIT"
+  },
+  "scope": "Public readback after all 24 CMS drafts were created; not a direct database audit."
+}

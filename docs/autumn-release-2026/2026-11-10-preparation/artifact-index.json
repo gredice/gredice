@@ -1,0 +1,126 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "2e02348ca21c18518ebade352d34eebb28e6fe4a",
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 8564,
+      "sha256": "99a56a16a1f1f2deb2b69541d4967c91397dcaf689398bdba87407bb15bd82c2"
+    },
+    {
+      "path": "browser-collections-fresh-summary.json",
+      "bytes": 2401,
+      "sha256": "75cd569c1bc85e959eb673d5f260810275156dcfb5025cfb1b52a94649d4c7db"
+    },
+    {
+      "path": "browser-inventory-summary.json",
+      "bytes": 6210,
+      "sha256": "69d8ec04df2954ae8cc029b2a177c6a961e27d70a434f62d1d828c5f7946c15d"
+    },
+    {
+      "path": "browser-season-summary.json",
+      "bytes": 18098,
+      "sha256": "ad3c318bfff37090fc475f7dd3f039beb809932a092d13682db06f3fe4b26eb7"
+    },
+    {
+      "path": "browser-storefront-summary.json",
+      "bytes": 5525,
+      "sha256": "46e378bd0d85c4839ee988ffac16b07064ec26777b3180fb3d700cc91291cde8"
+    },
+    {
+      "path": "current-head-check-runs.json",
+      "bytes": 6389,
+      "sha256": "6307139d72969ac1604ef9c6f1179bb84a21e6e8fd3b469fd1f5e1883c7f1a28"
+    },
+    {
+      "path": "deployed-byte-verification.json",
+      "bytes": 57477,
+      "sha256": "99443bbd7dc3ce1c5db93c8f5f0e58ee83cae136ed97061e31f21bf5d383bcc2"
+    },
+    {
+      "path": "draft-pack-price-review.json",
+      "bytes": 2482,
+      "sha256": "9ca17e293450765be22292aa1814deff14c3f3cf4a793c169b2b5d5223549b61"
+    },
+    {
+      "path": "pack-schema-postgres-validation.json",
+      "bytes": 356,
+      "sha256": "098fbf41c1a20ba6f6d56b5f56a8e749e8e3b872422edb11295a4bc9a92e6889"
+    },
+    {
+      "path": "pack-schema-review.json",
+      "bytes": 574,
+      "sha256": "1680626c5280ff40002cd70c20b711d21f6525d5a2612853524950bbfabd2e00"
+    },
+    {
+      "path": "preflight-public-report.json",
+      "bytes": 11442,
+      "sha256": "7eef9d6dc839a06fbad682c7a1e02d4fa3f28f6556ad9baa08156cd31b0ba641"
+    },
+    {
+      "path": "production-deployments.json",
+      "bytes": 1025,
+      "sha256": "36a04758570f1c904b831e196bc1655c6db7a34a87e1503791c7726194dfd08e"
+    },
+    {
+      "path": "production-profile.json",
+      "bytes": 636654,
+      "sha256": "c548533127278ae43b5c77a08cc2bc1db217346af22b9aac54e41fb1910b3e41"
+    },
+    {
+      "path": "production-profile.md",
+      "bytes": 40594,
+      "sha256": "ac53086dddd883cf67115938b7e9865898ca1f40db5ac5bd36210fc99c091998"
+    },
+    {
+      "path": "public-directory-after-drafts.json",
+      "bytes": 540,
+      "sha256": "9cec1081939261fefae738dad1b280bf4f3e41d0d38a62e22cea706239e0ee5d"
+    },
+    {
+      "path": "public-directory-observation.json",
+      "bytes": 427,
+      "sha256": "fead54ed24feb6d2fa8979e64441567fa4ac54e083e91f0a9d08df1f2576522e"
+    },
+    {
+      "path": "publication-plan-report.json",
+      "bytes": 8120,
+      "sha256": "8976486f92fbb0a927f442abcd67cff8b25f0ef210c3fb897ccefdb3ce9df783"
+    },
+    {
+      "path": "publication-plan.json",
+      "bytes": 228711,
+      "sha256": "b2e0910da34c9b457642fd1632166003cfa8da01dc44a2e4e1a8f52a34b35bec"
+    },
+    {
+      "path": "readiness-receipt.json",
+      "bytes": 10632,
+      "sha256": "68c7aa33c0382a879407e7f129a88fd73029f1b20177fd6c5f887a1faa3f40fa"
+    },
+    {
+      "path": "remaining-acceptance.md",
+      "bytes": 3046,
+      "sha256": "9bd1471ca1af7f7f8c8234360b55fde3814699532b7b55b2f5dc09e7c63b82b8"
+    },
+    {
+      "path": "screenshots/game-autumn-launch-dense-late-wind-high.png",
+      "bytes": 1107072,
+      "sha256": "c11953e701c9bde8da0c89cfb0689479e66d1309b5857db0ad63f2cb089c96a0"
+    },
+    {
+      "path": "screenshots/game-autumn-launch-medium-mid-cloud-constrained.png",
+      "bytes": 404333,
+      "sha256": "558dcaea856d0dc43083cc2d0e06770ed3e9950c7c23e0dbd53554555c510736"
+    },
+    {
+      "path": "screenshots/game-autumn-launch-small-early-sun-constrained.png",
+      "bytes": 840637,
+      "sha256": "d24514118a64178e1304298948de18c84d15071b4e485fdb783ddd7cd3cdfe8e"
+    },
+    {
+      "path": "storage-readiness.json",
+      "bytes": 347,
+      "sha256": "6178c84dea37f84d18d69d4a488f450ff20c75ae703f81c399c81ae9994e78d2"
+    }
+  ]
+}

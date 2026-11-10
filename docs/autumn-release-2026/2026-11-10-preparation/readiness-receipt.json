@@ -1,0 +1,372 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-11-10T02:13:11.762533+00:00",
+  "releaseStatus": "blocked",
+  "source": {
+    "headCommit": "2e02348ca21c18518ebade352d34eebb28e6fe4a",
+    "headTree": "7190f41240b8e3b7db5ceb10df3426e76b7cd9eb",
+    "workingTreeStatus": "",
+    "sourceFingerprint": "86ee0ed2e40594b53955a6c535225b830d70836ff30a9a376435f3178a5cb7b8",
+    "sourceStatus": "source-ready",
+    "counts": {
+      "families": 12,
+      "itemIdentities": 24,
+      "modelAssets": 16,
+      "inspectedFiles": 398,
+      "recipeProducts": 3,
+      "recipeItems": 12
+    }
+  },
+  "cmsDrafts": {
+    "created": 24,
+    "state": "draft",
+    "publishedAt": null,
+    "allReadBack": true,
+    "pendingAttributeChanges": 0,
+    "items": [
+      {
+        "id": 865,
+        "name": "AutumnAsterPotCream",
+        "sunflowers": 45
+      },
+      {
+        "id": 866,
+        "name": "AutumnAsterPotGold",
+        "sunflowers": 45
+      },
+      {
+        "id": 864,
+        "name": "AutumnAsterPotMauve",
+        "sunflowers": 45
+      },
+      {
+        "id": 873,
+        "name": "AutumnBlanketBench",
+        "sunflowers": 80
+      },
+      {
+        "id": 871,
+        "name": "AutumnLeafPileCrescent",
+        "sunflowers": 30
+      },
+      {
+        "id": 870,
+        "name": "AutumnLeafPileMound",
+        "sunflowers": 25
+      },
+      {
+        "id": 867,
+        "name": "AutumnShrub",
+        "sunflowers": 55
+      },
+      {
+        "id": 869,
+        "name": "FallenLog",
+        "sunflowers": 55
+      },
+      {
+        "id": 860,
+        "name": "GardenScarecrow",
+        "sunflowers": 80
+      },
+      {
+        "id": 874,
+        "name": "GardenTeaTable",
+        "sunflowers": 70
+      },
+      {
+        "id": 861,
+        "name": "HarvestCrate",
+        "sunflowers": 60
+      },
+      {
+        "id": 862,
+        "name": "HarvestCrateOrchard",
+        "sunflowers": 60
+      },
+      {
+        "id": 855,
+        "name": "HarvestPumpkinGourdCream",
+        "sunflowers": 30
+      },
+      {
+        "id": 856,
+        "name": "HarvestPumpkinGourdGreen",
+        "sunflowers": 30
+      },
+      {
+        "id": 854,
+        "name": "HarvestPumpkinGourdOrange",
+        "sunflowers": 30
+      },
+      {
+        "id": 858,
+        "name": "HarvestPumpkinGroupCream",
+        "sunflowers": 60
+      },
+      {
+        "id": 859,
+        "name": "HarvestPumpkinGroupGreen",
+        "sunflowers": 60
+      },
+      {
+        "id": 857,
+        "name": "HarvestPumpkinGroupOrange",
+        "sunflowers": 60
+      },
+      {
+        "id": 852,
+        "name": "HarvestPumpkinSquatCream",
+        "sunflowers": 30
+      },
+      {
+        "id": 853,
+        "name": "HarvestPumpkinSquatGreen",
+        "sunflowers": 30
+      },
+      {
+        "id": 851,
+        "name": "HarvestPumpkinSquatOrange",
+        "sunflowers": 30
+      },
+      {
+        "id": 863,
+        "name": "HarvestWheelbarrow",
+        "sunflowers": 120
+      },
+      {
+        "id": 872,
+        "name": "LeafRake",
+        "sunflowers": 45
+      },
+      {
+        "id": 868,
+        "name": "WoodlandMushrooms",
+        "sunflowers": 35
+      }
+    ],
+    "finalReadOnlyPlanDigestUnchanged": true
+  },
+  "publicationPlan": {
+    "sha256": "39b291dcc891359e3e44f36c2b5882e16b6f6a0fe1163ee12af4fe84b1cf25c5",
+    "prepared": true,
+    "applied": false,
+    "requiresFreshLockedCmsAndDeployedByteChecks": true
+  },
+  "deployedAssets": {
+    "verified": 283,
+    "passed": true,
+    "bytes": 3716133
+  },
+  "storage": {
+    "observedAt": "2026-11-10T01:55:21.562Z",
+    "kind": "read-only-production-pack-readiness",
+    "packStorageReady": false,
+    "placementStorageReady": false,
+    "lifecycleStorageReady": false,
+    "tables": [],
+    "configuration": {
+      "packsEnabled": false,
+      "salesEnabled": false,
+      "catalogueConfigured": false
+    },
+    "releaseReady": false
+  },
+  "schemaReview": {
+    "generatedAt": "2026-11-10T01:57:05.544Z",
+    "sourceCommit": "2e02348ca21c18518ebade352d34eebb28e6fe4a",
+    "kind": "offline-fresh-pack-schema-review",
+    "tables": [
+      "public.garden_pack_lifecycle_receipts",
+      "public.garden_pack_product_versions",
+      "public.garden_pack_purchases",
+      "public.garden_pack_unit_events",
+      "public.garden_pack_unit_locations",
+      "public.garden_pack_units"
+    ],
+    "drizzleStatements": 21,
+    "guardFunctions": 9,
+    "guardTriggers": 17,
+    "applied": false,
+    "partialInstallSupported": false,
+    "requiresMaintainerReview": true
+  },
+  "schemaPostgresValidation": {
+    "verifiedAt": "2026-11-10T02:01:54.627Z",
+    "provider": "disposable-local-postgresql",
+    "version": "15.19 (Homebrew)",
+    "migrationSha256": "961f57ef8add194c839c7d08b95c0dd227aa97451f640869ea22476ec57beb10",
+    "packStorageReady": true,
+    "placementStorageReady": true,
+    "lifecycleStorageReady": true,
+    "passed": true,
+    "productionApplied": false
+  },
+  "tests": {
+    "gameUnit": {
+      "passed": 2401,
+      "failed": 0,
+      "skipped": 0
+    },
+    "jsUnit": {
+      "passed": 201,
+      "failed": 0,
+      "skipped": 0
+    },
+    "focusedRelease": {
+      "parentCasesPassed": 27,
+      "publicationChildCasesPassed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    "postgres": {
+      "publicationCasesPassed": 8,
+      "purchaseCasesPassed": 11,
+      "placementCasesPassed": 7,
+      "lifecycleCasesPassed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "limits": "Disposable independent PostgreSQL connections; not production commerce."
+    },
+    "browser": [
+      {
+        "suite": "collections-fresh",
+        "startTime": "2026-11-10T02:04:34.074Z",
+        "duration": 8524.926,
+        "expected": 8,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      {
+        "suite": "storefront",
+        "startTime": "2026-11-10T02:01:44.961Z",
+        "duration": 6443.637,
+        "expected": 19,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      {
+        "suite": "inventory",
+        "startTime": "2026-11-10T02:01:51.766Z",
+        "duration": 6196.857,
+        "expected": 22,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      {
+        "suite": "season",
+        "startTime": "2026-11-10T02:02:46.408Z",
+        "duration": 88721.519,
+        "expected": 71,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      }
+    ]
+  },
+  "productionProfile": {
+    "status": "passed",
+    "summary": {
+      "durationMs": 212038,
+      "failedScenarioNames": [],
+      "failedScenarios": 0,
+      "failedRuns": 0,
+      "passedRuns": 18,
+      "passedScenarios": 18,
+      "totalRuns": 18,
+      "totalScenarios": 18
+    },
+    "provenance": {
+      "comparable": true,
+      "reasons": [],
+      "subject": {
+        "commit": "2e02348ca21c18518ebade352d34eebb28e6fe4a",
+        "dirty": false,
+        "source": "served-build-marker"
+      },
+      "harness": {
+        "commit": "2e02348ca21c18518ebade352d34eebb28e6fe4a",
+        "dirty": false
+      },
+      "runtime": {
+        "arch": "arm64",
+        "browserVersion": "151.0.7922.34",
+        "nodeVersion": "v26.13.0",
+        "platform": "darwin"
+      },
+      "server": {
+        "buildPerformed": true,
+        "mode": "managed"
+      }
+    },
+    "graphicsBackend": "ANGLE Metal on Apple M4 Pro",
+    "sampleMs": 5000,
+    "warmupMs": 5000,
+    "soakMs": 0,
+    "representativeScreenshotsInspected": [
+      "game-autumn-launch-small-early-sun-constrained",
+      "game-autumn-launch-medium-mid-cloud-constrained",
+      "game-autumn-launch-dense-late-wind-high"
+    ],
+    "limits": "Five-second samples after five-second warmup on a desktop GPU; mobile capabilities are emulated. Standard-camera visible subset does not establish simultaneous on-screen coverage of all 24 identities or worst-case density. Audio, controls and HUD are off. Physical touch/listening/sustained thermal acceptance remains open. Synthetic blocked auth/data/analytics requests and the existing THREE.Clock deprecation remain in the report."
+  },
+  "remainingGates": [
+    "required hosted release-suite CI on the final release commit",
+    "maintainer-reviewed normal storage migration rollout",
+    "final combined interaction/2D/audio/cleanup QA disposition",
+    "physical mobile touch/listening/sustained frames/thermal acceptance",
+    "catalogue publication and fresh public directory readback",
+    "three published immutable products with explicit availability windows",
+    "authorized live purchase/placement/expiry/refund/recycle acceptance",
+    "sales enablement and Croatian release publication"
+  ],
+  "salesEnabled": false,
+  "productConfigurationInstalled": false,
+  "releaseCopyPublished": false,
+  "rejectedEvidence": [
+    {
+      "kind": "temporary-component-config",
+      "reason": "Absolute CT template path was joined under the temporary configuration directory; template was not found."
+    },
+    {
+      "kind": "temporary-component-public-assets-and-shared-cache",
+      "reason": "Temporary configuration resolved public assets under .tmp, then the shared Vite cache retained missing preview assets. Default configurations plus a fresh owned cache passed all 120 selected browser cases."
+    },
+    {
+      "kind": "first-profile",
+      "reason": "Initial samples overlapped the seasonal browser suite; rejected as performance evidence."
+    },
+    {
+      "kind": "second-profile",
+      "reason": "Temporary untracked test configuration made build/harness provenance dirty; rejected."
+    },
+    {
+      "kind": "clean-profile-start",
+      "reason": "Existing owned profile server occupied the requested port; no measurements. Removed the owned server and used an unused port."
+    }
+  ],
+  "externalArtifacts": {
+    "directory": "/Users/aleks/.codex/artifacts/gredice/autumn-release-2026-11-10",
+    "schemaReviewFile": "pack-schema-fresh-install.review.sql",
+    "schemaReviewSha256": "961f57ef8add194c839c7d08b95c0dd227aa97451f640869ea22476ec57beb10"
+  },
+  "publicDirectoryAfterDrafts": {
+    "observedAt": "2026-11-10T02:15:28.662740+00:00",
+    "url": "https://api.gredice.com/api/directories/entities/block",
+    "status": 200,
+    "sha256": "8c4fff1ebe0a5ac9f90f9ba52436d263c70b16f9cb5a85f1cc018b4674c88cde",
+    "bytes": 138280,
+    "rows": 144,
+    "selectedNewItemsPresent": [],
+    "headers": {
+      "Date": "Tue, 10 Nov 2026 01:45:56 GMT",
+      "Age": "1772",
+      "Cache-Control": "public, max-age=3600",
+      "X-Vercel-Cache": "HIT"
+    },
+    "scope": "Public readback after all 24 CMS drafts were created; not a direct database audit."
+  }
+}

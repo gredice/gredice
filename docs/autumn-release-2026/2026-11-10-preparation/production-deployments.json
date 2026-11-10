@@ -1,0 +1,34 @@
+{
+  "observedAt": "2026-11-10T02:07:00.474Z",
+  "kind": "production-deployment-identity-readback",
+  "sourceCommit": "2e02348ca21c18518ebade352d34eebb28e6fe4a",
+  "deployments": [
+    {
+      "project": "api",
+      "id": "dpl_8rdpPKc5WwA8PXazMtm9nDvVWUTU",
+      "url": "api-7uaiee5ne-gredice.vercel.app",
+      "target": "production",
+      "readyState": "READY",
+      "commit": "2e02348ca21c18518ebade352d34eebb28e6fe4a",
+      "branch": "main"
+    },
+    {
+      "project": "garden",
+      "id": "dpl_HaApiNmaDYw352gNjn9HQ4aFTh7U",
+      "url": "garden-ogv3drfa3-gredice.vercel.app",
+      "target": "production",
+      "readyState": "READY",
+      "commit": "2e02348ca21c18518ebade352d34eebb28e6fe4a",
+      "branch": "main"
+    },
+    {
+      "project": "www",
+      "id": "dpl_4z1wwg9QwFSFuk6B6gH2buoADxyb",
+      "url": "33fa1ur95-it6n9ks26-gredice.vercel.app",
+      "target": "production",
+      "readyState": "READY",
+      "commit": "2e02348ca21c18518ebade352d34eebb28e6fe4a",
+      "branch": "main"
+    }
+  ]
+}

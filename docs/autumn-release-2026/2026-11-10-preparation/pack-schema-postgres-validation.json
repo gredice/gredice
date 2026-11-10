@@ -1,0 +1,11 @@
+{
+  "verifiedAt": "2026-11-10T02:01:54.627Z",
+  "provider": "disposable-local-postgresql",
+  "version": "15.19 (Homebrew)",
+  "migrationSha256": "961f57ef8add194c839c7d08b95c0dd227aa97451f640869ea22476ec57beb10",
+  "packStorageReady": true,
+  "placementStorageReady": true,
+  "lifecycleStorageReady": true,
+  "passed": true,
+  "productionApplied": false
+}
