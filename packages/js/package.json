@@ -15,10 +15,10 @@
     },
     "dependencies": {
         "@opentelemetry/api": "1.10.0",
-        "@opentelemetry/core": "3.0.0",
-        "@opentelemetry/otlp-exporter-base": "0.300.0",
-        "@opentelemetry/otlp-transformer": "0.300.0",
-        "@opentelemetry/sdk-logs": "3.0.0"
+        "@opentelemetry/core": "3.1.0",
+        "@opentelemetry/otlp-exporter-base": "0.301.0",
+        "@opentelemetry/otlp-transformer": "0.301.0",
+        "@opentelemetry/sdk-logs": "3.1.0"
     },
     "devDependencies": {
         "@biomejs/biome": "2.6.5",
