@@ -76,7 +76,7 @@
         "tsx": "4.23.15",
         "typescript": "7.0.2",
         "uuid": "14.0.3",
-        "zustand": "5.0.16"
+        "zustand": "5.1.0"
     },
     "peerDependencies": {
         "next": "15.x || 16.x",
