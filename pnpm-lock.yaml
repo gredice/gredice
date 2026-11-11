@@ -684,8 +684,8 @@ importers:
         specifier: 26.18.0
         version: 26.18.0(electron-builder-squirrel-windows@26.18.0)(supports-color@10.2.2)
       plist:
-        specifier: 5.0.0
-        version: 5.0.0
+        specifier: 5.0.1
+        version: 5.0.1
       rimraf:
         specifier: 6.1.4
         version: 6.1.4
@@ -9069,8 +9069,8 @@ packages:
     resolution: {integrity: sha512-uysumyrvkUX0rX/dEVqt8gC3sTBzd4zoWfLeS29nb53imdaXVvLINYXTI2GNqzaMuvacNx4uJQ8+b3zXR0pkgQ==}
     engines: {node: '>=10.4.0'}
 
-  plist@5.0.0:
-    resolution: {integrity: sha512-20N+g1DvMm/DFRbsvER7tT4wDryq0WunK7VMkDaiJcKNapAnUMkTsAnacFYf8n420F4Hf6/hefgmJRkMb1M0fg==}
+  plist@5.0.1:
+    resolution: {integrity: sha512-glEmKqNrWpLJAf7VSUxAUTCQ1eh3R4lm6uOYyiSx/eLSlzh+X/Zw59cJCB5IXVTb7AAr3QKNHo1RF+ZK58MdtA==}
     engines: {node: '>=18'}
 
   pluralize@8.0.0:
@@ -18537,7 +18537,7 @@ snapshots:
       base64-js: 1.5.1
       xmlbuilder: 15.1.1
 
-  plist@5.0.0:
+  plist@5.0.1:
     dependencies:
       '@xmldom/xmldom': 0.9.12
       xmlbuilder: 15.1.1
