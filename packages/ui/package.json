@@ -16,7 +16,7 @@
         "typecheck": "tsc --noEmit --pretty false"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.6.5",
+        "@biomejs/biome": "2.6.6",
         "@tailwindcss/postcss": "4.3.4",
         "@tailwindcss/typography": "0.5.20",
         "@types/node": "26.6.6",
