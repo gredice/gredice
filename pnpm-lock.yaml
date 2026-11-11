@@ -1404,8 +1404,8 @@ importers:
         specifier: 1.14.0
         version: 1.14.0(supports-color@8.1.1)
       undici:
-        specifier: 8.12.3
-        version: 8.12.3
+        specifier: 8.12.4
+        version: 8.12.4
       xml-crypto:
         specifier: 6.4.0
         version: 6.4.0(patch_hash=1dbd9be50dfab917ec43d0cb5802eb73ca3672cc572824ff0f8a56d1ecd3e892)
@@ -1767,8 +1767,8 @@ importers:
         specifier: 7.0.2
         version: 7.0.2
       undici:
-        specifier: 8.12.3
-        version: 8.12.3
+        specifier: 8.12.4
+        version: 8.12.4
       uuid:
         specifier: 14.0.3
         version: 14.0.3
@@ -10080,6 +10080,10 @@ packages:
 
   undici@8.12.3:
     resolution: {integrity: sha512-+fdndUTwBP86cVjihTp21hZHo7d6oj1c/47XPA3lL8mM0XHs+C4EkcjmgRsFnFk2f/UONGDy9ItBItmXsLOQHw==}
+    engines: {node: '>=22.19.0'}
+
+  undici@8.12.4:
+    resolution: {integrity: sha512-8Mx+uNKKER2bA4AdtedkqRbwUCIJFr2nJckXRe5yrDqzePqwLP7VNcctN8/XdmDSbF7mS+jJKIszlL+vbam1VA==}
     engines: {node: '>=22.19.0'}
 
   unhead@3.4.3:
@@ -19770,6 +19774,8 @@ snapshots:
   undici@7.30.1: {}
 
   undici@8.12.3: {}
+
+  undici@8.12.4: {}
 
   unhead@3.4.3(esbuild@0.28.2)(rolldown@1.2.16)(rollup@4.62.2)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.107.1)(tsx@4.23.15)(yaml@2.9.1)):
     dependencies:
