@@ -33,7 +33,7 @@
         "@posthog/next": "0.11.0",
         "@vercel/blob": "2.8.2",
         "@vercel/functions": "3.11.0",
-        "@vvo/tzdb": "6.203.0",
+        "@vvo/tzdb": "6.204.0",
         "@xyflow/react": "12.12.1",
         "drizzle-orm": "0.45.4",
         "next": "16.4.5",
