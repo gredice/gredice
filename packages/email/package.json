@@ -26,7 +26,7 @@
     "dependencies": {
         "@azure/communication-common": "2.5.0",
         "@azure/communication-email": "1.1.0",
-        "@azure/core-lro": "3.4.1",
+        "@azure/core-lro": "3.4.2",
         "@azure/core-rest-pipeline": "1.25.0",
         "@gredice/storage": "workspace:*",
         "react": "19.3.1",

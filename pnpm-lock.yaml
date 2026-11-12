@@ -1355,8 +1355,8 @@ importers:
         specifier: 1.1.0
         version: 1.1.0(supports-color@10.2.2)
       '@azure/core-lro':
-        specifier: 3.4.1
-        version: 3.4.1(supports-color@10.2.2)
+        specifier: 3.4.2
+        version: 3.4.2(supports-color@10.2.2)
       '@azure/core-rest-pipeline':
         specifier: 1.25.0
         version: 1.25.0(supports-color@10.2.2)
@@ -2136,8 +2136,8 @@ packages:
     resolution: {integrity: sha512-0YIpccoX8m/k00O7mDDMdJpbr6mf1yWo2dfmxt5A8XVZVVMz2SSKaEbMCeJRvgQ0IaSlqhjT47p4hVIRRy90xw==}
     engines: {node: '>=18.0.0'}
 
-  '@azure/core-lro@3.4.1':
-    resolution: {integrity: sha512-TVngxDsWy57cv0r5ZSHICDgr7au9w4g4z8TMbGn8Cp44XVZ/V+mGvylKHRsLQ/zQrmcx35zJWDGZFMXuffgsTg==}
+  '@azure/core-lro@3.4.2':
+    resolution: {integrity: sha512-rygS9nSui5RQSCIYMMCLv7SqeOU9cVYOMD1g4MtoiS8Kw2I3Ij0YAV8qt2U8NiFiqUSEv8o6vGkhm2BQgQ9Qlw==}
     engines: {node: '>=22.0.0'}
 
   '@azure/core-rest-pipeline@1.25.0':
@@ -10925,7 +10925,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@azure/core-lro@3.4.1(supports-color@10.2.2)':
+  '@azure/core-lro@3.4.2(supports-color@10.2.2)':
     dependencies:
       '@azure/abort-controller': 2.2.0
       '@azure/core-util': 1.14.0(supports-color@10.2.2)
