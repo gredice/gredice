@@ -89,7 +89,7 @@
     },
     "dependencies": {
         "@ai-sdk/react": "4.0.163",
-        "@vvo/tzdb": "6.202.0",
+        "@vvo/tzdb": "6.203.0",
         "ai": "7.0.162",
         "nuqs": "2.10.2"
     }
