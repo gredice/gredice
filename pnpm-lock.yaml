@@ -304,8 +304,8 @@ importers:
         specifier: 0.0.1
         version: 0.0.1
       suncalc:
-        specifier: 2.1.2
-        version: 2.1.2
+        specifier: 2.1.3
+        version: 2.1.3
       valibot:
         specifier: 1.5.0
         version: 1.5.0(typescript@7.0.2)
@@ -1559,8 +1559,8 @@ importers:
         specifier: 3.10.1
         version: 3.10.1(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react-is@17.0.2)(react@19.3.1)(redux@5.0.1)
       suncalc:
-        specifier: 2.1.2
-        version: 2.1.2
+        specifier: 2.1.3
+        version: 2.1.3
       tailwindcss:
         specifier: 4.3.5
         version: 4.3.5
@@ -1916,8 +1916,8 @@ importers:
         specifier: 2.7.1
         version: 2.7.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@10.2.2)
       suncalc:
-        specifier: 2.1.2
-        version: 2.1.2
+        specifier: 2.1.3
+        version: 2.1.3
       tailwind-merge:
         specifier: 3.7.0
         version: 3.7.0
@@ -9820,8 +9820,8 @@ packages:
     resolution: {integrity: sha512-MvjXzkz/BOfyVDkG0oFOtBxHX2u3gKbMHIF/dXblZsgD3BWOFLmHovIpZY7BykJdAjcqRCBi1WYBNdEC9yI7vg==}
     engines: {node: '>= 8.0'}
 
-  suncalc@2.1.2:
-    resolution: {integrity: sha512-ynVGhi3CUcgrfbhQNqe1k53uKLe1FUfZq0czOVA84ASwdB5HUrlZX6gQ9akcItor92CJB69Yg8F6VoUWqrTkiw==}
+  suncalc@2.1.3:
+    resolution: {integrity: sha512-7DWCsxPKRPMtylyGqSrgNBr+pseyczJGqb4NCpW2EziwNHaSuHc9w1lL4i91IyDw5CnPUWqBNBWyd/vFjr4rTw==}
 
   supports-color@10.2.2:
     resolution: {integrity: sha512-SS+jx45GF1QjgEXQx4NJZV9ImqmO2NPz5FNsIHrsDjh2YsHnawpan7SNQ1o8NuhrbHZy9AZhIoCUiCeaW/C80g==}
@@ -19508,7 +19508,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  suncalc@2.1.2: {}
+  suncalc@2.1.3: {}
 
   supports-color@10.2.2: {}
 
