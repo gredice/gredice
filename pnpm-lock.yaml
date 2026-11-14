@@ -190,7 +190,7 @@ patchedDependencies:
   plist@3.1.0: de821f6f9078ce712eb4ef1dc955ccd63e682bf2dfc6a7d135dc82b69466395e
   react-docgen-typescript@2.4.0: c6a1bb9c2e242a146914bb8e4de55736df0f5fbcd6edcc210eb92b44a18db846
   tsconfck@3.1.6: 8e77e2162331e3bd628516d51ccbf2a0ce9c5a31d9bad8e22cc42458370bec37
-  web-push@3.6.7: 4554572bbbd76721b65fb3004602f11f77b665c8e48f33a4e318a2c47b34a172
+  web-push@4.0.0: 0bbc6e5dc0abaf2c703642d580b2beab66a907606d16cc2d129705f96690a597
   xml-crypto@6.4.0: 1dbd9be50dfab917ec43d0cb5802eb73ca3672cc572824ff0f8a56d1ecd3e892
 
 importers:
@@ -310,8 +310,8 @@ importers:
         specifier: 1.5.0
         version: 1.5.0(typescript@7.0.2)
       web-push:
-        specifier: 3.6.7
-        version: 3.6.7(patch_hash=4554572bbbd76721b65fb3004602f11f77b665c8e48f33a4e318a2c47b34a172)(supports-color@10.2.2)
+        specifier: 4.0.0
+        version: 4.0.0(patch_hash=0bbc6e5dc0abaf2c703642d580b2beab66a907606d16cc2d129705f96690a597)(supports-color@10.2.2)
       xml2js:
         specifier: 0.6.2
         version: 0.6.2
@@ -7840,8 +7840,8 @@ packages:
     resolution: {integrity: sha512-V+23sDMr12Wnz7iTcDeJr3O6AIxlnvT/bmaAAAP/Xda35C90p9599p0F1eHR/N1KILWSoWVAiOMFjBBXaXSMxg==}
     engines: {node: '>=10.19.0'}
 
-  http_ece@1.2.0:
-    resolution: {integrity: sha512-JrF8SSLVmcvc5NducxgyOrKXe3EsyHMgBFgSaIUGmArKe+rwr0uphRkRXvwiom3I+fpIfoItveHrfudL8/rxuA==}
+  http_ece@1.2.1:
+    resolution: {integrity: sha512-+tzLoMYgXvicu60sVFoswTiu6BiQ6EX3DORRJQ3W2dNpNWCyZ3tcmRFZZ3jgVyw8ziWUCeUARKCkYDY6JgFx+w==}
     engines: {node: '>=16'}
 
   https-proxy-agent@5.0.1:
@@ -10363,8 +10363,8 @@ packages:
   web-namespaces@2.0.1:
     resolution: {integrity: sha512-bKr1DkiNa2krS7qxNtdrtHAmzuYGFQLiQ13TsorsdT6ULTkPLKuu5+GsFpDlg6JFjUTwX2DyhMPG2be8uPrqsQ==}
 
-  web-push@3.6.7:
-    resolution: {integrity: sha512-OpiIUe8cuGjrj3mMBFWY+e4MMIkW3SVT+7vEIjvD9kejGUypv8GPDf84JdPWskK8zMRIJ6xYGm+Kxr8YkPyA0A==}
+  web-push@4.0.0:
+    resolution: {integrity: sha512-iKzGK/q3k+kjoPK+fkbs8ymYvEqu5RJNAypEskW+UAYsC44upqb0f+T8QSYW4naowl9bzjlHRe8CI0NFCBzZeQ==}
     engines: {node: '>= 16'}
     hasBin: true
 
@@ -17121,7 +17121,7 @@ snapshots:
       quick-lru: 5.1.1
       resolve-alpn: 1.2.1
 
-  http_ece@1.2.0: {}
+  http_ece@1.2.1: {}
 
   https-proxy-agent@5.0.1(supports-color@10.2.2):
     dependencies:
@@ -20040,14 +20040,14 @@ snapshots:
 
   web-namespaces@2.0.1: {}
 
-  web-push@3.6.7(patch_hash=4554572bbbd76721b65fb3004602f11f77b665c8e48f33a4e318a2c47b34a172)(supports-color@10.2.2):
+  web-push@4.0.0(patch_hash=0bbc6e5dc0abaf2c703642d580b2beab66a907606d16cc2d129705f96690a597)(supports-color@10.2.2):
     dependencies:
       asn1.js: 5.4.1
-      http_ece: 1.2.0
-      https-proxy-agent: 7.0.6(supports-color@10.2.2)
+      http_ece: 1.2.1
+      https-proxy-agent: 9.1.0(supports-color@10.2.2)
       jws: 4.0.1
-      minimist: 1.2.8
     transitivePeerDependencies:
+      - kerberos
       - supports-color
 
   web-vitals@6.2.1: {}

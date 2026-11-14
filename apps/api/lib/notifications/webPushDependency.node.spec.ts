@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import type { RequestOptions } from 'node:https';
 import { createRequire } from 'node:module';
 import test from 'node:test';
+import { sendNotification } from 'web-push';
 
 const require = createRequire(import.meta.url);
 
@@ -23,7 +24,6 @@ test('web-push uses the WHATWG URL API on the provider request path', () => {
 
 test('web-push removes IPv6 brackets from HTTPS request hostnames', async () => {
     const https = require('node:https');
-    const webPush = require('web-push');
     const originalRequest = https.request;
     let requestOptions: RequestOptions | undefined;
 
@@ -47,8 +47,9 @@ test('web-push removes IPv6 brackets from HTTPS request hostnames', async () => 
     };
 
     try {
-        await webPush.sendNotification({
+        await sendNotification({
             endpoint: 'https://[::1]:8443/push?topic=garden',
+            keys: { auth: '', p256dh: '' },
         });
     } finally {
         https.request = originalRequest;
