@@ -27,7 +27,7 @@
         "@azure/communication-common": "2.5.0",
         "@azure/communication-email": "1.1.0",
         "@azure/core-lro": "3.4.2",
-        "@azure/core-rest-pipeline": "1.25.0",
+        "@azure/core-rest-pipeline": "1.25.1",
         "@gredice/storage": "workspace:*",
         "react": "19.3.1",
         "react-email": "6.11.8"

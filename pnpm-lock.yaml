@@ -1358,8 +1358,8 @@ importers:
         specifier: 3.4.2
         version: 3.4.2(supports-color@10.2.2)
       '@azure/core-rest-pipeline':
-        specifier: 1.25.0
-        version: 1.25.0(supports-color@10.2.2)
+        specifier: 1.25.1
+        version: 1.25.1(supports-color@10.2.2)
       '@gredice/storage':
         specifier: workspace:*
         version: link:../storage
@@ -2140,8 +2140,8 @@ packages:
     resolution: {integrity: sha512-rygS9nSui5RQSCIYMMCLv7SqeOU9cVYOMD1g4MtoiS8Kw2I3Ij0YAV8qt2U8NiFiqUSEv8o6vGkhm2BQgQ9Qlw==}
     engines: {node: '>=22.0.0'}
 
-  '@azure/core-rest-pipeline@1.25.0':
-    resolution: {integrity: sha512-bMs8ekJLjX8wPV+9IPBges1SLPyuDtE9g5gLDWOpxzKcoOFQnpLGkbcT1tdw3FaAmDS1gnPmMmJ6y/T5B96kIA==}
+  '@azure/core-rest-pipeline@1.25.1':
+    resolution: {integrity: sha512-fTIA3CAm/cdODqiXkO6jYOIkU2Ylld7vq65KGc70gTwl12sLQsC8v7I5t6tp2N2CfUONzZBXyeFw7KEu6Ks2zg==}
     engines: {node: '>=22.0.0'}
 
   '@azure/core-tracing@1.4.0':
@@ -5913,6 +5913,10 @@ packages:
     resolution: {integrity: sha512-mbCddXd+jm7hfx7w2YU64/Av4/NqqeG3GoRZgxPcgoTxYjhrcfJRw9ULch71SS4G+Q3bOXFhRvPqjguN0Hyp5w==}
     hasBin: true
 
+  '@typespec/ts-http-runtime@0.3.10':
+    resolution: {integrity: sha512-vddvvtZ7sejSlCv+OIkn2ztjB1O31Fc2JsxI/YK725r3elXXlF/J3o3lbXJFRhoeWRWK1tjdZ+GTi6Fdtrp+EA==}
+    engines: {node: '>=22.0.0'}
+
   '@typespec/ts-http-runtime@0.3.9':
     resolution: {integrity: sha512-edSdeAqkdxBVzA1yL1LrLCml1YjyCVvPMtMqJpbF+6K609tHe8V6sQUzFQSGcYNhcuhOceZtjvN32+mpIth30A==}
     engines: {node: '>=22.0.0'}
@@ -6317,6 +6321,10 @@ packages:
   agent-base@7.1.4:
     resolution: {integrity: sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ==}
     engines: {node: '>= 14'}
+
+  agent-base@9.0.0:
+    resolution: {integrity: sha512-TQf59BsZnytt8GdJKLPfUZ54g/iaUL2OWDSFCCvMOhsHduDQxO8xC4PNeyIkVcA5KwL2phPSv0douC0fgWzmnA==}
+    engines: {node: '>= 20'}
 
   ai@7.0.142:
     resolution: {integrity: sha512-Tifni6/6nNhCu4GnFEeYYR7CGmJ3Yhm44SGxYrOupqP2aaZwmGGiiB5Zx4hiauJR0AWimcXULejDT+Qsj+SHOQ==}
@@ -7838,6 +7846,10 @@ packages:
     resolution: {integrity: sha512-T1gkAiYYDWYx3V5Bmyu7HcfcvL7mUrTWiM6yOfa3PIphViJ/gFPbvidQ+veqSOHci/PxBcDabeUNCzpOODJZig==}
     engines: {node: '>= 14'}
 
+  http-proxy-agent@9.1.0:
+    resolution: {integrity: sha512-2NxoveTT58mjYT4n3RPTEfCZGLMbidoO8XEieXfpSYxu+PQJ1qpx4ypwH6N+uF9twBPIvRRgvkvW5HUTYWENig==}
+    engines: {node: '>= 20'}
+
   http-proxy@1.18.1:
     resolution: {integrity: sha512-7mz/721AbnJwIVbnaSv1Cz3Am0ZLT/UBwkC92VlxhXv/k/BBQfM2fXElQNC27BVGr0uwUpplYPQM9LnaBMR5NQ==}
     engines: {node: '>=8.0.0'}
@@ -7857,6 +7869,10 @@ packages:
   https-proxy-agent@7.0.6:
     resolution: {integrity: sha512-vK9P5/iUfdl95AI+JVyUuIcVtd4ofvtrOr3HNtM2yxC9bnMbEdp3x01OhQNnjb8IJYi38VlTE3mBXwcfvywuSw==}
     engines: {node: '>= 14'}
+
+  https-proxy-agent@9.1.0:
+    resolution: {integrity: sha512-ag87y7cJJ9/3+GxFr8Oy4O5faDsGRGnBGsJj/YjOSsSx/5eadKLYTMPlzuR6obgoCDDm0abAAZitXXQkMOPSpA==}
+    engines: {node: '>= 20'}
 
   human-signals@2.1.0:
     resolution: {integrity: sha512-B4FFZ6q/T2jhhksgkbEW3HBvWIfDW85snkQgawt07S7J5QXTk6BkNV+0yAeZrM5QpMAdYlocGoljn0sJ/WQkFw==}
@@ -9198,6 +9214,15 @@ packages:
   proxy-addr@2.0.8:
     resolution: {integrity: sha512-5nnx0yGyVUcY6t9RnWcARWtwT9F1D8O9rt08htPvnd49W1IgZtmLkhu9WfMzQj1cFxjHIO6connUNVW5k7AVyQ==}
     engines: {node: '>= 0.10'}
+
+  proxy-agent-negotiate@1.1.0:
+    resolution: {integrity: sha512-N8IBcM3UgCVzz2L2Lqv8DVntDnnC8/hiV4nEDUPkqq72TPUgYWjQc+bdZlBPZK9LzPAvOY//gAt0S0DApoOXWQ==}
+    engines: {node: '>= 20'}
+    peerDependencies:
+      kerberos: ^2.0.0
+    peerDependenciesMeta:
+      kerberos:
+        optional: true
 
   proxy-from-env@2.1.0:
     resolution: {integrity: sha512-cJ+oHTW1VAEa8cJslgmUZrc+sjRKgAKl3Zyse6+PV38hZe/V6Z14TbCuXcan9F9ghlz4QrFr2c92TNF82UkYHA==}
@@ -10856,11 +10881,12 @@ snapshots:
     dependencies:
       '@azure/abort-controller': 2.2.0
       '@azure/core-auth': 1.11.0(supports-color@10.2.2)
-      '@azure/core-rest-pipeline': 1.25.0(supports-color@10.2.2)
+      '@azure/core-rest-pipeline': 1.25.1(supports-color@10.2.2)
       '@azure/core-tracing': 1.4.0
       '@typespec/ts-http-runtime': 0.3.9(supports-color@10.2.2)
       tslib: 2.8.1
     transitivePeerDependencies:
+      - kerberos
       - supports-color
 
   '@azure/abort-controller@2.2.0':
@@ -10872,7 +10898,7 @@ snapshots:
       '@azure-rest/core-client': 2.9.0(supports-color@10.2.2)
       '@azure/abort-controller': 2.2.0
       '@azure/core-auth': 1.11.0(supports-color@10.2.2)
-      '@azure/core-rest-pipeline': 1.25.0(supports-color@10.2.2)
+      '@azure/core-rest-pipeline': 1.25.1(supports-color@10.2.2)
       '@azure/core-tracing': 1.4.0
       '@azure/core-util': 1.14.0(supports-color@10.2.2)
       '@azure/logger': 1.4.0(supports-color@10.2.2)
@@ -10880,6 +10906,7 @@ snapshots:
       jwt-decode: 4.0.0
       tslib: 2.8.1
     transitivePeerDependencies:
+      - kerberos
       - supports-color
 
   '@azure/communication-email@1.1.0(supports-color@10.2.2)':
@@ -10889,11 +10916,12 @@ snapshots:
       '@azure/core-auth': 1.11.0(supports-color@10.2.2)
       '@azure/core-client': 1.11.1(supports-color@10.2.2)
       '@azure/core-lro': 2.7.2(supports-color@10.2.2)
-      '@azure/core-rest-pipeline': 1.25.0(supports-color@10.2.2)
+      '@azure/core-rest-pipeline': 1.25.1(supports-color@10.2.2)
       '@azure/core-util': 1.14.0(supports-color@10.2.2)
       '@azure/logger': 1.4.0(supports-color@10.2.2)
       tslib: 2.8.1
     transitivePeerDependencies:
+      - kerberos
       - supports-color
 
   '@azure/core-auth@1.11.0(supports-color@10.2.2)':
@@ -10908,12 +10936,13 @@ snapshots:
     dependencies:
       '@azure/abort-controller': 2.2.0
       '@azure/core-auth': 1.11.0(supports-color@10.2.2)
-      '@azure/core-rest-pipeline': 1.25.0(supports-color@10.2.2)
+      '@azure/core-rest-pipeline': 1.25.1(supports-color@10.2.2)
       '@azure/core-tracing': 1.4.0
       '@azure/core-util': 1.14.0(supports-color@10.2.2)
       '@azure/logger': 1.4.0(supports-color@10.2.2)
       tslib: 2.8.1
     transitivePeerDependencies:
+      - kerberos
       - supports-color
 
   '@azure/core-lro@2.7.2(supports-color@10.2.2)':
@@ -10934,16 +10963,17 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@azure/core-rest-pipeline@1.25.0(supports-color@10.2.2)':
+  '@azure/core-rest-pipeline@1.25.1(supports-color@10.2.2)':
     dependencies:
       '@azure/abort-controller': 2.2.0
       '@azure/core-auth': 1.11.0(supports-color@10.2.2)
       '@azure/core-tracing': 1.4.0
       '@azure/core-util': 1.14.0(supports-color@10.2.2)
       '@azure/logger': 1.4.0(supports-color@10.2.2)
-      '@typespec/ts-http-runtime': 0.3.9(supports-color@10.2.2)
+      '@typespec/ts-http-runtime': 0.3.10(supports-color@10.2.2)
       tslib: 2.8.1
     transitivePeerDependencies:
+      - kerberos
       - supports-color
 
   '@azure/core-tracing@1.4.0':
@@ -14960,6 +14990,15 @@ snapshots:
     dependencies:
       '@typescript/old': typescript@6.0.3
 
+  '@typespec/ts-http-runtime@0.3.10(supports-color@10.2.2)':
+    dependencies:
+      http-proxy-agent: 9.1.0(supports-color@10.2.2)
+      https-proxy-agent: 9.1.0(supports-color@10.2.2)
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - kerberos
+      - supports-color
+
   '@typespec/ts-http-runtime@0.3.9(supports-color@10.2.2)':
     dependencies:
       http-proxy-agent: 7.0.2(supports-color@10.2.2)
@@ -15382,6 +15421,8 @@ snapshots:
       - supports-color
 
   agent-base@7.1.4: {}
+
+  agent-base@9.0.0: {}
 
   ai@7.0.142(zod@4.6.7):
     dependencies:
@@ -17099,6 +17140,15 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  http-proxy-agent@9.1.0(supports-color@10.2.2):
+    dependencies:
+      agent-base: 9.0.0
+      debug: 4.4.3(supports-color@10.2.2)
+      proxy-agent-negotiate: 1.1.0
+    transitivePeerDependencies:
+      - kerberos
+      - supports-color
+
   http-proxy@1.18.1(debug@4.4.3(supports-color@10.2.2)):
     dependencies:
       eventemitter3: 4.0.7
@@ -17134,6 +17184,15 @@ snapshots:
       agent-base: 7.1.4
       debug: 4.4.3(supports-color@10.2.2)
     transitivePeerDependencies:
+      - supports-color
+
+  https-proxy-agent@9.1.0(supports-color@10.2.2):
+    dependencies:
+      agent-base: 9.0.0
+      debug: 4.4.3(supports-color@10.2.2)
+      proxy-agent-negotiate: 1.1.0
+    transitivePeerDependencies:
+      - kerberos
       - supports-color
 
   human-signals@2.1.0: {}
@@ -18659,6 +18718,8 @@ snapshots:
     dependencies:
       forwarded: 0.2.0
       ipaddr.js: 1.9.1
+
+  proxy-agent-negotiate@1.1.0: {}
 
   proxy-from-env@2.1.0: {}
 
