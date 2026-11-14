@@ -93,7 +93,7 @@
         "@types/react-dom": "19.3.0",
         "@types/xml2js": "0.4.14",
         "@vercel/analytics": "2.0.1",
-        "dotenv": "18.0.9",
+        "dotenv": "18.0.10",
         "motion": "14.10.1",
         "postcss": "8.5.32",
         "react-confetti-boom": "2.0.1",
