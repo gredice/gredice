@@ -1,5 +1,34 @@
 # Garden packs: versioned purchase and ownership contract
 
+## Storage migration 0094 and sales hold
+
+`0094_autumn_garden_packs.sql` is the ordered fresh installation of the six
+pack tables. Its generated schema snapshot changes only those tables; the same
+transaction installs the exact nine source-owned functions and 17 integrity
+triggers. Two-second lock and 15-second statement timeouts bound deployment
+contention. An existing partial pack installation fails closed and needs a
+separately reviewed reconciliation; the migration never drops existing tables
+or adopts unknown pack history.
+
+The normal API production build runs `pnpm --filter @gredice/storage migrate:deploy`.
+After migration and the existing Stripe readback, this now runs
+`garden-packs:migration-readback`. That command uses a repeatable-read read-only
+transaction to verify the exact migration journal hash/timestamp, all readiness
+probes, function bodies/signatures/security attributes, trigger events/deferral,
+and all eight generated indexes. Driver errors and connection details are omitted.
+It can also be run independently with the securely supplied storage environment:
+
+```sh
+pnpm --filter @gredice/storage garden-packs:migration-readback
+```
+
+Migration readiness does not enable sales. Keep `GREDICE_GARDEN_PACK_SALES_ENABLED`
+off and offers unconfigured/disabled until full release CI, combined/manual and
+physical-device QA, and authorized live commerce acceptance pass. The storage
+rollout flag and immutable purchased ownership remain separate from sale availability.
+See the [dated preparation packet](autumn-release-2026/2026-11-10-preparation/README.md)
+for the unpublished 24-item catalogue plan and remaining acceptance.
+
 ## Summary and actors
 
 A **collection / kolekcija** groups individually available decorations for browsing. A **pack / paket** is one account purchase granting exact finite quantities. A **layout / predložak** describes an arrangement and grants nothing. A purchased pack is separate from a garden box (six item-type stacks of ten); no box slot or appearance restriction applies to the pack entitlement.
