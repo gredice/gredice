@@ -1229,8 +1229,8 @@ importers:
         specifier: 18.0.10
         version: 18.0.10
       motion:
-        specifier: 14.11.0
-        version: 14.11.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        specifier: 14.11.1
+        version: 14.11.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       postcss:
         specifier: 8.5.32
         version: 8.5.32
@@ -1880,8 +1880,8 @@ importers:
         specifier: 1.70.0
         version: 1.70.0(@types/react@19.3.0)(react@19.3.1)
       motion:
-        specifier: 14.11.0
-        version: 14.11.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        specifier: 14.11.1
+        version: 14.11.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       next:
         specifier: 16.4.5
         version: 16.4.5(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.1)
@@ -7557,8 +7557,8 @@ packages:
     resolution: {integrity: sha512-buRG0fpBtRHSTCOASe6hD258tEubFoRLb4ZNA6NxMVHNw2gOcwHo9wyablzMzOA5z9xA9L1KNjk/Nt6MT9aYow==}
     engines: {node: '>= 0.6'}
 
-  framer-motion@14.11.0:
-    resolution: {integrity: sha512-7un7KRYsPdaaEdGHarck/Kt85yH/3cN31CNS0ozYmkmQbJWerz5xBISn0PYLUltbceCFs9Iw/WgBOLJye6H+lA==}
+  framer-motion@14.11.1:
+    resolution: {integrity: sha512-kXs+RHzja034QumwdXJubF0az86ueiWtANLB7FbhM+WKNGrgmYHysRRWG+we2KEpWv1+8W4eoMtsKaUldf54nA==}
     peerDependencies:
       react: 19.3.1
       react-dom: 19.3.1
@@ -8678,14 +8678,14 @@ packages:
   module-alias@2.3.4:
     resolution: {integrity: sha512-bOclZt8hkpuGgSSoG07PKmvzTizROilUTvLNyrMqvlC9snhs7y7GzjNWAVbISIOlhCP1T14rH1PDAV9iNyBq/w==}
 
-  motion-dom@14.11.0:
-    resolution: {integrity: sha512-souF5iHg+Z0dEzttEN93V4z5Vcz7bqvu+yo14MorhWW5eg8F7NyPa/+062D6b3CIZVJyFvVfzpUTJhk986PmeA==}
+  motion-dom@14.11.1:
+    resolution: {integrity: sha512-H/12gSe24nuV19IR7jHLObI+5Tm34UA/S5JaUye802l19VoVsT1USE+Suv+G/XO1U+YmXI9Nnbs4Krd4FthSSg==}
 
   motion-utils@14.7.0:
     resolution: {integrity: sha512-woO0/Nb7ys75f94fjvQi/6leiHGvZUYkeHUPEZ3vxsV+9OpEVhkxp01x8MlRwX0zt31EqgXsKDAoBoJLC148Tw==}
 
-  motion@14.11.0:
-    resolution: {integrity: sha512-HN01iNNiwcHKoAnyw2N4cWbNbpgXL2n8RRCM8LyNhPW1dUlFyxY9r1GofEBDZAmQJROpRjSvwPpvbzqOuJ1TFQ==}
+  motion@14.11.1:
+    resolution: {integrity: sha512-V0AQPpbTlkhXYQGiO6X55KsFHz+fdYlZJVERFEjJpBWZlCggWOcbCA7zd24iYs1q/Le191tAV3J29xBfS5+tWA==}
     peerDependencies:
       react: 19.3.1
       react-dom: 19.3.1
@@ -16712,9 +16712,9 @@ snapshots:
 
   forwarded@0.2.0: {}
 
-  framer-motion@14.11.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
+  framer-motion@14.11.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
     dependencies:
-      motion-dom: 14.11.0
+      motion-dom: 14.11.1
       motion-utils: 14.7.0
       tslib: 2.8.1
     optionalDependencies:
@@ -18167,15 +18167,15 @@ snapshots:
 
   module-alias@2.3.4: {}
 
-  motion-dom@14.11.0:
+  motion-dom@14.11.1:
     dependencies:
       motion-utils: 14.7.0
 
   motion-utils@14.7.0: {}
 
-  motion@14.11.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
+  motion@14.11.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
     dependencies:
-      framer-motion: 14.11.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      framer-motion: 14.11.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       tslib: 2.8.1
     optionalDependencies:
       react: 19.3.1
