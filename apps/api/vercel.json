@@ -1,82 +1,120 @@
 {
     "$schema": "https://openapi.vercel.sh/vercel.json",
     "installCommand": "pnpm install --frozen-lockfile",
-    "crons": [
-        {
+    "schedules": {
+        "stripe-reconciliation": {
             "path": "/api/stripe/cron",
-            "schedule": "0 * * * *"
+            "schedule": "0 * * * *",
+            "requestMethod": "GET",
+            "jitter": 1
         },
-        {
+        "notifications-digest": {
             "path": "/api/internal/cron/notifications-digest",
-            "schedule": "0 * * * *"
+            "schedule": "0 * * * *",
+            "requestMethod": "GET",
+            "jitter": 1
         },
-        {
+        "web-push": {
             "path": "/api/internal/cron/web-push",
-            "schedule": "0 * * * *"
+            "schedule": "0 * * * *",
+            "requestMethod": "GET",
+            "jitter": 1
         },
-        {
+        "auto-close-slots": {
             "path": "/api/internal/cron/auto-close-slots",
-            "schedule": "0 * * * *"
+            "schedule": "0 * * * *",
+            "requestMethod": "GET",
+            "jitter": 1
         },
-        {
+        "delivery-survey": {
             "path": "/api/internal/cron/delivery-survey",
-            "schedule": "0 * 1,2 * *"
+            "schedule": "0 * 1,2 * *",
+            "requestMethod": "GET",
+            "jitter": 1
         },
-        {
+        "delivery-ready-emails": {
             "path": "/api/internal/cron/delivery-ready-emails",
-            "schedule": "0 * * * *"
+            "schedule": "0 * * * *",
+            "requestMethod": "GET",
+            "jitter": 1
         },
-        {
+        "delivery-notification-health": {
             "path": "/api/internal/cron/delivery-notification-health",
-            "schedule": "0 * * * *"
+            "schedule": "0 * * * *",
+            "requestMethod": "GET",
+            "jitter": 1
         },
-        {
+        "delivery-tracking-retention": {
             "path": "/api/internal/cron/delivery-tracking-retention",
-            "schedule": "0 * * * *"
+            "schedule": "0 * * * *",
+            "requestMethod": "GET",
+            "jitter": 1
         },
-        {
+        "update-farm-weather": {
             "path": "/api/internal/cron/update-farm-weather",
-            "schedule": "0 * * * *"
+            "schedule": "0 * * * *",
+            "requestMethod": "GET",
+            "jitter": 1
         },
-        {
+        "achievements": {
             "path": "/api/internal/cron/achievements",
-            "schedule": "0 * * * *"
+            "schedule": "0 * * * *",
+            "requestMethod": "GET",
+            "jitter": 1
         },
-        {
+        "work-dispatch": {
             "path": "/api/internal/cron/work-dispatch",
-            "schedule": "* * * * *"
+            "schedule": "* * * * *",
+            "requestMethod": "GET",
+            "jitter": 1
         },
-        {
+        "garden-preview-blobs": {
             "path": "/api/internal/cron/garden-preview-blobs",
-            "schedule": "23 3 * * *"
+            "schedule": "23 3 * * *",
+            "requestMethod": "GET",
+            "jitter": 1
         },
-        {
+        "garden-preview-blob-deletions": {
             "path": "/api/internal/cron/garden-preview-blob-deletions",
-            "schedule": "0 3 * * *"
+            "schedule": "0 3 * * *",
+            "requestMethod": "GET",
+            "jitter": 1
         },
-        {
+        "wallpaper-blobs": {
             "path": "/api/internal/cron/wallpaper-blobs",
-            "schedule": "17 * * * *"
+            "schedule": "17 * * * *",
+            "requestMethod": "GET",
+            "jitter": 1
         },
-        {
+        "outlet-lifecycle": {
             "path": "/api/internal/cron/outlet-lifecycle",
-            "schedule": "0 * * * *"
+            "schedule": "0 * * * *",
+            "requestMethod": "GET",
+            "jitter": 1
         },
-        {
+        "stripe-checkout-orphan-recovery": {
             "path": "/api/internal/cron/stripe-checkout-orphan-recovery",
-            "schedule": "*/5 * * * *"
+            "schedule": "*/5 * * * *",
+            "requestMethod": "GET",
+            "jitter": 1
         },
-        {
+        "social-publishing": {
             "path": "/api/internal/cron/social-publishing",
-            "schedule": "0 * * * *"
+            "schedule": "0 * * * *",
+            "requestMethod": "GET",
+            "jitter": 1
         },
-        {
+        "temp-accounts": {
             "path": "/api/internal/cron/temp-accounts",
-            "schedule": "0 * * * *"
+            "schedule": "0 * * * *",
+            "requestMethod": "GET",
+            "jitter": 1
         },
-        {
+        "publish-price-list": {
             "path": "/api/internal/cron/publish-price-list",
-            "schedule": "0 5 * * *"
+            "schedule": "0 5 * * *",
+            "requestMethod": "GET",
+            "jitter": 1
         }
-    ]
+    }
 }
