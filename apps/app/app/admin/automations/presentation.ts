@@ -106,12 +106,21 @@ const automationModulePresentations: Record<
             daysOfWeek: {
                 label: 'Dani u tjednu',
                 description:
-                    'JSON niz za više dana, npr. ["tuesday", "friday"].',
+                    'Za tjedne i dvotjedne rasporede s više dana, npr. utorak i petak.',
+                options: {
+                    monday: 'Ponedjeljak',
+                    tuesday: 'Utorak',
+                    wednesday: 'Srijeda',
+                    thursday: 'Četvrtak',
+                    friday: 'Petak',
+                    saturday: 'Subota',
+                    sunday: 'Nedjelja',
+                },
             },
             anchorDate: {
                 label: 'Referentni datum',
                 description:
-                    'Obavezno za dvotjedni raspored. Format: YYYY-MM-DD.',
+                    'Obavezno za dvotjedni raspored. Tjedni se broje od ovog datuma.',
             },
             dayOfMonth: {
                 label: 'Dan u mjesecu',

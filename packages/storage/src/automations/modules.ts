@@ -1400,15 +1400,25 @@ function scheduleConfigFields() {
         {
             key: 'daysOfWeek',
             label: 'Days of week',
-            type: 'json',
+            type: 'multiselect',
             required: false,
+            options: weekDayValues.map((day) => ({
+                value: day,
+                label: weekDayLabel(day),
+                aliases: [...weekDayAliases]
+                    .filter(
+                        ([alias, aliasDay]) =>
+                            aliasDay === day && alias !== day,
+                    )
+                    .map(([alias]) => alias),
+            })),
             description:
-                'Optional JSON array for weekly or biweekly schedules, for example ["tuesday", "friday"].',
+                'Optional weekdays for weekly or biweekly schedules, for example Tuesday and Friday.',
         },
         {
             key: 'anchorDate',
             label: 'Biweekly anchor date',
-            type: 'string',
+            type: 'date',
             required: false,
             placeholder: defaultBiweeklyAnchorDate,
             description:
@@ -1425,7 +1435,7 @@ function scheduleConfigFields() {
         {
             key: 'timeZone',
             label: 'Time zone',
-            type: 'string',
+            type: 'timeZone',
             required: false,
             placeholder: defaultScheduleTimeZone,
         },
@@ -1514,7 +1524,7 @@ const triggerScheduleMonthlyModule: AutomationModule = {
         {
             key: 'timeZone',
             label: 'Time zone',
-            type: 'string',
+            type: 'timeZone',
             required: false,
             placeholder: defaultScheduleTimeZone,
         },
