@@ -41,7 +41,7 @@
         "@standard-community/standard-openapi": "0.2.11",
         "@upstash/redis": "1.41.0",
         "@valibot/to-json-schema": "1.8.0",
-        "@vercel/blob": "2.8.2",
+        "@vercel/blob": "2.9.0",
         "@vercel/functions": "3.11.1",
         "@vercel/sandbox": "3.9.1",
         "ai": "7.0.166",
