@@ -9,13 +9,19 @@ import type {
 export type AutomationConfigFieldOption = {
     value: string;
     label: string;
+    /** Other stored values the module accepts for this option, matched case-insensitively. */
+    aliases?: string[];
 };
 
 export type AutomationConfigField = {
     key: string;
     label: string;
     description?: string;
-    type: 'string' | 'number' | 'boolean' | 'select' | 'json';
+    /**
+     * Drives the admin editor control. `multiselect` stores an array of
+     * option values.
+     */
+    type: 'string' | 'number' | 'boolean' | 'select' | 'multiselect' | 'json';
     required?: boolean;
     options?: AutomationConfigFieldOption[];
     placeholder?: string;

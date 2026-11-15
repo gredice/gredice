@@ -1400,10 +1400,20 @@ function scheduleConfigFields() {
         {
             key: 'daysOfWeek',
             label: 'Days of week',
-            type: 'json',
+            type: 'multiselect',
             required: false,
+            options: weekDayValues.map((day) => ({
+                value: day,
+                label: weekDayLabel(day),
+                aliases: [...weekDayAliases]
+                    .filter(
+                        ([alias, aliasDay]) =>
+                            aliasDay === day && alias !== day,
+                    )
+                    .map(([alias]) => alias),
+            })),
             description:
-                'Optional JSON array for weekly or biweekly schedules, for example ["tuesday", "friday"].',
+                'Optional weekdays for weekly or biweekly schedules, for example Tuesday and Friday.',
         },
         {
             key: 'anchorDate',

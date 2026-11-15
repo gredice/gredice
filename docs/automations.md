@@ -277,6 +277,13 @@ Admins manage automations in `apps/app` at `/admin/automations`.
   left of "Detalji", because test runs cover the whole workflow.
 - The graph follows the app color theme (React Flow `colorMode` plus its
   `--xy-*` CSS variables) and the initial fit never zooms past 100%.
+- Module config fields render by their metadata `type` in
+  `AutomationConfigFieldInput.tsx`. JSON fields keep a local draft while
+  typing and only parse and apply it on blur, the `Primijeni` button, or
+  Ctrl/Cmd+Enter; invalid drafts show an error and can be reverted without
+  touching the saved graph. `multiselect` fields render one checkbox per option
+  and store an array of option values; option `aliases` let older stored
+  values (for example `tue` or `2` for weekdays) still match.
 - Manual test runs can use a recent matching event or synthetic event context.
   Dry-run is enabled by default. The admin app only enqueues these runs; the API
   automation runner executes them with the same queue path as event and schedule
