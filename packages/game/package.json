@@ -81,7 +81,7 @@
     "peerDependencies": {
         "next": "15.x || 16.x",
         "next-themes": "0.4.x",
-        "nuqs": "2.10.2",
+        "nuqs": "2.10.3",
         "react": "19.3.1",
         "react-dom": "19.3.1",
         "tailwindcss": ">=4",
@@ -91,6 +91,6 @@
         "@ai-sdk/react": "4.0.170",
         "@vvo/tzdb": "6.204.0",
         "ai": "7.0.166",
-        "nuqs": "2.10.2"
+        "nuqs": "2.10.3"
     }
 }
