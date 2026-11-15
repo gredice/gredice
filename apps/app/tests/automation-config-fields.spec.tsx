@@ -38,6 +38,37 @@ test('keeps a JSON draft while typing and applies it explicitly', async ({
     await expect(config).toContainText('"operations":[]');
 });
 
+test('keeps an invalid JSON draft and its error when the panel reopens', async ({
+    mount,
+}) => {
+    const component = await mount(
+        <AutomationConfigFieldHarness
+            initialConfig={{ operations: [{ entityId: 1 }] }}
+        />,
+    );
+    const config = component.getByTestId('config');
+    const draft = '[\n  { "entityId": 2 },';
+
+    await component.getByLabel('Operations').fill(draft);
+    await component.getByRole('button', { name: 'Zatvori panel' }).click();
+    await expect(component.getByLabel('Operations')).toHaveCount(0);
+    await expect(config).toContainText('"entityId":1');
+
+    await component.getByRole('button', { name: 'Otvori panel' }).click();
+    await expect(component.getByLabel('Operations')).toHaveValue(draft);
+    await expect(component.getByRole('alert')).toContainText(
+        'JSON nije valjan',
+    );
+
+    await component.getByRole('button', { name: 'Vrati spremljeno' }).click();
+    await component.getByRole('button', { name: 'Zatvori panel' }).click();
+    await component.getByRole('button', { name: 'Otvori panel' }).click();
+    await expect(component.getByLabel('Operations')).toHaveValue(
+        '[\n  {\n    "entityId": 1\n  }\n]',
+    );
+    await expect(component.getByRole('alert')).toHaveCount(0);
+});
+
 test('edits multiselect values with checkboxes and keeps aliases', async ({
     mount,
 }) => {

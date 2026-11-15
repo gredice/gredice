@@ -1,3 +1,25 @@
+import type { AutomationModuleMetadata } from '@gredice/storage';
+
+export type AutomationConfigField =
+    AutomationModuleMetadata['configFields'][number];
+
+export type AutomationConfigFieldProps = {
+    module: AutomationModuleMetadata;
+    field: AutomationConfigField;
+    value: unknown;
+    onChange(value: unknown): void;
+};
+
+/** Unapplied JSON text for one node field, kept outside the saved graph. */
+export type JsonConfigDraft = {
+    text: string;
+    error: string | null;
+};
+
+export function jsonConfigDraftKey(nodeId: string, fieldKey: string) {
+    return `${nodeId}:${fieldKey}`;
+}
+
 export type AutomationConfigFieldOptionValue = {
     value: string;
     aliases?: string[];
@@ -35,6 +57,28 @@ export function parseJsonField(value: string): JsonFieldParseResult {
                     : 'JSON nije valjan.',
         };
     }
+}
+
+export type JsonDraftResolution =
+    | { status: 'unchanged' }
+    | { status: 'applied'; value: unknown }
+    | { status: 'invalid'; draft: JsonConfigDraft };
+
+/** Decides what applying a JSON draft does against the applied config text. */
+export function resolveJsonDraft(
+    text: string,
+    appliedText: string,
+): JsonDraftResolution {
+    if (text === appliedText) {
+        return { status: 'unchanged' };
+    }
+
+    const parsed = parseJsonField(text);
+    if (!parsed.ok) {
+        return { status: 'invalid', draft: { text, error: parsed.error } };
+    }
+
+    return { status: 'applied', value: parsed.value };
 }
 
 function optionMatches(
@@ -123,4 +167,12 @@ export function timeZoneFieldOptions(
     }
 
     return [...timeZones].sort((left, right) => left.localeCompare(right));
+}
+
+export function supportedTimeZones(): readonly string[] {
+    try {
+        return Intl.supportedValuesOf('timeZone');
+    } catch {
+        return [];
+    }
 }

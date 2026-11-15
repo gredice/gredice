@@ -281,7 +281,10 @@ Admins manage automations in `apps/app` at `/admin/automations`.
   `AutomationConfigFieldInput.tsx`. JSON fields keep a local draft while
   typing and only parse and apply it on blur, the `Primijeni` button, or
   Ctrl/Cmd+Enter; invalid drafts show an error and can be reverted without
-  touching the saved graph. `multiselect` fields render one checkbox per option
+  touching the saved graph. Drafts and their errors live in editor state per
+  node and field (`useAutomationJsonConfigDrafts`), outside the autosaved
+  graph, so they survive closing the panel or selecting another node and are
+  cleared once applied or reverted. `multiselect` fields render one checkbox per option
   and store an array of option values; option `aliases` let older stored
   values (for example `tue` or `2` for weekdays) still match.
 - `date` fields use the shared calendar date picker and store `YYYY-MM-DD`;

@@ -76,6 +76,7 @@ import {
     saveAutomationDefinitionAction,
     updateAutomationStatusAction,
 } from './actions';
+import { jsonConfigDraftKey } from './automationConfigFieldValues';
 import {
     automationModuleDescription,
     automationModuleInputDescription,
@@ -85,6 +86,7 @@ import {
     automationModuleTitle,
     automationStatusMeta,
 } from './presentation';
+import { useAutomationJsonConfigDrafts } from './useAutomationJsonConfigDrafts';
 
 type FlowNodeData = Record<string, unknown> & {
     moduleKey: string;
@@ -493,6 +495,8 @@ export function AutomationFlowEditor({
         graphToEdges(initialGraph),
     );
     const [result, setResult] = useState<AutomationSaveResult | null>(null);
+    const { drafts: jsonConfigDrafts, setDraft: setJsonConfigDraft } =
+        useAutomationJsonConfigDrafts();
     const [autosaveStatus, setAutosaveStatus] =
         useState<AutosaveStatus>('saved');
     const [lastSavedSnapshot, setLastSavedSnapshot] = useState<string | null>(
@@ -1026,17 +1030,28 @@ export function AutomationFlowEditor({
                     </Typography>
                 ) : null}
 
-                {selectedModule.configFields.map((field) => (
-                    <AutomationConfigFieldInput
-                        key={`${selectedNode.id}:${field.key}`}
-                        module={selectedModule}
-                        field={field}
-                        value={selectedNode.data.config[field.key]}
-                        onChange={(nextValue) =>
-                            updateSelectedConfig(field.key, nextValue)
-                        }
-                    />
-                ))}
+                {selectedModule.configFields.map((field) => {
+                    const draftKey = jsonConfigDraftKey(
+                        selectedNode.id,
+                        field.key,
+                    );
+
+                    return (
+                        <AutomationConfigFieldInput
+                            key={draftKey}
+                            module={selectedModule}
+                            field={field}
+                            value={selectedNode.data.config[field.key]}
+                            onChange={(nextValue) =>
+                                updateSelectedConfig(field.key, nextValue)
+                            }
+                            jsonDraft={jsonConfigDrafts[draftKey]}
+                            onJsonDraftChange={(draft) =>
+                                setJsonConfigDraft(draftKey, draft)
+                            }
+                        />
+                    );
+                })}
 
                 {automationModuleInputDescription(selectedModule) ? (
                     <Typography level="body3" className="text-muted-foreground">

@@ -5,6 +5,7 @@ import {
     multiselectFieldValue,
     optionalStringFieldValue,
     parseJsonField,
+    resolveJsonDraft,
     stringFieldValue,
     timeZoneFieldOptions,
     toggleMultiselectFieldValue,
@@ -31,6 +32,35 @@ describe('automation config JSON field', () => {
         const result = parseJsonField('[\n  "tuesday",');
         assert.equal(result.ok, false);
         assert.match(result.ok ? '' : result.error, /^JSON nije valjan/);
+    });
+});
+
+describe('automation config JSON draft', () => {
+    it('applies changed valid drafts and ignores unchanged ones', () => {
+        assert.deepEqual(resolveJsonDraft('[]', '[]'), { status: 'unchanged' });
+        assert.deepEqual(resolveJsonDraft('[1]', '[]'), {
+            status: 'applied',
+            value: [1],
+        });
+        assert.deepEqual(resolveJsonDraft('', '[]'), {
+            status: 'applied',
+            value: undefined,
+        });
+    });
+
+    it('keeps invalid drafts with their error', () => {
+        const resolution = resolveJsonDraft('[1,', '[]');
+        assert.equal(resolution.status, 'invalid');
+        assert.equal(
+            resolution.status === 'invalid' ? resolution.draft.text : '',
+            '[1,',
+        );
+        assert.match(
+            resolution.status === 'invalid'
+                ? (resolution.draft.error ?? '')
+                : '',
+            /^JSON nije valjan/,
+        );
     });
 });
 
