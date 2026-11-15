@@ -4,8 +4,11 @@ import {
     formatDashboardShortWeekday,
 } from './dashboardFormat';
 
-/** Keep compact charts readable: daily up to a week, then at most seven equal calendar intervals. */
+/** Keep compact charts readable: daily up to a week, then at most seven contiguous calendar intervals; the final interval can be shorter. */
 export function createDashboardDateBuckets(dateKeys: string[]) {
+    const includeYear = dateKeys.some(
+        (date) => date.slice(0, 4) !== dateKeys[0]?.slice(0, 4),
+    );
     const size = Math.max(1, Math.ceil(dateKeys.length / 7));
     const buckets = [];
     for (let index = 0; index < dateKeys.length; index += size) {
@@ -22,8 +25,8 @@ export function createDashboardDateBuckets(dateKeys: string[]) {
                     : formatDashboardDayMonth(first),
             description:
                 first === last
-                    ? formatDashboardLongDay(first)
-                    : `${formatDashboardLongDay(first)} – ${formatDashboardLongDay(last)}`,
+                    ? formatDashboardLongDay(first, includeYear)
+                    : `${formatDashboardLongDay(first, includeYear)} – ${formatDashboardLongDay(last, includeYear)}`,
         });
     }
     return buckets;

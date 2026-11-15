@@ -82,3 +82,4 @@ compatibility, and dependency-audit decisions.
   for longer periods. The expandable chart tables expose each bucket's exact dates.
 - The dashboard period picker and custom date inputs sit above all dashboard
   sections and quick actions, in the page-level period control group.
+- Dashboard bucket descriptions include years throughout ranges spanning New Year.

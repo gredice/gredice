@@ -71,3 +71,24 @@ test('empty and missing daily data sum to zero', () => {
         0,
     );
 });
+
+test('cross-year ranges include years in every bucket description', () => {
+    // A 49-day range yields seven-day buckets, including one spanning New Year.
+    const range = createAnalyticsDateRange(
+        undefined,
+        '2026-12-01',
+        '2027-01-18',
+    );
+    const buckets = createDashboardDateBuckets(range.dateKeys);
+    assert.equal(
+        buckets[4]?.description,
+        'utorak, 29. 12. 2026. – ponedjeljak, 04. 01. 2027.',
+    );
+    assert.match(buckets[0]?.description ?? '', /2026/);
+    assert.match(buckets.at(-1)?.description ?? '', /2027/);
+    const daily = createDashboardDateBuckets(['2026-12-31', '2027-01-01']);
+    assert.match(daily[0]?.description ?? '', /2026/);
+    assert.match(daily[1]?.description ?? '', /2027/);
+    const sameYear = createDashboardDateBuckets(['2026-12-30', '2026-12-31']);
+    assert.ok(sameYear.every((bucket) => !bucket.description.includes('2026')));
+});
