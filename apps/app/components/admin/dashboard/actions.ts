@@ -18,6 +18,7 @@ import {
 } from '@gredice/storage';
 import { cache } from 'react';
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
+import { auth } from '../../../lib/auth/auth';
 import { sumAiAnalysisCostEur } from '../../../src/ai/aiAnalyticsCost';
 import {
     analyticsDateKey,
@@ -468,6 +469,8 @@ export async function getAnalyticsData(
     from?: string,
     to?: string,
 ) {
+    await auth(['admin']);
+
     return redisCached(
         analyticsCacheKey(days, from, to),
         () => getAnalyticsDataUncached(days, from, to),

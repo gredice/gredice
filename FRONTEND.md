@@ -83,3 +83,4 @@ compatibility, and dependency-audit decisions.
 - The dashboard period picker and custom date inputs sit above all dashboard
   sections and quick actions, in the page-level period control group.
 - Dashboard bucket descriptions include years throughout ranges spanning New Year.
+- The exported dashboard analytics action requires admin access before cache lookup.
