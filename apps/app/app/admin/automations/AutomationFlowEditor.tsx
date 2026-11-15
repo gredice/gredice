@@ -42,6 +42,7 @@ import { cx } from '@gredice/ui/utils';
 import {
     addEdge,
     Background,
+    type ColorMode,
     Controls,
     type Edge,
     Handle,
@@ -56,6 +57,7 @@ import {
     useEdgesState,
     useNodesState,
 } from '@xyflow/react';
+import { useTheme } from 'next-themes';
 import { useRouter } from 'next/navigation';
 import type { ComponentType, ReactNode, SVGProps } from 'react';
 import {
@@ -480,6 +482,11 @@ export function AutomationFlowEditor({
     testPanel,
 }: AutomationFlowEditorProps) {
     const router = useRouter();
+    const { resolvedTheme } = useTheme();
+    const flowColorMode: ColorMode =
+        resolvedTheme === 'dark' || resolvedTheme === 'light'
+            ? resolvedTheme
+            : 'system';
     const [currentAutomationId, setCurrentAutomationId] =
         useState(automationId);
     const [definitionKey, setDefinitionKey] = useState(initialKey);
@@ -1291,7 +1298,12 @@ export function AutomationFlowEditor({
                     <div className="h-[calc(100vh-260px)] min-h-[560px]">
                         <ReactFlowProvider>
                             <ReactFlow
-                                className="bg-slate-50 text-foreground dark:bg-neutral-950 [&_.react-flow__attribution]:bg-card/80 [&_.react-flow__attribution]:text-muted-foreground [&_.react-flow__controls]:overflow-hidden [&_.react-flow__controls]:rounded-md [&_.react-flow__controls]:border [&_.react-flow__controls]:border-border [&_.react-flow__controls]:bg-card [&_.react-flow__controls]:shadow-lg [&_.react-flow__controls-button]:border-border [&_.react-flow__controls-button]:bg-card [&_.react-flow__controls-button]:text-foreground [&_.react-flow__controls-button:hover]:bg-muted [&_.react-flow__controls-button_svg]:fill-foreground [&_.react-flow__edge-path]:stroke-muted-foreground [&_.react-flow__pane]:cursor-grab [&_.react-flow__pane.dragging]:cursor-grabbing"
+                                className={cx(
+                                    'bg-slate-50 text-foreground dark:bg-neutral-950 [&_.react-flow__controls]:overflow-hidden [&_.react-flow__controls]:rounded-md [&_.react-flow__controls]:border [&_.react-flow__controls]:border-border [&_.react-flow__controls]:shadow-lg [&_.react-flow__edge-path]:stroke-muted-foreground [&_.react-flow__pane]:cursor-grab [&_.react-flow__pane.dragging]:cursor-grabbing',
+                                    // React Flow's stylesheet is unlayered, so theme its controls and attribution through its CSS variables.
+                                    '[--xy-attribution-background-color:hsl(var(--card)/0.8)] [--xy-background-color:transparent] [--xy-controls-box-shadow:none] [--xy-controls-button-background-color-hover:hsl(var(--muted))] [--xy-controls-button-background-color:hsl(var(--card))] [--xy-controls-button-border-color:hsl(var(--border))] [--xy-controls-button-color-hover:hsl(var(--foreground))] [--xy-controls-button-color:hsl(var(--foreground))] [&_.react-flow__attribution_a]:text-muted-foreground!',
+                                )}
+                                colorMode={flowColorMode}
                                 defaultEdgeOptions={automationEdgeOptions}
                                 nodes={nodes}
                                 edges={edges}
