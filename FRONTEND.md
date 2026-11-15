@@ -80,3 +80,5 @@ compatibility, and dependency-audit decisions.
   Registrations, operation durations and sunflowers share that range; charts show
   daily columns for up to seven days and at most seven contiguous date buckets
   for longer periods. The expandable chart tables expose each bucket's exact dates.
+- The dashboard period picker and custom date inputs sit above all dashboard
+  sections and quick actions, in the page-level period control group.
