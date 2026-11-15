@@ -171,8 +171,8 @@ export function AutomationRunsTable({
 
     return (
         <>
-            <div className="min-w-0 overflow-hidden rounded-md border bg-background">
-                <div className="flex flex-col gap-3 border-b px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="@container flex min-h-0 min-w-0 flex-col overflow-hidden rounded-md border bg-background">
+                <div className="flex shrink-0 flex-col gap-3 border-b px-4 py-3 @xs:flex-row @xs:items-center @xs:justify-between">
                     <Typography level="h5" component="h2">
                         Izvršavanja
                     </Typography>
@@ -185,7 +185,7 @@ export function AutomationRunsTable({
                         </NoDataPlaceholder>
                     </div>
                 ) : (
-                    <ul className="divide-y">
+                    <ul className="min-h-0 divide-y overflow-y-auto">
                         {runs.map(({ run, steps }) => {
                             const timing = automationRunDurationTiming(
                                 run,
@@ -204,7 +204,7 @@ export function AutomationRunsTable({
                                         )}
                                         onClick={() => setSelectedRunId(run.id)}
                                     >
-                                        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                        <div className="flex min-w-0 flex-col gap-2 @sm:flex-row @sm:items-start @sm:justify-between">
                                             <Stack
                                                 spacing={1}
                                                 className="min-w-0"
@@ -241,7 +241,7 @@ export function AutomationRunsTable({
                                             </Stack>
                                             <Stack
                                                 spacing={1}
-                                                className="text-muted-foreground sm:items-end"
+                                                className="text-muted-foreground @sm:items-end"
                                             >
                                                 <Typography level="body3">
                                                     Kreirano{' '}
@@ -259,7 +259,7 @@ export function AutomationRunsTable({
                                             </Stack>
                                         </div>
 
-                                        <dl className="grid gap-3 text-sm sm:grid-cols-3">
+                                        <dl className="grid gap-3 text-sm @md:grid-cols-3">
                                             <ListDetailItem label="Tip eventa">
                                                 {run.sourceEventType ?? '-'}
                                             </ListDetailItem>
