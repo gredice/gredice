@@ -22,7 +22,6 @@ import {
     Calendar,
     Channel,
     CircleEqual,
-    Configuration,
     Droplets,
     Filter,
     Hammer,
@@ -1254,22 +1253,6 @@ export function AutomationFlowEditor({
                                     Detalji
                                 </Button>
                             ) : null}
-                            <Button
-                                type="button"
-                                size="sm"
-                                variant={
-                                    activePanel === 'settings'
-                                        ? 'soft'
-                                        : 'outlined'
-                                }
-                                aria-pressed={activePanel === 'settings'}
-                                onClick={() => openPanel('settings')}
-                                startDecorator={
-                                    <Configuration className="size-4" />
-                                }
-                            >
-                                Postavke
-                            </Button>
                             {testPanel ? (
                                 <Button
                                     type="button"

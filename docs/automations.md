@@ -268,6 +268,8 @@ Admins manage automations in `apps/app` at `/admin/automations`.
   per-step input/output/error snapshots.
 - The editor uses `@xyflow/react` and stores layout in the definition graph.
 - The right panel is the module store and selected-node configuration surface.
+- Clicking a graph block opens its configuration in the right panel; the graph
+  toolbar has no separate settings button.
 - Manual test runs can use a recent matching event or synthetic event context.
   Dry-run is enabled by default. The admin app only enqueues these runs; the API
   automation runner executes them with the same queue path as event and schedule
