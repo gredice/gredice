@@ -98,3 +98,29 @@ export function toggleMultiselectFieldValue({
 
     return nextSelected.length > 0 ? nextSelected : undefined;
 }
+
+export function stringFieldValue(value: unknown) {
+    return typeof value === 'string' ? value : '';
+}
+
+/** Empty inputs clear optional config values instead of storing `''`. */
+export function optionalStringFieldValue(value: string) {
+    return value.trim() ? value : undefined;
+}
+
+/**
+ * IANA time zones offered by the runtime, with `UTC` and the stored value
+ * kept selectable even when the runtime list omits them.
+ */
+export function timeZoneFieldOptions(
+    currentValue: string,
+    supportedTimeZones: readonly string[],
+) {
+    const timeZones = new Set(supportedTimeZones);
+    timeZones.add('UTC');
+    if (currentValue) {
+        timeZones.add(currentValue);
+    }
+
+    return [...timeZones].sort((left, right) => left.localeCompare(right));
+}

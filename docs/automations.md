@@ -284,6 +284,11 @@ Admins manage automations in `apps/app` at `/admin/automations`.
   touching the saved graph. `multiselect` fields render one checkbox per option
   and store an array of option values; option `aliases` let older stored
   values (for example `tue` or `2` for weekdays) still match.
+- `date` fields use the shared calendar date picker and store `YYYY-MM-DD`;
+  `time` and `datetime` fields use native time and local date-time inputs; and
+  `timeZone` fields use a searchable IANA time zone select whose empty option
+  keeps the module default. Optional date/time values are removed from the
+  config when cleared.
 - Manual test runs can use a recent matching event or synthetic event context.
   Dry-run is enabled by default. The admin app only enqueues these runs; the API
   automation runner executes them with the same queue path as event and schedule

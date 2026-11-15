@@ -3,7 +3,10 @@ import { describe, it } from 'node:test';
 import {
     jsonFieldValue,
     multiselectFieldValue,
+    optionalStringFieldValue,
     parseJsonField,
+    stringFieldValue,
+    timeZoneFieldOptions,
     toggleMultiselectFieldValue,
 } from './automationConfigFieldValues.ts';
 
@@ -77,5 +80,22 @@ describe('automation config multiselect field', () => {
             }),
             undefined,
         );
+    });
+});
+
+describe('automation config date and time fields', () => {
+    it('reads only string values and clears empty inputs', () => {
+        assert.equal(stringFieldValue('2026-01-05'), '2026-01-05');
+        assert.equal(stringFieldValue(5), '');
+        assert.equal(optionalStringFieldValue('08:30'), '08:30');
+        assert.equal(optionalStringFieldValue(''), undefined);
+    });
+
+    it('offers sorted time zones including UTC and the stored value', () => {
+        assert.deepEqual(
+            timeZoneFieldOptions('Etc/GMT-1', ['Europe/Zagreb', 'Asia/Tokyo']),
+            ['Asia/Tokyo', 'Etc/GMT-1', 'Europe/Zagreb', 'UTC'],
+        );
+        assert.deepEqual(timeZoneFieldOptions('', ['UTC']), ['UTC']);
     });
 });

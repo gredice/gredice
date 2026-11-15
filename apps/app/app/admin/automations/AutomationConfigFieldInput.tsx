@@ -2,6 +2,7 @@
 
 import type { AutomationModuleMetadata } from '@gredice/storage';
 import { Button } from '@gredice/ui/Button';
+import { CalendarDatePicker } from '@gredice/ui/CalendarDatePicker';
 import { Checkbox } from '@gredice/ui/Checkbox';
 import { Input } from '@gredice/ui/Input';
 import { Row } from '@gredice/ui/Row';
@@ -9,11 +10,14 @@ import { SelectItems } from '@gredice/ui/SelectItems';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
-import { type KeyboardEvent, useId, useState } from 'react';
+import { type KeyboardEvent, useId, useMemo, useState } from 'react';
 import {
     jsonFieldValue,
     multiselectFieldValue,
+    optionalStringFieldValue,
     parseJsonField,
+    stringFieldValue,
+    timeZoneFieldOptions,
     toggleMultiselectFieldValue,
 } from './automationConfigFieldValues';
 import {
@@ -247,6 +251,92 @@ function MultiselectConfigField({
     );
 }
 
+function supportedTimeZones() {
+    try {
+        return Intl.supportedValuesOf('timeZone');
+    } catch {
+        return [];
+    }
+}
+
+function DateConfigField({
+    field,
+    module,
+    onChange,
+    value,
+}: AutomationConfigFieldInputProps) {
+    const date = stringFieldValue(value);
+
+    return (
+        <CalendarDatePicker
+            label={automationConfigFieldLabel(module, field)}
+            helperText={automationConfigFieldDescription(module, field)}
+            value={date}
+            onValueChange={onChange}
+            required={field.required}
+            fullWidth
+        >
+            {date && !field.required ? (
+                <Button
+                    type="button"
+                    size="sm"
+                    variant="plain"
+                    fullWidth
+                    onClick={() => onChange(undefined)}
+                >
+                    Očisti datum
+                </Button>
+            ) : null}
+        </CalendarDatePicker>
+    );
+}
+
+function TimeZoneConfigField({
+    field,
+    module,
+    onChange,
+    value,
+}: AutomationConfigFieldInputProps) {
+    const timeZone = stringFieldValue(value);
+    const placeholder = automationConfigFieldPlaceholder(module, field);
+    const description = automationConfigFieldDescription(module, field);
+    const items = useMemo(
+        () => [
+            ...(field.required
+                ? []
+                : [
+                      {
+                          value: '',
+                          label: placeholder
+                              ? `Zadano (${placeholder})`
+                              : 'Zadano',
+                      },
+                  ]),
+            ...timeZoneFieldOptions(timeZone, supportedTimeZones()).map(
+                (candidate) => ({ value: candidate, label: candidate }),
+            ),
+        ],
+        [field.required, placeholder, timeZone],
+    );
+
+    return (
+        <Stack spacing={1}>
+            <SelectItems
+                className="w-full"
+                label={automationConfigFieldLabel(module, field)}
+                value={timeZone}
+                items={items}
+                placeholder={placeholder}
+                searchPlaceholder="Pretraži vremenske zone"
+                onValueChange={(nextValue) =>
+                    onChange(optionalStringFieldValue(nextValue))
+                }
+            />
+            <FieldDescription>{description}</FieldDescription>
+        </Stack>
+    );
+}
+
 export function AutomationConfigFieldInput({
     field,
     module,
@@ -297,6 +387,44 @@ export function AutomationConfigFieldInput({
                 label={label}
                 checked={value === true}
                 onCheckedChange={(checked) => onChange(checked === true)}
+            />
+        );
+    }
+
+    if (field.type === 'date') {
+        return (
+            <DateConfigField
+                field={field}
+                module={module}
+                onChange={onChange}
+                value={value}
+            />
+        );
+    }
+
+    if (field.type === 'time' || field.type === 'datetime') {
+        return (
+            <Input
+                label={label}
+                helperText={description}
+                type={field.type === 'time' ? 'time' : 'datetime-local'}
+                required={field.required}
+                value={stringFieldValue(value)}
+                onChange={(event) =>
+                    onChange(optionalStringFieldValue(event.target.value))
+                }
+                fullWidth
+            />
+        );
+    }
+
+    if (field.type === 'timeZone') {
+        return (
+            <TimeZoneConfigField
+                field={field}
+                module={module}
+                onChange={onChange}
+                value={value}
             />
         );
     }

@@ -120,7 +120,7 @@ const automationModulePresentations: Record<
             anchorDate: {
                 label: 'Referentni datum',
                 description:
-                    'Obavezno za dvotjedni raspored. Format: YYYY-MM-DD.',
+                    'Obavezno za dvotjedni raspored. Tjedni se broje od ovog datuma.',
             },
             dayOfMonth: {
                 label: 'Dan u mjesecu',

@@ -1418,7 +1418,7 @@ function scheduleConfigFields() {
         {
             key: 'anchorDate',
             label: 'Biweekly anchor date',
-            type: 'string',
+            type: 'date',
             required: false,
             placeholder: defaultBiweeklyAnchorDate,
             description:
@@ -1435,7 +1435,7 @@ function scheduleConfigFields() {
         {
             key: 'timeZone',
             label: 'Time zone',
-            type: 'string',
+            type: 'timeZone',
             required: false,
             placeholder: defaultScheduleTimeZone,
         },
@@ -1524,7 +1524,7 @@ const triggerScheduleMonthlyModule: AutomationModule = {
         {
             key: 'timeZone',
             label: 'Time zone',
-            type: 'string',
+            type: 'timeZone',
             required: false,
             placeholder: defaultScheduleTimeZone,
         },

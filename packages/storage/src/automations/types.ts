@@ -19,9 +19,21 @@ export type AutomationConfigField = {
     description?: string;
     /**
      * Drives the admin editor control. `multiselect` stores an array of
-     * option values.
+     * option values, `date` a local `YYYY-MM-DD` date, `time` a local `HH:mm`
+     * time, `datetime` a local `YYYY-MM-DDTHH:mm` value, and `timeZone` an
+     * IANA time zone name.
      */
-    type: 'string' | 'number' | 'boolean' | 'select' | 'multiselect' | 'json';
+    type:
+        | 'string'
+        | 'number'
+        | 'boolean'
+        | 'select'
+        | 'multiselect'
+        | 'date'
+        | 'time'
+        | 'datetime'
+        | 'timeZone'
+        | 'json';
     required?: boolean;
     options?: AutomationConfigFieldOption[];
     placeholder?: string;
