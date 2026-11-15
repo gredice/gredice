@@ -56,8 +56,8 @@ import {
     useEdgesState,
     useNodesState,
 } from '@xyflow/react';
-import { useTheme } from 'next-themes';
 import { useRouter } from 'next/navigation';
+import { useTheme } from 'next-themes';
 import type { ComponentType, ReactNode, SVGProps } from 'react';
 import {
     useCallback,
@@ -851,6 +851,22 @@ export function AutomationFlowEditor({
             }
             actions={
                 <Row spacing={2} className="items-center">
+                    {testPanel ? (
+                        <IconButton
+                            type="button"
+                            size="sm"
+                            color="success"
+                            variant={
+                                activePanel === 'testing' ? 'soft' : 'plain'
+                            }
+                            title="Pokreni"
+                            aria-label="Pokreni"
+                            aria-pressed={activePanel === 'testing'}
+                            onClick={() => openPanel('testing')}
+                        >
+                            <Play className="size-6" strokeWidth={2.75} />
+                        </IconButton>
+                    ) : null}
                     <Button
                         type="button"
                         size="sm"
@@ -1251,22 +1267,6 @@ export function AutomationFlowEditor({
                                     }
                                 >
                                     Detalji
-                                </Button>
-                            ) : null}
-                            {testPanel ? (
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    variant={
-                                        activePanel === 'testing'
-                                            ? 'soft'
-                                            : 'outlined'
-                                    }
-                                    aria-pressed={activePanel === 'testing'}
-                                    onClick={() => openPanel('testing')}
-                                    startDecorator={<Play className="size-4" />}
-                                >
-                                    Pokreni
                                 </Button>
                             ) : null}
                             <IconButton

@@ -270,6 +270,10 @@ Admins manage automations in `apps/app` at `/admin/automations`.
 - The right panel is the module store and selected-node configuration surface.
 - Clicking a graph block opens its configuration in the right panel; the graph
   toolbar has no separate settings button.
+- The page header holds the green play button that opens the test-run panel,
+  left of "Detalji", because test runs cover the whole workflow.
+- The graph follows the app color theme (React Flow `colorMode` plus its
+  `--xy-*` CSS variables) and the initial fit never zooms past 100%.
 - Manual test runs can use a recent matching event or synthetic event context.
   Dry-run is enabled by default. The admin app only enqueues these runs; the API
   automation runner executes them with the same queue path as event and schedule
