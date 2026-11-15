@@ -5,7 +5,8 @@ import { Close } from '@gredice/ui/icons';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 type AutomationSlidePanelProps = {
     children: ReactNode;
@@ -24,7 +25,21 @@ export function AutomationSlidePanel({
     title,
     widthClassName,
 }: AutomationSlidePanelProps) {
-    return (
+    // Render on <body> so the fixed panel still opens when its owner sits in a
+    // hidden layout region, such as the inactive tab on the automation page.
+    const [portalElement, setPortalElement] = useState<HTMLElement | null>(
+        null,
+    );
+
+    useEffect(() => {
+        setPortalElement(document.body);
+    }, []);
+
+    if (!portalElement) {
+        return null;
+    }
+
+    return createPortal(
         <>
             <button
                 type="button"
@@ -78,6 +93,7 @@ export function AutomationSlidePanel({
                     {children}
                 </div>
             </aside>
-        </>
+        </>,
+        portalElement,
     );
 }

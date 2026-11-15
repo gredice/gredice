@@ -14,6 +14,7 @@ import { Stack } from '@gredice/ui/Stack';
 import { notFound } from 'next/navigation';
 import { AdminPageTitle } from '../../../../components/admin/navigation';
 import { auth } from '../../../../lib/auth/auth';
+import { AutomationDetailLayout } from '../AutomationDetailLayout';
 import { AutomationFlowEditor } from '../AutomationFlowEditor';
 import {
     AutomationRunsTable,
@@ -154,29 +155,34 @@ export default async function AutomationDetailPage({
     return (
         <Stack spacing={5}>
             <AdminPageTitle title={definition.name} />
-            <AutomationFlowEditor
-                automationId={definition.id}
-                initialKey={definition.key}
-                initialName={definition.name}
-                initialDescription={definition.description}
-                initialStatus={definition.status}
-                initialMaxConcurrentRuns={definition.maxConcurrentRuns}
-                maxConcurrentRunsLimit={maxAutomationMaxConcurrentRuns}
-                initialGraph={definition.graph}
-                modules={modules}
-                testPanel={
-                    <AutomationTestPanel
+            <AutomationDetailLayout
+                editor={
+                    <AutomationFlowEditor
                         automationId={definition.id}
-                        triggerMode={triggerMode}
-                        triggerEventType={triggerEventType}
-                        recentEvents={recentAutomationEvents}
+                        initialKey={definition.key}
+                        initialName={definition.name}
+                        initialDescription={definition.description}
+                        initialStatus={definition.status}
+                        initialMaxConcurrentRuns={definition.maxConcurrentRuns}
+                        maxConcurrentRunsLimit={maxAutomationMaxConcurrentRuns}
+                        initialGraph={definition.graph}
+                        modules={modules}
+                        testPanel={
+                            <AutomationTestPanel
+                                automationId={definition.id}
+                                triggerMode={triggerMode}
+                                triggerEventType={triggerEventType}
+                                recentEvents={recentAutomationEvents}
+                            />
+                        }
                     />
                 }
-            />
-
-            <AutomationRunsTable
-                runs={tableRuns}
-                statusOptions={[...automationRunStatusValues]}
+                runs={
+                    <AutomationRunsTable
+                        runs={tableRuns}
+                        statusOptions={[...automationRunStatusValues]}
+                    />
+                }
             />
         </Stack>
     );

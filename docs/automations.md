@@ -264,8 +264,11 @@ Admins manage automations in `apps/app` at `/admin/automations`.
   run status, recent failed-run count, a jobs queue table with run state,
   attempts, timing, and source context, and filters for definition status,
   trigger event type, run status, and failed-only runs.
-- The detail page shows the editor, test controls, and expandable run logs with
-  per-step input/output/error snapshots.
+- The detail page shows the editor and test controls with the executions list
+  beside them from the `xl` breakpoint; narrower screens switch between the
+  editor and executions with tabs. Run details include per-step
+  input/output/error snapshots. Slide panels render on `<body>`, so header
+  actions open them from either tab.
 - The editor uses `@xyflow/react` and stores layout in the definition graph.
 - The right panel is the module store and selected-node configuration surface.
 - Clicking a graph block opens its configuration in the right panel; the graph
