@@ -24,6 +24,13 @@ const longDayFormatter = new Intl.DateTimeFormat('hr-HR', {
     month: 'numeric',
     timeZone: 'UTC',
 });
+const longDayWithYearFormatter = new Intl.DateTimeFormat('hr-HR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC',
+});
 const dayMonthFormatter = new Intl.DateTimeFormat('hr-HR', {
     day: 'numeric',
     month: 'numeric',
@@ -56,8 +63,10 @@ export function formatDashboardShortWeekday(date: string) {
     return shortWeekdayFormatter.format(dateFromKey(date));
 }
 
-export function formatDashboardLongDay(date: string) {
-    return longDayFormatter.format(dateFromKey(date));
+export function formatDashboardLongDay(date: string, includeYear = false) {
+    return (includeYear ? longDayWithYearFormatter : longDayFormatter).format(
+        dateFromKey(date),
+    );
 }
 
 export function formatDashboardDayMonth(date: string) {

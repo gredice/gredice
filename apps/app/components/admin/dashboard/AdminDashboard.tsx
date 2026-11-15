@@ -1,5 +1,4 @@
 import { getEntityTypes } from '@gredice/storage';
-import { resolveCurrentWeekStatisticsPeriod } from '../../../app/admin/statistics/statisticsPeriod';
 import { auth } from '../../../lib/auth/auth';
 import {
     getAdminCmsReviewCount,
@@ -13,8 +12,7 @@ import {
     getDefaultDashboardQuickActions,
 } from '../../../src/dashboardQuickActions';
 import { AdminDashboardClient } from './AdminDashboardClient';
-import { getAnalyticsData, getDashboardWeeklyStatisticsData } from './actions';
-import { createAnalyticsWeekDays } from './analyticsDateRange';
+import { getAnalyticsData } from './actions';
 
 type AdminDashboardProps = {
     searchParams?: Promise<{ period?: string; from?: string; to?: string }>;
@@ -29,15 +27,8 @@ export async function AdminDashboard({ searchParams }: AdminDashboardProps) {
         params?.from,
         params?.to,
     );
-    const currentWeek = resolveCurrentWeekStatisticsPeriod();
-    const weeklyDataPromise = getDashboardWeeklyStatisticsData(
-        currentWeek.pickerFrom,
-        currentWeek.pickerTo,
-    );
-
     const [
         data,
-        weeklyData,
         entityTypes,
         dashboardQuickActionsSetting,
         pendingCmsPagesReviewCount,
@@ -45,7 +36,6 @@ export async function AdminDashboard({ searchParams }: AdminDashboardProps) {
         pendingApprovalTasksCount,
     ] = await Promise.all([
         selectedDataPromise,
-        weeklyDataPromise,
         getEntityTypes(),
         getAdminDashboardQuickActionsSetting(),
         getAdminCmsReviewCount(),
@@ -75,14 +65,10 @@ export async function AdminDashboard({ searchParams }: AdminDashboardProps) {
         <AdminDashboardClient
             initialAnalyticsData={data.analytics}
             initialEntitiesData={data.entities}
-            initialOperationsDurationData={weeklyData.operationsDuration}
-            initialWeekdayRegistrations={weeklyData.weekdayRegistrations}
+            initialOperationsDurationData={data.operationsDuration}
+            initialRegistrations={data.registrationsDaily}
             initialAiData={data.ai}
-            initialSunflowersData={weeklyData.sunflowers}
-            weekDays={createAnalyticsWeekDays(
-                currentWeek.pickerFrom,
-                currentWeek.pickerTo,
-            )}
+            initialSunflowersData={data.sunflowers}
             initialQuickActions={quickActions}
             initialQuickActionBadgeCounts={{
                 pendingCmsPagesReviewCount,

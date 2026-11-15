@@ -1,5 +1,4 @@
 import { KnownPages } from '../../../src/KnownPages';
-import type { AnalyticsWeekDay } from './analyticsDateRange';
 import { DashboardChartCard } from './DashboardChartCard';
 import { DashboardChartLegend } from './DashboardChartLegend';
 import {
@@ -8,10 +7,10 @@ import {
 } from './DashboardColumnChart';
 import { dashboardChartColors } from './dashboardChartColors';
 import {
-    formatDashboardLongDay,
-    formatDashboardNumber,
-    formatDashboardShortWeekday,
-} from './dashboardFormat';
+    createDashboardDateBuckets,
+    sumDashboardBucket,
+} from './dashboardDateBuckets';
+import { formatDashboardNumber } from './dashboardFormat';
 import type { OperationsDurationData } from './OperationsDurationCard';
 import { formatOperationsDuration } from './operationsDuration';
 
@@ -42,30 +41,29 @@ function formatCompactDuration(minutes: number) {
     return `${formatDashboardNumber(minutes / 60)} h`;
 }
 
-export function OperationsWeekCard({
-    weekDays,
-    data,
-}: {
-    weekDays: AnalyticsWeekDay[];
-    data: OperationsDurationData;
-}) {
-    const daysByDate = new Map(data.daily.map((day) => [day.date, day]));
-    const columns = weekDays.map((day) => {
-        const operations = daysByDate.get(day.date);
-        return {
-            key: day.date,
-            label: formatDashboardShortWeekday(day.date),
-            description: formatDashboardLongDay(day.date),
-            values:
-                day.isFuture || !operations
-                    ? undefined
-                    : {
-                          completed: operations.operationsMinutes,
-                          sowing: operations.sowingMinutes,
-                          planned: operations.plannedMinutes,
-                      },
-        };
-    });
+export function OperationsWeekCard({ data }: { data: OperationsDurationData }) {
+    const columns = createDashboardDateBuckets(
+        data.daily.map((day) => day.date),
+    ).map((bucket) => ({
+        ...bucket,
+        values: {
+            completed: sumDashboardBucket(
+                data.daily,
+                bucket.dates,
+                (day) => day.operationsMinutes,
+            ),
+            sowing: sumDashboardBucket(
+                data.daily,
+                bucket.dates,
+                (day) => day.sowingMinutes,
+            ),
+            planned: sumDashboardBucket(
+                data.daily,
+                bucket.dates,
+                (day) => day.plannedMinutes,
+            ),
+        },
+    }));
     const totals = {
         completed: data.operationsMinutes,
         sowing: data.sowingMinutes,
@@ -77,7 +75,7 @@ export function OperationsWeekCard({
             title="Radnje"
             href={KnownPages.OperationsStatistics}
             value={formatOperationsDuration(data.totalMinutes)}
-            detail="Ukupno trajanje ovaj tjedan"
+            detail="Ukupno trajanje u odabranom periodu"
             legend={
                 <DashboardChartLegend
                     items={series.map((item) => ({
@@ -88,12 +86,12 @@ export function OperationsWeekCard({
             }
         >
             <DashboardColumnChart
-                title="Trajanje radnji po danu ovaj tjedan"
+                title="Trajanje radnji u odabranom periodu"
                 series={series}
                 columns={columns}
                 formatValue={formatOperationsDuration}
                 formatPeakLabel={formatCompactDuration}
-                emptyMessage="Nema radnji ovaj tjedan."
+                emptyMessage="Nema radnji u odabranom periodu."
             />
         </DashboardChartCard>
     );

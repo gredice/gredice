@@ -237,7 +237,7 @@ export function DashboardColumnChart<TKey extends string>({
                             <caption>{title}</caption>
                             <thead>
                                 <tr>
-                                    <th scope="col">Dan</th>
+                                    <th scope="col">Period</th>
                                     {series.map((item) => (
                                         <th key={item.key} scope="col">
                                             {item.label}

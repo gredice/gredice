@@ -1,5 +1,4 @@
 import { KnownPages } from '../../../src/KnownPages';
-import type { AnalyticsWeekDay } from './analyticsDateRange';
 import { DashboardChartCard } from './DashboardChartCard';
 import { DashboardChartLegend } from './DashboardChartLegend';
 import {
@@ -8,9 +7,11 @@ import {
 } from './DashboardColumnChart';
 import { dashboardChartColors } from './dashboardChartColors';
 import {
-    formatDashboardLongDay,
+    createDashboardDateBuckets,
+    sumDashboardBucket,
+} from './dashboardDateBuckets';
+import {
     formatDashboardNumber,
-    formatDashboardShortWeekday,
     formatDashboardSignedNumber,
 } from './dashboardFormat';
 import type { SunflowersDailyData } from './SunflowersDailyCard';
@@ -29,26 +30,24 @@ const series: DashboardColumnChartSeries<'earned' | 'spent'>[] = [
     },
 ];
 
-export function SunflowersWeekCard({
-    weekDays,
-    data,
-}: {
-    weekDays: AnalyticsWeekDay[];
-    data: SunflowersDailyData[];
-}) {
-    const daysByDate = new Map(data.map((day) => [day.date, day]));
-    const columns = weekDays.map((day) => {
-        const sunflowers = daysByDate.get(day.date);
-        return {
-            key: day.date,
-            label: formatDashboardShortWeekday(day.date),
-            description: formatDashboardLongDay(day.date),
-            values:
-                day.isFuture || !sunflowers
-                    ? undefined
-                    : { earned: sunflowers.earned, spent: sunflowers.spent },
-        };
-    });
+export function SunflowersWeekCard({ data }: { data: SunflowersDailyData[] }) {
+    const columns = createDashboardDateBuckets(data.map((day) => day.date)).map(
+        (bucket) => ({
+            ...bucket,
+            values: {
+                earned: sumDashboardBucket(
+                    data,
+                    bucket.dates,
+                    (day) => day.earned,
+                ),
+                spent: sumDashboardBucket(
+                    data,
+                    bucket.dates,
+                    (day) => day.spent,
+                ),
+            },
+        }),
+    );
     const totals = {
         earned: data.reduce((sum, day) => sum + day.earned, 0),
         spent: data.reduce((sum, day) => sum + day.spent, 0),
@@ -59,7 +58,7 @@ export function SunflowersWeekCard({
             title="Suncokreti"
             href={KnownPages.SunflowersStatistics}
             value={formatDashboardSignedNumber(totals.earned - totals.spent)}
-            detail="Razlika zarađenih i potrošenih ovaj tjedan"
+            detail="Razlika zarađenih i potrošenih u odabranom periodu"
             legend={
                 <DashboardChartLegend
                     items={series.map((item) => ({
@@ -70,11 +69,11 @@ export function SunflowersWeekCard({
             }
         >
             <DashboardColumnChart
-                title="Zarađeni i potrošeni suncokreti po danu ovaj tjedan"
+                title="Zarađeni i potrošeni suncokreti u odabranom periodu"
                 series={series}
                 columns={columns}
                 formatValue={formatDashboardNumber}
-                emptyMessage="Nema promjena suncokreta ovaj tjedan."
+                emptyMessage="Nema promjena suncokreta u odabranom periodu."
             />
         </DashboardChartCard>
     );

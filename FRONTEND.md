@@ -75,3 +75,12 @@ compatibility, and dependency-audit decisions.
 - Prefer semantic buttons, links, headings, tables, and form labels.
 - Keep focus management correct in dialogs, menus, drawers, and async forms.
 - Public `www` changes should satisfy the existing Playwright accessibility tests.
+
+- Admin dashboard statistics use the page's selected Zagreb calendar date range.
+  Registrations, operation durations and sunflowers share that range; charts show
+  daily columns for up to seven days and at most seven contiguous date buckets
+  for longer periods. The expandable chart tables expose each bucket's exact dates.
+- The dashboard period picker and custom date inputs sit above all dashboard
+  sections and quick actions, in the page-level period control group.
+- Dashboard bucket descriptions include years throughout ranges spanning New Year.
+- The exported dashboard analytics action requires admin access before cache lookup.
