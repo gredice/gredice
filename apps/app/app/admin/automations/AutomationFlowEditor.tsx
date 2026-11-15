@@ -298,6 +298,9 @@ function graphToNodes(
     });
 }
 
+// Keep sparse graphs at their natural size instead of zooming in to fill the canvas.
+const automationFitViewOptions = { maxZoom: 1 };
+
 const automationEdgeOptions = {
     markerEnd: {
         type: MarkerType.ArrowClosed,
@@ -1317,6 +1320,7 @@ export function AutomationFlowEditor({
                                 }}
                                 onPaneClick={() => selectNode(null)}
                                 fitView
+                                fitViewOptions={automationFitViewOptions}
                             >
                                 <Background
                                     color="hsl(var(--border))"
