@@ -1,50 +1,50 @@
 import { croatianPlural } from '@gredice/js/i18n';
 import { KnownPages } from '../../../src/KnownPages';
-import type { AnalyticsWeekDay } from './analyticsDateRange';
 import { DashboardChartCard } from './DashboardChartCard';
 import { DashboardColumnChart } from './DashboardColumnChart';
 import { dashboardChartColors } from './dashboardChartColors';
 import {
-    formatDashboardLongDay,
-    formatDashboardNumber,
-    formatDashboardShortWeekday,
-} from './dashboardFormat';
-import type { WeekdayRegistrationData } from './UsersRegistrationWeekdayCard';
+    createDashboardDateBuckets,
+    sumDashboardBucket,
+} from './dashboardDateBuckets';
+import { formatDashboardNumber } from './dashboardFormat';
 
 export function RegistrationsWeekCard({
-    weekDays,
     registrations,
 }: {
-    weekDays: AnalyticsWeekDay[];
-    /** Registrations indexed by weekday, Sunday first. */
-    registrations: WeekdayRegistrationData[];
+    registrations: { date: string; count: number }[];
 }) {
-    const columns = weekDays.map((day) => ({
-        key: day.date,
-        label: formatDashboardShortWeekday(day.date),
-        description: formatDashboardLongDay(day.date),
-        values: day.isFuture
-            ? undefined
-            : { registrations: registrations[day.weekday]?.count ?? 0 },
+    const columns = createDashboardDateBuckets(
+        registrations.map((day) => day.date),
+    ).map((bucket) => ({
+        ...bucket,
+        values: {
+            registrations: sumDashboardBucket(
+                registrations,
+                bucket.dates,
+                (day) => day.count,
+            ),
+        },
     }));
     const total = registrations.reduce((sum, day) => sum + day.count, 0);
-    const activeDays = columns.filter(
-        (column) => (column.values?.registrations ?? 0) > 0,
-    ).length;
+    const activeDays = registrations.filter((day) => day.count > 0).length;
 
     return (
         <DashboardChartCard
             title="Registracije"
             href={KnownPages.UsersStatistics}
             value={formatDashboardNumber(total)}
-            detail={`Ovaj tjedan · ${activeDays} ${croatianPlural(activeDays, {
-                one: 'dan',
-                few: 'dana',
-                many: 'dana',
-            })} s registracijama`}
+            detail={`Odabrani period · ${activeDays} ${croatianPlural(
+                activeDays,
+                {
+                    one: 'dan',
+                    few: 'dana',
+                    many: 'dana',
+                },
+            )} s registracijama`}
         >
             <DashboardColumnChart
-                title="Registracije korisnika po danu ovaj tjedan"
+                title="Registracije korisnika u odabranom periodu"
                 series={[
                     {
                         key: 'registrations',
@@ -54,7 +54,7 @@ export function RegistrationsWeekCard({
                 ]}
                 columns={columns}
                 formatValue={formatDashboardNumber}
-                emptyMessage="Nema registracija ovaj tjedan."
+                emptyMessage="Nema registracija u odabranom periodu."
             />
         </DashboardChartCard>
     );

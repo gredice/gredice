@@ -44,7 +44,6 @@ import { KnownPages } from '../../../src/KnownPages';
 import { EntityTypeIcon } from '../directories/EntityTypeIcon';
 import { ActiveUsersCard } from './ActiveUsersCard';
 import type { getAnalyticsData } from './actions';
-import type { AnalyticsWeekDay } from './analyticsDateRange';
 import { DashboardSection } from './DashboardSection';
 import { DashboardStatTile } from './DashboardStatTile';
 import { formatDashboardNumber } from './dashboardFormat';
@@ -54,7 +53,6 @@ import { RecordsOverviewCard } from './RecordsOverviewCard';
 import { RegistrationsWeekCard } from './RegistrationsWeekCard';
 import type { SunflowersDailyData } from './SunflowersDailyCard';
 import { SunflowersWeekCard } from './SunflowersWeekCard';
-import type { WeekdayRegistrationData } from './UsersRegistrationWeekdayCard';
 
 type AnalyticsData = Awaited<ReturnType<typeof getAnalyticsData>>;
 
@@ -136,12 +134,11 @@ export function AdminDashboardClient({
     initialQuickActionBadgeCounts,
     initialPeriod = '7',
     initialOperationsDurationData,
-    initialWeekdayRegistrations,
+    initialRegistrations,
     initialAiData,
     initialSunflowersData,
     initialFrom,
     initialTo,
-    weekDays,
 }: {
     initialAnalyticsData: AnalyticsData['analytics'];
     initialQuickActions: DashboardQuickActionOption[];
@@ -149,12 +146,11 @@ export function AdminDashboardClient({
     initialEntitiesData: AnalyticsData['entities'];
     initialPeriod?: string;
     initialOperationsDurationData: OperationsDurationData;
-    initialWeekdayRegistrations: WeekdayRegistrationData[];
+    initialRegistrations: AnalyticsData['registrationsDaily'];
     initialAiData: AnalyticsData['ai'];
     initialSunflowersData: SunflowersDailyData[];
     initialFrom?: string;
     initialTo?: string;
-    weekDays: AnalyticsWeekDay[];
 }) {
     const [selectedPeriod, setSelectedPeriod] = useState(initialPeriod);
     const [customFrom, setCustomFrom] = useState(initialFrom ?? '');
@@ -451,20 +447,13 @@ export function AdminDashboardClient({
                     </div>
                 </DashboardSection>
             </div>
-            <DashboardSection title="Statistika">
+            <DashboardSection title="Statistika" busy={isPending}>
                 <div className="grid gap-2 md:grid-cols-2 2xl:grid-cols-4">
                     <RegistrationsWeekCard
-                        weekDays={weekDays}
-                        registrations={initialWeekdayRegistrations}
+                        registrations={initialRegistrations}
                     />
-                    <OperationsWeekCard
-                        weekDays={weekDays}
-                        data={initialOperationsDurationData}
-                    />
-                    <SunflowersWeekCard
-                        weekDays={weekDays}
-                        data={initialSunflowersData}
-                    />
+                    <OperationsWeekCard data={initialOperationsDurationData} />
+                    <SunflowersWeekCard data={initialSunflowersData} />
                     <RecordsOverviewCard entities={initialEntitiesData} />
                 </div>
             </DashboardSection>
