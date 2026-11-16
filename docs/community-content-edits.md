@@ -68,6 +68,17 @@ shared styles in `apps/www/components/community-edits/communityControlStyles.ts`
 so enabled controls have a consistent card background. The markdown editor
 already uses the same card surface.
 
+## Operation suggestions
+
+On `/radnje`, **Predloži novu radnju** is a dashed card at the end of each
+public stage group (`apps/www/app/radnje/OperationSuggestionCard.tsx`), not a
+header button. Opening it from a group preselects that group's plant stage;
+the stage stays editable. When a search leaves no operations, the empty state
+shows the same card without a preselected stage. The internal OPG partner
+group has no card. Each card keeps its own sign-in return key
+(`operation:{stageId}`), so returning from login reopens the form for the
+group the user started from.
+
 ## Release QA
 
 Run automated checks first:
