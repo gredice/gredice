@@ -29,11 +29,6 @@ export function OperationSuggestionCard({
                     type="button"
                     variant="outlined"
                     color="neutral"
-                    aria-label={
-                        groupLabel
-                            ? `Predloži novu radnju: ${groupLabel}`
-                            : undefined
-                    }
                     className="h-full min-h-24 w-full justify-start gap-4 whitespace-normal rounded-lg border-dashed border-muted-foreground/40 bg-card/40 p-4 text-left font-normal hover:border-muted-foreground/60 hover:bg-card/70"
                 >
                     <span className="flex size-18 shrink-0 items-center justify-center text-muted-foreground">
@@ -42,6 +37,9 @@ export function OperationSuggestionCard({
                     <span className="flex min-w-0 flex-col">
                         <Typography component="span" semiBold>
                             Predloži novu radnju
+                            {groupLabel ? (
+                                <span className="sr-only"> – {groupLabel}</span>
+                            ) : null}
                         </Typography>
                         <Typography
                             component="span"

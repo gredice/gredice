@@ -1,3 +1,4 @@
+import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
 import { PlantHealthIssueOperations } from '../components/plant-health/PlantHealthIssueOperations';
 import { CommunityEntitySuggestionButtonHarness } from './CommunityEntitySuggestionButtonHarness';
@@ -147,8 +148,15 @@ test('preselects the group stage from an operation suggestion card', async ({
         />,
     );
 
+    expect(
+        (
+            await new AxeBuilder({ page })
+                .withRules(['label-content-name-mismatch'])
+                .analyze()
+        ).violations,
+    ).toEqual([]);
     await page
-        .getByRole('button', { name: 'Predloži novu radnju: Zalijevanje' })
+        .getByRole('button', { name: /^Predloži novu radnju – Zalijevanje / })
         .click();
     await expect(page.getByLabel('Stadij biljke')).toHaveValue('11');
     await page.getByLabel('Naziv radnje').fill('Zalijevanje kapanjem');
