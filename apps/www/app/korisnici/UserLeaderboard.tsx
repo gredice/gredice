@@ -6,8 +6,25 @@ import { GameTrophyIcon } from '@gredice/ui/GameIcons';
 import { Link } from '@gredice/ui/Link';
 import { publicUserProfileHref } from '@gredice/ui/PublicChrome';
 import { UserAvatar, UserLevelBadge } from '@gredice/ui/UserAvatar';
+import { cx } from '@gredice/ui/utils';
 import { KnownPages } from '../../src/KnownPages';
 import type { getUserLeaderboard } from './leaderboard';
+
+/** Gold, silver and bronze for the first three places. */
+const podiumStyles = [
+    {
+        row: 'bg-amber-50/70 dark:bg-amber-950/25',
+        medal: 'shadow-sm ring-2 bg-amber-400 text-amber-950 ring-amber-500/50',
+    },
+    {
+        row: 'bg-slate-100/70 dark:bg-slate-800/30',
+        medal: 'shadow-sm ring-2 bg-slate-300 text-slate-900 ring-slate-400/60',
+    },
+    {
+        row: 'bg-orange-50/70 dark:bg-orange-950/25',
+        medal: 'shadow-sm ring-2 bg-amber-700 text-amber-50 ring-amber-800/50',
+    },
+];
 
 export function UserLeaderboard({
     items,
@@ -40,15 +57,25 @@ export function UserLeaderboard({
                             const { level, xp } = getAchievementProgress(
                                 user.achievementCount,
                             );
+                            const podium = podiumStyles[index];
                             return (
                                 <li key={user.publicId}>
                                     <Link
                                         href={publicUserProfileHref(
                                             user.publicId,
                                         )}
-                                        className={`group flex items-center gap-3 px-3 py-5 transition-colors hover:bg-muted/60 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary sm:gap-5 sm:px-6 ${index === 0 ? 'bg-amber-50/60 dark:bg-amber-950/20' : ''}`}
+                                        className={cx(
+                                            'group flex items-center gap-3 px-3 py-5 transition-colors hover:bg-muted/60 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary sm:gap-5 sm:px-6',
+                                            podium?.row,
+                                        )}
                                     >
-                                        <span className="w-6 shrink-0 text-center text-sm font-semibold tabular-nums text-muted-foreground">
+                                        <span
+                                            className={cx(
+                                                'flex size-7 shrink-0 items-center justify-center rounded-full text-sm font-semibold tabular-nums',
+                                                podium?.medal ??
+                                                    'text-muted-foreground',
+                                            )}
+                                        >
                                             {index + 1}
                                         </span>
                                         <UserAvatar

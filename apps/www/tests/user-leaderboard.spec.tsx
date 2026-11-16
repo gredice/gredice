@@ -72,6 +72,17 @@ for (const width of [390, 1280]) {
             rows.first().getByRole('img', { name: 'Razina 8' }),
         ).toBeVisible();
         await expect(rows.first()).toContainText('3.400 XP');
+        // Gold, silver and bronze mark the podium; later places stay plain.
+        const placeColors = await rows
+            .locator('a > span:first-child')
+            .evaluateAll((places) =>
+                places.map((place) => getComputedStyle(place).backgroundColor),
+            );
+        expect(new Set(placeColors.slice(0, 3)).size).toBe(3);
+        expect(placeColors.slice(0, 3)).not.toContain('rgba(0, 0, 0, 0)');
+        expect(new Set(placeColors.slice(3))).toEqual(
+            new Set(['rgba(0, 0, 0, 0)']),
+        );
         await page.keyboard.press('Tab');
         await expect(rows.first().getByRole('link')).toBeFocused();
         expect(
