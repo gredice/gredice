@@ -65,7 +65,7 @@ export default function AboutUsPage() {
                             alt="Ilustracija partnerskog OPG-a s podignutim gredicama"
                             sizes="(min-width: 768px) 192px, 100vw"
                             className="h-48 w-full object-contain p-2 md:size-48"
-                            priority
+                            preload
                         />
                     }
                     header="O nama"
