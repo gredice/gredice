@@ -1,0 +1,122 @@
+{
+    "harvest25Mature": {
+        "entityId": 171,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/harvest25Mature.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/harvest25Mature.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "packages/ui/src/AchievementAwards/assets/harvest-1.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate ONE standalone transparent square icon for the Gredice farming game. Use the supplied operation icon and carrot award purely as style references: tactile matte painted wood, chunky beveled low-poly shapes, large visible planes, strong upper-left warm highlight, shaded right sides, rich leaf greens, tomato reds and golden ochre wood. Show a slightly elevated three-quarter view on genuine transparency, compact centered silhouette, ~7% clear margins. Clear separation of the bold objects at 48px. No background, badges, lettering, numbers, arrows, stars, persons, hands, scenery, ground plane, or exterior shadows.\nOperation: Branje 25% najzrelijih plodova.\nSubject: Show one small staked tomato plant on a compact brown dirt clod with three chunky RED ripe tomatoes still clearly attached, one separate identical red ripe tomato resting prominently in the shallow empty miniature wooden harvest tray in foreground. Exactly four ripe red tomatoes total, three on plant and one in tray. Clear separation of the plant and the tray, simple foliage, no extra fruit.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "harvest50Mature": {
+        "entityId": 170,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/harvest50Mature.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/harvest50Mature.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "packages/ui/src/AchievementAwards/assets/harvest-1.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate ONE standalone transparent square icon for the Gredice farming game. Use the supplied operation icon and carrot award purely as style references: tactile matte painted wood, chunky beveled low-poly shapes, large visible planes, strong upper-left warm highlight, shaded right sides, rich leaf greens, tomato reds and golden ochre wood. Show a slightly elevated three-quarter view on genuine transparency, compact centered silhouette, ~7% clear margins. Clear separation of the bold objects at 48px. No background, badges, lettering, numbers, arrows, stars, persons, hands, scenery, ground plane, or exterior shadows.\nOperation: Branje 50% najzrelijih plodova.\nSubject: Show one small staked tomato plant on a compact brown dirt clod with two chunky RED ripe tomatoes clearly attached, two more matching red ripe tomatoes clearly in the shallow miniature honey-wood harvest tray in foreground. Four ripe red tomatoes total, two at each location, clear separation between the plant and tray. Simple foliage, no extra fruit.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "harvestAll": {
+        "entityId": 168,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/harvestAll.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/harvestAll.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "packages/ui/src/AchievementAwards/assets/harvest-1.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate ONE standalone transparent square icon for the Gredice farming game. Use the supplied operation icon and carrot award purely as style references: tactile matte painted wood, chunky beveled low-poly shapes, large visible planes, strong upper-left warm highlight, shaded right sides, rich leaf greens, tomato reds and golden ochre wood. Show a slightly elevated three-quarter view on genuine transparency, compact centered silhouette, ~7% clear margins. Clear separation of the bold objects at 48px. No background, badges, lettering, numbers, arrows, stars, persons, hands, scenery, ground plane, or exterior shadows.\nOperation: Branje svih plodova.\nSubject: Show a full honey-wood harvest basket heaped with four chunky red tomato fruits as the main focal point. Immediately behind on a small soil clod sits the bare-of-fruit tomato plant, distinctly healthy with two wide green leaves and a visible empty fork of stems. Every red tomato is in the basket, zero still on the plant, zero green fruits represented. Keep plant identifiable but visually secondary to the broad tray.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "harvestFlowers": {
+        "entityId": 667,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/harvestFlowers.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/harvestPlant.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "apps/www/public/assets/operation-icons/illustrated/harvest25Mature.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate ONE standalone transparent square icon from the Gredice farming game operation set. Supplied images are style references only: chunky tactile beveled low-poly forms, broad facets, warm upper-left lighting, deep shaded sides, matte ochre wood with visible thickness, vivid leaf greens and distinct simple color blocks. Elevated three-quarter view, centered compact silhouette with all objects within 7% transparent margins. Feature large clean recognizable silhouettes for 48px use. Use genuine transparent alpha outside subject. No scenery, horizon, floor, exterior shadows, people, arrows, floating effects, panels, numbers or lettering.\nOperation: Branje cvijetova.\nSubject: Show a short tidy bundle of three bright edible garden flowers freshly clipped for harvest, with butter-yellow, coral and lilac petals and shortened fresh green stems, loosely nested in an open small golden wood crate. Two healthy green leaves and an empty stem rise on a tiny ochre soil clod beside it. Focus on the harvested colorful flowers as produce. No decorative bow, gift packaging, scissors, characters, or other produce.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "harvestMature": {
+        "entityId": 169,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/harvestMature.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/harvestMature.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "packages/ui/src/AchievementAwards/assets/harvest-1.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate ONE standalone transparent square icon for the Gredice farming game. Use the supplied operation icon and carrot award purely as style references: tactile matte painted wood, chunky beveled low-poly shapes, large visible planes, strong upper-left warm highlight, shaded right sides, rich leaf greens, tomato reds and golden ochre wood. Show a slightly elevated three-quarter view on genuine transparency, compact centered silhouette, ~7% clear margins. Clear separation of the bold objects at 48px. No background, badges, lettering, numbers, arrows, stars, persons, hands, scenery, ground plane, or exterior shadows.\nOperation: Branje zrelih plodova.\nSubject: Show two ripe red round tomatoes in a tiny shallow ochre harvest crate, beside a small tomato plant that retains two obviously GREEN unripe tomatoes still attached just under the upper foliage, and no red fruit still on its stems. Render green tomatoes as chunky pale sage spheres with strong shape separation from darker serrated leaves. Show the contrasting red harvest and still-growing green fruit in a compact grouping.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "harvestPlant": {
+        "entityId": 182,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/harvestPlant.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/harvestPlant.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "apps/www/public/assets/operation-icons/illustrated/harvest25Mature.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate ONE standalone transparent square icon from the Gredice farming game operation set. Supplied images are style references only: chunky tactile beveled low-poly forms, broad facets, warm upper-left lighting, deep shaded sides, matte ochre wood with visible thickness, vivid leaf greens and distinct simple color blocks. Elevated three-quarter view, centered compact silhouette with all objects within 7% transparent margins. Feature large clean recognizable silhouettes for 48px use. Use genuine transparent alpha outside subject. No scenery, horizon, floor, exterior shadows, people, arrows, floating effects, panels, numbers or lettering.\nOperation: Branje biljke.\nSubject: Show one robust fully grown romaine lettuce with lush emerald sculptural leaves and a creamy pale cut base laid into a single low honey-wood harvest crate. Immediately to one side show the remaining empty small polygonal soil clump with a simple shallow divot. Lettuce occupies most of the image. Make harvesting the edible whole plant read instantly. No other produce, tools or characters.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "harvestRaisedBed25Mature": {
+        "entityId": 659,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/harvestRaisedBed25Mature.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/harvestRaisedBed25Mature.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "apps/www/public/assets/operation-icons/illustrated/harvest25Mature.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate ONE standalone transparent square icon from the Gredice farming game operation set. Supplied images are style references only: chunky tactile beveled low-poly forms, broad facets, warm upper-left lighting, deep shaded sides, matte ochre wood with visible thickness, vivid leaf greens and distinct simple color blocks. Elevated three-quarter view, centered compact silhouette with all objects within 7% transparent margins. Feature large clean recognizable silhouettes for 48px use. Use genuine transparent alpha outside subject. No scenery, horizon, floor, exterior shadows, people, arrows, floating effects, panels, numbers or lettering.\nOperation: Branje 25% najzrelijih plodova u gredici.\nSubject: Show a full distinct small rectangular honey-wood raised bed at isometric angle, with two small healthy tomato plants sharing the bed. THREE clearly separate red tomatoes still attached in the bed and ONE ripe red tomato in a small harvest tray beside the bed. Four red tomatoes overall, visually countable. The thick structural bed walls dominate the wide silhouette. Keep foliage reduced to a few bold silhouettes.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "harvestRaisedBed50Mature": {
+        "entityId": 658,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/harvestRaisedBed50Mature.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/harvestRaisedBed50Mature.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "apps/www/public/assets/operation-icons/illustrated/harvest25Mature.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate ONE standalone transparent square icon from the Gredice farming game operation set. Supplied images are style references only: chunky tactile beveled low-poly forms, broad facets, warm upper-left lighting, deep shaded sides, matte ochre wood with visible thickness, vivid leaf greens and distinct simple color blocks. Elevated three-quarter view, centered compact silhouette with all objects within 7% transparent margins. Feature large clean recognizable silhouettes for 48px use. Use genuine transparent alpha outside subject. No scenery, horizon, floor, exterior shadows, people, arrows, floating effects, panels, numbers or lettering.\nOperation: Branje 50% najzrelijih plodova u gredici.\nSubject: Show a miniature rectangular golden wooden raised garden bed with two green tomato stems in the dark soil. TWO bold red tomatoes remain attached to the two plants, ONE per plant. TWO other red tomatoes have been picked and sit in a distinctly separate honey-wood tray just in front. Four red tomatoes total. Show the entire raised bed with thick beveled wood in elevated three-quarter view, wide squat framing and limited foliage.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "harvestRaisedBedAll": {
+        "entityId": 656,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/harvestRaisedBedAll.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/harvestRaisedBedAll.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "apps/www/public/assets/operation-icons/illustrated/harvest25Mature.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate ONE standalone transparent square icon from the Gredice farming game operation set. Supplied images are style references only: chunky tactile beveled low-poly forms, broad facets, warm upper-left lighting, deep shaded sides, matte ochre wood with visible thickness, vivid leaf greens and distinct simple color blocks. Elevated three-quarter view, centered compact silhouette with all objects within 7% transparent margins. Feature large clean recognizable silhouettes for 48px use. Use genuine transparent alpha outside subject. No scenery, horizon, floor, exterior shadows, people, arrows, floating effects, panels, numbers or lettering.\nOperation: Branje svih plodova u gredici.\nSubject: Show a complete rectangular honey-wood miniature raised garden bed with two healthy, fruitless tomato plants still anchored in soil. In front prominently show a wooden harvest crate with four big red tomatoes. Every tomato is in the crate. No fruit left on the vines. Clear separate silhouettes for the raised bed and the filled harvest crate.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "harvestRaisedBedMature": {
+        "entityId": 657,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/harvestRaisedBedMature.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/harvestRaisedBedMature.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "apps/www/public/assets/operation-icons/illustrated/harvest25Mature.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate ONE standalone transparent square icon from the Gredice farming game operation set. Supplied images are style references only: chunky tactile beveled low-poly forms, broad facets, warm upper-left lighting, deep shaded sides, matte ochre wood with visible thickness, vivid leaf greens and distinct simple color blocks. Elevated three-quarter view, centered compact silhouette with all objects within 7% transparent margins. Feature large clean recognizable silhouettes for 48px use. Use genuine transparent alpha outside subject. No scenery, horizon, floor, exterior shadows, people, arrows, floating effects, panels, numbers or lettering.\nOperation: Branje zrelih plodova u gredici.\nSubject: Show a complete rectangular wooden raised garden bed with two tomato plants retaining two large pale green unripe tomatoes clearly attached, one per plant. Beside the bed show a shallow golden harvest crate with two rich scarlet ripe tomatoes picked. Use dark green chunky leaves to distinguish remaining pale green fruits. No red fruit in the bed. Strong isometric raised-bed silhouette and big shapes.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    }
+}
