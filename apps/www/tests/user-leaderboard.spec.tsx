@@ -1,8 +1,8 @@
 import AxeBuilder from '@axe-core/playwright';
 import { getAchievementDefinitions } from '@gredice/js/achievements';
 import { UserAchievementProgress } from '@gredice/ui/UserAvatar';
+import UsersLoading from '../app/korisnici/(ljestvica)/loading';
 import UsersError from '../app/korisnici/error';
-import UsersLoading from '../app/korisnici/loading';
 import { UserLeaderboard } from '../app/korisnici/UserLeaderboard';
 import { expect, test } from './component-fixtures';
 

@@ -6,7 +6,7 @@ export const PublicGardenViewerDynamic = dynamic<PublicGardenViewerProps>(
     {
         ssr: false,
         loading: () => (
-            <div className="h-[520px] rounded-2xl border border-black/10 bg-background/60 animate-pulse" />
+            <div className="h-full animate-pulse bg-background/60 motion-reduce:animate-none" />
         ),
     },
 );

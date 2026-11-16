@@ -18,6 +18,7 @@ SEO usually does not apply to authenticated `garden`, `farm`, `app`, or API rout
 - Each indexable public page should have a specific title and description.
 - Dynamic pages should derive metadata from the same data source used to render the page.
 - Missing dynamic content should return the established not-found behavior instead of generic metadata.
+- Public profiles (`/korisnici/[publicId]`) take their title, description and canonical URL from the profile the page renders. They stay out of the sitemap (`not-published`) and declare no `robots` rule of their own.
 - Keep Open Graph and Twitter metadata consistent with page intent.
 
 ## Canonical URLs and routing
