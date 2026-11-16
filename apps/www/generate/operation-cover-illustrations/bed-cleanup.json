@@ -1,0 +1,67 @@
+{
+    "abandonRaisedBed": {
+        "entityId": 591,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/abandonRaisedBed.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/abandonRaisedBed.webp",
+        "styleReferences": [
+            "packages/ui/src/GameIcons/assets/seedling.webp",
+            "packages/ui/src/GameIcons/assets/backpack.webp",
+            "packages/ui/src/AchievementAwards/assets/harvest-1.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate one production game operation icon for Gredice. References supplied: the seedling for the appearance of living cultivated plants, the backpack and first harvest award for rendering style. Match chunky low-poly beveled volumes, clear broad facets, matte tactile finish, warm upper-left light, deep shaded sides, strong 48px silhouette. Use dark cocoa soil, honey-orange timber boards, warm amber and charcoal metal tools, bright broad lime leaves for desired crops, darker olive narrow jagged foliage for weeds, and ochre straw/dry material. Elevated three-quarter view with enough height to see the soil. Operation: freeing a raised bed for return and reuse, after removing all plants and equipment. The largest object is one visibly COMPLETELY EMPTY honey-timber raised bed with a clean flat dark soil surface, no plants or debris in the bed. Behind the rear right corner, completely outside the raised bed, a compact low wooden carry crate tilts toward the camera to reveal the removed sturdy short bamboo stakes, a large loop of jute tying cord, and two thick blank pale plant labels. A single gathered dry stem protrudes beside the accessories to suggest end of season. The crate remains clearly distinct from the planter and smaller than half its footprint. Use enough dark open soil to show a clean reset. No rake or other working tool, plants, straw mat, gate, or decorative imagery. Center the whole near-square isolated illustration with at least 7% clear margin on every side. True transparent alpha outside the scene. No people, hands, lettering, text, numbers, arrows, symbol overlays, background field, extended ground, tiny decorative details, particle effects, or cast shadows outside the illustration.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "cleanWeedsAroundRaisedBeds": {
+        "entityId": 654,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/cleanWeedsAroundRaisedBeds.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/cleanWeedsAroundRaisedBeds.webp",
+        "styleReferences": [
+            "packages/ui/src/GameIcons/assets/seedling.webp",
+            "packages/ui/src/GameIcons/assets/backpack.webp",
+            "packages/ui/src/AchievementAwards/assets/harvest-1.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate one production game operation icon for Gredice. References supplied: the seedling for the appearance of living cultivated plants, the backpack and first harvest award for rendering style. Match chunky low-poly beveled volumes, clear broad facets, matte tactile finish, warm upper-left light, deep shaded sides, strong 48px silhouette. Use dark cocoa soil, honey-orange timber boards, warm amber and charcoal metal tools, bright broad lime leaves for desired crops, darker olive narrow jagged foliage for weeds, and ochre straw/dry material. Elevated three-quarter view with enough height to see the soil. Operation: clearing the WALKWAY around and between raised beds, on the whole farm. Make a small self-contained diorama with exactly TWO short parallel raised-bed sections, one on each side of a broad pale compacted earth aisle. Each raised bed is a pair of thick beveled honey-colored boards with a little dark soil and one tidy healthy lime-green seedling inside. Both bed tops are undisturbed. In the foreground in the pale walkway between them, a short ochre-handled garden stirrup hoe with a strong dark metal loop blade sweeps up one clump of long narrow dark green grass growing against the low OUTER edge of a bed. Show uplifted root bundle and an already clear area of aisle behind the hoe. The wider PATH and tool inside that path are the focal point. Make the whole scene compact, two clearly separate bed rims, no additional crop rows or debris. Center the whole near-square isolated illustration with at least 7% clear margin on every side. True transparent alpha outside the scene. No people, hands, lettering, text, numbers, arrows, symbol overlays, background field, extended ground, tiny decorative details, particle effects, or cast shadows outside the illustration.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "pullingWeedsPlant": {
+        "entityId": 184,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/pullingWeedsPlant.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/pullingWeedsPlant.webp",
+        "styleReferences": [
+            "packages/ui/src/GameIcons/assets/seedling.webp",
+            "packages/ui/src/GameIcons/assets/backpack.webp",
+            "packages/ui/src/AchievementAwards/assets/harvest-1.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate one production game operation icon for Gredice. References supplied: the seedling for the appearance of living cultivated plants, the backpack and first harvest award for rendering style. Match chunky low-poly beveled volumes, clear broad facets, matte tactile finish, warm upper-left light, deep shaded sides, strong 48px silhouette. Use dark cocoa soil, honey-orange timber boards, warm amber and charcoal metal tools, bright broad lime leaves for desired crops, darker olive narrow jagged foliage for weeds, and ochre straw/dry material. Elevated three-quarter view with enough height to see the soil. Operation: pulling one weed out from around a SINGLE plant while leaving the crop in place. Isolated disk of dark brown earth with a single healthy bright lime seedling firmly rooted left of center. At the right of the seedling, a short amber-handled two-tine dark metal weeder levers one ROOTED weed free from a little hole. The uprooted weed is a small separate dark olive dandelion rosette with five angular jagged leaves, a broad dangling tan taproot clearly visible above the soil, and no flower. Crop stem is intact and the weed roots do not belong to the crop. The weeding fork head and taproot remain visible in the air gap to the right of the disk. No timber planter or extra plant clumps. Center the whole near-square isolated illustration with at least 7% clear margin on every side. True transparent alpha outside the scene. No people, hands, lettering, text, numbers, arrows, symbol overlays, background field, extended ground, tiny decorative details, particle effects, or cast shadows outside the illustration.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "pullingWeedsRaisedBed": {
+        "entityId": 369,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/pullingWeedsRaisedBed.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/pullingWeedsRaisedBed.webp",
+        "styleReferences": [
+            "packages/ui/src/GameIcons/assets/seedling.webp",
+            "packages/ui/src/GameIcons/assets/backpack.webp",
+            "packages/ui/src/AchievementAwards/assets/harvest-1.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate one production game operation icon for Gredice. References supplied: the seedling for the appearance of living cultivated plants, the backpack and first harvest award for rendering style. Match chunky low-poly beveled volumes, clear broad facets, matte tactile finish, warm upper-left light, deep shaded sides, strong 48px silhouette. Use dark cocoa soil, honey-orange timber boards, warm amber and charcoal metal tools, bright broad lime leaves for desired crops, darker olive narrow jagged foliage for weeds, and ochre straw/dry material. Elevated three-quarter view with enough height to see the soil. Operation: uprooting weeds from throughout a whole planted raised bed. Show one squat rectangular honey-timber planter with TWO healthy upright bright green seedlings still rooted, spaced left and right in the rear half. In the flat brown soil in front of and between them, a chunky amber-handled weeding fork lifts ONE separate recognizable dark olive jagged-leaved broadleaf weed out by its exposed dangling tan roots over a small dark hole, pointing up toward the right. Add just one smaller dark narrow-leaved weed near an inside corner to suggest full bed scope. All weed removal action is INSIDE the bed's visible boards. Crop leaves are smooth and bright, with no injury. No other debris, mulch or exterior weeds. Center the whole near-square isolated illustration with at least 7% clear margin on every side. True transparent alpha outside the scene. No people, hands, lettering, text, numbers, arrows, symbol overlays, background field, extended ground, tiny decorative details, particle effects, or cast shadows outside the illustration.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "riasedBedCleanup": {
+        "entityId": 587,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/riasedBedCleanup.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/riasedBedCleanup.webp",
+        "styleReferences": [
+            "packages/ui/src/GameIcons/assets/seedling.webp",
+            "packages/ui/src/GameIcons/assets/backpack.webp",
+            "packages/ui/src/AchievementAwards/assets/harvest-1.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate one production game operation icon for Gredice. References supplied: the seedling for the appearance of living cultivated plants, the backpack and first harvest award for rendering style. Match chunky low-poly beveled volumes, clear broad facets, matte tactile finish, warm upper-left light, deep shaded sides, strong 48px silhouette. Use dark cocoa soil, honey-orange timber boards, warm amber and charcoal metal tools, bright broad lime leaves for desired crops, darker olive narrow jagged foliage for weeds, and ochre straw/dry material. Elevated three-quarter view with enough height to see the soil. Operation: end-of-season organic cleanup of the ENTIRE INSIDE of a raised bed. Show one compact square miniature honey-timber raised bed with two thick boards along each side. Do not show any living cultivated plants. Two thirds of the dark soil surface is already clean and level. At the nearest corner, a broad dark-gray short-handled garden rake gathers a small but readable mixed pile of wilted ochre leaves, two brown dry stems, and a single dull burgundy fallen overripe tomato. All material is botanical garden waste and the concentrated distinct dry colors contrast with the cleaned soil. Keep the collecting rake at bed level and within the rim. No storage crate, accessories, stakes, ties, harvest basket or seedlings. Center the whole near-square isolated illustration with at least 7% clear margin on every side. True transparent alpha outside the scene. No people, hands, lettering, text, numbers, arrows, symbol overlays, background field, extended ground, tiny decorative details, particle effects, or cast shadows outside the illustration.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    }
+}
