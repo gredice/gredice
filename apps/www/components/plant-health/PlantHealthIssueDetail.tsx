@@ -64,7 +64,9 @@ export function PlantHealthIssueDetail({
             />
             {issue.information.description && (
                 <div className="max-w-2xl">
-                    <Markdown>{issue.information.description}</Markdown>
+                    <Markdown size="md">
+                        {issue.information.description}
+                    </Markdown>
                 </div>
             )}
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)]">
@@ -88,7 +90,9 @@ export function PlantHealthIssueDetail({
                                 />
                             </Row>
                             <div className="max-w-2xl">
-                                <Markdown>{issue.symptoms.symptoms}</Markdown>
+                                <Markdown size="md">
+                                    {issue.symptoms.symptoms}
+                                </Markdown>
                             </div>
                         </Stack>
                     )}
@@ -111,7 +115,7 @@ export function PlantHealthIssueDetail({
                                 />
                             </Row>
                             <div className="max-w-2xl">
-                                <Markdown>
+                                <Markdown size="md">
                                     {issue.conditions.favorableConditions}
                                 </Markdown>
                             </div>

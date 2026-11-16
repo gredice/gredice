@@ -25,7 +25,7 @@ export default function ContactPage() {
                 subHeader="Slobodno nam se javi ako imaš pitanja, prijedloge ili komentare."
                 padded
             />
-            <StyledHtml>
+            <StyledHtml size="md">
                 <p>
                     Za sve upite, prijedloge ili komentare, slobodno nas
                     kontaktiraš putem jednog od naših kanala.

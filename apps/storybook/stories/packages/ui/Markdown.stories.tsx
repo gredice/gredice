@@ -9,7 +9,7 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'Markdown renders headings, links, lists, and GitHub-flavored tables with the Gredice editorial typography. Wide tables scroll within a keyboard-focusable region.',
+                    'Markdown renders headings, links, lists, and GitHub-flavored tables with the Gredice editorial typography. Wide tables scroll within a keyboard-focusable region. The default `sm` size suits cards, panels and dialogs; use `size="md"` for long-form main content on public pages.',
             },
         },
     },
@@ -34,6 +34,23 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+export const MainContent: Story = {
+    args: {
+        size: 'md',
+        children: [
+            '## Postupak',
+            '',
+            'Formativna rezidba provodi se u ranim fazama rasta biljke kako bi joj se dao željeni oblik i struktura.',
+            '',
+            '1. Ukloni slabe i prekrižene grane.',
+            '2. Ostavi tri do četiri glavna izboja.',
+            '3. Zalij biljku nakon rezidbe.',
+            '',
+            '[Više o radnjama](/radnje)',
+        ].join('\n'),
+    },
+};
 
 export const Table: Story = {
     args: {

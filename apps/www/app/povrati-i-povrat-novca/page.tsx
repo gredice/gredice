@@ -23,7 +23,7 @@ export default function RefundsPage() {
                     header="Povrat novca"
                     subHeader="Za biljku koja nije proklijala nakon 15 dana vraćamo puni plaćeni iznos sadnje u suncokretima. Ostale reklamacije možeš zatražiti unutar 30 dana od kupnje."
                 />
-                <StyledHtml>
+                <StyledHtml size="md">
                     <h2>Puni povrat za biljku koja nije proklijala</h2>
                     <p>{notSproutedRefundPolicy}</p>
                     <p>

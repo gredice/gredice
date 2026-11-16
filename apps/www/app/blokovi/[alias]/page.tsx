@@ -103,7 +103,9 @@ export default async function BlockPage(props: PageProps<'/blokovi/[alias]'>) {
                     <Typography level="body1" className="text-muted-foreground">
                         {blockVirtualItemNote}
                     </Typography>
-                    <Markdown>{entity.information.fullDescription}</Markdown>
+                    <Markdown size="md">
+                        {entity.information.fullDescription}
+                    </Markdown>
                     <Row className="justify-end">
                         <CommunityEditButton
                             entityTypeName="block"

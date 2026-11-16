@@ -7,7 +7,7 @@ import {
 import type { Components } from 'react-markdown';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { StyledHtml } from '../StyledHtml';
+import { StyledHtml, type StyledHtmlSize } from '../StyledHtml';
 import { MarkdownTable } from './MarkdownTable';
 
 function getTextContent(node: ReactNode): string {
@@ -57,15 +57,18 @@ const components: Components = {
 
 export function Markdown({
     children,
+    size,
     ...rest
 }: Omit<
     HTMLAttributes<HTMLDivElement>,
     'children' | 'dangerouslySetInnerHTML'
 > & {
     children: string;
+    /** Text size; use `md` for long-form main content on public pages. */
+    size?: StyledHtmlSize;
 }) {
     return (
-        <StyledHtml {...rest}>
+        <StyledHtml size={size} {...rest}>
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
                 {children}
             </ReactMarkdown>

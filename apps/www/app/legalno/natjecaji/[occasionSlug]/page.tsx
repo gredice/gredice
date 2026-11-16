@@ -107,7 +107,7 @@ export default async function OccasionPage({ params }: OccasionPageProps) {
                     }
                 />
 
-                <Markdown>{occasion.information.rules}</Markdown>
+                <Markdown size="md">{occasion.information.rules}</Markdown>
 
                 {rulesChangedDate && (
                     <Typography level="body3" className="mt-4">

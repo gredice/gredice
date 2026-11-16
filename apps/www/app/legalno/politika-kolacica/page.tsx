@@ -23,7 +23,7 @@ export default function PolitikaKolacicaPage() {
                     header="Politika kolačića"
                     subHeader="Koje kolačiće koristimo na našoj web stranici, kako ih koristimo, te koja su tvoja prava vezana uz njih."
                 />
-                <StyledHtml>
+                <StyledHtml size="md">
                     <h2>Što su kolačići?</h2>
                     <p>
                         Kolačići su male tekstualne datoteke koje se pohranjuju

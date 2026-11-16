@@ -1,4 +1,5 @@
 import { MarkdownBlock } from '@gredice/ui/cms';
+import { Markdown } from '@gredice/ui/Markdown';
 import { expect, test } from './component-fixtures';
 
 const markdown = [
@@ -84,3 +85,23 @@ for (const width of [360, 768, 1280]) {
         }
     });
 }
+
+test('CMS markdown uses the main content text size', async ({ mount }) => {
+    const component = await mount(
+        <MarkdownBlock markdown="Tekst glavnog sadržaja." />,
+    );
+
+    await expect(component.getByText('Tekst glavnog sadržaja.')).toHaveCSS(
+        'font-size',
+        '16px',
+    );
+});
+
+test('Markdown keeps compact text by default', async ({ mount }) => {
+    const component = await mount(<Markdown>Kratki opis u kartici.</Markdown>);
+
+    await expect(component.getByText('Kratki opis u kartici.')).toHaveCSS(
+        'font-size',
+        '14px',
+    );
+});
