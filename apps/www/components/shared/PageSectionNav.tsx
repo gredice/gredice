@@ -10,6 +10,10 @@ export type PageSectionNavItem = {
 /**
  * Links to the separate themes of a page, placed above the page title.
  * Hidden when there is nothing to choose between.
+ *
+ * Each link's accessible name ends with "– odjeljak ove stranice", so a screen
+ * reader's link list tells a jump to `#radnje` apart from a link with the
+ * same text that opens the `/radnje` page (for example in the footer).
  */
 export function PageSectionNav({
     label,
@@ -40,10 +44,16 @@ export function PageSectionNav({
                     href={`#${item.id}`}
                     // A solid surface keeps the chips readable over every
                     // time-of-day sky behind the public pages.
-                    className="inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-tertiary border-b-2 bg-card py-1.5 pr-4 pl-2.5 text-sm font-medium text-card-foreground shadow-sm transition-colors hover:border-brand/50 hover:bg-brand/10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                    className="relative inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-tertiary border-b-2 bg-card py-1.5 pr-4 pl-2.5 text-sm font-medium text-card-foreground shadow-sm transition-colors hover:border-brand/50 hover:bg-brand/10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                 >
                     {item.icon}
-                    <span>{item.label}</span>
+                    <span>
+                        {item.label}
+                        <span className="sr-only">
+                            {' '}
+                            – odjeljak ove stranice
+                        </span>
+                    </span>
                 </a>
             ))}
         </nav>

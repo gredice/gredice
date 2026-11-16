@@ -49,7 +49,7 @@ for (const width of [320, 768, 1280]) {
         });
         for (const family of getAchievementFamilies([])) {
             const link = navigation.getByRole('link', {
-                name: `${family.label} (${family.levels.length})`,
+                name: `${family.label} (${family.levels.length}) – odjeljak ove stranice`,
                 exact: true,
             });
             await expect(link).toHaveAttribute('href', `#${family.key}`);
