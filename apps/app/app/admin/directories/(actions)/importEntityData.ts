@@ -6,34 +6,39 @@ import {
     upsertAttributeValue,
 } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
+import { auth } from '../../../../lib/auth/auth';
 import { revalidatePublicDirectoryPagesForEntityType } from '../../../../lib/revalidation/publicDirectoryPages';
 import { KnownPages } from '../../../../src/KnownPages';
+
+const maxEntityImportSizeBytes = 1024 * 1024;
 
 export async function importEntityData(
     entityType: string,
     entityId: number,
     formData: FormData,
 ) {
-    console.debug(
-        `Importing data for entity: ${entityId} of type: ${entityType}`,
-    );
+    await auth(['admin']);
 
     const file = formData.get('entityJson');
     if (!file || typeof file === 'string') {
         throw new Error('No file uploaded');
     }
+    if (file.size > maxEntityImportSizeBytes) {
+        throw new Error('Import file must not exceed 1 MB');
+    }
     const text = await file.text();
-    console.debug(`File content: ${text}`);
     let data: unknown;
     try {
         data = JSON.parse(text);
-    } catch (e) {
-        console.error('Failed to parse JSON:', e);
+    } catch {
         throw new Error('Invalid JSON');
     }
     const entity = await getEntityRaw(entityId);
     if (!entity) {
         throw new Error('Entity not found');
+    }
+    if (entity.entityTypeName !== entityType) {
+        throw new Error('Entity type does not match the requested entity');
     }
 
     const attributeDefinitions = await getAttributeDefinitions(entityType);
@@ -51,7 +56,6 @@ export async function importEntityData(
     for (const [name, value] of Object.entries(data)) {
         const definition = definitionByName.get(name);
         if (!definition) {
-            console.warn(`Attribute definition not found for name: ${name}`);
             continue;
         }
         const stringValue = value != null ? String(value) : null;
@@ -61,7 +65,7 @@ export async function importEntityData(
             !/^\d+$/.test(stringValue.trim())
         ) {
             throw new Error(
-                `Attribute "${name}" is a ${definition.dataType} reference and must be a numeric entity ID; received: ${JSON.stringify(value)}.`,
+                `Attribute "${name}" is a ${definition.dataType} reference and must be a numeric entity ID.`,
             );
         }
         await upsertAttributeValue({
@@ -71,9 +75,6 @@ export async function importEntityData(
             value: stringValue,
             order: '0',
         });
-        console.debug(
-            `Imported attribute: ${name} with value: ${value} for entity: ${entityId}`,
-        );
     }
 
     revalidatePath(KnownPages.DirectoryEntity(entityType, entityId));
