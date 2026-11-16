@@ -1,7 +1,7 @@
 import { clientPublic } from '@gredice/client';
-import { publicIdToUserId } from '@gredice/js/publicId';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
+import { isCanonicalPublicUserId } from './publicProfile';
 
 /**
  * Loads a public profile for the page and its metadata with one API request.
@@ -9,9 +9,9 @@ import { cache } from 'react';
  * public must disappear with the next visit.
  */
 export const getPublicProfileForWww = cache(async (publicId: string) => {
-    // Only well-formed IDs reach the API, so a crafted segment cannot be
-    // resolved against another API path.
-    if (!publicIdToUserId(publicId)) {
+    // Only canonical IDs reach the API, so a crafted segment cannot be resolved
+    // against another API path or serve one profile at several URLs.
+    if (!isCanonicalPublicUserId(publicId)) {
         notFound();
     }
 
