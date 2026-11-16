@@ -103,7 +103,7 @@ export function OperationsList({
                                 {stage.label}
                             </Typography>
                         </Row>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-start gap-2">
                             {operationsForStage.map((operation) => (
                                 <OperationCard
                                     key={operation.id}
@@ -126,7 +126,7 @@ export function OperationsList({
                         </Typography>
                     </Row>
                     <div className="px-3 pb-3">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-start gap-2">
                             {internalOperations.map((operation) => (
                                 <OperationCard
                                     key={operation.id}
