@@ -532,7 +532,7 @@ export default async function PricingPage() {
                             <Button
                                 endDecorator={<Navigate className="size-4" />}
                                 href={KnownPages.Delivery}
-                                variant="outlined"
+                                variant="solid"
                             >
                                 Više o dostavi
                             </Button>
