@@ -28,17 +28,12 @@ export function UserLeaderboard({
                 </p>
             </header>
             <section aria-labelledby="leaderboard-title">
-                <div className="mb-4 flex items-end justify-between gap-4">
-                    <h2
-                        id="leaderboard-title"
-                        className="text-xl font-semibold"
-                    >
-                        Top 10 vrtlara
-                    </h2>
-                    <span className="text-sm text-muted-foreground">
-                        Ukupni poredak
-                    </span>
-                </div>
+                <h2
+                    id="leaderboard-title"
+                    className="mb-4 text-xl font-semibold"
+                >
+                    Top 10 vrtlara
+                </h2>
                 {items.length ? (
                     <ol className="divide-y overflow-hidden rounded-2xl border bg-card">
                         {items.map((user, index) => {
