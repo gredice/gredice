@@ -1,0 +1,67 @@
+{
+    "freshSoil10L": {
+        "entityId": 517,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/freshSoil10L.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/freshSoil10L.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "packages/ui/src/GameIcons/assets/backpack.webp",
+            "packages/ui/src/AchievementAwards/assets/harvest-1.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate ONE production-quality square Gredice farming-game operation icon as a standalone transparent illustration. The three supplied images of pruning, a backpack, and a carrot award are references for rendering style: match their chunky beveled low-poly geometry, broad clean visible facets, saturated accents, matte tactile materials, warm upper-left highlights, deep shaded right faces and sturdy miniature proportions. The soil-family scene uses a low, compact square raised bed made from two honey-brown timber planks on the side, facing front-left in a slightly elevated 3/4 view, and squat unmarked kraft paper gardening sacks, each with one broad muted olive-green stripe across its middle. Sacks have folded paper seams, flat stable bases, and enough thickness to read as soil sacks. The existing thin level of soil is smooth pale-brown, and the new fertile potting soil is clearly darker cocoa-brown, in a few broad, rounded faceted clods. Use the soil amount and sack silhouettes as the primary distinction for this volume.\nOperation: adding a small 10-liter top-up of fertile soil. Exactly ONE compact upright folded sack beside the left back corner of the miniature raised bed. A small low oval scoop-sized patch of dark fresh soil in the near corner covers about a fifth of the lighter soil bed floor; the pale-brown original surface and the empty depth below the high timber rim stay obvious. Include only two or three large clumps in the little patch, with its edge easy to read. The sack is small and only slightly taller than the bed.\nOne isolated tight, centered near-square composition with at least 7% clear padding above all objects and to the sides. The visible rectangular rim frames the soil, and none of the sacks hide the amount of added earth. Design for readability at 48 px. Entire composition isolated on genuine transparent alpha outside the objects. No text, characters, lettering, numerals, logo symbols, UI panels, labels, plants, tools, frame, background, ground plane, or cast shadow outside the art.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "freshSoil20L": {
+        "entityId": 516,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/freshSoil20L.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/freshSoil20L.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "packages/ui/src/GameIcons/assets/backpack.webp",
+            "packages/ui/src/AchievementAwards/assets/harvest-1.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate ONE production-quality square Gredice farming-game operation icon as a standalone transparent illustration. The three supplied images of pruning, a backpack, and a carrot award are references for rendering style: match their chunky beveled low-poly geometry, broad clean visible facets, saturated accents, matte tactile materials, warm upper-left highlights, deep shaded right faces and sturdy miniature proportions. The soil-family scene uses a low, compact square raised bed made from two honey-brown timber planks on the side, facing front-left in a slightly elevated 3/4 view, and squat unmarked kraft paper gardening sacks, each with one broad muted olive-green stripe across its middle. Sacks have folded paper seams, flat stable bases, and enough thickness to read as soil sacks. The existing thin level of soil is smooth pale-brown, and the new fertile potting soil is clearly darker cocoa-brown, in a few broad, rounded faceted clods. Use the soil amount and sack silhouettes as the primary distinction for this volume.\nOperation: adding a 20-liter top-up of fertile soil. Exactly TWO compact kraft sacks, one upright at the left back corner and one tilted slightly beside it, forming two visible silhouettes of similar size. A single moderately raised elongated dark-soil mound covers about two-fifths of the pale original bed surface. The other half of the pale surface and the depth below the rim remain clearly visible. The pile stays low and clearly distinct from the kraft sacks.\nOne isolated tight, centered near-square composition with at least 7% clear padding above all objects and to the sides. The visible rectangular rim frames the soil, and none of the sacks hide the amount of added earth. Design for readability at 48 px. Entire composition isolated on genuine transparent alpha outside the objects. No text, characters, lettering, numerals, logo symbols, UI panels, labels, plants, tools, frame, background, ground plane, or cast shadow outside the art.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "freshSoil50L": {
+        "entityId": 515,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/freshSoil50L.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/freshSoil50L.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "packages/ui/src/GameIcons/assets/backpack.webp",
+            "packages/ui/src/AchievementAwards/assets/harvest-1.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate ONE production-quality square Gredice farming-game operation icon as a standalone transparent illustration. The three supplied images of pruning, a backpack, and a carrot award are references for rendering style: match their chunky beveled low-poly geometry, broad clean visible facets, saturated accents, matte tactile materials, warm upper-left highlights, deep shaded right faces and sturdy miniature proportions. The soil-family scene uses a low, compact square raised bed made from two honey-brown timber planks on the side, facing front-left in a slightly elevated 3/4 view, and squat unmarked kraft paper gardening sacks, each with one broad muted olive-green stripe across its middle. Sacks have folded paper seams, flat stable bases, and enough thickness to read as soil sacks. The existing thin level of soil is smooth pale-brown, and the new fertile potting soil is clearly darker cocoa-brown, in a few broad, rounded faceted clods. Use the soil amount and sack silhouettes as the primary distinction for this volume.\nOperation: adding 50 liters of fertile soil. Exactly THREE medium kraft sacks are grouped behind one rear corner, staggered at distinctly different angles so a viewer can count three clear forms. The dark new soil spans nearly the whole bed, with only a narrow strip of the smooth pale original surface visible at the front. Dark earth rises in one broad deep mound that reaches the bottom edge of the top timber plank, leaving visible depth up to the rim. Treat the mound and bag shapes as a bold arrangement of large forms.\nOne isolated tight, centered near-square composition with at least 7% clear padding above all objects and to the sides. The visible rectangular rim frames the soil, and none of the sacks hide the amount of added earth. Design for readability at 48 px. Entire composition isolated on genuine transparent alpha outside the objects. No text, characters, lettering, numerals, logo symbols, UI panels, labels, plants, tools, frame, background, ground plane, or cast shadow outside the art.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "freshSoil70L": {
+        "entityId": 514,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/freshSoil70L.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/freshSoil70L.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "packages/ui/src/GameIcons/assets/backpack.webp",
+            "packages/ui/src/AchievementAwards/assets/harvest-1.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate ONE production-quality square Gredice farming-game operation icon as a standalone transparent illustration. The three supplied images of pruning, a backpack, and a carrot award are references for rendering style: match their chunky beveled low-poly geometry, broad clean visible facets, saturated accents, matte tactile materials, warm upper-left highlights, deep shaded right faces and sturdy miniature proportions. The soil-family scene uses a low, compact square raised bed made from two honey-brown timber planks on the side, facing front-left in a slightly elevated 3/4 view, and squat unmarked kraft paper gardening sacks, each with one broad muted olive-green stripe across its middle. Sacks have folded paper seams, flat stable bases, and enough thickness to read as soil sacks. The existing thin level of soil is smooth pale-brown, and the new fertile potting soil is clearly darker cocoa-brown, in a few broad, rounded faceted clods. Use the soil amount and sack silhouettes as the primary distinction for this volume.\nOperation: adding 70 liters of fertile soil. Exactly FOUR strong recognizable sack silhouettes: two upright sacks at the rear, one upright sack hugging their side and one open sack tipped diagonally toward the bed. Dark rich earth fills the entire raised bed to the rim. In the center it rises as a high, generous dome visibly above the timber rim. One steady short flow of faceted soil from the angled open sack touches the upper edge of the dome. The timber sides are still fully visible. Make the overall illustration feel full and abundant in a compact, coherent shape.\nOne isolated tight, centered near-square composition with at least 7% clear padding above all objects and to the sides. The visible rectangular rim frames the soil, and none of the sacks hide the amount of added earth. Design for readability at 48 px. Entire composition isolated on genuine transparent alpha outside the objects. No text, characters, lettering, numerals, logo symbols, UI panels, labels, plants, tools, frame, background, ground plane, or cast shadow outside the art.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "hillingPlant": {
+        "entityId": 183,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/hillingPlant.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/hillingPlant.webp",
+        "styleReferences": [
+            "packages/ui/src/GameIcons/assets/seedling.webp",
+            "packages/ui/src/GameIcons/assets/backpack.webp",
+            "packages/ui/src/AchievementAwards/assets/harvest-1.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate a single transparent square Gredice farming-game icon for Okopavanje, tending and aerating soil around a young plant with a hand hoe. The first supplied image, the seedling, is both the plant-shape and rendering-style reference. Use its simple continuous leaf stems and intact pair of fresh broad lime green leaves. The supplied backpack and carrot award give rendering style only. Match the chunky beveled low-poly facets, matte tactile surfaces, warm top-left lighting, deep shaded faces, bright green leaves, cheerful golden-orange handle and brown earth. A small cheerful upright green seedling with an uninterrupted living thin stem and large fresh leaves grows on the left half of a broad low clod of dark brown earth, the soil surface visible from an elevated three-quarter view. On the right, one recognizable chunky garden hand hoe has a short golden-orange handle and a single gray rectangular metal blade mounted perpendicular to its shaft. The flat blade presses into the earth well away from the plant stem and pushes a small group of broad clods back toward the plant's base. Show the shallow curved furrow immediately behind the blade, revealing the garden work at a glance. Keep the plant untouched and visibly healthy. The composition is compact, near-square and centered with clean visible separation between handle and leaves and 7% margin. True transparent alpha outside the art. No cut or clipped plant stem, detached leaves, pruners, bags, extra stems, people, weeds, exposed roots, text, frame, ground plane, scenery, or external shadow.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    }
+}
