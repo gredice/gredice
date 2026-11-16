@@ -10,6 +10,8 @@ import { PageHeader } from '@gredice/ui/PageHeader';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import Image from 'next/image';
+import PartnerFarmVisual from '../../assets/PartnerFarmVisual.webp';
 import { CtaBand } from '../../components/shared/CtaBand';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { HighlightChip } from '../../components/shared/HighlightChip';
@@ -56,6 +58,15 @@ export default function AboutUsPage() {
                         <HighlightChip icon={<MapPin aria-hidden />}>
                             Partnerski OPG u Bosiljevu
                         </HighlightChip>
+                    }
+                    visual={
+                        <Image
+                            src={PartnerFarmVisual}
+                            alt="Ilustracija partnerskog OPG-a s podignutim gredicama"
+                            sizes="(min-width: 768px) 192px, 100vw"
+                            className="h-48 w-full object-contain p-2 md:size-48"
+                            priority
+                        />
                     }
                     header="O nama"
                     subHeader="Tvoj vrt, gdje god bio 🌱"
