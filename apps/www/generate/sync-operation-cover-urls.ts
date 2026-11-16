@@ -12,20 +12,20 @@ import {
     storage,
     upsertAttributeValue,
 } from '@gredice/storage';
-import illustrations from './operation-cover-illustrations.json' with {
-    type: 'json',
-};
+import { readOperationCoverIllustrations } from './read-operation-cover-illustrations';
 
 const actor = { id: 'codex', name: 'Codex' };
 const entityTypeName = 'operation';
 const publicBaseUrl =
     'https://www.gredice.com/assets/operation-icons/illustrated/';
 const publicAssetPath = 'apps/www/public/assets/operation-icons/illustrated/';
-const manifest = new Map<string, unknown>(Object.entries(illustrations));
 
 class OperationCoverSyncError extends Error {}
 
-function readTarget(operation: string) {
+function readTarget(
+    operation: string,
+    manifest: Awaited<ReturnType<typeof readOperationCoverIllustrations>>,
+) {
     if (!/^[A-Za-z][A-Za-z0-9_-]*$/u.test(operation)) {
         throw new OperationCoverSyncError(
             `Invalid operation name: ${operation}.`,
@@ -35,18 +35,7 @@ function readTarget(operation: string) {
     const entry = manifest.get(operation);
     const fileName = `${operation}.webp`;
     const assetPath = `${publicAssetPath}${fileName}`;
-    if (
-        !entry ||
-        typeof entry !== 'object' ||
-        !('entityId' in entry) ||
-        typeof entry.entityId !== 'number' ||
-        !Number.isSafeInteger(entry.entityId) ||
-        entry.entityId < 1 ||
-        !('asset' in entry) ||
-        entry.asset !== assetPath ||
-        !('previousUrl' in entry) ||
-        (entry.previousUrl !== null && typeof entry.previousUrl !== 'string')
-    ) {
+    if (!entry || entry.asset !== assetPath) {
         throw new OperationCoverSyncError(
             `Missing or invalid illustration manifest entry for ${operation}.`,
         );
@@ -275,17 +264,10 @@ async function main() {
         );
     }
 
+    const manifest = await readOperationCoverIllustrations();
     const targets = operations
-        .map(readTarget)
+        .map((operation) => readTarget(operation, manifest))
         .sort((left, right) => left.entityId - right.entityId);
-    if (
-        new Set(targets.map(({ entityId }) => entityId)).size !== targets.length
-    ) {
-        throw new OperationCoverSyncError(
-            'Selected operations must have distinct manifest entity IDs.',
-        );
-    }
-
     const verified = await Promise.all(
         targets.map((target) => verifyAsset(target, values.apply)),
     );

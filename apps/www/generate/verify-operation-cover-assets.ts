@@ -2,32 +2,17 @@ import { stat } from 'node:fs/promises';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
-import operationCoverIllustrations from './operation-cover-illustrations.json' with {
-    type: 'json',
-};
 import {
     directoryOperationCoverRecipes,
     validateOperationCoverRecipes,
 } from './operation-cover-recipes';
+import { readOperationCoverIllustrations } from './read-operation-cover-illustrations';
 
 const repoRoot = fileURLToPath(new URL('../../../', import.meta.url));
 const publicIconPath = 'apps/www/public/assets/operation-icons';
 const publicIconDirectory = join(repoRoot, publicIconPath);
 
-type IllustrationEntry = {
-    asset: string;
-    entityId?: number;
-    export: string;
-    mode: string;
-    previousUrl?: string | null;
-    prompt: string;
-    styleReferences: string[];
-};
-
 const canvasSize = 640;
-const illustrationEntries: [string, IllustrationEntry][] = Object.entries(
-    operationCoverIllustrations,
-);
 
 async function fileExists(path: string) {
     try {
@@ -38,11 +23,12 @@ async function fileExists(path: string) {
     }
 }
 
-async function validateIllustrationAssets() {
+async function validateIllustrationAssets(
+    illustrations: Awaited<ReturnType<typeof readOperationCoverIllustrations>>,
+) {
     const errors: string[] = [];
-    const entityIds = new Set<number>();
 
-    for (const [operationName, entry] of illustrationEntries) {
+    for (const [operationName, entry] of illustrations) {
         const expectedPath = `${publicIconPath}/illustrated/${operationName}.webp`;
         if (
             !/^[A-Za-z][A-Za-z0-9_-]*$/u.test(operationName) ||
@@ -52,39 +38,6 @@ async function validateIllustrationAssets() {
                 `${operationName}: expected illustration at ${expectedPath}.`,
             );
             continue;
-        }
-
-        if (
-            entry.entityId === undefined ||
-            !Number.isSafeInteger(entry.entityId) ||
-            entry.entityId <= 0 ||
-            entityIds.has(entry.entityId)
-        ) {
-            errors.push(
-                `${operationName}: entityId must be a unique positive integer.`,
-            );
-        } else {
-            entityIds.add(entry.entityId);
-        }
-
-        if (
-            entry.previousUrl !== null &&
-            (typeof entry.previousUrl !== 'string' ||
-                !URL.canParse(entry.previousUrl) ||
-                new URL(entry.previousUrl).protocol !== 'https:')
-        ) {
-            errors.push(
-                `${operationName}: previousUrl must be null or an HTTPS URL.`,
-            );
-        }
-
-        if (
-            !entry.mode.trim() ||
-            !entry.prompt.trim() ||
-            !entry.export.trim() ||
-            entry.styleReferences.length === 0
-        ) {
-            errors.push(`${operationName}: missing illustration provenance.`);
         }
 
         for (const reference of entry.styleReferences) {
@@ -156,7 +109,8 @@ async function main() {
         );
     }
 
-    const illustrationErrors = await validateIllustrationAssets();
+    const illustrations = await readOperationCoverIllustrations();
+    const illustrationErrors = await validateIllustrationAssets(illustrations);
     if (illustrationErrors.length > 0) {
         throw new Error(
             `Invalid operation cover illustrations:\n${illustrationErrors.join('\n')}`,
@@ -167,7 +121,7 @@ async function main() {
         JSON.stringify(
             {
                 checked: directoryOperationCoverRecipes.length,
-                illustrationsChecked: illustrationEntries.length,
+                illustrationsChecked: illustrations.size,
                 directory: publicIconDirectory,
             },
             null,
