@@ -62,7 +62,7 @@ export function PublicGardenMembers({
                             href={publicUserProfileHref(member.publicId)}
                             className="flex min-w-0 items-center gap-2 rounded-md text-sm hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                         >
-                            <UserAvatar {...member} />
+                            <UserAvatar {...member} decorativeImage />
                             <span className="min-w-0 break-words">
                                 {member.displayName}
                             </span>

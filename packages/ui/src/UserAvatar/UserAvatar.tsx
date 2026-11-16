@@ -7,6 +7,7 @@ import { UserLevelBadge } from './UserLevelBadge';
 export type UserAvatarProps = {
     avatarUrl?: string | null;
     displayName: string;
+    decorativeImage?: boolean;
     animate?: boolean;
     achievementCount?: number;
 } & Pick<AvatarProps, 'className' | 'size'>;
@@ -14,6 +15,7 @@ export type UserAvatarProps = {
 export function UserAvatar({
     avatarUrl,
     displayName,
+    decorativeImage = false,
     className,
     size = 'md',
     animate,
@@ -34,7 +36,7 @@ export function UserAvatar({
                     // biome-ignore lint/performance/noImgElement: User-provided avatar URLs do not require Next image configuration.
                     <img
                         src={resolveAvatarSource(avatarUrl)}
-                        alt={displayName}
+                        alt={decorativeImage ? '' : displayName}
                         className="size-full object-cover"
                     />
                 ) : (

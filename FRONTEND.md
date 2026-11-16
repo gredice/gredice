@@ -77,7 +77,7 @@ compatibility, and dependency-audit decisions.
 - Keep heading levels sequential: card section titles directly under a page `h1` render as `h2` (the shared `CardTitle` is an `h3`).
 - Keep focus management correct in dialogs, menus, drawers, and async forms.
 - Public `www` changes should satisfy the existing Playwright accessibility tests.
-- Profile avatar links include visible fallback initials in their accessible names; garden like buttons include the displayed count. Named garden member links derive their names from their content.
+- Profile avatar links include visible fallback initials in their accessible names; garden like buttons include the displayed count. Named garden member links derive their names from their content and use `UserAvatar decorativeImage` to avoid repeating the adjacent name through image alt text.
 - In-page section links (`PageSectionNav`) end their accessible name with
   "– odjeljak ove stranice", so they differ from same-text links to a separate
   page (for example `#radnje` vs `/radnje` in the footer). Prefer visible text
