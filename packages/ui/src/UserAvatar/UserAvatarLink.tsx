@@ -1,4 +1,5 @@
 import { getAchievementProgress } from '@gredice/js/achievements';
+import { initials } from '@gredice/js/initials';
 import { Link } from '../Link';
 import { UserAvatar, type UserAvatarProps } from './UserAvatar';
 
@@ -10,11 +11,16 @@ export function UserAvatarLink({
         return <UserAvatar {...avatarProps} />;
     }
 
-    const levelLabel =
+    const level =
         avatarProps.achievementCount === undefined
-            ? ''
-            : `, razina ${getAchievementProgress(avatarProps.achievementCount).level}`;
-    const label = `Otvori profil: ${avatarProps.displayName}${levelLabel}`;
+            ? undefined
+            : getAchievementProgress(avatarProps.achievementCount).level;
+    const levelLabel = level === undefined ? '' : `, razina ${level}`;
+    // Initials and the overlaid badge form one visible text label.
+    const initialsLabel = avatarProps.avatarUrl
+        ? ''
+        : `, ${initials(avatarProps.displayName)}${level ?? ''}`;
+    const label = `Otvori profil: ${avatarProps.displayName}${levelLabel}${initialsLabel}`;
 
     return (
         <Link

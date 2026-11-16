@@ -292,7 +292,9 @@ test('keeps a pending like on its original garden while switching gardens', asyn
         await route.fulfill({ json: { liked: true, likeCount: 8 } });
     });
     await mount(<PublicProfileHarness profile={profile} />);
-    await page.getByRole('button', { name: 'Lajkaj vrt', exact: true }).click();
+    await page
+        .getByRole('button', { name: 'Lajkaj vrt, 7', exact: true })
+        .click();
     await expect(
         page.getByRole('button', { name: 'Makni lajk s vrta' }),
     ).toHaveAttribute('aria-disabled', 'true');
@@ -301,7 +303,7 @@ test('keeps a pending like on its original garden while switching gardens', asyn
         .locator('..')
         .click();
     const nextLike = page.getByRole('button', {
-        name: 'Lajkaj vrt',
+        name: 'Lajkaj vrt, 8',
         exact: true,
     });
     await expect(nextLike).toHaveText('8');

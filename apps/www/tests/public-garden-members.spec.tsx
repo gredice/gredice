@@ -54,6 +54,10 @@ for (const width of [390, 768, 1280]) {
             card.getByRole('link', { name: 'Prikaži sve vrtlare, još 2' }),
         ).toHaveAttribute('href', '/vrtovi/59#vrtlari');
         await expect(details.getByRole('link')).toHaveCount(6);
+        // The portrait must not repeat the adjacent visible member name.
+        await expect(details.getByRole('link').first()).toHaveAccessibleName(
+            'Razina 1 Ana Kovač',
+        );
         await expect(details.getByRole('link').last()).toHaveAttribute(
             'href',
             '/korisnici/u_member5',
