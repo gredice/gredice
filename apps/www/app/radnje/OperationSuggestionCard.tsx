@@ -29,7 +29,7 @@ export function OperationSuggestionCard({
                     type="button"
                     variant="outlined"
                     color="neutral"
-                    className="h-full min-h-24 w-full justify-start gap-4 whitespace-normal rounded-lg border-dashed border-muted-foreground/40 bg-card/40 p-4 text-left font-normal hover:border-muted-foreground/60 hover:bg-card/70"
+                    className="min-h-24 w-full justify-start gap-4 whitespace-normal rounded-lg border-dashed border-muted-foreground/40 bg-card/40 p-4 text-left font-normal hover:border-muted-foreground/60 hover:bg-card/70"
                 >
                     <span className="flex size-18 shrink-0 items-center justify-center text-muted-foreground">
                         <Add aria-hidden className="size-8" />
