@@ -1,0 +1,86 @@
+{
+    "inventoryFertilizers": {
+        "entityId": 560,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/inventoryFertilizers.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/inventoryFertilizers.webp",
+        "styleReferences": [
+            "packages/ui/src/GameIcons/assets/backpack.webp",
+            "packages/ui/src/AchievementAwards/assets/harvest-1.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate ONE production-style transparent square Gredice farming-game operation icon. Use the provided backpack and carrot award as style references only. Tactile matte materials, broad visible bevels and low-poly facets, rich forest and leaf greens, earthy tones and honey/amber accents, warm top-left light with deep shaded right sides. Show a compact centered elevated three-quarter arrangement with large distinct objects readable at 48px and 7% clear margin. Inventory clipboard is a small physical object, with symbolic checks only. True transparent space around the objects. No figures, background, floor, exterior shadow, frame, floating effects, letters, numbers or legible writing.\nOperation: Inventura sredstava za gnojidbu.\nSubject: Two chunky squat olive and amber garden nutrient bottles and one tan paper sack with a simple physical sprout emblem, plus a small scoop of bold little beige fertilizer pellets. A small green inventory clipboard with raised checkmarks is secondary, leaning against the group. This is a nutrient stock arrangement with broad round containers, no trigger sprays or insects.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "inventoryPaperDeliveryBags": {
+        "entityId": 564,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/inventoryPaperDeliveryBags.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/inventoryPaperDeliveryBags.webp",
+        "styleReferences": [
+            "packages/ui/src/GameIcons/assets/backpack.webp",
+            "packages/ui/src/AchievementAwards/assets/harvest-1.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate ONE production-style transparent square Gredice farming-game operation icon. Use the provided backpack and carrot award as style references only. Tactile matte materials, broad visible bevels and low-poly facets, rich forest and leaf greens, earthy tones and honey/amber accents, warm top-left light with deep shaded right sides. Show a compact centered elevated three-quarter arrangement with large distinct objects readable at 48px and 7% clear margin. Inventory clipboard is a small physical object, with symbolic checks only. True transparent space around the objects. No figures, background, floor, exterior shadow, frame, floating effects, letters, numbers or legible writing.\nOperation: Inventura papirnatih vrećica za dostavu.\nSubject: Two warm natural caramel kraft paper delivery bags, one open standing with a folded square bottom and two thick paper loop handles, one folded flat and clearly empty next to it. A small olive and amber inventory clipboard leans against the right bag base. Make kraft paper folds and matte surface distinct, no produce and no branding.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "inventoryPlantProtectionProducts": {
+        "entityId": 559,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/inventoryPlantProtectionProducts.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/inventoryPlantProtectionProducts.webp",
+        "styleReferences": [
+            "packages/ui/src/GameIcons/assets/backpack.webp",
+            "packages/ui/src/AchievementAwards/assets/harvest-1.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate ONE production-style transparent square Gredice farming-game operation icon. Use the provided backpack and carrot award as style references only. Tactile matte materials, broad visible bevels and low-poly facets, rich forest and leaf greens, earthy tones and honey/amber accents, warm top-left light with deep shaded right sides. Show a compact centered elevated three-quarter arrangement with large distinct objects readable at 48px and 7% clear margin. Inventory clipboard is a small physical object, with symbolic checks only. True transparent space around the objects. No figures, background, floor, exterior shadow, frame, floating effects, letters, numbers or legible writing.\nOperation: Inventura sredstava za zaštitu biljaka.\nSubject: Two bold teal trigger sprayers and one squat dark amber treatment container with a simple raised shield and leaf pictogram. A tiny ochre inventory clipboard with symbolic checks sits against the bottle bottoms. The silhouette of the two trigger nozzles and shield is clear. All sprayers idle, no water, no insects, no in-use action.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "inventoryPlasticDeliveryBags": {
+        "entityId": 565,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/inventoryPlasticDeliveryBags.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/inventoryPlasticDeliveryBags.webp",
+        "styleReferences": [
+            "packages/ui/src/GameIcons/assets/backpack.webp",
+            "packages/ui/src/AchievementAwards/assets/harvest-1.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate ONE production-style transparent square Gredice farming-game operation icon. Use the provided backpack and carrot award as style references only. Tactile matte materials, broad visible bevels and low-poly facets, rich forest and leaf greens, earthy tones and honey/amber accents, warm top-left light with deep shaded right sides. Show a compact centered elevated three-quarter arrangement with large distinct objects readable at 48px and 7% clear margin. Inventory clipboard is a small physical object, with symbolic checks only. True transparent space around the objects. No figures, background, floor, exterior shadow, frame, floating effects, letters, numbers or legible writing.\nOperation: Inventura plastičnih vrećica za dostavu.\nSubject: A compact stack of translucent soft pale blue plastic delivery bags, one standing open with thin welded loop handles and two flattened folded bags beneath. Make the broad stylized plastic crinkles distinct from paper, with mild soft highlights. A small ochre inventory clipboard beside it with deep green raised checkmarks adds warm contrast. No branding, lettering or contents.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "inventoryPrinterLabels": {
+        "entityId": 563,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/inventoryPrinterLabels.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/inventoryPrinterLabels.webp",
+        "styleReferences": [
+            "packages/ui/src/GameIcons/assets/backpack.webp",
+            "packages/ui/src/AchievementAwards/assets/harvest-1.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate ONE production-style transparent square Gredice farming-game operation icon. Use the provided backpack and carrot award as style references only. Tactile matte materials, broad visible bevels and low-poly facets, rich forest and leaf greens, earthy tones and honey/amber accents, warm top-left light with deep shaded right sides. Show a compact centered elevated three-quarter arrangement with large distinct objects readable at 48px and 7% clear margin. Inventory clipboard is a small physical object, with symbolic checks only. True transparent space around the objects. No figures, background, floor, exterior shadow, frame, floating effects, letters, numbers or legible writing.\nOperation: Inventura naljepnica za printer.\nSubject: Two fat white rolls of blank rounded rectangular printer labels with a short three-label strip unrolled in front, one green spool and one ochre spool at the centers. On the right, a small forest-green inventory clipboard with two chunky golden check marks. Make the broad individual blank label shapes obvious and place one roll in an upright position. No text, printer or barcodes.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "inventoryProtectiveFabrics": {
+        "entityId": 561,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/inventoryProtectiveFabrics.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/inventoryProtectiveFabrics.webp",
+        "styleReferences": [
+            "packages/ui/src/GameIcons/assets/backpack.webp",
+            "packages/ui/src/AchievementAwards/assets/harvest-1.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate ONE production-style transparent square Gredice farming-game operation icon. Use the provided backpack and carrot award as style references only. Tactile matte materials, broad visible bevels and low-poly facets, rich forest and leaf greens, earthy tones and honey/amber accents, warm top-left light with deep shaded right sides. Show a compact centered elevated three-quarter arrangement with large distinct objects readable at 48px and 7% clear margin. Inventory clipboard is a small physical object, with symbolic checks only. True transparent space around the objects. No figures, background, floor, exterior shadow, frame, floating effects, letters, numbers or legible writing.\nOperation: Inventura zaštitnih tkanina.\nSubject: Three tidy rolls of agricultural cover fabric on a squat low amber wood shelf, one cream solid cloth, one woven green mesh, and one pale teal woven cloth. Roll ends spiral clearly. A little dark green inventory clipboard with two raised gold checkmarks leans on the lower left. Emphasize fabric rolls and muted textile materials, no plants or buildings.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "inventorySeeds": {
+        "entityId": 556,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/inventorySeeds.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/inventorySeeds.webp",
+        "styleReferences": [
+            "packages/ui/src/GameIcons/assets/backpack.webp",
+            "packages/ui/src/AchievementAwards/assets/harvest-1.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate ONE production-style transparent square Gredice farming-game operation icon. Use the provided backpack and carrot award as style references only. Tactile matte materials, broad visible bevels and low-poly facets, rich forest and leaf greens, earthy tones and honey/amber accents, warm top-left light with deep shaded right sides. Show a compact centered elevated three-quarter arrangement with large distinct objects readable at 48px and 7% clear margin. Inventory clipboard is a small physical object, with symbolic checks only. True transparent space around the objects. No figures, background, floor, exterior shadow, frame, floating effects, letters, numbers or legible writing.\nOperation: Inventura sjemena.\nSubject: Three upright honey kraft seed packets with large recognizable simple pictograms of a bean, sunflower, and pea drawn as raised colored volume. One packet open with three oversized small tan brown seeds near it. A small forest green inventory clipboard with raised amber checks leans at right. Pouches are flat square paper, not fertilizer sacks.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    }
+}
