@@ -75,6 +75,13 @@ compatibility, and dependency-audit decisions.
 - Prefer semantic buttons, links, headings, tables, and form labels.
 - Keep focus management correct in dialogs, menus, drawers, and async forms.
 - Public `www` changes should satisfy the existing Playwright accessibility tests.
+- In-page section links (`PageSectionNav`) end their accessible name with
+  "– odjeljak ove stranice", so they differ from same-text links to a separate
+  page (for example `#radnje` vs `/radnje` in the footer). Prefer visible text
+  plus `sr-only` context over an `aria-label` that drops the visible text
+  (WCAG 2.5.3), keep a positioned ancestor (`relative`) around `sr-only` text in
+  scrolling rows, and start `sr-only` additions with a dash, not a comma
+  (Chrome adds a space before them).
 
 - Admin dashboard statistics use the page's selected Zagreb calendar date range.
   Registrations, operation durations and sunflowers share that range; charts show
