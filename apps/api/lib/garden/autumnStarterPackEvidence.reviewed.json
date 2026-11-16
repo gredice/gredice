@@ -1,7 +1,7 @@
 {
     "harvest-corner": {
         "sourceCommit": "c48974bd2e21316ae5c3034b9d305350aa479cd4",
-        "captureSha256": "a985c23a99b1a2b136dbffb876b4a0560c5646af177ed605d888d0fa84f95318",
+        "captureSha256": "267fd1643bb0e9dd7a0305c0f61056dfc50c4f03440321ec11f259b4a81026ce",
         "included": [
             {
                 "entityName": "HarvestPumpkinGroupOrange",
@@ -642,7 +642,7 @@
             },
             {
                 "path": "packages/game/src/data/gameAssetModels.generated.ts",
-                "sha256": "4f8e86bca3d8e0768ef7f0997d88a0f4e85b392106eb88c316694444184f861a"
+                "sha256": "52f1bd356f5008ac9b0fca272d4e719ebe3577815ceae0c0fb53031418f6526e"
             },
             {
                 "path": "packages/game/src/entities/BlockGrass.tsx",
@@ -840,17 +840,17 @@
         "captureRecordCommit": "deca1575e69ddc52eb2f3ff89ca3333b714239fd",
         "recapture": {
             "source": {
-                "commit": "146945bda31d46393100e3d6a81fe284fcb28f6a",
-                "tree": "4a9fbbef6ec0c625b4f8727a7805e8ff2cee7404",
+                "commit": "2b1c22774c7ecd8d6541d496d1c5e170adab7ddc",
+                "tree": "516e806a4e0ba60dacf64557d2d93a317abb176c",
                 "status": ""
             },
-            "previousCaptureSha256": "730033d06faeafeecd4a1a298f247dc285d5c722f996ad96e71120fb1e9ac0e1",
+            "previousCaptureSha256": "a985c23a99b1a2b136dbffb876b4a0560c5646af177ed605d888d0fa84f95318",
             "previousPreviewSha256": "ed1b245678a3613a093026ecdfadd3a416a3332972f926ab9aa3a552bb95c2e2"
         }
     },
     "woodland-path": {
         "sourceCommit": "c48974bd2e21316ae5c3034b9d305350aa479cd4",
-        "captureSha256": "1e8e3738d61decaddb76525f963cfa110230f9abd2c90437f680cdc1cbadfd57",
+        "captureSha256": "ce36ea34046628580a20be5f4e9fff121339631634c311a153b9a7902a87a2db",
         "included": [
             {
                 "entityName": "WoodlandMushrooms",
@@ -1494,7 +1494,7 @@
             },
             {
                 "path": "packages/game/src/data/gameAssetModels.generated.ts",
-                "sha256": "4f8e86bca3d8e0768ef7f0997d88a0f4e85b392106eb88c316694444184f861a"
+                "sha256": "52f1bd356f5008ac9b0fca272d4e719ebe3577815ceae0c0fb53031418f6526e"
             },
             {
                 "path": "packages/game/src/entities/AutumnLeafPile.tsx",
@@ -1696,17 +1696,17 @@
         "captureRecordCommit": "deca1575e69ddc52eb2f3ff89ca3333b714239fd",
         "recapture": {
             "source": {
-                "commit": "146945bda31d46393100e3d6a81fe284fcb28f6a",
-                "tree": "4a9fbbef6ec0c625b4f8727a7805e8ff2cee7404",
+                "commit": "2b1c22774c7ecd8d6541d496d1c5e170adab7ddc",
+                "tree": "516e806a4e0ba60dacf64557d2d93a317abb176c",
                 "status": ""
             },
-            "previousCaptureSha256": "0936ee6dd67a9cd6018abb4ed38317f2e101a1294967c8f5fa366de268285403",
+            "previousCaptureSha256": "1e8e3738d61decaddb76525f963cfa110230f9abd2c90437f680cdc1cbadfd57",
             "previousPreviewSha256": "2f21c98172611d2e3d37d71d4fd5c5c7685c044239f406a271a09d5e775c5e55"
         }
     },
     "evening-seat": {
         "sourceCommit": "c48974bd2e21316ae5c3034b9d305350aa479cd4",
-        "captureSha256": "18d9e35fff93d38f792bcfc40710a8a4a43c485fcdb00e74f5f1876df8a31e31",
+        "captureSha256": "f82cdea3638dac31aae20965176f2eece4bd7d2ff9be3b17d3cbd3b885a101b0",
         "included": [
             {
                 "entityName": "AutumnBlanketBench",
@@ -2351,7 +2351,7 @@
             },
             {
                 "path": "packages/game/src/data/gameAssetModels.generated.ts",
-                "sha256": "4f8e86bca3d8e0768ef7f0997d88a0f4e85b392106eb88c316694444184f861a"
+                "sha256": "52f1bd356f5008ac9b0fca272d4e719ebe3577815ceae0c0fb53031418f6526e"
             },
             {
                 "path": "packages/game/src/entities/AutumnAsterPot.tsx",
@@ -2557,11 +2557,11 @@
         "captureRecordCommit": "deca1575e69ddc52eb2f3ff89ca3333b714239fd",
         "recapture": {
             "source": {
-                "commit": "146945bda31d46393100e3d6a81fe284fcb28f6a",
-                "tree": "4a9fbbef6ec0c625b4f8727a7805e8ff2cee7404",
+                "commit": "2b1c22774c7ecd8d6541d496d1c5e170adab7ddc",
+                "tree": "516e806a4e0ba60dacf64557d2d93a317abb176c",
                 "status": ""
             },
-            "previousCaptureSha256": "e4bd361c00f7972f8c47c39b18f75387da9326bd975f88722c7011d4fc719e8b",
+            "previousCaptureSha256": "18d9e35fff93d38f792bcfc40710a8a4a43c485fcdb00e74f5f1876df8a31e31",
             "previousPreviewSha256": "e3eccaa634461ae5f76792283c481e253ba43b964389c26fc7c71a6cb4942cd0"
         }
     }
