@@ -101,5 +101,70 @@
         ],
         "prompt": "Use case: stylized-concept\nCreate one production-quality transparent square game icon for Gredice. The supplied tomato topping icon is the nearest series style reference. Match the backpack, seedling and carrot award in tactile matte finish, strong faceted low-poly volumes, chunky beveled geometry, broad planes, soft warm light from upper left, shaded sides, and warm ochre soil. The action and silhouette described below are unique to this image.\nDepict Pomlađujuća rezidba, rejuvenation pruning that removes an old exhausted branch near the base of a perennial shrub and lets vigorous new shoots take over. Make a squat woody shrub rooted in a small earthy clod, with a thick, crooked russet-brown old cane and two upright lime-green leafy new shoots. The old cane is freshly severed just above its junction low on the old woody crown. Show the cut as a single broad flat golden-tan wood cross-section and show the bare cane angled away to the left, close to the cut, across a noticeable transparent gap. One chunky amber-handled bypass pruner with steel blades reaches in from the upper left toward this low cut, mostly beside the woody branch. The fresh bright shoots stay upright, visibly connected to the crown, and dominate the right side. The silhouette is a low curved woody base with tall young growth on one side, a strong contrast between dry brown wood and fresh green leaves. No fruits, flowers, or tree rings beyond the cut surface.\nMake this one coherent compact still life with thick readable shapes and a clear focal point at 48 px. Slightly elevated three-quarter view, centered square composition with clear space around every part. Genuine transparent alpha outside the complete object. No hands, lettering, arrows, sparkles, frames, environment, shadows on the ground, duplicate tools, or filler objects.",
         "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "rinsePestsFromPlant": {
+        "entityId": 583,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/rinsePestsFromPlant.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/rinsePestsFromPlant.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "packages/ui/src/AchievementAwards/assets/watering-1.webp",
+            "packages/ui/src/GameIcons/assets/raised-bed.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate one production-quality square transparent operation artwork for the Gredice gardening game. Use supplied pruning icon, watering achievement and wooden raised bed as style references. Match chunky faceted low-poly geometry, bevels, matte tactile surfaces, warm upper-left illumination, shade on right and underneath, ochre wood and soil, crisp leaf greens. Water appears in sturdy geometric sapphire to cyan forms with pale glints, clear enough at thumbnail size. Follow only the action and specific composition below.\nFor Ispiranje biljke od štetnika, show gently rinsing a single plant with clear water to dislodge visible tiny pests. One lush basil plant with two large ribbed green leaves emerging from a small ochre soil clump. A compact tapered clean-water bottle with a chunky slate and teal trigger spray top is at the lower left, angled to send a short readable shallow fan of cyan droplets sideways under the foremost leaf, above the soil. Show exactly two small chunky olive-ochre aphid shapes with short stubby legs and antennae: one loosened under that leaf and a second dropping with a blue water droplet, both subordinate to the plant and spray. The spray nozzle points to the undersides of leaves instead of the root. No bed, hose, pesticide symbols, dark sooty damage, flower, or standing water.\nElevated three-quarter view with one coherent centered composition, full silhouette and generous transparent clearance. Readable at 48 px. True alpha transparency outside the objects and in the spaces between them. No environment or scene backdrop, floor shadow, hands, labels, watermarks, text, numerals, sparks, borders or badges.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "waterGreenhouseSeedlings": {
+        "entityId": 655,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/waterGreenhouseSeedlings.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/waterGreenhouseSeedlings.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "packages/ui/src/AchievementAwards/assets/watering-1.webp",
+            "packages/ui/src/GameIcons/assets/raised-bed.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate one production-quality square transparent operation artwork for the Gredice gardening game. Use supplied pruning icon, watering achievement and wooden raised bed as style references. Match chunky faceted low-poly geometry, bevels, matte tactile surfaces, warm upper-left illumination, shade on right and underneath, ochre wood and soil, crisp leaf greens. Water appears in sturdy geometric sapphire to cyan forms with pale glints, clear enough at thumbnail size. Follow only the action and specific composition below.\nFor Zalijevanje presadnica u stakleniku, use a compact tabletop nursery tray with exactly four divided soil cells in two short rows, small chunky lime-green seedlings in each. A tiny forest-green and amber watering can with a short round rose is tilted from the upper right, releasing a small group of cyan drops gently toward the tray substrate. Frame the tray on the left/back with a simple recognizable greenhouse outline, consisting of mint-green gabled frame, one roof pane and one pale aqua glass side, with the front open so the seedlings and gentle watering are unobstructed. The square footprint is the nursery tray, no wooden raised bed. Can and sowing cells clearly legible with greenhouse structure immediately identifiable. No big splash or water on the leaves.\nElevated three-quarter view with one coherent centered composition, full silhouette and generous transparent clearance. Readable at 48 px. True alpha transparency outside the objects and in the spaces between them. No environment or scene backdrop, floor shadow, hands, labels, watermarks, text, numerals, sparks, borders or badges.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "watteringSystemSprinkler2": {
+        "entityId": 275,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/watteringSystemSprinkler2.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/watteringSystemSprinkler2.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "packages/ui/src/AchievementAwards/assets/watering-1.webp",
+            "packages/ui/src/GameIcons/assets/raised-bed.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate one production-quality square transparent operation artwork for the Gredice gardening game. Use supplied pruning icon, watering achievement and wooden raised bed as style references. Match chunky faceted low-poly geometry, bevels, matte tactile surfaces, warm upper-left illumination, shade on right and underneath, ochre wood and soil, crisp leaf greens. Water appears in sturdy geometric sapphire to cyan forms with pale glints, clear enough at thumbnail size. Follow only the action and specific composition below.\nFor Sustav navodnjavanja - 2 prskalice, show an installed two-head automatic irrigation system. An elongated honey-wood rectangular bed with dark exposed soil holds a clearly visible single straight charcoal-grey irrigation pipe down the middle. There are exactly two compact upright teal sprinkler heads with dark caps, one on each opposite end of the pipe. Show each spraying its own distinct inward fan of three bright cyan arcs and larger blue drops over the soil and out toward the edges, with the two fan origins easy to count instantly. Use only two very small leafy sprouts near a front corner so the connecting pipe is clear. View from a slightly higher angle so both sprinklers and the uninterrupted pipe are readable. No external garden hose coil, water container, hand spray gun or extra sprinkler.\nElevated three-quarter view with one coherent centered composition, full silhouette and generous transparent clearance. Readable at 48 px. True alpha transparency outside the objects and in the spaces between them. No environment or scene backdrop, floor shadow, hands, labels, watermarks, text, numerals, sparks, borders or badges.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "watterRaisedBed": {
+        "entityId": 167,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/watterRaisedBed.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/watterRaisedBed.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "packages/ui/src/AchievementAwards/assets/watering-1.webp",
+            "packages/ui/src/GameIcons/assets/raised-bed.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate one production-quality square transparent operation artwork for the Gredice gardening game. Use supplied pruning icon, watering achievement and wooden raised bed as style references. Match chunky faceted low-poly geometry, bevels, matte tactile surfaces, warm upper-left illumination, shade on right and underneath, ochre wood and soil, crisp leaf greens. Water appears in sturdy geometric sapphire to cyan forms with pale glints, clear enough at thumbnail size. Follow only the action and specific composition below.\nFor Zalijevanje gredice (50L), illustrate a higher-volume manual watering of a wide planted rectangular honey-wood raised bed. Show two neatly spaced bright green groups of established leafy plants with exposed soil between them. A thick blue-green garden hose coils once beside the short right edge, ending in a chunky brass-and-blue shower nozzle above the bed. It pours a strong wide fan of stylized connected blue water bands angled downward evenly across the middle, showing a much greater flow than a watering can. Damp dark earth beneath, with no pooled water and no flooded bed. The nozzle, coil and wide visible fan identify the action at small sizes. No watering can, buckets, installed sprinklers, scales or moisture diagram. The dominant silhouette is the wider rectangular working bed with the hose instead of a separate container.\nElevated three-quarter view with one coherent centered composition, full silhouette and generous transparent clearance. Readable at 48 px. True alpha transparency outside the objects and in the spaces between them. No environment or scene backdrop, floor shadow, hands, labels, watermarks, text, numerals, sparks, borders or badges.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "watterSurfaceRaisedBed": {
+        "entityId": 274,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/watterSurfaceRaisedBed.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/watterSurfaceRaisedBed.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "packages/ui/src/AchievementAwards/assets/watering-1.webp",
+            "packages/ui/src/GameIcons/assets/raised-bed.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate one production-quality square transparent operation artwork for the Gredice gardening game. Use supplied pruning icon, watering achievement and wooden raised bed as style references. Match chunky faceted low-poly geometry, bevels, matte tactile surfaces, warm upper-left illumination, shade on right and underneath, ochre wood and soil, crisp leaf greens. Water appears in sturdy geometric sapphire to cyan forms with pale glints, clear enough at thumbnail size. Follow only the action and specific composition below.\nFor Površinsko zalijevanje gredice (20L), illustrate shallow light watering of recently sown soil in a compact square honey-wood raised bed. The soil is the largest visible surface, with two very short lime-green sprouts and the rest open with lightly damp patches. A single small mint-green watering can with an ochre handle is tilted just above the left corner, with its broad perforated round rose angled across the top face of the bed. Show 4–6 distinct small chunky blue droplets spreading over the surface from the rose. Keep the water amount modest. No buckets, hose, pipe, puddles or large plants. Low square bed and small can silhouette, with a clear arc of separate drops across visible soil.\nElevated three-quarter view with one coherent centered composition, full silhouette and generous transparent clearance. Readable at 48 px. True alpha transparency outside the objects and in the spaces between them. No environment or scene backdrop, floor shadow, hands, labels, watermarks, text, numerals, sparks, borders or badges.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
     }
 }
