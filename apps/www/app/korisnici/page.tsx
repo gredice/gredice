@@ -1,7 +1,7 @@
 import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
-import { getUserLeaderboard } from './leaderboard';
-import { UserLeaderboard } from './UserLeaderboard';
+import { getUserLeaderboard, pickCommunityAvatarUrls } from './leaderboard';
+import { maxCommunityAvatars, UserLeaderboard } from './UserLeaderboard';
 
 export const dynamic = 'force-dynamic';
 export const metadata = createPublicMetadata({
@@ -12,5 +12,10 @@ export const metadata = createPublicMetadata({
 });
 
 export default async function UsersPage() {
-    return <UserLeaderboard {...(await getUserLeaderboard())} />;
+    return (
+        <UserLeaderboard
+            {...(await getUserLeaderboard())}
+            communityAvatarUrls={pickCommunityAvatarUrls(maxCommunityAvatars)}
+        />
+    );
 }

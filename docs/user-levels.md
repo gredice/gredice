@@ -5,6 +5,12 @@ achievements, linking to their existing public profiles. Rankings use approved
 achievement count descending, user registration date ascending, then user ID.
 The public API returns the same safe display-name projection as public profiles;
 login names and email addresses are excluded.
+The first three places use gold, silver and bronze medal badges. Below the list,
+"i još N vrtlara" counts the other registered (non-temporary) users from the
+API's `userCount`, next to a stack of up to five built-in avatars picked at
+random per request; the row is hidden when everyone is listed, the list is
+empty or an older API omits the count. The page closes with the shared green
+`CtaBand`, whose secondary action links to the achievements guide.
 
 Achievements remain account-owned. A user's primary account is their earliest
 `account_users` membership, with membership ID breaking timestamp ties. Shared

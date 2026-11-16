@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, asc, desc, eq, gt } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gt } from 'drizzle-orm';
 import { users } from '../schema';
 import { storage } from '../storage';
 import { userAchievementCount } from './userAchievementProgress';
@@ -21,4 +21,13 @@ export function getUserAchievementLeaderboard() {
         .where(and(eq(users.isTemporary, false), gt(achievementCount, 0)))
         .orderBy(desc(achievementCount), asc(users.createdAt), asc(users.id))
         .limit(10);
+}
+
+/** Registered (non-temporary) users, used to show how many gardeners are not ranked in the top ten. */
+export async function countRegisteredUsers() {
+    const [result] = await storage()
+        .select({ count: count() })
+        .from(users)
+        .where(eq(users.isTemporary, false));
+    return result?.count ?? 0;
 }

@@ -7,6 +7,7 @@ import {
     accountAchievements,
     accounts,
     accountUsers,
+    countRegisteredUsers,
     getAccountUsers,
     getUser,
     getUserAchievementLeaderboard,
@@ -20,6 +21,7 @@ test('leaderboard and all user projections share approved primary-account scores
     const keys = getAchievementDefinitions().map(({ key }) => key);
     const ids: string[] = [];
     const accountIds: string[] = [];
+    const registeredBefore = await countRegisteredUsers();
     for (let index = 0; index < 13; index++) {
         const id = randomUUID();
         const accountId = randomUUID();
@@ -77,6 +79,8 @@ test('leaderboard and all user projections share approved primary-account scores
         accountId: accountIds[0],
         createdAt: new Date(2021, 0, 1),
     });
+    // Temporary users are not counted as registered gardeners.
+    assert.equal(await countRegisteredUsers(), registeredBefore + 12);
     const leaders = await getUserAchievementLeaderboard();
     assert.equal(leaders.length, 10);
     assert.deepEqual(

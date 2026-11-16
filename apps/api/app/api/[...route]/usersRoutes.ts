@@ -1,6 +1,7 @@
 import { publicIdToUserId } from '@gredice/js/publicId';
 import { safeUserDisplayName } from '@gredice/js/userDisplayName';
 import {
+    countRegisteredUsers,
     getAccountAchievements,
     getAccountGardens,
     getLastBirthdayRewardEvent,
@@ -113,13 +114,19 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/public/leaderboard',
         describeRoute({
             description:
-                'Get the top 10 non-temporary users by approved achievements on their primary account. Equal scores use registration date, then user ID. Each achievement earns 100 XP. Only public profile fields are returned.',
+                'Get the top 10 non-temporary users by approved achievements on their primary account. Equal scores use registration date, then user ID. Each achievement earns 100 XP. Only public profile fields are returned. `userCount` is the number of registered (non-temporary) users.',
             security: publicSecurity,
         }),
         async (context) => {
-            const users = await getUserAchievementLeaderboard();
+            const [users, userCount] = await Promise.all([
+                getUserAchievementLeaderboard(),
+                countRegisteredUsers(),
+            ]);
             context.header('Cache-Control', 'no-store');
-            return context.json({ items: users.map(publicProfileUser) });
+            return context.json({
+                items: users.map(publicProfileUser),
+                userCount,
+            });
         },
     )
     .get(
