@@ -159,7 +159,7 @@ export function PublicGardenLikeButton({
             <div className={cx('relative z-20 min-w-0', className)}>
                 <button
                     aria-disabled={isLoadingUser || isUpdating}
-                    aria-label={actionLabel}
+                    aria-label={`${actionLabel}, ${formatGardenNumber(likeCount)}`}
                     className={cx(
                         'flex h-full w-full min-w-0 items-center justify-center gap-2 px-3 py-3 transition-colors hover:bg-muted/60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                         !currentUser && 'text-muted-foreground',
