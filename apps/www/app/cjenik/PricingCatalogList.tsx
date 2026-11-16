@@ -88,7 +88,7 @@ export function PricingCatalogList({
                         </Chip>
                     ))}
                 </div>
-                <div className="flex h-10 w-full min-w-0 items-center rounded-md border border-border bg-background shadow-xs focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 sm:max-w-80">
+                <div className="flex h-10 w-full min-w-0 items-center rounded-md border border-border bg-card shadow-xs focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 sm:max-w-80">
                     <Search className="ml-3 size-4 shrink-0 text-muted-foreground" />
                     <input
                         aria-label={searchLabel}
