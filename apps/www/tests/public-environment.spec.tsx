@@ -103,6 +103,37 @@ test('keeps the sky on and applies deterministic debug conditions', async ({
         .toBe('208');
 });
 
+test('settles the clouds once instead of drifting endlessly', async ({
+    mount,
+    page,
+}) => {
+    await mockPublicEnvironmentRequests(page);
+    await mount(<PublicEnvironmentHarness />);
+
+    const clouds = page.locator('.public-environment-clouds');
+    await expect(clouds).toHaveCSS(
+        'animation-name',
+        'public-environment-drift',
+    );
+    await expect(clouds).toHaveCSS('animation-iteration-count', '1');
+    await expect
+        .poll(() =>
+            clouds.evaluate(
+                (element) =>
+                    element
+                        .getAnimations()
+                        .filter(
+                            (animation) => animation.playState === 'running',
+                        ).length,
+            ),
+        )
+        .toBe(0);
+    await expect(page.locator('.public-environment-rain')).toHaveCSS(
+        'animation-iteration-count',
+        'infinite',
+    );
+});
+
 test('restores document ambience styles when the provider unmounts', async ({
     mount,
     page,

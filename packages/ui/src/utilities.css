@@ -241,18 +241,20 @@ body.flex > .gredice-ui-application-root {
     }
 }
 
+/* Clouds settle into place once after render and then stay still, so the
+   backdrop has no endless motion (WCAG 2.2.2). Rain and snow keep falling. */
 @keyframes public-environment-drift {
     from {
+        background-position:
+            -3rem 0,
+            9rem 2rem,
+            25rem -1rem;
+    }
+    to {
         background-position:
             0 0,
             12rem 2rem,
             28rem -1rem;
-    }
-    to {
-        background-position:
-            24rem 1rem,
-            40rem 3rem,
-            60rem 0;
     }
 }
 
@@ -392,7 +394,7 @@ html[data-public-environment="on"]::before {
         38rem 16rem,
         27rem 12rem;
     filter: blur(10px);
-    animation: public-environment-drift 90s linear infinite alternate;
+    animation: public-environment-drift 1.6s ease-out both;
 }
 
 .public-environment-fog {
