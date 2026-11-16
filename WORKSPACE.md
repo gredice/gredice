@@ -361,6 +361,24 @@ For the complete workflow that turns a model into a placeable and purchasable
 game entity, including runtime component registration, public block screenshots,
 and the directory CMS row, see [docs/game-entity-creation.md](./docs/game-entity-creation.md).
 
+### Operation cover illustrations
+
+Operation artwork lives in `apps/www/public/assets/operation-icons/illustrated`.
+Keep the exact operation name as the filename and record generation prompts,
+style references, and catalogue assignments in the corresponding batch under
+`apps/www/generate/operation-cover-illustrations`.
+
+```bash
+pnpm --filter www exec tsx generate/package-operation-cover-illustration.ts <operation-name> <source.png>
+pnpm --filter www operation-covers:verify
+```
+
+Deploy the new artwork before running `pnpm --filter www operation-covers:sync-urls --operation NAME`
+to preview a batch of catalogue assignments. Repeat `--operation NAME` for each
+entry and add `--apply` to save the verified assignments. Use
+`pnpm --filter www operation-covers:verify-public` to check the published
+assignments and rendered cover images.
+
 ### Decoration sprite atlas
 
 The decoration atlas pipeline lives in `packages/cdn/scripts` and currently processes source sheets from `apps/garden/data/sriptes`. Regenerate the ground-cover atlas with:
