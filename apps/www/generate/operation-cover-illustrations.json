@@ -1,0 +1,105 @@
+{
+    "decapitation": {
+        "entityId": 345,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/decapitation.webp",
+        "styleReferences": [
+            "packages/ui/src/GameIcons/assets/backpack.webp",
+            "packages/ui/src/GameIcons/assets/seedling.webp",
+            "packages/ui/src/AchievementAwards/assets/harvest-1.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate one production-style transparent square game icon for the Gredice gardening operation Dekapitacija (topping a tomato plant by cutting off the main terminal growing tip). The supplied backpack, seedling and carrot award are style references. Match their chunky beveled low-poly geometry, broad visible facets, saturated leaf greens, warm dark ochre, amber accents, matte tactile surfaces, warm top-left light and deep shaded faces.\nShow a sturdy short tomato stem with two broad, recognizably lobed side leaves still attached, growing from a compact faceted clump of brown earth. Make the clean flat cut at the top of the vertical main stem legible. Show one detached leafy terminal shoot immediately above it with its lower cut end aligned to the stump and a clear gap between the two. One recognizable pair of chunky amber-handled garden snips with two short steel blades enters diagonally from the right, with the open blades meeting that gap at the main stem. The cut and the separated shoot are the focal point. Keep the garden snips large enough to recognize in a 48px thumbnail and make the two stem ends clearly separated even at that size. Keep a compact, attractive, near-square silhouette, centered with about 7% padding around all pieces, slightly elevated three-quarter view. Sparse chunky forms with no tiny leaves or dangling details. True transparent alpha outside the subject. No human hands, tomatoes, flowers, labels, letters, arrows, sparkles, panels, scenery, ground shadows or trophy embellishments.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "formative-pruning": {
+        "entityId": 323,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/formative-pruning.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/formative-pruning.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "packages/ui/src/GameIcons/assets/backpack.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate ONE standalone transparent square Gredice farming-game operation icon. The provided Dekapitacija icon is the exact series style reference and the backpack supports the materials and light. Match chunky matte beveled low-poly geometry, broad facets, warm upper-left directional light, deep shaded sides, plant greens, amber tool handles, rich warm soil. Slightly elevated three-quarter view, compact strong silhouette, centered, ~7% clear margin, all pieces within bounds. Important cut points readable at 48 pixels. True transparent alpha outside the subject, no horizon, no exterior shadows, no circle frame, captions, UI, arrows or effects.\nOperation: Formativna rezidba (formative pruning).\nSubject: Show a small upright young woody garden plant with three angular open scaffold branches on a warm brown soil clod. Keep the central leader and strong left and right framework branches. At the junction of one preserved branch, an amber-handled bypass pruner has just removed one short, competing upward side branch, which is slightly detached. Show the small beige cut face where it joins to convey selecting a structure. Use warm honey bark, three simple bright green leaf groups, and a clean tall forked silhouette.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "green-pruning": {
+        "entityId": 320,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/green-pruning.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/green-pruning.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "packages/ui/src/GameIcons/assets/backpack.webp",
+            "packages/ui/src/GameIcons/assets/seedling.webp",
+            "packages/ui/src/AchievementAwards/assets/harvest-1.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate one production-quality transparent square game icon for Gredice. The supplied tomato topping icon is the nearest series style reference. Match the backpack, seedling and carrot award in tactile matte finish, strong faceted low-poly volumes, chunky beveled geometry, broad planes, soft warm light from upper left, shaded sides, and warm ochre soil. The action and silhouette described below are unique to this image.\nDepict Zelena rezidba, summer pruning of soft healthy foliage, using the catalogue example of removing a lower zucchini leaf to open up a crowded plant. A small ochre soil clod supports a low spreading young zucchini crown with three oversized healthy, deeply lobed, fresh green squash leaves, each on a sturdy green petiole. The upright green growing point and canopy stay intact. The front lowest healthy leaf is being removed, so angle that single broad light green leaf outward toward the lower left, with a short cut petiole and a clear gap near the crown. One compact amber-handled pair of steel garden snips points in from the right exactly at this low side cut, below the intact upper leaves. Compose a wide fan-shaped green silhouette with the low cut visible in an open triangular gap rather than hidden behind foliage. All leaves are lush bright green across their facets, with no spots or dried wood. No blossom, zucchini fruit, stake or string.\nMake this one coherent compact still life with thick readable shapes and a clear focal point at 48 px. Slightly elevated three-quarter view, centered square composition with clear space around every part. Genuine transparent alpha outside the complete object. No hands, lettering, arrows, sparkles, frames, environment, shadows on the ground, duplicate tools, or filler objects.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "hygiene-pruning": {
+        "entityId": 319,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/hygiene-pruning.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/hygiene-pruning.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "packages/ui/src/GameIcons/assets/backpack.webp",
+            "packages/ui/src/GameIcons/assets/seedling.webp",
+            "packages/ui/src/AchievementAwards/assets/harvest-1.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate one production-quality transparent square game icon for Gredice. The supplied tomato topping icon is the nearest series style reference. Match the backpack, seedling and carrot award in tactile matte finish, strong faceted low-poly volumes, chunky beveled geometry, broad planes, soft warm light from upper left, shaded sides, and warm ochre soil. The action and silhouette described below are unique to this image.\nDepict Sanitarna rezidba, sanitation pruning that removes a diseased leaf branch while retaining healthy foliage. A compact ochre earth clod anchors a dark-green upright tomato stem with a lush intact top cluster pointing up and to the left. One side branch low on the right carries a large drooping ochre-green and yellow leaf with exactly three oversized rust-brown spots and one curled, browning lobe. Make it immediately distinguishable from the bright healthy leaves at thumbnail scale. One chunky amber-handled pair of garden snips enters diagonally from the lower right. Its two short steel blades meet the thin lateral stem between the visibly sick branch and the healthy upright stem. Add a tiny separation across that side-stem cut. Leave the upright green tip entirely intact. The spotted drooping leaf and the contrast between healthy green and sickly yellow are the focal point. No insects, disease symbols, fruit or flower.\nMake this one coherent compact still life with thick readable shapes and a clear focal point at 48 px. Slightly elevated three-quarter view, centered square composition with clear space around every part. Genuine transparent alpha outside the complete object. No hands, lettering, arrows, sparkles, frames, environment, shadows on the ground, duplicate tools, or filler objects.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "maintenance-pruning": {
+        "entityId": 322,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/maintenance-pruning.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/maintenance-pruning.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "packages/ui/src/GameIcons/assets/backpack.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate ONE standalone transparent square Gredice farming-game operation icon. The provided Dekapitacija icon is the exact series style reference and the backpack supports the materials and light. Match chunky matte beveled low-poly geometry, broad facets, warm upper-left directional light, deep shaded sides, plant greens, amber tool handles, rich warm soil. Slightly elevated three-quarter view, compact strong silhouette, centered, ~7% clear margin, all pieces within bounds. Important cut points readable at 48 pixels. True transparent alpha outside the subject, no horizon, no exterior shadows, no circle frame, captions, UI, arrows or effects.\nOperation: Održavajuća rezidba (maintenance pruning).\nSubject: Show a dense round mature garden shrub with two sturdy warm-brown interior branches and three broad masses of rich green leaves. In a clear opening at the front center of the canopy, show chunky amber-handled bypass pruners clipping a thinner diagonal twig that crosses into the center and rubs against a sturdy upright branch. Preserve the shrub's outside canopy. Keep it broad and round, with a small crescent of ochre earth at the base. The crossing twig and blade are the focus, with gaps in foliage to read at small size.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "pinching": {
+        "entityId": 344,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/pinching.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/pinching.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "packages/ui/src/GameIcons/assets/backpack.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate ONE standalone transparent square Gredice farming-game operation icon. The provided Dekapitacija icon is the exact series style reference and the backpack supports the materials and light. Match chunky matte beveled low-poly geometry, broad facets, warm upper-left directional light, deep shaded sides, plant greens, amber tool handles, rich warm soil. Slightly elevated three-quarter view, compact strong silhouette, centered, ~7% clear margin, all pieces within bounds. Important cut points readable at 48 pixels. True transparent alpha outside the subject, no horizon, no exterior shadows, no circle frame, captions, UI, arrows or effects.\nOperation: Pinciranje (pinching out soft shoots).\nSubject: Show a young tomato shoot with a sturdy main leader, a bold side leaf and one small tender pale green sucker emerging diagonally from the leaf axil. A compact golden yellow gardening-glove thumb and index finger pinch just the small sucker at the junction. The full main plant tip and side branch are visually intact and separate from the glove. Draw only the single mitten-like pinching glove with a short dark green cuff, no arm or person. Use one compact earth clod at base. Keep the little sucker between easily distinguished fingertips and keep the geometry playful and simplified.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "pruning": {
+        "entityId": 173,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/pruning.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/pruning.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "packages/ui/src/GameIcons/assets/backpack.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate ONE standalone transparent square Gredice farming-game operation icon. The provided Dekapitacija icon is the exact series style reference and the backpack supports the materials and light. Match chunky matte beveled low-poly geometry, broad facets, warm upper-left directional light, deep shaded sides, plant greens, amber tool handles, rich warm soil. Slightly elevated three-quarter view, compact strong silhouette, centered, ~7% clear margin, all pieces within bounds. Important cut points readable at 48 pixels. True transparent alpha outside the subject, no horizon, no exterior shadows, no circle frame, captions, UI, arrows or effects.\nOperation: Jednostavna rezidba (simple pruning).\nSubject: Show a compact leafy basil plant with two pairs of broad emerald oval leaves on a small terracotta soil clod. One pair of garden shears with chunky amber handles clips a single overlong leafy branch that projects sideways from the healthy plant. The short detached leafy tip sits just outside the blades at the outer right edge. Make the simple single outward trim and round basil foliage legible. The central top is visibly intact.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "rejuvenation-pruning": {
+        "entityId": 321,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/rejuvenation-pruning.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/rejuvenation-pruning.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "packages/ui/src/GameIcons/assets/backpack.webp",
+            "packages/ui/src/GameIcons/assets/seedling.webp",
+            "packages/ui/src/AchievementAwards/assets/harvest-1.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate one production-quality transparent square game icon for Gredice. The supplied tomato topping icon is the nearest series style reference. Match the backpack, seedling and carrot award in tactile matte finish, strong faceted low-poly volumes, chunky beveled geometry, broad planes, soft warm light from upper left, shaded sides, and warm ochre soil. The action and silhouette described below are unique to this image.\nDepict Pomlađujuća rezidba, rejuvenation pruning that removes an old exhausted branch near the base of a perennial shrub and lets vigorous new shoots take over. Make a squat woody shrub rooted in a small earthy clod, with a thick, crooked russet-brown old cane and two upright lime-green leafy new shoots. The old cane is freshly severed just above its junction low on the old woody crown. Show the cut as a single broad flat golden-tan wood cross-section and show the bare cane angled away to the left, close to the cut, across a noticeable transparent gap. One chunky amber-handled bypass pruner with steel blades reaches in from the upper left toward this low cut, mostly beside the woody branch. The fresh bright shoots stay upright, visibly connected to the crown, and dominate the right side. The silhouette is a low curved woody base with tall young growth on one side, a strong contrast between dry brown wood and fresh green leaves. No fruits, flowers, or tree rings beyond the cut surface.\nMake this one coherent compact still life with thick readable shapes and a clear focal point at 48 px. Slightly elevated three-quarter view, centered square composition with clear space around every part. Genuine transparent alpha outside the complete object. No hands, lettering, arrows, sparkles, frames, environment, shadows on the ground, duplicate tools, or filler objects.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    }
+}
