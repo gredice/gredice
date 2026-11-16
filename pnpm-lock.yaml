@@ -712,10 +712,10 @@ importers:
         version: 3.1.1(@opentelemetry/api@1.10.0)
       '@posthog/next':
         specifier: 0.11.0
-        version: 0.11.0(@opentelemetry/api@1.10.0)(@types/react@19.3.0)(@vercel/functions@3.11.1(@aws-sdk/credential-provider-web-identity@3.972.90)(ws@8.21.3))(next@16.4.6(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        version: 0.11.0(@opentelemetry/api@1.10.0)(@types/react@19.3.0)(@vercel/functions@3.11.1(@aws-sdk/credential-provider-web-identity@3.972.90)(ws@8.21.3))(next@16.4.6(@babel/core@7.29.7)(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@posthog/react':
         specifier: 1.11.3
-        version: 1.11.3(@types/react@19.3.0)(posthog-js@1.447.10(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)
+        version: 1.11.3(@types/react@19.3.0)(posthog-js@1.447.12(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)
       '@vercel/blob':
         specifier: 2.9.0
         version: 2.9.0
@@ -724,16 +724,16 @@ importers:
         version: 3.11.1(@aws-sdk/credential-provider-web-identity@3.972.90)(ws@8.21.3)
       flags:
         specifier: 4.4.0
-        version: 4.4.0(@opentelemetry/api@1.10.0)(next@16.4.6(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        version: 4.4.0(@opentelemetry/api@1.10.0)(next@16.4.6(@babel/core@7.29.7)(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       next:
         specifier: 16.4.6
-        version: 16.4.6(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2)
+        version: 16.4.6(@babel/core@7.29.7)(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2)
       pg:
         specifier: 8.23.1
         version: 8.23.1
       posthog-js:
-        specifier: 1.447.10
-        version: 1.447.10(@types/react@19.3.0)(react@19.3.1)
+        specifier: 1.447.12
+        version: 1.447.12(@types/react@19.3.0)(react@19.3.1)
       react:
         specifier: 19.3.1
         version: 19.3.1
@@ -797,7 +797,7 @@ importers:
         version: 19.3.0(@types/react@19.3.0)
       '@vercel/analytics':
         specifier: 2.0.1
-        version: 2.0.1(next@16.4.6(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2))(react@19.3.1)(vue@3.5.44(typescript@7.0.2))
+        version: 2.0.1(next@16.4.6(@babel/core@7.29.7)(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2))(react@19.3.1)(vue@3.5.44(typescript@7.0.2))
       postcss:
         specifier: 8.5.32
         version: 8.5.32
@@ -812,7 +812,7 @@ importers:
     dependencies:
       '@flags-sdk/vercel':
         specifier: 1.6.0
-        version: 1.6.0(@aws-sdk/credential-provider-web-identity@3.972.90)(flags@4.4.0(@opentelemetry/api@1.10.0)(next@16.4.6(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2))(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(next@16.4.6(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2))(ws@8.21.3)
+        version: 1.6.0(@aws-sdk/credential-provider-web-identity@3.972.90)(flags@4.4.0(@opentelemetry/api@1.10.0)(next@16.4.6(@babel/core@7.29.7)(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2))(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(next@16.4.6(@babel/core@7.29.7)(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2))(ws@8.21.3)
       '@opentelemetry/api':
         specifier: 1.10.0
         version: 1.10.0
@@ -824,16 +824,16 @@ importers:
         version: 3.1.1(@opentelemetry/api@1.10.0)
       '@posthog/next':
         specifier: 0.11.0
-        version: 0.11.0(@opentelemetry/api@1.10.0)(@types/react@19.3.0)(@vercel/functions@3.11.1(@aws-sdk/credential-provider-web-identity@3.972.90)(ws@8.21.3))(next@16.4.6(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        version: 0.11.0(@opentelemetry/api@1.10.0)(@types/react@19.3.0)(@vercel/functions@3.11.1(@aws-sdk/credential-provider-web-identity@3.972.90)(ws@8.21.3))(next@16.4.6(@babel/core@7.29.7)(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@vercel/functions':
         specifier: 3.11.1
         version: 3.11.1(@aws-sdk/credential-provider-web-identity@3.972.90)(ws@8.21.3)
       flags:
         specifier: 4.4.0
-        version: 4.4.0(@opentelemetry/api@1.10.0)(next@16.4.6(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        version: 4.4.0(@opentelemetry/api@1.10.0)(next@16.4.6(@babel/core@7.29.7)(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       next:
         specifier: 16.4.6
-        version: 16.4.6(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2)
+        version: 16.4.6(@babel/core@7.29.7)(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2)
       next-themes:
         specifier: 0.4.6
         version: 0.4.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -894,10 +894,10 @@ importers:
         version: 19.3.0(@types/react@19.3.0)
       '@vercel/analytics':
         specifier: 2.0.1
-        version: 2.0.1(next@16.4.6(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2))(react@19.3.1)(vue@3.5.44(typescript@7.0.2))
+        version: 2.0.1(next@16.4.6(@babel/core@7.29.7)(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2))(react@19.3.1)(vue@3.5.44(typescript@7.0.2))
       nuqs:
         specifier: 2.10.3
-        version: 2.10.3(next@16.4.6(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2))(react@19.3.1)
+        version: 2.10.3(next@16.4.6(@babel/core@7.29.7)(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2))(react@19.3.1)
       postcss:
         specifier: 8.5.32
         version: 8.5.32
@@ -923,16 +923,16 @@ importers:
         version: link:../../packages/js
       '@posthog/next':
         specifier: 0.11.0
-        version: 0.11.0(@opentelemetry/api@1.10.0)(@types/react@19.3.0)(@vercel/functions@3.11.1(@aws-sdk/credential-provider-web-identity@3.972.90)(ws@8.21.3))(next@16.4.6(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        version: 0.11.0(@opentelemetry/api@1.10.0)(@types/react@19.3.0)(@vercel/functions@3.11.1(@aws-sdk/credential-provider-web-identity@3.972.90)(ws@8.21.3))(next@16.4.6(@babel/core@7.29.7)(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@vercel/analytics':
         specifier: 2.0.1
-        version: 2.0.1(next@16.4.6(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2))(react@19.3.1)(vue@3.5.44(typescript@7.0.2))
+        version: 2.0.1(next@16.4.6(@babel/core@7.29.7)(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2))(react@19.3.1)(vue@3.5.44(typescript@7.0.2))
       flags:
         specifier: 4.4.0
-        version: 4.4.0(@opentelemetry/api@1.10.0)(next@16.4.6(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        version: 4.4.0(@opentelemetry/api@1.10.0)(next@16.4.6(@babel/core@7.29.7)(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       next:
         specifier: 16.4.6
-        version: 16.4.6(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2)
+        version: 16.4.6(@babel/core@7.29.7)(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2)
       react:
         specifier: 19.3.1
         version: 19.3.1
@@ -8919,8 +8919,8 @@ packages:
     resolution: {integrity: sha512-9ZhXKM/rw350N1ovuWHbGxnGh/SNJ4cnxHiM0rxE4VN41wsg8P8zWn9hv/buK00RP4WvlOyr/RBDiptyxVbkZQ==}
     engines: {node: '>=0.10.0'}
 
-  posthog-js@1.447.10:
-    resolution: {integrity: sha512-KQnjJxd68NuYqLxK8nqIzII4DquMFQcrMwKrX2MGjfyLbIQKDJN/I3YyqHS1ffYyx3piICpDuz4k4nX9kw3EoQ==}
+  posthog-js@1.447.12:
+    resolution: {integrity: sha512-FN97nANDsi62K/ywRxL8XwSw8X/29cWheMzduxRiM6g7PmOWFA2MlttPM00Q+YIwzRAiTCZu0j2HMlJbbc5HLA==}
     peerDependencies:
       '@types/react': 19.3.0
       react: 19.3.1
@@ -11737,6 +11737,16 @@ snapshots:
       - next
       - ws
 
+  '@flags-sdk/vercel@1.6.0(@aws-sdk/credential-provider-web-identity@3.972.90)(flags@4.4.0(@opentelemetry/api@1.10.0)(next@16.4.6(@babel/core@7.29.7)(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2))(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(next@16.4.6(@babel/core@7.29.7)(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2))(ws@8.21.3)':
+    dependencies:
+      '@vercel/flags-core': 1.11.0(@aws-sdk/credential-provider-web-identity@3.972.90)(next@16.4.6(@babel/core@7.29.7)(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2))(ws@8.21.3)
+      flags: 4.4.0(@opentelemetry/api@1.10.0)(next@16.4.6(@babel/core@7.29.7)(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+    transitivePeerDependencies:
+      - '@aws-sdk/credential-provider-web-identity'
+      - '@openfeature/server-sdk'
+      - next
+      - ws
+
   '@floating-ui/core@1.8.0':
     dependencies:
       '@floating-ui/utils': 0.2.12
@@ -12876,9 +12886,9 @@ snapshots:
   '@posthog/next@0.11.0(@opentelemetry/api@1.10.0)(@types/react@19.3.0)(@vercel/functions@3.11.1(@aws-sdk/credential-provider-web-identity@3.972.90)(ws@8.21.3))(next@16.4.6(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
       '@posthog/core': 1.64.1
-      '@posthog/react': 1.11.3(@types/react@19.3.0)(posthog-js@1.447.10(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)
+      '@posthog/react': 1.11.3(@types/react@19.3.0)(posthog-js@1.447.12(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)
       next: 16.4.6(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2)
-      posthog-js: 1.447.10(@types/react@19.3.0)(react@19.3.1)
+      posthog-js: 1.447.12(@types/react@19.3.0)(react@19.3.1)
       posthog-node: 5.63.1(@opentelemetry/api@1.10.0)
       react: 19.3.1
       react-dom: 19.3.1(react@19.3.1)
@@ -12891,9 +12901,27 @@ snapshots:
       - preact-render-to-string
       - rxjs
 
-  '@posthog/react@1.11.3(@types/react@19.3.0)(posthog-js@1.447.10(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)':
+  '@posthog/next@0.11.0(@opentelemetry/api@1.10.0)(@types/react@19.3.0)(@vercel/functions@3.11.1(@aws-sdk/credential-provider-web-identity@3.972.90)(ws@8.21.3))(next@16.4.6(@babel/core@7.29.7)(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
-      posthog-js: 1.447.10(@types/react@19.3.0)(react@19.3.1)
+      '@posthog/core': 1.64.1
+      '@posthog/react': 1.11.3(@types/react@19.3.0)(posthog-js@1.447.12(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)
+      next: 16.4.6(@babel/core@7.29.7)(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2)
+      posthog-js: 1.447.12(@types/react@19.3.0)(react@19.3.1)
+      posthog-node: 5.63.1(@opentelemetry/api@1.10.0)
+      react: 19.3.1
+      react-dom: 19.3.1(react@19.3.1)
+      server-only: 0.0.1
+    optionalDependencies:
+      '@opentelemetry/api': 1.10.0
+      '@vercel/functions': 3.11.1(@aws-sdk/credential-provider-web-identity@3.972.90)(ws@8.21.3)
+    transitivePeerDependencies:
+      - '@types/react'
+      - preact-render-to-string
+      - rxjs
+
+  '@posthog/react@1.11.3(@types/react@19.3.0)(posthog-js@1.447.12(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)':
+    dependencies:
+      posthog-js: 1.447.12(@types/react@19.3.0)(react@19.3.1)
       react: 19.3.1
     optionalDependencies:
       '@types/react': 19.3.0
@@ -14867,6 +14895,19 @@ snapshots:
       - '@aws-sdk/credential-provider-web-identity'
       - ws
 
+  '@vercel/flags-core@1.11.0(@aws-sdk/credential-provider-web-identity@3.972.90)(next@16.4.6(@babel/core@7.29.7)(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2))(ws@8.21.3)':
+    dependencies:
+      '@vercel/functions': 3.11.1(@aws-sdk/credential-provider-web-identity@3.972.90)(ws@8.21.3)
+      '@vercel/oidc': 3.5.0
+      dequal: 2.0.3
+      jose: 5.10.0
+      js-xxhash: 4.0.0
+    optionalDependencies:
+      next: 16.4.6(@babel/core@7.29.7)(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2)
+    transitivePeerDependencies:
+      - '@aws-sdk/credential-provider-web-identity'
+      - ws
+
   '@vercel/functions@3.11.1(@aws-sdk/credential-provider-web-identity@3.972.90)(ws@8.21.3)':
     dependencies:
       '@vercel/oidc': 4.0.8
@@ -16316,6 +16357,16 @@ snapshots:
     optionalDependencies:
       '@opentelemetry/api': 1.10.0
       next: 16.4.6(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2)
+      react: 19.3.1
+      react-dom: 19.3.1(react@19.3.1)
+
+  flags@4.4.0(@opentelemetry/api@1.10.0)(next@16.4.6(@babel/core@7.29.7)(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2))(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
+    dependencies:
+      '@edge-runtime/cookies': 5.0.2
+      jose: 5.10.0
+    optionalDependencies:
+      '@opentelemetry/api': 1.10.0
+      next: 16.4.6(@babel/core@7.29.7)(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2)
       react: 19.3.1
       react-dom: 19.3.1(react@19.3.1)
 
@@ -17952,6 +18003,13 @@ snapshots:
     optionalDependencies:
       next: 16.4.6(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2)
 
+  nuqs@2.10.3(next@16.4.6(@babel/core@7.29.7)(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2))(react@19.3.1):
+    dependencies:
+      '@standard-schema/spec': 1.1.0
+      react: 19.3.1
+    optionalDependencies:
+      next: 16.4.6(@babel/core@7.29.7)(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2)
+
   nypm@0.6.6:
     dependencies:
       citty: 0.2.2
@@ -18238,7 +18296,7 @@ snapshots:
     dependencies:
       xtend: 4.0.2
 
-  posthog-js@1.447.10(@types/react@19.3.0)(react@19.3.1):
+  posthog-js@1.447.12(@types/react@19.3.0)(react@19.3.1):
     dependencies:
       '@posthog/browser-common': 0.10.8
       '@posthog/core': 1.67.3
