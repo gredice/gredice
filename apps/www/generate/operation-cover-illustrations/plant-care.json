@@ -1,0 +1,68 @@
+{
+    "plantRemoval": {
+        "entityId": 346,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/plantRemoval.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/plantRemoval.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate ONE standalone transparent square Gredice farming-game operation icon. Supplied icon is a materials and style reference only: toy-like chunky bevelled low-poly geometry, broad facets, warm top-left lighting, tactile matte surfaces, bold warm greens and rich terracotta dirt, dark shaded sides. Slightly elevated three-quarter view framed with 7 percent margin. Strong legibility at 48px, compact centered silhouette and only the listed props. Genuine alpha outside the subject, no scenery, floor, drop shadows, lettering, numbers, borders, sparkles or arrows.\nOperation: Uklanjanje biljke.\nSubject: Show one whole uprooted tomato plant lifted sideways above the vacated soil pocket by a simplified amber gardener's glove at stem base. Expose a distinctive earthy tangled root ball with three thick warm roots and keep one red tomato clearly attached to the uprooted plant. No harvest tray. The cleared hole and large freed root ball convey removing the whole plant.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "removeFlowers": {
+        "entityId": 172,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/removeFlowers.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/removeFlowers.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate ONE standalone transparent square Gredice farming-game operation icon. Supplied icon is a materials and style reference only: toy-like chunky bevelled low-poly geometry, broad facets, warm top-left lighting, tactile matte surfaces, bold warm greens and rich terracotta dirt, dark shaded sides. Slightly elevated three-quarter view framed with 7 percent margin. Strong legibility at 48px, compact centered silhouette and only the listed props. Genuine alpha outside the subject, no scenery, floor, drop shadows, lettering, numbers, borders, sparkles or arrows.\nOperation: Uklanjanje cvijetova.\nSubject: Show a young pepper plant on a little earthy clod, a single large red ripe pepper and two healthy leaves still attached. Open steel pruners with amber grips clip the only pale ivory flower off its thin side stem. The one ivory blossom floats just beyond the blades with cut stem visible. Keep the red pepper attached and unharmed, and the plant free of any other flower.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "removeFlowersMaintenance": {
+        "entityId": 324,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/removeFlowersMaintenance.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/removeFlowersMaintenance.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate ONE standalone transparent square Gredice farming-game operation icon. Supplied icon is a materials and style reference only: toy-like chunky bevelled low-poly geometry, broad facets, warm top-left lighting, tactile matte surfaces, bold warm greens and rich terracotta dirt, dark shaded sides. Slightly elevated three-quarter view framed with 7 percent margin. Strong legibility at 48px, compact centered silhouette and only the listed props. Genuine alpha outside the subject, no scenery, floor, drop shadows, lettering, numbers, borders, sparkles or arrows.\nOperation: Uklanjanje suvišnih cvijetova.\nSubject: Show a vigorous short strawberry plant with one ripe red strawberry low at the base and TWO bright ivory blossoms, one still healthy and firmly attached on its upright stem on the far left, and the other smaller blossom separated low on the right where orange-handled fine snips have removed it. Keep all strawberries and leaf clusters attached. Make the healthy flower left and removed excess flower right both easy to see.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "seedlingTranslanting": {
+        "entityId": 593,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/seedlingTranslanting.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/seedlingTranslanting.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate ONE standalone transparent square Gredice farming-game operation icon. Supplied icon is a materials and style reference only: toy-like chunky bevelled low-poly geometry, broad facets, warm top-left lighting, tactile matte surfaces, bold warm greens and rich terracotta dirt, dark shaded sides. Slightly elevated three-quarter view framed with 7 percent margin. Strong legibility at 48px, compact centered silhouette and only the listed props. Genuine alpha outside the subject, no scenery, floor, drop shadows, lettering, numbers, borders, sparkles or arrows.\nOperation: Presađivanje.\nSubject: Show one vibrant leafy young seedling rooted into a small cylindrical soil plug, held directly over a round planting hole in a miniature wooden raised bed by one simplified golden gardening glove on the upper right. To the left put one tiny empty terracotta nursery pot tilted aside. Visually focus on the intact soil plug moving from its pot into the garden bed.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "thinning": {
+        "entityId": 177,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/thinning.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/thinning.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate ONE standalone transparent square Gredice farming-game operation icon. Supplied icon is a materials and style reference only: toy-like chunky bevelled low-poly geometry, broad facets, warm top-left lighting, tactile matte surfaces, bold warm greens and rich terracotta dirt, dark shaded sides. Slightly elevated three-quarter view framed with 7 percent margin. Strong legibility at 48px, compact centered silhouette and only the listed props. Genuine alpha outside the subject, no scenery, floor, drop shadows, lettering, numbers, borders, sparkles or arrows.\nOperation: Prorijeđivanje.\nSubject: Show a short rectangular strip of terracotta garden soil with exactly three possible planting spots, two small green lettuce seedlings still upright and spaced well apart, and one pulled smaller seedling with a small exposed tan root tilted clearly outside the right edge. A tiny hollow between the standing seedlings marks the vacated space. One amber work glove holds the pulled seedling near its base. No shears and no large plants.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "trimOnionLeaves": {
+        "entityId": 668,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/trimOnionLeaves.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/pruning.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate ONE standalone transparent square Gredice farming-game operation icon. Supplied icon is a materials and style reference only: toy-like chunky bevelled low-poly geometry, broad facets, warm top-left lighting, tactile matte surfaces, bold warm greens and rich terracotta dirt, dark shaded sides. Slightly elevated three-quarter view framed with 7 percent margin. Strong legibility at 48px, compact centered silhouette and only the listed props. Genuine alpha outside the subject, no scenery, floor, drop shadows, lettering, numbers, borders, sparkles or arrows.\nOperation: Šišanje luka.\nSubject: Show a little ochre soil clump with two slim white spring onions partly buried and four upright tubular deep-green onion leaves. One garden shears with chunky amber handles trims the tips of the tall leaves straight across well above the bulbs, with three small tubular green tip offcuts suspended immediately above the blades. Leave white bulbs and most of their green leaves in the soil. Keep one clean, distinct tapered onion-leaf silhouette.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    }
+}
