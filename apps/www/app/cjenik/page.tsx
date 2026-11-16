@@ -24,7 +24,6 @@ import {
     Card,
     CardContent,
     CardHeader,
-    CardTitle,
 } from '../../components/shared/Card';
 import { CtaBand } from '../../components/shared/CtaBand';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
@@ -81,9 +80,12 @@ function CatalogSectionHeader({
                     {icon}
                 </span>
                 <div className="min-w-0">
-                    <CardTitle className="text-xl" id={headingId}>
+                    <h2
+                        className="text-xl font-semibold tracking-tight"
+                        id={headingId}
+                    >
                         {title}
-                    </CardTitle>
+                    </h2>
                     <Typography level="body2" secondary className="mt-1">
                         {description}
                     </Typography>
@@ -545,9 +547,12 @@ export default async function PricingPage() {
                                 <ArrowDownToLine className="size-5" />
                             </span>
                             <div>
-                                <CardTitle className="text-xl">
+                                <h2
+                                    className="text-xl font-semibold tracking-tight"
+                                    id="preuzmi-cjenik"
+                                >
                                     Preuzmi cjenik
-                                </CardTitle>
+                                </h2>
                                 <Typography
                                     level="body2"
                                     secondary
