@@ -1,0 +1,54 @@
+{
+    "malchStrawPlant": {
+        "entityId": 178,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/malchStrawPlant.webp",
+        "previousUrl": "https://cdn.gredice.com/entity-attributes/b56944bb-08c6-4b46-8a6c-5d9a4ac6ec44-MulchHey_1.png",
+        "styleReferences": [
+            "packages/ui/src/GameIcons/assets/seedling.webp",
+            "packages/ui/src/GameIcons/assets/backpack.webp",
+            "packages/ui/src/AchievementAwards/assets/harvest-1.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nMake ONE production-quality standalone transparent square icon for the Gredice garden game. The supplied seedling, backpack, and carrot achievement are rendering style references. Follow their chunky beveled low-poly volumes, broad distinct facets, matte toy-like surfaces, warm upper-left light, rich shaded faces, and bold silhouettes. Follow the seedling reference for upright, healthy, uninterrupted stems and simple fresh lime-green leaves. Use dark cocoa earth, honey timber if visible, and golden wheat straw as the mulch. Straw reads as overlapping dense crisscrossed short, thick, flattened dry strands with a few straw pieces jutting out at its edges, easy to read in a 48px thumbnail. Slightly elevated three-quarter view. Operation: applying a golden straw mulch ring around ONLY ONE individual seedling. One intact upright seedling sits centered left on a disk of dark earth. A thick, bright circular ring of golden straw runs around the base, with a narrow visible dark collar of bare soil immediately around the stem. Most of the top of the little plot is already gold. At the upper right, a small olive-green gardening scoop is tipped down and inward over the ring. A short diagonal stream of big golden straw pieces falls directly from its mouth onto the gold ring. Keep the silhouette of the scoop separate from plant leaves and omit any timber planter. The focal image is the completed golden mulch coverage around the plant with the scoop placing the last straw inward. Entire silhouette is contained in the square with 7% clear padding on all sides. True transparent alpha outside the scene. No lettering, numbers, arrows, icons or labels overlaid, no border, people or hands, scenery, extra weeds, flowers, fruit, extraneous objects or shadows outside the art.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "malchStrawRaisedBed": {
+        "entityId": 179,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/malchStrawRaisedBed.webp",
+        "previousUrl": "https://cdn.gredice.com/entity-attributes/51d215da-929e-4d88-a1d0-ba9e01373a2d-MulchHey_1.png",
+        "styleReferences": [
+            "packages/ui/src/GameIcons/assets/seedling.webp",
+            "packages/ui/src/GameIcons/assets/backpack.webp",
+            "packages/ui/src/AchievementAwards/assets/harvest-1.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nMake ONE production-quality standalone transparent square icon for the Gredice garden game. The supplied seedling, backpack, and carrot achievement are rendering style references. Follow their chunky beveled low-poly volumes, broad distinct facets, matte toy-like surfaces, warm upper-left light, rich shaded faces, and bold silhouettes. Follow the seedling reference for upright, healthy, uninterrupted stems and simple fresh lime-green leaves. Use dark cocoa earth, honey timber if visible, and golden wheat straw as the mulch. Straw reads as overlapping dense crisscrossed short, thick, flattened dry strands with a few straw pieces jutting out at its edges, easy to read in a 48px thumbnail. Slightly elevated three-quarter view. Operation: applying a thin golden layer of straw across ONE ENTIRE raised garden bed. Show a single low rectangular raised-bed frame of two thick honey-timber boards viewed isometrically, with exactly three evenly spaced small healthy upright seedlings in the bed. Make golden crisscrossed straw cover nearly the whole rectangular surface, from edge to edge around all three seedlings, with a tiny neat ring of exposed dark soil immediately at each stem. At the rear corner a small olive-green shallow gardening scoop tips inward, laying a short stream of straw onto the last partly open edge of the golden bed. The bold GOLDEN bed surface is the largest color area and dominates the icon. No mulch piles outside the raised bed. Entire silhouette is contained in the square with 7% clear padding on all sides. True transparent alpha outside the scene. No lettering, numbers, arrows, icons or labels overlaid, no border, people or hands, scenery, extra weeds, flowers, fruit, extraneous objects or shadows outside the art.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "removeMalchStrawPlant": {
+        "entityId": 589,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/removeMalchStrawPlant.webp",
+        "previousUrl": "https://cdn.gredice.com/entity-attributes/b56944bb-08c6-4b46-8a6c-5d9a4ac6ec44-MulchHey_1.png",
+        "styleReferences": [
+            "packages/ui/src/GameIcons/assets/seedling.webp",
+            "packages/ui/src/GameIcons/assets/backpack.webp",
+            "packages/ui/src/AchievementAwards/assets/harvest-1.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nMake ONE production-quality standalone transparent square icon for the Gredice garden game. The supplied seedling, backpack, and carrot achievement are rendering style references. Follow their chunky beveled low-poly volumes, broad distinct facets, matte toy-like surfaces, warm upper-left light, rich shaded faces, and bold silhouettes. Follow the seedling reference for upright, healthy, uninterrupted stems and simple fresh lime-green leaves. Use dark cocoa earth, honey timber if visible, and golden wheat straw as the mulch. Straw reads as overlapping dense crisscrossed short, thick, flattened dry strands with a few straw pieces jutting out at its edges, easy to read in a 48px thumbnail. Slightly elevated three-quarter view. Operation: removing used straw from ONLY ONE individual seedling. One intact green seedling grows on the left side of one small island of obviously BARE dark chocolate-brown soil. Almost the entire top is earthy brown, especially a wide, clean, flat area all around the intact stem. On the right, a very short warm ochre wooden-handled hand fork with three blunt dark-gray steel tines has picked up a compact tuft of USED golden straw and carries it to the right, clearly outside the soil island. Orient the three tines upward and outward so they hold the straw above the ground at the outside edge. The fork has visible prongs and a visible handle, neither crosses the leaves, no implement places straw inward. Keep all golden straw on the little fork and none on top of the soil around the plant. No timber planter. Entire silhouette is contained in the square with 7% clear padding on all sides. True transparent alpha outside the scene. No lettering, numbers, arrows, icons or labels overlaid, no border, people or hands, scenery, extra weeds, flowers, fruit, extraneous objects or shadows outside the art.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "removeMalchStrawRaisedBed": {
+        "entityId": 590,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/removeMalchStrawRaisedBed.webp",
+        "previousUrl": "https://cdn.gredice.com/entity-attributes/51d215da-929e-4d88-a1d0-ba9e01373a2d-MulchHey_1.png",
+        "styleReferences": [
+            "packages/ui/src/GameIcons/assets/seedling.webp",
+            "packages/ui/src/GameIcons/assets/backpack.webp",
+            "packages/ui/src/AchievementAwards/assets/harvest-1.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nMake ONE production-quality standalone transparent square icon for the Gredice garden game. The supplied seedling, backpack, and carrot achievement are rendering style references. Follow their chunky beveled low-poly volumes, broad distinct facets, matte toy-like surfaces, warm upper-left light, rich shaded faces, and bold silhouettes. Follow the seedling reference for upright, healthy, uninterrupted stems and simple fresh lime-green leaves. Use dark cocoa earth, honey timber if visible, and golden wheat straw as the mulch. Straw reads as overlapping dense crisscrossed short, thick, flattened dry strands with a few straw pieces jutting out at its edges, easy to read in a 48px thumbnail. Slightly elevated three-quarter view. Operation: removing used straw from an ENTIRE raised garden bed. Show a single honey-wood raised-bed rectangle with exactly three small intact seedlings still rooted. The visible bed surface is nearly all freshly uncovered, even deep cocoa-brown soil. On the front right, a short warm ochre-handled steel garden rake with a broad four-tine head is drawing a thick golden clump of used straw outward, over the low board edge, toward a small separate golden pile resting just outside the planter. Make the rake straddle the edge with its head and clump outside the bed, so all straw is clearly being collected away from the plants and most of the open bed surface still reads DARK. Keep the rake to the right of the leaves and leave enough clear space to read the soil and straw separately. Entire silhouette is contained in the square with 7% clear padding on all sides. True transparent alpha outside the scene. No lettering, numbers, arrows, icons or labels overlaid, no border, people or hands, scenery, extra weeds, flowers, fruit, extraneous objects or shadows outside the art.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    }
+}
