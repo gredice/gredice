@@ -1,8 +1,9 @@
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { directoryOperationCoverRecipes } from '../generate/operation-cover-recipes';
 import { expect, test } from './fixtures';
 
 const publicQaEnabled = process.env.OPERATION_COVER_PUBLIC_QA === '1';
+const publicCoverBaseUrl = 'https://www.gredice.com/assets/operation-icons/';
 const publicListStageNames = new Set([
     'soilPreparation',
     'sowing',
@@ -22,6 +23,9 @@ type DirectoryOperation = {
             } | null;
         } | null;
     } | null;
+    image?: {
+        cover?: { url?: string | null } | null;
+    } | null;
     information?: {
         label?: string | null;
         name?: string | null;
@@ -34,52 +38,59 @@ function escapeRegExp(value: string) {
     return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function decodedSrc(src: string | null) {
-    if (!src) return '';
-
+function originalImageUrl(source: string) {
     try {
-        return decodeURIComponent(src);
+        const url = new URL(source);
+        return url.pathname === '/_next/image'
+            ? url.searchParams.get('url')
+            : url.href;
     } catch {
-        return src;
+        return null;
     }
 }
 
-async function expectPageHasGeneratedCoverImage(
-    page: Page,
-    outputFileName: string,
+async function expectAssignedCoverImage(
+    scope: Page | Locator,
+    coverUrl: string,
 ) {
     await expect
         .poll(async () => {
-            const imageSources = await page
+            const imageSources = await scope
                 .locator('img')
                 .evaluateAll((images) =>
-                    images.map(
-                        (image) =>
-                            (image as HTMLImageElement).currentSrc ||
-                            (image as HTMLImageElement).src,
-                    ),
+                    images
+                        .filter((image) => image instanceof HTMLImageElement)
+                        .map((image) => image.currentSrc || image.src),
                 );
-            return imageSources.some((src) =>
-                decodedSrc(src).includes(
-                    `/assets/operation-icons/${outputFileName}`,
-                ),
-            );
+            return imageSources.map(originalImageUrl);
         })
-        .toBe(true);
+        .toContain(coverUrl);
 }
 
 function operationForRecipe(
     recipe: (typeof directoryOperationCoverRecipes)[number],
 ) {
     const operation = operationsByName.get(recipe.operationId);
-    if (!operation?.information?.label || !operation.slug) {
+    const label = operation?.information?.label;
+    const slug = operation?.slug;
+    if (!operation || !label || !slug) {
         throw new Error(
             `Missing public operation for recipe ${recipe.operationId}.`,
         );
     }
-    return operation as DirectoryOperation & {
-        information: { label: string; name?: string | null };
-        slug: string;
+    const coverUrl = operation.image?.cover?.url;
+    const legacyUrl = `${publicCoverBaseUrl}${recipe.outputFileName}`;
+    const illustratedUrl = `${publicCoverBaseUrl}illustrated/${recipe.operationId}.webp`;
+    if (coverUrl !== legacyUrl && coverUrl !== illustratedUrl) {
+        throw new Error(
+            `Unexpected cover URL for ${recipe.operationId}: ${coverUrl ?? '(missing)'}.`,
+        );
+    }
+    return {
+        ...operation,
+        information: { ...operation.information, label },
+        slug,
+        coverUrl,
     };
 }
 
@@ -139,7 +150,7 @@ test.describe('operation cover public surfaces', () => {
                 { waitUntil: 'domcontentloaded' },
             );
 
-            await expectPageHasGeneratedCoverImage(page, recipe.outputFileName);
+            await expectAssignedCoverImage(page, operation.coverUrl);
         }
     });
 
@@ -156,7 +167,7 @@ test.describe('operation cover public surfaces', () => {
                     exact: true,
                 }),
             ).toBeVisible();
-            await expectPageHasGeneratedCoverImage(page, recipe.outputFileName);
+            await expectAssignedCoverImage(page, operation.coverUrl);
         }
     });
 
@@ -199,7 +210,7 @@ test.describe('operation cover public surfaces', () => {
             await expect(
                 result.locator('[data-search-result-icon]'),
             ).toHaveCount(0);
-            await expectPageHasGeneratedCoverImage(page, recipe.outputFileName);
+            await expectAssignedCoverImage(result, operation.coverUrl);
         }
     });
 });
