@@ -62,6 +62,13 @@ for (const width of [390, 1280]) {
                 name: 'Kako skupljati XP i prijeći na novu razinu',
             }),
         ).toHaveAttribute('href', '/iskustvo-i-razine');
+        const cta = page.getByRole('region', {
+            name: 'Pridruži se vrtlarima.',
+        });
+        await expect(cta).toBeVisible();
+        await expect(
+            cta.getByRole('link', { name: 'Istraži postignuća' }),
+        ).toHaveAttribute('href', '/postignuca');
         const rows = page.locator('ol > li');
         await expect(rows).toHaveCount(10);
         await expect(rows.first().getByRole('link')).toHaveAttribute(

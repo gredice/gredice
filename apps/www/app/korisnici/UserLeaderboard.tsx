@@ -7,6 +7,7 @@ import { Link } from '@gredice/ui/Link';
 import { publicUserProfileHref } from '@gredice/ui/PublicChrome';
 import { UserAvatar, UserLevelBadge } from '@gredice/ui/UserAvatar';
 import { cx } from '@gredice/ui/utils';
+import { CtaBand } from '../../components/shared/CtaBand';
 import { KnownPages } from '../../src/KnownPages';
 import type { getUserLeaderboard } from './leaderboard';
 
@@ -156,19 +157,17 @@ export function UserLeaderboard({
                     jednakog broja postignuća prednost ima ranije registrirani
                     korisnik.
                 </p>
-                <Link
-                    href={KnownPages.Achievements}
-                    className="mt-5 block text-sm font-semibold underline underline-offset-4"
-                >
-                    Istraži sva postignuća i nagrade
-                </Link>
-                <Link
-                    href={KnownPages.GardenApp}
-                    className="mt-6 inline-flex rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90"
-                >
-                    Pridruži se vrtlarima
-                </Link>
             </section>
+            <CtaBand
+                id="leaderboard-cta-title"
+                title="Pridruži se vrtlarima."
+                description="Složi svoju gredicu, skupljaj postignuća i penji se na ljestvici naše zajednice."
+                secondaryAction={{
+                    href: KnownPages.Achievements,
+                    label: 'Istraži postignuća',
+                }}
+                className="mt-10"
+            />
         </div>
     );
 }
