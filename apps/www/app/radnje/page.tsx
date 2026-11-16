@@ -5,7 +5,6 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { CommunityEntitySuggestionButton } from '../../components/community-edits/CommunityEntitySuggestionButton';
 import { RelatedFaq } from '../../components/faq/RelatedFaq';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { PageFilterInput } from '../../components/shared/PageFilterInput';
@@ -59,6 +58,7 @@ export default async function OperationsPage({
                   {
                       id: stage.id,
                       label: stage.information.label,
+                      name: stageDefinition.name,
                   },
               ]
             : [];
@@ -145,25 +145,19 @@ export default async function OperationsPage({
                 header="Radnje"
                 subHeader={pageDescription}
             >
-                <div className="flex w-full flex-col items-start gap-3 md:items-end">
-                    <CommunityEntitySuggestionButton
-                        kind="operation"
-                        publicPath={KnownPages.Operations}
-                        stages={suggestionStages}
+                <Suspense>
+                    <PageFilterInput
+                        searchParamName="pretraga"
+                        fieldName="operation-search"
+                        initialValue={search}
+                        className="lg:flex items-start justify-end w-full"
                     />
-                    <Suspense>
-                        <PageFilterInput
-                            searchParamName="pretraga"
-                            fieldName="operation-search"
-                            initialValue={search}
-                            className="lg:flex items-start justify-end w-full"
-                        />
-                    </Suspense>
-                </div>
+                </Suspense>
             </PageHeader>
             <OperationsList
                 operationsData={operationsData}
                 initialSearch={search}
+                suggestionStages={suggestionStages}
             />
             <RelatedFaq placement="operations" />
             <Row spacing={4}>

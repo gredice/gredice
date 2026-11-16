@@ -63,6 +63,7 @@ export type CommunityEntitySuggestionButtonProps = CommonProps &
         | {
               kind: 'operation';
               stages: CommunityOperationSuggestionStage[];
+              defaultStageId?: number;
           }
         | {
               kind: 'disease' | 'pest';
@@ -170,7 +171,11 @@ export function CommunityEntitySuggestionButton(
     const [description, setDescription] = useState('');
     const [source, setSource] = useState('');
     const [note, setNote] = useState('');
-    const [plantStageId, setPlantStageId] = useState('');
+    const defaultStageId =
+        props.kind === 'operation' ? props.defaultStageId : undefined;
+    const [plantStageId, setPlantStageId] = useState(() =>
+        defaultStageId ? String(defaultStageId) : '',
+    );
     const defaultAffectedPlantId =
         props.kind === 'disease' || props.kind === 'pest'
             ? props.defaultAffectedPlantId
@@ -195,7 +200,9 @@ export function CommunityEntitySuggestionButton(
             ? `${props.kind}:${props.parentPlantId}`
             : defaultAffectedPlantId
               ? `${props.kind}:${defaultAffectedPlantId}`
-              : props.kind;
+              : defaultStageId
+                ? `${props.kind}:${defaultStageId}`
+                : props.kind;
     const returnTo = useMemo(
         () => suggestionReturnPath(contextKey, props.publicPath),
         [contextKey, props.publicPath],
@@ -224,7 +231,7 @@ export function CommunityEntitySuggestionButton(
         setDescription('');
         setSource('');
         setNote('');
-        setPlantStageId('');
+        setPlantStageId(defaultStageId ? String(defaultStageId) : '');
         setAffectedPlantIds(
             defaultAffectedPlantId ? [String(defaultAffectedPlantId)] : [],
         );
