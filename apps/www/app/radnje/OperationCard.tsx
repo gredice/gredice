@@ -34,8 +34,13 @@ export function OperationCard({
                 )}
             >
                 <CardContent noHeader className={cx(compact && 'px-2 py-1')}>
-                    <Row justifyContent="space-between" spacing={2}>
+                    <Row
+                        justifyContent="space-between"
+                        alignItems="start"
+                        spacing={2}
+                    >
                         <Row
+                            alignItems="start"
                             spacing={compact ? 3 : 4}
                             className="min-w-0 flex-1"
                         >
