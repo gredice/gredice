@@ -149,6 +149,10 @@ test('the missing neighbor group remains visible beside a populated group', asyn
     await mount(<PlantRelationshipsHarness entityTypeName="plant" populated />);
     await expect(page.getByRole('link', { name: /Bosiljak/ })).toBeVisible();
     await expect(
+        page.getByRole('heading', { level: 3, name: 'Bosiljak' }),
+    ).toBeVisible();
+    await expect(
         page.getByText('Još nema biljaka koje je bolje saditi odvojeno.'),
     ).toBeVisible();
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
