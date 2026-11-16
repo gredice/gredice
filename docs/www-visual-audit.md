@@ -356,6 +356,9 @@ The environment provider applies the theme before painting a new sky. WWW and
 News skip foreground/background color fades while ambient mode is enabled, so
 reading colors do not pass through low-contrast intermediate shades. Sky and
 weather motion remain independent; turning ambient off restores normal styles.
+Clouds settle into place for about 1.6 seconds after the sky renders and then
+stay still, so the backdrop has no endless ambient motion (WCAG 2.2.2). Only
+rain and snow keep falling while that weather is shown.
 
 The focused environment Playwright suite samples the rendered sky pixels and
 checks public typography against them at 360/768/1280px, across all six weather
