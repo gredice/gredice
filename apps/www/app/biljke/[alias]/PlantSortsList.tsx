@@ -58,7 +58,7 @@ async function PlantSortsListContent({
                                     height={72}
                                 />
                                 <Stack className="grow">
-                                    <Typography level="h5">
+                                    <Typography level="h5" component="h3">
                                         {sort.information.name}
                                     </Typography>
                                     {sort.information.shortDescription && (
