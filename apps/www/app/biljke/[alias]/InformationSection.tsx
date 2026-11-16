@@ -182,7 +182,7 @@ export async function InformationSection({
                     </div>
                 )}
             </Stack>
-            <Stack spacing={4}>
+            <Stack spacing={6}>
                 {attributeCards}
                 <Stack
                     className={cx(
