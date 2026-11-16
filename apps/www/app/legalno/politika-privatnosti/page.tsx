@@ -23,7 +23,7 @@ export default function PolitikaPrivatnostiPage() {
                     header="Politika Privatnosti"
                     subHeader="Kako prikupljamo, koristimo i štitimo tvoje osobne podatke prilikom korištenja naše web stranice."
                 />
-                <StyledHtml>
+                <StyledHtml size="md">
                     <h2>Uvod</h2>
                     <p>
                         Naša web stranica (

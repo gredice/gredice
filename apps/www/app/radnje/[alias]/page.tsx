@@ -242,7 +242,7 @@ export default async function OperationPage(
                     </Stack>
                 </PageHeader>
                 <div className="max-w-xl">
-                    <Markdown>
+                    <Markdown size="md">
                         {operation.information.description ||
                             'Nema opisa za ovu radnju.'}
                     </Markdown>
@@ -259,7 +259,7 @@ export default async function OperationPage(
                     Postupak
                 </Typography>
                 <div className="max-w-xl">
-                    <Markdown>
+                    <Markdown size="md">
                         {operation.information.instructions ||
                             'Nema postupka za ovu radnju.'}
                     </Markdown>

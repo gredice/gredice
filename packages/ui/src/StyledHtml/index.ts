@@ -1,1 +1,5 @@
-export { StyledHtml, type StyledHtmlProps } from './StyledHtml';
+export {
+    StyledHtml,
+    type StyledHtmlProps,
+    type StyledHtmlSize,
+} from './StyledHtml';

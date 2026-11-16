@@ -9,7 +9,7 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'StyledHtml applies Gredice prose styling to trusted HTML content such as plant guides, articles, and CMS-rendered sections.',
+                    'StyledHtml applies Gredice prose styling to trusted HTML content such as plant guides, articles, and CMS-rendered sections. The default `sm` size suits cards, panels and dialogs; use `size="md"` for long-form main content on public pages.',
             },
         },
     },
@@ -43,3 +43,9 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+export const MainContent: Story = {
+    args: {
+        size: 'md',
+    },
+};

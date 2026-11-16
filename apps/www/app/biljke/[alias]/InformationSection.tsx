@@ -130,18 +130,22 @@ export async function InformationSection({
                                     if (shouldMakeExpandable(sortContent)) {
                                         return (
                                             <ExpandableText maxHeight={240}>
-                                                <Markdown>
+                                                <Markdown size="md">
                                                     {mainContent}
                                                 </Markdown>
                                                 {additionalContent && (
-                                                    <Markdown>
+                                                    <Markdown size="md">
                                                         {additionalContent}
                                                     </Markdown>
                                                 )}
                                             </ExpandableText>
                                         );
                                     }
-                                    return <Markdown>{sortContent}</Markdown>;
+                                    return (
+                                        <Markdown size="md">
+                                            {sortContent}
+                                        </Markdown>
+                                    );
                                 })()}
                             </Stack>
                         )}
@@ -158,18 +162,20 @@ export async function InformationSection({
                                     if (shouldMakeExpandable(content)) {
                                         return (
                                             <ExpandableText maxHeight={240}>
-                                                <Markdown>
+                                                <Markdown size="md">
                                                     {mainContent}
                                                 </Markdown>
                                                 {additionalContent && (
-                                                    <Markdown>
+                                                    <Markdown size="md">
                                                         {additionalContent}
                                                     </Markdown>
                                                 )}
                                             </ExpandableText>
                                         );
                                     }
-                                    return <Markdown>{content}</Markdown>;
+                                    return (
+                                        <Markdown size="md">{content}</Markdown>
+                                    );
                                 })()}
                             </Stack>
                         )}

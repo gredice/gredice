@@ -3,17 +3,34 @@ import sanitizeHtml from 'sanitize-html';
 import { cx } from '../utils';
 import './StyledHtml.css';
 
+/**
+ * Text size of the prose content.
+ * - `sm` (default): compact text for cards, panels, dialogs and admin tools.
+ * - `md`: reading size for long-form main content on public pages.
+ */
+export type StyledHtmlSize = 'sm' | 'md';
+
 export type StyledHtmlProps = Omit<
     HTMLAttributes<HTMLDivElement>,
     'dangerouslySetInnerHTML'
 > & {
     html?: string;
+    size?: StyledHtmlSize;
 };
 
-const styledHtmlClassName = (className: string | undefined) =>
+const sizeClassNames = {
+    sm: 'prose-sm',
+    md: 'prose-base',
+} satisfies Record<StyledHtmlSize, string>;
+
+const styledHtmlClassName = (
+    size: StyledHtmlSize,
+    className: string | undefined,
+) =>
     cx(
         'max-w-none',
-        'prose prose-p:my-2 prose-sm prose-headings:font-normal prose-hr:my-6',
+        'prose prose-p:my-2 prose-headings:font-normal prose-hr:my-6',
+        sizeClassNames[size],
         'text-primary prose-headings:text-primary',
         'prose-a:text-primary',
         'prose-hr:border-border',
@@ -24,6 +41,7 @@ export function StyledHtml({
     children,
     className,
     html,
+    size = 'sm',
     ...rest
 }: StyledHtmlProps) {
     if (typeof html === 'string') {
@@ -78,7 +96,7 @@ export function StyledHtml({
 
         return (
             <div
-                className={styledHtmlClassName(className)}
+                className={styledHtmlClassName(size, className)}
                 // biome-ignore lint/security/noDangerouslySetInnerHtml: HTML is sanitized before rendering.
                 dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
                 {...rest}
@@ -87,7 +105,7 @@ export function StyledHtml({
     }
 
     return (
-        <div className={styledHtmlClassName(className)} {...rest}>
+        <div className={styledHtmlClassName(size, className)} {...rest}>
             {children}
         </div>
     );

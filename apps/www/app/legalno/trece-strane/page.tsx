@@ -133,7 +133,7 @@ export default function UvjetiKoristenjaPage() {
                     header="Treće strane"
                     subHeader="Informacije o korištenim izvorima podataka trećih strana."
                 />
-                <StyledHtml>
+                <StyledHtml size="md">
                     <h2>Uvod</h2>
                     <p>
                         Ovi Uvjeti korištenja (u daljnjem tekstu:

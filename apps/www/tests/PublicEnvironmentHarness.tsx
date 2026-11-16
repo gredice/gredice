@@ -26,7 +26,7 @@ export function PublicEnvironmentHarness() {
                     <Typography level="h4" component="h2">
                         Priprema tla
                     </Typography>
-                    <Markdown>
+                    <Markdown size="md">
                         {
                             'Odaberi **dobro drenirano tlo** bogato humusom.\n\n- Ukloni korov prije sadnje.\n- Redovito zalijevaj tijekom rasta.\n\n[Više o sjetvi](/sjetva)'
                         }

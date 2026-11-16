@@ -48,7 +48,7 @@ export default function RaisedBedPage() {
                     subHeader="Tvoj prostor za uzgoj na partnerskom OPG-u, od pripreme tla do dostave ubranih plodova."
                     padded
                 />
-                <StyledHtml>
+                <StyledHtml size="md">
                     <p>
                         Podignuta gredica u Gredicama je tvoj prostor za uzgoj
                         povrća, začinskog bilja i cvijeća. Ti planiraš što želiš

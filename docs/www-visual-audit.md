@@ -363,3 +363,17 @@ presets, both sides of dawn/dusk theme changes, daytime and nighttime. It also
 checks scrolling, ambient-off restoration and theme transitions with motion
 enabled. Storybook's public environment stories and AmbientPublicContent
 showcase include unframed descriptions, breadcrumbs and growing instructions.
+
+## Main content text size — 16 November 2026
+
+Long-form main content on WWW reads at 16px instead of the compact 14px prose.
+The shared `StyledHtml` and `Markdown` primitives in `@gredice/ui` take a
+`size` prop: `sm` (default) for cards, panels, dialogs, search summaries and
+admin tools, and `md` (`prose-base`) for main content. WWW uses `md` for
+operation descriptions and instructions (`/radnje/[alias]`), plant and sort
+information sections and tips (`/biljke/[alias]`), block descriptions, plant
+health details, CMS Markdown/HTML blocks, and the legal, delivery, contact,
+sowing, raised-bed, referral and refund pages. UI chrome keeps its size: FAQ
+answers, attribute detail cards, the delivery slot card, search summaries and
+community edit previews still use `sm`. New long-form content sections should
+pass `size="md"`.

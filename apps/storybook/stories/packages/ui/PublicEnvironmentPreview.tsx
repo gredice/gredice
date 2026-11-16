@@ -50,7 +50,7 @@ export function PublicEnvironmentPreview({
                         alternativeName="lat. Abelmoschus esculentus"
                         subHeader="Bamija je jednogodišnja povrtna biljka koju uzgajamo zbog jestivih mladih mahuna. Biljka voli toplo i sunčano mjesto."
                     />
-                    <Markdown>
+                    <Markdown size="md">
                         {
                             '## Priprema tla\n\nOdaberi **dobro drenirano tlo** bogato humusom.\n\n- Ukloni korov prije sadnje.\n- Redovito zalijevaj tijekom rasta.'
                         }
