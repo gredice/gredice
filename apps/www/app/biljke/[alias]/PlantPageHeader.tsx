@@ -259,10 +259,7 @@ export function PlantPageHeader({
                             navigateLabel="Više o gredicama"
                         />
                     </div>
-                    <Row
-                        spacing={1}
-                        className="self-end md:opacity-0 md:transition-opacity md:group-hover:opacity-100 md:group-focus-within:opacity-100"
-                    >
+                    <Row spacing={1} className="self-end">
                         {overviewEditTarget ? (
                             <CommunityEditButton
                                 entityTypeName={

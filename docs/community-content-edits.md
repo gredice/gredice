@@ -37,7 +37,7 @@ When enabling a new field, confirm:
 
 ## Workflow
 
-1. A logged-in user opens a page-level or section-level edit modal on `www`.
+1. A logged-in user opens a page-level or section-level edit modal on `www`. On plant and sort pages, the overview and section edit and feedback buttons are always visible; section buttons sit directly under the section text in the left column.
 2. `www` fetches editable fields from `GET /api/directories/community-edits/entities/{entityType}/{entityId}/fields`.
 3. The user submits changed values to `POST /api/directories/community-edits`.
 4. Storage writes `community_edit_requests` and `community_edit_request_changes` with the original value hash, the proposed review value, and a replayable text/markdown patch where possible.
