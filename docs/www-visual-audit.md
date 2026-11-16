@@ -55,7 +55,7 @@ They do not imply these changes have been deployed to production.
 | `/dostava/termini` | Calendar hero, delivery/pickup legend and slot icons, idea hint | `app/dostava/termini/page.tsx` |
 | `/cjenik` | Receipt hero; currency, seedling, tools and delivery section icons | `app/cjenik/page.tsx` |
 | `/sjetva` | Sowing hero; receipt, journal, calendar, leaf, seedling, sun and idea headings | `app/sjetva/page.tsx` |
-| `/o-nama` | Four 64px value-card visuals | `app/o-nama/AboutValueCard.tsx`, `app/o-nama/page.tsx` |
+| `/o-nama` | Partner OPG artwork in the page header (reused from the landing page until a real farm photo exists); four 64px value-card visuals | `app/o-nama/AboutValueCard.tsx`, `app/o-nama/page.tsx` |
 | `/preporuke`, `/suncokreti` | Gift, receipt and energy cards; sunflower reward/package amounts | `app/preporuke/page.tsx`, `app/suncokreti/page.tsx` |
 | `/kontakt` | Mailbox and contact objects; real WhatsApp brand mark | `app/kontakt/page.tsx` |
 | `/mcp` | Journal, garden and basket access-level visuals | `app/mcp/page.tsx` |
