@@ -2,6 +2,8 @@ import {
     achievementXp,
     getAchievementProgress,
 } from '@gredice/js/achievements';
+import { croatianPlural } from '@gredice/js/i18n';
+import { Avatar } from '@gredice/ui/Avatar';
 import { GameTrophyIcon } from '@gredice/ui/GameIcons';
 import { Link } from '@gredice/ui/Link';
 import { publicUserProfileHref } from '@gredice/ui/PublicChrome';
@@ -27,9 +29,19 @@ const podiumStyles = [
     },
 ];
 
+/** Avatars shown in the stack for gardeners outside the top ten. */
+export const maxCommunityAvatars = 5;
+
 export function UserLeaderboard({
     items,
-}: Awaited<ReturnType<typeof getUserLeaderboard>>) {
+    userCount,
+    communityAvatarUrls = [],
+}: Pick<Awaited<ReturnType<typeof getUserLeaderboard>>, 'items'> & {
+    /** Registered gardeners; older API responses may not include it. */
+    userCount?: number;
+    communityAvatarUrls?: string[];
+}) {
+    const otherUserCount = Math.max(0, (userCount ?? 0) - items.length);
     return (
         <div className="mx-auto max-w-4xl py-10 sm:py-16">
             <header className="mb-10 max-w-2xl">
@@ -53,62 +65,101 @@ export function UserLeaderboard({
                     Top 10 vrtlara
                 </h2>
                 {items.length ? (
-                    <ol className="divide-y overflow-hidden rounded-2xl border bg-card">
-                        {items.map((user, index) => {
-                            const { level, xp } = getAchievementProgress(
-                                user.achievementCount,
-                            );
-                            const podium = podiumStyles[index];
-                            return (
-                                <li key={user.publicId}>
-                                    <Link
-                                        href={publicUserProfileHref(
-                                            user.publicId,
-                                        )}
-                                        className={cx(
-                                            'group flex items-center gap-3 px-3 py-5 transition-colors hover:bg-muted/60 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary sm:gap-5 sm:px-6',
-                                            podium?.row,
-                                        )}
-                                    >
-                                        <span
+                    <>
+                        <ol className="divide-y overflow-hidden rounded-2xl border bg-card">
+                            {items.map((user, index) => {
+                                const { level, xp } = getAchievementProgress(
+                                    user.achievementCount,
+                                );
+                                const podium = podiumStyles[index];
+                                return (
+                                    <li key={user.publicId}>
+                                        <Link
+                                            href={publicUserProfileHref(
+                                                user.publicId,
+                                            )}
                                             className={cx(
-                                                'flex size-7 shrink-0 items-center justify-center rounded-full text-sm font-semibold tabular-nums',
-                                                podium?.medal ??
-                                                    'text-muted-foreground',
+                                                'group flex items-center gap-3 px-3 py-5 transition-colors hover:bg-muted/60 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary sm:gap-5 sm:px-6',
+                                                podium?.row,
                                             )}
                                         >
-                                            {index + 1}
-                                        </span>
-                                        <UserAvatar
-                                            avatarUrl={user.avatarUrl}
-                                            displayName={user.displayName}
-                                            achievementCount={
-                                                user.achievementCount
-                                            }
-                                            size="lg"
-                                        />
-                                        <div className="min-w-0 flex-1">
-                                            <span className="block break-words font-semibold group-hover:underline">
-                                                {user.displayName}
+                                            <span
+                                                className={cx(
+                                                    'flex size-7 shrink-0 items-center justify-center rounded-full text-sm font-semibold tabular-nums',
+                                                    podium?.medal ??
+                                                        'text-muted-foreground',
+                                                )}
+                                            >
+                                                {index + 1}
                                             </span>
-                                            <span className="mt-1 block text-xs text-muted-foreground sm:text-sm">
-                                                Razina {level} ·{' '}
-                                                {xp.toLocaleString('hr-HR')} XP
-                                            </span>
-                                        </div>
-                                        <div className="shrink-0 text-right">
-                                            <span className="block text-xl font-semibold tabular-nums">
-                                                {user.achievementCount}
-                                            </span>
-                                            <span className="text-xs text-muted-foreground">
-                                                postignuća
-                                            </span>
-                                        </div>
-                                    </Link>
-                                </li>
-                            );
-                        })}
-                    </ol>
+                                            <UserAvatar
+                                                avatarUrl={user.avatarUrl}
+                                                displayName={user.displayName}
+                                                achievementCount={
+                                                    user.achievementCount
+                                                }
+                                                size="lg"
+                                            />
+                                            <div className="min-w-0 flex-1">
+                                                <span className="block break-words font-semibold group-hover:underline">
+                                                    {user.displayName}
+                                                </span>
+                                                <span className="mt-1 block text-xs text-muted-foreground sm:text-sm">
+                                                    Razina {level} ·{' '}
+                                                    {xp.toLocaleString('hr-HR')}{' '}
+                                                    XP
+                                                </span>
+                                            </div>
+                                            <div className="shrink-0 text-right">
+                                                <span className="block text-xl font-semibold tabular-nums">
+                                                    {user.achievementCount}
+                                                </span>
+                                                <span className="text-xs text-muted-foreground">
+                                                    postignuća
+                                                </span>
+                                            </div>
+                                        </Link>
+                                    </li>
+                                );
+                            })}
+                        </ol>
+                        {otherUserCount ? (
+                            <div className="mt-4 flex items-center gap-3 px-3 sm:px-6">
+                                {communityAvatarUrls.length ? (
+                                    <div
+                                        aria-hidden
+                                        className="flex shrink-0 -space-x-3"
+                                    >
+                                        {communityAvatarUrls
+                                            .slice(
+                                                0,
+                                                Math.min(
+                                                    maxCommunityAvatars,
+                                                    otherUserCount,
+                                                ),
+                                            )
+                                            .map((avatarUrl) => (
+                                                <Avatar
+                                                    key={avatarUrl}
+                                                    src={avatarUrl}
+                                                    alt=""
+                                                    className="ring-2 ring-background"
+                                                />
+                                            ))}
+                                    </div>
+                                ) : null}
+                                <p className="text-sm font-semibold text-muted-foreground">
+                                    i još{' '}
+                                    {otherUserCount.toLocaleString('hr-HR')}{' '}
+                                    {croatianPlural(otherUserCount, {
+                                        one: 'vrtlar',
+                                        few: 'vrtlara',
+                                        many: 'vrtlara',
+                                    })}
+                                </p>
+                            </div>
+                        ) : null}
+                    </>
                 ) : (
                     <p className="rounded-2xl border bg-muted/30 p-8 text-muted-foreground">
                         Ljestvica čeka prva odobrena postignuća. Započni svoj

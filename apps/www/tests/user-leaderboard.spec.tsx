@@ -105,6 +105,73 @@ for (const width of [390, 1280]) {
     });
 }
 
+test('shows how many gardeners are outside the top ten with an avatar stack', async ({
+    mount,
+    page,
+}) => {
+    const communityAvatarUrls = [
+        'https://cdn.gredice.com/avatars/bearded-farmer.webp',
+        'https://cdn.gredice.com/avatars/garden-cat.webp',
+        'https://cdn.gredice.com/avatars/hedgehog.webp',
+        'https://cdn.gredice.com/avatars/botanist.webp',
+        'https://cdn.gredice.com/avatars/rabbit.webp',
+    ];
+    const component = await mount(
+        <main className="px-4">
+            <UserLeaderboard
+                items={items}
+                userCount={1250}
+                communityAvatarUrls={communityAvatarUrls}
+            />
+        </main>,
+    );
+    const others = page.getByText('i još 1.240 vrtlara');
+    await expect(others).toBeVisible();
+    const stack = page.locator('[aria-hidden="true"]:has(img)');
+    await expect(stack.locator('img')).toHaveCount(5);
+    expect(
+        await stack
+            .locator('img')
+            .evaluateAll((images) =>
+                images.every(
+                    (image) =>
+                        image instanceof HTMLImageElement &&
+                        image.naturalWidth > 0,
+                ),
+            ),
+    ).toBe(true);
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+
+    // Never more avatars than hidden gardeners, with the singular noun.
+    await component.update(
+        <main className="px-4">
+            <UserLeaderboard
+                items={items}
+                userCount={11}
+                communityAvatarUrls={communityAvatarUrls}
+            />
+        </main>,
+    );
+    await expect(
+        page.getByText('i još 1 vrtlar', { exact: true }),
+    ).toBeVisible();
+    await expect(stack.locator('img')).toHaveCount(1);
+
+    // Everyone is listed, or an older API omits the count: no row.
+    for (const userCount of [10, undefined]) {
+        await component.update(
+            <main className="px-4">
+                <UserLeaderboard
+                    items={items}
+                    userCount={userCount}
+                    communityAvatarUrls={communityAvatarUrls}
+                />
+            </main>,
+        );
+        await expect(page.getByText(/i još/)).toHaveCount(0);
+    }
+});
+
 test('supports short lists and long names on narrow screens', async ({
     mount,
     page,
