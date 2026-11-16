@@ -39,7 +39,7 @@ test('plant health operation specs keep the reviewed CMS contract', () => {
                 internal: true,
                 pricePerOperation: 0.2,
                 coverUrl:
-                    'https://www.gredice.com/assets/operation-icons/plantPhoto.webp',
+                    'https://www.gredice.com/assets/operation-icons/illustrated/sanitizeSeedlingGrowingArea.webp',
                 visualReward: null,
             },
             {
@@ -50,7 +50,7 @@ test('plant health operation specs keep the reviewed CMS contract', () => {
                 internal: false,
                 pricePerOperation: 0.4,
                 coverUrl:
-                    'https://www.gredice.com/assets/operation-icons/hygiene-pruning.webp',
+                    'https://www.gredice.com/assets/operation-icons/illustrated/inspectAndManuallyRemovePests.webp',
                 visualReward: null,
             },
             {
@@ -61,7 +61,7 @@ test('plant health operation specs keep the reviewed CMS contract', () => {
                 internal: false,
                 pricePerOperation: 2.99,
                 coverUrl:
-                    'https://www.gredice.com/assets/operation-icons/setAgrotextileWhite.webp',
+                    'https://www.gredice.com/assets/operation-icons/illustrated/installInsectProtectionMesh.webp',
                 visualReward: 'insectMesh',
             },
             {
@@ -72,7 +72,7 @@ test('plant health operation specs keep the reviewed CMS contract', () => {
                 internal: false,
                 pricePerOperation: 0.2,
                 coverUrl:
-                    'https://www.gredice.com/assets/operation-icons/removeAgrotextileWhite.webp',
+                    'https://www.gredice.com/assets/operation-icons/illustrated/removeInsectProtectionMesh.webp',
                 visualReward: 'removeInsectMesh',
             },
         ],
