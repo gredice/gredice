@@ -1,9 +1,8 @@
 import type { Locator, Page } from '@playwright/test';
-import { directoryOperationCoverRecipes } from '../generate/operation-cover-recipes';
+import { readOperationCoverIllustrations } from '../generate/read-operation-cover-illustrations';
 import { expect, test } from './fixtures';
 
 const publicQaEnabled = process.env.OPERATION_COVER_PUBLIC_QA === '1';
-const publicCoverBaseUrl = 'https://www.gredice.com/assets/operation-icons/';
 const publicListStageNames = new Set([
     'soilPreparation',
     'sowing',
@@ -15,8 +14,17 @@ const publicListStageNames = new Set([
     'harvest',
     'storage',
 ]);
+const representativeSearchNames = [
+    'decapitation',
+    'rinsePestsFromPlant',
+    'formative-pruning',
+    'plantingPlantSupport',
+    'harvestPlant',
+];
 type DirectoryOperation = {
+    id: number;
     attributes?: {
+        internal?: boolean | null;
         stage?: {
             information?: {
                 name?: string | null;
@@ -24,7 +32,9 @@ type DirectoryOperation = {
         } | null;
     } | null;
     image?: {
-        cover?: { url?: string | null } | null;
+        cover?: {
+            url?: string | null;
+        } | null;
     } | null;
     information?: {
         label?: string | null;
@@ -32,177 +42,174 @@ type DirectoryOperation = {
     } | null;
     slug?: string | null;
 };
-let operationsByName = new Map<string, DirectoryOperation>();
+
+type IllustratedOperation = {
+    name: string;
+    id: number;
+    label: string;
+    slug: string;
+    coverUrl: string | null;
+    imagePath: string;
+    internal: boolean;
+    visibleInList: boolean;
+    uniqueSlug: boolean;
+};
+
+let illustratedOperations: IllustratedOperation[] = [];
 
 function escapeRegExp(value: string) {
     return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function originalImageUrl(source: string) {
-    try {
-        const url = new URL(source);
-        return url.pathname === '/_next/image'
-            ? url.searchParams.get('url')
-            : url.href;
-    } catch {
-        return null;
-    }
-}
-
-async function expectAssignedCoverImage(
+async function expectIllustratedCover(
     scope: Page | Locator,
-    coverUrl: string,
+    imagePath: string,
 ) {
+    const image = scope
+        .locator(
+            `img[src*="${imagePath}"], img[src*="${encodeURIComponent(imagePath)}"]`,
+        )
+        .first();
+    await expect(image).toBeVisible();
+    await image.scrollIntoViewIfNeeded();
     await expect
-        .poll(async () => {
-            const imageSources = await scope
-                .locator('img')
-                .evaluateAll((images) =>
-                    images
-                        .filter((image) => image instanceof HTMLImageElement)
-                        .map((image) => image.currentSrc || image.src),
-                );
-            return imageSources.map(originalImageUrl);
-        })
-        .toContain(coverUrl);
-}
-
-function operationForRecipe(
-    recipe: (typeof directoryOperationCoverRecipes)[number],
-) {
-    const operation = operationsByName.get(recipe.operationId);
-    const label = operation?.information?.label;
-    const slug = operation?.slug;
-    if (!operation || !label || !slug) {
-        throw new Error(
-            `Missing public operation for recipe ${recipe.operationId}.`,
-        );
-    }
-    const coverUrl = operation.image?.cover?.url;
-    const legacyUrl = `${publicCoverBaseUrl}${recipe.outputFileName}`;
-    const illustratedUrl = `${publicCoverBaseUrl}illustrated/${recipe.operationId}.webp`;
-    if (coverUrl !== legacyUrl && coverUrl !== illustratedUrl) {
-        throw new Error(
-            `Unexpected cover URL for ${recipe.operationId}: ${coverUrl ?? '(missing)'}.`,
-        );
-    }
-    return {
-        ...operation,
-        information: { ...operation.information, label },
-        slug,
-        coverUrl,
-    };
-}
-
-test.beforeAll(async ({ request }) => {
-    const response = await request.get(
-        `https://api.gredice.com/api/directories/entities/operation?operationCoverQa=${Date.now()}`,
-    );
-    expect(response.ok()).toBe(true);
-
-    const operations = (await response.json()) as DirectoryOperation[];
-    operationsByName = new Map(
-        operations
-            .filter((operation) => operation.information?.name)
-            .map((operation) => [operation.information?.name ?? '', operation]),
-    );
-});
-
-function recipesWithUniquePublicSlugs() {
-    const recipesBySlug = new Map<
-        string,
-        (typeof directoryOperationCoverRecipes)[number][]
-    >();
-
-    for (const recipe of directoryOperationCoverRecipes) {
-        const operation = operationForRecipe(recipe);
-        const recipes = recipesBySlug.get(operation.slug) ?? [];
-        recipes.push(recipe);
-        recipesBySlug.set(operation.slug, recipes);
-    }
-
-    return Array.from(recipesBySlug.values())
-        .filter((recipes) => recipes.length === 1)
-        .map((recipes) => recipes[0]);
-}
-
-function recipesVisibleInPublicOperationList() {
-    return directoryOperationCoverRecipes.filter((recipe) => {
-        const operation = operationForRecipe(recipe);
-        const stageName = operation.attributes?.stage?.information?.name;
-        return stageName ? publicListStageNames.has(stageName) : false;
-    });
+        .poll(() =>
+            image.evaluate(
+                (node) =>
+                    node instanceof HTMLImageElement &&
+                    node.complete &&
+                    node.naturalWidth > 0,
+            ),
+        )
+        .toBe(true);
 }
 
 test.describe('operation cover public surfaces', () => {
     test.skip(
         !publicQaEnabled,
-        'Set OPERATION_COVER_PUBLIC_QA=1 after DB cover URL sync is approved/applied.',
+        'Set OPERATION_COVER_PUBLIC_QA=1 after the illustration URLs have been assigned.',
     );
 
-    test.setTimeout(180_000);
+    test.setTimeout(360_000);
 
-    test('operation list cards use generated covers', async ({ page }) => {
-        for (const recipe of recipesVisibleInPublicOperationList()) {
-            const operation = operationForRecipe(recipe);
-            await page.goto(
-                `/radnje?pretraga=${encodeURIComponent(operation.information.label)}`,
-                { waitUntil: 'domcontentloaded' },
-            );
+    test.beforeAll(async ({ request }) => {
+        const [illustrations, response] = await Promise.all([
+            readOperationCoverIllustrations(),
+            request.get(
+                `https://api.gredice.com/api/directories/entities/operation?operationCoverQa=${Date.now()}`,
+            ),
+        ]);
+        expect(response.ok()).toBe(true);
+        expect(illustrations.size).toBeGreaterThan(0);
 
-            await expectAssignedCoverImage(page, operation.coverUrl);
+        const operations: DirectoryOperation[] = await response.json();
+        const operationsById = new Map(
+            operations.map((operation) => [operation.id, operation]),
+        );
+        const slugCounts = new Map<string, number>();
+        for (const { slug } of operations) {
+            if (slug) {
+                slugCounts.set(slug, (slugCounts.get(slug) ?? 0) + 1);
+            }
+        }
+
+        illustratedOperations = Array.from(
+            illustrations,
+            ([name, illustration]) => {
+                const operation = operationsById.get(illustration.entityId);
+                const label = operation?.information?.label;
+                const slug = operation?.slug;
+                if (!label || !slug || operation?.information?.name !== name) {
+                    throw new Error(
+                        `Missing public operation ${name} (${illustration.entityId}).`,
+                    );
+                }
+
+                const stageName =
+                    operation.attributes?.stage?.information?.name;
+                const internal = operation.attributes?.internal === true;
+                return {
+                    name,
+                    id: operation.id,
+                    label,
+                    slug,
+                    coverUrl: operation.image?.cover?.url ?? null,
+                    imagePath: `/assets/operation-icons/illustrated/${name}.webp`,
+                    internal,
+                    visibleInList:
+                        internal ||
+                        (stageName
+                            ? publicListStageNames.has(stageName)
+                            : false),
+                    uniqueSlug: slugCounts.get(slug) === 1,
+                };
+            },
+        );
+    });
+
+    test('directory API publishes each illustrated cover assignment', () => {
+        for (const operation of illustratedOperations) {
+            expect
+                .soft(operation.coverUrl, `${operation.name} (${operation.id})`)
+                .toBe(`https://www.gredice.com${operation.imagePath}`);
         }
     });
 
-    test('operation detail pages use generated covers', async ({ page }) => {
-        for (const recipe of recipesWithUniquePublicSlugs()) {
-            const operation = operationForRecipe(recipe);
+    test('operation list cards use illustrated covers', async ({ page }) => {
+        for (const operation of illustratedOperations.filter(
+            (entry) => entry.visibleInList,
+        )) {
+            await page.goto(
+                `/radnje?pretraga=${encodeURIComponent(operation.label)}`,
+                { waitUntil: 'domcontentloaded' },
+            );
+
+            if (operation.internal) {
+                await page
+                    .getByRole('button', { name: 'Za OPG partnere' })
+                    .click();
+            }
+            await expectIllustratedCover(page, operation.imagePath);
+        }
+    });
+
+    test('operation detail pages use illustrated covers', async ({ page }) => {
+        for (const operation of illustratedOperations.filter(
+            (entry) => entry.uniqueSlug,
+        )) {
             await page.goto(`/radnje/${operation.slug}`, {
                 waitUntil: 'domcontentloaded',
             });
 
             await expect(
                 page.getByRole('heading', {
-                    name: operation.information.label,
+                    name: operation.label,
                     exact: true,
                 }),
             ).toBeVisible();
-            await expectAssignedCoverImage(page, operation.coverUrl);
+            await expectIllustratedCover(page, operation.imagePath);
         }
     });
 
-    test('search results use generated covers for representative operations', async ({
+    test('search results use illustrated covers for representative operations', async ({
         page,
     }) => {
-        const representativeRecipes = [
-            directoryOperationCoverRecipes[0],
-            directoryOperationCoverRecipes.find(
-                (recipe) => recipe.operationId === 'rinsePestsFromPlant',
-            ),
-            directoryOperationCoverRecipes.find(
-                (recipe) => recipe.operationId === 'formative-pruning',
-            ),
-            directoryOperationCoverRecipes.find(
-                (recipe) => recipe.operationId === 'plantingPlantSupport',
-            ),
-            directoryOperationCoverRecipes.at(-1),
-        ].filter(
-            (
-                recipe,
-            ): recipe is (typeof directoryOperationCoverRecipes)[number] =>
-                Boolean(recipe),
+        const representativeOperations = illustratedOperations.filter(
+            (operation) =>
+                !operation.internal &&
+                representativeSearchNames.includes(operation.name),
         );
+        expect(representativeOperations.length).toBeGreaterThan(0);
 
-        for (const recipe of representativeRecipes) {
-            const operation = operationForRecipe(recipe);
+        for (const operation of representativeOperations) {
             await page.goto(
-                `/pretraga?pretraga=${encodeURIComponent(operation.information.label)}`,
+                `/pretraga?pretraga=${encodeURIComponent(operation.label)}`,
                 { waitUntil: 'domcontentloaded' },
             );
 
             const result = page
                 .getByRole('link', {
-                    name: new RegExp(escapeRegExp(operation.information.label)),
+                    name: new RegExp(escapeRegExp(operation.label)),
                 })
                 .first();
 
@@ -210,7 +217,7 @@ test.describe('operation cover public surfaces', () => {
             await expect(
                 result.locator('[data-search-result-icon]'),
             ).toHaveCount(0);
-            await expectAssignedCoverImage(result, operation.coverUrl);
+            await expectIllustratedCover(result, operation.imagePath);
         }
     });
 });

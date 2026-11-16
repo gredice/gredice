@@ -2,15 +2,10 @@ import { stat } from 'node:fs/promises';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
-import {
-    directoryOperationCoverRecipes,
-    validateOperationCoverRecipes,
-} from './operation-cover-recipes';
 import { readOperationCoverIllustrations } from './read-operation-cover-illustrations';
 
 const repoRoot = fileURLToPath(new URL('../../../', import.meta.url));
 const publicIconPath = 'apps/www/public/assets/operation-icons';
-const publicIconDirectory = join(repoRoot, publicIconPath);
 
 const canvasSize = 640;
 
@@ -86,30 +81,10 @@ async function validateIllustrationAssets(
 }
 
 async function main() {
-    const recipeValidationErrors = validateOperationCoverRecipes(
-        directoryOperationCoverRecipes,
-    );
-    if (recipeValidationErrors.length > 0) {
-        throw new Error(
-            `Invalid operation cover recipes:\n${recipeValidationErrors.join('\n')}`,
-        );
-    }
-
-    const missingFiles: string[] = [];
-    for (const recipe of directoryOperationCoverRecipes) {
-        const outputPath = join(publicIconDirectory, recipe.outputFileName);
-        if (!(await fileExists(outputPath))) {
-            missingFiles.push(recipe.outputFileName);
-        }
-    }
-
-    if (missingFiles.length > 0) {
-        throw new Error(
-            `Missing operation cover assets:\n${missingFiles.join('\n')}`,
-        );
-    }
-
     const illustrations = await readOperationCoverIllustrations();
+    if (illustrations.size === 0) {
+        throw new Error('No operation cover illustrations found.');
+    }
     const illustrationErrors = await validateIllustrationAssets(illustrations);
     if (illustrationErrors.length > 0) {
         throw new Error(
@@ -120,9 +95,8 @@ async function main() {
     console.log(
         JSON.stringify(
             {
-                checked: directoryOperationCoverRecipes.length,
                 illustrationsChecked: illustrations.size,
-                directory: publicIconDirectory,
+                directory: join(repoRoot, publicIconPath, 'illustrated'),
             },
             null,
             2,
