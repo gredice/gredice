@@ -36,7 +36,7 @@ async function PlantSortsListContent({
                 </Typography>
             )}
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-                {sorts.map((sort) => {
+                {sorts.map((sort, sortIndex) => {
                     const isAvailable =
                         sort.store?.availableInStore ??
                         sort.information.plant.store?.availableInStore ??
@@ -56,6 +56,8 @@ async function PlantSortsListContent({
                                     plantSort={sort}
                                     width={72}
                                     height={72}
+                                    // The first row of sorts is usually in the first viewport.
+                                    loading={sortIndex < 2 ? 'eager' : 'lazy'}
                                 />
                                 <Stack className="grow">
                                     <Typography level="h5" component="h3">
