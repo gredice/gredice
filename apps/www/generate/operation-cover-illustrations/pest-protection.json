@@ -1,0 +1,67 @@
+{
+    "applyPestProtectionPreparation": {
+        "entityId": 571,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/applyPestProtectionPreparation.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/LiquidPreparationBottlePestControl.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "apps/www/public/assets/operation-icons/illustrated/rinsePestsFromPlant.webp",
+            "packages/ui/src/GameIcons/assets/plant-pest.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate one production-quality square transparent Gredice gardening operation illustration. Use the supplied pruning, clean-water pest rinse, and caterpillar icons only as style references. Match their chunky beveled low-poly geometry, broad visible facets, bright plant colors, matte tactile surfaces, warm upper-left light and shaded sides, compact honey-brown soil bases when soil is present. Clearly depict the unique procedure and silhouette below.\nFor Zaštita biljaka od štetnika, show applying a diluted broad plant pest preparation to young plant foliage. At the left use one chunky warm amber and cream garden pump sprayer tank with recognizable short plunger handle; the single dark flexible hose makes a short curved loop to a thin handless spray wand, tilted diagonally toward a little leafy plant on an ochre soil clod at right. Clearly show a restrained fan of pale mint spray issuing from the wand tip onto the two front leaves. Put one small dark rust-brown shield-shaped plant bug with antennae on the nearest broad leaf, and one tiny slim brown thrips silhouette on the second; the tools and plant stay dominant. The prominent pump tank and wand identify broad treatment rather than pure water from a household bottle. No skull, shield icon, danger marks or water-drop emblem.\nSlightly elevated three-quarter view. Standalone compact centered object group, full generous transparent margins and readable at 48 px. True alpha around and between the items. No scenery, floor, external cast shadow, hands, people, numbers, lettering, brand marks or instruction arrows.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "applySlugProtectionPreparation": {
+        "entityId": 570,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/applySlugProtectionPreparation.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/LiquidPreparationBottleSlugControl.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "apps/www/public/assets/operation-icons/illustrated/rinsePestsFromPlant.webp",
+            "packages/ui/src/GameIcons/assets/plant-pest.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate one production-quality square transparent Gredice gardening operation illustration. Use the supplied pruning, clean-water pest rinse, and caterpillar icons only as style references. Match their chunky beveled low-poly geometry, broad visible facets, bright plant colors, matte tactile surfaces, warm upper-left light and shaded sides, compact honey-brown soil bases when soil is present. Clearly depict the unique procedure and silhouette below.\nFor Zaštita biljaka od puževa, show applying diluted liquid preparation to the soil zone around a young leafy plant. Compose a short broad soil clod, a central compact lime-green lettuce rosette with one conspicuous simple bite notch, and one readable warm brown snail with a faceted spiral shell, two raised stalks and intact olive body at the near left edge, pointed outward from the plant. On the upper right, a stout light blue and amber handled measuring jug with a short pouring lip is tilted toward the bare soil just outside the lettuce. A small mint-tinted liquid stream from the lip wets the soil around the plant base, clear of the snail. This is a liquid preparation, with no pellets, salt, white powder, slug trap, crossed-out symbols, dead pests or nozzle mist. The ground-level spiral shall be visible at thumbnail sizes.\nSlightly elevated three-quarter view. Standalone compact centered object group, full generous transparent margins and readable at 48 px. True alpha around and between the items. No scenery, floor, external cast shadow, hands, people, numbers, lettering, brand marks or instruction arrows.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "applyTomatoResiliencePreparation": {
+        "entityId": 569,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/applyTomatoResiliencePreparation.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/LiquidPreparationBottleTomatoEggplantResistance.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "apps/www/public/assets/operation-icons/illustrated/rinsePestsFromPlant.webp",
+            "packages/ui/src/GameIcons/assets/plant-pest.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate one production-quality square transparent Gredice gardening operation illustration. Use the supplied pruning, clean-water pest rinse, and caterpillar icons only as style references. Match their chunky beveled low-poly geometry, broad visible facets, bright plant colors, matte tactile surfaces, warm upper-left light and shaded sides, compact honey-brown soil bases when soil is present. Clearly depict the unique procedure and silhouette below.\nFor Jačanje otpornosti rajčice i patlidžana, show the resilience-support liquid applied around root zones. On a small oval brown soil bed, use two short healthy recognizable crop stems grouped together: bright leafy tomato stem on the left with two broad shiny faceted scarlet red tomatoes, and an eggplant on the right with one prominent plump royal-purple elongated aubergine under a green calyx. From the upper left, one small stout muted plum handled dosing cup is tilted toward bare soil between the two bases, pouring one slim pale mint liquid stream directly into the soil. The red tomato and dark purple eggplant clearly read as two crop shapes beside each other, with the small cup behind them to avoid blocking the silhouettes. No pests, damage, insects, roots diagram, pill, shield, medical crosses, trigger nozzle, or labels.\nSlightly elevated three-quarter view. Standalone compact centered object group, full generous transparent margins and readable at 48 px. True alpha around and between the items. No scenery, floor, external cast shadow, hands, people, numbers, lettering, brand marks or instruction arrows.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "inspectAndManuallyRemovePests": {
+        "entityId": 718,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/inspectAndManuallyRemovePests.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/hygiene-pruning.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "apps/www/public/assets/operation-icons/illustrated/rinsePestsFromPlant.webp",
+            "packages/ui/src/GameIcons/assets/plant-pest.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate one production-quality square transparent Gredice gardening operation illustration. Use the supplied pruning, clean-water pest rinse, and caterpillar icons only as style references. Match their chunky beveled low-poly geometry, broad visible facets, bright plant colors, matte tactile surfaces, warm upper-left light and shaded sides, compact honey-brown soil bases when soil is present. Clearly depict the unique procedure and silhouette below.\nFor Pregled i ručno uklanjanje štetnika, show one small identifiable yellow-green segmented caterpillar being gently lifted off a broad dark-green faceted leaf with a distinct nibble notch. A single pair of chunky matte blue-steel garden tweezers comes in diagonally from upper right, blunt tips holding the caterpillar lightly at center without crushing it; show its clear shallow curved silhouette, small legs, and antennae. Directly below and to the right sits a short open transparent pale aqua catch jar with a thick visible rounded rim, ready to receive the pest, with its teal removable lid leaning nearby. Keep the caterpillar and action at the focus and make the jar look like an empty collection container with wide opening, no pump, labels or liquid. No spray, drops, pesticide bottle, scissors, severed leaf, blood, or pests killed. Simple leaf, caterpillar, tweezers and jar only.\nSlightly elevated three-quarter view. Standalone compact centered object group, full generous transparent margins and readable at 48 px. True alpha around and between the items. No scenery, floor, external cast shadow, hands, people, numbers, lettering, brand marks or instruction arrows.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "plantProtectionFromGreenfly": {
+        "entityId": 636,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/plantProtectionFromGreenfly.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/LiquidPreparationBottleAphidControl.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "apps/www/public/assets/operation-icons/illustrated/rinsePestsFromPlant.webp",
+            "packages/ui/src/GameIcons/assets/plant-pest.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate one production-quality square transparent Gredice gardening operation illustration. Use the supplied pruning, clean-water pest rinse, and caterpillar icons only as style references. Match their chunky beveled low-poly geometry, broad visible facets, bright plant colors, matte tactile surfaces, warm upper-left light and shaded sides, compact honey-brown soil bases when soil is present. Clearly depict the unique procedure and silhouette below.\nFor Zaštita biljke od lisne uši, depict a targeted potassium soap spray on a visible cluster of aphids. Compose a close-up of one diagonal fleshy green stalk and two broad dark leaf-green leaves with clear vein ridges, filling the lower left through the upper center. At the lower right a single chunky short opaque coral and light cream trigger bottle aims leftward and upward, with a small pale-mint spray fan reaching a tight visible cluster of three pear-shaped light yellow-green aphids attached to the underside of the nearer broad leaf. Give aphids recognizable pear-shaped bodies, short antennae and tiny legs, natural and tidy. The leaf and aphid cluster dominate, no exposed soil clod or whole plant, no falling insects, no pure-water blue droplets, no watering can, tank or unlabeled secondary container. Keep the coral bottle and focused spray visually distinct from the clean-water rinse reference.\nSlightly elevated three-quarter view. Standalone compact centered object group, full generous transparent margins and readable at 48 px. True alpha around and between the items. No scenery, floor, external cast shadow, hands, people, numbers, lettering, brand marks or instruction arrows.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    }
+}

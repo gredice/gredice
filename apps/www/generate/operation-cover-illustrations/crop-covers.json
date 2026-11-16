@@ -1,0 +1,80 @@
+{
+    "installInsectProtectionMesh": {
+        "entityId": 719,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/installInsectProtectionMesh.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/setAgrotextileWhite.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "packages/ui/src/GameIcons/assets/backpack.webp",
+            "packages/ui/src/GameIcons/assets/raised-bed.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate one production-quality square transparent action illustration for the Gredice gardening game. Use the supplied pruning icon, backpack, and wooden raised bed as style references. Match their tactile matte materials, bold beveled low-poly forms, broad facets, honey and umber wood, fresh leaf greens, shaded sides, and soft warm upper-left light. Use one compact coherent arrangement with the material and the operation below unmistakable at thumbnail scale.\nFor Postavljanje zaštitne mreže protiv kukaca, depict a warm honey-wood raised bed with three lively green seedlings, entirely covered by a low cream-green hoop structure. A fine sage-teal open insect netting covers every side and the roof, hugging two low round arches and visibly fastened to all bed edges. Render the mesh as a light semi-transparent blue-green woven veil with sparse clearly legible crossing diamond strands, green leaves and dark soil clearly showing through it. It is soft textured open fabric with thin stitched hems, never a solid white cloth and never shiny glass or plastic. A green wooden rim and two amber fastening clips pin the net at the bed. The arc-shaped installed mesh above the rich green plants is the focal point. No pest characters, fabric roll or uncovered end.\nSlightly elevated three-quarter view; entire subject centered with clear space around its full silhouette, readable at 48 px. Genuine transparent alpha wherever there is no subject and in open gaps. No backdrop, landscape, ground plane or cast shadow, text, numbers, arrows, symbols, watermarks, people, or hands.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "placeGreenhouseX": {
+        "entityId": 370,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/placeGreenhouseX.webp",
+        "previousUrl": "https://cdn.gredice.com/entity-attributes/b05e574a-bb16-4ec9-9018-27cc65572895-GreenhouseX-340.png",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "packages/ui/src/GameIcons/assets/backpack.webp",
+            "packages/ui/src/GameIcons/assets/raised-bed.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate one production-quality square transparent action illustration for the Gredice gardening game. Use the supplied pruning icon, backpack, and wooden raised bed as style references. Match their tactile matte materials, bold beveled low-poly forms, broad facets, honey and umber wood, fresh leaf greens, shaded sides, and soft warm upper-left light. Use one compact coherent arrangement with the material and the operation below unmistakable at thumbnail scale.\nFor Postavljanje plastenika, depict a fitted miniature low tunnel greenhouse mounted directly onto a warm honey-wood raised garden bed. A robust rounded half-cylinder frame with two thick dark forest-green end ribs, one visible middle rib, and feet tucked against the bed rim. The frame supports clear blue-tinted flexible greenhouse film drawn taut across its curved roof and long side; use broad smooth icy pale-blue facets and two clean reflection bands so it reads as continuous plastic film, without glass panes and without any grid or woven texture. A small rolled ventilation flap on the front arch makes an open oval cutout revealing two little vivid seedlings inside. Keep the cover connected to the bed and tall enough to read as an enclosed miniature greenhouse. Wide airy pale-blue arched silhouette on a crisp wooden base. No detached material rolls or tools.\nSlightly elevated three-quarter view; entire subject centered with clear space around its full silhouette, readable at 48 px. Genuine transparent alpha wherever there is no subject and in open gaps. No backdrop, landscape, ground plane or cast shadow, text, numbers, arrows, symbols, watermarks, people, or hands.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "removeAgrotextileWhite": {
+        "entityId": 588,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/removeAgrotextileWhite.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/removeAgrotextileWhite.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "packages/ui/src/GameIcons/assets/backpack.webp",
+            "packages/ui/src/GameIcons/assets/raised-bed.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate one production-quality square transparent action illustration for the Gredice gardening game. Use the supplied pruning icon, backpack, and wooden raised bed as style references. Match their tactile matte materials, bold beveled low-poly forms, broad facets, honey and umber wood, fresh leaf greens, shaded sides, and soft warm upper-left light. Use one compact coherent arrangement with the material and the operation below unmistakable at thumbnail scale.\nFor Uklanjanje agrotekstila, depict a completely uncovered square honey-wood raised bed behind and a separate folded bundle of white frost-protection fabric in the front left foreground. The bed shows two healthy bright green young leafy plants under open air, brown soil and no supporting cover frame. Show the removed cloth as three thick soft accordion folds in off-white, illuminated cream on top and pale cool blue in the fold creases, with one gently unfurled folded corner, enough visible area to immediately communicate white fabric. One small amber fastening clip rests on the bundle. Visually separate the folded opaque fabric from the bed rim so the crop bed is fully uncovered. No mesh pattern, transparency through fabric, frame, glass, or any attached cover.\nSlightly elevated three-quarter view; entire subject centered with clear space around its full silhouette, readable at 48 px. Genuine transparent alpha wherever there is no subject and in open gaps. No backdrop, landscape, ground plane or cast shadow, text, numbers, arrows, symbols, watermarks, people, or hands.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "removeInsectProtectionMesh": {
+        "entityId": 720,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/removeInsectProtectionMesh.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/removeAgrotextileWhite.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "packages/ui/src/GameIcons/assets/backpack.webp",
+            "packages/ui/src/GameIcons/assets/raised-bed.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate one production-quality square transparent action illustration for the Gredice gardening game. Use the supplied pruning icon, backpack, and wooden raised bed as style references. Match their tactile matte materials, bold beveled low-poly forms, broad facets, honey and umber wood, fresh leaf greens, shaded sides, and soft warm upper-left light. Use one compact coherent arrangement with the material and the operation below unmistakable at thumbnail scale.\nFor Uklanjanje zaštitne mreže protiv kukaca, show a completely uncovered honey-wood raised bed, three broad lush green crops and two bare low dark-green hoops visible in clean silhouette. Set a well separated rolled bundle of the removed blue-green insect mesh diagonally beside the front right of the bed, with an unmistakably open centre, loosely curled flap and edge binding. The free mesh flap and roll show thin crossing sage-teal diamond strands over transparent holes so the wood and soil are visible through part of it. One amber fastening clip on the roll. Keep all greenery and hoops clear of netting, keep the rolled net prominent with the outer end raised slightly to show actual woven material, no cover touching the plants. No solid white cloth, film, storage crate or insect characters.\nSlightly elevated three-quarter view; entire subject centered with clear space around its full silhouette, readable at 48 px. Genuine transparent alpha wherever there is no subject and in open gaps. No backdrop, landscape, ground plane or cast shadow, text, numbers, arrows, symbols, watermarks, people, or hands.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "setAgrotextileWhite": {
+        "entityId": 584,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/setAgrotextileWhite.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/setAgrotextileWhite.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "packages/ui/src/GameIcons/assets/backpack.webp",
+            "packages/ui/src/GameIcons/assets/raised-bed.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate one production-quality square transparent action illustration for the Gredice gardening game. Use the supplied pruning icon, backpack, and wooden raised bed as style references. Match their tactile matte materials, bold beveled low-poly forms, broad facets, honey and umber wood, fresh leaf greens, shaded sides, and soft warm upper-left light. Use one compact coherent arrangement with the material and the operation below unmistakable at thumbnail scale.\nFor Postavljanje agrotekstila, depict a fitted temporary white frost-protection fabric covering the whole of a warm honey-wood seedling bed. Two low arches underneath shape one solid soft opaque ivory-white cloth tunnel, rounded but softly folded in broad angular planes with cool pale-blue shadows. The white textile has softly folded hems, no woven marks, no glass shine, and no greenery visible through it. Three chunky ochre clips on the near wooden rim visibly secure the hem flat to the frame. The textile is the dominant closed solid volume, with draped soft white side folds, and the wood base is clearly discernible. No plants sticking out, no roll beside the bed, netting, clear surfaces or hard plastic panels.\nSlightly elevated three-quarter view; entire subject centered with clear space around its full silhouette, readable at 48 px. Genuine transparent alpha wherever there is no subject and in open gaps. No backdrop, landscape, ground plane or cast shadow, text, numbers, arrows, symbols, watermarks, people, or hands.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "storeGreenhouse": {
+        "entityId": 513,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/storeGreenhouse.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/storeGreenhouse.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "packages/ui/src/GameIcons/assets/backpack.webp",
+            "packages/ui/src/GameIcons/assets/raised-bed.webp"
+        ],
+        "prompt": "Use case: stylized-concept\nCreate one production-quality square transparent action illustration for the Gredice gardening game. Use the supplied pruning icon, backpack, and wooden raised bed as style references. Match their tactile matte materials, bold beveled low-poly forms, broad facets, honey and umber wood, fresh leaf greens, shaded sides, and soft warm upper-left light. Use one compact coherent arrangement with the material and the operation below unmistakable at thumbnail scale.\nFor Skladištenje plastenika, show a greenhouse already disassembled and neatly packed for reuse. The same dark forest-green arched tunnel ribs are recognizable as three chunky nested semicircular frame tubes, all stacked flat at a diagonal, partly protruding from the back of one open honey-wood slatted storage crate. At the front of the crate is one completely separate thick roll of glossy pale ice-blue clear greenhouse film with a smooth concentric rolled end; two small warm amber straps secure the film and curved tubes. Make the parts visibly clean, bundled, and ready for storage. The crate with packed arch parts and film is the sole silhouette. No plants, soil, raised bed, standing greenhouse, netting, cloth blanket, shelf, or clipboard.\nSlightly elevated three-quarter view; entire subject centered with clear space around its full silhouette, readable at 48 px. Genuine transparent alpha wherever there is no subject and in open gaps. No backdrop, landscape, ground plane or cast shadow, text, numbers, arrows, symbols, watermarks, people, or hands.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    }
+}
