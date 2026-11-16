@@ -1,60 +1,27 @@
-import { Link } from '@gredice/ui/Link';
-import { Stack } from '@gredice/ui/Stack';
-import { UserAchievementProgress, UserAvatar } from '@gredice/ui/UserAvatar';
+import { PublicBreadcrumbs } from '../../../components/shared/seo/PublicBreadcrumbs';
 import { KnownPages } from '../../../src/KnownPages';
-import { formatGardenDate } from '../../vrtovi/publicGardenFormatting';
 import { PublicProfileAchievements } from './PublicProfileAchievements';
 import { PublicProfileGardens } from './PublicProfileGardens';
-import { formatProfileMembership } from './profileMembership';
+import { PublicProfileHeader } from './PublicProfileHeader';
 import type { PublicProfileData } from './publicProfileData';
 
 export function PublicProfileView({ profile }: { profile: PublicProfileData }) {
-    const { user, gardens, achievements } = profile;
-    const membership = formatProfileMembership(user.createdAt);
-
     return (
-        <Stack spacing={12} className="pt-8 pb-12 sm:pt-12">
-            <Link
-                href="/korisnici"
-                className="text-sm text-muted-foreground hover:underline"
-            >
-                Svi vrtlari
-            </Link>
-            <header className="flex items-center gap-4">
-                <UserAvatar
-                    avatarUrl={user.avatarUrl}
-                    achievementCount={user.achievementCount}
-                    displayName={user.displayName}
-                    size="lg"
-                    className="size-16 border-2 border-tertiary text-2xl sm:size-20"
+        <div className="space-y-10 py-8 sm:space-y-12 sm:py-12">
+            <div className="space-y-6">
+                <PublicBreadcrumbs
+                    items={[
+                        { label: 'Vrtlari', href: KnownPages.Users },
+                        { label: profile.user.displayName },
+                    ]}
                 />
-                <div className="min-w-0">
-                    <h1 className="text-3xl font-semibold break-words">
-                        {user.displayName}
-                    </h1>
-                    <UserAchievementProgress
-                        achievementCount={user.achievementCount}
-                    />
-                    <Link
-                        href={KnownPages.Experience}
-                        className="mt-2 inline-block text-xs underline underline-offset-4"
-                    >
-                        Kako funkcioniraju XP i razine?
-                    </Link>
-                    {membership && (
-                        <p className="mt-2 text-sm text-muted-foreground">
-                            <time
-                                dateTime={user.createdAt}
-                                title={`Pridružio se ${formatGardenDate(user.createdAt)}`}
-                            >
-                                {membership}
-                            </time>
-                        </p>
-                    )}
-                </div>
-            </header>
-            <PublicProfileAchievements achievements={achievements} />
-            <PublicProfileGardens key={user.publicId} gardens={gardens} />
-        </Stack>
+                <PublicProfileHeader {...profile} />
+            </div>
+            <PublicProfileAchievements achievements={profile.achievements} />
+            <PublicProfileGardens
+                key={profile.user.publicId}
+                gardens={profile.gardens}
+            />
+        </div>
     );
 }

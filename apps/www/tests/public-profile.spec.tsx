@@ -95,6 +95,22 @@ test('shows custom award milestones and visible gardens without exposing the log
         page.getByRole('heading', { name: 'Veseli vrtlar' }),
     ).toBeVisible();
     await expect(page.getByText('private@example.com')).toHaveCount(0);
+    await expect(
+        page
+            .getByRole('navigation', { name: 'Breadcrumb' })
+            .getByRole('link', { name: 'Vrtlari' }),
+    ).toHaveAttribute('href', '/korisnici');
+    const header = page.locator('header');
+    await expect(header.getByText('Razina 4 · 600 XP')).toBeVisible();
+    for (const [label, value] of [
+        ['Postignuća', '6'],
+        ['Zbirke', '4 / 8'],
+        ['Javni vrtovi', '3'],
+    ]) {
+        await expect(
+            header.getByRole('listitem').filter({ hasText: label }),
+        ).toContainText(value);
+    }
     await expect(page.getByText('VV', { exact: true })).toBeVisible();
     await expect(page.getByText('Korisnik već 6 mjeseci')).toBeVisible();
     await expect(page.getByText(/vrtova|bez HUD-a/)).toHaveCount(0);
@@ -128,19 +144,20 @@ test('shows custom award milestones and visible gardens without exposing the log
     ).toBeVisible();
     await expect(achievements.getByText('Prvo sjeme')).toHaveCount(0);
     await expect(achievements.getByText('50 berbi')).toHaveCount(0);
-    await expect(achievements).toHaveCSS('text-align', 'center');
+    await expect(
+        achievements.getByRole('link', { name: '20 biljaka' }),
+    ).toHaveAttribute('href', '/postignuca#planting_20');
+    await expect(
+        achievements.getByRole('listitem').filter({ hasText: '20 biljaka' }),
+    ).toContainText('Sadnja');
+    // Awards sit in one row of equal cards on desktop.
     const badges = await achievements.getByRole('listitem').all();
     const firstBadge = await badges[0].boundingBox();
-    const lastBadge = await badges[3].boundingBox();
-    const section = await achievements.boundingBox();
-    if (!firstBadge || !lastBadge || !section)
+    const secondBadge = await badges[1].boundingBox();
+    if (!firstBadge || !secondBadge)
         throw new Error('Expected achievement layout');
-    expect(
-        Math.abs(
-            (firstBadge.x + lastBadge.x + lastBadge.width) / 2 -
-                (section.x + section.width / 2),
-        ),
-    ).toBeLessThan(1);
+    expect(secondBadge.y).toBe(firstBadge.y);
+    expect(secondBadge.height).toBe(firstBadge.height);
     const selectedGarden = page
         .getByRole('radio', { name: 'Povrtnjak' })
         .locator('..')
@@ -156,6 +173,9 @@ test('shows custom award milestones and visible gardens without exposing the log
     );
     const details = page.getByRole('region', { name: 'Vrt: Povrtnjak' });
     await expect(details.getByText('Biljaka').locator('..')).toContainText('1');
+    await expect(
+        details.getByRole('link', { name: 'Posjeti vrt' }),
+    ).toHaveAttribute('href', '/vrtovi/1');
     await expect(
         details.getByRole('button', { name: 'Prijavi se za lajk' }),
     ).toHaveText('7');
@@ -424,6 +444,25 @@ test('fits mobile with long garden names and supports reduced motion', async ({
     });
 });
 
+test('names a single garden without offering a choice', async ({
+    mount,
+    page,
+}) => {
+    await mount(
+        <PublicProfileHarness
+            profile={{ ...profile, gardens: [gardens[1]] }}
+        />,
+    );
+    const details = page.getByRole('region', { name: 'Vrt: Cvjetni vrt' });
+    await expect(
+        details.getByRole('heading', { name: 'Cvjetni vrt' }),
+    ).toBeVisible();
+    await expect(
+        details.getByRole('link', { name: 'Posjeti vrt' }),
+    ).toHaveAttribute('href', '/vrtovi/2');
+    await expect(page.getByRole('radio')).toHaveCount(0);
+});
+
 test('shows empty states without requesting an unavailable garden', async ({
     mount,
     page,
@@ -443,5 +482,12 @@ test('shows empty states without requesting an unavailable garden', async ({
         page.getByText('Još nema otključanih postignuća.'),
     ).toBeVisible();
     await expect(page.getByRole('radio')).toHaveCount(0);
+    const header = page.locator('header');
+    await expect(
+        header.getByRole('listitem').filter({ hasText: 'Zbirke' }),
+    ).toContainText('0 / 8');
+    await expect(
+        header.getByRole('listitem').filter({ hasText: 'Javni vrtovi' }),
+    ).toContainText('0');
     expect(gardenRequests).toEqual([]);
 });

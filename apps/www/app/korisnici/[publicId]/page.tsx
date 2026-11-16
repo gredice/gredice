@@ -1,7 +1,9 @@
 import { getAchievementProgress } from '@gredice/js/achievements';
 import { publicUserProfileHref } from '@gredice/ui/PublicChrome';
 import type { Metadata } from 'next';
+import { CtaBand } from '../../../components/shared/CtaBand';
 import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
+import { KnownPages } from '../../../src/KnownPages';
 import { PublicProfileView } from './PublicProfileView';
 import { getPublicProfileForWww } from './publicProfileData';
 
@@ -35,6 +37,20 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
     const { publicId } = await params;
 
     return (
-        <PublicProfileView profile={await getPublicProfileForWww(publicId)} />
+        <>
+            <PublicProfileView
+                profile={await getPublicProfileForWww(publicId)}
+            />
+            <CtaBand
+                id="profile-cta-title"
+                title="Zasadi i ti svoj vrt."
+                description="Složi svoju gredicu u aplikaciji, skupljaj postignuća i pokaži svoj vrt drugim vrtlarima."
+                secondaryAction={{
+                    href: KnownPages.Users,
+                    label: 'Upoznaj druge vrtlare',
+                }}
+                className="mb-12"
+            />
+        </>
     );
 }
