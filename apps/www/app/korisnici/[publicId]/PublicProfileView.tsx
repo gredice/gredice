@@ -1,35 +1,15 @@
-'use client';
-
 import { Link } from '@gredice/ui/Link';
 import { Stack } from '@gredice/ui/Stack';
 import { UserAchievementProgress, UserAvatar } from '@gredice/ui/UserAvatar';
-import { useQuery } from '@tanstack/react-query';
 import { KnownPages } from '../../../src/KnownPages';
 import { formatGardenDate } from '../../vrtovi/publicGardenFormatting';
 import { PublicProfileAchievements } from './PublicProfileAchievements';
 import { PublicProfileGardens } from './PublicProfileGardens';
 import { formatProfileMembership } from './profileMembership';
-import { getPublicProfile } from './publicProfile';
+import type { PublicProfileData } from './publicProfileData';
 
-type ProfilePageClientProps = {
-    publicId: string;
-};
-
-export function ProfilePageClient({ publicId }: ProfilePageClientProps) {
-    const profileQuery = useQuery({
-        queryKey: ['public-profile', publicId],
-        queryFn: () => getPublicProfile(publicId),
-    });
-
-    if (profileQuery.isLoading) {
-        return <p role="status">Učitavanje profila...</p>;
-    }
-
-    if (profileQuery.error || !profileQuery.data) {
-        return <p>Traženi profil ne postoji ili nije javno dostupan.</p>;
-    }
-
-    const { user, gardens, achievements } = profileQuery.data;
+export function PublicProfileView({ profile }: { profile: PublicProfileData }) {
+    const { user, gardens, achievements } = profile;
     const membership = formatProfileMembership(user.createdAt);
 
     return (
@@ -74,7 +54,7 @@ export function ProfilePageClient({ publicId }: ProfilePageClientProps) {
                 </div>
             </header>
             <PublicProfileAchievements achievements={achievements} />
-            <PublicProfileGardens key={publicId} gardens={gardens} />
+            <PublicProfileGardens key={user.publicId} gardens={gardens} />
         </Stack>
     );
 }

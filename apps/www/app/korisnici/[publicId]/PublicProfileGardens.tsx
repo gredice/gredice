@@ -18,11 +18,11 @@ import {
     countActivePlantsFromPublicGarden,
 } from '../../vrtovi/publicGardenFormatting';
 import { PublicGardenViewerDynamic } from './PublicGardenViewerDynamic';
-import type { getPublicProfile } from './publicProfile';
+import type { PublicProfileData } from './publicProfileData';
 
 export function PublicProfileGardens({
     gardens,
-}: Pick<Awaited<ReturnType<typeof getPublicProfile>>, 'gardens'>) {
+}: Pick<PublicProfileData, 'gardens'>) {
     const [selectedGardenId, setSelectedGardenId] = useState<number | null>(
         null,
     );

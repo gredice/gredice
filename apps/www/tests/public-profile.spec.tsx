@@ -24,22 +24,38 @@ const gardenDetails = gardens.map((garden, index) => ({
         '0': { '0': [{ id: 'grass', name: 'Block_Grass', rotation: 0 }] },
     },
 }));
+function achievement(key: string, status: 'approved' | 'pending', id: number) {
+    return {
+        id,
+        key,
+        status,
+        rewardSunflowers: 100,
+        progressValue: null,
+        threshold: null,
+        rewardGrantedAt: null,
+        createdAt: '2026-03-12T08:00:00.000Z',
+        updatedAt: '2026-03-12T08:00:00.000Z',
+    };
+}
 const profile = {
     user: {
+        id: 'test-user-id',
+        publicId: 'test-profile',
         displayName: 'Veseli vrtlar',
         userName: 'private@example.com',
         avatarUrl: null,
+        achievementCount: 6,
         createdAt: '2026-03-12T08:00:00.000Z',
     },
     gardens,
     achievements: [
-        { key: 'registration', status: 'approved' },
-        { key: 'planting_1', status: 'approved' },
-        { key: 'planting_20', status: 'approved' },
-        { key: 'watering_20', status: 'approved' },
-        { key: 'watering_1', status: 'approved' },
-        { key: 'harvest_20', status: 'approved' },
-        { key: 'harvest_50', status: 'pending' },
+        achievement('registration', 'approved', 1),
+        achievement('planting_1', 'approved', 2),
+        achievement('planting_20', 'approved', 3),
+        achievement('watering_20', 'approved', 4),
+        achievement('watering_1', 'approved', 5),
+        achievement('harvest_20', 'approved', 6),
+        achievement('harvest_50', 'pending', 7),
     ],
 };
 
@@ -59,9 +75,6 @@ test.beforeEach(async ({ page }) => {
             ],
         }),
     );
-    await page.route('**/api/users/public/test-profile/profile', (route) =>
-        route.fulfill({ json: profile }),
-    );
     await page.route('**/api/gardens/*/public', (route) => {
         const id = Number(route.request().url().split('/').at(-2));
         return route.fulfill({
@@ -74,7 +87,7 @@ test('shows custom award milestones and visible gardens without exposing the log
     mount,
     page,
 }) => {
-    await mount(<PublicProfileHarness />);
+    await mount(<PublicProfileHarness profile={profile} />);
     await expect(
         page.getByRole('link', { name: 'Kako funkcioniraju XP i razine?' }),
     ).toHaveAttribute('href', '/iskustvo-i-razine');
@@ -169,7 +182,7 @@ test('switches the preview with keyboard selection and keeps the scene mounted',
     mount,
     page,
 }) => {
-    await mount(<PublicProfileHarness />);
+    await mount(<PublicProfileHarness profile={profile} />);
     const scene = page.getByTestId('garden-scene');
     await expect(scene).toHaveAttribute('data-garden-id', '1');
     await scene.evaluate((element) =>
@@ -202,15 +215,14 @@ test('shows the selected profile image instead of initials', async ({
             body: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48"><circle cx="24" cy="24" r="24" fill="green"/></svg>',
         }),
     );
-    await page.route('**/api/users/public/test-profile/profile', (route) =>
-        route.fulfill({
-            json: {
+    await mount(
+        <PublicProfileHarness
+            profile={{
                 ...profile,
                 user: { ...profile.user, avatarUrl: '/test-avatar.svg' },
-            },
-        }),
+            }}
+        />,
     );
-    await mount(<PublicProfileHarness />);
     const avatar = page.getByRole('img', { name: 'Veseli vrtlar' });
     await expect(avatar).toBeVisible();
     await expect(avatar).toHaveJSProperty('naturalWidth', 48);
@@ -224,7 +236,7 @@ test('keeps garden facts available if optional block statistics cannot load', as
     await page.route('**/api/directories/entities/block**', (route) =>
         route.fulfill({ status: 503, json: {} }),
     );
-    await mount(<PublicProfileHarness />);
+    await mount(<PublicProfileHarness profile={profile} />);
     const details = page.getByRole('region', { name: 'Vrt: Povrtnjak' });
     await expect(details.getByText('Biljaka').locator('..')).toContainText('1');
     await expect(
@@ -259,7 +271,7 @@ test('keeps a pending like on its original garden while switching gardens', asyn
         await blocked;
         await route.fulfill({ json: { liked: true, likeCount: 8 } });
     });
-    await mount(<PublicProfileHarness />);
+    await mount(<PublicProfileHarness profile={profile} />);
     await page.getByRole('button', { name: 'Lajkaj vrt', exact: true }).click();
     await expect(
         page.getByRole('button', { name: 'Makni lajk s vrta' }),
@@ -293,7 +305,7 @@ test('keeps the latest selected garden when an earlier request finishes late', a
         await blocked;
         await route.fulfill({ json: gardenDetails[1] });
     });
-    await mount(<PublicProfileHarness />);
+    await mount(<PublicProfileHarness profile={profile} />);
     const scene = page.getByTestId('garden-scene');
     await expect(scene).toHaveAttribute('data-garden-id', '1');
     await page
@@ -328,7 +340,7 @@ test('cancels an intermediate transition as soon as a newer garden starts loadin
         await blocked;
         await route.fulfill({ json: gardenDetails[2] });
     });
-    await mount(<PublicProfileHarness />);
+    await mount(<PublicProfileHarness profile={profile} />);
     const scene = page.getByTestId('garden-scene');
     await expect(scene).toHaveAttribute('data-garden-id', '1');
     await page
@@ -359,7 +371,7 @@ test('recovers from a failed garden request', async ({ mount, page }) => {
             ? route.fulfill({ status: 503, json: { error: 'Unavailable' } })
             : route.fulfill({ json: gardenDetails[1] }),
     );
-    await mount(<PublicProfileHarness />);
+    await mount(<PublicProfileHarness profile={profile} />);
     await page
         .getByRole('radio', { name: 'Cvjetni vrt' })
         .locator('..')
@@ -383,15 +395,14 @@ test('fits mobile with long garden names and supports reduced motion', async ({
     await page.emulateMedia({ reducedMotion: 'reduce' });
     const longName =
         'Moj vrt s povrćem, cvijećem i začinskim biljem za cijelu obitelj';
-    await page.route('**/api/users/public/test-profile/profile', (route) =>
-        route.fulfill({
-            json: {
+    await mount(
+        <PublicProfileHarness
+            profile={{
                 ...profile,
                 gardens: [{ ...gardens[0], name: longName }, gardens[1]],
-            },
-        }),
+            }}
+        />,
     );
-    await mount(<PublicProfileHarness />);
     await expect(page.getByRole('radio', { name: longName })).toBeChecked();
     expect(
         await page.evaluate(
@@ -422,10 +433,11 @@ test('shows empty states without requesting an unavailable garden', async ({
         if (/\/api\/gardens\//.test(request.url()))
             gardenRequests.push(request.url());
     });
-    await page.route('**/api/users/public/test-profile/profile', (route) =>
-        route.fulfill({ json: { ...profile, gardens: [], achievements: [] } }),
+    await mount(
+        <PublicProfileHarness
+            profile={{ ...profile, gardens: [], achievements: [] }}
+        />,
     );
-    await mount(<PublicProfileHarness />);
     await expect(page.getByText('Još nema javnih vrtova.')).toBeVisible();
     await expect(
         page.getByText('Još nema otključanih postignuća.'),

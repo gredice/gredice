@@ -44,6 +44,7 @@ compatibility, and dependency-audit decisions.
 - Use Server Actions where the app already uses them for mutations, and revalidate the affected routes with `revalidatePath` or the established cache pattern.
 - Keep client state scoped. Use React Query or existing state helpers where the local app already does.
 - Preserve existing route, layout, error boundary, and loading conventions.
+- WWW public profiles (`/korisnici/[publicId]`) load their data on the server for every request and are never cached, so a renamed gardener or a garden that stops being public disappears with the next visit. Keep `loading.tsx` out of that route and its parent segment: the leaderboard's loading state lives in the `korisnici/(ljestvica)` route group so the profile response waits for its data, shows no loading text and answers a missing profile with a real `404`.
 - Links between WWW and News cross a Next.js app boundary even on the same domain. Use native anchors (or `Button` with `navigation="document"`) across that boundary; keep Next.js links for routes within the same app. Disabling prefetch alone still allows an incompatible RSC navigation on click.
 
 ## TypeScript

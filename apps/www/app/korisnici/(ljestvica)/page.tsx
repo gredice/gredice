@@ -1,7 +1,7 @@
-import { createPublicMetadata } from '../../lib/seo/publicMetadata';
-import { KnownPages } from '../../src/KnownPages';
-import { getUserLeaderboard, pickCommunityAvatarUrls } from './leaderboard';
-import { maxCommunityAvatars, UserLeaderboard } from './UserLeaderboard';
+import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
+import { KnownPages } from '../../../src/KnownPages';
+import { getUserLeaderboard, pickCommunityAvatarUrls } from '../leaderboard';
+import { maxCommunityAvatars, UserLeaderboard } from '../UserLeaderboard';
 
 export const dynamic = 'force-dynamic';
 export const metadata = createPublicMetadata({

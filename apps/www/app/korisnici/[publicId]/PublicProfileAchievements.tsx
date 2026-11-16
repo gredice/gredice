@@ -7,14 +7,12 @@ import { GameTrophyIcon } from '@gredice/ui/GameIcons';
 import { Link } from '@gredice/ui/Link';
 import { PublicEmptyState } from '../../../components/shared/placeholders/PublicEmptyState';
 import { KnownPages } from '../../../src/KnownPages';
-import {
-    type getPublicProfile,
-    getTopPublicAchievements,
-} from './publicProfile';
+import { getTopPublicAchievements } from './publicProfile';
+import type { PublicProfileData } from './publicProfileData';
 
 export function PublicProfileAchievements({
     achievements,
-}: Pick<Awaited<ReturnType<typeof getPublicProfile>>, 'achievements'>) {
+}: Pick<PublicProfileData, 'achievements'>) {
     const topAchievements = getTopPublicAchievements(achievements);
     const families = getAchievementFamilies(achievements);
 
