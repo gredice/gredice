@@ -22,7 +22,7 @@ export type SuncokretModelConfig = AiChatPricing & {
     longContext?: SuncokretLongContextPricing;
 };
 
-const DEFAULT_MODEL_ID = 'openai/gpt-6.2-sol';
+const DEFAULT_MODEL_ID = 'openai/gpt-6-luna';
 
 type SuncokretModelUsdConfig = {
     id: string;
@@ -38,20 +38,6 @@ type SuncokretModelUsdConfig = {
 // Used only when AI Gateway metadata cannot be loaded. Normal requests replace
 // these values with Gateway catalog pricing and persist the billed request cost.
 const MODEL_REGISTRY_USD: SuncokretModelUsdConfig[] = [
-    {
-        id: DEFAULT_MODEL_ID,
-        label: 'OpenAI GPT-6.2 Sol',
-        inputUsdPerMillionTokens: 2,
-        outputUsdPerMillionTokens: 10,
-        cachedInputUsdPerMillionTokens: 0.1,
-        cacheWriteInputUsdPerMillionTokens: 2.5,
-        longContext: {
-            inputTokenThreshold: 272_000,
-            inputRateMultiplier: 2,
-            outputRateMultiplier: 1.5,
-        },
-        enabled: true,
-    },
     {
         id: 'openai/gpt-6-luna',
         label: 'OpenAI GPT-6 Luna',

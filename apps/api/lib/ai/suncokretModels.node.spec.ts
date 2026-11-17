@@ -46,9 +46,9 @@ function withModelEnv(
     }
 }
 
-test('getSuncokretModel defaults to OpenAI GPT-6.2 Sol', () => {
+test('getSuncokretModel defaults to OpenAI GPT-6 Luna', () => {
     withModelEnv({}, () => {
-        assert.equal(getSuncokretModel()?.id, 'openai/gpt-6.2-sol');
+        assert.equal(getSuncokretModel()?.id, 'openai/gpt-6-luna');
     });
 });
 
@@ -205,7 +205,7 @@ async function withModelEnvAsync(
     }
 }
 
-test('Suncokret request estimates apply GPT-6.2 Sol long-context rates above 272K input tokens', () => {
+test('Suncokret request estimates apply GPT-6 Luna long-context rates above 272K input tokens', () => {
     withModelEnv({}, () => {
         const model = getSuncokretModel();
         assert.ok(model);
@@ -216,7 +216,7 @@ test('Suncokret request estimates apply GPT-6.2 Sol long-context rates above 272
                 maxOutputTokens: 1_000,
                 model,
             }),
-            360_800,
+            18_040,
         );
         assert.equal(
             estimateSuncokretRequestCostMicroEur({
@@ -224,12 +224,12 @@ test('Suncokret request estimates apply GPT-6.2 Sol long-context rates above 272
                 maxOutputTokens: 1_000,
                 model,
             }),
-            1_069_201, // The reservation rounds up the floating-point cost.
+            53_460,
         );
     });
 });
 
-test('Suncokret output budget uses GPT-6.2 Sol long-context rates above 272K input tokens', () => {
+test('Suncokret output budget uses GPT-6 Luna long-context rates above 272K input tokens', () => {
     withModelEnv({}, () => {
         const model = getSuncokretModel();
         assert.ok(model);
@@ -238,7 +238,7 @@ test('Suncokret output budget uses GPT-6.2 Sol long-context rates above 272K inp
             resolveSuncokretMaxOutputTokens({
                 estimatedInputTokens: 300_000,
                 model,
-                remainingMicroEur: 1_060_000,
+                remainingMicroEur: 53_000,
             }),
             303,
         );
@@ -246,7 +246,7 @@ test('Suncokret output budget uses GPT-6.2 Sol long-context rates above 272K inp
             resolveSuncokretMaxOutputTokens({
                 estimatedInputTokens: 300_000,
                 model,
-                remainingMicroEur: 1_040_000,
+                remainingMicroEur: 52_000,
             }),
             0,
         );
@@ -279,12 +279,12 @@ test('Suncokret fallback usage pricing picks the long-context tier from the larg
                 { usage: { inputTokens: 280_000 } },
             ]),
         );
-        assert.equal(longContextPricing.inputEurPerMillionTokens, 3.52);
-        assert.equal(longContextPricing.outputEurPerMillionTokens.toFixed(2), '13.20');
-        assert.equal(longContextPricing.cachedInputEurPerMillionTokens, 0.176);
+        assert.equal(longContextPricing.inputEurPerMillionTokens, 0.176);
+        assert.equal(longContextPricing.outputEurPerMillionTokens, 0.66);
+        assert.equal(longContextPricing.cachedInputEurPerMillionTokens, 0.0176);
         assert.equal(
             longContextPricing.cacheWriteInputEurPerMillionTokens,
-            4.4,
+            0.22,
         );
     });
 });
