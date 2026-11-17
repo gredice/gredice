@@ -32,7 +32,7 @@ const GREENHOUSE_SEEDLING_STATUSES = new Set([
     'ready',
 ]);
 
-const AI_MODEL = process.env.AI_GATEWAY_MODEL ?? 'openai/gpt-6-sol';
+const AI_MODEL = process.env.AI_GATEWAY_MODEL ?? 'openai/gpt-6.2-sol';
 
 export const AI_REQUEST_QUOTA_WINDOW_DAYS = 7;
 export const AI_REQUEST_QUOTA_WINDOW_MS =

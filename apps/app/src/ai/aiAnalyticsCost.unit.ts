@@ -5,9 +5,9 @@ import {
     sumAiAnalysisCostEur,
 } from './aiAnalyticsCost';
 
-test('estimateAiAnalysisCostEur calculates standard GPT-6 Sol usage cost in euros', () => {
+test('estimateAiAnalysisCostEur calculates standard GPT-6.2 Sol usage cost in euros', () => {
     const cost = estimateAiAnalysisCostEur({
-        model: 'openai/gpt-6-sol',
+        model: 'openai/gpt-6.2-sol',
         inputTokens: 200_000,
         outputTokens: 100_000,
     });
