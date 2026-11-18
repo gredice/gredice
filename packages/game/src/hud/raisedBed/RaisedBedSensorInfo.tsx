@@ -20,7 +20,10 @@ import {
     XAxis,
     YAxis,
 } from 'recharts';
-import { useRaisedBedSensorHistory } from '../../hooks/useRaisedBedSensorHistory';
+import {
+    RaisedBedSensorHistoryRequestError,
+    useRaisedBedSensorHistory,
+} from '../../hooks/useRaisedBedSensorHistory';
 import { useRaisedBedSensors } from '../../hooks/useRaisedBedSensors';
 import { useSetShoppingCartItem } from '../../hooks/useSetShoppingCartItem';
 import { useShoppingCart } from '../../hooks/useShoppingCart';
@@ -143,7 +146,12 @@ function SensorInfoModal({
     const setShoppingCartItem = useSetShoppingCartItem();
     const { data: shoppingCart } = useShoppingCart();
     const [duration, setDuration] = useState(3); // Default duration in days
-    const { data: sensorDetails } = useRaisedBedSensorHistory(
+    const {
+        data: sensorDetails,
+        error,
+        isError,
+        isPending,
+    } = useRaisedBedSensorHistory(
         gardenId,
         raisedBedId,
         sensorId,
@@ -151,60 +159,53 @@ function SensorInfoModal({
         duration,
     );
 
-    // Process and sort the data with smart date/time formatting
-    const processedData = sensorDetails?.values
-        .map((item) => ({
-            timestamp: item.timeStamp,
-            value: Number.parseFloat(item.valueSerialized ?? '0'),
-        }))
-        .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+    const sensorNotFound =
+        error instanceof RaisedBedSensorHistoryRequestError &&
+        error.status === 404;
+    const chartData = sensorNotFound
+        ? []
+        : (sensorDetails?.values ?? []).toSorted(
+              (a, b) => a.timestamp - b.timestamp,
+          );
+    const showingLastAvailable = isError && chartData.length > 0;
+    let historyMessage: string | undefined;
+    if (isError) {
+        historyMessage = showingLastAvailable
+            ? 'Povijest očitanja nije moguće osvježiti. Prikazana su posljednja dostupna očitanja.'
+            : 'Povijest očitanja senzora trenutačno nije dostupna.';
+    } else if (isPending) {
+        historyMessage = 'Učitavanje očitanja senzora…';
+    } else if (chartData.length === 0) {
+        historyMessage = 'Nema očitanja za odabrano razdoblje.';
+    }
 
-    // Add smart labeling logic with mobile-friendly labels
-    const dataWithSmartLabels = processedData?.map((item, _index) => {
-        return {
-            ...item,
-            timestamp: new Date(item.timestamp).getTime(),
-            timeLabel:
-                item.timestamp.toLocaleDateString('hr-HR', {
-                    month: 'short',
-                    day: 'numeric',
-                }) +
-                ' ' +
-                item.timestamp.toLocaleTimeString('hr-HR', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                }),
-            // Shorter labels for mobile
-            shortLabel:
-                item.timestamp.toLocaleDateString('hr-HR', {
-                    month: 'numeric',
-                    day: 'numeric',
-                }) +
-                ' ' +
-                item.timestamp.toLocaleTimeString('hr-HR', {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                }),
-        };
-    });
-
-    // Calculate statistics
-    const currentMoisture =
-        dataWithSmartLabels?.[dataWithSmartLabels.length - 1]?.value || 0;
-    const previousMoisture =
-        dataWithSmartLabels?.[dataWithSmartLabels.length - 2]?.value || 0;
-    const trend = currentMoisture - previousMoisture;
-    const avgMoisture = dataWithSmartLabels
-        ? Math.round(
-              dataWithSmartLabels.reduce((sum, item) => sum + item.value, 0) /
-                  (dataWithSmartLabels.length || 1),
-          )
-        : 0;
+    const currentReading = chartData.at(-1)?.value;
+    const previousReading = chartData.at(-2)?.value;
+    const trend =
+        currentReading === undefined || previousReading === undefined
+            ? undefined
+            : currentReading - previousReading;
+    const trendIsRising = trend !== undefined && trend >= 0;
+    const TrendIcon = trendIsRising ? Up : Down;
+    const trendColor = (
+        positiveTrend
+            ? trendIsRising
+            : trend !== undefined && trend <= 0
+    )
+        ? 'text-green-500'
+        : 'text-red-500';
+    const averageReading =
+        chartData.length > 0
+            ? Math.round(
+                  chartData.reduce((sum, item) => sum + item.value, 0) /
+                      chartData.length,
+              )
+            : undefined;
 
     // Determine moisture status
-    const getStatus = (value: number) => {
+    const getStatus = (value: number | undefined) => {
         // Use references to determine status
-        if (!references || references.length === 0) {
+        if (value === undefined || !references || references.length === 0) {
             return {
                 status: 'Nepoznato',
                 color: 'text-gray-600 dark:text-gray-200',
@@ -220,8 +221,8 @@ function SensorInfoModal({
         };
     };
 
-    const currentStatus = getStatus(currentMoisture);
-    const absoluteStatus = getStatus(avgMoisture);
+    const currentStatus = getStatus(currentReading);
+    const absoluteStatus = getStatus(averageReading);
 
     // Determine whether the sensor is in the shopping cart
     // If the sensor is in the cart for this raised bed or any neighboring raised bed, consider it in the cart
@@ -301,57 +302,73 @@ function SensorInfoModal({
                         </Stack>
 
                         {/* Stats */}
-                        <div className="grid grid-cols-3 gap-1">
+                        <div
+                            hidden={sensorNotFound}
+                            className="grid grid-cols-3 gap-1"
+                        >
                             <Metric
-                                label="Trenutno"
-                                value={`${currentMoisture}${unit}`}
+                                label={
+                                    showingLastAvailable
+                                        ? 'Posljednje dostupno'
+                                        : 'Trenutno'
+                                }
+                                value={
+                                    currentReading === undefined
+                                        ? '–'
+                                        : `${currentReading}${unit}`
+                                }
                                 color={currentStatus.color}
                             />
                             <Metric
                                 label="Trend"
-                                value={`${trend >= 0 ? '+' : ''}${trend}${unit}`}
+                                value={
+                                    trend === undefined
+                                        ? '–'
+                                        : `${trend >= 0 ? '+' : ''}${trend}${unit}`
+                                }
                                 icon={
-                                    trend >= 0 ? (
-                                        <Up
+                                    trend !== undefined && (
+                                        <TrendIcon
                                             className={cx(
                                                 'size-5 shrink-0',
-                                                positiveTrend
-                                                    ? 'text-green-500'
-                                                    : 'text-red-500',
-                                            )}
-                                        />
-                                    ) : (
-                                        <Down
-                                            className={cx(
-                                                'size-5 shrink-0',
-                                                !positiveTrend
-                                                    ? 'text-green-500'
-                                                    : 'text-red-500',
+                                                trendColor,
                                             )}
                                         />
                                     )
                                 }
                                 color={
-                                    (positiveTrend ? trend >= 0 : trend <= 0)
-                                        ? 'text-green-500'
-                                        : 'text-red-500'
+                                    trend === undefined ? undefined : trendColor
                                 }
                             />
                             <Metric
                                 label="Prosjek"
-                                value={`${avgMoisture}${unit}`}
+                                value={
+                                    averageReading === undefined
+                                        ? '–'
+                                        : `${averageReading}${unit}`
+                                }
                                 color={absoluteStatus.color}
                             />
                         </div>
                     </div>
 
+                    {Boolean(sensorId) && status === 'active' && (
+                        <Typography
+                            level="body2"
+                            role="status"
+                            aria-atomic="true"
+                        >
+                            {historyMessage}
+                        </Typography>
+                    )}
+
                     {/* Responsive Chart */}
-                    <Card>
+                    <Card hidden={sensorNotFound}>
                         <CardContent>
                             <div className="h-[240px] sm:h-[280px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <AreaChart
-                                        data={dataWithSmartLabels}
+                                        data={chartData}
                                         margin={{
                                             top: 8,
                                             right: 4,
@@ -481,7 +498,7 @@ function SensorInfoModal({
                     </Card>
 
                     {/* Responsive Legend */}
-                    {references && (
+                    {!sensorNotFound && references && (
                         <div className="grid grid-cols-2 sm:flex sm:justify-center sm:space-x-4 gap-2 sm:gap-0 text-xs">
                             {references?.map((ref) => (
                                 <div
