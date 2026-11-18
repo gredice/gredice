@@ -32,7 +32,7 @@ overrides:
   '@hono/node-server': '2.1.8'
   '@joshwooding/vite-plugin-react-docgen-typescript@0.7.0>typescript': '-'
   # Storage and its Drizzle consumers must share Neon's peer version to keep SQL types compatible.
-  '@neondatabase/serverless': '1.2.0'
+  '@neondatabase/serverless': '1.2.1'
   # Next's unused experimental test-mode peer splits nominal NextRequest types when test runners differ.
   'next>@playwright/test': '-'
   '@xmldom/xmldom': '0.9.12'
