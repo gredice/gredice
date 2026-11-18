@@ -9,7 +9,7 @@ const basePath = '/api/gardens/85/raised-beds/188/sensors';
 const moisturePath = `${basePath}/31/soil_moisture`;
 const upstreamValues = [
     { timeStamp: '2026-11-17T09:42:00Z', valueSerialized: '0' },
-    { timeStamp: '2026-11-17T09:43:00Z', valueSerialized: '34.5' },
+    { timeStamp: '2026-11-17T09:43:00.1234567Z', valueSerialized: '34.5' },
     { timeStamp: '2026-11-17T09:44:00Z' },
     { valueSerialized: null },
 ];
@@ -194,6 +194,20 @@ test('non-retryable upstream responses return an error with no history', async (
         {
             status: 502,
             upstream: () => Response.json({ values: [{ timeStamp: 17 }] }),
+        },
+        {
+            status: 502,
+            upstream: () =>
+                Response.json({
+                    values: [{ timeStamp: 'not-a-date', valueSerialized: '0' }],
+                }),
+        },
+        {
+            status: 502,
+            upstream: () =>
+                Response.json({
+                    values: [{ timeStamp: '2026-02-30T09:42:00Z' }],
+                }),
         },
         {
             status: 502,

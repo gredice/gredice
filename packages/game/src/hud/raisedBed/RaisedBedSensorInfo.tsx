@@ -20,7 +20,10 @@ import {
     XAxis,
     YAxis,
 } from 'recharts';
-import { useRaisedBedSensorHistory } from '../../hooks/useRaisedBedSensorHistory';
+import {
+    RaisedBedSensorHistoryRequestError,
+    useRaisedBedSensorHistory,
+} from '../../hooks/useRaisedBedSensorHistory';
 import { useRaisedBedSensors } from '../../hooks/useRaisedBedSensors';
 import { useSetShoppingCartItem } from '../../hooks/useSetShoppingCartItem';
 import { useShoppingCart } from '../../hooks/useShoppingCart';
@@ -145,6 +148,7 @@ function SensorInfoModal({
     const [duration, setDuration] = useState(3); // Default duration in days
     const {
         data: sensorDetails,
+        error,
         isError,
         isPending,
     } = useRaisedBedSensorHistory(
@@ -155,9 +159,14 @@ function SensorInfoModal({
         duration,
     );
 
-    const chartData = (sensorDetails?.values ?? []).toSorted(
-        (a, b) => a.timestamp - b.timestamp,
-    );
+    const sensorNotFound =
+        error instanceof RaisedBedSensorHistoryRequestError &&
+        error.status === 404;
+    const chartData = sensorNotFound
+        ? []
+        : (sensorDetails?.values ?? []).toSorted(
+              (a, b) => a.timestamp - b.timestamp,
+          );
     const showingLastAvailable = isError && chartData.length > 0;
     let historyMessage: string | undefined;
     if (isError) {
@@ -293,7 +302,10 @@ function SensorInfoModal({
                         </Stack>
 
                         {/* Stats */}
-                        <div className="grid grid-cols-3 gap-1">
+                        <div
+                            hidden={sensorNotFound}
+                            className="grid grid-cols-3 gap-1"
+                        >
                             <Metric
                                 label={
                                     showingLastAvailable
@@ -340,16 +352,18 @@ function SensorInfoModal({
                         </div>
                     </div>
 
-                    {Boolean(sensorId) &&
-                        status === 'active' &&
-                        historyMessage && (
-                            <Typography level="body2" role="status">
-                                {historyMessage}
-                            </Typography>
-                        )}
+                    {Boolean(sensorId) && status === 'active' && (
+                        <Typography
+                            level="body2"
+                            role="status"
+                            aria-atomic="true"
+                        >
+                            {historyMessage}
+                        </Typography>
+                    )}
 
                     {/* Responsive Chart */}
-                    <Card>
+                    <Card hidden={sensorNotFound}>
                         <CardContent>
                             <div className="h-[240px] sm:h-[280px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">
@@ -484,7 +498,7 @@ function SensorInfoModal({
                     </Card>
 
                     {/* Responsive Legend */}
-                    {references && (
+                    {!sensorNotFound && references && (
                         <div className="grid grid-cols-2 sm:flex sm:justify-center sm:space-x-4 gap-2 sm:gap-0 text-xs">
                             {references?.map((ref) => (
                                 <div

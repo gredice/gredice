@@ -1,6 +1,12 @@
 import { clientAuthenticated } from '@gredice/client';
 import { useQuery } from '@tanstack/react-query';
 
+export class RaisedBedSensorHistoryRequestError extends Error {
+    constructor(readonly status: number) {
+        super(`Sensor history request failed (${status})`);
+    }
+}
+
 export function useRaisedBedSensorHistory(
     gardenId: number,
     raisedBedId: number,
@@ -17,7 +23,7 @@ export function useRaisedBedSensorHistory(
             type,
             { duration },
         ],
-        queryFn: async ({ signal }) => {
+        queryFn: async ({ signal, client, queryKey }) => {
             if (!gardenId || !raisedBedId || !sensorId || !type) {
                 throw new Error(
                     'Invalid parameters for fetching sensor history',
@@ -41,9 +47,14 @@ export function useRaisedBedSensorHistory(
                 { init: { signal } },
             );
             if (response.status !== 200) {
-                throw new Error(
-                    `Sensor history request failed (${response.status})`,
-                );
+                if (response.status === 404) {
+                    signal.throwIfAborted();
+                    // A later transient failure must not restore history for a missing sensor.
+                    client.setQueryData(queryKey, (cached) =>
+                        cached === undefined ? undefined : null,
+                    );
+                }
+                throw new RaisedBedSensorHistoryRequestError(response.status);
             }
             const data = await response.json();
             const values = data.values.flatMap((item) => {

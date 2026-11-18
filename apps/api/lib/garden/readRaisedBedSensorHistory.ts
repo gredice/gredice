@@ -1,9 +1,11 @@
 import { setTimeout as delay } from 'node:timers/promises';
 import { signalcoClient } from '@gredice/signalco';
+import { z } from 'zod';
 
 const attemptTimeoutMs = 2_000;
 const retryDelaysMs = [200, 400];
 const retryableStatuses = new Set([502, 503, 504]);
+const signalcoTimestamp = z.iso.datetime({ offset: true });
 const retryableTransportCodes = new Set([
     'ECONNRESET',
     'EPIPE',
@@ -33,7 +35,8 @@ function isSignalcoReading(reading: unknown) {
         typeof reading === 'object' &&
         reading !== null &&
         !Array.isArray(reading) &&
-        (!('timeStamp' in reading) || typeof reading.timeStamp === 'string') &&
+        (!('timeStamp' in reading) ||
+            signalcoTimestamp.safeParse(reading.timeStamp).success) &&
         (!('valueSerialized' in reading) ||
             reading.valueSerialized === null ||
             typeof reading.valueSerialized === 'string')

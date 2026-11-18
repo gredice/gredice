@@ -5,7 +5,7 @@ test('Garden distinguishes unavailable, cached, pending, and empty sensor histor
     page,
     mount,
 }) => {
-    let failOneDayRefresh = false;
+    let oneDayRefreshStatus: 404 | 503 | undefined;
     await page.route('**/api/gredice/**', async (route) => {
         const url = new URL(route.request().url());
         if (url.pathname.endsWith('/sensors')) {
@@ -23,13 +23,19 @@ test('Garden distinguishes unavailable, cached, pending, and empty sensor histor
         }
         if (url.pathname.endsWith('/soil_moisture')) {
             const duration = url.searchParams.get('duration');
-            if (duration === '3' || (duration === '1' && failOneDayRefresh)) {
+            if (
+                duration === '3' ||
+                (duration === '1' && oneDayRefreshStatus === 503)
+            ) {
                 return route.fulfill({
                     status: 503,
                     json: { error: 'Sensor history unavailable' },
                 });
             }
-            if (duration === '30') {
+            if (
+                duration === '30' ||
+                (duration === '1' && oneDayRefreshStatus === 404)
+            ) {
                 return route.fulfill({
                     status: 404,
                     json: { error: 'Sensor not found' },
@@ -77,9 +83,11 @@ test('Garden distinguishes unavailable, cached, pending, and empty sensor histor
     await dialog.getByRole('tab', { name: '1 dan' }).click();
     await expect(dialog.getByText('0%', { exact: true })).toHaveCount(2);
     await expect(dialog.getByText('–', { exact: true })).toHaveCount(1);
-    await expect(dialog.getByRole('status')).toHaveCount(0);
+    await expect(dialog.getByRole('status')).toBeEmpty();
+    const chart = dialog.getByRole('application');
+    await expect(chart).toBeVisible();
 
-    failOneDayRefresh = true;
+    oneDayRefreshStatus = 503;
     await page.context().setOffline(true);
     await page.context().setOffline(false);
     await expect(dialog.getByRole('status')).toHaveText(
@@ -87,6 +95,21 @@ test('Garden distinguishes unavailable, cached, pending, and empty sensor histor
     );
     await expect(dialog.getByText('Posljednje dostupno')).toBeVisible();
     await expect(dialog.getByText('0%', { exact: true })).toHaveCount(2);
+
+    oneDayRefreshStatus = 404;
+    await page.context().setOffline(true);
+    await page.context().setOffline(false);
+    await expect(dialog.getByRole('status')).toHaveText(
+        'Povijest očitanja senzora trenutačno nije dostupna.',
+    );
+    await expect(chart).toBeHidden();
+    await expect(dialog.getByText('Prosjek', { exact: true })).toBeHidden();
+
+    oneDayRefreshStatus = 503;
+    await page.context().setOffline(true);
+    await page.context().setOffline(false);
+    await expect(dialog.getByText('–', { exact: true })).toHaveCount(3);
+    await expect(dialog.getByText('0%', { exact: true })).toHaveCount(0);
 
     await page.context().setOffline(true);
     await dialog.getByRole('tab', { name: '10 dana' }).click();
