@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
-if [[ -z "${TEST_ARGS:-}" ]]; then
+if [[ "${CI_BUILD_ONLY:-false}" == "true" ]]; then
+    pnpm build --filter="$CI_APP_NAME" --cache=local:rw
+elif [[ -z "${TEST_ARGS:-}" ]]; then
     pnpm run test --filter="$CI_APP_NAME" --cache=local:rw
 else
     pnpm build --filter="$CI_APP_NAME" --cache=local:rw

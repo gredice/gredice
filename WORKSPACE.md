@@ -100,6 +100,19 @@ pnpm regenerate
 
 Many package lint scripts run `biome check --write`, so linting may modify files. Review the diff after linting.
 
+### Full release CI
+
+Manually dispatching the `CI` workflow runs every configured app/package suite,
+including Next.js lint/tests and storage, Game/JS and email tests. It does not
+depend on changed-file filters; ordinary PR and push filtering is preserved.
+
+```bash
+gh workflow run ci.yml --ref main
+```
+
+Record the dispatched commit SHA and final job results. A successful aggregate
+from a filtered docs/dependency run does not replace a full release run.
+
 ### Directory type generation
 
 `packages/directory-types` contains generated public directory API and CMS entity type helpers. Run this after CMS entity types or attribute definitions change:

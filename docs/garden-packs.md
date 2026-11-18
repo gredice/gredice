@@ -1,5 +1,34 @@
 # Garden packs: versioned purchase and ownership contract
 
+## Storage migration 0094 and sales hold
+
+`0094_autumn_garden_packs.sql` is the ordered fresh installation of the six
+pack tables. Its generated schema snapshot changes only those tables; the same
+transaction installs the exact nine source-owned functions and 17 integrity
+triggers. Two-second lock and 15-second statement timeouts bound deployment
+contention. An existing partial pack installation fails closed and needs a
+separately reviewed reconciliation; the migration never drops existing tables
+or adopts unknown pack history.
+
+The normal API production build runs `pnpm --filter @gredice/storage migrate:deploy`.
+After migration and the existing Stripe readback, this now runs
+`garden-packs:migration-readback`. That command uses a repeatable-read read-only
+transaction to verify the exact migration journal hash/timestamp, all readiness
+probes, function bodies/signatures/security attributes, trigger events/deferral,
+and all eight generated indexes. Driver errors and connection details are omitted.
+It can also be run independently with the securely supplied storage environment:
+
+```sh
+pnpm --filter @gredice/storage garden-packs:migration-readback
+```
+
+Migration readiness does not enable sales. Keep `GREDICE_GARDEN_PACK_SALES_ENABLED`
+off and offers unconfigured/disabled until full release CI, combined/manual and
+physical-device QA, and authorized live commerce acceptance pass. The storage
+rollout flag and immutable purchased ownership remain separate from sale availability.
+See the [dated preparation packet](autumn-release-2026/2026-11-10-preparation/README.md)
+for the unpublished 24-item catalogue plan and remaining acceptance.
+
 ## Summary and actors
 
 A **collection / kolekcija** groups individually available decorations for browsing. A **pack / paket** is one account purchase granting exact finite quantities. A **layout / predložak** describes an arrangement and grants nothing. A purchased pack is separate from a garden box (six item-type stacks of ten); no box slot or appearance restriction applies to the pack entitlement.
@@ -69,9 +98,9 @@ There is no inventory-expiry job. Account deletion's existing hard-delete detach
 
 ### Maintainer migration and rollback prerequisite
 
-Follow `RELIABILITY.md`: run `pnpm db-generate`, review generated SQL, journal and snapshot **locally**, and leave new migration artifacts out of shared PR version control. Maintainers must regenerate and order the actual migration against the merge base before schema release. The command can use `pnpm db-generate --env-mode=loose` to pass a generation-only `POSTGRES_URL` through Turbo; generation does not connect to that database. Never run `pnpm db-push` for this work.
+Deploy the committed `0094_autumn_garden_packs` migration through the normal API production build. Its SQL, Drizzle journal entry and snapshot are already ordered. After deploy, confirm `garden-packs:migration-readback` passes.
 
-Drizzle table checks cover product/snapshot identities, ownership FKs, positive bounded ordinals, nonnegative values, allowed states and nonnull placement provenance. PostgreSQL cannot express cross-row sums, immutable snapshots or audit correspondence as ordinary table checks. The source-owned `packages/storage/src/schema/gardenPackIntegrity.ts` exports `gardenPackIntegritySql` for those guards; it executes nothing on import. **The reviewed deployment migration must append that exact SQL after its generated tables/FKs/indexes, in the same deployment transaction.** It enforces immutable product/purchase/unit allocation and audit history, exact unit counts/allocations matching the snapshot and charge at commit, and state transitions with original credits and matching audit provenance. Schema release is incomplete without these guards; no sales endpoint may use the primitives until table+guard readback is verified.
+Drizzle table checks cover product/snapshot identities, ownership FKs, positive bounded ordinals, nonnegative values, allowed states and nonnull placement provenance. PostgreSQL cannot express cross-row sums, immutable snapshots or audit correspondence as ordinary table checks. The source-owned `packages/storage/src/schema/gardenPackIntegrity.ts` exports `gardenPackIntegritySql` for those guards; it executes nothing on import. Migration 0094 appends that exact SQL after its generated tables, foreign keys and indexes in the same transaction. It enforces immutable product/purchase/unit allocation and audit history, exact unit counts/allocations matching the snapshot and charge at commit, and state transitions with original credits and matching audit provenance. Schema release is incomplete without these guards; no sales endpoint may use the primitives until table+guard readback is verified.
 
 Rollback before any writes can remove pack locations and lifecycle receipts, then events, units, purchases and versions, followed by their `garden_pack_*` trigger functions in dependency order. After grants exist, disable new sales and preserve owned access, tables and history; do not restore application code that bypasses pack lifecycle guards. Do not drop paid entitlements or weaken guards to make a rollback pass. Recovery/import/retention tooling needs a separately reviewed maintenance procedure; ordinary application writes cannot delete commercial history.
 
@@ -116,7 +145,7 @@ For independent PostgreSQL connection scheduling, set `GREDICE_PACK_TEST_ADMIN_U
 
 An initial owner-scoped receipt lookup skips catalogue preparation on known retries. On a miss, directory reads settle with a bounded timeout **before** acquiring economic locks or opening the mutation transaction. The receipt is checked again under wallet/account-deletion fencing so a competing successful commit still wins over a failed dependency preparation. Lock order is wallet, account fence, purchase/unit, then garden; all writes share that transaction.
 
-Placement requires both pack table/trigger readiness and the two JSON receipt columns (`garden_pack_unit_events.placement_payload`, `.placement_response`). A partial migration returns a retryable 503 before touching missing columns. Schema SQL was generated for maintainer review and intentionally excluded from version control under `RELIABILITY.md`; the deployment migration must retain the original integrity guards. Neither rollout flag nor product publication has been enabled by this implementation.
+Placement requires both pack table/trigger readiness and the two JSON receipt columns (`garden_pack_unit_events.placement_payload`, `.placement_response`). A partial migration returns a retryable 503 before touching missing columns. Migration 0094 installs the receipt columns with the integrity guards. Verify both with `garden-packs:migration-readback` before enabling owned inventory.
 
 The game uses `useGardenPackUnitPlace` through the owned-inventory adapter, with a shared optimistic placement queue, exact uncertain-response retries, rollback and invalidation of the original garden and owned inventory. It never calls ordinary paid `useBlockPlace` or changes the sunflower balance. It checks the current account group owns the selected ordinary garden; changing account cannot submit a prepared command to another owner.
 
@@ -137,7 +166,7 @@ The ordinary store route accepts an optional operation ID; current clients keep 
 
 Recycling through block deletion or the game's expected-source stack PATCH uses the unit's configured recycling allocation, including zero, independently of today's catalogue price. Garden deletion recycles every placed or stored unit located in that garden once, leaves unused paid entitlements available, and removes current locations. Hard account deletion uses the existing dependency cleanup and `SET NULL` owner detachment; purchase/unit/audit history remains immutable and inaccessible to the former owner, with current location rows removed.
 
-Schema rollout requires both location/receipt tables, receipt JSON columns and all source-owned PostgreSQL guards in `gardenPackIntegrity.ts`. The placement readiness probe now includes this lifecycle readiness so a partial deployment returns unavailable before attempting placement. For an already installed pack schema, maintainers must review a replacement plan for changed existing functions/triggers, drop and recreate those guards in the correct order, add the new tables/columns and triggers, and backfill legacy placed locations before validating and enabling routes. The full fresh-schema `CREATE FUNCTION`/`CREATE TRIGGER` SQL cannot be appended unchanged to an existing installation. Maintainers must order the generated DDL and guard SQL together; generated migration artifacts are deliberately excluded from this shared PR. For any units placed before lifecycle rollout, backfill only an exact matching live block in its original owned active garden into the location table. Do not infer a box identity from coalesced inventory. If a historical placed unit has no unambiguous physical match, retain fail-closed mutation guards and resolve it administratively before enabling lifecycle; no automatic available-quantity restoration or current-price compensation is permitted.
+Schema rollout requires both location/receipt tables, receipt JSON columns and all source-owned PostgreSQL guards in `gardenPackIntegrity.ts`. The placement readiness probe now includes this lifecycle readiness so a partial deployment returns unavailable before attempting placement. For an already installed pack schema, maintainers must review a replacement plan for changed existing functions/triggers, drop and recreate those guards in the correct order, add the new tables/columns and triggers, and backfill legacy placed locations before validating and enabling routes. Migration 0094 is for a fresh installation. An environment that already has pack tables needs the separate reconciliation described above before it can pass readback. For any units placed before lifecycle rollout, backfill only an exact matching live block in its original owned active garden into the location table. Do not infer a box identity from coalesced inventory. If a historical placed unit has no unambiguous physical match, retain fail-closed mutation guards and resolve it administratively before enabling lifecycle; no automatic available-quantity restoration or current-price compensation is permitted.
 
 Lock order is wallet (when crediting), physical box inventory (when storing/retrieving), account deletion fence, purchase/unit, then garden placement. Catalogue preparation occurs outside transactions. Deferred guards enforce exact physical identity/fixed appearance, require a new linked store/retrieve receipt for each box transition, reject cross-kind operation reuse and preserve append-only receipts. Locations point to the exact last receipt; transaction timestamps never define operation order. Lifecycle repository/service regressions run automatically in normal API node tests in a separate process with a private PGlite directory. Run `pnpm --filter api exec node --import tsx --test --conditions=react-server lib/garden/gardenPackLifecycle.storage.node.spec.ts`; optionally set `GREDICE_PACK_TEST_ADMIN_URL=postgres://packtest@127.0.0.1:55496/postgres` for a unique database created and dropped on a disposable local cluster. Tests derive the schema and guards from source and never use a service database. Actual hook browser tests cover exact stored-unit retrieval, lost-response store/retrieve retry identity, definitive rejection, and account/garden switches before submission.
 

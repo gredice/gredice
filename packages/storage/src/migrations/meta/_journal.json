@@ -659,6 +659,13 @@
       "when": 1790196776806,
       "tag": "0093_drop_legacy_garden_structures",
       "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1794278895468,
+      "tag": "0094_autumn_garden_packs",
+      "breakpoints": true
     }
   ]
 }

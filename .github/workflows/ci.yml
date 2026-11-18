@@ -7,6 +7,7 @@ on:
   push:
     branches:
       - main
+  # Manual dispatch is a complete release run, independent of changed-file filters.
   workflow_dispatch:
 
 # Keep only the latest CI run per workflow + PR/branch, cancel obsolete in-progress runs.
@@ -283,22 +284,22 @@ jobs:
               - package.json
               - .github/workflows/**
     outputs:
-      app_www: ${{ steps.filter.outputs.app_www }}
-      app_news: ${{ steps.filter.outputs.app_news }}
-      app_garden: ${{ steps.filter.outputs.app_garden }}
-      app_garden_android: ${{ steps.filter.outputs.app_garden_android }}
-      app_farm: ${{ steps.filter.outputs.app_farm }}
-      app_delivery: ${{ steps.filter.outputs.app_delivery }}
-      app_delivery_android: ${{ steps.filter.outputs.app_delivery_android }}
-      app_app: ${{ steps.filter.outputs.app_app }}
-      app_api: ${{ steps.filter.outputs.app_api }}
-      app_storybook: ${{ steps.filter.outputs.app_storybook }}
-      app_status: ${{ steps.filter.outputs.app_status }}
-      app_desktop: ${{ steps.filter.outputs.app_desktop }}
-      packages_storage: ${{ steps.filter.outputs.packages_storage }}
-      packages_email: ${{ steps.filter.outputs.packages_email }}
-      packages_game: ${{ steps.filter.outputs.packages_game }}
-      plugin_package: ${{ steps.filter.outputs.plugin_package }}
+      app_www: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.app_www }}
+      app_news: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.app_news }}
+      app_garden: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.app_garden }}
+      app_garden_android: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.app_garden_android }}
+      app_farm: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.app_farm }}
+      app_delivery: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.app_delivery }}
+      app_delivery_android: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.app_delivery_android }}
+      app_app: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.app_app }}
+      app_api: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.app_api }}
+      app_storybook: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.app_storybook }}
+      app_status: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.app_status }}
+      app_desktop: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.app_desktop }}
+      packages_storage: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.packages_storage }}
+      packages_email: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.packages_email }}
+      packages_game: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.packages_game }}
+      plugin_package: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.plugin_package }}
 
   plugin_package:
     name: "Validate plugins"
@@ -338,6 +339,17 @@ jobs:
     with:
       name: "news"
       path: "apps/news"
+
+  ci_storybook:
+    name: "CI - storybook"
+    needs: changes
+    if: success() && needs.changes.outputs.app_storybook == 'true'
+    uses: ./.github/workflows/nextjs_ci_reusable.yml
+    with:
+      name: "storybook"
+      path: "apps/storybook"
+      buildOnly: true
+      installAllWorkspaces: true
 
   ci_garden:
     name: "CI - garden"
@@ -445,7 +457,7 @@ jobs:
     timeout-minutes: 10
     runs-on: ubuntu-latest
     needs: changes
-    if: success() && github.event_name == 'pull_request' &&
+    if: success() && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') &&
       needs.changes.outputs.packages_storage == 'true'
     steps:
       - uses: actions/checkout@v7.0.1
@@ -463,7 +475,7 @@ jobs:
       - name: ✨ Get pnpm store directory
         shell: bash
         run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+          echo "STORE_PATH=$(pnpm store path --silent)" >> "$GITHUB_ENV"
 
       - uses: actions/cache@v6.1.0
         name: ✨ Setup pnpm cache
@@ -489,7 +501,7 @@ jobs:
     timeout-minutes: 5
     runs-on: ubuntu-latest
     needs: changes
-    if: success() && github.event_name == 'pull_request' &&
+    if: success() && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') &&
       needs.changes.outputs.packages_game == 'true'
     steps:
       - uses: actions/checkout@v7.0.1
@@ -507,7 +519,7 @@ jobs:
       - name: ✨ Get pnpm store directory
         shell: bash
         run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+          echo "STORE_PATH=$(pnpm store path --silent)" >> "$GITHUB_ENV"
 
       - uses: actions/cache@v6.1.0
         name: ✨ Setup pnpm cache
@@ -533,7 +545,7 @@ jobs:
     timeout-minutes: 5
     runs-on: ubuntu-latest
     needs: changes
-    if: success() && github.event_name == 'pull_request' &&
+    if: success() && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') &&
       needs.changes.outputs.packages_email == 'true'
     steps:
       - uses: actions/checkout@v7.0.1
@@ -551,7 +563,7 @@ jobs:
       - name: ✨ Get pnpm store directory
         shell: bash
         run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+          echo "STORE_PATH=$(pnpm store path --silent)" >> "$GITHUB_ENV"
 
       - uses: actions/cache@v6.1.0
         name: ✨ Setup pnpm cache
@@ -595,8 +607,10 @@ jobs:
       [
         ui_primitives,
         changes,
+        plugin_package,
         ci_www,
         ci_news,
+        ci_storybook,
         ci_garden,
         ci_garden_android,
         ci_farm,
