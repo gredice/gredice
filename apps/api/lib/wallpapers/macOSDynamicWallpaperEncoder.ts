@@ -2,6 +2,7 @@ import 'server-only';
 import { Sandbox } from '@vercel/sandbox';
 import {
     addMacOSDynamicWallpaperXmp,
+    hasMacOSDynamicWallpaperFrames,
     hasMacOSDynamicWallpaperMetadata,
     type MacOSDynamicWallpaperPhase,
     macOSDynamicWallpaperPhases,
@@ -39,6 +40,7 @@ export async function encodeMacOSDynamicWallpaper({
     const source = sandboxSource();
     const sandbox = await Sandbox.create({
         ...(source ? { source } : { runtime: 'node26' }),
+        persistent: false,
         resources: { vcpus: 4 },
         timeout: sandboxTimeoutMs,
     });
@@ -81,7 +83,7 @@ export async function encodeMacOSDynamicWallpaper({
         );
 
         const encode = await sandbox.runCommand({
-            args: ['-q', '90', '-o', outputPath, ...inputPaths],
+            args: ['--no-alpha', '-q', '90', '-o', outputPath, ...inputPaths],
             cmd: 'heif-enc',
         });
         if (encode.exitCode !== 0) {
@@ -94,18 +96,19 @@ export async function encodeMacOSDynamicWallpaper({
             args: [outputPath],
             cmd: 'heif-info',
         });
-        const infoOutput = await info.stdout();
-        const imageCount = infoOutput.match(/^image: /gm)?.length ?? 0;
-        if (info.exitCode !== 0 || imageCount !== 4) {
+        if (
+            info.exitCode !== 0 ||
+            !hasMacOSDynamicWallpaperFrames(await info.stdout())
+        ) {
             throw new MacOSDynamicWallpaperEncodingError(
-                'HEIC validation did not find all four wallpaper frames.',
+                'HEIC validation did not find all wallpaper frames with XMP on the primary image.',
             );
         }
 
         const output = await sandbox.readFileToBuffer({ path: outputPath });
         if (!output || !hasMacOSDynamicWallpaperMetadata(output)) {
             throw new MacOSDynamicWallpaperEncodingError(
-                'HEIC validation did not find the macOS schedule metadata.',
+                'HEIC validation did not find the macOS solar schedule metadata.',
             );
         }
         return output;

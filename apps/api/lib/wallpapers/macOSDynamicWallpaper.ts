@@ -1,3 +1,5 @@
+import { Buffer } from 'node:buffer';
+
 export const macOSDynamicWallpaperPhases = [
     'day',
     'evening',
@@ -21,11 +23,15 @@ const pngSignature = new Uint8Array([
 ]);
 const pngHeaderLength = 33;
 const xmpKeyword = 'XML:com.adobe.xmp';
-// Native schedule indexes follow macOS wallpaper order: day (10:00),
-// evening (18:00), night (21:00), and morning (06:00). Day is the light
-// appearance and night is the dark appearance.
-const dynamicWallpaperPropertyList =
-    'YnBsaXN0MDDSAQIDElJ0aVJhcKQECQwP0gUGBwhRdFFpIz/aqqqqqqqrEADSBQYKCyM/6AAAAAAAABAB0gUGDQ4jP+wAAAAAAAAQAtIFBhARIz/QAAAAAAAAEAPSExQOCFFkUWwIDRATGB0fISosMTo8QUpMUVpcYWMAAAAAAAABAQAAAAAAAAAVAAAAAAAAAAAAAAAAAAAAZQ==';
+// Binary plist for Apple's Dynamic Desktop solar metadata. The image indexes
+// match macOSDynamicWallpaperPhases. Anchors straddle the twilight boundaries
+// at -6° and 6° altitude so each phase starts as the sun crosses a boundary.
+// ap: { l: 0, d: 2 } (light: day, dark: night)
+// si entries (z: azimuth, a: altitude, i: image index):
+//   east (90°):  (-6.5, 2), (-5.5, 3), (5.5, 3), (6.5, 0)
+//   west (270°): (6.5, 0), (5.5, 1), (-5.5, 1), (-6.5, 2)
+const solarPropertyList =
+    'YnBsaXN0MDDSAQIDCFJhcFJzadIEBQYHUWRRbBACEACoCQ8SFBYYGhvTCgsMDQYOUWFRaVF6I8AaAAAAAAAAI0BWgAAAAAAA0woLDBARDiPAFgAAAAAAABAD0woLDBMRDiNAFgAAAAAAANMKCwwVBw4jQBoAAAAAAADTCgsMFQcXI0Bw4AAAAAAA0woLDBMZFxAB0woLDBAZF9MKCwwNBhcIDRATGBocHiApMDI0Nj9IT1haYWpxeoGKkZOaAAAAAAAAAQEAAAAAAAAAHAAAAAAAAAAAAAAAAAAAAKE=';
 
 const crcTable = Array.from({ length: 256 }, (_, index) => {
     let value = index;
@@ -101,7 +107,7 @@ export function macOSDynamicWallpaperXmp() {
         '<x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="Gredice">',
         '   <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">',
         '      <rdf:Description rdf:about="" xmlns:apple_desktop="http://ns.apple.com/namespace/1.0/">',
-        `         <apple_desktop:h24>${dynamicWallpaperPropertyList}</apple_desktop:h24>`,
+        `         <apple_desktop:solar>${solarPropertyList}</apple_desktop:solar>`,
         '      </rdf:Description>',
         '   </rdf:RDF>',
         '</x:xmpmeta>',
@@ -130,18 +136,19 @@ export function addMacOSDynamicWallpaperXmp(bytes: Uint8Array) {
 }
 
 export function hasMacOSDynamicWallpaperMetadata(bytes: Uint8Array) {
-    const metadataMarker = new TextEncoder().encode('apple_desktop:h24');
-    outer: for (
-        let index = 0;
-        index <= bytes.byteLength - metadataMarker.byteLength;
-        index += 1
-    ) {
-        for (let offset = 0; offset < metadataMarker.byteLength; offset += 1) {
-            if (bytes[index + offset] !== metadataMarker[offset]) {
-                continue outer;
-            }
-        }
-        return true;
-    }
-    return false;
+    return Buffer.from(
+        bytes.buffer,
+        bytes.byteOffset,
+        bytes.byteLength,
+    ).includes(macOSDynamicWallpaperXmp());
+}
+
+export function hasMacOSDynamicWallpaperFrames(info: string) {
+    const [, primary, ...otherFrames] = info.split(/^image: /m);
+    return (
+        primary !== undefined &&
+        otherFrames.length + 1 === macOSDynamicWallpaperPhases.length &&
+        /^.+, primary\r?$/m.test(primary) &&
+        /^[ \t]*XMP: [1-9]\d* bytes\b/m.test(primary)
+    );
 }
