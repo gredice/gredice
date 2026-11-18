@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { userIdToPublicId } from '@gredice/js/publicId';
 import { formatProfileMembership } from '../app/korisnici/[publicId]/profileMembership';
-import { getTopPublicAchievements } from '../app/korisnici/[publicId]/publicProfile';
+import {
+    getTopPublicAchievements,
+    isCanonicalPublicUserId,
+} from '../app/korisnici/[publicId]/publicProfile';
 
 test('shows only the highest approved tier in each category regardless of unlock order', () => {
     const result = getTopPublicAchievements([
@@ -104,4 +108,20 @@ test('does not reveal pending, denied, or unknown achievements', () => {
         [],
     );
     assert.deepEqual(getTopPublicAchievements([]), []);
+});
+
+test('accepts only the canonical public user ID', () => {
+    const publicId = userIdToPublicId('3f2504e0-4f89-41d3-9a0c-0305e82c3301');
+
+    assert.equal(isCanonicalPublicUserId(publicId), true);
+    for (const malformed of [
+        `${publicId}.`,
+        `${publicId}=`,
+        `${publicId.slice(0, 2)}.${publicId.slice(2)}`,
+        'u_.',
+        'u_test-user',
+        publicId.slice(2),
+    ]) {
+        assert.equal(isCanonicalPublicUserId(malformed), false, malformed);
+    }
 });

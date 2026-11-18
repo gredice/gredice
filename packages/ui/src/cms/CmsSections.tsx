@@ -712,7 +712,7 @@ export function MarkdownBlock(props: SectionData) {
         <CmsSectionContainer>
             <section className="py-12">
                 <CmsSectionContent section={props}>
-                    <Markdown>{content}</Markdown>
+                    <Markdown size="md">{content}</Markdown>
                 </CmsSectionContent>
             </section>
         </CmsSectionContainer>
@@ -731,7 +731,7 @@ export function HtmlBlock(props: SectionData) {
         <CmsSectionContainer>
             <section className="py-12">
                 <CmsSectionContent section={props}>
-                    <StyledHtml html={content} />
+                    <StyledHtml html={content} size="md" />
                 </CmsSectionContent>
             </section>
         </CmsSectionContainer>

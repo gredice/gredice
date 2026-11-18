@@ -487,20 +487,11 @@ test('logged-in landing links the owned garden and its owner to their destinatio
     await expect(
         page.getByRole('link', { name: 'Otvori', exact: true }),
     ).toHaveAttribute('href', /[?&]vrt=37(?:&|$)/u);
-    await page.route('**/api/users/public/u_test-user/profile', (route) =>
-        route.fulfill({
-            json: {
-                user: { displayName: 'Test User' },
-                gardens: [],
-                achievements: [],
-            },
-        }),
-    );
+    // Public profiles render on the server, so a browser route cannot stand in
+    // for the profile API. The profile page and its name heading are covered
+    // by public-profile.spec.tsx; here we check the link lands on that route.
     await featuredGardens
         .getByRole('link', { name: 'Otvori profil: Test User' })
         .click();
     await expect(page).toHaveURL(/\/korisnici\/u_test-user$/u);
-    await expect(
-        page.getByRole('heading', { name: 'Test User', exact: true }),
-    ).toBeVisible();
 });

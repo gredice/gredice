@@ -57,7 +57,7 @@ export const plantHealthOperationSpecs = [
         stageId: plantHealthMaintenanceStage.id,
         pricePerOperation: 0.2,
         coverUrl:
-            'https://www.gredice.com/assets/operation-icons/plantPhoto.webp',
+            'https://www.gredice.com/assets/operation-icons/illustrated/sanitizeSeedlingGrowingArea.webp',
     },
     {
         name: 'inspectAndManuallyRemovePests',
@@ -82,7 +82,7 @@ export const plantHealthOperationSpecs = [
         stageId: plantHealthMaintenanceStage.id,
         pricePerOperation: 0.4,
         coverUrl:
-            'https://www.gredice.com/assets/operation-icons/hygiene-pruning.webp',
+            'https://www.gredice.com/assets/operation-icons/illustrated/inspectAndManuallyRemovePests.webp',
     },
     {
         name: 'installInsectProtectionMesh',
@@ -107,7 +107,7 @@ export const plantHealthOperationSpecs = [
         stageId: plantHealthMaintenanceStage.id,
         pricePerOperation: 2.99,
         coverUrl:
-            'https://www.gredice.com/assets/operation-icons/setAgrotextileWhite.webp',
+            'https://www.gredice.com/assets/operation-icons/illustrated/installInsectProtectionMesh.webp',
         visualReward: 'insectMesh',
     },
     {
@@ -133,7 +133,7 @@ export const plantHealthOperationSpecs = [
         stageId: plantHealthMaintenanceStage.id,
         pricePerOperation: 0.2,
         coverUrl:
-            'https://www.gredice.com/assets/operation-icons/removeAgrotextileWhite.webp',
+            'https://www.gredice.com/assets/operation-icons/illustrated/removeInsectProtectionMesh.webp',
         visualReward: 'removeInsectMesh',
     },
 ] as const satisfies readonly PlantHealthOperationSpec[];

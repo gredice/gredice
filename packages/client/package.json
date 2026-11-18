@@ -20,10 +20,10 @@
         "@gredice/storage": "workspace:*"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.6.5",
+        "@biomejs/biome": "2.6.7",
         "@types/node": "26.6.6",
         "api": "workspace:*",
-        "hono": "4.13.16",
+        "hono": "4.13.18",
         "tsx": "4.23.15",
         "typescript": "7.0.2"
     }

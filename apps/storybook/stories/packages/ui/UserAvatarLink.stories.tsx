@@ -22,7 +22,19 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Initials: Story = {};
+export const Initials: Story = {
+    parameters: {
+        docs: {
+            description: {
+                story: 'The accessible link name includes the visible initials AK alongside the full display name.',
+            },
+        },
+    },
+};
+
+export const InitialsWithLevel: Story = {
+    args: { achievementCount: 10 },
+};
 
 export const WithAvatar: Story = {
     args: {

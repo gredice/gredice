@@ -22,7 +22,7 @@ export default function CompanyPage() {
                     header="Tvrtka"
                     subHeader="Službeni podaci o društvu Gredice d.o.o."
                 />
-                <StyledHtml>
+                <StyledHtml size="md">
                     <h2>Podaci o društvu</h2>
                     <p>
                         <strong>Gredice d.o.o.</strong>

@@ -107,7 +107,7 @@ export default function ReferralsLandingPage() {
                     }
                 />
 
-                <StyledHtml>
+                <StyledHtml size="md">
                     <p>
                         Program preporuka je jednostavan: podijeli svoj kod s
                         osobom koja želi koristiti Gredice. Ta osoba može
@@ -264,7 +264,7 @@ export default function ReferralsLandingPage() {
                     </div>
                 </Stack>
 
-                <StyledHtml>
+                <StyledHtml size="md">
                     <h2>Kako podijeliti ili iskoristiti kod?</h2>
                     <p>
                         Otvori pregled preporuka u aplikaciji. Tamo možeš

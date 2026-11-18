@@ -44,6 +44,7 @@ compatibility, and dependency-audit decisions.
 - Use Server Actions where the app already uses them for mutations, and revalidate the affected routes with `revalidatePath` or the established cache pattern.
 - Keep client state scoped. Use React Query or existing state helpers where the local app already does.
 - Preserve existing route, layout, error boundary, and loading conventions.
+- WWW public profiles (`/korisnici/[publicId]`) load their data on the server for every request and are never cached, so a renamed gardener or a garden that stops being public disappears with the next visit. Keep `loading.tsx` out of that route and its parent segment: the leaderboard's loading state lives in the `korisnici/(ljestvica)` route group so the profile response waits for its data, shows no loading text and answers a missing profile with a real `404`.
 - Links between WWW and News cross a Next.js app boundary even on the same domain. Use native anchors (or `Button` with `navigation="document"`) across that boundary; keep Next.js links for routes within the same app. Disabling prefetch alone still allows an incompatible RSC navigation on click.
 
 ## TypeScript
@@ -73,5 +74,23 @@ compatibility, and dependency-audit decisions.
 
 - Interactive elements must be keyboard reachable and have clear labels.
 - Prefer semantic buttons, links, headings, tables, and form labels.
+- Keep heading levels sequential: card section titles directly under a page `h1` render as `h2` (the shared `CardTitle` is an `h3`).
 - Keep focus management correct in dialogs, menus, drawers, and async forms.
 - Public `www` changes should satisfy the existing Playwright accessibility tests.
+- Profile avatar links include visible fallback initials in their accessible names; garden like buttons include the displayed count. Named garden member links derive their names from their content and use `UserAvatar decorativeImage` to avoid repeating the adjacent name through image alt text.
+- In-page section links (`PageSectionNav`) end their accessible name with
+  "– odjeljak ove stranice", so they differ from same-text links to a separate
+  page (for example `#radnje` vs `/radnje` in the footer). Prefer visible text
+  plus `sr-only` context over an `aria-label` that drops the visible text
+  (WCAG 2.5.3), keep a positioned ancestor (`relative`) around `sr-only` text in
+  scrolling rows, and start `sr-only` additions with a dash, not a comma
+  (Chrome adds a space before them).
+
+- Admin dashboard statistics use the page's selected Zagreb calendar date range.
+  Registrations, operation durations and sunflowers share that range; charts show
+  daily columns for up to seven days and at most seven contiguous date buckets
+  for longer periods. The expandable chart tables expose each bucket's exact dates.
+- The dashboard period picker and custom date inputs sit above all dashboard
+  sections and quick actions, in the page-level period control group.
+- Dashboard bucket descriptions include years throughout ranges spanning New Year.
+- The exported dashboard analytics action requires admin access before cache lookup.

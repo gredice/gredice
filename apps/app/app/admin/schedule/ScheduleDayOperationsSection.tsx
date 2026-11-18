@@ -20,6 +20,7 @@ import {
 } from './scheduleData';
 import {
     canAcceptOperationTask,
+    canRescheduleOperationTask,
     groupRaisedBedsForSchedule,
     isOperationBlocked,
     isOperationCancelled,
@@ -154,6 +155,17 @@ export async function ScheduleDayOperationsSection({
             expectedTaskVersionEventId: operation.taskVersionEventId,
             farmUsers: assignableFarmUsersByOperationId[operation.id] ?? [],
         }));
+    const dayOperationsToReschedule = scheduledOperations
+        .filter(
+            (operation) =>
+                !operation.isAccepted &&
+                canRescheduleOperationTask(operation.status),
+        )
+        .map((operation) => ({
+            id: operation.id,
+            entityId: operation.entityId,
+            taskVersionEventId: operation.taskVersionEventId,
+        }));
     const dayOperationsToCancel = scheduledOperations
         .filter(
             (operation) =>
@@ -181,6 +193,7 @@ export async function ScheduleDayOperationsSection({
                         photoOperationTargets={photoOperationTargets}
                         operationsToApprove={dayOperationsToApprove}
                         operationsToAssign={dayOperationsToAssign}
+                        operationsToReschedule={dayOperationsToReschedule}
                         operationsToCancel={dayOperationsToCancel}
                     />
                 </Row>

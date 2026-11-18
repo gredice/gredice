@@ -8,7 +8,6 @@ import { PublicFooter, PublicHeader } from '@gredice/ui/PublicChrome';
 import { Stack } from '@gredice/ui/Stack';
 import { UierReview } from '@gredice/ui/UierReview';
 import { PostHogPageView, PostHogProvider } from '@posthog/next';
-import { VercelToolbar } from '@vercel/toolbar/next';
 import { Montserrat } from 'next/font/google';
 import Head from 'next/head';
 import type { ReactNode } from 'react';
@@ -109,7 +108,6 @@ export default async function RootLayout({
     const injectVercelAnalytics = shouldInjectVercelAnalytics(
         process.env.VERCEL,
     );
-    const shouldInjectToolbar = process.env.NODE_ENV === 'development';
     const postHogApiKey =
         process.env.NODE_ENV === 'development'
             ? undefined
@@ -131,7 +129,6 @@ export default async function RootLayout({
             </Stack>
             {injectVercelAnalytics && <Analytics />}
             <PageViewTracker />
-            {shouldInjectToolbar && <VercelToolbar />}
             <UierReview project="www" />
         </ClientAppProvider>
     );

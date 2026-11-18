@@ -13,6 +13,13 @@ export type AnalyticsDateRange = {
     dateKeys: string[];
 };
 
+export type AnalyticsWeekDay = {
+    date: string;
+    /** 0 for Sunday through 6 for Saturday, matching `Date.getUTCDay()`. */
+    weekday: number;
+    isFuture: boolean;
+};
+
 function calendarDateKeys(from: string, to: string) {
     const dateKeys = [];
 
@@ -58,4 +65,22 @@ export function createAnalyticsDateRange(
         endDate: getTimeZoneDayRange(toDateKey, analyticsTimeZone).to,
         dateKeys: calendarDateKeys(fromDateKey, toDateKey),
     };
+}
+
+/**
+ * Seven calendar days starting at `weekStart`. Days after `today` are marked
+ * as future so charts can keep a stable week layout without inventing data.
+ */
+export function createAnalyticsWeekDays(
+    weekStart: string,
+    today: string,
+): AnalyticsWeekDay[] {
+    return Array.from({ length: 7 }, (_, index) => {
+        const date = addCalendarDays(weekStart, index);
+        return {
+            date,
+            weekday: new Date(`${date}T00:00:00.000Z`).getUTCDay(),
+            isFuture: date > today,
+        };
+    });
 }

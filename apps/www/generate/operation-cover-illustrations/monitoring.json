@@ -1,0 +1,73 @@
+{
+    "detailedRaisedBedInspection": {
+        "entityId": 652,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/detailedRaisedBedInspection.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/detailedRaisedBedInspection.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "packages/ui/src/GameIcons/assets/raised-bed.webp"
+        ],
+        "prompt": "Use case: stylized-concept.\nMake one Gredice operation icon, a square isolated game-art cutout with genuine transparent alpha. Image 1 is the final Gredice Dekapitacija style reference. Match its chunky, hand-crafted beveled low-poly volumes, broad matte facets, warm upper-left key, strong shadow contrast, saturated greens and amber, and slightly elevated three-quarter camera. Center one compact silhouette with at least 10% completely clear space on every edge. Make the action readable at 48px; avoid fine clutter.\nOperation: Detaljno pregledavanje gredice, a systematic inspection of the plants and soil across one whole raised bed. Image 2 is the Gredice raised-bed shape reference only. Show one complete squat ochre-timber raised bed from a slightly overhead three-quarter view so all its material and plants are visible. Its three strong visual zones are two short rows of healthy crop leaves, a visible bare dark soil patch with two short ochre straw pieces, and one young stem against a short stake. Float one oversized amber-framed clear magnifier angled over the visible near-center soil and green leaf boundary, with a clear clean blue-tinted lens and a short dark amber handle extending toward the right. The lens should visibly enlarge one nearby leaf and small earth facets. This open circular lens and handle make inspection instantly distinct. No camera, photographic frame, clipboard or extra tools.\nTrue transparent alpha behind the entire grouped subject and within all visible openings, clean antialiased cutout, no cast shadow onto the background, no haze or aura, no writing or numbers, no labels, watermark, infographic lines, arrows, hands, full surroundings or decorative sparkles.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "plantPhoto": {
+        "entityId": 550,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/plantPhoto.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/plantPhoto.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "packages/ui/src/GameIcons/assets/camera.webp"
+        ],
+        "prompt": "Use case: stylized-concept.\nMake one Gredice operation icon, a square isolated game-art cutout with genuine transparent alpha. Image 1 is the final Gredice Dekapitacija style reference. Match its chunky, hand-crafted beveled low-poly volumes, broad matte facets, warm upper-left key, strong shadow contrast, saturated greens and amber, and slightly elevated three-quarter camera. Center one compact silhouette with at least 10% completely clear space on every edge. Make the action readable at 48px; avoid fine clutter.\nOperation: Fotografija biljke, taking a close single-plant photo. Image 2 is the Gredice camera as the camera-object design reference; use a chunky slate-and-amber painted camera with a boldly visible circular glossy blue-black lens. Show one healthy young but established tomato plant with a stout rich-green stem and four generous distinctive lobed leaves on one small warm ochre soil clump. Put a compact large camera visibly at the right beside the plant, raised at its middle height for a close three-quarter photo, lens angled slightly back toward the foliage and still clearly visible to viewer. Treat this like a leaf portrait: plant fills the left two-thirds and the full leafy crown is in frame. The camera and plant should make one close diagonal icon group. No second plant, planting tray, fruits, magnifying lens or raised-bed timber.\nTrue transparent alpha behind the entire grouped subject and within all visible openings, clean antialiased cutout, no cast shadow onto the background, no haze or aura, no writing or numbers, no labels, watermark, infographic lines, arrows, hands, full surroundings or decorative sparkles.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "raisedBedFullPhoto": {
+        "entityId": 301,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/raisedBedFullPhoto.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/raisedBedFullPhoto.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "packages/ui/src/GameIcons/assets/camera.webp",
+            "packages/ui/src/GameIcons/assets/raised-bed.webp"
+        ],
+        "prompt": "Use case: stylized-concept.\nMake one Gredice operation icon, a square isolated game-art cutout with genuine transparent alpha. Image 1 is the final Gredice Dekapitacija style reference. Match its chunky, hand-crafted beveled low-poly volumes, broad matte facets, warm upper-left key, strong shadow contrast, saturated greens and amber, and slightly elevated three-quarter camera. Center one compact silhouette with at least 10% completely clear space on every edge. Make the action readable at 48px; avoid fine clutter.\nOperation: Fotografiranje gredice, taking a wide photo that includes the entire planted raised bed. Image 2 is the Gredice camera as the camera-object design reference; use a chunky slate-and-amber painted camera with a boldly visible circular glossy blue-black lens. Image 3 is a reference for the chunky ochre timber shape of a Gredice raised bed. The hero shape is one entire landscape-oriented shallow rectangular wood-framed bed with all four edges seen, containing three distinct compact crop clusters in different heights (one low leafy vegetable, one upright leafy plant, one broad-leaf plant). Put the compact camera just above and outside the near-right corner of the bed, diagonal and visibly separate via negative space, poised to take a wide shot across the bed. Slightly higher viewpoint to clearly read the whole planting layout, with enough generous transparent breathing room around all timber ends and the camera. No seedling trays, standalone soil clump, photos floating separately, magnifying glass or clipboard.\nTrue transparent alpha behind the entire grouped subject and within all visible openings, clean antialiased cutout, no cast shadow onto the background, no haze or aura, no writing or numbers, no labels, watermark, infographic lines, arrows, hands, full surroundings or decorative sparkles.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "readSeedStorageHumidityTemperature": {
+        "entityId": 592,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/readSeedStorageHumidityTemperature.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/readSeedStorageHumidityTemperature.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp"
+        ],
+        "prompt": "Use case: stylized-concept.\nMake one Gredice operation icon, a square isolated game-art cutout with genuine transparent alpha. Image 1 is the final Gredice Dekapitacija style reference. Match its chunky, hand-crafted beveled low-poly volumes, broad matte facets, warm upper-left key, strong shadow contrast, saturated greens and amber, and slightly elevated three-quarter camera. Center one compact silhouette with at least 10% completely clear space on every edge. Make the action readable at 48px; avoid fine clutter.\nOperation: Očitanje vlage i temperature spremišta sjemena, reading AIR humidity and temperature in seed storage. Show a chunky freestanding warm-ivory dual climate gauge with an ochre bezel, perched against the near side of a small warm-brown wooden seed-storage box. Make its face very readable: two boldly separate circular analog dials, a blue droplet symbol above one blue-tinted dial and a tiny warm amber thermometer silhouette above the other. Each dial shows one broad contrasting needle and no numbers or lettering. Inside the shallow box, behind the gauge, are three orderly upright thick kraft envelopes with an understated simple single seed emblem on the front one. Keep the combined gauge-and-envelopes composition close, short and bold, with dark shaded facets. No soil, live plants, electronic soil probes, camera, glass jars or full storage-room scene.\nTrue transparent alpha behind the entire grouped subject and within all visible openings, clean antialiased cutout, no cast shadow onto the background, no haze or aura, no writing or numbers, no labels, watermark, infographic lines, arrows, hands, full surroundings or decorative sparkles.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "sanitizeSeedlingGrowingArea": {
+        "entityId": 717,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/sanitizeSeedlingGrowingArea.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/plantPhoto.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp"
+        ],
+        "prompt": "Use case: stylized-concept.\nMake one Gredice operation icon, a square isolated game-art cutout with genuine transparent alpha. Image 1 is the final Gredice Dekapitacija style reference. Match its chunky, hand-crafted beveled low-poly volumes, broad matte facets, warm upper-left key, strong shadow contrast, saturated greens and amber, and slightly elevated three-quarter camera. Center one compact silhouette with at least 10% completely clear space on every edge. Make the action readable at 48px; avoid fine clutter.\nOperation: Sanacija prostora za uzgoj presadnica, preventively removing leaf debris and cleaning the surface around healthy greenhouse seedlings. Show a very small matte moss-green nursery tray with two young leafy seedlings in dark square cells on one short warm brown removable bench surface. In front, one chunky golden-ochre hand brush with dark bristles is sweeping exactly one curled dead amber-brown leaf to the entrance of a small navy-grey waste container with its hinged lid raised. Stage the brush diagonally with bristles clearly touching the bench, so cleaning is the dominant action and the seedlings are contextual. The tray, brush and partially open litter bin should read as one compact group in an elevated view. No person, chemical spraying, pesticide, sterile cross marks, pots full of water, big greenhouse backdrop or mature plants.\nTrue transparent alpha behind the entire grouped subject and within all visible openings, clean antialiased cutout, no cast shadow onto the background, no haze or aura, no writing or numbers, no labels, watermark, infographic lines, arrows, hands, full surroundings or decorative sparkles.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    },
+    "seedlingPhotoUpdate": {
+        "entityId": 653,
+        "mode": "Built-in image_gen",
+        "asset": "apps/www/public/assets/operation-icons/illustrated/seedlingPhotoUpdate.webp",
+        "previousUrl": "https://www.gredice.com/assets/operation-icons/seedlingPhotoUpdate.webp",
+        "styleReferences": [
+            "apps/www/public/assets/operation-icons/illustrated/decapitation.webp",
+            "packages/ui/src/GameIcons/assets/camera.webp"
+        ],
+        "prompt": "Use case: stylized-concept.\nMake one Gredice operation icon, a square isolated game-art cutout with genuine transparent alpha. Image 1 is the final Gredice Dekapitacija style reference. Match its chunky, hand-crafted beveled low-poly volumes, broad matte facets, warm upper-left key, strong shadow contrast, saturated greens and amber, and slightly elevated three-quarter camera. Center one compact silhouette with at least 10% completely clear space on every edge. Make the action readable at 48px; avoid fine clutter.\nOperation: Fotografiranje presadnica, photographing a group of seedlings in their greenhouse propagation tray. Image 2 is the Gredice camera as the camera-object design reference; use a chunky slate-and-amber painted camera with a boldly visible circular glossy blue-black lens. Compose a short tidy rectangular charcoal-green propagation tray of six separate square cells, in two rows of three with vigorous tiny leafy seedlings, one or two with a taller second pair of leaves. Put one compact camera above the left front corner in a close overhead diagonal shot position, its big visible blue lens aimed down across the group. The tray divisions and repeating tiny seedling size should be the instantly legible focus. Show only this tabletop-scale moment; no greenhouse backdrop, mature plant, raised-bed wood, soil heap or loose seed packets.\nTrue transparent alpha behind the entire grouped subject and within all visible openings, clean antialiased cutout, no cast shadow onto the background, no haze or aura, no writing or numbers, no labels, watermark, infographic lines, arrows, hands, full surroundings or decorative sparkles.",
+        "export": "Center the illustration on a transparent 640 × 640 canvas with 14% padding per edge on the longest axis. Encode as WebP at quality 90."
+    }
+}

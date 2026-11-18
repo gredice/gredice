@@ -264,10 +264,34 @@ Admins manage automations in `apps/app` at `/admin/automations`.
   run status, recent failed-run count, a jobs queue table with run state,
   attempts, timing, and source context, and filters for definition status,
   trigger event type, run status, and failed-only runs.
-- The detail page shows the editor, test controls, and expandable run logs with
-  per-step input/output/error snapshots.
+- The detail page shows the editor and test controls with the executions list
+  beside them from the `xl` breakpoint; narrower screens switch between the
+  editor and executions with tabs. Run details include per-step
+  input/output/error snapshots. Slide panels render on `<body>`, so header
+  actions open them from either tab.
 - The editor uses `@xyflow/react` and stores layout in the definition graph.
 - The right panel is the module store and selected-node configuration surface.
+- Clicking a graph block opens its configuration in the right panel; the graph
+  toolbar has no separate settings button.
+- The page header holds the green play button that opens the test-run panel,
+  left of "Detalji", because test runs cover the whole workflow.
+- The graph follows the app color theme (React Flow `colorMode` plus its
+  `--xy-*` CSS variables) and the initial fit never zooms past 100%.
+- Module config fields render by their metadata `type` in
+  `AutomationConfigFieldInput.tsx`. JSON fields keep a local draft while
+  typing and only parse and apply it on blur, the `Primijeni` button, or
+  Ctrl/Cmd+Enter; invalid drafts show an error and can be reverted without
+  touching the saved graph. Drafts and their errors live in editor state per
+  node and field (`useAutomationJsonConfigDrafts`), outside the autosaved
+  graph, so they survive closing the panel or selecting another node and are
+  cleared once applied or reverted. `multiselect` fields render one checkbox per option
+  and store an array of option values; option `aliases` let older stored
+  values (for example `tue` or `2` for weekdays) still match.
+- `date` fields use the shared calendar date picker and store `YYYY-MM-DD`;
+  `time` and `datetime` fields use native time and local date-time inputs; and
+  `timeZone` fields use a searchable IANA time zone select whose empty option
+  keeps the module default. Optional date/time values are removed from the
+  config when cleared.
 - Manual test runs can use a recent matching event or synthetic event context.
   Dry-run is enabled by default. The admin app only enqueues these runs; the API
   automation runner executes them with the same queue path as event and schedule

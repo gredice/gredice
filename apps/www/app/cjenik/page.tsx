@@ -10,7 +10,13 @@ import {
     GameSunflowerIcon,
     GameToolsIcon,
 } from '@gredice/ui/GameIcons';
-import { ArrowDownToLine, History, Navigate, Warning } from '@gredice/ui/icons';
+import {
+    ArrowDownToLine,
+    History,
+    Info,
+    Navigate,
+    Warning,
+} from '@gredice/ui/icons';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { PlantOrSortImage } from '@gredice/ui/plants';
@@ -20,12 +26,7 @@ import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { type ReactNode, Suspense } from 'react';
 import { RelatedFaq } from '../../components/faq/RelatedFaq';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '../../components/shared/Card';
+import { Card, CardContent, CardHeader } from '../../components/shared/Card';
 import { CtaBand } from '../../components/shared/CtaBand';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { PageSectionNav } from '../../components/shared/PageSectionNav';
@@ -81,9 +82,12 @@ function CatalogSectionHeader({
                     {icon}
                 </span>
                 <div className="min-w-0">
-                    <CardTitle className="text-xl" id={headingId}>
+                    <h2
+                        className="text-xl font-semibold tracking-tight"
+                        id={headingId}
+                    >
                         {title}
-                    </CardTitle>
+                    </h2>
                     <Typography level="body2" secondary className="mt-1">
                         {description}
                     </Typography>
@@ -323,9 +327,16 @@ export default async function PricingPage() {
                         }
                         subHeader="Jasan pregled cijena i dostupnosti paketa suncokreta, biljaka, sorti, radnji i dostave."
                     />
-                    <Typography level="body2" secondary>
-                        Minimalna vrijednost narudžbe iznosi{' '}
-                        {formatPrice(minimumShoppingCartAmountEur)}.
+                    <Typography
+                        level="body2"
+                        secondary
+                        className="flex items-start gap-1.5"
+                    >
+                        <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
+                        <span>
+                            Minimalna vrijednost narudžbe iznosi{' '}
+                            {formatPrice(minimumShoppingCartAmountEur)}.
+                        </span>
                     </Typography>
                 </Stack>
 
@@ -530,7 +541,7 @@ export default async function PricingPage() {
                             <Button
                                 endDecorator={<Navigate className="size-4" />}
                                 href={KnownPages.Delivery}
-                                variant="outlined"
+                                variant="solid"
                             >
                                 Više o dostavi
                             </Button>
@@ -545,9 +556,12 @@ export default async function PricingPage() {
                                 <ArrowDownToLine className="size-5" />
                             </span>
                             <div>
-                                <CardTitle className="text-xl">
+                                <h2
+                                    className="text-xl font-semibold tracking-tight"
+                                    id="preuzmi-cjenik"
+                                >
                                     Preuzmi cjenik
-                                </CardTitle>
+                                </h2>
                                 <Typography
                                     level="body2"
                                     secondary

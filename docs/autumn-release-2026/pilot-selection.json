@@ -222,7 +222,7 @@
   "sourceInputs": [
     {
       "path": "apps/api/lib/garden/autumnStarterPackEvidence.reviewed.json",
-      "sha256": "408309e38c11f500e6cff9865c7053a2d1ba870e58315a9aa9b73a32c5dcb322"
+      "sha256": "398566fe53367d05f8491dd44058a4c09561765006ab85a5705edd30320e3e15"
     },
     {
       "path": "apps/api/lib/garden/autumnStarterPackEvidence.ts",
@@ -242,19 +242,19 @@
     },
     {
       "path": "assets/game-assets.json",
-      "sha256": "6dbc580063f261a37fde4c02b2a66bf954ec7c9ffb94442ae5722ec2c37e613c"
+      "sha256": "fe8745d9a7fc08678750f7c25ded5e90ff3c37b568d279deb9d389b2bdc68219"
     },
     {
       "path": "docs/autumn-arrangements-2026/evening-seat.json",
-      "sha256": "18d9e35fff93d38f792bcfc40710a8a4a43c485fcdb00e74f5f1876df8a31e31"
+      "sha256": "f82cdea3638dac31aae20965176f2eece4bd7d2ff9be3b17d3cbd3b885a101b0"
     },
     {
       "path": "docs/autumn-arrangements-2026/harvest-corner.json",
-      "sha256": "a985c23a99b1a2b136dbffb876b4a0560c5646af177ed605d888d0fa84f95318"
+      "sha256": "267fd1643bb0e9dd7a0305c0f61056dfc50c4f03440321ec11f259b4a81026ce"
     },
     {
       "path": "docs/autumn-arrangements-2026/woodland-path.json",
-      "sha256": "1e8e3738d61decaddb76525f963cfa110230f9abd2c90437f680cdc1cbadfd57"
+      "sha256": "ce36ea34046628580a20be5f4e9fff121339631634c311a153b9a7902a87a2db"
     },
     {
       "path": "docs/autumn-aster-pots-2026/release-manifest.json",
@@ -310,7 +310,7 @@
     },
     {
       "path": "packages/game/src/data/gameAssetModels.generated.ts",
-      "sha256": "4f8e86bca3d8e0768ef7f0997d88a0f4e85b392106eb88c316694444184f861a"
+      "sha256": "52f1bd356f5008ac9b0fca272d4e719ebe3577815ceae0c0fb53031418f6526e"
     },
     {
       "path": "packages/game/src/entities/AutumnAsterPot.tsx",

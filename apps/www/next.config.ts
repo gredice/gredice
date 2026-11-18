@@ -1,4 +1,3 @@
-import vercelToolbar from '@vercel/toolbar/plugins/next';
 import type { NextConfig } from 'next';
 import {
     getAppAllowedDevOrigins,
@@ -193,6 +192,4 @@ const nextConfig: NextConfig = {
     allowedDevOrigins: getAppAllowedDevOrigins(app),
 };
 
-const withVercelToolbar = vercelToolbar();
-
-export default withVercelToolbar(nextConfig);
+export default nextConfig;

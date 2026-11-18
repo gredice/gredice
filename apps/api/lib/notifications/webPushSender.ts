@@ -14,10 +14,13 @@ import {
     webPushSubscriptions,
 } from '@gredice/storage';
 import { and, asc, eq, isNull, lte, ne, or } from 'drizzle-orm';
-import webPush, {
+import {
     type PushSubscription,
     type SendResult,
+    sendNotification,
+    setVapidDetails,
     type Urgency,
+    WebPushError,
 } from 'web-push';
 import { notificationRolloutFlags } from './notificationRollout';
 
@@ -236,14 +239,10 @@ export function createWebPushSend(
     config: WebPushVapidConfig,
     options: WebPushPayloadOptions = {},
 ): WebPushSend {
-    webPush.setVapidDetails(
-        config.subject,
-        config.publicKey,
-        config.privateKey,
-    );
+    setVapidDetails(config.subject, config.publicKey, config.privateKey);
 
     return async (attempt) =>
-        await webPush.sendNotification(
+        await sendNotification(
             webPushSubscription(attempt),
             buildWebPushPayload(attempt, options),
             {
@@ -276,13 +275,13 @@ function normalizeWebPushError(
     const statusCode =
         error instanceof WebPushDeliveryError
             ? error.statusCode
-            : error instanceof webPush.WebPushError
+            : error instanceof WebPushError
               ? error.statusCode
               : null;
     const rawBody =
         error instanceof WebPushDeliveryError
             ? error.body
-            : error instanceof webPush.WebPushError
+            : error instanceof WebPushError
               ? error.body
               : null;
     const message =

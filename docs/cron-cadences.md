@@ -1,9 +1,48 @@
-# API cron cadences
+# API scheduled job cadences
 
-All cron times in `apps/api/vercel.json` are UTC. The hourly maintenance jobs
-share minute zero to avoid introducing extra wake windows. This is the approved
-first cadence reduction in #5090. The due-work dispatcher in #5085 removes the
+All schedule expressions in `apps/api/vercel.json` are UTC. The hourly maintenance
+jobs share nominal minute zero to avoid introducing extra wake windows. Each run
+can start up to one minute later because of the explicit Schedules jitter window;
+the polling-delay estimates below exclude this additional minute. This preserves
+the approved first cadence reduction in #5090. The due-work dispatcher in #5085 removes the
 remaining idle minute/five-minute PostgreSQL polling from these workers.
+
+## Vercel Schedules
+
+API (19 jobs), Status (2 jobs), and News (1 job) use static `schedules` in their
+respective `vercel.json` files. Each entry has a stable name, its original path
+and cron expression, `requestMethod: "GET"`, and `jitter: 1`. The default timezone
+remains UTC. GET is explicit because path schedules otherwise default to POST;
+existing handlers and their `CRON_SECRET` checks continue to apply. No SDK or
+queue migration is needed. See [Vercel's migration guide](https://vercel.com/docs/schedules/migrate-from-cron-jobs).
+
+Schedules is currently beta. Gredice's Pro plan supports the minute dispatcher
+and five-minute payment recovery. Runs can overlap or be delivered more than
+once, so existing durable claims, idempotency, provider-submission fences, batch
+limits and recovery scans remain required. The minute dispatcher can take up to
+two minutes to discover newly eligible work, before worker processing time.
+
+New production schedules start active; new Preview schedules start inactive.
+Keep previews inactive unless explicitly testing their isolated environment.
+Enabled/disabled state persists across deployments. Keep schedule names stable
+to retain state and execution history. A promotion or rollback reconciles static
+schedules to that deployment's configuration. Never retain a legacy `crons`
+entry alongside its replacement: that would run the job twice.
+
+Use a Schedules-capable Vercel CLI (validated with `65.16.0`), with the intended
+app already linked to its matching project under the `gredice` team:
+
+```bash
+pnpm dlx vercel@65.16.0 schedules list --cwd apps/api --scope gredice --json
+pnpm dlx vercel@65.16.0 schedules inspect work-dispatch --cwd apps/api --scope gredice
+pnpm dlx vercel@65.16.0 schedules executions list work-dispatch --cwd apps/api --scope gredice
+```
+
+After release, verify all 22 production schedules, unchanged paths/expressions,
+GET delivery, one-minute jitter, active state, execution receipts, and the removal
+of legacy Cron Job definitions in each project. Verify preview schedules remain
+inactive. Invoke a schedule manually only when its business side effects are
+appropriate; a deployment's READY state alone does not prove worker success.
 
 | Job | Schedule | Delay and recovery |
 | --- | --- | --- |
@@ -39,7 +78,7 @@ claimed/deleted counts and capacity warnings before treating capacity as proven.
 
 ## Prompt work and idle recovery
 
-`/api/internal/cron/work-dispatch` replaces five separate minute cron schedules
+`/api/internal/cron/work-dispatch` replaces five separate minute schedules
 with one minute invocation. It checks the existing Silo Redis service before
 running the existing workers concurrently. PostgreSQL remains authoritative;
 Redis stores only a job generation, due timestamp and recovery timestamp.
@@ -89,8 +128,8 @@ Deploy producer credentials and source before depending on hints. Confirm the
 managed-definition synchronization in #5083 is also deployed: an older runner
 that rewrites defaults every pass can keep publishing automation hints.
 Consumers remain compatible with old producers through bounded hourly recovery.
-For rollback, restore the five original minute cron paths and minute retention
-in the same deployment as the old consumer source. Retain the separate
+For rollback of the dispatcher, restore the five original minute schedule paths
+and minute retention in the same deployment as the old consumer source. Retain the separate
 five-minute payment recovery and all checkout maintenance/drain requirements.
 
 Identical empty checkout reconciliation resets now append no event, including
@@ -109,7 +148,7 @@ landing page has no storage reads, and the Admin check verifies its auth boundar
 The checks remain unchanged: replacing page/auth probes with different endpoints
 would require evidence of equivalent outage coverage and measured database savings.
 
-After merge, verify the exact production deployment SHA and deployed cron
+After merge, verify the exact production deployment SHA and deployed schedule
 configuration and shared producer credentials without logging their values.
 Compare scheduled invocation counts, Redis-only skips, recovery scans, retry
 latency and Neon active CU-hours over a matching 72-hour window. Include Checkly,

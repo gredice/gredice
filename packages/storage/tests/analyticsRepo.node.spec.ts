@@ -5,6 +5,7 @@ import {
     createAccount as createAccountDirect,
     getAnalyticsTotals,
     getUserRegistrationsByWeekday,
+    getUserRegistrationsDaily,
     storage,
     users,
 } from '@gredice/storage';
@@ -110,4 +111,38 @@ test('getUserRegistrationsByWeekday uses the requested timezone', async () => {
 
     assert.equal(counts[0], 0);
     assert.equal(counts[1], 1);
+});
+
+test('daily registrations preserve repeated weekdays and Zagreb midnight boundaries', async () => {
+    createTestDb();
+    const dates = ['2038-10-24T22:30:00.000Z', '2038-10-31T23:30:00.000Z'];
+    for (const date of dates) {
+        const id = randomUUID();
+        await storage()
+            .insert(users)
+            .values({
+                id,
+                userName: `daily-${id}@test.com`,
+                role: 'user',
+                createdAt: new Date(date),
+                updatedAt: new Date(date),
+            });
+    }
+    const rows = await getUserRegistrationsDaily(
+        new Date('2038-10-24T22:00:00Z'),
+        new Date('2038-11-01T22:59:59.999Z'),
+        'Europe/Zagreb',
+    );
+    assert.deepEqual(rows, [
+        { date: '2038-10-25', count: 1 },
+        { date: '2038-11-01', count: 1 },
+    ]);
+    assert.deepEqual(
+        await getUserRegistrationsDaily(
+            new Date('2000-01-01'),
+            new Date('2000-01-01'),
+            'Europe/Zagreb',
+        ),
+        [],
+    );
 });

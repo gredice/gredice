@@ -37,7 +37,7 @@ When enabling a new field, confirm:
 
 ## Workflow
 
-1. A logged-in user opens a page-level or section-level edit modal on `www`.
+1. A logged-in user opens a page-level or section-level edit modal on `www`. On plant and sort pages, the overview and section edit and feedback buttons are always visible; section buttons sit directly under the section text in the left column.
 2. `www` fetches editable fields from `GET /api/directories/community-edits/entities/{entityType}/{entityId}/fields`.
 3. The user submits changed values to `POST /api/directories/community-edits`.
 4. Storage writes `community_edit_requests` and `community_edit_request_changes` with the original value hash, the proposed review value, and a replayable text/markdown patch where possible.
@@ -67,6 +67,17 @@ Community text inputs, textareas, native selects and reference pickers use the
 shared styles in `apps/www/components/community-edits/communityControlStyles.ts`
 so enabled controls have a consistent card background. The markdown editor
 already uses the same card surface.
+
+## Operation suggestions
+
+On `/radnje`, **Predloži novu radnju** is a dashed card at the end of each
+public stage group (`apps/www/app/radnje/OperationSuggestionCard.tsx`), not a
+header button. Opening it from a group preselects that group's plant stage;
+the stage stays editable. When a search leaves no operations, the empty state
+shows the same card without a preselected stage. The internal OPG partner
+group has no card. Each card keeps its own sign-in return key
+(`operation:{stageId}`), so returning from login reopens the form for the
+group the user started from.
 
 ## Release QA
 

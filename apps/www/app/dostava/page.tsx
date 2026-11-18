@@ -78,7 +78,7 @@ export default function DeliveryPage() {
                     }
                     subHeader="Sve informacije o dostavi povrća iz tvojih gredica"
                 />
-                <StyledHtml>
+                <StyledHtml size="md">
                     <h2 id={deliverySummaryHeadingId}>
                         <GameSeedlingIcon
                             aria-hidden

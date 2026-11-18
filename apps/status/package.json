@@ -17,22 +17,22 @@
         "typecheck": "next typegen && tsc --noEmit --pretty false"
     },
     "dependencies": {
-        "next": "16.4.5",
+        "next": "16.4.6",
         "pg": "8.23.1",
         "react": "19.3.1",
         "react-dom": "19.3.1",
         "server-only": "0.0.1"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.6.5",
+        "@biomejs/biome": "2.6.7",
         "@gredice/ui": "workspace:*",
-        "@tailwindcss/postcss": "4.3.4",
+        "@tailwindcss/postcss": "4.3.5",
         "@types/node": "26.6.6",
         "@types/pg": "8.23.1",
         "@types/react": "19.3.0",
         "@types/react-dom": "19.3.0",
         "postcss": "8.5.32",
-        "tailwindcss": "4.3.4",
+        "tailwindcss": "4.3.5",
         "tsx": "4.23.15",
         "typescript": "7.0.2"
     },

@@ -203,3 +203,20 @@ export async function getUserRegistrationsByWeekday(
 
     return weekdayCounts;
 }
+
+/** Daily registration counts in the requested reporting timezone. */
+export async function getUserRegistrationsDaily(
+    from: Date,
+    to: Date,
+    timeZone: string,
+) {
+    return storage()
+        .select({
+            date: sql<string>`to_char((${users.createdAt} AT TIME ZONE 'UTC') AT TIME ZONE ${timeZone}, 'YYYY-MM-DD')`,
+            count: count(),
+        })
+        .from(users)
+        .where(and(gte(users.createdAt, from), lte(users.createdAt, to)))
+        .groupBy(sql`1`)
+        .orderBy(sql`1`);
+}

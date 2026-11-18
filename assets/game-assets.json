@@ -1556,28 +1556,6 @@
             ]
         },
         {
-            "name": "WaterSprayKit",
-            "source": "WaterSprayKit.blend",
-            "output": "WaterSprayKit.glb",
-            "preload": "lazy",
-            "objects": [
-                "WaterSprayKit_Tank",
-                "WaterSprayKit_Base_Ring",
-                "WaterSprayKit_Top_Collar",
-                "WaterSprayKit_Cap",
-                "WaterSprayKit_Pump_Stem",
-                "WaterSprayKit_Pump_Handle",
-                "WaterSprayKit_Hose_A",
-                "WaterSprayKit_Hose_B",
-                "WaterSprayKit_Wand",
-                "WaterSprayKit_Nozzle",
-                "WaterSprayKit_Droplet_01",
-                "WaterSprayKit_Droplet_02",
-                "WaterSprayKit_Droplet_03",
-                "WaterSprayKit_Droplet_04"
-            ]
-        },
-        {
             "name": "LiquidPreparationBottlePestControl",
             "source": "LiquidPreparationBottlePestControl.blend",
             "output": "LiquidPreparationBottlePestControl.glb",
@@ -1745,110 +1723,6 @@
                 "FieldworkClipboard_Pencil_Wood",
                 "FieldworkClipboard_Pencil_Graphite",
                 "FieldworkClipboard_Pencil_Eraser"
-            ]
-        },
-        {
-            "name": "FarmSupplyKit",
-            "source": "FarmSupplyKit.blend",
-            "output": "FarmSupplyKit.glb",
-            "preload": "lazy",
-            "objects": [
-                "FarmSupplyKit_Crate_Base",
-                "FarmSupplyKit_Crate_Front",
-                "FarmSupplyKit_Crate_Back",
-                "FarmSupplyKit_Crate_Left",
-                "FarmSupplyKit_Crate_Right",
-                "FarmSupplyKit_Crate_Rim_Front",
-                "FarmSupplyKit_Crate_Rim_Back",
-                "FarmSupplyKit_Crate_Handle_Left",
-                "FarmSupplyKit_Crate_Handle_Right",
-                "FarmSupplyKit_Sack_Left",
-                "FarmSupplyKit_Sack_Left_Label",
-                "FarmSupplyKit_Sack_Right",
-                "FarmSupplyKit_Sack_Right_Label",
-                "FarmSupplyKit_Scoop_Bowl",
-                "FarmSupplyKit_Scoop_Handle",
-                "FarmSupplyKit_Scoop_Collar",
-                "FarmSupplyKit_Granule_01",
-                "FarmSupplyKit_Granule_02",
-                "FarmSupplyKit_Granule_03",
-                "FarmSupplyKit_Granule_04",
-                "FarmSupplyKit_Granule_05"
-            ]
-        },
-        {
-            "name": "CameraPhone",
-            "source": "CameraPhone.blend",
-            "output": "CameraPhone.glb",
-            "preload": "lazy",
-            "objects": [
-                "CameraPhone_Body",
-                "CameraPhone_Edge_Highlight",
-                "CameraPhone_Screen",
-                "CameraPhone_Button",
-                "CameraPhone_Photo_Frame",
-                "CameraPhone_Photo_Sky",
-                "CameraPhone_Photo_Soil",
-                "CameraPhone_Photo_Stem",
-                "CameraPhone_Photo_Leaf_L",
-                "CameraPhone_Photo_Leaf_R"
-            ]
-        },
-        {
-            "name": "SensorStakeMeter",
-            "source": "SensorStakeMeter.blend",
-            "output": "SensorStakeMeter.glb",
-            "preload": "lazy",
-            "objects": [
-                "SensorStakeMeter_Stake",
-                "SensorStakeMeter_Display_Back",
-                "SensorStakeMeter_Display_Face",
-                "SensorStakeMeter_Display_Screen"
-            ]
-        },
-        {
-            "name": "PlantTieLoop",
-            "source": "PlantTieLoop.blend",
-            "output": "PlantTieLoop.glb",
-            "preload": "lazy",
-            "objects": [
-                "PlantTieLoop_MainLoop",
-                "PlantTieLoop_Knot",
-                "PlantTieLoop_Tail_Left",
-                "PlantTieLoop_Tail_Right",
-                "PlantTieLoop_Clip_Back",
-                "PlantTieLoop_Clip_Front",
-                "PlantTieLoop_Band_Short",
-                "PlantTieLoop_Band_Long",
-                "PlantTieLoop_Twine_Spool",
-                "PlantTieLoop_Twine_Core",
-                "PlantTieLoop_Twine_End"
-            ]
-        },
-        {
-            "name": "PestBugKit",
-            "source": "PestBugKit.blend",
-            "output": "PestBugKit.glb",
-            "preload": "lazy",
-            "objects": [
-                "PestBugKit_Aphid_Body",
-                "PestBugKit_Aphid_Head",
-                "PestBugKit_Aphid_Legs",
-                "PestBugKit_Beetle_Body",
-                "PestBugKit_Beetle_Shell",
-                "PestBugKit_Beetle_Shell_Stripe",
-                "PestBugKit_Beetle_Head",
-                "PestBugKit_Beetle_Legs",
-                "PestBugKit_Slug_Body",
-                "PestBugKit_Slug_EyeStalk_L",
-                "PestBugKit_Slug_Eye_L",
-                "PestBugKit_Slug_EyeStalk_R",
-                "PestBugKit_Slug_Eye_R",
-                "PestBugKit_Leaf_Damage_Leaf",
-                "PestBugKit_Leaf_Damage_Bite_01",
-                "PestBugKit_Leaf_Damage_Bite_02",
-                "PestBugKit_Leaf_Damage_Bite_03",
-                "PestBugKit_Leaf_Damage_Stem"
             ]
         },
         {
@@ -2825,21 +2699,6 @@
             ]
         },
         {
-            "name": "Greenhouse",
-            "source": "Greenhouse.blend",
-            "output": "Greenhouse.glb",
-            "preload": "lazy",
-            "objects": [
-                "Tunnel Half",
-                "Greenhouse Tunnel Stick",
-                "Greenhouse Tunnel Stick Middle",
-                "Greenhouse Tunnel Stick Top",
-                "Greenhouse X Stick A",
-                "Greenhouse X Stick B",
-                "X Half"
-            ]
-        },
-        {
             "name": "GroundEnvironment",
             "source": "GroundEnvironment.blend",
             "output": "GroundEnvironment.glb",
@@ -2882,23 +2741,6 @@
             "output": "ShovelSmall.glb",
             "preload": "lazy",
             "objects": ["Shovel Small"]
-        },
-        {
-            "name": "GardenScissors",
-            "source": "GardenScissors.blend",
-            "output": "GardenScissors.glb",
-            "preload": "lazy",
-            "objects": [
-                "GardenScissors_Blade_L",
-                "GardenScissors_Blade_R",
-                "GardenScissors_Tang_L",
-                "GardenScissors_Tang_R",
-                "GardenScissors_Handle_L",
-                "GardenScissors_Handle_R",
-                "GardenScissors_Pivot",
-                "GardenScissors_Pivot_Cap",
-                "GardenScissors_Pivot_Slot"
-            ]
         },
         {
             "name": "Snowman",

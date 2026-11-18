@@ -6,7 +6,6 @@ import { PostHogPageView, PostHogProvider } from '@posthog/next';
 import { Analytics } from '@vercel/analytics/react';
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
-import { VercelToolbar } from '@vercel/toolbar/next';
 import { Montserrat } from 'next/font/google';
 import { type ReactNode, Suspense } from 'react';
 import { ClientAppProvider } from '../components/providers/ClientAppProvider';
@@ -42,7 +41,6 @@ export default function RootLayout({
     const injectVercelAnalytics = shouldInjectVercelAnalytics(
         process.env.VERCEL,
     );
-    const shouldInjectToolbar = process.env.NODE_ENV === 'development';
     const postHogApiKey =
         process.env.NODE_ENV === 'development'
             ? undefined
@@ -61,7 +59,6 @@ export default function RootLayout({
                 </ClientAppProvider>
             </Suspense>
             {injectVercelAnalytics && <Analytics />}
-            {shouldInjectToolbar && <VercelToolbar />}
             <UierReview project="garden" />
         </>
     );

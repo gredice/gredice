@@ -1,7 +1,9 @@
+import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
 import { PlantHealthIssueOperations } from '../components/plant-health/PlantHealthIssueOperations';
 import { CommunityEntitySuggestionButtonHarness } from './CommunityEntitySuggestionButtonHarness';
 import { expect, test } from './component-fixtures';
+import { OperationSuggestionCardHarness } from './OperationSuggestionCardHarness';
 import '../app/globals.css';
 
 function mockAuthenticatedUser(page: Page) {
@@ -115,6 +117,59 @@ test('submits a new operation with stage and application', async ({
         source: null,
         note: null,
         publicPath: '/radnje',
+    });
+});
+
+test('preselects the group stage from an operation suggestion card', async ({
+    mount,
+    page,
+}) => {
+    await mockAuthenticatedUser(page);
+    let submittedBody: unknown;
+    await page.route(
+        '**/api/gredice/api/directories/community-edits/entity-suggestions',
+        async (route) => {
+            submittedBody = route.request().postDataJSON();
+            await route.fulfill({
+                status: 201,
+                json: { requestId: 45, status: 'pending_admin_approval' },
+            });
+        },
+    );
+
+    await mount(
+        <OperationSuggestionCardHarness
+            groupLabel="Zalijevanje"
+            stageId={11}
+            stages={[
+                { id: 10, label: 'Održavanje' },
+                { id: 11, label: 'Zalijevanje' },
+            ]}
+        />,
+    );
+
+    expect(
+        (
+            await new AxeBuilder({ page })
+                .withRules(['label-content-name-mismatch'])
+                .analyze()
+        ).violations,
+    ).toEqual([]);
+    await page
+        .getByRole('button', { name: /^Predloži novu radnju – Zalijevanje / })
+        .click();
+    await expect(page.getByLabel('Stadij biljke')).toHaveValue('11');
+    await page.getByLabel('Naziv radnje').fill('Zalijevanje kapanjem');
+    await page
+        .getByLabel('Što se radnjom radi?')
+        .fill('Postaviti sustav kapanja uz biljke.');
+    await page.getByRole('button', { name: 'Pošalji' }).click();
+
+    await expect(page.getByText('Prijedlog #45 je poslan')).toBeVisible();
+    expect(submittedBody).toMatchObject({
+        kind: 'operation',
+        plantStageId: 11,
+        application: 'plant',
     });
 });
 

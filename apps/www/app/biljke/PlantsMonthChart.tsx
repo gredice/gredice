@@ -78,18 +78,23 @@ export function PlantsMonthChart({
                             key={chartMonth}
                             type="button"
                             aria-pressed={isSelected}
-                            aria-label={`${calendarMonthNames[index]}${isCurrent ? ' (ovaj mjesec)' : ''}: ${formatPlantCount(count)} ${activity === 'berba' ? 'u berbi' : 'za sijanje'}`}
                             onClick={() =>
                                 setMonthFilter(isSelected ? null : chartMonth)
                             }
                             className={cx(
-                                'flex min-w-0 flex-col items-center gap-1.5 rounded-lg border-2 border-transparent px-0.5 pt-2 pb-1 transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
+                                'relative flex min-w-0 flex-col items-center gap-1.5 rounded-lg border-2 border-transparent px-0.5 pt-2 pb-1 transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
                                 isCurrent &&
                                     'bg-green-100/80 hover:bg-green-100 dark:bg-green-950/50',
                                 isSelected && 'border-foreground',
                             )}
                         >
-                            <span className="text-xs font-semibold tabular-nums text-muted-foreground">
+                            {/* The name comes from the content (WCAG 2.5.3):
+                                full month, "sada", then the count. Short and
+                                one-letter month labels stay visual only. */}
+                            <span
+                                aria-hidden
+                                className="text-xs font-semibold tabular-nums text-muted-foreground"
+                            >
                                 {count}
                             </span>
                             <span className="flex min-h-14 w-full flex-1 items-end justify-center">
@@ -119,15 +124,22 @@ export function PlantsMonthChart({
                                         : 'font-medium',
                                 )}
                             >
-                                <span className="sm:hidden">
+                                <span aria-hidden className="sm:hidden">
                                     {shortName.charAt(0)}
                                 </span>
-                                <span className="hidden sm:inline">
+                                <span aria-hidden className="hidden sm:inline">
                                     {shortName}
+                                </span>
+                                <span className="sr-only">
+                                    {calendarMonthNames[index]}
+                                    {isCurrent ? ',' : ''}
                                 </span>
                             </span>
                             <span className="h-3.5 text-[10px] font-bold uppercase leading-3.5 tracking-wide text-green-800 dark:text-green-400">
                                 {isCurrent ? 'sada' : ''}
+                            </span>
+                            <span className="sr-only">
+                                {`– ${formatPlantCount(count)} ${activity === 'berba' ? 'u berbi' : 'za sijanje'}`}
                             </span>
                         </button>
                     );

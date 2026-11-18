@@ -51,7 +51,7 @@ jobs:
       - name: ✨ Setup Node
         uses: actions/setup-node@v7.1.0
         with:
-          node-version: "26.13.0"
+          node-version: "26.13.1"
 
       - name: 🏷️ Resolve source-controlled version
         id: version
@@ -242,7 +242,7 @@ jobs:
 
       - name: 🚀 Create or update draft GitHub release
         if: inputs.createGithubRelease
-        uses: softprops/action-gh-release@v3.0.3
+        uses: softprops/action-gh-release@v3.0.4
         with:
           name: "Gredice ${{ inputs.app }} Android ${{ steps.version.outputs.version_name }}${{ steps.version.outputs.artifact_suffix }}"
           tag_name: ${{ steps.version.outputs.tag }}

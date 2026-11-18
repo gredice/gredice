@@ -57,7 +57,7 @@ export default async function SowingPage() {
                     subHeader="Sve o naručivanju sjetve, cijeni i dodatnim pogodnostima tijekom ljeta."
                     padded
                 />
-                <StyledHtml>
+                <StyledHtml size="md">
                     <p>
                         Sjetva je prvi korak prema novoj berbi u tvojoj gredici.
                         Putem{' '}

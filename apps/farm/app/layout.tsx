@@ -1,7 +1,6 @@
 import { shouldInjectVercelAnalytics } from '@gredice/js/observability';
 import { ImpersonationBanner } from '@gredice/ui/ImpersonationBanner';
 import { UiApplicationRoot } from '@gredice/ui/PortalRoot';
-import { VercelToolbar } from '@vercel/toolbar/next';
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import Head from 'next/head';
@@ -35,7 +34,6 @@ export default function RootLayout({
     const injectVercelAnalytics = shouldInjectVercelAnalytics(
         process.env.VERCEL,
     );
-    const shouldInjectToolbar = process.env.NODE_ENV === 'development';
     const postHogApiKey =
         process.env.NODE_ENV === 'development'
             ? undefined
@@ -56,7 +54,6 @@ export default function RootLayout({
                 </AuthAppProvider>
             </ClientAppProvider>
             {injectVercelAnalytics && <FarmWebAnalytics />}
-            {shouldInjectToolbar && <VercelToolbar />}
         </>
     );
 

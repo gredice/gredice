@@ -4,6 +4,8 @@ import type {
 } from '@gredice/storage';
 import {
     canAcceptOperationTask,
+    canRescheduleOperationTask,
+    canReschedulePlantingTask,
     isFieldApproved,
     isFieldBlocked,
     isFieldCompleted,
@@ -122,6 +124,16 @@ export function isDayBulkOperationCancelTargetVisible(
     );
 }
 
+export function isDayBulkOperationRescheduleTargetVisible(
+    patch: DayBulkOperationPatch | undefined,
+) {
+    return (
+        !patch?.isAccepted &&
+        (patch?.status === undefined ||
+            canRescheduleOperationTask(patch.status))
+    );
+}
+
 export function isDayBulkFieldApprovalTargetVisible(
     patch: DayBulkFieldPatch | undefined,
 ) {
@@ -155,5 +167,16 @@ export function isDayBulkFieldAssignmentTargetVisible(
         !isFieldBlocked(patch?.plantStatus) &&
         !isFieldPendingVerification(patch?.plantStatus) &&
         !isFieldCompleted(patch?.plantStatus)
+    );
+}
+
+export function isDayBulkFieldRescheduleTargetVisible(
+    patch: DayBulkFieldPatch | undefined,
+) {
+    return (
+        !patch?.isDeleted &&
+        !isFieldApproved(patch?.plantStatus) &&
+        (patch?.plantStatus === undefined ||
+            canReschedulePlantingTask(patch.plantStatus))
     );
 }

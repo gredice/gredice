@@ -10,21 +10,30 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useMemo } from 'react';
+import type { CommunityOperationSuggestionStage } from '../../components/community-edits/CommunityEntitySuggestionButton';
 import { NoDataPlaceholder } from '../../components/shared/placeholders/NoDataPlaceholder';
 import { useClientSearchParam } from '../../hooks/useClientSearchParam';
 import { OperationCard } from './OperationCard';
+import { OperationSuggestionCard } from './OperationSuggestionCard';
 import {
     compareOperationsByStageAndLabel,
     getAvailableOperationStages,
     operationMatchesSearch,
 } from './operationFilters';
 
+export type OperationsListSuggestionStage =
+    CommunityOperationSuggestionStage & {
+        name: string;
+    };
+
 export function OperationsList({
     operationsData,
     initialSearch,
+    suggestionStages,
 }: {
     operationsData: OperationData[];
     initialSearch: string;
+    suggestionStages: OperationsListSuggestionStage[];
 }) {
     const [search] = useClientSearchParam('pretraga', initialSearch);
     const {
@@ -80,6 +89,9 @@ export function OperationsList({
                     <NoDataPlaceholder>
                         Nema dostupnih radnji.
                     </NoDataPlaceholder>
+                    <div className="mx-auto mt-2 w-full max-w-md px-4">
+                        <OperationSuggestionCard stages={suggestionStages} />
+                    </div>
                 </div>
             )}
             {availableStages.map((stage) => {
@@ -103,13 +115,23 @@ export function OperationsList({
                                 {stage.label}
                             </Typography>
                         </Row>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-start gap-2">
                             {operationsForStage.map((operation) => (
                                 <OperationCard
                                     key={operation.id}
                                     operation={operation}
                                 />
                             ))}
+                            <OperationSuggestionCard
+                                groupLabel={stage.label}
+                                stageId={
+                                    suggestionStages.find(
+                                        (suggestionStage) =>
+                                            suggestionStage.name === stage.name,
+                                    )?.id
+                                }
+                                stages={suggestionStages}
+                            />
                         </div>
                     </Stack>
                 );
@@ -126,7 +148,7 @@ export function OperationsList({
                         </Typography>
                     </Row>
                     <div className="px-3 pb-3">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-start gap-2">
                             {internalOperations.map((operation) => (
                                 <OperationCard
                                     key={operation.id}

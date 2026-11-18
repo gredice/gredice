@@ -1,390 +1,331 @@
+import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import { parseArgs } from 'node:util';
 import {
+    attributeValues,
     closeStorage,
-    createAttributeDefinition,
-    getAttributeDefinitions,
-    getEntitiesRaw,
+    createAttributeValueMutationSideEffects,
+    entities,
+    flushAttributeValueMutationSideEffects,
     getEntityRaw,
-    type SelectAttributeDefinition,
+    sql,
+    storage,
     upsertAttributeValue,
 } from '@gredice/storage';
-import {
-    directoryOperationCoverRecipes,
-    validateOperationCoverRecipes,
-} from './operation-cover-recipes';
+import { readOperationCoverIllustrations } from './read-operation-cover-illustrations';
 
-type OperationDirectoryEntity = {
-    id: number;
-    information?: {
-        name?: string;
-    };
-    image?: {
-        cover?: {
-            url?: string;
-        };
-    };
-};
-
-type ExistingCoverValue = {
-    id?: number;
-    value?: string | null;
-};
-type OperationRawEntity = Awaited<ReturnType<typeof getEntitiesRaw>>[number];
-
-const actor = {
-    id: 'codex',
-    name: 'Codex',
-};
+const actor = { id: 'codex', name: 'Codex' };
 const entityTypeName = 'operation';
-const defaultBaseUrl = 'https://www.gredice.com/assets/operation-icons';
-const coverDefinitionConfig = {
-    category: 'image',
-    dataType: 'image',
-    description:
-        'Public operation cover image used by directory cards, detail pages, search results, and compact operation UI.',
-    display: true,
-    entityTypeName,
-    label: 'Cover image',
-    multiple: false,
-    name: 'cover',
-    order: 'za',
-    required: false,
-};
+const publicBaseUrl =
+    'https://www.gredice.com/assets/operation-icons/illustrated/';
+const publicAssetPath = 'apps/www/public/assets/operation-icons/illustrated/';
 
-const targetOperationCoverRecipes = directoryOperationCoverRecipes;
+class OperationCoverSyncError extends Error {}
 
-function parseArgs(argv: string[]) {
-    const options = {
-        apply: false,
-        baseUrl: defaultBaseUrl,
-        replaceExisting: false,
-    };
-
-    for (let index = 0; index < argv.length; index += 1) {
-        const arg = argv[index];
-        if (arg === '--apply') {
-            options.apply = true;
-            continue;
-        }
-        if (arg === '--replace-existing') {
-            options.replaceExisting = true;
-            continue;
-        }
-        if (arg === '--base-url') {
-            const value = argv[index + 1];
-            if (!value) {
-                throw new Error('--base-url requires a value.');
-            }
-            options.baseUrl = value;
-            index += 1;
-            continue;
-        }
-        if (arg.startsWith('--base-url=')) {
-            options.baseUrl = arg.slice('--base-url='.length);
-            continue;
-        }
-        throw new Error(`Unknown argument: ${arg}`);
-    }
-
-    options.baseUrl = options.baseUrl.replace(/\/+$/u, '');
-    return options;
-}
-
-function attributePath(definition: SelectAttributeDefinition) {
-    return `${definition.category}.${definition.name}`;
-}
-
-async function getOperationDefinitionsByPath() {
-    const definitions = await getAttributeDefinitions(entityTypeName);
-    return new Map(
-        definitions.map((definition) => [
-            attributePath(definition),
-            definition,
-        ]),
-    );
-}
-
-function assertCompatibleCoverDefinition(
-    definition: SelectAttributeDefinition,
+function readTarget(
+    operation: string,
+    manifest: Awaited<ReturnType<typeof readOperationCoverIllustrations>>,
 ) {
-    if (
-        definition.dataType !== 'image' &&
-        !definition.dataType.startsWith('json')
-    ) {
-        throw new Error(
-            `Existing image.cover definition uses unsupported data type ${definition.dataType}.`,
+    if (!/^[A-Za-z][A-Za-z0-9_-]*$/u.test(operation)) {
+        throw new OperationCoverSyncError(
+            `Invalid operation name: ${operation}.`,
         );
     }
-}
 
-async function ensureCoverDefinition({ apply }: { apply: boolean }) {
-    const definitionsByPath = await getOperationDefinitionsByPath();
-    const existingDefinition = definitionsByPath.get('image.cover');
-    if (existingDefinition) {
-        assertCompatibleCoverDefinition(existingDefinition);
-        return {
-            created: false,
-            definition: existingDefinition,
-            wouldCreate: false,
-        };
+    const entry = manifest.get(operation);
+    const fileName = `${operation}.webp`;
+    const assetPath = `${publicAssetPath}${fileName}`;
+    if (!entry || entry.asset !== assetPath) {
+        throw new OperationCoverSyncError(
+            `Missing or invalid illustration manifest entry for ${operation}.`,
+        );
     }
 
-    if (!apply) {
-        return {
-            created: false,
-            definition: null,
-            wouldCreate: true,
-        };
-    }
-
-    const id = await createAttributeDefinition(coverDefinitionConfig);
-    const refreshedDefinitionsByPath = await getOperationDefinitionsByPath();
-    const createdDefinition = refreshedDefinitionsByPath.get('image.cover');
-    if (!createdDefinition || createdDefinition.id !== id) {
-        throw new Error('Failed to create operation image.cover definition.');
-    }
-    assertCompatibleCoverDefinition(createdDefinition);
     return {
-        created: true,
-        definition: createdDefinition,
-        wouldCreate: false,
+        operation,
+        entityId: entry.entityId,
+        assetPath,
+        previousUrl: entry.previousUrl,
+        url: new URL(fileName, publicBaseUrl).href,
     };
 }
 
-function operationName(operation: OperationDirectoryEntity) {
-    return operation.information?.name?.trim() ?? '';
+type Target = ReturnType<typeof readTarget>;
+type Database = ReturnType<typeof storage>;
+
+function sha256(data: Uint8Array) {
+    return createHash('sha256').update(data).digest('hex');
 }
 
-function rawAttributeValue(
-    operation: OperationRawEntity,
-    category: string,
-    name: string,
-) {
-    return (
-        operation.attributes.find(
-            (attribute) =>
-                attribute.attributeDefinition.category === category &&
-                attribute.attributeDefinition.name === name,
-        )?.value ?? null
-    );
-}
-
-function imageCoverUrl(value: string | null) {
-    if (!value) {
-        return undefined;
+async function verifyAsset(target: Target, verifyDeployment: boolean) {
+    const fileUrl = new URL(`../../../${target.assetPath}`, import.meta.url);
+    const bytes = await readFile(fileUrl).catch(() => {
+        throw new OperationCoverSyncError(
+            `Missing illustration for ${target.operation}: ${target.assetPath}.`,
+        );
+    });
+    if (
+        bytes.toString('ascii', 0, 4) !== 'RIFF' ||
+        bytes.toString('ascii', 8, 12) !== 'WEBP'
+    ) {
+        throw new OperationCoverSyncError(
+            `The local illustration for ${target.operation} is not WebP.`,
+        );
     }
 
-    try {
-        const parsed = JSON.parse(value) as unknown;
+    const checksum = sha256(bytes);
+    if (verifyDeployment) {
+        const response = await fetch(target.url, {
+            cache: 'no-store',
+            redirect: 'error',
+            signal: AbortSignal.timeout(15_000),
+        }).catch(() => {
+            throw new OperationCoverSyncError(
+                `Could not fetch the deployed illustration for ${target.operation}.`,
+            );
+        });
         if (
-            parsed &&
-            typeof parsed === 'object' &&
-            'url' in parsed &&
-            typeof parsed.url === 'string'
+            !response.ok ||
+            response.headers.get('content-type')?.split(';')[0] !== 'image/webp'
         ) {
-            return parsed.url;
+            throw new OperationCoverSyncError(
+                `Illustration for ${target.operation} isn't available as WebP at ${target.url} (HTTP ${response.status}).`,
+            );
         }
+
+        const deployedBytes = new Uint8Array(
+            await response.arrayBuffer().catch(() => {
+                throw new OperationCoverSyncError(
+                    `Could not read the deployed illustration for ${target.operation}.`,
+                );
+            }),
+        );
+        if (sha256(deployedBytes) !== checksum) {
+            throw new OperationCoverSyncError(
+                `Deployed illustration for ${target.operation} differs from ${target.assetPath}.`,
+            );
+        }
+    }
+
+    return { ...target, checksum };
+}
+
+function parseCover(value: string | null | undefined) {
+    if (!value) {
+        return null;
+    }
+
+    let cover: unknown;
+    try {
+        cover = JSON.parse(value);
     } catch {
-        return value;
+        cover = value;
+    }
+
+    if (typeof cover === 'string' && /^https?:\/\//u.test(cover)) {
+        return { url: cover };
+    }
+
+    if (
+        cover &&
+        typeof cover === 'object' &&
+        !Array.isArray(cover) &&
+        'url' in cover &&
+        typeof cover.url === 'string'
+    ) {
+        return { ...cover, url: cover.url };
     }
 
     return undefined;
 }
 
-function toOperationDirectoryEntity(
-    operation: OperationRawEntity,
-): OperationDirectoryEntity {
-    const name = rawAttributeValue(operation, 'information', 'name');
-    const cover = rawAttributeValue(operation, 'image', 'cover');
-
-    return {
-        id: operation.id,
-        information: {
-            name: name ?? undefined,
-        },
-        image: {
-            cover: {
-                url: imageCoverUrl(cover),
-            },
-        },
-    };
-}
-
-function coverUrl(baseUrl: string, outputFileName: string) {
-    return `${baseUrl}/${encodeURIComponent(outputFileName)}`;
-}
-
-async function getExistingCoverValue({
-    attributeDefinitionId,
-    entityId,
-}: {
-    attributeDefinitionId: number | null;
-    entityId: number;
-}): Promise<ExistingCoverValue | null> {
-    if (!attributeDefinitionId) {
-        return null;
+async function readAssignment(
+    db: Database,
+    target: Awaited<ReturnType<typeof verifyAsset>>,
+    lock: boolean,
+) {
+    if (lock) {
+        // Lock the entity against state changes and new attribute inserts.
+        await db.execute(sql`
+            select ${entities.id} from ${entities}
+            where ${entities.id} = ${target.entityId}
+            for update
+        `);
+        await db.execute(sql`
+            select ${attributeValues.id} from ${attributeValues}
+            where ${attributeValues.entityId} = ${target.entityId}
+              and not ${attributeValues.isDeleted}
+            order by ${attributeValues.id}
+            for update
+        `);
     }
 
-    const raw = await getEntityRaw(entityId);
-    const existing = raw?.attributes.find(
-        (attribute) =>
-            attribute.attributeDefinitionId === attributeDefinitionId &&
-            !attribute.isDeleted,
-    );
+    const entity = await getEntityRaw(target.entityId, db);
+    if (
+        entity?.state !== 'published' ||
+        entity.entityTypeName !== entityTypeName
+    ) {
+        throw new OperationCoverSyncError(
+            `Expected published operation ${target.operation} at entity ${target.entityId}.`,
+        );
+    }
 
-    return existing ? { id: existing.id, value: existing.value } : null;
+    const nameValues = entity.attributes.filter(
+        ({ attributeDefinition, id }) =>
+            id > 0 &&
+            attributeDefinition.category === 'information' &&
+            attributeDefinition.name === 'name',
+    );
+    if (nameValues.length !== 1 || nameValues[0]?.value !== target.operation) {
+        throw new OperationCoverSyncError(
+            `Operation name at entity ${entity.id} does not match ${target.operation}.`,
+        );
+    }
+
+    const definitions = entity.entityType.attributeDefinitions.filter(
+        (definition) =>
+            definition.category === 'image' && definition.name === 'cover',
+    );
+    const definition = definitions[0];
+    if (
+        definitions.length !== 1 ||
+        !definition ||
+        definition.multiple ||
+        (definition.dataType !== 'image' &&
+            !definition.dataType.startsWith('json'))
+    ) {
+        throw new OperationCoverSyncError(
+            'Expected one compatible operation image.cover definition.',
+        );
+    }
+
+    const coverValues = entity.attributes.filter(
+        ({ attributeDefinitionId }) => attributeDefinitionId === definition.id,
+    );
+    const coverAttribute = coverValues[0];
+    const cover = parseCover(coverAttribute?.value);
+    if (coverValues.length > 1 || cover === undefined) {
+        throw new OperationCoverSyncError(
+            `Operation ${target.operation} has an ambiguous or invalid image.cover value.`,
+        );
+    }
+
+    const currentUrl = cover?.url ?? null;
+    if (currentUrl !== target.url && currentUrl !== target.previousUrl) {
+        throw new OperationCoverSyncError(
+            `Cover URL for ${target.operation} changed since the manifest was recorded. Expected ${target.previousUrl ?? '(none)'} and found ${currentUrl ?? '(none)'}.`,
+        );
+    }
+
+    const label = entity.attributes.find(
+        ({ attributeDefinition }) =>
+            attributeDefinition.category === 'information' &&
+            attributeDefinition.name === 'label',
+    )?.value;
+    const attributeValue = {
+        id: coverAttribute?.id || undefined,
+        attributeDefinitionId: definition.id,
+        entityId: entity.id,
+        entityTypeName,
+        order: coverAttribute ? coverAttribute.order : definition.order,
+        value: JSON.stringify({
+            ...(cover ?? { alt: label || target.operation }),
+            url: target.url,
+        }),
+    };
+
+    return {
+        attributeValue,
+        result: {
+            operation: target.operation,
+            entityId: entity.id,
+            previousUrl: currentUrl,
+            url: target.url,
+            checksum: target.checksum,
+            action: currentUrl === target.url ? 'unchanged' : 'assign',
+        },
+    };
 }
 
 async function main() {
-    const options = parseArgs(process.argv.slice(2));
-    const recipeValidationErrors = validateOperationCoverRecipes(
-        targetOperationCoverRecipes,
-    );
-    if (recipeValidationErrors.length > 0) {
-        throw new Error(
-            `Invalid operation cover recipes:\n${recipeValidationErrors.join('\n')}`,
-        );
-    }
-
-    const coverDefinitionResult = await ensureCoverDefinition({
-        apply: options.apply,
-    });
-    const operations = (await getEntitiesRaw(entityTypeName)).map(
-        toOperationDirectoryEntity,
-    );
-    const operationsByName = new Map<string, OperationDirectoryEntity>();
-
-    for (const operation of operations) {
-        const name = operationName(operation);
-        if (!name) {
-            continue;
-        }
-        if (operationsByName.has(name)) {
-            throw new Error(`Duplicate published operation name: ${name}.`);
-        }
-        operationsByName.set(name, operation);
-    }
-
-    const recipesByOperationId = new Map(
-        targetOperationCoverRecipes.map((recipe) => [
-            recipe.operationId,
-            recipe,
-        ]),
-    );
-    if (recipesByOperationId.size !== targetOperationCoverRecipes.length) {
-        throw new Error(
-            'Operation cover recipes contain duplicate operation IDs.',
-        );
-    }
-
-    const planned: Array<{
-        operationId: string;
-        entityId: number;
-        url: string;
-        action: 'create' | 'update' | 'skip-existing' | 'unchanged';
-    }> = [];
-    const missingOperations: string[] = [];
-
-    for (const recipe of targetOperationCoverRecipes) {
-        const operation = operationsByName.get(recipe.operationId);
-        if (!operation) {
-            missingOperations.push(recipe.operationId);
-            continue;
-        }
-
-        const nextUrl = coverUrl(options.baseUrl, recipe.outputFileName);
-        const currentUrl = operation.image?.cover?.url;
-        if (currentUrl === nextUrl) {
-            planned.push({
-                operationId: recipe.operationId,
-                entityId: operation.id,
-                url: nextUrl,
-                action: 'unchanged',
-            });
-            continue;
-        }
-
-        if (currentUrl && !options.replaceExisting) {
-            planned.push({
-                operationId: recipe.operationId,
-                entityId: operation.id,
-                url: currentUrl,
-                action: 'skip-existing',
-            });
-            continue;
-        }
-
-        planned.push({
-            operationId: recipe.operationId,
-            entityId: operation.id,
-            url: nextUrl,
-            action: currentUrl ? 'update' : 'create',
-        });
-    }
-
-    if (missingOperations.length > 0) {
-        throw new Error(
-            `Missing operations for recipes: ${missingOperations.join(', ')}`,
-        );
-    }
-
-    const mutations = planned.filter(
-        (item) => item.action === 'create' || item.action === 'update',
-    );
-    if (options.apply) {
-        if (!coverDefinitionResult.definition) {
-            throw new Error('Cannot apply without image.cover definition.');
-        }
-
-        for (const mutation of mutations) {
-            const existingValue = await getExistingCoverValue({
-                attributeDefinitionId: coverDefinitionResult.definition.id,
-                entityId: mutation.entityId,
-            });
-            await upsertAttributeValue(
-                {
-                    id: existingValue?.id,
-                    attributeDefinitionId: coverDefinitionResult.definition.id,
-                    entityId: mutation.entityId,
-                    entityTypeName,
-                    order: coverDefinitionResult.definition.order,
-                    value: JSON.stringify({
-                        url: mutation.url,
-                        alt:
-                            recipesByOperationId.get(mutation.operationId)
-                                ?.operationLabel ?? mutation.operationId,
-                    }),
-                },
-                actor,
-            );
-        }
-    }
-
-    const summary = {
-        mode: options.apply ? 'apply' : 'dry-run',
-        baseUrl: options.baseUrl,
-        replaceExisting: options.replaceExisting,
-        recipes: targetOperationCoverRecipes.length,
-        coverDefinition: {
-            created: coverDefinitionResult.created,
-            exists: Boolean(coverDefinitionResult.definition),
-            wouldCreate: coverDefinitionResult.wouldCreate,
+    const { values } = parseArgs({
+        options: {
+            apply: { type: 'boolean', default: false },
+            operation: { type: 'string', multiple: true },
         },
-        create: planned.filter((item) => item.action === 'create').length,
-        update: planned.filter((item) => item.action === 'update').length,
-        skipExisting: planned.filter((item) => item.action === 'skip-existing')
-            .length,
-        unchanged: planned.filter((item) => item.action === 'unchanged').length,
-        operations: planned,
-    };
+    });
+    const operations = values.operation ?? [];
+    if (
+        operations.length === 0 ||
+        new Set(operations).size !== operations.length
+    ) {
+        throw new OperationCoverSyncError(
+            'Supply one or more unique --operation NAME options.',
+        );
+    }
 
-    console.log(JSON.stringify(summary, null, 2));
+    const manifest = await readOperationCoverIllustrations();
+    const targets = operations
+        .map((operation) => readTarget(operation, manifest))
+        .sort((left, right) => left.entityId - right.entityId);
+    const verified = await Promise.all(
+        targets.map((target) => verifyAsset(target, values.apply)),
+    );
+    const sideEffects = createAttributeValueMutationSideEffects();
+    const results = await storage().transaction(
+        async (db) => {
+            const assignments = [];
+            for (const target of verified) {
+                assignments.push(
+                    await readAssignment(db, target, values.apply),
+                );
+            }
+
+            if (values.apply) {
+                for (const { attributeValue, result } of assignments) {
+                    if (result.action === 'assign') {
+                        await upsertAttributeValue(attributeValue, actor, {
+                            db,
+                            sideEffects,
+                        });
+                    } else {
+                        // Retry cache and search invalidation if a prior run only committed the assignments.
+                        sideEffects.entityIds.add(result.entityId);
+                        sideEffects.entityTypeNames.add(entityTypeName);
+                        sideEffects.searchEntityIds.add(result.entityId);
+                    }
+                }
+            }
+
+            return assignments.map(({ result }) => result);
+        },
+        values.apply ? undefined : { accessMode: 'read only' },
+    );
+
+    console.log(
+        JSON.stringify(
+            {
+                mode: values.apply ? 'apply' : 'dry-run',
+                deploymentVerified: values.apply,
+                assignments: results,
+            },
+            null,
+            2,
+        ),
+    );
+
+    if (values.apply) {
+        await flushAttributeValueMutationSideEffects(sideEffects);
+    }
 }
 
 main()
-    .catch((error) => {
-        console.error(error);
+    .catch((error: unknown) => {
+        console.error(
+            error instanceof OperationCoverSyncError
+                ? error.message
+                : `Operation cover sync failed (${error instanceof Error ? error.name : 'unknown error'}).`,
+        );
         process.exitCode = 1;
     })
-    .finally(async () => {
-        await closeStorage();
-    });
+    .finally(closeStorage);

@@ -26,6 +26,7 @@ Use this guide for visual and interaction design decisions.
 - Within a tab group, keep icon treatment consistent. If one tab uses illustrated game artwork, use matching artwork for every icon-bearing tab in that group.
 - Use segmented controls for modes, toggles or checkboxes for binary settings, sliders or numeric inputs for numbers, menus for option sets, and tabs for sibling views.
 - Text in controls must fit at mobile and desktop widths.
+- On public `www` pages, fields placed on a tinted or gray surface use the neutral `bg-card` surface, not `bg-background`, which follows the sky hue and reads as blue.
 - Layout dimensions should be stable for boards, grids, toolbars, counters, and tiles so hover states and dynamic labels do not shift the interface.
 - Do not expose instructions about how the UI works as permanent page copy when the control can be made self-evident.
 

@@ -76,15 +76,15 @@
         "payout-items:backfill": "tsx --conditions=react-server --env-file=.env ./scripts/backfillPayoutRequestItems.ts"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.6.5",
-        "@electric-sql/pglite": "0.5.15",
+        "@biomejs/biome": "2.6.7",
+        "@electric-sql/pglite": "0.5.16",
         "@gredice/directory-types": "workspace:*",
         "@gredice/js": "workspace:*",
         "@neondatabase/serverless": "1.2.0",
         "@types/ws": "8.18.2",
         "@upstash/redis": "1.41.0",
-        "ai": "7.0.162",
-        "dotenv": "18.0.9",
+        "ai": "7.0.166",
+        "dotenv": "18.0.10",
         "drizzle-kit": "0.31.11",
         "drizzle-orm": "0.45.4",
         "openapi-types": "12.1.3",
@@ -92,9 +92,9 @@
         "server-only": "0.0.1",
         "tsx": "4.23.15",
         "typescript": "7.0.2",
-        "undici": "8.12.3",
+        "undici": "8.12.4",
         "uuid": "14.0.3",
-        "ws": "8.22.1",
+        "ws": "8.23.0",
         "zod": "4.6.7"
     }
 }

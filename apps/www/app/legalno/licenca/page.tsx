@@ -23,7 +23,7 @@ export default function SourceCodeLicensePage() {
                     header="Licenca izvornog koda"
                     subHeader="AGPL-3.0 licenca izvornog koda Gredica i odnos prema drugim materijalima i pravima."
                 />
-                <StyledHtml>
+                <StyledHtml size="md">
                     <h2>Izvorni kod Gredica</h2>
                     <p>
                         Izvorni kod aplikacije Gredice objavljen je u{' '}

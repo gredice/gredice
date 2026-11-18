@@ -60,10 +60,9 @@ export function PublicGardenMembers({
                     <li key={member.publicId} className="min-w-0 max-w-full">
                         <Link
                             href={publicUserProfileHref(member.publicId)}
-                            aria-label={`Otvori profil: ${member.displayName}`}
                             className="flex min-w-0 items-center gap-2 rounded-md text-sm hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                         >
-                            <UserAvatar {...member} />
+                            <UserAvatar {...member} decorativeImage />
                             <span className="min-w-0 break-words">
                                 {member.displayName}
                             </span>

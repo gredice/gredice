@@ -13,10 +13,12 @@ import {
     getPlantUpdateEvents,
     getSunflowersDailyTotals,
     getUserRegistrationsByWeekday,
+    getUserRegistrationsDaily,
     redisCached,
 } from '@gredice/storage';
 import { cache } from 'react';
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
+import { auth } from '../../../lib/auth/auth';
 import { sumAiAnalysisCostEur } from '../../../src/ai/aiAnalyticsCost';
 import {
     analyticsDateKey,
@@ -114,11 +116,7 @@ function analyticsCacheKey(
     from?: string,
     to?: string,
 ) {
-    return `dashboard:admin:analytics:days:${cacheKeyPart(days)}:from:${cacheKeyPart(from)}:to:${cacheKeyPart(to)}:v3`;
-}
-
-function weeklyStatisticsCacheKey(from: string, to: string) {
-    return `dashboard:admin:weekly-statistics:from:${cacheKeyPart(from)}:to:${cacheKeyPart(to)}:v1`;
+    return `dashboard:admin:analytics:days:${cacheKeyPart(days)}:from:${cacheKeyPart(from)}:to:${cacheKeyPart(to)}:v4`;
 }
 
 function parseDuration(value: unknown) {
@@ -471,6 +469,8 @@ export async function getAnalyticsData(
     from?: string,
     to?: string,
 ) {
+    await auth(['admin']);
+
     return redisCached(
         analyticsCacheKey(days, from, to),
         () => getAnalyticsDataUncached(days, from, to),
@@ -479,74 +479,6 @@ export async function getAnalyticsData(
             maxPayloadBytes: 2 * 1024 * 1024,
         },
     );
-}
-
-export async function getDashboardWeeklyStatisticsData(
-    from: string,
-    to: string,
-) {
-    return redisCached(
-        weeklyStatisticsCacheKey(from, to),
-        () => getDashboardWeeklyStatisticsDataUncached(from, to),
-        {
-            ttl: 60,
-            maxPayloadBytes: 512 * 1024,
-        },
-    );
-}
-
-async function getDashboardWeeklyStatisticsDataUncached(
-    from: string,
-    to: string,
-) {
-    const { startDate, endDate, dateKeys } = createAnalyticsDateRange(
-        undefined,
-        from,
-        to,
-    );
-    const [
-        operationsList,
-        operationReferenceData,
-        weekdayRegistrationsRaw,
-        sunflowersDailyTotalsRaw,
-        sowingEvents,
-    ] = await Promise.all([
-        getAllOperations({
-            completedFrom: startDate,
-            completedTo: endDate,
-        }),
-        getOperationAnalyticsReferenceData(),
-        getUserRegistrationsByWeekday(startDate, endDate, analyticsTimeZone),
-        getSunflowersDailyTotals({
-            from: startDate,
-            to: endDate,
-            timeZone: analyticsTimeZone,
-        }),
-        getPlantUpdateEvents({
-            from: startDate,
-            to: endDate,
-            status: 'sowed',
-        }),
-    ]);
-
-    return {
-        operationsDuration: buildOperationsDurationData({
-            startDate,
-            endDate,
-            dateKeys,
-            operationsList,
-            plannedOperationsList: operationReferenceData.plannedOperationsList,
-            operationsData: operationReferenceData.operationsData,
-            sowingEvents,
-        }),
-        weekdayRegistrations: formatWeekdayRegistrations(
-            weekdayRegistrationsRaw,
-        ),
-        sunflowers: formatSunflowersDailyTotals(
-            dateKeys,
-            sunflowersDailyTotalsRaw,
-        ),
-    };
 }
 
 async function getAnalyticsDataUncached(
@@ -567,6 +499,7 @@ async function getAnalyticsDataUncached(
         operationsList,
         operationReferenceData,
         weekdayRegistrationsRaw,
+        registrationsDaily,
         aiTotals,
         aiEvents,
         sunflowersDailyTotalsRaw,
@@ -580,6 +513,7 @@ async function getAnalyticsDataUncached(
         }),
         getOperationAnalyticsReferenceData(),
         getUserRegistrationsByWeekday(startDate, endDate, analyticsTimeZone),
+        getUserRegistrationsDaily(startDate, endDate, analyticsTimeZone),
         getAiAnalysisTotals({ from: startDate, to: endDate }),
         getAiAnalysisEvents({ from: startDate, to: endDate }),
         getSunflowersDailyTotals({
@@ -635,11 +569,19 @@ async function getAnalyticsDataUncached(
     );
     const aiTotalCostEur = sumAiAnalysisCostEur(aiEvents);
 
+    const registrationsByDate = new Map(
+        registrationsDaily.map((day) => [day.date, day.count]),
+    );
+
     return {
         analytics: analyticsResult,
         entities: entitiesCounts,
         operationsDuration,
         weekdayRegistrations,
+        registrationsDaily: dateKeys.map((date) => ({
+            date,
+            count: registrationsByDate.get(date) ?? 0,
+        })),
         ai: {
             count: aiTotals.count,
             totalTokens: aiTotalTokens,

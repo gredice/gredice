@@ -17,7 +17,7 @@
         "typecheck": "tsc --noEmit --pretty false"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.6.5",
+        "@biomejs/biome": "2.6.7",
         "@types/node": "26.6.6",
         "@types/react": "19.3.0",
         "tsx": "4.23.15",
@@ -26,10 +26,10 @@
     "dependencies": {
         "@azure/communication-common": "2.5.0",
         "@azure/communication-email": "1.1.0",
-        "@azure/core-lro": "3.4.1",
-        "@azure/core-rest-pipeline": "1.25.0",
+        "@azure/core-lro": "3.4.2",
+        "@azure/core-rest-pipeline": "1.25.1",
         "@gredice/storage": "workspace:*",
         "react": "19.3.1",
-        "react-email": "6.11.6"
+        "react-email": "6.11.12"
     }
 }

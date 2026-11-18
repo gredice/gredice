@@ -55,7 +55,7 @@ They do not imply these changes have been deployed to production.
 | `/dostava/termini` | Calendar hero, delivery/pickup legend and slot icons, idea hint | `app/dostava/termini/page.tsx` |
 | `/cjenik` | Receipt hero; currency, seedling, tools and delivery section icons | `app/cjenik/page.tsx` |
 | `/sjetva` | Sowing hero; receipt, journal, calendar, leaf, seedling, sun and idea headings | `app/sjetva/page.tsx` |
-| `/o-nama` | Four 64px value-card visuals | `app/o-nama/AboutValueCard.tsx`, `app/o-nama/page.tsx` |
+| `/o-nama` | Partner OPG artwork in the page header (reused from the landing page until a real farm photo exists); four 64px value-card visuals | `app/o-nama/AboutValueCard.tsx`, `app/o-nama/page.tsx` |
 | `/preporuke`, `/suncokreti` | Gift, receipt and energy cards; sunflower reward/package amounts | `app/preporuke/page.tsx`, `app/suncokreti/page.tsx` |
 | `/kontakt` | Mailbox and contact objects; real WhatsApp brand mark | `app/kontakt/page.tsx` |
 | `/mcp` | Journal, garden and basket access-level visuals | `app/mcp/page.tsx` |
@@ -356,6 +356,9 @@ The environment provider applies the theme before painting a new sky. WWW and
 News skip foreground/background color fades while ambient mode is enabled, so
 reading colors do not pass through low-contrast intermediate shades. Sky and
 weather motion remain independent; turning ambient off restores normal styles.
+Clouds settle into place for about 1.6 seconds after the sky renders and then
+stay still, so the backdrop has no endless ambient motion (WCAG 2.2.2). Only
+rain and snow keep falling while that weather is shown.
 
 The focused environment Playwright suite samples the rendered sky pixels and
 checks public typography against them at 360/768/1280px, across all six weather
@@ -363,3 +366,17 @@ presets, both sides of dawn/dusk theme changes, daytime and nighttime. It also
 checks scrolling, ambient-off restoration and theme transitions with motion
 enabled. Storybook's public environment stories and AmbientPublicContent
 showcase include unframed descriptions, breadcrumbs and growing instructions.
+
+## Main content text size — 16 November 2026
+
+Long-form main content on WWW reads at 16px instead of the compact 14px prose.
+The shared `StyledHtml` and `Markdown` primitives in `@gredice/ui` take a
+`size` prop: `sm` (default) for cards, panels, dialogs, search summaries and
+admin tools, and `md` (`prose-base`) for main content. WWW uses `md` for
+operation descriptions and instructions (`/radnje/[alias]`), plant and sort
+information sections and tips (`/biljke/[alias]`), block descriptions, plant
+health details, CMS Markdown/HTML blocks, and the legal, delivery, contact,
+sowing, raised-bed, referral and refund pages. UI chrome keeps its size: FAQ
+answers, attribute detail cards, the delivery slot card, search summaries and
+community edit previews still use `sm`. New long-form content sections should
+pass `size="md"`.

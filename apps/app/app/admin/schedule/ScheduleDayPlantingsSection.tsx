@@ -8,6 +8,7 @@ import { getScheduleDayData, getSchedulePlantSorts } from './scheduleData';
 import {
     activePlantCycleEventId,
     activePlantCycleVersionEventId,
+    canReschedulePlantingTask,
     groupRaisedBedsForSchedule,
     isFieldApproved,
     isFieldBlocked,
@@ -133,6 +134,31 @@ export async function ScheduleDayPlantingsSection({
                   ]
                 : [];
         });
+    const dayFieldsToReschedule = scheduledFields
+        .filter(
+            (field) =>
+                !isFieldApproved(field.plantStatus) &&
+                canReschedulePlantingTask(field.plantStatus),
+        )
+        .flatMap((field) => {
+            const expectedPlantCycleEventId = activePlantCycleEventId(field);
+            const expectedPlantCycleVersionEventId =
+                activePlantCycleVersionEventId(field);
+            return expectedPlantCycleEventId &&
+                expectedPlantCycleVersionEventId &&
+                field.plantSortId
+                ? [
+                      {
+                          id: field.id,
+                          raisedBedId: field.raisedBedId,
+                          positionIndex: field.positionIndex,
+                          expectedPlantCycleEventId,
+                          expectedPlantCycleVersionEventId,
+                          expectedPlantSortId: field.plantSortId,
+                      },
+                  ]
+                : [];
+        });
     const dayFieldsToCancel = scheduledFields
         .filter(
             (field) =>
@@ -171,6 +197,7 @@ export async function ScheduleDayPlantingsSection({
                     <ScheduleDayPlantingsBulkActions
                         fieldsToApprove={dayFieldsToApprove}
                         fieldsToAssign={dayFieldsToAssign}
+                        fieldsToReschedule={dayFieldsToReschedule}
                         fieldsToCancel={dayFieldsToCancel}
                     />
                 </Row>

@@ -34,7 +34,7 @@
         "test": "tsx --import ./scripts/register-test-assets.mjs --test \"src/**/*.unit.ts\""
     },
     "devDependencies": {
-        "@biomejs/biome": "2.6.5",
+        "@biomejs/biome": "2.6.7",
         "@dnd-kit/core": "6.3.1",
         "@dnd-kit/sortable": "10.0.0",
         "@dnd-kit/utilities": "3.2.2",
@@ -52,23 +52,23 @@
         "@react-three/drei": "10.7.9",
         "@react-three/fiber": "9.8.2",
         "@tailwindcss/typography": "0.5.20",
-        "@tanstack/react-query": "5.106.0",
+        "@tanstack/react-query": "5.107.1",
         "@types/chroma-js": "3.1.3",
         "@types/react": "19.3.0",
         "@types/react-dom": "19.3.0",
         "@types/suncalc": "1.9.2",
         "@types/three": "0.186.0",
         "@use-gesture/react": "10.3.1",
-        "chroma-js": "3.2.0",
-        "next": "16.4.5",
+        "chroma-js": "3.3.0",
+        "next": "16.4.6",
         "next-themes": "0.4.6",
         "react": "19.3.1",
         "react-confetti-boom": "2.0.1",
         "react-dom": "19.3.1",
         "react-markdown": "10.1.0",
         "recharts": "3.10.1",
-        "suncalc": "2.1.1",
-        "tailwindcss": "4.3.4",
+        "suncalc": "2.1.4",
+        "tailwindcss": "4.3.5",
         "tailwindcss-animate": "1.0.7",
         "three": "0.186.1",
         "three-custom-shader-material": "6.4.0",
@@ -76,21 +76,21 @@
         "tsx": "4.23.15",
         "typescript": "7.0.2",
         "uuid": "14.0.3",
-        "zustand": "5.0.16"
+        "zustand": "5.1.0"
     },
     "peerDependencies": {
         "next": "15.x || 16.x",
         "next-themes": "0.4.x",
-        "nuqs": "2.10.2",
+        "nuqs": "2.10.3",
         "react": "19.3.1",
         "react-dom": "19.3.1",
         "tailwindcss": ">=4",
         "tailwindcss-animate": ">=1"
     },
     "dependencies": {
-        "@ai-sdk/react": "4.0.163",
-        "@vvo/tzdb": "6.202.0",
-        "ai": "7.0.162",
-        "nuqs": "2.10.2"
+        "@ai-sdk/react": "4.0.170",
+        "@vvo/tzdb": "6.204.0",
+        "ai": "7.0.166",
+        "nuqs": "2.10.3"
     }
 }

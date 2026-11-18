@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 import {
     formatSitemapInventoryMarkdown,
@@ -73,13 +73,30 @@ test('every public hub is published exactly once', () => {
     assert.equal(new Set(paths).size, paths.length);
 });
 
+/** A hub's page may sit in a route group, which adds no URL segment. */
+function hasPage(directory: URL): boolean {
+    return (
+        existsSync(new URL('page.tsx', directory)) ||
+        readdirSync(directory, { withFileTypes: true }).some(
+            (entry) =>
+                entry.isDirectory() &&
+                entry.name.startsWith('(') &&
+                entry.name.endsWith(')') &&
+                hasPage(new URL(`${entry.name}/`, directory)),
+        )
+    );
+}
+
 test('public hubs resolve to a rendered route', () => {
     for (const hubPath of appRouterHubPaths) {
-        const routeFile = new URL(
-            `../app${hubPath === '/' ? '' : hubPath}/page.tsx`,
+        const routeDirectory = new URL(
+            `../app${hubPath === '/' ? '' : hubPath}/`,
             import.meta.url,
         );
-        assert.ok(existsSync(routeFile), hubPath);
+        assert.ok(
+            existsSync(routeDirectory) && hasPage(routeDirectory),
+            hubPath,
+        );
     }
 
     assert.ok(

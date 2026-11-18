@@ -38,7 +38,7 @@ export function PlantTips({
                             {tip.header}
                         </Typography>
                         <Stack spacing={4}>
-                            <Markdown>{tip.content}</Markdown>
+                            <Markdown size="md">{tip.content}</Markdown>
                             <FeedbackModal
                                 className="self-end"
                                 topic="www/plants/advice"

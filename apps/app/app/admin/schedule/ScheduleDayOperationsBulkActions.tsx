@@ -5,6 +5,7 @@ import {
     acceptOperationAction,
     assignOperationUserAction,
     cancelOperationAction,
+    rescheduleOperationAction,
 } from '../../(actions)/operationActions';
 import { BulkApproveRaisedBedButton } from './BulkApproveRaisedBedButton';
 import { BulkAssignRaisedBedButton } from './BulkAssignRaisedBedButton';
@@ -13,13 +14,19 @@ import {
     buildOperationCancelFormData,
 } from './BulkCancelRaisedBedButton';
 import { BulkPhotoOperationImportModal } from './BulkPhotoOperationImportModal';
+import { BulkRescheduleRaisedBedButton } from './BulkRescheduleRaisedBedButton';
 import type { BulkPhotoOperationTarget } from './bulkPhotoOperationImportModel';
-import { settleScheduleActions } from './scheduleActionQueue';
+import {
+    resolveScheduleFormVersion,
+    settleScheduleActions,
+} from './scheduleActionQueue';
 import {
     createOperationAssignedUsers,
     isDayBulkOperationApprovalTargetVisible,
     isDayBulkOperationAssignmentTargetVisible,
     isDayBulkOperationCancelTargetVisible,
+    isDayBulkOperationRescheduleTargetVisible,
+    parseScheduledDateInput,
 } from './scheduleOptimisticHelpers';
 import { useOptimisticScheduleActions } from './useOptimisticScheduleActions';
 
@@ -37,6 +44,12 @@ type OperationAssignmentTarget = {
     farmUsers: OperationAssignableFarmUser[];
 };
 
+type OperationRescheduleTarget = {
+    id: number;
+    entityId: number;
+    taskVersionEventId: number;
+};
+
 type OperationCancelTarget = {
     id: number;
     entityId: number;
@@ -48,6 +61,7 @@ interface ScheduleDayOperationsBulkActionsProps {
     photoOperationTargets: BulkPhotoOperationTarget[];
     operationsToApprove: OperationApprovalTarget[];
     operationsToAssign: OperationAssignmentTarget[];
+    operationsToReschedule: OperationRescheduleTarget[];
     operationsToCancel: OperationCancelTarget[];
 }
 
@@ -55,6 +69,7 @@ export function ScheduleDayOperationsBulkActions({
     photoOperationTargets,
     operationsToApprove,
     operationsToAssign,
+    operationsToReschedule,
     operationsToCancel,
 }: ScheduleDayOperationsBulkActionsProps) {
     const { getOperationPatch, runOptimisticAction } =
@@ -68,6 +83,12 @@ export function ScheduleDayOperationsBulkActions({
         isDayBulkOperationAssignmentTargetVisible(
             getOperationPatch(operation.id),
         ),
+    );
+    const visibleOperationsToReschedule = operationsToReschedule.filter(
+        (operation) =>
+            isDayBulkOperationRescheduleTargetVisible(
+                getOperationPatch(operation.id),
+            ),
     );
     const visibleOperationsToCancel = operationsToCancel.filter((operation) =>
         isDayBulkOperationCancelTargetVisible(getOperationPatch(operation.id)),
@@ -153,6 +174,60 @@ export function ScheduleDayOperationsBulkActions({
                             'Failed to assign users for all day operation items:',
                         errorAlertMessage:
                             'Skupna dodjela radnji nije uspjela. Promjena je vraćena.',
+                    })
+                }
+            />
+            <BulkRescheduleRaisedBedButton
+                physicalId="dan"
+                fields={[]}
+                operations={visibleOperationsToReschedule}
+                onSubmit={(scheduledDate) =>
+                    runOptimisticAction({
+                        operationPatches: visibleOperationsToReschedule.map(
+                            (operation) => ({
+                                id: operation.id,
+                                patch: {
+                                    scheduledDate:
+                                        parseScheduledDateInput(scheduledDate),
+                                },
+                            }),
+                        ),
+                        action: (getVersion) =>
+                            settleScheduleActions(
+                                visibleOperationsToReschedule.map(
+                                    (operation) => {
+                                        const formData = new FormData();
+                                        formData.set(
+                                            'operationId',
+                                            operation.id.toString(),
+                                        );
+                                        formData.set(
+                                            'expectedEntityId',
+                                            operation.entityId.toString(),
+                                        );
+                                        formData.set(
+                                            'expectedTaskVersionEventId',
+                                            operation.taskVersionEventId.toString(),
+                                        );
+                                        formData.set(
+                                            'scheduledDate',
+                                            scheduledDate,
+                                        );
+                                        return rescheduleOperationAction(
+                                            resolveScheduleFormVersion(
+                                                formData,
+                                                `operation:${operation.id}`,
+                                                'expectedTaskVersionEventId',
+                                                getVersion,
+                                            ),
+                                        );
+                                    },
+                                ),
+                            ),
+                        errorLogMessage:
+                            'Failed to reschedule all day operation items:',
+                        errorAlertMessage:
+                            'Skupno zakazivanje radnji nije uspjelo. Promjena je vraćena.',
                     })
                 }
             />

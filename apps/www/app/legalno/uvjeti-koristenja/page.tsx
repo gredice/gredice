@@ -23,7 +23,7 @@ export default function UvjetiKoristenjaPage() {
                     header="Uvjeti Korištenja"
                     subHeader="Ovi uvjeti korištenja reguliraju pristup i korištenje web stranice."
                 />
-                <StyledHtml>
+                <StyledHtml size="md">
                     <h2>Uvod</h2>
                     <p>
                         Ovi uvjeti korištenja (&quot;<strong>Uvjeti</strong>

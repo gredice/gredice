@@ -12,7 +12,6 @@ import type {
 } from '@gredice/storage';
 import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
 import { Button } from '@gredice/ui/Button';
-import { Checkbox } from '@gredice/ui/Checkbox';
 import { Chip } from '@gredice/ui/Chip';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Input } from '@gredice/ui/Input';
@@ -22,7 +21,6 @@ import {
     Calendar,
     Channel,
     CircleEqual,
-    Configuration,
     Droplets,
     Filter,
     Hammer,
@@ -35,13 +33,13 @@ import {
     Text,
 } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
-import { SelectItems } from '@gredice/ui/SelectItems';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import {
     addEdge,
     Background,
+    type ColorMode,
     Controls,
     type Edge,
     Handle,
@@ -57,6 +55,7 @@ import {
     useNodesState,
 } from '@xyflow/react';
 import { useRouter } from 'next/navigation';
+import { useTheme } from 'next-themes';
 import type { ComponentType, ReactNode, SVGProps } from 'react';
 import {
     useCallback,
@@ -70,17 +69,15 @@ import { AdminPageHeader } from '../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { KnownPages } from '../../../src/KnownPages';
 import { AutomationActionsMenu } from './AutomationActionsMenu';
+import { AutomationConfigFieldInput } from './AutomationConfigFieldInput';
 import { AutomationSlidePanel } from './AutomationSlidePanel';
 import {
     type AutomationSaveResult,
     saveAutomationDefinitionAction,
     updateAutomationStatusAction,
 } from './actions';
+import { jsonConfigDraftKey } from './automationConfigFieldValues';
 import {
-    automationConfigFieldDescription,
-    automationConfigFieldLabel,
-    automationConfigFieldOptionLabel,
-    automationConfigFieldPlaceholder,
     automationModuleDescription,
     automationModuleInputDescription,
     automationModuleKeys,
@@ -89,6 +86,7 @@ import {
     automationModuleTitle,
     automationStatusMeta,
 } from './presentation';
+import { useAutomationJsonConfigDrafts } from './useAutomationJsonConfigDrafts';
 
 type FlowNodeData = Record<string, unknown> & {
     moduleKey: string;
@@ -296,6 +294,9 @@ function graphToNodes(
     });
 }
 
+// Keep sparse graphs at their natural size instead of zooming in to fill the canvas.
+const automationFitViewOptions = { maxZoom: 1 };
+
 const automationEdgeOptions = {
     markerEnd: {
         type: MarkerType.ArrowClosed,
@@ -356,26 +357,6 @@ function defaultConfig(module: AutomationModuleMetadata): AutomationJsonObject {
             )
             .map((field) => [field.key, field.options?.[0]?.value]),
     );
-}
-
-function jsonFieldValue(value: unknown) {
-    if (value === undefined) {
-        return '';
-    }
-
-    try {
-        return JSON.stringify(value, null, 2);
-    } catch {
-        return '';
-    }
-}
-
-function parseJsonField(value: string): unknown {
-    if (!value.trim()) {
-        return undefined;
-    }
-
-    return JSON.parse(value);
 }
 
 function panelTitle(panel: AutomationEditorPanel | null) {
@@ -480,6 +461,11 @@ export function AutomationFlowEditor({
     testPanel,
 }: AutomationFlowEditorProps) {
     const router = useRouter();
+    const { resolvedTheme } = useTheme();
+    const flowColorMode: ColorMode =
+        resolvedTheme === 'dark' || resolvedTheme === 'light'
+            ? resolvedTheme
+            : 'system';
     const [currentAutomationId, setCurrentAutomationId] =
         useState(automationId);
     const [definitionKey, setDefinitionKey] = useState(initialKey);
@@ -509,7 +495,8 @@ export function AutomationFlowEditor({
         graphToEdges(initialGraph),
     );
     const [result, setResult] = useState<AutomationSaveResult | null>(null);
-    const [jsonError, setJsonError] = useState<string | null>(null);
+    const { drafts: jsonConfigDrafts, setDraft: setJsonConfigDraft } =
+        useAutomationJsonConfigDrafts();
     const [autosaveStatus, setAutosaveStatus] =
         useState<AutosaveStatus>('saved');
     const [lastSavedSnapshot, setLastSavedSnapshot] = useState<string | null>(
@@ -685,7 +672,6 @@ export function AutomationFlowEditor({
                     status: draftStatus,
                 });
 
-            setJsonError(null);
             setAutosaveStatus('saving');
 
             const saveResult = await saveAutomationDefinitionAction({
@@ -727,7 +713,7 @@ export function AutomationFlowEditor({
     );
 
     useEffect(() => {
-        if (!currentAutomationId || lastSavedSnapshot === null || jsonError) {
+        if (!currentAutomationId || lastSavedSnapshot === null) {
             return;
         }
 
@@ -746,13 +732,7 @@ export function AutomationFlowEditor({
         }, 700);
 
         return () => window.clearTimeout(timeout);
-    }, [
-        currentAutomationId,
-        jsonError,
-        lastSavedSnapshot,
-        saveDraft,
-        saveSnapshot,
-    ]);
+    }, [currentAutomationId, lastSavedSnapshot, saveDraft, saveSnapshot]);
 
     function save() {
         startTransition(async () => {
@@ -842,6 +822,22 @@ export function AutomationFlowEditor({
             }
             actions={
                 <Row spacing={2} className="items-center">
+                    {testPanel ? (
+                        <IconButton
+                            type="button"
+                            size="sm"
+                            color="success"
+                            variant={
+                                activePanel === 'testing' ? 'soft' : 'plain'
+                            }
+                            title="Pokreni"
+                            aria-label="Pokreni"
+                            aria-pressed={activePanel === 'testing'}
+                            onClick={() => openPanel('testing')}
+                        >
+                            <Play className="size-6" strokeWidth={2.75} />
+                        </IconButton>
+                    ) : null}
                     <Button
                         type="button"
                         size="sm"
@@ -1035,145 +1031,24 @@ export function AutomationFlowEditor({
                 ) : null}
 
                 {selectedModule.configFields.map((field) => {
-                    const value = selectedNode.data.config[field.key];
-
-                    if (field.type === 'select') {
-                        return (
-                            <SelectItems
-                                key={field.key}
-                                className="w-full"
-                                label={automationConfigFieldLabel(
-                                    selectedModule,
-                                    field,
-                                )}
-                                value={typeof value === 'string' ? value : ''}
-                                items={
-                                    field.options?.map((option) => ({
-                                        value: option.value,
-                                        label: automationConfigFieldOptionLabel(
-                                            {
-                                                field,
-                                                module: selectedModule,
-                                                option,
-                                            },
-                                        ),
-                                    })) ?? []
-                                }
-                                helperText={automationConfigFieldDescription(
-                                    selectedModule,
-                                    field,
-                                )}
-                                onValueChange={(nextValue) =>
-                                    updateSelectedConfig(field.key, nextValue)
-                                }
-                            />
-                        );
-                    }
-
-                    if (field.type === 'boolean') {
-                        return (
-                            <Checkbox
-                                key={field.key}
-                                label={automationConfigFieldLabel(
-                                    selectedModule,
-                                    field,
-                                )}
-                                checked={value === true}
-                                onCheckedChange={(checked) =>
-                                    updateSelectedConfig(
-                                        field.key,
-                                        checked === true,
-                                    )
-                                }
-                            />
-                        );
-                    }
-
-                    if (field.type === 'json') {
-                        return (
-                            <Stack key={field.key} spacing={1}>
-                                <label
-                                    className="text-sm font-medium"
-                                    htmlFor={`automation-config-${field.key}`}
-                                >
-                                    {automationConfigFieldLabel(
-                                        selectedModule,
-                                        field,
-                                    )}
-                                </label>
-                                <textarea
-                                    id={`automation-config-${field.key}`}
-                                    value={jsonFieldValue(value)}
-                                    onChange={(event) => {
-                                        try {
-                                            updateSelectedConfig(
-                                                field.key,
-                                                parseJsonField(
-                                                    event.target.value,
-                                                ),
-                                            );
-                                            setJsonError(null);
-                                        } catch (error) {
-                                            setJsonError(
-                                                error instanceof Error
-                                                    ? error.message
-                                                    : 'JSON nije valjan.',
-                                            );
-                                        }
-                                    }}
-                                    className="min-h-28 w-full rounded-md border border-input bg-field px-3 py-2 font-mono text-xs outline-hidden ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                                />
-                                {automationConfigFieldDescription(
-                                    selectedModule,
-                                    field,
-                                ) ? (
-                                    <Typography
-                                        level="body3"
-                                        className="text-muted-foreground"
-                                    >
-                                        {automationConfigFieldDescription(
-                                            selectedModule,
-                                            field,
-                                        )}
-                                    </Typography>
-                                ) : null}
-                            </Stack>
-                        );
-                    }
+                    const draftKey = jsonConfigDraftKey(
+                        selectedNode.id,
+                        field.key,
+                    );
 
                     return (
-                        <Input
-                            key={field.key}
-                            label={automationConfigFieldLabel(
-                                selectedModule,
-                                field,
-                            )}
-                            helperText={automationConfigFieldDescription(
-                                selectedModule,
-                                field,
-                            )}
-                            placeholder={automationConfigFieldPlaceholder(
-                                selectedModule,
-                                field,
-                            )}
-                            type={field.type === 'number' ? 'number' : 'text'}
-                            value={
-                                typeof value === 'string' ||
-                                typeof value === 'number'
-                                    ? value
-                                    : ''
+                        <AutomationConfigFieldInput
+                            key={draftKey}
+                            module={selectedModule}
+                            field={field}
+                            value={selectedNode.data.config[field.key]}
+                            onChange={(nextValue) =>
+                                updateSelectedConfig(field.key, nextValue)
                             }
-                            onChange={(event) =>
-                                updateSelectedConfig(
-                                    field.key,
-                                    field.type === 'number'
-                                        ? event.target.value.trim()
-                                            ? Number(event.target.value)
-                                            : undefined
-                                        : event.target.value,
-                                )
+                            jsonDraft={jsonConfigDrafts[draftKey]}
+                            onJsonDraftChange={(draft) =>
+                                setJsonConfigDraft(draftKey, draft)
                             }
-                            fullWidth
                         />
                     );
                 })}
@@ -1187,14 +1062,6 @@ export function AutomationFlowEditor({
                     <Typography level="body3" className="text-muted-foreground">
                         Izlaz:{' '}
                         {automationModuleOutputDescription(selectedModule)}
-                    </Typography>
-                ) : null}
-                {jsonError ? (
-                    <Typography
-                        level="body3"
-                        className="text-red-700 dark:text-red-300"
-                    >
-                        {jsonError}
                     </Typography>
                 ) : null}
             </Stack>
@@ -1244,38 +1111,6 @@ export function AutomationFlowEditor({
                                     Detalji
                                 </Button>
                             ) : null}
-                            <Button
-                                type="button"
-                                size="sm"
-                                variant={
-                                    activePanel === 'settings'
-                                        ? 'soft'
-                                        : 'outlined'
-                                }
-                                aria-pressed={activePanel === 'settings'}
-                                onClick={() => openPanel('settings')}
-                                startDecorator={
-                                    <Configuration className="size-4" />
-                                }
-                            >
-                                Postavke
-                            </Button>
-                            {testPanel ? (
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    variant={
-                                        activePanel === 'testing'
-                                            ? 'soft'
-                                            : 'outlined'
-                                    }
-                                    aria-pressed={activePanel === 'testing'}
-                                    onClick={() => openPanel('testing')}
-                                    startDecorator={<Play className="size-4" />}
-                                >
-                                    Pokreni
-                                </Button>
-                            ) : null}
                             <IconButton
                                 type="button"
                                 size="sm"
@@ -1291,7 +1126,12 @@ export function AutomationFlowEditor({
                     <div className="h-[calc(100vh-260px)] min-h-[560px]">
                         <ReactFlowProvider>
                             <ReactFlow
-                                className="bg-slate-50 text-foreground dark:bg-neutral-950 [&_.react-flow__attribution]:bg-card/80 [&_.react-flow__attribution]:text-muted-foreground [&_.react-flow__controls]:overflow-hidden [&_.react-flow__controls]:rounded-md [&_.react-flow__controls]:border [&_.react-flow__controls]:border-border [&_.react-flow__controls]:bg-card [&_.react-flow__controls]:shadow-lg [&_.react-flow__controls-button]:border-border [&_.react-flow__controls-button]:bg-card [&_.react-flow__controls-button]:text-foreground [&_.react-flow__controls-button:hover]:bg-muted [&_.react-flow__controls-button_svg]:fill-foreground [&_.react-flow__edge-path]:stroke-muted-foreground [&_.react-flow__pane]:cursor-grab [&_.react-flow__pane.dragging]:cursor-grabbing"
+                                className={cx(
+                                    'bg-slate-50 text-foreground dark:bg-neutral-950 [&_.react-flow__controls]:overflow-hidden [&_.react-flow__controls]:rounded-md [&_.react-flow__controls]:border [&_.react-flow__controls]:border-border [&_.react-flow__controls]:shadow-lg [&_.react-flow__edge-path]:stroke-muted-foreground [&_.react-flow__pane]:cursor-grab [&_.react-flow__pane.dragging]:cursor-grabbing',
+                                    // React Flow's stylesheet is unlayered, so theme its controls and attribution through its CSS variables.
+                                    '[--xy-attribution-background-color:hsl(var(--card)/0.8)] [--xy-background-color:transparent] [--xy-controls-box-shadow:none] [--xy-controls-button-background-color-hover:hsl(var(--muted))] [--xy-controls-button-background-color:hsl(var(--card))] [--xy-controls-button-border-color:hsl(var(--border))] [--xy-controls-button-color-hover:hsl(var(--foreground))] [--xy-controls-button-color:hsl(var(--foreground))] [&_.react-flow__attribution_a]:text-muted-foreground!',
+                                )}
+                                colorMode={flowColorMode}
                                 defaultEdgeOptions={automationEdgeOptions}
                                 nodes={nodes}
                                 edges={edges}
@@ -1305,6 +1145,7 @@ export function AutomationFlowEditor({
                                 }}
                                 onPaneClick={() => selectNode(null)}
                                 fitView
+                                fitViewOptions={automationFitViewOptions}
                             >
                                 <Background
                                     color="hsl(var(--border))"

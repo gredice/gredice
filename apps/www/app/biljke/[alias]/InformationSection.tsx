@@ -130,18 +130,22 @@ export async function InformationSection({
                                     if (shouldMakeExpandable(sortContent)) {
                                         return (
                                             <ExpandableText maxHeight={240}>
-                                                <Markdown>
+                                                <Markdown size="md">
                                                     {mainContent}
                                                 </Markdown>
                                                 {additionalContent && (
-                                                    <Markdown>
+                                                    <Markdown size="md">
                                                         {additionalContent}
                                                     </Markdown>
                                                 )}
                                             </ExpandableText>
                                         );
                                     }
-                                    return <Markdown>{sortContent}</Markdown>;
+                                    return (
+                                        <Markdown size="md">
+                                            {sortContent}
+                                        </Markdown>
+                                    );
                                 })()}
                             </Stack>
                         )}
@@ -158,18 +162,20 @@ export async function InformationSection({
                                     if (shouldMakeExpandable(content)) {
                                         return (
                                             <ExpandableText maxHeight={240}>
-                                                <Markdown>
+                                                <Markdown size="md">
                                                     {mainContent}
                                                 </Markdown>
                                                 {additionalContent && (
-                                                    <Markdown>
+                                                    <Markdown size="md">
                                                         {additionalContent}
                                                     </Markdown>
                                                 )}
                                             </ExpandableText>
                                         );
                                     }
-                                    return <Markdown>{content}</Markdown>;
+                                    return (
+                                        <Markdown size="md">{content}</Markdown>
+                                    );
                                 })()}
                             </Stack>
                         )}
@@ -181,8 +187,25 @@ export async function InformationSection({
                         </NoDataPlaceholder>
                     </div>
                 )}
+                <div className="flex items-center gap-1">
+                    {editEntityTypeName && editEntityId && editPublicPath ? (
+                        <CommunityEditButton
+                            entityTypeName={editEntityTypeName}
+                            entityId={editEntityId}
+                            publicPath={editPublicPath}
+                            sectionKey={editSectionKey}
+                        />
+                    ) : null}
+                    <FeedbackModal
+                        topic="www/plants/information"
+                        data={{
+                            plantId: plantId,
+                            sectionId: id,
+                        }}
+                    />
+                </div>
             </Stack>
-            <Stack spacing={4}>
+            <Stack spacing={6}>
                 {attributeCards}
                 <Stack
                     className={cx(
@@ -211,23 +234,6 @@ export async function InformationSection({
                     )}
                 </Stack>
             </Stack>
-            <div className="ml-auto flex items-center gap-1 md:opacity-0 md:transition-opacity md:group-hover:opacity-100 md:group-focus-within:opacity-100">
-                {editEntityTypeName && editEntityId && editPublicPath ? (
-                    <CommunityEditButton
-                        entityTypeName={editEntityTypeName}
-                        entityId={editEntityId}
-                        publicPath={editPublicPath}
-                        sectionKey={editSectionKey}
-                    />
-                ) : null}
-                <FeedbackModal
-                    topic="www/plants/information"
-                    data={{
-                        plantId: plantId,
-                        sectionId: id,
-                    }}
-                />
-            </div>
         </div>
     );
 }

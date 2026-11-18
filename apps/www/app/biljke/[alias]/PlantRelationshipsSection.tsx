@@ -52,7 +52,11 @@ function PlantRelationshipCard({
                     className="rounded-md object-cover"
                 />
                 <Stack spacing={0} className="min-w-0">
-                    <Typography level="h5" className="truncate leading-tight">
+                    <Typography
+                        level="h5"
+                        component="h3"
+                        className="truncate leading-tight"
+                    >
                         {relationship.name}
                     </Typography>
                     {relationship.latinName && (

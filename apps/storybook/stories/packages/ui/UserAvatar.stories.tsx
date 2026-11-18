@@ -100,6 +100,20 @@ export const WithAvatar: Story = {
     },
 };
 
+export const NamedMember: Story = {
+    args: {
+        avatarUrl: 'https://cdn.gredice.com/avatars/farmer-female.png',
+        decorativeImage: true,
+        achievementCount: 0,
+    },
+    render: (args) => (
+        <a href="/korisnici/u_demo" className="flex items-center gap-2">
+            <UserAvatar {...args} />
+            <span>{args.displayName}</span>
+        </a>
+    ),
+};
+
 export const Animated: Story = {
     args: {
         animate: true,

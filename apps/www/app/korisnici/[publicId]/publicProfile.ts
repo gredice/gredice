@@ -1,23 +1,24 @@
-import { clientPublic } from '@gredice/client';
 import { getAchievementFamilies } from '@gredice/js/achievements';
-
-export async function getPublicProfile(publicId: string) {
-    const response = await clientPublic().api.users.public[
-        ':publicId'
-    ].profile.$get({ param: { publicId } });
-    if (!response.ok) {
-        throw new Error('Profil nije pronađen.');
-    }
-    return response.json();
-}
+import { publicIdToUserId, userIdToPublicId } from '@gredice/js/publicId';
+import type { PublicProfileData } from './publicProfileData';
 
 export function getTopPublicAchievements(
     achievements: Pick<
-        Awaited<ReturnType<typeof getPublicProfile>>['achievements'][number],
+        PublicProfileData['achievements'][number],
         'key' | 'status'
     >[],
 ) {
     return getAchievementFamilies(achievements).flatMap((family) =>
         family.highestApproved ? [family.highestApproved.definition] : [],
     );
+}
+
+/**
+ * Accepts only the canonical form of a public user ID. Base64url decoding is
+ * lenient, so a malformed segment can still decode to a user ID; re-encoding
+ * keeps every profile at exactly one URL.
+ */
+export function isCanonicalPublicUserId(publicId: string) {
+    const userId = publicIdToUserId(publicId);
+    return userId !== null && userIdToPublicId(userId) === publicId;
 }

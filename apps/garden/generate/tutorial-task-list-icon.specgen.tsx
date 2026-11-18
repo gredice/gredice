@@ -2,8 +2,8 @@ import { resolve } from 'node:path';
 import { test } from '@playwright/experimental-ct-react';
 import sharp from 'sharp';
 import { allGameAssetNames } from '../../../packages/game/src/data/models';
-import type { OperationCoverRecipe } from '../../../packages/game/src/viewers/OperationCoverSnapshotViewer';
-import { OperationCoverSnapshotViewer } from './OperationCoverSnapshotViewer';
+import type { GameAssetSnapshotRecipe } from '../../../packages/game/src/viewers/GameAssetSnapshotViewer';
+import { GameAssetSnapshotViewer } from './GameAssetSnapshotViewer';
 
 const SNAPSHOT_SIZE = 192;
 const SNAPSHOT_DEVICE_SCALE_FACTOR = 4;
@@ -129,24 +129,19 @@ async function saveIconPng(buffer: Buffer, path: string) {
 }
 
 const tutorialTaskListRecipe = {
-    operationId: 'tutorial-task-list',
-    operationLabel: 'Tutorial task list',
-    outputFileName: 'tutorial-task-list.webp',
     camera: {
         position: [0.84, 1.08, 4.7],
         target: [0.5, 0.46, 0.48],
         zoom: 215,
     },
-    assets: [
-        {
-            assetName: 'FieldworkClipboard',
-            position: [0.5, 0.22, 0.44],
-            rotation: [0.88, -0.04, -0.08],
-            scale: 0.36,
-            castShadow: true,
-            receiveShadow: true,
-        },
-    ],
+    asset: {
+        assetName: 'FieldworkClipboard',
+        position: [0.5, 0.22, 0.44],
+        rotation: [0.88, -0.04, -0.08],
+        scale: 0.36,
+        castShadow: true,
+        receiveShadow: true,
+    },
     lighting: {
         ambientIntensity: 1.1,
         fillIntensity: 0.32,
@@ -161,7 +156,7 @@ const tutorialTaskListRecipe = {
         shadows: true,
     },
     showBackground: false,
-} satisfies OperationCoverRecipe;
+} satisfies GameAssetSnapshotRecipe;
 
 test.use({
     deviceScaleFactor: SNAPSHOT_DEVICE_SCALE_FACTOR,
@@ -203,7 +198,7 @@ test('tutorial task list icon', async ({ mount, page }) => {
                 width: SNAPSHOT_SIZE,
             }}
         >
-            <OperationCoverSnapshotViewer
+            <GameAssetSnapshotViewer
                 appBaseUrl={gameAssetBaseUrl}
                 deviceScaleFactor={SNAPSHOT_DEVICE_SCALE_FACTOR}
                 recipe={tutorialTaskListRecipe}
