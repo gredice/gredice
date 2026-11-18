@@ -16,8 +16,8 @@
     "dependencies": {
         "@opentelemetry/api": "1.10.0",
         "@opentelemetry/core": "3.1.1",
-        "@opentelemetry/otlp-exporter-base": "0.301.1",
-        "@opentelemetry/otlp-transformer": "0.301.1",
+        "@opentelemetry/otlp-exporter-base": "0.301.2",
+        "@opentelemetry/otlp-transformer": "0.301.2",
         "@opentelemetry/sdk-logs": "3.1.1"
     },
     "devDependencies": {
