@@ -80,7 +80,7 @@
         "@electric-sql/pglite": "0.5.16",
         "@gredice/directory-types": "workspace:*",
         "@gredice/js": "workspace:*",
-        "@neondatabase/serverless": "1.2.0",
+        "@neondatabase/serverless": "1.2.1",
         "@types/ws": "8.18.2",
         "@upstash/redis": "1.41.0",
         "ai": "7.0.166",
