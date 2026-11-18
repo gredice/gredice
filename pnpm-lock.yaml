@@ -1782,8 +1782,8 @@ importers:
         specifier: workspace:*
         version: link:../js
       '@stripe/stripe-js':
-        specifier: 10.2.1
-        version: 10.2.1
+        specifier: 10.3.0
+        version: 10.3.0
       react:
         specifier: 19.3.1
         version: 19.3.1
@@ -5328,8 +5328,8 @@ packages:
       typescript:
         optional: true
 
-  '@stripe/stripe-js@10.2.1':
-    resolution: {integrity: sha512-diHeR1/FeWZZzuFXEvkjRMzydgKEpxUTrKEUxSV8NcpeZY3Kl8C4Gerw/JSMK+3oXsBRJtgkG7ckviQJ651moA==}
+  '@stripe/stripe-js@10.3.0':
+    resolution: {integrity: sha512-/C+qwO7bkDIYbIHypxppg8qGnWXdqQEOM855lJ8wTkd2VPoRAYLTGDOFTpJ8B7kso3o9cjMy2r1KPw8WQregNA==}
     engines: {node: '>=12.16'}
 
   '@swc/helpers@0.5.23':
@@ -14306,7 +14306,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@stripe/stripe-js@10.2.1': {}
+  '@stripe/stripe-js@10.3.0': {}
 
   '@swc/helpers@0.5.23':
     dependencies:
