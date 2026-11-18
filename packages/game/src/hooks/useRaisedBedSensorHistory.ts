@@ -19,8 +19,9 @@ export function useRaisedBedSensorHistory(
         ],
         queryFn: async ({ signal }) => {
             if (!gardenId || !raisedBedId || !sensorId || !type) {
-                console.error('Invalid parameters for fetching sensor history');
-                return null;
+                throw new Error(
+                    'Invalid parameters for fetching sensor history',
+                );
             }
 
             const response = await clientAuthenticated().api.gardens[
@@ -39,20 +40,6 @@ export function useRaisedBedSensorHistory(
                 },
                 { init: { signal } },
             );
-            if (response.status === 400) {
-                console.error(
-                    'Failed to fetch sensor data - bad request',
-                    response,
-                );
-                return null;
-            }
-            if (response.status === 404) {
-                console.error(
-                    'Raised bed not found or no sensors available',
-                    response,
-                );
-                return null;
-            }
             if (response.status !== 200) {
                 throw new Error(
                     `Sensor history request failed (${response.status})`,

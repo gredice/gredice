@@ -146,7 +146,7 @@ function SensorInfoModal({
     const {
         data: sensorDetails,
         isError,
-        isLoading,
+        isPending,
     } = useRaisedBedSensorHistory(
         gardenId,
         raisedBedId,
@@ -158,6 +158,17 @@ function SensorInfoModal({
     const chartData = (sensorDetails?.values ?? []).toSorted(
         (a, b) => a.timestamp - b.timestamp,
     );
+    const showingLastAvailable = isError && chartData.length > 0;
+    let historyMessage: string | undefined;
+    if (isError) {
+        historyMessage = showingLastAvailable
+            ? 'Povijest očitanja nije moguće osvježiti. Prikazana su posljednja dostupna očitanja.'
+            : 'Povijest očitanja senzora trenutačno nije dostupna.';
+    } else if (isPending) {
+        historyMessage = 'Učitavanje očitanja senzora…';
+    } else if (chartData.length === 0) {
+        historyMessage = 'Nema očitanja za odabrano razdoblje.';
+    }
 
     const currentReading = chartData.at(-1)?.value;
     const previousReading = chartData.at(-2)?.value;
@@ -284,7 +295,11 @@ function SensorInfoModal({
                         {/* Stats */}
                         <div className="grid grid-cols-3 gap-1">
                             <Metric
-                                label="Trenutno"
+                                label={
+                                    showingLastAvailable
+                                        ? 'Posljednje dostupno'
+                                        : 'Trenutno'
+                                }
                                 value={
                                     currentReading === undefined
                                         ? '–'
@@ -327,13 +342,9 @@ function SensorInfoModal({
 
                     {Boolean(sensorId) &&
                         status === 'active' &&
-                        chartData.length === 0 && (
+                        historyMessage && (
                             <Typography level="body2" role="status">
-                                {isLoading
-                                    ? 'Učitavanje očitanja senzora…'
-                                    : isError
-                                      ? 'Povijest očitanja senzora trenutačno nije dostupna.'
-                                      : 'Nema očitanja za odabrano razdoblje.'}
+                                {historyMessage}
                             </Typography>
                         )}
 

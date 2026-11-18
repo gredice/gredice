@@ -11,7 +11,11 @@ export function RaisedBedSensorHistoryFixture() {
         () =>
             new QueryClient({
                 defaultOptions: {
-                    queries: { retry: false, staleTime: Infinity },
+                    queries: {
+                        retry: false,
+                        staleTime: Infinity,
+                        refetchOnReconnect: 'always',
+                    },
                 },
             }),
     );

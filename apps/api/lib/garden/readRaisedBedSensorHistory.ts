@@ -28,6 +28,18 @@ function transientTransportCode(error: unknown) {
     }
 }
 
+function isSignalcoReading(reading: unknown) {
+    return (
+        typeof reading === 'object' &&
+        reading !== null &&
+        !Array.isArray(reading) &&
+        (!('timeStamp' in reading) || typeof reading.timeStamp === 'string') &&
+        (!('valueSerialized' in reading) ||
+            reading.valueSerialized === null ||
+            typeof reading.valueSerialized === 'string')
+    );
+}
+
 async function readAttempt(
     client: ReturnType<typeof signalcoClient>,
     query: Record<
@@ -72,7 +84,11 @@ async function readAttempt(
                 reason: response.status,
             };
         }
-        if (response.status !== 200 || !Array.isArray(data?.values)) {
+        if (
+            response.status !== 200 ||
+            !Array.isArray(data?.values) ||
+            !data.values.every(isSignalcoReading)
+        ) {
             return { status: 502 as const, reason: 'invalid-response' };
         }
         return { values: data.values };

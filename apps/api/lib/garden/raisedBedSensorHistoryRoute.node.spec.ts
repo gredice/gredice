@@ -10,6 +10,8 @@ const moisturePath = `${basePath}/31/soil_moisture`;
 const upstreamValues = [
     { timeStamp: '2026-11-17T09:42:00Z', valueSerialized: '0' },
     { timeStamp: '2026-11-17T09:43:00Z', valueSerialized: '34.5' },
+    { timeStamp: '2026-11-17T09:44:00Z' },
+    { valueSerialized: null },
 ];
 
 const previousKey = process.env.SIGNALCO_API_KEY;
@@ -186,6 +188,16 @@ test('non-retryable upstream responses return an error with no history', async (
         {
             status: 502,
             upstream: () => Response.json({ error: 'unavailable' }),
+        },
+        { status: 502, upstream: () => Response.json({ values: [17] }) },
+        { status: 502, upstream: () => Response.json({ values: [null] }) },
+        {
+            status: 502,
+            upstream: () => Response.json({ values: [{ timeStamp: 17 }] }),
+        },
+        {
+            status: 502,
+            upstream: () => Response.json({ values: [{ valueSerialized: 0 }] }),
         },
         {
             status: 502,

@@ -1,10 +1,11 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import { RaisedBedSensorHistoryFixture } from './RaisedBedSensorHistoryFixture';
 
-test('Garden shows unavailable history and preserves a real zero when the next range succeeds', async ({
+test('Garden distinguishes unavailable, cached, pending, and empty sensor history', async ({
     page,
     mount,
 }) => {
+    let failOneDayRefresh = false;
     await page.route('**/api/gredice/**', async (route) => {
         const url = new URL(route.request().url());
         if (url.pathname.endsWith('/sensors')) {
@@ -21,10 +22,22 @@ test('Garden shows unavailable history and preserves a real zero when the next r
             });
         }
         if (url.pathname.endsWith('/soil_moisture')) {
-            if (url.searchParams.get('duration') === '3') {
+            const duration = url.searchParams.get('duration');
+            if (duration === '3' || (duration === '1' && failOneDayRefresh)) {
                 return route.fulfill({
                     status: 503,
                     json: { error: 'Sensor history unavailable' },
+                });
+            }
+            if (duration === '30') {
+                return route.fulfill({
+                    status: 404,
+                    json: { error: 'Sensor not found' },
+                });
+            }
+            if (duration === '10') {
+                return route.fulfill({
+                    json: { id: 31, type: 'soil_moisture', values: [] },
                 });
             }
             return route.fulfill({
@@ -65,4 +78,28 @@ test('Garden shows unavailable history and preserves a real zero when the next r
     await expect(dialog.getByText('0%', { exact: true })).toHaveCount(2);
     await expect(dialog.getByText('–', { exact: true })).toHaveCount(1);
     await expect(dialog.getByRole('status')).toHaveCount(0);
+
+    failOneDayRefresh = true;
+    await page.context().setOffline(true);
+    await page.context().setOffline(false);
+    await expect(dialog.getByRole('status')).toHaveText(
+        'Povijest očitanja nije moguće osvježiti. Prikazana su posljednja dostupna očitanja.',
+    );
+    await expect(dialog.getByText('Posljednje dostupno')).toBeVisible();
+    await expect(dialog.getByText('0%', { exact: true })).toHaveCount(2);
+
+    await page.context().setOffline(true);
+    await dialog.getByRole('tab', { name: '10 dana' }).click();
+    await expect(dialog.getByRole('status')).toHaveText(
+        'Učitavanje očitanja senzora…',
+    );
+    await page.context().setOffline(false);
+    await expect(dialog.getByRole('status')).toHaveText(
+        'Nema očitanja za odabrano razdoblje.',
+    );
+
+    await dialog.getByRole('tab', { name: '30 dana' }).click();
+    await expect(dialog.getByRole('status')).toHaveText(
+        'Povijest očitanja senzora trenutačno nije dostupna.',
+    );
 });
