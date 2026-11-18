@@ -17,9 +17,9 @@ const debugGroups: DebugGroup[] = [
         pages: [
             {
                 href: '/debug/labels',
-                title: 'Harvest label preview',
+                title: 'Operation label preview',
                 description:
-                    'Preview and tune generated harvest labels with representative operation data.',
+                    'Compare V1 and experimental V2 operation labels with representative data.',
             },
             {
                 href: '/debug/label-printer',

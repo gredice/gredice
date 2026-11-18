@@ -2,27 +2,29 @@
 
 import {
     DEFAULT_HARVEST_LABEL_PRESET,
+    type FieldOperationLabelData,
+    type FieldOperationLabelVersion,
     getHarvestLabelCanvasSize,
     HARVEST_LABEL_PRINT_TASK_TYPE,
-    type HarvestLabelData,
 } from '@gredice/label-printer';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
+import { Tabs, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 import { HomeButton } from '../../../components/HomeButton';
-import { HarvestLabelPreviewCanvas } from '../../../components/labels/HarvestLabelPreviewCanvas';
+import { FieldOperationLabelPreviewCanvas } from '../../../components/labels/FieldOperationLabelPreviewCanvas';
 import { DebugFieldLabel } from './DebugFieldLabel';
 import { DebugTextInput } from './DebugTextInput';
 
 const DEMO_TRACE_URL = 'https://www.gredice.com/trag/demo-berba-2026';
 
-const DEFAULT_LABEL_DATA: HarvestLabelData = {
+const DEFAULT_LABEL_DATA: FieldOperationLabelData = {
     raisedBedPhysicalId: '12B',
-    fieldIndex: 4,
-    operationLabel: 'Berba',
+    fieldLabel: '4',
+    detailLabel: 'Berba',
     plantSortName: 'Salata Batavia',
     dateLabel: '02.06.2026.',
     traceUrl: DEMO_TRACE_URL,
@@ -30,7 +32,7 @@ const DEFAULT_LABEL_DATA: HarvestLabelData = {
 
 const LABEL_SAMPLES: Array<{
     label: string;
-    data: HarvestLabelData;
+    data: FieldOperationLabelData;
 }> = [
     {
         label: 'Salata s QR',
@@ -40,18 +42,28 @@ const LABEL_SAMPLES: Array<{
         label: 'Bez QR traga',
         data: {
             raisedBedPhysicalId: '3A',
-            fieldIndex: 2,
-            operationLabel: 'Berba',
+            fieldLabel: '2',
+            detailLabel: 'Berba',
             plantSortName: 'Mladi špinat',
             dateLabel: '02.06.2026.',
         },
     },
     {
-        label: 'Dugi nazivi',
+        label: 'Sjetva / broj komada',
         data: {
-            raisedBedPhysicalId: '18',
-            fieldIndex: 7,
-            operationLabel: 'Branje 25% najzrelijih plodova',
+            raisedBedPhysicalId: '4',
+            fieldLabel: '2-7',
+            detailLabel: '24 KOMADA',
+            plantSortName: 'Rajčica',
+            dateLabel: '02.06.2026.',
+        },
+    },
+    {
+        label: 'Dugi i nepovezani ID-evi',
+        data: {
+            raisedBedPhysicalId: 'Sjeverna-proizvodna-gredica-18',
+            fieldLabel: '1, 3, 7, 11, 15, 19, 23, 27',
+            detailLabel: 'Branje 25% najzrelijih plodova',
             plantSortName: 'Grah mahunar Meraviglia di Veneya a grano nero',
             dateLabel: '02.06.2026.',
             traceUrl:
@@ -71,7 +83,9 @@ function parseIntegerInput(value: string, fallback: number) {
 
 export function HarvestLabelDebugPage() {
     const [labelData, setLabelData] =
-        useState<HarvestLabelData>(DEFAULT_LABEL_DATA);
+        useState<FieldOperationLabelData>(DEFAULT_LABEL_DATA);
+    const [labelVersion, setLabelVersion] =
+        useState<FieldOperationLabelVersion>('v2');
     const [zoom, setZoom] = useState(150);
 
     const canvasSize = getHarvestLabelCanvasSize(DEFAULT_HARVEST_LABEL_PRESET);
@@ -97,8 +111,9 @@ export function HarvestLabelDebugPage() {
                                 <Stack spacing={2}>
                                     <CardTitle>Sadržaj etikete</CardTitle>
                                     <Typography className="text-sm text-muted-foreground">
-                                        Mijenjaj podatke operacije i odmah vidi
-                                        kako će izgledati generirana etiketa.
+                                        Mijenjaj podatke operacije i usporedi
+                                        postojeću V1 s eksperimentalnom V2
+                                        etiketom.
                                     </Typography>
                                 </Stack>
                             </CardHeader>
@@ -116,27 +131,22 @@ export function HarvestLabelDebugPage() {
                                     />
                                     <DebugTextInput
                                         label="Polje"
-                                        type="number"
-                                        min={1}
-                                        value={labelData.fieldIndex}
+                                        value={labelData.fieldLabel}
                                         onChange={(value) =>
                                             setLabelData((current) => ({
                                                 ...current,
-                                                fieldIndex: parseIntegerInput(
-                                                    value,
-                                                    current.fieldIndex,
-                                                ),
+                                                fieldLabel: value,
                                             }))
                                         }
                                     />
                                 </div>
                                 <DebugTextInput
                                     label="Naziv radnje"
-                                    value={labelData.operationLabel ?? ''}
+                                    value={labelData.detailLabel}
                                     onChange={(value) =>
                                         setLabelData((current) => ({
                                             ...current,
-                                            operationLabel: value,
+                                            detailLabel: value,
                                         }))
                                     }
                                 />
@@ -224,11 +234,11 @@ export function HarvestLabelDebugPage() {
                                 <Stack spacing={2}>
                                     <CardTitle>Fiksni profil ispisa</CardTitle>
                                     <Typography className="text-sm text-muted-foreground">
-                                        Farma koristi samo profil{' '}
+                                        Obje verzije koriste profil{' '}
                                         {HARVEST_LABEL_PRINT_TASK_TYPE} s
-                                        etiketom 50 × 30 mm. Ovdje su zato
-                                        dostupne samo promjene sadržaja i
-                                        pregled izgleda.
+                                        etiketom 50 × 30 mm. V2 je dostupna samo
+                                        ovdje za provjeru; raspored i ispis za
+                                        farmere ostaju na V1.
                                     </Typography>
                                 </Stack>
                             </CardHeader>
@@ -269,6 +279,7 @@ export function HarvestLabelDebugPage() {
                                     type="button"
                                     onClick={() => {
                                         setLabelData(DEFAULT_LABEL_DATA);
+                                        setLabelVersion('v2');
                                         setZoom(150);
                                     }}
                                 >
@@ -282,7 +293,29 @@ export function HarvestLabelDebugPage() {
                         <Card>
                             <CardHeader>
                                 <Stack spacing={2}>
-                                    <CardTitle>Pregled etikete</CardTitle>
+                                    <div className="flex flex-wrap items-center justify-between gap-3">
+                                        <CardTitle>Pregled etikete</CardTitle>
+                                        <Tabs
+                                            value={labelVersion}
+                                            onValueChange={(value) => {
+                                                if (
+                                                    value === 'v1' ||
+                                                    value === 'v2'
+                                                ) {
+                                                    setLabelVersion(value);
+                                                }
+                                            }}
+                                        >
+                                            <TabsList aria-label="Verzija etikete">
+                                                <TabsTrigger value="v2">
+                                                    V2 · jasnija
+                                                </TabsTrigger>
+                                                <TabsTrigger value="v1">
+                                                    V1 · postojeća
+                                                </TabsTrigger>
+                                            </TabsList>
+                                        </Tabs>
+                                    </div>
                                     <Typography className="text-sm text-muted-foreground">
                                         Trenutni canvas: {canvasSize.width} ×{' '}
                                         {canvasSize.height} px, što odgovara
@@ -328,8 +361,9 @@ export function HarvestLabelDebugPage() {
 
                                 <div className="overflow-auto rounded-xl border bg-[linear-gradient(45deg,rgba(120,113,108,0.08)_25%,transparent_25%,transparent_75%,rgba(120,113,108,0.08)_75%,rgba(120,113,108,0.08)),linear-gradient(45deg,rgba(120,113,108,0.08)_25%,transparent_25%,transparent_75%,rgba(120,113,108,0.08)_75%,rgba(120,113,108,0.08))] bg-[length:24px_24px] bg-[position:0_0,12px_12px] p-6">
                                     <div className="flex min-h-[24rem] items-center justify-center">
-                                        <HarvestLabelPreviewCanvas
+                                        <FieldOperationLabelPreviewCanvas
                                             labelData={labelData}
+                                            version={labelVersion}
                                             preset={
                                                 DEFAULT_HARVEST_LABEL_PRESET
                                             }
@@ -349,8 +383,9 @@ export function HarvestLabelDebugPage() {
                                             description="Ovaj pregled koristi fizičke dimenzije canvasa bez dodatnog povećanja za provjeru omjera i gustoće sadržaja."
                                         />
                                         <div className="overflow-auto rounded-lg border bg-muted/20 p-4">
-                                            <HarvestLabelPreviewCanvas
+                                            <FieldOperationLabelPreviewCanvas
                                                 labelData={labelData}
+                                                version={labelVersion}
                                                 preset={
                                                     DEFAULT_HARVEST_LABEL_PRESET
                                                 }
@@ -371,6 +406,7 @@ export function HarvestLabelDebugPage() {
                                     {JSON.stringify(
                                         {
                                             labelData,
+                                            labelVersion,
                                             printTaskType:
                                                 HARVEST_LABEL_PRINT_TASK_TYPE,
                                             preset: DEFAULT_HARVEST_LABEL_PRESET,
