@@ -108,6 +108,7 @@ test('Garden distinguishes unavailable, cached, pending, and empty sensor histor
     oneDayRefreshStatus = 503;
     await page.context().setOffline(true);
     await page.context().setOffline(false);
+    await expect(dialog.getByText('Prosjek', { exact: true })).toBeVisible();
     await expect(dialog.getByText('–', { exact: true })).toHaveCount(3);
     await expect(dialog.getByText('0%', { exact: true })).toHaveCount(0);
 
