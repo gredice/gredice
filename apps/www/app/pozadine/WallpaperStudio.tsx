@@ -625,6 +625,7 @@ export function WallpaperStudio() {
 
     const isBusy = activity !== 'idle';
     const selectedSize = wallpaperSizes[sizeKey];
+    const supportsMacOSWallpaper = sizeKey !== 'tablet' && sizeKey !== 'mobile';
 
     return (
         <>
@@ -803,7 +804,7 @@ export function WallpaperStudio() {
                         </Alert>
                     ) : null}
                     <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
-                        {sizeKey !== 'tablet' && sizeKey !== 'mobile' ? (
+                        {supportsMacOSWallpaper ? (
                             <Button
                                 aria-label="Preuzmi gotovu Mac dinamičku HEIC pozadinu"
                                 disabled={!gardenQuery.data || isBusy}
@@ -841,6 +842,17 @@ export function WallpaperStudio() {
                             Preuzmi {selectedSize.shortLabel}
                         </Button>
                     </div>
+                    {supportsMacOSWallpaper ? (
+                        <Typography
+                            className="sm:text-right"
+                            level="body2"
+                            secondary
+                        >
+                            Na Macu dodaj HEIC datoteku u postavkama pozadine.
+                            Ako je ponuđena opcija Dinamično, odaberi je kako bi
+                            se pozadina mijenjala s položajem sunca.
+                        </Typography>
+                    ) : null}
                 </Stack>
             </div>
 

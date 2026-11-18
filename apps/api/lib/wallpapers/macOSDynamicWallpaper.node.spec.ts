@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
     addMacOSDynamicWallpaperXmp,
+    hasMacOSDynamicWallpaperFrames,
     hasMacOSDynamicWallpaperMetadata,
     macOSDynamicWallpaperPhases,
     macOSDynamicWallpaperSizes,
@@ -28,7 +29,10 @@ describe('macOS dynamic wallpaper metadata', () => {
             'night',
             'morning',
         ]);
-        assert.match(macOSDynamicWallpaperXmp(), /apple_desktop:h24/);
+        assert.match(
+            macOSDynamicWallpaperXmp(),
+            /<apple_desktop:solar>YnBsaXN0/,
+        );
     });
 
     it('reads PNG dimensions from the IHDR chunk', () => {
@@ -49,9 +53,45 @@ describe('macOS dynamic wallpaper metadata', () => {
         assert.equal(new TextDecoder().decode(output.subarray(37, 41)), 'iTXt');
         assert.match(
             new TextDecoder().decode(output.subarray(41)),
-            /XML:com\.adobe\.xmp.*apple_desktop:h24/s,
+            /XML:com\.adobe\.xmp.*apple_desktop:solar/s,
         );
         assert.equal(hasMacOSDynamicWallpaperMetadata(output), true);
+    });
+
+    it('rejects a solar tag without the garden schedule', () => {
+        assert.equal(
+            hasMacOSDynamicWallpaperMetadata(
+                new TextEncoder().encode(
+                    '<apple_desktop:solar>YnBsaXN0</apple_desktop:solar>',
+                ),
+            ),
+            false,
+        );
+    });
+
+    it('requires four images and XMP attached to the first, primary image', () => {
+        const primary = 'image: 3840x2160 (id=1), primary\n';
+        const xmp = 'metadata:\n  XMP: 600 bytes\n';
+        const secondary = 'image: 3840x2160 (id=3)\n';
+
+        assert.equal(
+            hasMacOSDynamicWallpaperFrames(primary + xmp + secondary.repeat(3)),
+            true,
+        );
+        assert.equal(
+            hasMacOSDynamicWallpaperFrames(primary + xmp + secondary.repeat(2)),
+            false,
+        );
+        assert.equal(
+            hasMacOSDynamicWallpaperFrames(primary + secondary.repeat(3) + xmp),
+            false,
+        );
+        assert.equal(
+            hasMacOSDynamicWallpaperFrames(
+                secondary + xmp + primary + secondary.repeat(2),
+            ),
+            false,
+        );
     });
 
     it('rejects non-PNG input before metadata injection', () => {
