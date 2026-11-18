@@ -169,6 +169,7 @@ import {
     validateImageUrls,
 } from '../../../lib/garden/raisedBedAiAnalysisService';
 import { serializeRaisedBedGardenNotification } from '../../../lib/garden/raisedBedNotifications';
+import { raisedBedSensorHistoryRoute } from '../../../lib/garden/raisedBedSensorHistoryRoute';
 import { calculateRaisedBedsValidity } from '../../../lib/garden/raisedBedsService';
 import {
     type AuthVariables,
@@ -3247,80 +3248,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             );
         },
     )
-    .get(
-        '/:gardenId/raised-beds/:raisedBedId/sensors/:sensorId/:type',
-        describeRoute({
-            description: 'Get a specific sensor for a raised bed',
-        }),
-        zValidator(
-            'param',
-            z.object({
-                gardenId: z.string(),
-                raisedBedId: z.string(),
-                sensorId: z.string(),
-                type: z.string(),
-            }),
-        ),
-        zValidator(
-            'query',
-            z.object({
-                duration: z.string().optional().default('5'), // Default to 5 days
-            }),
-        ),
-        authValidator(['user', 'admin']),
-        async (context) => {
-            const { gardenId, raisedBedId, sensorId, type } =
-                context.req.valid('param');
-            const { duration } = context.req.valid('query');
-            const gardenIdNumber = parseInt(gardenId, 10);
-            if (Number.isNaN(gardenIdNumber)) {
-                return context.json({ error: 'Invalid garden ID' }, 400);
-            }
-            const raisedBedIdNumber = parseInt(raisedBedId, 10);
-            if (Number.isNaN(raisedBedIdNumber)) {
-                return context.json({ error: 'Invalid raised bed ID' }, 400);
-            }
-
-            const { accountId } = context.get('authContext');
-            const raisedBed = await getRaisedBed(raisedBedIdNumber);
-            if (
-                !raisedBed ||
-                raisedBed.gardenId !== gardenIdNumber ||
-                raisedBed.accountId !== accountId
-            ) {
-                return context.json({ error: 'Raised bed not found' }, 404);
-            }
-
-            const sensors = await getRaisedBedSensors(raisedBedIdNumber);
-            const sensorIdNumber = parseInt(sensorId, 10);
-            const sensor = sensors.find((s) => s.id === sensorIdNumber);
-            if (!sensor) {
-                return context.json({ error: 'Sensor not found' }, 404);
-            }
-
-            // Fetch sensor data from Signalco
-            const history = await signalcoClient().GET('/contact/history', {
-                params: {
-                    // @ts-expect-error Invalid type, but works
-                    query: {
-                        entityId: sensor.sensorSignalcoId,
-                        channelName: 'zigbee2mqtt',
-                        contactName:
-                            type === 'soil_moisture'
-                                ? 'soil_moisture'
-                                : 'temperature',
-                        duration: `${duration}.00:00`,
-                    },
-                },
-            });
-
-            return context.json({
-                id: sensor.id,
-                type,
-                values: history.data?.values || [],
-            });
-        },
-    )
+    .route('/', raisedBedSensorHistoryRoute())
     .get(
         '/:gardenId/raised-beds/:raisedBedId/plantings/:plantingId/diary-entries',
         describeRoute({

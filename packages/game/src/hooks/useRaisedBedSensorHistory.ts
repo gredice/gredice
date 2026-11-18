@@ -1,20 +1,6 @@
 import { clientAuthenticated } from '@gredice/client';
 import { useQuery } from '@tanstack/react-query';
 
-interface SensorHistoryApiValue extends Record<string, unknown> {
-    timeStamp: string;
-    valueSerialized?: string;
-}
-
-interface SensorHistoryApiResponse extends Record<string, unknown> {
-    values: SensorHistoryApiValue[];
-}
-
-interface SensorHistoryValue {
-    timeStamp: Date;
-    valueSerialized?: string;
-}
-
 export function useRaisedBedSensorHistory(
     gardenId: number,
     raisedBedId: number,
@@ -31,7 +17,7 @@ export function useRaisedBedSensorHistory(
             type,
             { duration },
         ],
-        queryFn: async () => {
+        queryFn: async ({ signal }) => {
             if (!gardenId || !raisedBedId || !sensorId || !type) {
                 console.error('Invalid parameters for fetching sensor history');
                 return null;
@@ -51,6 +37,7 @@ export function useRaisedBedSensorHistory(
                         duration: duration?.toString(), // Duration in days, formatted as "X.00:00"
                     },
                 },
+                { init: { signal } },
             );
             if (response.status === 400) {
                 console.error(
@@ -66,16 +53,32 @@ export function useRaisedBedSensorHistory(
                 );
                 return null;
             }
-            const data = (await response.json()) as SensorHistoryApiResponse;
-            const values: SensorHistoryValue[] = data.values.map((item) => ({
-                ...item,
-                timeStamp: new Date(item.timeStamp),
-            }));
+            if (response.status !== 200) {
+                throw new Error(
+                    `Sensor history request failed (${response.status})`,
+                );
+            }
+            const data = await response.json();
+            const values = data.values.flatMap((item) => {
+                if (
+                    typeof item?.timeStamp !== 'string' ||
+                    typeof item.valueSerialized !== 'string' ||
+                    !item.valueSerialized.trim()
+                ) {
+                    return [];
+                }
+                const timestamp = Date.parse(item.timeStamp);
+                const value = Number(item.valueSerialized);
+                return Number.isFinite(timestamp) && Number.isFinite(value)
+                    ? [{ timestamp, value }]
+                    : [];
+            });
             return {
                 ...data,
                 values,
             };
         },
+        retry: false, // The API already retries transient Signalco errors.
         staleTime: 5 * 60 * 1000, // 5 minutes
         enabled:
             Boolean(gardenId) &&
