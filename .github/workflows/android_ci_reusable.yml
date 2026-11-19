@@ -53,7 +53,7 @@ jobs:
           node-version: "26.13.1"
 
       - name: ☕ Setup JDK 17
-        uses: actions/setup-java@v6.2.0
+        uses: actions/setup-java@v6.3.0
         with:
           distribution: temurin
           java-version: "17.0.20+8"
