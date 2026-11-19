@@ -5,7 +5,7 @@ import { Button } from '@gredice/ui/Button';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
-import { useMyCommunityEdits } from '../../hooks/useMyCommunityEdits';
+import { useMyCommunityEditHistory } from '../../hooks/useMyCommunityEdits';
 import { MySuggestionItem } from './MySuggestionItem';
 import { MySuggestionsEmpty } from './MySuggestionsEmpty';
 import { MySuggestionsProgress } from './MySuggestionsProgress';
@@ -15,7 +15,7 @@ import { MySuggestionsSkeleton } from './MySuggestionsSkeleton';
 /** The signed-in visitor's suggestions, their status and the moderator's reply. */
 export function MySuggestionsView() {
     const { data: user, isLoading: isLoadingUser } = useCurrentUser();
-    const suggestions = useMyCommunityEdits();
+    const suggestions = useMyCommunityEditHistory();
 
     function content() {
         if (isLoadingUser || (user && suggestions.isPending)) {
@@ -26,7 +26,8 @@ export function MySuggestionsView() {
             return <MySuggestionsSignedOut />;
         }
 
-        if (suggestions.isError || !suggestions.data) {
+        const [newestPage] = suggestions.data?.pages ?? [];
+        if (!suggestions.data || !newestPage) {
             return (
                 <Alert
                     color="danger"
@@ -47,10 +48,19 @@ export function MySuggestionsView() {
             );
         }
 
-        const { acceptedCount, items } = suggestions.data;
+        // A refetch can shift page boundaries; show each suggestion once.
+        const items = [
+            ...new Map(
+                suggestions.data.pages
+                    .flatMap((page) => page.items)
+                    .map((item) => [item.id, item]),
+            ).values(),
+        ];
         return (
             <Stack spacing={6}>
-                <MySuggestionsProgress acceptedCount={acceptedCount} />
+                <MySuggestionsProgress
+                    acceptedCount={newestPage.acceptedCount}
+                />
                 {items.length === 0 ? (
                     <MySuggestionsEmpty />
                 ) : (
@@ -65,6 +75,23 @@ export function MySuggestionsView() {
                                 </li>
                             ))}
                         </ul>
+                        {suggestions.isFetchNextPageError ? (
+                            <Alert color="danger">
+                                Učitavanje starijih prijedloga nije uspjelo.
+                                Pokušaj ponovno.
+                            </Alert>
+                        ) : null}
+                        {suggestions.hasNextPage ? (
+                            <Button
+                                className="self-center"
+                                loading={suggestions.isFetchingNextPage}
+                                onClick={() => void suggestions.fetchNextPage()}
+                                type="button"
+                                variant="outlined"
+                            >
+                                Prikaži starije prijedloge
+                            </Button>
+                        ) : null}
                     </Stack>
                 )}
             </Stack>

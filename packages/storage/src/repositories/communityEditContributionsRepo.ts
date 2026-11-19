@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, asc, count, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, lt, sql } from 'drizzle-orm';
 import {
     communityEditRequestChanges,
     communityEditRequests,
@@ -224,10 +224,14 @@ export async function getCommunityContributionSummaryForUser(
         return { acceptedCount, pages: [] };
     }
 
-    // Several edits often land on one page, so read past the limit before
-    // collapsing to distinct paths.
-    const requests = await storage()
-        .select({
+    // Several edits often land on one page. Keep the latest accepted request
+    // per public path in SQL, so the limit applies to distinct pages.
+    const acceptedByUser = and(
+        eq(communityEditRequests.submitterUserId, userId),
+        eq(communityEditRequests.status, 'applied'),
+    );
+    const latestPerPath = storage()
+        .selectDistinctOn([communityEditRequests.publicPath], {
             id: communityEditRequests.id,
             entityTypeName: communityEditRequests.entityTypeName,
             entityId: communityEditRequests.entityId,
@@ -238,34 +242,32 @@ export async function getCommunityContributionSummaryForUser(
             createdAt: communityEditRequests.createdAt,
         })
         .from(communityEditRequests)
-        .where(
-            and(
-                eq(communityEditRequests.submitterUserId, userId),
-                eq(communityEditRequests.status, 'applied'),
-            ),
+        .where(acceptedByUser)
+        .orderBy(
+            communityEditRequests.publicPath,
+            desc(contributionAppliedAt),
+            desc(communityEditRequests.id),
         )
-        .orderBy(desc(contributionAppliedAt), desc(communityEditRequests.id))
-        .limit(pageLimit * 8);
+        .as('latest_per_path');
+    const requests = await storage()
+        .select()
+        .from(latestPerPath)
+        .orderBy(
+            desc(
+                sql`coalesce(${latestPerPath.appliedAt}, ${latestPerPath.reviewedAt}, ${latestPerPath.createdAt})`,
+            ),
+            desc(latestPerPath.id),
+        )
+        .limit(pageLimit);
 
-    const pages: CommunityContributionPage[] = [];
-    const seenPublicPaths = new Set<string>();
-    for (const request of requests) {
-        if (seenPublicPaths.has(request.publicPath)) {
-            continue;
-        }
-        seenPublicPaths.add(request.publicPath);
-        pages.push({
-            requestId: request.id,
-            entityTypeName: request.entityTypeName,
-            entityId: request.entityId,
-            publicPath: request.publicPath,
-            sectionKey: request.sectionKey,
-            appliedAt: resolveAppliedAt(request),
-        });
-        if (pages.length === pageLimit) {
-            break;
-        }
-    }
+    const pages: CommunityContributionPage[] = requests.map((request) => ({
+        requestId: request.id,
+        entityTypeName: request.entityTypeName,
+        entityId: request.entityId,
+        publicPath: request.publicPath,
+        sectionKey: request.sectionKey,
+        appliedAt: resolveAppliedAt(request),
+    }));
 
     return { acceptedCount, pages };
 }
@@ -312,14 +314,19 @@ export function getCommunityEditorLeaderboard(
 }
 
 /**
- * A submitter's own requests, newest first, in every status.
+ * A submitter's own requests, newest first, in every status. Page through
+ * older ones with `beforeId`.
  *
  * Carries the moderator's reply (`submitterMessage`) and never the internal
  * reviewer note, the reviewer's identity, or the submitter's e-mail.
  */
 export function listCommunityEditRequestsForSubmitter(
     userId: string,
-    options?: { limit?: number },
+    options?: {
+        limit?: number;
+        /** Cursor: only requests older than this request ID. */
+        beforeId?: number;
+    },
 ) {
     return storage().query.communityEditRequests.findMany({
         columns: {
@@ -336,7 +343,12 @@ export function listCommunityEditRequestsForSubmitter(
             reviewedAt: true,
             appliedAt: true,
         },
-        where: eq(communityEditRequests.submitterUserId, userId),
+        where: and(
+            eq(communityEditRequests.submitterUserId, userId),
+            options?.beforeId === undefined
+                ? undefined
+                : lt(communityEditRequests.id, options.beforeId),
+        ),
         with: {
             changes: {
                 columns: {
@@ -346,10 +358,8 @@ export function listCommunityEditRequestsForSubmitter(
                 orderBy: [asc(communityEditRequestChanges.id)],
             },
         },
-        orderBy: [
-            desc(communityEditRequests.createdAt),
-            desc(communityEditRequests.id),
-        ],
+        // Serial IDs follow creation order and give a stable cursor.
+        orderBy: [desc(communityEditRequests.id)],
         limit: clampLimit(
             options?.limit,
             defaultSubmitterRequestLimit,

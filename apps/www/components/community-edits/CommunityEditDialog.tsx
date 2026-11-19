@@ -39,6 +39,7 @@ import {
     fieldValueError,
     initialFieldValue,
     isFieldsResponse,
+    maxCommunityEditChanges,
     serializeFieldValue,
 } from './communityEditFields';
 import {
@@ -207,6 +208,7 @@ export function CommunityEditDialog({
     const hasInvalidFields = fields.some((field) =>
         fieldValueError(field, fieldValue(field)),
     );
+    const exceedsChangeLimit = changedFields.length > maxCommunityEditChanges;
     const hasOnlyOperationSuggestions =
         fields.length > 0 &&
         fields.every((field) => field.controlType === 'operationSuggestion');
@@ -449,9 +451,11 @@ export function CommunityEditDialog({
                             >
                                 {hasInvalidFields
                                     ? 'Ispravi označena polja prije slanja.'
-                                    : changedFields.length > 0
-                                      ? changeSummary
-                                      : 'Promijeni barem jedno polje da pošalješ prijedlog.'}
+                                    : exceedsChangeLimit
+                                      ? `Jedan prijedlog može imati najviše ${maxCommunityEditChanges.toString()} izmjena, a sada ih je ${changedFields.length.toString()}. Vrati dio izmjena i pošalji ih u sljedećem prijedlogu.`
+                                      : changedFields.length > 0
+                                        ? changeSummary
+                                        : 'Promijeni barem jedno polje da pošalješ prijedlog.'}
                             </Typography>
                             <Row spacing={2} className="ml-auto shrink-0">
                                 <Button
@@ -465,6 +469,7 @@ export function CommunityEditDialog({
                                     disabled={
                                         isLoadingFields ||
                                         hasInvalidFields ||
+                                        exceedsChangeLimit ||
                                         changedFields.length === 0
                                     }
                                     endDecorator={<Send className="size-4" />}

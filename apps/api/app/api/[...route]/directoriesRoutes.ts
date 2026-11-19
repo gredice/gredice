@@ -53,6 +53,7 @@ function cmsPagePreviewSecret(requestUrl: string) {
     return isLocalPreviewHost(hostname) ? localCmsPagePreviewSecret : null;
 }
 
+const communityEditMinePageSize = 50;
 const communityEditSubmittedValueSchema = z.unknown();
 // The path is shown back as a link (submitter list, public profile), so it
 // must stay a same-site path: one leading slash, no protocol-relative form.
@@ -377,16 +378,32 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/community-edits/mine',
         describeRoute({
             description:
-                "List the authenticated user's own community edit requests and entity suggestions, newest first, with their review status and the moderator's reply. `acceptedCount` is the number of the user's requests that were accepted and applied. Internal reviewer notes, reviewer identity and e-mail addresses are never returned.",
+                "List the authenticated user's own community edit requests and entity suggestions, newest first, 50 per page, with their review status and the moderator's reply. Pass `nextCursor` back as `before` to read the next older page; it is `null` on the last page. `acceptedCount` is the number of the user's requests that were accepted and applied. Internal reviewer notes, reviewer identity and e-mail addresses are never returned.",
             security: authSecurity,
         }),
         authValidator(['user', 'admin']),
+        zValidator(
+            'query',
+            z.object({
+                before: z.coerce.number().int().positive().optional(),
+            }),
+        ),
         async (context) => {
             const { userId } = context.get('authContext');
-            const [requests, acceptedCount] = await Promise.all([
-                listCommunityEditRequestsForSubmitter(userId),
+            const { before } = context.req.valid('query');
+            // One extra row tells whether an older page exists.
+            const [listedRequests, acceptedCount] = await Promise.all([
+                listCommunityEditRequestsForSubmitter(userId, {
+                    limit: communityEditMinePageSize + 1,
+                    beforeId: before,
+                }),
                 countAcceptedCommunityEditRequests(userId),
             ]);
+            const requests = listedRequests.slice(0, communityEditMinePageSize);
+            const nextCursor =
+                listedRequests.length > communityEditMinePageSize
+                    ? (requests.at(-1)?.id ?? null)
+                    : null;
             const entityLabels = new Map(
                 (
                     await getEntityDisplayLabels(
@@ -398,6 +415,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             context.header('Cache-Control', 'no-store');
             return context.json({
                 acceptedCount,
+                nextCursor,
                 items: requests.map((request) => ({
                     id: request.id,
                     status: communityEditRequestStatus(request.status),

@@ -164,6 +164,37 @@ for (const width of [375, 1280]) {
     });
 }
 
+test('loads older suggestions on demand', async ({ mount, page }) => {
+    await mockUser(page, true);
+    const [newest, older] = suggestions;
+    await page.route(mineRoute, (route) =>
+        route.fulfill({
+            status: 200,
+            json: { acceptedCount: 3, nextCursor: 14, items: [newest] },
+        }),
+    );
+    await page.route(`${mineRoute}?before=14`, (route) =>
+        route.fulfill({
+            status: 200,
+            json: { acceptedCount: 3, nextCursor: null, items: [older] },
+        }),
+    );
+
+    await mount(<MySuggestionsHarness />);
+
+    const list = page.getByRole('list').filter({ hasText: 'Rajčica' });
+    await expect(list.getByRole('listitem')).toHaveCount(1);
+    await page
+        .getByRole('button', { name: 'Prikaži starije prijedloge' })
+        .click();
+
+    await expect(list.getByRole('listitem')).toHaveCount(2);
+    await expect(list).toContainText('Mrkva');
+    await expect(
+        page.getByRole('button', { name: 'Prikaži starije prijedloge' }),
+    ).toHaveCount(0);
+});
+
 test('asks a signed-out visitor to sign in', async ({ mount, page }) => {
     await mockUser(page, false);
     await page.route('**/api/gredice/api/auth/last-login', (route) =>

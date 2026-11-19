@@ -477,10 +477,19 @@ test("submitter list returns only the user's own requests without review interna
         data.firstEditorId,
     );
 
+    // Newest first by request ID, which follows creation order in production
+    // and gives the pagination cursor a stable order.
     assert.deepEqual(
-        requests.map((request) => request.status),
-        ['rejected', 'conflicted', 'applied', 'applied', 'applied'],
+        requests.map((request) => request.id),
+        requests.map((request) => request.id).sort((a, b) => b - a),
     );
+    assert.deepEqual(requests.map((request) => request.status).sort(), [
+        'applied',
+        'applied',
+        'applied',
+        'conflicted',
+        'rejected',
+    ]);
     assert.ok(
         requests.every(
             (request) =>
@@ -491,17 +500,36 @@ test("submitter list returns only the user's own requests without review interna
                 !('reviewerName' in request),
         ),
     );
-    assert.deepEqual(requests[2]?.changes, [
+    const overviewRequest = requests.find(
+        (request) => request.sectionKey === 'overview',
+    );
+    assert.deepEqual(overviewRequest?.changes, [
         { fieldKey: 'plant.contribution-0', sectionKey: null },
     ]);
-    assert.equal(requests[2]?.sectionKey, 'overview');
-    assert.equal(requests[0]?.submitterMessage, null);
+    assert.equal(
+        requests.find((request) => request.status === 'rejected')
+            ?.submitterMessage,
+        null,
+    );
 
     const limited = await listCommunityEditRequestsForSubmitter(
         data.firstEditorId,
         { limit: 2 },
     );
     assert.equal(limited.length, 2);
+
+    // The cursor continues after the last request of the previous page.
+    const lastListedId = limited[1]?.id;
+    assert.ok(lastListedId);
+    const older = await listCommunityEditRequestsForSubmitter(
+        data.firstEditorId,
+        { beforeId: lastListedId },
+    );
+    assert.deepEqual(
+        [...limited, ...older].map((request) => request.id),
+        requests.map((request) => request.id),
+    );
+    assert.ok(older.every((request) => request.id < lastListedId));
 });
 
 test('rejecting stores the trimmed reply for the submitter beside the internal note', async () => {
@@ -585,4 +613,64 @@ test('marking a conflict stores a reply only when one is given', async () => {
     const automatic = await getCommunityEditRequest(automaticId);
     assert.equal(automatic?.status, 'conflicted');
     assert.equal(automatic?.submitterMessage, null);
+});
+
+test('contribution summary fills the page limit with distinct pages past many edits to one page', async () => {
+    const data = await fixture();
+    // A dedicated guest keeps the seeded totals of the other tests intact:
+    // temporary users stay off the leaderboard and off entity credits.
+    const busyEditorId = `contribution-busy-${randomUUID()}`;
+    await storage().insert(users).values({
+        id: busyEditorId,
+        userName: busyEditorId,
+        displayName: 'Marljiva Urednica',
+        role: 'user',
+        isTemporary: true,
+    });
+    // Far more accepted edits on one page than the page limit.
+    for (let day = 10; day < 24; day++) {
+        await createRequest({
+            entityId: data.plantId,
+            submitterUserId: busyEditorId,
+            status: 'applied',
+            publicPath: '/biljke/doprinosi',
+            sectionKey: 'overview',
+            appliedAt: at(day),
+        });
+    }
+    await createRequest({
+        entityId: data.otherPlantId,
+        submitterUserId: busyEditorId,
+        status: 'applied',
+        publicPath: '/biljke/druga',
+        sectionKey: 'growth',
+        appliedAt: at(3),
+    });
+    await createRequest({
+        entityId: data.otherPlantId,
+        submitterUserId: busyEditorId,
+        status: 'applied',
+        publicPath: '/biljke/treca',
+        sectionKey: 'harvest',
+        appliedAt: at(2),
+    });
+
+    const summary = await getCommunityContributionSummaryForUser(busyEditorId, {
+        pageLimit: 2,
+    });
+
+    assert.equal(summary.acceptedCount, 16);
+    assert.deepEqual(
+        summary.pages.map((page) => ({
+            publicPath: page.publicPath,
+            appliedAt: page.appliedAt.toISOString(),
+        })),
+        [
+            {
+                publicPath: '/biljke/doprinosi',
+                appliedAt: at(23).toISOString(),
+            },
+            { publicPath: '/biljke/druga', appliedAt: at(3).toISOString() },
+        ],
+    );
 });

@@ -69,7 +69,7 @@ Each review form in `/admin/community-edits/{requestId}` has two fields:
 
 `approveCommunityEditRequest`, `rejectCommunityEditRequest` and `markCommunityEditRequestConflicted` accept `submitterMessage` and store it trimmed, or `null` when empty. A reply written for an approval is not kept when that approval turns into an automatic conflict; the conflict notification carries its own explanation.
 
-`GET /api/directories/community-edits/mine` lists the signed-in user's own requests, newest first (up to 50), with `Cache-Control: no-store`:
+`GET /api/directories/community-edits/mine` lists the signed-in user's own requests, newest first, 50 per page, with `Cache-Control: no-store`. The response carries `nextCursor`; pass it back as `?before=` for the next older page (`null` on the last page). “Moji prijedlozi” loads older pages on demand. A request carries at most 20 changes; the edit dialog holds back a larger draft and asks the visitor to split it:
 
 ```ts
 {

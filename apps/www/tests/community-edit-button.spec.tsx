@@ -1479,6 +1479,52 @@ test('does not send a range until both ends are valid', async ({
     });
 });
 
+test('holds back a request with more changes than one request may carry', async ({
+    mount,
+    page,
+}) => {
+    await mockSignedInUser(page);
+    const fieldCount = 21;
+    await mockSowingFields(
+        page,
+        Array.from({ length: fieldCount }, (_, index) => ({
+            fieldKey: `plant.limit-${index + 1}`,
+            attributeDefinitionId: 100 + index,
+            attributePath: `attributes.limit${index + 1}`,
+            dataType: 'number',
+            controlType: 'number',
+            publicLabel: `Mjera ${index + 1}`,
+            currentValue: '1',
+            baseValueHash: `hash-limit-${index + 1}`,
+        })),
+    );
+
+    await mount(
+        <CommunityEditButtonHarness
+            entityTypeName="plant"
+            entityId={1}
+            publicPath="/biljke/rajcica"
+            sectionKey="sowing"
+        />,
+    );
+
+    await page.getByTitle('Predloži izmjenu').click();
+    for (let index = 1; index <= fieldCount; index++) {
+        await page.getByLabel(`Mjera ${index}`, { exact: true }).fill('2');
+    }
+
+    const send = page.getByRole('button', { name: 'Pošalji prijedlog' });
+    const summary = page.locator('[data-community-edit-summary]');
+    await expect(summary).toHaveText(
+        'Jedan prijedlog može imati najviše 20 izmjena, a sada ih je 21. Vrati dio izmjena i pošalji ih u sljedećem prijedlogu.',
+    );
+    await expect(send).toBeDisabled();
+
+    await page.getByRole('button', { name: /Vrati/u }).first().click();
+    await expect(summary).toContainText('20 izmjena:');
+    await expect(send).toBeEnabled();
+});
+
 test('shows a notice instead of raw ID and JSON inputs', async ({
     mount,
     page,

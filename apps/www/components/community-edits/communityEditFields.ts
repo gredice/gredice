@@ -573,6 +573,12 @@ export function referencePickerNoun(dataType: string): ReferencePickerNoun {
 }
 
 /** Croatian plural for a number of changes: 1 izmjena, 2 izmjene, 5 izmjena. */
+/**
+ * Most changes one request may carry. Mirrors the `changes` cap of
+ * `POST /api/directories/community-edits`; keep the two in step.
+ */
+export const maxCommunityEditChanges = 20;
+
 export function changeCountLabel(count: number) {
     const lastDigit = count % 10;
     const lastTwoDigits = count % 100;
