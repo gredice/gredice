@@ -33,7 +33,6 @@ export const Tip: Story = {
             parentPlantId={7}
             parentPlantName="Bob"
             publicPath="/biljke/bob"
-            compact
         />
     ),
 };
@@ -45,7 +44,6 @@ export const Disease: Story = {
             plants={[{ value: '7', label: 'Bob' }]}
             defaultAffectedPlantId={7}
             publicPath="/biljke/bob"
-            compact
         />
     ),
 };
@@ -57,18 +55,33 @@ export const Pest: Story = {
             plants={[{ value: '7', label: 'Bob' }]}
             defaultAffectedPlantId={7}
             publicPath="/biljke/bob"
-            compact
         />
     ),
 };
 
-export const StandardButton: Story = {
+export const Sort: Story = {
     render: () => (
         <CommunityEntitySuggestionButton
             kind="plantSort"
             parentPlantId={7}
             parentPlantName="Bob"
             publicPath="/biljke/bob"
+        />
+    ),
+};
+
+/** The group name is added to the accessible name when a page has several cards. */
+export const OperationInGroup: Story = {
+    render: () => (
+        <CommunityEntitySuggestionButton
+            kind="operation"
+            publicPath="/radnje"
+            stages={[
+                { id: 10, label: 'Održavanje' },
+                { id: 11, label: 'Zalijevanje' },
+            ]}
+            defaultStageId={11}
+            triggerContext="Zalijevanje"
         />
     ),
 };
@@ -99,6 +112,10 @@ authenticatedClient.setQueryData(
     ['community-plant-health-options', 'pest'],
     [],
 );
+authenticatedClient.setQueryData(['myCommunityEdits', 'storybook-user'], {
+    acceptedCount: 3,
+    items: [],
+});
 
 export const ExistingDisease: Story = {
     ...Disease,

@@ -11,6 +11,8 @@ import { UserAvatar, UserLevelBadge } from '@gredice/ui/UserAvatar';
 import { cx } from '@gredice/ui/utils';
 import { CtaBand } from '../../components/shared/CtaBand';
 import { KnownPages } from '../../src/KnownPages';
+import type { LeaderboardEditor } from './communityContributions';
+import { LeaderboardEditors } from './LeaderboardEditors';
 import type { getUserLeaderboard } from './leaderboard';
 
 /** Gold, silver and bronze for the first three places. */
@@ -36,10 +38,13 @@ export function UserLeaderboard({
     items,
     userCount,
     communityAvatarUrls = [],
+    editors = [],
 }: Pick<Awaited<ReturnType<typeof getUserLeaderboard>>, 'items'> & {
     /** Registered gardeners; older API responses may not include it. */
     userCount?: number;
     communityAvatarUrls?: string[];
+    /** Gardeners with the most accepted content suggestions. */
+    editors?: readonly LeaderboardEditor[];
 }) {
     const otherUserCount = Math.max(0, (userCount ?? 0) - items.length);
     return (
@@ -54,7 +59,8 @@ export function UserLeaderboard({
                 </h1>
                 <p className="mt-4 text-lg text-muted-foreground">
                     Upoznaj 10 korisnika s najviše odobrenih postignuća. Svaka
-                    sadnja, zalijevanje i berba korak su prema novoj razini.
+                    sadnja, zalijevanje, berba i prihvaćeni prijedlog sadržaja
+                    korak su prema novoj razini.
                 </p>
             </header>
             <section aria-labelledby="leaderboard-title">
@@ -167,6 +173,7 @@ export function UserLeaderboard({
                     </p>
                 )}
             </section>
+            <LeaderboardEditors editors={editors} />
             <section
                 aria-labelledby="levels-title"
                 className="mt-10 border-t pt-8"

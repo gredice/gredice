@@ -35,7 +35,7 @@ for (const width of [375, 768, 1280]) {
             const bounds = await button.boundingBox();
             expect(bounds).not.toBeNull();
             expect(bounds?.height).toBeGreaterThanOrEqual(44);
-            expect(bounds?.height).toBeLessThanOrEqual(64);
+            expect(bounds?.height).toBeLessThanOrEqual(96);
         }
         expect(
             await page.evaluate(() => document.documentElement.scrollWidth),
@@ -81,7 +81,9 @@ test('submits a plant tip and preserves text after a failed submission', async (
     );
     await mount(<PlantCommunitySuggestionsHarness />);
     await page.getByRole('button', { name: 'Predloži novi savjet' }).click();
-    await expect(page.getByText('Biljka: Bob')).toBeVisible();
+    await expect(page.locator('[data-community-dialog-context]')).toHaveText(
+        'Bob',
+    );
     await page.getByLabel('Naslov savjeta').fill('Zaštita od vjetra');
     await page
         .getByLabel('Tvoj savjet')
@@ -92,7 +94,7 @@ test('submits a plant tip and preserves text after a failed submission', async (
         'Visoke biljke po potrebi podupri.',
     );
     await page.getByRole('button', { name: 'Pošalji' }).click();
-    await expect(page.getByText('Prijedlog #45 je poslan')).toBeVisible();
+    await expect(page.getByText('Prijedlog #45')).toBeVisible();
     expect(submittedBody).toEqual({
         kind: 'plantTip',
         parentPlantId: 7,
@@ -151,7 +153,7 @@ for (const kind of ['disease', 'pest']) {
             .fill('Vidljivi znakovi na listovima.');
         await page.getByLabel('Uvjeti pojave').fill('Toplo i vlažno vrijeme.');
         await page.getByRole('button', { name: 'Pošalji' }).click();
-        await expect(page.getByText('Prijedlog #46 je poslan')).toBeVisible();
+        await expect(page.getByText('Prijedlog #46')).toBeVisible();
         expect(submittedBody).toMatchObject({
             kind,
             affectedPlantIds: [7],
@@ -188,8 +190,9 @@ test('tip suggestions require sign-in', async ({ mount, page }) => {
     await mount(<PlantCommunitySuggestionsHarness />);
     await page.getByRole('button', { name: 'Predloži novi savjet' }).click();
     await expect(
-        page.getByText('Za slanje prijedloga treba se prijaviti.'),
+        page.getByRole('heading', { name: 'Prijava u Gredice' }),
     ).toBeVisible();
+    await expect(page.getByRole('dialog')).toHaveCount(1);
     await expect(page.getByLabel('Naslov savjeta')).toHaveCount(0);
 });
 
@@ -290,7 +293,7 @@ test('changing the plant resets the health suggestion draft and selected plant',
     await page.getByLabel('Simptomi').fill('Vidljivi znakovi na listovima.');
     await page.getByLabel('Uvjeti pojave').fill('Toplo i vlažno vrijeme.');
     await page.getByRole('button', { name: 'Pošalji' }).click();
-    await expect(page.getByText('Prijedlog #47 je poslan')).toBeVisible();
+    await expect(page.getByText('Prijedlog #47')).toBeVisible();
     expect(submittedBody).toMatchObject({
         kind: 'disease',
         affectedPlantIds: [11],

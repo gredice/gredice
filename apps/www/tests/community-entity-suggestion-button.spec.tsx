@@ -48,17 +48,19 @@ test('submits a new plant sort suggestion for the current plant', async ({
 
     await page.getByRole('button', { name: /Predloži novu sortu/ }).focus();
     await page.keyboard.press('Enter');
-    await expect(page.getByText('Biljka: Blitva')).toBeVisible();
+    await expect(page.locator('[data-community-dialog-context]')).toHaveText(
+        'Blitva',
+    );
     await page.getByLabel('Naziv sorte').fill('Blitva rubin');
     await page
         .getByLabel('Po čemu je sorta posebna?')
         .fill('Sorta s izraženim crvenim peteljkama.');
     await page
-        .getByLabel('Izvor ili poveznica (opcionalno)')
+        .getByLabel('Izvor (opcionalno)')
         .fill('https://example.com/blitva-rubin');
     await page.getByRole('button', { name: 'Pošalji' }).click();
 
-    await expect(page.getByText('Prijedlog #42 je poslan')).toBeVisible();
+    await expect(page.getByText('Prijedlog #42')).toBeVisible();
     expect(submittedBody).toEqual({
         kind: 'plantSort',
         parentPlantId: 7,
@@ -107,7 +109,7 @@ test('submits a new operation with stage and application', async ({
         .fill('Provjeriti odvodi li se višak vode iz cijele gredice.');
     await page.getByRole('button', { name: 'Pošalji' }).click();
 
-    await expect(page.getByText('Prijedlog #43 je poslan')).toBeVisible();
+    await expect(page.getByText('Prijedlog #43')).toBeVisible();
     expect(submittedBody).toEqual({
         kind: 'operation',
         plantStageId: 10,
@@ -156,7 +158,7 @@ test('preselects the group stage from an operation suggestion card', async ({
         ).violations,
     ).toEqual([]);
     await page
-        .getByRole('button', { name: /^Predloži novu radnju – Zalijevanje / })
+        .getByRole('button', { name: /^Nedostaje radnja\? – Zalijevanje / })
         .click();
     await expect(page.getByLabel('Stadij biljke')).toHaveValue('11');
     await page.getByLabel('Naziv radnje').fill('Zalijevanje kapanjem');
@@ -165,7 +167,7 @@ test('preselects the group stage from an operation suggestion card', async ({
         .fill('Postaviti sustav kapanja uz biljke.');
     await page.getByRole('button', { name: 'Pošalji' }).click();
 
-    await expect(page.getByText('Prijedlog #45 je poslan')).toBeVisible();
+    await expect(page.getByText('Prijedlog #45')).toBeVisible();
     expect(submittedBody).toMatchObject({
         kind: 'operation',
         plantStageId: 11,
@@ -223,7 +225,7 @@ test('submits a new disease with named affected plants', async ({
     await page.getByLabel('Ozbiljnost (opcionalno)').fill('Srednje');
     await page.getByRole('button', { name: 'Pošalji' }).click();
 
-    await expect(page.getByText('Prijedlog #44 je poslan')).toBeVisible();
+    await expect(page.getByText('Prijedlog #44')).toBeVisible();
     expect(submittedBody).toEqual({
         kind: 'disease',
         affectedPlantIds: [7],
@@ -271,9 +273,97 @@ test('requires sign-in before opening a suggestion form', async ({
 
     await page.getByRole('button', { name: 'Predloži novu sortu' }).click();
     await expect(
-        page.getByText('Za slanje prijedloga treba se prijaviti.'),
+        page.getByRole('heading', { name: 'Prijava u Gredice' }),
     ).toBeVisible();
-    await expect(
-        page.getByRole('button', { name: 'Prijavi se i nastavi' }),
-    ).toBeVisible();
+    await expect(page.getByRole('dialog')).toHaveCount(1);
+    await expect(page.getByRole('dialog')).toContainText(
+        'Za slanje prijedloga treba se prijaviti.',
+    );
+    await expect(page.getByLabel('Naziv sorte')).toHaveCount(0);
+});
+
+test('every kind of suggestion uses the same dashed card', async ({
+    mount,
+    page,
+}) => {
+    await mount(
+        <main className="grid w-[420px] gap-2 p-4">
+            <h1>Prijedlozi</h1>
+            <CommunityEntitySuggestionButtonHarness
+                kind="plantSort"
+                parentPlantId={7}
+                parentPlantName="Blitva"
+                publicPath="/biljke/blitva"
+            />
+            <CommunityEntitySuggestionButtonHarness
+                kind="plantTip"
+                parentPlantId={7}
+                parentPlantName="Blitva"
+                publicPath="/biljke/blitva"
+                compact
+            />
+            <CommunityEntitySuggestionButtonHarness
+                kind="pest"
+                plants={[{ value: '7', label: 'Blitva' }]}
+                publicPath="/stetnici"
+            />
+            <OperationSuggestionCardHarness
+                stages={[{ id: 10, label: 'Održavanje' }]}
+            />
+        </main>,
+    );
+
+    const cards = page.getByRole('button', { name: /Predloži/ });
+    await expect(cards).toHaveCount(4);
+    for (const title of [
+        'Nedostaje sorta?',
+        'Imaš savjet?',
+        'Nedostaje štetnik?',
+        'Nedostaje radnja?',
+    ]) {
+        await expect(page.getByText(title)).toBeVisible();
+    }
+    const styles = await cards.evaluateAll((elements) =>
+        elements.map((element) => {
+            const style = getComputedStyle(element);
+            return [
+                style.borderTopStyle,
+                style.paddingTop,
+                style.minHeight,
+                style.borderTopLeftRadius,
+            ].join(' ');
+        }),
+    );
+    expect(new Set(styles).size).toBe(1);
+    expect(styles[0]).toContain('dashed');
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});
+
+test('keeps a suggestion draft when the dialog is closed and reopened', async ({
+    mount,
+    page,
+}) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await mockAuthenticatedUser(page);
+    await mount(
+        <CommunityEntitySuggestionButtonHarness
+            kind="plantSort"
+            parentPlantId={7}
+            parentPlantName="Blitva"
+            publicPath="/biljke/blitva"
+        />,
+    );
+
+    const trigger = page.getByRole('button', { name: /Predloži novu sortu/ });
+    await trigger.click();
+    await expect(page.getByRole('dialog')).toContainText(
+        'Pregledamo svaki prijedlog prije objave i javimo ti ishod.',
+    );
+    await page.getByLabel('Naziv sorte').fill('Blitva rubin');
+    await page.getByRole('button', { name: 'Odustani' }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+
+    await trigger.click();
+    await expect(page.getByLabel('Naziv sorte')).toHaveValue('Blitva rubin');
 });

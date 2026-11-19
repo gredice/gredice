@@ -93,7 +93,7 @@ test('explains when address checking is temporarily unavailable', async ({
     await page.getByRole('button', { name: 'Izračunaj' }).click();
 
     await expect(page.getByRole('alert')).toContainText(
-        'Trenutačno ne možemo izračunati dostavu',
+        'Trenutno ne možemo izračunati dostavu',
     );
 });
 

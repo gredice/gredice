@@ -8,7 +8,8 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { CommunityEditButton } from '../../../components/community-edits/CommunityEditButton';
+import { PageContributors } from '../../../components/community-edits/PageContributors';
+import { SectionContributionBar } from '../../../components/community-edits/SectionContributionBar';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { PublicBlockImage as BlockImage } from '../../../components/shared/PublicBlockImage';
 import {
@@ -22,6 +23,7 @@ import {
     resolveBlockRoute,
 } from '../../../lib/blocks/blockRoute';
 import { getBlocksData } from '../../../lib/blocks/getBlocksData';
+import { getEntityContributors } from '../../../lib/community/getEntityContributors';
 import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
 import { KnownPages } from '../../../src/KnownPages';
 import { BlockAttributeCards } from './BlockAttributeCards';
@@ -70,6 +72,14 @@ export default async function BlockPage(props: PageProps<'/blokovi/[alias]'>) {
         notFound();
     }
     const blockPath = KnownPages.Block(getBlockRouteAlias(entity));
+    const contributors = await getEntityContributors(entity.id);
+    const editTarget = {
+        entityTypeName: 'block',
+        entityId: entity.id,
+        publicPath: blockPath,
+        entityName: entity.information.label,
+    } as const;
+    const feedbackData = { blockName: entity.information.name };
 
     return (
         <div className="border-b">
@@ -90,51 +100,68 @@ export default async function BlockPage(props: PageProps<'/blokovi/[alias]'>) {
                         tagline={pageCategory}
                         header={entity.information.label}
                         subHeader={entity.information.shortDescription}
-                    >
-                        <Row className="justify-end">
-                            <CommunityEditButton
-                                entityTypeName="block"
-                                entityId={entity.id}
-                                publicPath={blockPath}
-                                sectionKey="overview"
-                            />
-                        </Row>
-                    </PageHeader>
+                    />
+                    <SectionContributionBar
+                        feedback={{
+                            topic: 'www/blocks/information',
+                            data: feedbackData,
+                        }}
+                        edit={{
+                            ...editTarget,
+                            sectionKey: 'overview',
+                            sectionLabel: 'Pregled',
+                        }}
+                        contributors={contributors.sections.overview}
+                    />
                     <Typography level="body1" className="text-muted-foreground">
                         {blockVirtualItemNote}
                     </Typography>
-                    <Markdown size="md">
-                        {entity.information.fullDescription}
-                    </Markdown>
-                    <Row className="justify-end">
-                        <CommunityEditButton
-                            entityTypeName="block"
-                            entityId={entity.id}
-                            publicPath={blockPath}
-                            sectionKey="description"
+                    <Stack spacing={3}>
+                        <Markdown size="md">
+                            {entity.information.fullDescription}
+                        </Markdown>
+                        <SectionContributionBar
+                            feedback={{
+                                topic: 'www/blocks/description',
+                                data: feedbackData,
+                            }}
+                            edit={{
+                                ...editTarget,
+                                sectionKey: 'description',
+                                sectionLabel: 'Opis',
+                            }}
+                            contributors={contributors.sections.description}
                         />
-                    </Row>
-                    <Stack spacing={2}>
-                        <Row className="justify-between">
-                            <Typography level="h5">Svojstva</Typography>
-                            <CommunityEditButton
-                                entityTypeName="block"
-                                entityId={entity.id}
-                                publicPath={blockPath}
-                                sectionKey="attributes"
-                            />
-                        </Row>
-                        <BlockAttributeCards {...entity} />
                     </Stack>
+                    <Stack spacing={3}>
+                        <Typography level="h5" component="h2">
+                            Svojstva
+                        </Typography>
+                        <BlockAttributeCards {...entity} />
+                        <SectionContributionBar
+                            feedback={{
+                                topic: 'www/blocks/attributes',
+                                data: feedbackData,
+                            }}
+                            edit={{
+                                ...editTarget,
+                                sectionKey: 'attributes',
+                                sectionLabel: 'Svojstva',
+                            }}
+                            contributors={contributors.sections.attributes}
+                        />
+                    </Stack>
+                    <PageContributors
+                        contributors={contributors}
+                        edit={editTarget}
+                    />
                     <Row spacing={4}>
                         <Typography level="body1">
                             Jesu li ti informacije korisne?
                         </Typography>
                         <FeedbackModal
                             topic="www/blocks/details"
-                            data={{
-                                blockName: entity.information.name,
-                            }}
+                            data={feedbackData}
                         />
                     </Row>
                 </Stack>

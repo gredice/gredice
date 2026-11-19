@@ -1,4 +1,5 @@
 import { GamePlantDiseaseIcon, GamePlantPestIcon } from '@gredice/ui/GameIcons';
+import type { ReactNode } from 'react';
 import { normalizeSearchText } from '../../lib/search/normalizeSearchText';
 import { PublicEmptyState } from '../shared/placeholders/PublicEmptyState';
 import { PlantHealthIssueCard } from './PlantHealthIssueCard';
@@ -38,10 +39,13 @@ export function PlantHealthIssueDirectory({
     issues,
     kind,
     search,
+    suggestion,
 }: {
     issues: PlantHealthIssueData[];
     kind: PlantHealthIssueKind;
     search: string;
+    /** Trigger for suggesting a missing record: last grid cell, or under the empty state. */
+    suggestion?: ReactNode;
 }) {
     const filteredIssues = issues
         .filter((issue) => issueMatchesSearch(issue, search))
@@ -54,16 +58,26 @@ export function PlantHealthIssueDirectory({
 
     if (filteredIssues.length === 0) {
         return (
-            <PublicEmptyState
-                icon={
-                    kind === 'disease'
-                        ? GamePlantDiseaseIcon
-                        : GamePlantPestIcon
+            <div
+                className={
+                    suggestion ? 'rounded border pb-4' : 'rounded border'
                 }
-                className="rounded border"
             >
-                Nema zapisa za zadani pojam.
-            </PublicEmptyState>
+                <PublicEmptyState
+                    icon={
+                        kind === 'disease'
+                            ? GamePlantDiseaseIcon
+                            : GamePlantPestIcon
+                    }
+                >
+                    Nema zapisa za zadani pojam.
+                </PublicEmptyState>
+                {suggestion ? (
+                    <div className="mx-auto w-full max-w-md px-4">
+                        {suggestion}
+                    </div>
+                ) : null}
+            </div>
         );
     }
 
@@ -95,6 +109,7 @@ export function PlantHealthIssueDirectory({
                     />
                 );
             })}
+            {suggestion}
         </div>
     );
 }

@@ -154,10 +154,10 @@ for (const kind of ['disease', 'pest'] as const) {
                 page.getByText('Prepoznatljiv opis problema.'),
             ).toBeVisible();
             await page
-                .getByLabel('Izvor ili poveznica (opcionalno)')
+                .getByLabel('Izvor (opcionalno)')
                 .fill('https://example.com/izvor');
             await page
-                .getByLabel('Napomena za administratora (opcionalno)')
+                .getByLabel('Napomena za moderatora (opcionalno)')
                 .fill('Uočeno na listovima.');
             expect(
                 (
@@ -174,9 +174,7 @@ for (const kind of ['disease', 'pest'] as const) {
                 fullPage: true,
             });
             await page.getByRole('button', { name: 'Pošalji' }).click();
-            await expect(
-                page.getByText('Prijedlog #70 je poslan'),
-            ).toBeVisible();
+            await expect(page.getByText('Prijedlog #70')).toBeVisible();
             expect(submittedBody).toEqual({
                 entityTypeName:
                     kind === 'disease' ? 'plantDisease' : 'plantPest',
@@ -237,7 +235,7 @@ test('recovers from catalogue and submission errors without losing the selected 
     await page.getByRole('combobox').click();
     await page.getByRole('option', { name: 'Postojeći problem' }).click();
     await page
-        .getByLabel('Napomena za administratora (opcionalno)')
+        .getByLabel('Napomena za moderatora (opcionalno)')
         .fill('Sačuvaj napomenu.');
     await page.getByRole('button', { name: 'Pošalji' }).click();
     await expect(page.getByRole('alert')).toHaveText(
@@ -247,10 +245,10 @@ test('recovers from catalogue and submission errors without losing the selected 
         page.getByRole('combobox', { name: 'Postojeća bolest', exact: true }),
     ).toContainText('Postojeći problem');
     await expect(
-        page.getByLabel('Napomena za administratora (opcionalno)'),
+        page.getByLabel('Napomena za moderatora (opcionalno)'),
     ).toHaveValue('Sačuvaj napomenu.');
     await page.getByRole('button', { name: 'Pošalji' }).click();
-    await expect(page.getByText('Prijedlog #71 je poslan')).toBeVisible();
+    await expect(page.getByText('Prijedlog #71')).toBeVisible();
 });
 
 test('empty choices allow a new suggestion with consistent input backgrounds', async ({
@@ -275,7 +273,7 @@ test('empty choices allow a new suggestion with consistent input backgrounds', a
     for (const label of [
         'Naziv bolesti',
         'Ozbiljnost (opcionalno)',
-        'Izvor ili poveznica (opcionalno)',
+        'Izvor (opcionalno)',
     ]) {
         await expect(page.getByLabel(label).locator('..')).toHaveCSS(
             'background-color',

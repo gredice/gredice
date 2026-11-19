@@ -117,10 +117,12 @@ for (const context of [
             .getByRole('combobox', { name: 'Dodaj biljku — Pogođene biljke' })
             .click();
         await page.getByRole('option', { name: 'Rotkvica' }).click();
-        await page.getByRole('button', { name: 'Pošalji' }).click();
-        await expect(
-            page.getByText('Prijedlog #46 je poslan na odobrenje.'),
-        ).toBeVisible();
+        await page.getByRole('button', { name: 'Pošalji prijedlog' }).click();
+        const dialog = page.getByRole('dialog', {
+            name: 'Prijedlog je poslan',
+        });
+        await expect(dialog).toBeVisible();
+        await expect(dialog).toContainText('Prijedlog #46');
     });
 }
 
@@ -145,9 +147,11 @@ test('offers the first affected plant through the existing sign-in flow', async 
     await page
         .getByRole('button', { name: 'Predloži pogođenu biljku' })
         .click();
+    // Signed-out visitors go straight to sign-in, without a form shell first.
     await expect(
-        page.getByRole('button', { name: 'Prijavi se i nastavi' }),
+        page.getByRole('heading', { name: 'Prijava u Gredice' }),
     ).toBeVisible();
+    await expect(page.getByRole('dialog')).toHaveCount(1);
 });
 
 for (const width of [375, 768, 1280]) {

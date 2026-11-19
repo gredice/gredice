@@ -1,5 +1,6 @@
 import { clientPublic } from '@gredice/client';
 import { AVATAR_OPTIONS } from '@gredice/ui/AvatarSelectionMenu';
+import { readLeaderboardEditors } from './communityContributions';
 
 export async function getUserLeaderboard() {
     const response = await clientPublic().api.users.public.leaderboard.$get(
@@ -7,7 +8,9 @@ export async function getUserLeaderboard() {
         { init: { cache: 'no-store', signal: AbortSignal.timeout(10_000) } },
     );
     if (!response.ok) throw new Error('Ljestvica trenutačno nije dostupna.');
-    return response.json();
+    const leaderboard = await response.json();
+    // An API from before the editors ranking simply has none to show.
+    return { ...leaderboard, editors: readLeaderboardEditors(leaderboard) };
 }
 
 /** A random handful of built-in avatars that stand in for the gardeners outside the top ten. */

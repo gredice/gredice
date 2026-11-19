@@ -379,6 +379,21 @@ test.describe('public search filters', () => {
             (raisedBedLinkBox?.x ?? 0) + (raisedBedLinkBox?.width ?? 0),
         ).toBeLessThanOrEqual(firstNavLinkBox?.x ?? 0);
         expect(raisedBedLinkBox?.x ?? 0).toBeLessThan(firstNavLinkBox?.x ?? 0);
+
+        // From 2xl the search field doubles in width; it must still clear
+        // the first nav link.
+        await page.setViewportSize({ width: 1536, height: 720 });
+        const wideSearchBox = await desktopSearch.boundingBox();
+        const wideRaisedBedLinkBox = await page
+            .locator('header')
+            .getByRole('link', { name: 'Gredica', exact: true })
+            .boundingBox();
+
+        expect(wideSearchBox).not.toBeNull();
+        expect(wideRaisedBedLinkBox).not.toBeNull();
+        expect(
+            (wideSearchBox?.x ?? 0) + (wideSearchBox?.width ?? 0),
+        ).toBeLessThan((wideRaisedBedLinkBox?.x ?? 0) - 8);
     });
 
     test('navbar exposes updated primary links', async ({ page }) => {
@@ -388,6 +403,9 @@ test.describe('public search filters', () => {
         await expect(
             navbar.getByRole('link', { name: 'Gredica', exact: true }),
         ).toHaveAttribute('href', '/podignuta-gredica');
+        await expect(
+            navbar.getByRole('link', { name: 'Cjenik', exact: true }),
+        ).toHaveAttribute('href', '/cjenik');
         await expect(
             navbar.getByRole('link', { name: 'Novosti', exact: true }),
         ).toHaveAttribute('href', '/novosti');

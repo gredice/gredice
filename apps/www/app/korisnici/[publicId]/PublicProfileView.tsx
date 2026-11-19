@@ -1,6 +1,7 @@
 import { PublicBreadcrumbs } from '../../../components/shared/seo/PublicBreadcrumbs';
 import { KnownPages } from '../../../src/KnownPages';
 import { PublicProfileAchievements } from './PublicProfileAchievements';
+import { PublicProfileContributions } from './PublicProfileContributions';
 import { PublicProfileGardens } from './PublicProfileGardens';
 import { PublicProfileHeader } from './PublicProfileHeader';
 import type { PublicProfileData } from './publicProfileData';
@@ -18,6 +19,7 @@ export function PublicProfileView({ profile }: { profile: PublicProfileData }) {
                 <PublicProfileHeader {...profile} />
             </div>
             <PublicProfileAchievements achievements={profile.achievements} />
+            <PublicProfileContributions contributions={profile.contributions} />
             <PublicProfileGardens
                 key={profile.user.publicId}
                 gardens={profile.gardens}

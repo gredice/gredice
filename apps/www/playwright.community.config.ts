@@ -9,6 +9,8 @@ export default defineConfig({
         'community-entity-suggestion-button.spec.tsx',
         'community-edit-button.spec.tsx',
         'existing-plant-health-suggestion.spec.tsx',
+        'my-suggestions.spec.tsx',
+        'section-contribution-bar.spec.tsx',
     ],
     testIgnore: [],
     webServer: undefined,

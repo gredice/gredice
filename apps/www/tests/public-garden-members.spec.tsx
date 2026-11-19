@@ -46,6 +46,14 @@ for (const width of [390, 768, 1280]) {
         const details = page.getByRole('region', { name: 'Detalji vrta' });
         const avatars = card.getByRole('link', { name: /Otvori profil/ });
         await expect(avatars).toHaveCount(4);
+        // The garden and its owner are named in visible text, not only in
+        // the overlay link's accessible name.
+        await expect(
+            card.getByText('Zajednički vrt', { exact: true }),
+        ).toBeVisible();
+        await expect(
+            card.getByText(members[0].displayName, { exact: true }),
+        ).toBeVisible();
         await expect(avatars.first()).toHaveAttribute(
             'href',
             '/korisnici/u_member0',

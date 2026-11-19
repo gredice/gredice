@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test';
 import { CommunityEditButtonHarness } from './CommunityEditButtonHarness';
 import { expect, test } from './component-fixtures';
 import '../app/globals.css';
@@ -32,9 +33,9 @@ for (const width of [375, 1280]) {
         for (let attempt = 0; attempt < 2; attempt += 1) {
             await trigger.focus();
             await page.keyboard.press('Enter');
-            await expect(page.getByRole('dialog')).toBeVisible();
+            await expect(page.getByRole('dialog')).toHaveCount(1);
             await expect(
-                page.getByText('Za slanje prijedloga treba se prijaviti.'),
+                page.getByRole('heading', { name: 'Prijava u Gredice' }),
             ).toBeVisible();
             await expect(trigger).toHaveAttribute('aria-expanded', 'true');
             await page.keyboard.press('Escape');
@@ -67,14 +68,16 @@ test('reopens the matching edit dialog after an OAuth return', async ({
         />,
     );
 
-    await expect(page.getByRole('dialog')).toBeVisible();
     await expect(
-        page.getByText('Za slanje prijedloga treba se prijaviti.'),
+        page.getByRole('heading', { name: 'Prijava u Gredice' }),
     ).toBeVisible();
     await expect(page).toHaveURL(/\?keep=1#rast$/u);
 });
 
-test('prompts anonymous users before editing', async ({ mount, page }) => {
+test('opens only the sign-in dialog for anonymous users', async ({
+    mount,
+    page,
+}) => {
     await page.route('**/api/gredice/api/auth/current-claims', (route) =>
         route.fulfill({ status: 401, json: { error: 'Unauthorized' } }),
     );
@@ -94,13 +97,17 @@ test('prompts anonymous users before editing', async ({ mount, page }) => {
     await page.getByTitle('Predloži izmjenu').click();
 
     await expect(
-        page.getByText('Za slanje prijedloga treba se prijaviti.'),
+        page.getByRole('button', { name: 'Nastavi sa Google' }),
     ).toBeVisible();
+    await expect(page.getByRole('dialog')).toHaveCount(1);
+    await expect(page.getByRole('dialog')).toContainText(
+        'Za slanje prijedloga treba se prijaviti.',
+    );
     await expect(
         page.getByRole('button', { name: 'Prijavi se i nastavi' }),
-    ).toBeVisible();
+    ).toHaveCount(0);
     await expect(
-        page.getByRole('button', { name: 'Prijavi se u vrt' }),
+        page.getByRole('button', { name: 'Pošalji prijedlog' }),
     ).toHaveCount(0);
 });
 
@@ -173,7 +180,6 @@ test('loads the same edit context after inline email login', async ({
     );
 
     await page.getByTitle('Predloži izmjenu').click();
-    await page.getByRole('button', { name: 'Prijavi se i nastavi' }).click();
     await expect(
         page.getByRole('button', { name: 'Nastavi sa Google' }),
     ).toBeVisible();
@@ -211,7 +217,6 @@ test('preserves the community edit context in OAuth return paths', async ({
     );
 
     await page.getByTitle('Predloži izmjenu').click();
-    await page.getByRole('button', { name: 'Prijavi se i nastavi' }).click();
     const authRequestPromise = page.waitForRequest(authRequestPattern);
 
     await page.getByRole('button', { name: 'Nastavi sa Google' }).click();
@@ -319,8 +324,9 @@ test('submits a changed section edit for authenticated users', async ({
     await page.getByRole('button', { name: 'Pošalji' }).click();
 
     await expect(
-        page.getByText('Prijedlog #42 je poslan na odobrenje.'),
+        page.getByRole('heading', { name: 'Prijedlog je poslan' }),
     ).toBeVisible();
+    await expect(page.getByText('Prijedlog #42')).toBeVisible();
 });
 
 test('submits multiple reference edits for plant relationships', async ({
@@ -469,8 +475,9 @@ test('submits multiple reference edits for plant relationships', async ({
     await page.getByRole('button', { name: 'Pošalji' }).click();
 
     await expect(
-        page.getByText('Prijedlog #45 je poslan na odobrenje.'),
+        page.getByRole('heading', { name: 'Prijedlog je poslan' }),
     ).toBeVisible();
+    await expect(page.getByText('Prijedlog #45')).toBeVisible();
 });
 
 test('shows storage content and operation suggestions in the edit modal', async ({
@@ -612,10 +619,9 @@ test('shows storage content and operation suggestions in the edit modal', async 
         .getByLabel('Skladištenje')
         .evaluate((element) => getComputedStyle(element).backgroundColor);
     expect(fieldBackground).not.toBe(dialogBackground);
-    await expect(page.getByLabel('Izvor').locator('..')).toHaveCSS(
-        'background-color',
-        'rgb(255, 255, 255)',
-    );
+    await expect(
+        page.getByLabel('Izvor za radnju (opcionalno)').locator('..'),
+    ).toHaveCSS('background-color', 'rgb(255, 255, 255)');
     await expect(page.getByRole('combobox', { name: /Radnja/u })).toHaveCSS(
         'background-color',
         'rgb(255, 255, 255)',
@@ -626,15 +632,18 @@ test('shows storage content and operation suggestions in the edit modal', async 
     await expect(
         page.getByText('Uklanjanje cijele biljke iz gredice.'),
     ).toBeVisible();
-    await page.getByLabel('Izvor').fill('Terenska bilješka');
     await page
-        .getByRole('textbox', { name: 'Napomena', exact: true })
+        .getByLabel('Izvor za radnju (opcionalno)')
+        .fill('Terenska bilješka');
+    await page
+        .getByRole('textbox', { name: 'Napomena uz radnju (opcionalno)' })
         .fill('Radnja pripada skladištenju.');
     await page.getByRole('button', { name: 'Pošalji' }).click();
 
     await expect(
-        page.getByText('Prijedlog #44 je poslan na odobrenje.'),
+        page.getByRole('heading', { name: 'Prijedlog je poslan' }),
     ).toBeVisible();
+    await expect(page.getByText('Prijedlog #44')).toBeVisible();
 });
 
 test('submits operation removal suggestions from current operation cards', async ({
@@ -748,13 +757,14 @@ test('submits operation removal suggestions from current operation cards', async
     await page.getByRole('button', { name: /Ukloni/u }).click();
     await expect(page.getByText(/Prijedlog će tražiti/u)).toBeVisible();
     await page
-        .getByRole('textbox', { name: 'Napomena', exact: true })
+        .getByRole('textbox', { name: 'Napomena uz radnju (opcionalno)' })
         .fill('Ne treba se prikazivati u skladištenju.');
     await page.getByRole('button', { name: 'Pošalji' }).click();
 
     await expect(
-        page.getByText('Prijedlog #46 je poslan na odobrenje.'),
+        page.getByRole('heading', { name: 'Prijedlog je poslan' }),
     ).toBeVisible();
+    await expect(page.getByText('Prijedlog #46')).toBeVisible();
 });
 
 test('submits new operation suggestions with name and expectation', async ({
@@ -862,13 +872,14 @@ test('submits new operation suggestions with name and expectation', async ({
             'Korisnik očekuje podsjetnik za provjeru vlage prije zalijevanja.',
         );
     await page
-        .getByRole('textbox', { name: 'Napomena', exact: true })
+        .getByRole('textbox', { name: 'Napomena uz radnju (opcionalno)' })
         .fill('Nema odgovarajuće postojeće radnje.');
     await page.getByRole('button', { name: 'Pošalji' }).click();
 
     await expect(
-        page.getByText('Prijedlog #47 je poslan na odobrenje.'),
+        page.getByRole('heading', { name: 'Prijedlog je poslan' }),
     ).toBeVisible();
+    await expect(page.getByText('Prijedlog #47')).toBeVisible();
 });
 
 test('submits select field edits for authenticated users', async ({
@@ -963,8 +974,9 @@ test('submits select field edits for authenticated users', async ({
     await page.getByRole('button', { name: 'Pošalji' }).click();
 
     await expect(
-        page.getByText('Prijedlog #43 je poslan na odobrenje.'),
+        page.getByRole('heading', { name: 'Prijedlog je poslan' }),
     ).toBeVisible();
+    await expect(page.getByText('Prijedlog #43')).toBeVisible();
 });
 
 test('organizes harvest edit fields into grouped sections with attribute icons', async ({
@@ -1191,3 +1203,469 @@ test('organizes harvest edit fields into grouped sections with attribute icons',
         ).toHaveCount(1);
     }
 });
+
+function mockSignedInUser(page: Page) {
+    return page.route('**/api/gredice/api/auth/current-claims', (route) =>
+        route.fulfill({
+            status: 200,
+            json: {
+                id: 'user-1',
+                userName: 'ana',
+                displayName: 'Ana',
+            },
+        }),
+    );
+}
+
+function mockSowingFields(page: Page, fields: Record<string, unknown>[]) {
+    return page.route(
+        '**/api/gredice/api/directories/community-edits/entities/plant/1/fields**',
+        (route) =>
+            route.fulfill({
+                status: 200,
+                json: {
+                    entityTypeName: 'plant',
+                    entityId: 1,
+                    sectionKey: 'sowing',
+                    fields: fields.map((field) => ({
+                        entityTypeName: 'plant',
+                        entityId: 1,
+                        sectionKey: 'sowing',
+                        attributeValueId: null,
+                        multiple: false,
+                        ...field,
+                    })),
+                },
+            }),
+    );
+}
+
+const sowingDescriptionField = {
+    fieldKey: 'plant.sowing',
+    attributeDefinitionId: 10,
+    attributePath: 'information.sowing',
+    dataType: 'text',
+    controlType: 'text',
+    publicLabel: 'Opis faze',
+    currentValue: 'Stari opis',
+    baseValueHash: 'hash-sowing',
+};
+
+const sowingDepthField = {
+    fieldKey: 'plant.seeding-depth',
+    attributeDefinitionId: 11,
+    attributePath: 'attributes.seedingDepth',
+    dataType: 'number',
+    controlType: 'number',
+    publicLabel: 'Dubina sijanja',
+    helpText: 'Vrijednost u centimetrima.',
+    currentValue: '1',
+    baseValueHash: 'hash-depth',
+};
+
+test('keeps the draft when the dialog is closed and reopened', async ({
+    mount,
+    page,
+}) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await mockSignedInUser(page);
+    await mockSowingFields(page, [sowingDescriptionField]);
+
+    await mount(
+        <CommunityEditButtonHarness
+            entityTypeName="plant"
+            entityId={1}
+            entityName="Rajčica"
+            publicPath="/biljke/rajcica"
+            sectionKey="sowing"
+            sectionLabel="Sijanje"
+        />,
+    );
+
+    await page.getByTitle('Predloži izmjenu').click();
+    await expect(page.getByRole('dialog')).toContainText('Rajčica · Sijanje');
+    await expect(page.getByRole('dialog')).toContainText(
+        'Pregledamo svaki prijedlog prije objave i javimo ti ishod.',
+    );
+    const summary = page.locator('[data-community-edit-summary]');
+    await expect(summary).toHaveText(
+        'Promijeni barem jedno polje da pošalješ prijedlog.',
+    );
+    await expect(
+        page.getByRole('button', { name: 'Pošalji prijedlog' }),
+    ).toBeDisabled();
+
+    await page.getByLabel('Opis faze').fill('Novi opis sijanja');
+    await expect(summary).toHaveText('1 izmjena: Opis faze');
+    await expect(page.getByText('Izmijenjeno')).toBeVisible();
+
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await page.getByTitle('Predloži izmjenu').click();
+
+    await expect(page.getByLabel('Opis faze')).toHaveValue('Novi opis sijanja');
+    await expect(summary).toHaveText('1 izmjena: Opis faze');
+
+    await page.getByRole('button', { name: 'Odustani' }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await page.getByTitle('Predloži izmjenu').click();
+    await expect(page.getByLabel('Opis faze')).toHaveValue('Novi opis sijanja');
+
+    await page.getByRole('button', { name: 'Vrati – Opis faze' }).click();
+    await expect(page.getByLabel('Opis faze')).toHaveValue('Stari opis');
+    await expect(page.getByLabel('Opis faze')).toBeFocused();
+    await expect(page.getByText('Izmijenjeno')).toHaveCount(0);
+    await expect(
+        page.getByRole('button', { name: 'Pošalji prijedlog' }),
+    ).toBeDisabled();
+});
+
+test('lists every change beside the send button and sends source and reason', async ({
+    mount,
+    page,
+}) => {
+    await mockSignedInUser(page);
+    await mockSowingFields(page, [sowingDescriptionField, sowingDepthField]);
+    let submittedBody: unknown;
+    await page.route(
+        '**/api/gredice/api/directories/community-edits',
+        async (route) => {
+            submittedBody = route.request().postDataJSON();
+            await route.fulfill({
+                status: 201,
+                json: {
+                    status: 'pending_admin_approval',
+                    requestId: 50,
+                    requestStatus: 'pending',
+                    changeCount: 2,
+                },
+            });
+        },
+    );
+
+    await mount(
+        <CommunityEditButtonHarness
+            entityTypeName="plant"
+            entityId={1}
+            entityName="Rajčica"
+            publicPath="/biljke/rajcica"
+            sectionKey="sowing"
+            sectionLabel="Sijanje"
+        />,
+    );
+
+    await page.getByTitle('Predloži izmjenu').click();
+    await page.getByLabel('Opis faze').fill('Novi opis sijanja');
+    await page.getByLabel('Dubina sijanja').fill('2');
+    await expect(page.locator('[data-community-edit-summary]')).toHaveText(
+        '2 izmjene: Opis faze, Dubina sijanja',
+    );
+    await expect(page.getByText('Objavljeno: 1')).toBeVisible();
+    await page
+        .getByLabel('Izvor (opcionalno)')
+        .fill('Priručnik za vrtlare, str. 12');
+    await page
+        .getByLabel('Zašto predlažeš izmjenu? (opcionalno)')
+        .fill('Sjeme niče ravnomjernije.');
+    await page.getByRole('button', { name: 'Pošalji prijedlog' }).click();
+
+    await expect(
+        page.getByRole('heading', { name: 'Prijedlog je poslan' }),
+    ).toBeVisible();
+    await expect(page.getByText('Prijedlog #50 · 2 izmjene')).toBeVisible();
+    await expect(page.getByRole('dialog')).toContainText(
+        'Ishod ti stiže kao obavijest.',
+    );
+    await expect(
+        page.getByRole('link', { name: 'Moji prijedlozi' }),
+    ).toHaveAttribute('href', '/moji-prijedlozi');
+    expect(submittedBody).toEqual({
+        entityTypeName: 'plant',
+        entityId: 1,
+        publicPath: '/biljke/rajcica',
+        sectionKey: 'sowing',
+        submitterNote:
+            'Izvor: Priručnik za vrtlare, str. 12\n\nSjeme niče ravnomjernije.',
+        changes: [
+            {
+                fieldKey: 'plant.sowing',
+                proposedValue: 'Novi opis sijanja',
+                baseValueHash: 'hash-sowing',
+            },
+            {
+                fieldKey: 'plant.seeding-depth',
+                proposedValue: '2',
+                baseValueHash: 'hash-depth',
+            },
+        ],
+    });
+
+    // The footer action and the dialog's corner button both close it.
+    await page.getByRole('button', { name: 'Zatvori' }).first().click();
+    await page.getByTitle('Predloži izmjenu').click();
+    await expect(page.getByLabel('Opis faze')).toHaveValue('Stari opis');
+});
+
+test('does not send a range until both ends are valid', async ({
+    mount,
+    page,
+}) => {
+    await mockSignedInUser(page);
+    await mockSowingFields(page, [
+        {
+            fieldKey: 'plant.seeding-distance-range',
+            attributeDefinitionId: 12,
+            attributePath: 'attributes.seedingDistanceRange',
+            dataType: 'json',
+            controlType: 'range',
+            publicLabel: 'Razmak sijanja',
+            currentValue: JSON.stringify({ min: 20, max: 30 }),
+            baseValueHash: 'hash-range',
+        },
+    ]);
+    let submittedBody: unknown;
+    await page.route(
+        '**/api/gredice/api/directories/community-edits',
+        async (route) => {
+            submittedBody = route.request().postDataJSON();
+            await route.fulfill({
+                status: 201,
+                json: { status: 'pending_admin_approval', requestId: 51 },
+            });
+        },
+    );
+
+    await mount(
+        <CommunityEditButtonHarness
+            entityTypeName="plant"
+            entityId={1}
+            publicPath="/biljke/rajcica"
+            sectionKey="sowing"
+        />,
+    );
+
+    await page.getByTitle('Predloži izmjenu').click();
+    const send = page.getByRole('button', { name: 'Pošalji prijedlog' });
+    const summary = page.locator('[data-community-edit-summary]');
+
+    await page.getByLabel('Najmanje').fill('40');
+    await expect(
+        page.getByText('Najmanja vrijednost ne može biti veća od najveće.'),
+    ).toBeVisible();
+    await expect(summary).toHaveText('Ispravi označena polja prije slanja.');
+    await expect(send).toBeDisabled();
+
+    await page.getByLabel('Najviše').fill('');
+    await expect(
+        page.getByText('Upiši i najmanju i najveću vrijednost.'),
+    ).toBeVisible();
+    await expect(send).toBeDisabled();
+
+    await page.getByLabel('Najviše').fill('50');
+    await expect(summary).toHaveText('1 izmjena: Razmak sijanja');
+    await send.click();
+
+    await expect(
+        page.getByRole('heading', { name: 'Prijedlog je poslan' }),
+    ).toBeVisible();
+    expect(submittedBody).toMatchObject({
+        changes: [
+            {
+                fieldKey: 'plant.seeding-distance-range',
+                proposedValue: { min: 40, max: 50 },
+                baseValueHash: 'hash-range',
+            },
+        ],
+    });
+});
+
+test('shows a notice instead of raw ID and JSON inputs', async ({
+    mount,
+    page,
+}) => {
+    await mockSignedInUser(page);
+    await mockSowingFields(page, [
+        {
+            fieldKey: 'plant.reference',
+            attributeDefinitionId: 13,
+            attributePath: 'information.reference',
+            dataType: 'ref:plant',
+            controlType: 'reference',
+            publicLabel: 'Povezani zapis',
+            currentValue: '12',
+            baseValueHash: 'hash-reference',
+        },
+        {
+            fieldKey: 'plant.references',
+            attributeDefinitionId: 14,
+            attributePath: 'information.references',
+            dataType: 'ref:plant',
+            controlType: 'reference',
+            multiple: true,
+            publicLabel: 'Povezani zapisi',
+            currentValue: JSON.stringify(['12', '34']),
+            baseValueHash: 'hash-references',
+        },
+        {
+            fieldKey: 'plant.calendar',
+            attributeDefinitionId: 15,
+            attributePath: 'information.calendar',
+            dataType: 'json',
+            controlType: 'json',
+            publicLabel: 'Kalendar',
+            currentValue: '{"sowing":[3,4]}',
+            baseValueHash: 'hash-calendar',
+        },
+    ]);
+
+    await mount(
+        <CommunityEditButtonHarness
+            entityTypeName="plant"
+            entityId={1}
+            publicPath="/biljke/rajcica"
+            sectionKey="sowing"
+        />,
+    );
+
+    await page.getByTitle('Predloži izmjenu').click();
+    await expect(
+        page.getByText('Ovo polje trenutno nije moguće uređivati ovdje.'),
+    ).toHaveCount(3);
+    await expect(page.getByPlaceholder('Npr. 12, 34, 56')).toHaveCount(0);
+    await expect(page.locator('[data-field-key] textarea')).toHaveCount(0);
+    await expect(
+        page.getByRole('button', { name: 'Pošalji prijedlog' }),
+    ).toBeDisabled();
+});
+
+test('names the next badge from the accepted suggestion count', async ({
+    mount,
+    page,
+}) => {
+    await mockSignedInUser(page);
+    await mockSowingFields(page, [sowingDescriptionField]);
+    let acceptedCount = 0;
+    await page.route(
+        '**/api/gredice/api/directories/community-edits/mine',
+        (route) =>
+            route.fulfill({
+                status: 200,
+                json: { acceptedCount, items: [] },
+            }),
+    );
+
+    const component = await mount(
+        <CommunityEditButtonHarness
+            entityTypeName="plant"
+            entityId={1}
+            publicPath="/biljke/rajcica"
+            sectionKey="sowing"
+        />,
+    );
+
+    await page.getByTitle('Predloži izmjenu').click();
+    await expect(page.locator('[data-community-reward-hint]')).toHaveText(
+        'Tvoj prvi prihvaćeni prijedlog donosi značku Prvi doprinos i 100 suncokreta.',
+    );
+
+    acceptedCount = 3;
+    await component.unmount();
+    await mount(
+        <CommunityEditButtonHarness
+            entityTypeName="plant"
+            entityId={1}
+            publicPath="/biljke/rajcica"
+            sectionKey="sowing"
+        />,
+    );
+    await page.getByTitle('Predloži izmjenu').click();
+    await expect(page.locator('[data-community-reward-hint]')).toHaveText(
+        'Još 2 prihvaćena prijedloga do značke Pouzdani urednik i 250 suncokreta.',
+    );
+});
+
+test('offers the trigger as a plain text button and as a card', async ({
+    mount,
+    page,
+}) => {
+    const component = await mount(
+        <CommunityEditButtonHarness
+            buttonStyle="plain"
+            entityTypeName="plant"
+            entityId={1}
+            publicPath="/biljke/rajcica"
+            sectionKey="sowing"
+        />,
+    );
+    const plain = page.getByRole('button', { name: 'Predloži izmjenu' });
+    await expect(plain).toBeVisible();
+    await expect(plain).toHaveText('Predloži izmjenu');
+    await expect(plain).toHaveCSS('border-top-width', '0px');
+
+    await component.unmount();
+    await mount(
+        <CommunityEditButtonHarness
+            buttonStyle="card"
+            entityTypeName="plant"
+            entityId={1}
+            label="Predloži dobrog susjeda"
+            publicPath="/biljke/rajcica"
+            sectionKey="relationships"
+        />,
+    );
+    const card = page.getByRole('button', {
+        name: 'Predloži dobrog susjeda',
+    });
+    await expect(card).toHaveCSS('border-top-style', 'dashed');
+    await expect(card).toHaveAttribute('aria-haspopup', 'dialog');
+});
+
+for (const width of [375, 1280]) {
+    test(`keeps the send button in view while a long form scrolls at ${width}px`, async ({
+        mount,
+        page,
+    }, testInfo) => {
+        await page.setViewportSize({ width, height: 700 });
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        await mockSignedInUser(page);
+        await mockSowingFields(
+            page,
+            Array.from({ length: 8 }, (_, index) => ({
+                ...sowingDescriptionField,
+                fieldKey: `plant.sowing-${index.toString()}`,
+                publicLabel: `Opis faze ${(index + 1).toString()}`,
+                baseValueHash: `hash-sowing-${index.toString()}`,
+            })),
+        );
+
+        await mount(
+            <CommunityEditButtonHarness
+                entityTypeName="plant"
+                entityId={1}
+                entityName="Rajčica"
+                publicPath="/biljke/rajcica"
+                sectionKey="sowing"
+                sectionLabel="Sijanje"
+            />,
+        );
+
+        await page.getByTitle('Predloži izmjenu').click();
+        const send = page.getByRole('button', { name: 'Pošalji prijedlog' });
+        await page.getByLabel('Opis faze 1').fill('Novi opis');
+        await expect(send).toBeInViewport({ ratio: 1 });
+        await expect(page.getByLabel('Opis faze 8')).not.toBeInViewport();
+        await page.screenshot({
+            path: testInfo.outputPath('edit-dialog-top.png'),
+        });
+
+        await page.getByLabel('Opis faze 8').scrollIntoViewIfNeeded();
+        await expect(page.getByLabel('Opis faze 8')).toBeInViewport();
+        await expect(send).toBeInViewport({ ratio: 1 });
+        expect(
+            await page.evaluate(() => document.documentElement.scrollWidth),
+        ).toBeLessThanOrEqual(width);
+        await page.screenshot({
+            path: testInfo.outputPath('edit-dialog-scrolled.png'),
+        });
+    });
+}

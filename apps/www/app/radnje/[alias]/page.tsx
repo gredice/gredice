@@ -16,11 +16,13 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { PriceAttributeCard } from '../../../components/attributes/PriceAttributeCard';
-import { CommunityEditButton } from '../../../components/community-edits/CommunityEditButton';
+import { PageContributors } from '../../../components/community-edits/PageContributors';
+import { SectionContributionBar } from '../../../components/community-edits/SectionContributionBar';
 import { RelatedFaq } from '../../../components/faq/RelatedFaq';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { PublicBreadcrumbs } from '../../../components/shared/seo/PublicBreadcrumbs';
 import { StructuredDataScript } from '../../../components/shared/seo/StructuredDataScript';
+import { getEntityContributors } from '../../../lib/community/getEntityContributors';
 import { getOperationPriceAvailability } from '../../../lib/operationPricing';
 import { getOperationsData } from '../../../lib/plants/getOperationsData';
 import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
@@ -89,6 +91,17 @@ export default async function OperationPage(
         operation.slug || operation.information.label,
     );
     const priceAvailability = getOperationPriceAvailability(operation);
+    const contributors = await getEntityContributors(operation.id);
+    const editTarget = {
+        entityTypeName: 'operation',
+        entityId: operation.id,
+        publicPath: operationPath,
+        entityName: operation.information.label,
+    } as const;
+    const feedbackData = {
+        operationId: operation.id,
+        operationAlias: operation.information.label,
+    };
 
     return (
         <div className="operation-page py-8">
@@ -181,25 +194,21 @@ export default async function OperationPage(
                                     availability={priceAvailability}
                                 />
                             </div>
-                            <Row spacing={1} className="self-end">
-                                <CommunityEditButton
-                                    entityTypeName="operation"
-                                    entityId={operation.id}
-                                    publicPath={operationPath}
-                                    sectionKey="overview"
-                                />
-                                <FeedbackModal
-                                    topic={'www/operations/information'}
-                                    data={{
-                                        operationId: operation.id,
-                                        operationAlias:
-                                            operation.information.label,
-                                    }}
-                                />
-                            </Row>
+                            <SectionContributionBar
+                                feedback={{
+                                    topic: 'www/operations/information',
+                                    data: feedbackData,
+                                }}
+                                edit={{
+                                    ...editTarget,
+                                    sectionKey: 'overview',
+                                    sectionLabel: 'Pregled',
+                                }}
+                                contributors={contributors.sections.overview}
+                            />
                             {priceAvailability === 'available' && (
                                 <Typography level="body2" secondary>
-                                    Nisi zadovoljan uslugom? Dostupan je{' '}
+                                    Usluga nije ispunila očekivanja? Dostupan je{' '}
                                     <Link
                                         className="underline"
                                         href={KnownPages.Refunds}
@@ -222,61 +231,69 @@ export default async function OperationPage(
                             <OperationAttributesCards
                                 attributes={operation.attributes}
                             />
-                            <Row spacing={1} className="self-end">
-                                <CommunityEditButton
-                                    entityTypeName="operation"
-                                    entityId={operation.id}
-                                    publicPath={operationPath}
-                                    sectionKey="attributes"
-                                />
-                                <FeedbackModal
-                                    topic={'www/operations/attributes'}
-                                    data={{
-                                        operationId: operation.id,
-                                        operationAlias:
-                                            operation.information.label,
-                                    }}
-                                />
-                            </Row>
+                            <SectionContributionBar
+                                feedback={{
+                                    topic: 'www/operations/attributes',
+                                    data: feedbackData,
+                                }}
+                                edit={{
+                                    ...editTarget,
+                                    sectionKey: 'attributes',
+                                    sectionLabel: 'Svojstva',
+                                }}
+                                contributors={contributors.sections.attributes}
+                            />
                         </Stack>
                     </Stack>
                 </PageHeader>
-                <div className="max-w-xl">
+                <Stack spacing={3} className="max-w-xl">
                     <Markdown size="md">
                         {operation.information.description ||
                             'Nema opisa za ovu radnju.'}
                     </Markdown>
-                </div>
-                <Row className="justify-end">
-                    <CommunityEditButton
-                        entityTypeName="operation"
-                        entityId={operation.id}
-                        publicPath={operationPath}
-                        sectionKey="description"
+                    <SectionContributionBar
+                        feedback={{
+                            topic: 'www/operations/description',
+                            data: feedbackData,
+                        }}
+                        edit={{
+                            ...editTarget,
+                            sectionKey: 'description',
+                            sectionLabel: 'Opis',
+                        }}
+                        contributors={contributors.sections.description}
                     />
-                </Row>
-                <Typography level="h2" className="text-2xl">
-                    Postupak
-                </Typography>
-                <div className="max-w-xl">
+                </Stack>
+                <Stack spacing={3} className="max-w-xl">
+                    <Typography level="h2" className="text-2xl">
+                        Postupak
+                    </Typography>
                     <Markdown size="md">
                         {operation.information.instructions ||
                             'Nema postupka za ovu radnju.'}
                     </Markdown>
-                </div>
-                <Row className="justify-end">
-                    <CommunityEditButton
-                        entityTypeName="operation"
-                        entityId={operation.id}
-                        publicPath={operationPath}
-                        sectionKey="instructions"
+                    <SectionContributionBar
+                        feedback={{
+                            topic: 'www/operations/instructions',
+                            data: feedbackData,
+                        }}
+                        edit={{
+                            ...editTarget,
+                            sectionKey: 'instructions',
+                            sectionLabel: 'Postupak',
+                        }}
+                        contributors={contributors.sections.instructions}
                     />
-                </Row>
+                </Stack>
                 <Typography level="h2" className="text-2xl">
                     Dostupno za
                 </Typography>
                 <OperationApplicationsList operationId={operation.id} />
                 <RelatedFaq placement="operations" />
+                <PageContributors
+                    contributors={contributors}
+                    edit={editTarget}
+                />
                 <Row spacing={4}>
                     <Typography level="body1">
                         Jesu li ti informacije o ovoj radnji korisne?

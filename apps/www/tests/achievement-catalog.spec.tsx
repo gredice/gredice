@@ -56,6 +56,21 @@ for (const width of [320, 768, 1280]) {
             await link.click();
             await expect(page.locator(`#${family.key}`)).toBeInViewport();
         }
+        const rewardsNavigation = page.getByRole('navigation', {
+            name: 'Nagrade i napredak',
+        });
+        await expect(
+            rewardsNavigation.getByRole('link', {
+                name: 'Postignuća',
+                exact: true,
+            }),
+        ).toHaveAttribute('aria-current', 'page');
+        await expect(
+            rewardsNavigation.getByRole('link', {
+                name: 'Preporuke',
+                exact: true,
+            }),
+        ).toHaveAttribute('href', '/preporuke');
         await expect(
             page.getByRole('link', { name: 'Moja postignuća u vrtu' }),
         ).toHaveAttribute(

@@ -2,12 +2,14 @@
 
 import { Button } from '@gredice/ui/Button';
 import { IconButton } from '@gredice/ui/IconButton';
-import { Add, Edit } from '@gredice/ui/icons';
+import { Edit } from '@gredice/ui/icons';
 import { cx } from '@gredice/ui/utils';
 import dynamic from 'next/dynamic';
-import { type MouseEvent, useEffect, useState } from 'react';
+import { type ButtonHTMLAttributes, useEffect } from 'react';
 import type { CommunityEditButtonProps } from './CommunityEditButton.types';
+import { CommunitySuggestionCard } from './CommunitySuggestionCard';
 import { currentCommunityEditReturnRequest } from './communityEditContext';
+import { useCommunityDialogTrigger } from './useCommunityDialogTrigger';
 
 export type { CommunityEditButtonProps } from './CommunityEditButton.types';
 
@@ -22,8 +24,8 @@ export function CommunityEditButton({
     className,
     ...props
 }: CommunityEditButtonProps) {
-    const [open, setOpen] = useState(false);
-    const [hasOpened, setHasOpened] = useState(false);
+    const { handleTriggerClick, hasOpened, open, openDialog, setOpen } =
+        useCommunityDialogTrigger();
     const { entityTypeName, entityId, fieldKey, sectionKey, label } = props;
     const triggerLabel = label ?? 'Predloži izmjenu';
 
@@ -37,57 +39,48 @@ export function CommunityEditButton({
             return;
         }
 
-        setHasOpened(true);
-        setOpen(true);
+        openDialog();
         returnRequest.clear();
-    }, [entityId, entityTypeName, fieldKey, sectionKey]);
+    }, [entityId, entityTypeName, fieldKey, openDialog, sectionKey]);
 
-    function handleOpen(event: MouseEvent<HTMLButtonElement>) {
-        // The dialog mounts on demand. Keep its return-focus target stable,
-        // including in browsers that do not focus buttons on pointer clicks.
-        event.currentTarget.focus({ preventScroll: true });
-        setHasOpened(true);
-        setOpen(true);
-    }
+    const triggerProps = {
+        'aria-expanded': open,
+        'aria-haspopup': 'dialog',
+        onClick: handleTriggerClick,
+    } satisfies Pick<
+        ButtonHTMLAttributes<HTMLButtonElement>,
+        'aria-expanded' | 'aria-haspopup' | 'onClick'
+    >;
 
     return (
         <>
-            {buttonStyle !== 'icon' ? (
-                <Button
-                    aria-haspopup="dialog"
-                    aria-expanded={open}
-                    className={cx(
-                        buttonStyle === 'card' &&
-                            'h-auto min-h-12 w-full justify-start gap-2 whitespace-normal rounded-lg border-dashed border-muted-foreground/40 bg-card/40 p-3 text-left font-normal hover:border-muted-foreground/60 hover:bg-card/70',
-                        className,
-                    )}
-                    color={buttonStyle === 'card' ? 'neutral' : undefined}
-                    onClick={handleOpen}
-                    size="sm"
-                    startDecorator={
-                        buttonStyle === 'card' ? (
-                            <Add aria-hidden className="size-4 shrink-0" />
-                        ) : (
-                            <Edit className="size-4" />
-                        )
-                    }
-                    type="button"
-                    variant="outlined"
-                >
-                    {triggerLabel}
-                </Button>
-            ) : (
+            {buttonStyle === 'card' ? (
+                <CommunitySuggestionCard
+                    {...triggerProps}
+                    className={className}
+                    title={triggerLabel}
+                />
+            ) : buttonStyle === 'icon' ? (
                 <IconButton
-                    aria-haspopup="dialog"
-                    aria-expanded={open}
+                    {...triggerProps}
                     className={cx('shrink-0', className)}
-                    onClick={handleOpen}
                     title={triggerLabel}
                     type="button"
                     variant="plain"
                 >
                     <Edit className="size-4" />
                 </IconButton>
+            ) : (
+                <Button
+                    {...triggerProps}
+                    className={className}
+                    size="sm"
+                    startDecorator={<Edit className="size-4" />}
+                    type="button"
+                    variant={buttonStyle === 'plain' ? 'plain' : 'outlined'}
+                >
+                    {triggerLabel}
+                </Button>
             )}
             {hasOpened ? (
                 <CommunityEditDialog

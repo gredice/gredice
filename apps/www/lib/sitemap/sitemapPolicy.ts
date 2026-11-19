@@ -47,6 +47,8 @@ export const excludedSitemapRoutes = [
     '/trag/*',
     '/trag/grupa/*',
     '/prijava/**',
+    // Personal pages that only show the signed-in visitor's own data.
+    '/moji-prijedlozi',
     // Raw CSV exports, the download index and per-snapshot downloads are
     // files and file listings, not content pages.
     '/cjenik/cjenik.csv',

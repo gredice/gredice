@@ -18,6 +18,8 @@ type PlantRelationshipEditTarget = {
     entityTypeName: 'plant' | 'plantSort';
     entityId: number;
     publicPath: string;
+    /** Public name of the plant or sort, shown in the edit dialog. */
+    entityName?: string;
 };
 
 export function hasPlantRelationships(
@@ -126,6 +128,8 @@ function PlantRelationshipGroup({
                         publicPath={editTarget.publicPath}
                         sectionKey="relationships"
                         fieldKey={`${editTarget.entityTypeName === 'plantSort' ? 'plant-sort' : 'plant'}.relationships.${fieldName}`}
+                        entityName={editTarget.entityName}
+                        sectionLabel={title}
                         label={suggestionLabel}
                         buttonStyle="card"
                     />
