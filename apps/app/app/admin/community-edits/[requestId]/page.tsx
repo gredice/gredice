@@ -585,14 +585,28 @@ function DetailItem({
 
 function ReviewNote() {
     return (
-        <label className="block space-y-1">
-            <Typography level="body2">Napomena moderatora</Typography>
-            <textarea
-                className="min-h-24 w-full rounded-md border border-input bg-field px-3 py-2 text-sm"
-                name="reviewerNote"
-                placeholder="Interna napomena ili objašnjenje za odbijanje..."
-            />
-        </label>
+        <div className="space-y-3">
+            <label className="block space-y-1">
+                <Typography level="body2">Poruka pošiljatelju</Typography>
+                <Typography level="body3" className="text-muted-foreground">
+                    Pošiljatelj je vidi u “Moji prijedlozi” i u obavijesti.
+                </Typography>
+                <textarea
+                    className="min-h-24 w-full rounded-md border border-input bg-field px-3 py-2 text-sm"
+                    maxLength={1000}
+                    name="submitterMessage"
+                    placeholder="Kratko objasni odluku..."
+                />
+            </label>
+            <label className="block space-y-1">
+                <Typography level="body2">Interna napomena</Typography>
+                <textarea
+                    className="min-h-20 w-full rounded-md border border-input bg-field px-3 py-2 text-sm"
+                    name="reviewerNote"
+                    placeholder="Interna napomena, nije vidljiva pošiljatelju"
+                />
+            </label>
+        </div>
     );
 }
 
@@ -797,11 +811,19 @@ export default async function CommunityEditDetailPage({
                             </Typography>
                         </Stack>
                     ) : null}
-                    {request.reviewerNote ||
+                    {request.submitterMessage ||
+                    request.reviewerNote ||
                     request.applicationFailureReason ? (
                         <Stack spacing={2} className="mt-4">
+                            {request.submitterMessage ? (
+                                <DetailItem label="Poruka pošiljatelju">
+                                    <Typography className="whitespace-pre-line">
+                                        {request.submitterMessage}
+                                    </Typography>
+                                </DetailItem>
+                            ) : null}
                             {request.reviewerNote ? (
-                                <DetailItem label="Napomena moderatora">
+                                <DetailItem label="Interna napomena">
                                     <Typography className="whitespace-pre-line">
                                         {request.reviewerNote}
                                     </Typography>

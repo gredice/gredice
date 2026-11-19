@@ -46,6 +46,7 @@ export * from './repositories/billingReconciliationRepo';
 export * from './repositories/checkoutCartItemLock';
 export * from './repositories/checkoutNotificationOutboxRepo';
 export * from './repositories/cmsPagesRepo';
+export * from './repositories/communityEditContributionsRepo';
 export * from './repositories/communityEditRequestsRepo';
 export * from './repositories/deliveryAddressesRepo';
 export * from './repositories/deliveryDispatchRepo';

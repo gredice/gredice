@@ -1,0 +1,1 @@
+ALTER TABLE "community_edit_requests" ADD COLUMN "submitter_message" text;

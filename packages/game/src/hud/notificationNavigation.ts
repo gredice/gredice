@@ -87,6 +87,14 @@ function isGrediceOperationsUrl(url: URL) {
     );
 }
 
+/** WWW page where a submitter follows their community content suggestions. */
+function isGrediceMySuggestionsUrl(url: URL) {
+    return (
+        url.origin === GREDICE_OPERATIONS_ORIGIN &&
+        url.pathname === '/moji-prijedlozi'
+    );
+}
+
 function isDeliverySurveyTypeformUrl(url: URL) {
     return url.toString() === DELIVERY_SURVEY_TYPEFORM_URL;
 }
@@ -142,6 +150,7 @@ function resolveNotificationNavigationTarget(
             !hasExplicitPort(safeHref) &&
             (targetUrl.origin === DELIVERY_TRACKER_ORIGIN ||
                 isGrediceOperationsUrl(targetUrl) ||
+                isGrediceMySuggestionsUrl(targetUrl) ||
                 isDeliverySurveyTypeformUrl(targetUrl))
         ) {
             return { kind: 'assign', url: targetUrl.toString() };

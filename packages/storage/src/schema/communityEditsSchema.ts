@@ -30,6 +30,8 @@ export const communityEditRequests = pgTable(
         reviewerUserId: text('reviewer_user_id').references(() => users.id),
         reviewerName: text('reviewer_name'),
         reviewerNote: text('reviewer_note'),
+        // Moderator's reply shown to the submitter; `reviewerNote` stays internal.
+        submitterMessage: text('submitter_message'),
         applicationFailureReason: text('application_failure_reason'),
         reviewedAt: timestamp('reviewed_at'),
         appliedAt: timestamp('applied_at'),

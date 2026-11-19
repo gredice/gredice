@@ -104,12 +104,14 @@ test('uses document navigation for known external notification destinations', ()
         'https://www.gredice.com/radnje/zalijevanje-biljke#raisedBedId=101',
     );
     harness.navigate('https://form.typeform.com/to/X727vyBk');
+    harness.navigate('https://www.gredice.com/moji-prijedlozi');
 
     assert.deepEqual(harness.pushed, []);
     assert.deepEqual(harness.assigned, [
         'https://www.gredice.com/radnje',
         'https://www.gredice.com/radnje/zalijevanje-biljke#raisedBedId=101',
         'https://form.typeform.com/to/X727vyBk',
+        'https://www.gredice.com/moji-prijedlozi',
     ]);
 });
 
@@ -130,6 +132,10 @@ test('ignores unsafe and untrusted external notification links', () => {
         'https://sub.www.gredice.com/radnje',
         'https://www.gredice.com.evil.test/radnje',
         'https://www.gredice.com/biljke',
+        'http://www.gredice.com/moji-prijedlozi',
+        'https://www.gredice.com:8443/moji-prijedlozi',
+        'https://www.gredice.com/moji-prijedlozi/drugo',
+        'https://www.gredice.com.evil.test/moji-prijedlozi',
         'http://form.typeform.com/to/X727vyBk',
         'https://respondent:secret@form.typeform.com/to/X727vyBk',
         'https://form.typeform.com:443/to/X727vyBk',

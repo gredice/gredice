@@ -2194,6 +2194,12 @@ export function getCommunityEditRequest(id: number) {
     });
 }
 
+/** The moderator's reply to the submitter: trimmed, and `null` when empty. */
+function normalizeSubmitterMessage(value: string | null | undefined) {
+    const trimmed = value?.trim();
+    return trimmed ? trimmed : null;
+}
+
 function assertReviewableStatus(request: SelectCommunityEditRequest) {
     if (request.status !== 'pending' && request.status !== 'approved') {
         throw new CommunityEditRequestError(
@@ -2207,6 +2213,7 @@ export async function rejectCommunityEditRequest(input: {
     id: number;
     reviewer: CommunityEditActor;
     reviewerNote?: string | null;
+    submitterMessage?: string | null;
 }) {
     const request = await getCommunityEditRequest(input.id);
     if (!request) {
@@ -2227,6 +2234,7 @@ export async function rejectCommunityEditRequest(input: {
             reviewerUserId: input.reviewer.id,
             reviewerName: input.reviewer.name,
             reviewerNote: input.reviewerNote,
+            submitterMessage: normalizeSubmitterMessage(input.submitterMessage),
             reviewedAt: new Date(),
         })
         .where(
@@ -2244,6 +2252,8 @@ export async function markCommunityEditRequestConflicted(input: {
     id: number;
     reviewer?: CommunityEditActor;
     reason: string;
+    /** Left untouched when omitted, so an automatic conflict keeps no reply. */
+    submitterMessage?: string | null;
 }) {
     const [updated] = await storage()
         .update(communityEditRequests)
@@ -2252,6 +2262,13 @@ export async function markCommunityEditRequestConflicted(input: {
             reviewerUserId: input.reviewer?.id,
             reviewerName: input.reviewer?.name,
             applicationFailureReason: input.reason,
+            ...(input.submitterMessage === undefined
+                ? {}
+                : {
+                      submitterMessage: normalizeSubmitterMessage(
+                          input.submitterMessage,
+                      ),
+                  }),
             reviewedAt: new Date(),
         })
         .where(
@@ -2620,6 +2637,11 @@ export async function approveCommunityEditRequest(input: {
     id: number;
     reviewer: CommunityEditActor;
     reviewerNote?: string | null;
+    /**
+     * Stored only when the request is applied. A request that turns out to be
+     * conflicted keeps no reply: the text was written for an approval.
+     */
+    submitterMessage?: string | null;
 }) {
     const request = await getCommunityEditRequest(input.id);
     if (!request) {
@@ -2768,6 +2790,9 @@ export async function approveCommunityEditRequest(input: {
                     reviewerUserId: input.reviewer.id,
                     reviewerName: input.reviewer.name,
                     reviewerNote: input.reviewerNote,
+                    submitterMessage: normalizeSubmitterMessage(
+                        input.submitterMessage,
+                    ),
                     reviewedAt: new Date(),
                     applicationFailureReason: null,
                 })

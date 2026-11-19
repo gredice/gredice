@@ -666,6 +666,13 @@
       "when": 1794278895468,
       "tag": "0094_autumn_garden_packs",
       "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "7",
+      "when": 1795101786744,
+      "tag": "0095_community_edit_submitter_message",
+      "breakpoints": true
     }
   ]
 }
