@@ -3,7 +3,30 @@ import {
     PathnameContext,
     SearchParamsContext,
 } from 'next/dist/shared/lib/hooks-client-context.shared-runtime';
+import type { ReactNode } from 'react';
 import { AdminDashboardClient } from '../components/admin/dashboard/AdminDashboardClient';
+import { useAdminPageHeaderContext } from '../components/admin/navigation/AdminPageHeaderContext';
+import { AdminPageHeaderProvider } from '../components/admin/navigation/AdminPageHeaderProvider';
+
+function HeaderSlot() {
+    const { setSlotElement } = useAdminPageHeaderContext();
+    return (
+        <div
+            className="mb-4 flex min-w-0 flex-wrap items-center justify-between gap-2"
+            data-testid="admin-page-header-slot"
+            ref={setSlotElement}
+        />
+    );
+}
+
+function HeaderFrame({ children }: { children: ReactNode }) {
+    return (
+        <AdminPageHeaderProvider>
+            <HeaderSlot />
+            {children}
+        </AdminPageHeaderProvider>
+    );
+}
 
 export function AdminDashboardHarness({
     days = 30,
@@ -31,6 +54,7 @@ export function AdminDashboardHarness({
         >
             <PathnameContext.Provider value="/admin">
                 <SearchParamsContext.Provider value={new URLSearchParams()}>
+                    <HeaderFrame>
                     <AdminDashboardClient
                         initialAnalyticsData={{
                             users: 0,
@@ -93,6 +117,7 @@ export function AdminDashboardHarness({
                             totalCostEur: 0,
                         }}
                     />
+                    </HeaderFrame>
                 </SearchParamsContext.Provider>
             </PathnameContext.Provider>
         </AppRouterContext.Provider>

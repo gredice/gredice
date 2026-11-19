@@ -8,9 +8,11 @@ for (const width of [1280, 390]) {
     }) => {
         await page.setViewportSize({ width, height: 900 });
         const dashboard = await mount(<AdminDashboardHarness custom />);
-        const controls = dashboard.getByRole('group', {
-            name: 'Period nadzorne ploče',
-        });
+        const controls = dashboard
+            .getByTestId('admin-page-header-slot')
+            .getByRole('group', {
+                name: 'Period nadzorne ploče',
+            });
         await expect(
             controls.getByRole('combobox', { name: 'Odaberi period' }),
         ).toBeVisible();
@@ -66,6 +68,22 @@ for (const width of [1280, 390]) {
         ).toBeTruthy();
     });
 }
+
+test('preset period picker shares the breadcrumb header row', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    const dashboard = await mount(<AdminDashboardHarness days={7} />);
+    const header = dashboard.getByTestId('admin-page-header-slot');
+    const select = header.getByRole('combobox', { name: 'Odaberi period' });
+    await expect(select).toBeVisible();
+    const headerBox = await header.boundingBox();
+    const selectBox = await select.boundingBox();
+    expect(
+        headerBox && selectBox && headerBox.height <= selectBox.height + 8,
+    ).toBeTruthy();
+});
 
 test('single-day statistics render one daily row', async ({ mount }) => {
     const dashboard = await mount(<AdminDashboardHarness days={1} />);
