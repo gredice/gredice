@@ -13,15 +13,14 @@ export const metadata = createPublicMetadata({
 
 export default function LegalnoPage() {
     return (
-        <Container maxWidth="sm">
+        <Container maxWidth="sm" padded={false} className="md:px-4">
             <Stack className="pb-24" spacing={2}>
                 <PageHeader padded header="Legalno" />
                 <Typography>
                     Ovdje se nalaze svi dokumenti koji ti mogu biti korisni.
                 </Typography>
                 <Typography>
-                    Odaberi jedan od lijevo navedenih dokumenata za više
-                    detalja.
+                    Odaberi jedan od navedenih dokumenata za više detalja.
                 </Typography>
             </Stack>
         </Container>

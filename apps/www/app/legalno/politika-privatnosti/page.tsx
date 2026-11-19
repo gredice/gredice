@@ -16,11 +16,11 @@ export const metadata = createPublicMetadata({
 
 export default function PolitikaPrivatnostiPage() {
     return (
-        <Container maxWidth="sm">
+        <Container maxWidth="sm" padded={false} className="md:px-4">
             <Stack>
                 <PageHeader
                     padded
-                    header="Politika Privatnosti"
+                    header="Politika privatnosti"
                     subHeader="Kako prikupljamo, koristimo i štitimo tvoje osobne podatke prilikom korištenja naše web stranice."
                 />
                 <StyledHtml size="md">

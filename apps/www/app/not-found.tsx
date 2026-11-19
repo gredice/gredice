@@ -1,3 +1,5 @@
+import { Button } from '@gredice/ui/Button';
+import { Search } from '@gredice/ui/icons';
 import { NavigatingButton } from '@gredice/ui/NavigatingButton';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -6,7 +8,7 @@ import { Typography } from '@gredice/ui/Typography';
 
 export default function NotFound() {
     return (
-        <div className="flex flex-col items-center justify-center h-screen">
+        <div className="flex min-h-[60vh] flex-col items-center justify-center py-16">
             <div className="flex gap-8 md:flex-row flex-col items-center text-center md:text-left">
                 <SunflowerMascot3D
                     expression="sad"
@@ -20,10 +22,24 @@ export default function NotFound() {
                         Oprosti, ali stranica koju tražiš ne postoji. Možda je
                         premještena ili obrisana.
                     </Typography>
-                    <Row className="justify-center md:justify-start">
+                    <Row
+                        spacing={3}
+                        className="flex-wrap justify-center md:justify-start"
+                    >
                         <NavigatingButton href="/">
                             Idi na početnu stranicu
                         </NavigatingButton>
+                        <Button
+                            href="/pretraga"
+                            color="neutral"
+                            variant="outlined"
+                            className="bg-background text-primary"
+                            startDecorator={
+                                <Search aria-hidden className="size-4" />
+                            }
+                        >
+                            Pretraži Gredice
+                        </Button>
                     </Row>
                 </Stack>
             </div>

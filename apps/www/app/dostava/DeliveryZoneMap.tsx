@@ -169,7 +169,7 @@ export function DeliveryZoneMap({ apiKey }: { apiKey: string }) {
                     className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-muted px-6 text-center text-sm text-muted-foreground"
                 >
                     <strong className="text-foreground">
-                        Interaktivna karta trenutačno nije dostupna
+                        Interaktivna karta trenutno nije dostupna
                     </strong>
                     <span>
                         Besplatna dostava vrijedi na području Grada Zagreba, a

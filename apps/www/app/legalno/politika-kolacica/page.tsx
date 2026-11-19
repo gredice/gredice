@@ -16,7 +16,7 @@ export const metadata = createPublicMetadata({
 
 export default function PolitikaKolacicaPage() {
     return (
-        <Container maxWidth="sm">
+        <Container maxWidth="sm" padded={false} className="md:px-4">
             <Stack>
                 <PageHeader
                     padded
@@ -91,7 +91,7 @@ export default function PolitikaKolacicaPage() {
                 </StyledHtml>
                 <Stack spacing={2} className="mt-8">
                     <Typography level="body2" secondary>
-                        Zadnja izmjena: 11. Studeni 2024.
+                        Zadnja izmjena: 11. studenoga 2024.
                     </Typography>
                     <Typography level="body2" secondary>
                         Ova politika je u skladu sa zakonodavstvom o zaštiti

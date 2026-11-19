@@ -67,7 +67,7 @@ const technicalDetails = [
 
 export default function McpPage() {
     return (
-        <Container maxWidth="lg" className="py-12 md:py-16">
+        <Container maxWidth="lg" padded={false} className="py-12 md:py-16">
             <Stack spacing={12}>
                 <PageHeader
                     header="Gredice za AI asistente"

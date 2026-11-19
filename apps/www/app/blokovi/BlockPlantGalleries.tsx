@@ -40,15 +40,17 @@ export function BlockPlantGalleries({
                 hasOtherResults={hasMatchingPlant || matchingPets.length > 0}
                 normalizedSearch={normalizedSearch}
             />
-            <Stack spacing={4} className="mt-8">
-                <Typography level="h3" className="px-2">
-                    Biljke
-                </Typography>
-                <PlantBlockGalleryResults
-                    plants={plants}
-                    normalizedSearch={normalizedSearch}
-                />
-            </Stack>
+            {hasMatchingPlant && (
+                <Stack spacing={4} className="mt-8">
+                    <Typography level="h3" component="h2" className="px-2">
+                        Biljke
+                    </Typography>
+                    <PlantBlockGalleryResults
+                        plants={plants}
+                        normalizedSearch={normalizedSearch}
+                    />
+                </Stack>
+            )}
         </>
     );
 }

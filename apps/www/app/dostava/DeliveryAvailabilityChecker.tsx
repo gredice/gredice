@@ -11,12 +11,7 @@ import { GameLocationIcon } from '@gredice/ui/GameIcons';
 import { Input } from '@gredice/ui/Input';
 import { Check, MapPin, Search, Warning } from '@gredice/ui/icons';
 import { type FormEvent, useState } from 'react';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '../../components/shared/Card';
+import { Card, CardContent, CardHeader } from '../../components/shared/Card';
 import { formatPrice } from '../../lib/formatPrice';
 
 type DeliveryAvailabilityResult = {
@@ -156,21 +151,21 @@ export function DeliveryAvailabilityChecker() {
                         ? 'Nismo pronašli tu adresu u Hrvatskoj. Provjeri ulicu, kućni broj i grad.'
                         : errorCode === 'rate-limited'
                           ? 'Napravio/la si previše provjera u kratkom vremenu. Pokušaj ponovno za minutu.'
-                          : 'Trenutačno ne možemo izračunati dostavu. Pokušaj ponovno malo kasnije.',
+                          : 'Trenutno ne možemo izračunati dostavu. Pokušaj ponovno malo kasnije.',
             });
         }
     }
 
     return (
-        <Card className="not-prose mb-4 border-tertiary border-b-4 p-3 sm:p-4">
+        <Card className="p-3 sm:p-4">
             <CardHeader>
-                <CardTitle className="text-xl">
+                <h2 className="text-xl font-semibold tracking-tight">
                     <GameLocationIcon
                         aria-hidden
                         className="mr-2 inline-block size-7 align-text-bottom"
                     />{' '}
                     Provjeri dostupnost i cijenu dostave
-                </CardTitle>
+                </h2>
                 <p className="text-sm text-muted-foreground">
                     Upiši adresu u Hrvatskoj i odmah provjeri dostavljamo li do
                     tebe te koliko bi dostava koštala.

@@ -58,75 +58,7 @@ function sectionsData(linkMode: PublicChromeLinkMode): SectionData[] {
                     asset: <PublicEnvironmentFooterControls />,
                 },
                 {
-                    header: 'Informacije',
-                    ctas: [
-                        {
-                            label: 'Dostava',
-                            href: publicChromeHref(
-                                PublicPagePaths.Delivery,
-                                linkMode,
-                            ),
-                        },
-                        {
-                            label: 'Dostava povrća u Zagrebu',
-                            href: publicChromeHref(
-                                PublicPagePaths.DeliveryZagreb,
-                                linkMode,
-                            ),
-                        },
-                        {
-                            label: 'Cjenik',
-                            href: publicChromeHref(
-                                PublicPagePaths.Pricing,
-                                linkMode,
-                            ),
-                        },
-                        {
-                            label: 'Termini dostave',
-                            href: publicChromeHref(
-                                PublicPagePaths.DeliverySlots,
-                                linkMode,
-                            ),
-                        },
-                        {
-                            label: 'Česta pitanja',
-                            href: publicChromeHref(
-                                PublicPagePaths.FAQ,
-                                linkMode,
-                            ),
-                        },
-                        {
-                            label: 'Kvaliteta i sigurnost uroda',
-                            href: publicChromeHref(
-                                PublicPagePaths.QualityHarvestSafety,
-                                linkMode,
-                            ),
-                        },
-                        {
-                            label: 'Kontaktiraj nas',
-                            href: publicChromeHref(
-                                PublicPagePaths.Contact,
-                                linkMode,
-                            ),
-                        },
-                        {
-                            label: 'O nama',
-                            href: publicChromeHref(
-                                PublicPagePaths.AboutUs,
-                                linkMode,
-                            ),
-                        },
-                        {
-                            label: 'Novosti',
-                            href: publicChromeHref(
-                                PublicPagePaths.News,
-                                linkMode,
-                            ),
-                        },
-                    ],
-                },
-                {
-                    header: 'Stranice',
+                    header: 'Ponuda',
                     ctas: [
                         {
                             label: 'Podignuta gredica',
@@ -143,30 +75,63 @@ function sectionsData(linkMode: PublicChromeLinkMode): SectionData[] {
                             ),
                         },
                         {
-                            label: 'Vrtovi',
+                            label: 'Cjenik',
                             href: publicChromeHref(
-                                PublicPagePaths.PublicGardens,
+                                PublicPagePaths.Pricing,
                                 linkMode,
                             ),
                         },
                         {
-                            label: 'Korisnici',
+                            label: 'Outlet',
                             href: publicChromeHref(
-                                PublicPagePaths.Users,
+                                PublicPagePaths.Outlet,
                                 linkMode,
                             ),
                         },
                         {
-                            label: 'Postignuća',
+                            label: 'Dostava',
                             href: publicChromeHref(
-                                PublicPagePaths.Achievements,
+                                PublicPagePaths.Delivery,
                                 linkMode,
                             ),
                         },
                         {
-                            label: 'Pozadine',
+                            label: 'Dostava povrća u Zagrebu',
                             href: publicChromeHref(
-                                PublicPagePaths.Wallpapers,
+                                PublicPagePaths.DeliveryZagreb,
+                                linkMode,
+                            ),
+                        },
+                        {
+                            label: 'Termini dostave',
+                            href: publicChromeHref(
+                                PublicPagePaths.DeliverySlots,
+                                linkMode,
+                            ),
+                        },
+                        {
+                            label: 'Povrati i povrat novca',
+                            href: publicChromeHref(
+                                PublicPagePaths.Refunds,
+                                linkMode,
+                            ),
+                        },
+                        {
+                            label: 'Kvaliteta i sigurnost uroda',
+                            href: publicChromeHref(
+                                PublicPagePaths.QualityHarvestSafety,
+                                linkMode,
+                            ),
+                        },
+                    ],
+                },
+                {
+                    header: 'Vrtlarski vodič',
+                    ctas: [
+                        {
+                            label: 'Vodič za prvu gredicu',
+                            href: publicChromeHref(
+                                PublicPagePaths.FirstRaisedBedGuide,
                                 linkMode,
                             ),
                         },
@@ -174,6 +139,20 @@ function sectionsData(linkMode: PublicChromeLinkMode): SectionData[] {
                             label: 'Biljke',
                             href: publicChromeHref(
                                 PublicPagePaths.Plants,
+                                linkMode,
+                            ),
+                        },
+                        {
+                            label: 'Kalendar sjetve',
+                            href: publicChromeHref(
+                                PublicPagePaths.SowingCalendar,
+                                linkMode,
+                            ),
+                        },
+                        {
+                            label: 'Biljni susjedi',
+                            href: publicChromeHref(
+                                PublicPagePaths.CompanionPlanting,
                                 linkMode,
                             ),
                         },
@@ -206,13 +185,6 @@ function sectionsData(linkMode: PublicChromeLinkMode): SectionData[] {
                             ),
                         },
                         {
-                            label: 'Biljni susjedi',
-                            href: publicChromeHref(
-                                PublicPagePaths.CompanionPlanting,
-                                linkMode,
-                            ),
-                        },
-                        {
                             label: 'Radnje',
                             href: publicChromeHref(
                                 PublicPagePaths.Operations,
@@ -226,10 +198,29 @@ function sectionsData(linkMode: PublicChromeLinkMode): SectionData[] {
                                 linkMode,
                             ),
                         },
+                    ],
+                },
+                {
+                    header: 'Zajednica i nagrade',
+                    ctas: [
                         {
-                            label: 'Suncokreti',
+                            label: 'Vrtovi',
                             href: publicChromeHref(
-                                PublicPagePaths.Sunflowers,
+                                PublicPagePaths.PublicGardens,
+                                linkMode,
+                            ),
+                        },
+                        {
+                            label: 'Korisnici',
+                            href: publicChromeHref(
+                                PublicPagePaths.Users,
+                                linkMode,
+                            ),
+                        },
+                        {
+                            label: 'Postignuća',
+                            href: publicChromeHref(
+                                PublicPagePaths.Achievements,
                                 linkMode,
                             ),
                         },
@@ -241,17 +232,33 @@ function sectionsData(linkMode: PublicChromeLinkMode): SectionData[] {
                             ),
                         },
                         {
-                            label: 'Što je novo',
+                            label: 'Suncokreti',
                             href: publicChromeHref(
-                                PublicPagePaths.WhatsNew,
+                                PublicPagePaths.Sunflowers,
                                 linkMode,
                             ),
                         },
-                    ],
-                },
-                {
-                    header: 'Zajednice',
-                    ctas: [
+                        {
+                            label: 'Preporuke',
+                            href: publicChromeHref(
+                                PublicPagePaths.Referrals,
+                                linkMode,
+                            ),
+                        },
+                        {
+                            label: 'Moji prijedlozi',
+                            href: publicChromeHref(
+                                PublicPagePaths.MySuggestions,
+                                linkMode,
+                            ),
+                        },
+                        {
+                            label: 'Pozadine',
+                            href: publicChromeHref(
+                                PublicPagePaths.Wallpapers,
+                                linkMode,
+                            ),
+                        },
                         {
                             label: 'WhatsApp zajednica',
                             href: 'https://gredice.link/wa',
@@ -269,8 +276,43 @@ function sectionsData(linkMode: PublicChromeLinkMode): SectionData[] {
                     ],
                 },
                 {
-                    header: 'Više',
+                    header: 'Gredice',
                     ctas: [
+                        {
+                            label: 'O nama',
+                            href: publicChromeHref(
+                                PublicPagePaths.AboutUs,
+                                linkMode,
+                            ),
+                        },
+                        {
+                            label: 'Novosti',
+                            href: publicChromeHref(
+                                PublicPagePaths.News,
+                                linkMode,
+                            ),
+                        },
+                        {
+                            label: 'Što je novo',
+                            href: publicChromeHref(
+                                PublicPagePaths.WhatsNew,
+                                linkMode,
+                            ),
+                        },
+                        {
+                            label: 'Česta pitanja',
+                            href: publicChromeHref(
+                                PublicPagePaths.FAQ,
+                                linkMode,
+                            ),
+                        },
+                        {
+                            label: 'Kontaktiraj nas',
+                            href: publicChromeHref(
+                                PublicPagePaths.Contact,
+                                linkMode,
+                            ),
+                        },
                         {
                             label: 'Politika privatnosti',
                             href: publicChromeHref(

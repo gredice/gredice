@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 
 export default function WallpapersPage() {
     return (
-        <Container maxWidth="lg">
+        <Container maxWidth="lg" padded={false}>
             <Stack spacing={6}>
                 <PageHeader
                     header="Pozadine iz tvog vrta"

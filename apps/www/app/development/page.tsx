@@ -80,7 +80,7 @@ function getDevelopmentSections(hosts: EnvironmentHosts): DevelopmentSection[] {
         {
             title: 'Farma debug indeks',
             description:
-                'Pregled farm debug alata i operativnih provjera za trenutačno okruženje.',
+                'Pregled farm debug alata i operativnih provjera za trenutno okruženje.',
             href: `${hosts.farm}/debug`,
             icon: '🛠️',
         },
@@ -406,7 +406,7 @@ export default function DevelopmentPage() {
     const developmentSections = getDevelopmentSections(hosts);
 
     return (
-        <Container className="py-10">
+        <Container padded={false} className="py-10">
             <Stack spacing={6} className="mb-8">
                 <Typography level="h2" component="h1">
                     Razvojni centar

@@ -1,6 +1,9 @@
 import { FIELD_SIZE_LABEL } from '@gredice/js/plants';
+import { getGardenBaseUrl } from '@gredice/js/urls';
+import { Button } from '@gredice/ui/Button';
 import { Container } from '@gredice/ui/Container';
-import { Ruler } from '@gredice/ui/icons';
+import { ArrowRight, Ruler } from '@gredice/ui/icons';
+import { NavigatingButton } from '@gredice/ui/NavigatingButton';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -26,7 +29,7 @@ export const metadata = createPublicMetadata({
 
 export default function RaisedBedPage() {
     return (
-        <Container maxWidth="md">
+        <Container maxWidth="md" padded={false}>
             <Stack>
                 <PageHeader
                     highlight={
@@ -46,6 +49,30 @@ export default function RaisedBedPage() {
                     }
                     header="Podignuta gredica"
                     subHeader="Tvoj prostor za uzgoj na partnerskom OPG-u, od pripreme tla do dostave ubranih plodova."
+                    headerChildren={
+                        <div className="flex flex-wrap gap-3">
+                            <NavigatingButton
+                                href={getGardenBaseUrl()}
+                                color="brand"
+                                endDecorator={
+                                    <ArrowRight
+                                        aria-hidden
+                                        className="size-4"
+                                    />
+                                }
+                            >
+                                Složi svoju gredicu
+                            </NavigatingButton>
+                            <Button
+                                href={KnownPages.Pricing}
+                                color="neutral"
+                                variant="outlined"
+                                className="bg-background text-primary"
+                            >
+                                Pogledaj cjenik
+                            </Button>
+                        </div>
+                    }
                     padded
                 />
                 <StyledHtml size="md">
@@ -106,7 +133,9 @@ export default function RaisedBedPage() {
                                 width={1280}
                                 height={800}
                                 className="rounded-xl shadow-lg"
-                                alt={'Podignuta gredica 2x1 m'}
+                                alt={
+                                    'Drvene podignute gredice s brojčanim oznakama, napunjene tlom'
+                                }
                             />
                         </div>
                     </div>
@@ -164,7 +193,9 @@ export default function RaisedBedPage() {
                             width={1280}
                             height={800}
                             className="rounded-xl shadow-lg"
-                            alt={'Podignuta gredica 2x1 m'}
+                            alt={
+                                'Podignuta gredica s oznakom broj 3, napunjena tlom'
+                            }
                         />
                     </div>
                     <div className="grid grid-rows-[auto_1fr] grid-cols-1 sm:grid-rows-1 sm:grid-cols-[1fr_1fr] gap-8 relative">
@@ -189,7 +220,9 @@ export default function RaisedBedPage() {
                             width={1280}
                             height={800}
                             className="rounded-xl shadow-lg"
-                            alt={'Podignuta gredica 2x1 m'}
+                            alt={
+                                'Red podignutih gredica napunjenih tlom na OPG-u'
+                            }
                         />
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-[2fr_1fr] gap-4">
@@ -357,7 +390,7 @@ export default function RaisedBedPage() {
                 />
                 <Row spacing={4} className="mt-12">
                     <Typography level="body1">
-                        Jesu li ti informacije o podignutim gredicama korisne?
+                        Jesu li ti informacije korisne?
                     </Typography>
                     <FeedbackModal topic="www/raised-beds" />
                 </Row>

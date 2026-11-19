@@ -16,11 +16,11 @@ export const metadata = createPublicMetadata({
 
 export default function UvjetiKoristenjaPage() {
     return (
-        <Container maxWidth="sm">
+        <Container maxWidth="sm" padded={false} className="md:px-4">
             <Stack>
                 <PageHeader
                     padded
-                    header="Uvjeti Korištenja"
+                    header="Uvjeti korištenja"
                     subHeader="Ovi uvjeti korištenja reguliraju pristup i korištenje web stranice."
                 />
                 <StyledHtml size="md">
@@ -158,7 +158,7 @@ export default function UvjetiKoristenjaPage() {
                     </p>
                 </StyledHtml>
                 <Typography level="body2" secondary className="mt-8">
-                    Zadnja izmjena: 28. Veljača 2025.
+                    Zadnja izmjena: 28. veljače 2025.
                 </Typography>
             </Stack>
         </Container>

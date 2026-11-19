@@ -35,10 +35,14 @@ export function NewsletterSignUp() {
                     događanjima i zanimljivostima iz svijeta gredica.
                 </Typography>
                 <form action={submitAction}>
+                    <label htmlFor="newsletter-email" className="sr-only">
+                        E-mail adresa za newsletter
+                    </label>
                     <Row spacing={2} className="mt-2">
                         <Input
+                            id="newsletter-email"
                             name="email"
-                            placeholder="Unesi svoj email"
+                            placeholder="Unesi svoju e-mail adresu"
                             variant="outlined"
                             className="basis-96 grow"
                             autoComplete="home email"

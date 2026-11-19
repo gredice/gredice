@@ -240,7 +240,7 @@ function RegionalCalendarCropItem({ crop }: { crop: RegionalCalendarCrop }) {
                         >
                             stranici biljke
                         </Link>
-                        ; dostupna sorta s cijenom trenutačno nije potvrđena.
+                        ; dostupna sorta s cijenom trenutno nije potvrđena.
                     </Typography>
                 )}
             </Stack>
@@ -297,7 +297,7 @@ export default async function SowingCalendarPage({
     ).length;
 
     return (
-        <Container maxWidth="lg">
+        <Container maxWidth="lg" padded={false}>
             <Stack spacing={12} className="min-w-0">
                 <Stack spacing={4} className="min-w-0">
                     <PublicBreadcrumbs
@@ -492,7 +492,7 @@ export default async function SowingCalendarPage({
                                     id="calendar-month"
                                     name="mjesec"
                                     defaultValue={month}
-                                    className="h-10 w-full rounded-md border bg-field px-3"
+                                    className="h-10 w-full rounded-md border bg-card px-3"
                                 >
                                     <option value="">Svi mjeseci</option>
                                     {calendarMonthNames.map((name, index) => (
@@ -510,7 +510,7 @@ export default async function SowingCalendarPage({
                                     id="calendar-activity"
                                     name="radnja"
                                     defaultValue={activity}
-                                    className="h-10 w-full rounded-md border bg-field px-3"
+                                    className="h-10 w-full rounded-md border bg-card px-3"
                                 >
                                     <option value="">Sve radnje</option>
                                     {calendarActivityKeys.map((key) => (

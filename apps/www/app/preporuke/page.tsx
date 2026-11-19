@@ -19,14 +19,15 @@ import {
     CardTitle,
 } from '../../components/shared/Card';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
+import { RewardsNav } from '../../components/shared/RewardsNav';
 import { formatPrice } from '../../lib/formatPrice';
 import { createPublicMetadata } from '../../lib/seo/publicMetadata';
+import { sunflowerRateLabel, sunflowersPerEuro } from '../../lib/sunflowerRate';
 import { KnownPages } from '../../src/KnownPages';
 
 const referralReward = 10000;
-const sunflowerEuroRate = 1000;
 const combinedReferralReward = referralReward * 2;
-const combinedRewardValue = combinedReferralReward / sunflowerEuroRate;
+const combinedRewardValue = combinedReferralReward / sunflowersPerEuro;
 const formattedReferralReward = new Intl.NumberFormat('hr-HR').format(
     referralReward,
 );
@@ -90,7 +91,7 @@ const referralFlows = [
 
 export default function ReferralsLandingPage() {
     return (
-        <Container maxWidth="md">
+        <Container maxWidth="md" padded={false}>
             <Stack spacing={10}>
                 <PageHeader
                     header="Preporuke"
@@ -106,6 +107,8 @@ export default function ReferralsLandingPage() {
                         />
                     }
                 />
+
+                <RewardsNav current="referrals" />
 
                 <StyledHtml size="md">
                     <p>
@@ -164,9 +167,8 @@ export default function ReferralsLandingPage() {
                                 . Zajedno je to{' '}
                                 {formattedCombinedReferralReward}{' '}
                                 <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />{' '}
-                                prema pravilu 1.000{' '}
-                                <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />{' '}
-                                = 1 €.
+                                prema orijentacijskom odnosu{' '}
+                                {sunflowerRateLabel}.
                             </Typography>
                         </CardContent>
                     </Card>
@@ -188,7 +190,6 @@ export default function ReferralsLandingPage() {
                             <Button
                                 className="mt-auto w-fit"
                                 href={KnownPages.GardenReferrals}
-                                size="sm"
                             >
                                 Otvori pregled
                             </Button>
@@ -255,7 +256,6 @@ export default function ReferralsLandingPage() {
                                 <Button
                                     className="mt-auto w-fit self-center"
                                     href={KnownPages.GardenReferrals}
-                                    size="sm"
                                 >
                                     {flow.ctaLabel}
                                 </Button>
@@ -291,7 +291,7 @@ export default function ReferralsLandingPage() {
 
                 <Row spacing={4} className="mt-4">
                     <Typography level="body1">
-                        Jesu li pravila preporuka jasna ili nešto nedostaje?
+                        Jesu li ti informacije korisne?
                     </Typography>
                     <FeedbackModal topic="www/referrals" />
                 </Row>

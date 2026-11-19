@@ -16,7 +16,7 @@ export const metadata = createPublicMetadata({
 
 export default function AchievementsPage() {
     return (
-        <Container maxWidth="lg" className="py-8 sm:py-12">
+        <Container maxWidth="lg" padded={false} className="py-8 sm:py-12">
             <PublicBreadcrumbs
                 items={[
                     { label: 'Početna', href: KnownPages.Landing },

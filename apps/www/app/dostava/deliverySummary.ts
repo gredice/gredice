@@ -26,3 +26,16 @@ export const deliverySummaryFacts = [
     'Osobno preuzimanje na lokaciji Gredice HQ u Zagrebu je besplatno.',
     'Dostava se zakazuje najmanje 48 sati unaprijed, u 2-satnim terminima.',
 ];
+
+/**
+ * The three facts a visitor needs before reading on, shown as tiles beside the
+ * address checker. Each one restates a sentence from `deliverySummaryFacts`.
+ */
+export const deliveryFactTiles = [
+    { label: 'Zagreb', value: 'Besplatna dostava na adresu' },
+    { label: 'Gredice HQ', value: 'Besplatno osobno preuzimanje' },
+    {
+        label: 'Zakazivanje',
+        value: 'Najmanje 48 sati unaprijed, u 2-satnim terminima',
+    },
+];

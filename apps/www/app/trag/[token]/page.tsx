@@ -7,7 +7,6 @@ import {
     type PublicHarvestTraceTimelineItem,
     recordHarvestTraceScan,
 } from '@gredice/storage';
-import { Button } from '@gredice/ui/Button';
 import {
     GameCalendarIcon,
     GameCameraIcon,
@@ -19,7 +18,6 @@ import {
     GameWaterIcon,
 } from '@gredice/ui/GameIcons';
 import { ImageGallery } from '@gredice/ui/ImageGallery';
-import { LinkOff } from '@gredice/ui/icons';
 import { OperationCategoryIcon } from '@gredice/ui/OperationImage';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Stack } from '@gredice/ui/Stack';
@@ -31,12 +29,15 @@ import Image from 'next/image';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { Card } from '../../../components/shared/Card';
+import { CtaBand } from '../../../components/shared/CtaBand';
 import { PublicGardenIllustration } from '../../../components/visuals/PublicGardenIllustration';
 import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
+import { KnownPages } from '../../../src/KnownPages';
 import {
     PlantMonthCalendar,
     type PlantMonthCalendarRow,
 } from '../../biljke/PlantMonthCalendar';
+import { InvalidTraceState } from '../InvalidTraceState';
 import { HarvestTraceStatusEvent } from './HarvestTraceStatusEvent';
 import { HarvestTraceWateringGrid } from './HarvestTraceWateringGrid';
 
@@ -330,32 +331,6 @@ async function loadTrace(token: string) {
     } catch {
         return null;
     }
-}
-
-function InvalidTraceState() {
-    return (
-        <Stack spacing={6} className="mx-auto max-w-2xl py-8 sm:py-12">
-            <Card className="p-6 sm:p-8">
-                <Stack spacing={5} alignItems="center" className="text-center">
-                    <span className="flex size-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                        <LinkOff className="size-7" />
-                    </span>
-                    <Stack spacing={2}>
-                        <Typography level="h1">
-                            Trag berbe nije dostupan
-                        </Typography>
-                        <Typography className="text-muted-foreground">
-                            Poveznica nije važeća, istekla je ili opozvana.
-                            Provjeri etiketu ili nam se javi ako trebaš pomoć.
-                        </Typography>
-                    </Stack>
-                    <Button href="/" variant="solid">
-                        Na početnu
-                    </Button>
-                </Stack>
-            </Card>
-        </Stack>
-    );
 }
 
 function TraceHero({ trace }: { trace: PublicHarvestTrace }) {
@@ -1082,6 +1057,16 @@ export default async function HarvestTracePage(
                     </Typography>
                 </Stack>
             </section>
+            <CtaBand
+                id="harvest-trace-cta-title"
+                title="Uzgoji i ti svoje povrće."
+                description="Složi gredicu u aplikaciji, a tim na OPG-u je sadi, njeguje i bere za tebe."
+                secondaryAction={{
+                    href: KnownPages.RaisedBeds,
+                    label: 'Kako funkcionira gredica',
+                }}
+                className="mt-4"
+            />
         </Stack>
     );
 }

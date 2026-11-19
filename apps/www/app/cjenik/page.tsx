@@ -38,6 +38,7 @@ import { getPlantSortsData } from '../../lib/plants/getPlantSortsData';
 import { getPlantsData } from '../../lib/plants/getPlantsData';
 import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { getPublicSunflowerPackages } from '../../lib/sunflowerPackages';
+import { sunflowerRateLabel } from '../../lib/sunflowerRate';
 import { KnownPages } from '../../src/KnownPages';
 import { CatalogRow } from './CatalogRow';
 import {
@@ -266,7 +267,7 @@ export default async function PricingPage() {
     );
 
     return (
-        <Container className="pb-12" maxWidth="lg">
+        <Container className="pb-12" maxWidth="lg" padded={false}>
             <Stack spacing={6}>
                 <PageSectionNav
                     label="Dijelovi cjenika"
@@ -342,7 +343,7 @@ export default async function PricingPage() {
 
                 <Card className="scroll-mt-28" id="suncokreti">
                     <CatalogSectionHeader
-                        description="Prepaid Gredice bodovi za radnje u vrtu. Orijentacijski odnos je 1 EUR ≈ 1.000 suncokreta."
+                        description={`Unaprijed plaćeni Gredice bodovi za radnje u vrtu. Orijentacijski odnos je ${sunflowerRateLabel}.`}
                         headingId="suncokreti-naslov"
                         icon={<GameSunflowerIcon aria-hidden />}
                         title="Paketi suncokreta"
@@ -398,7 +399,7 @@ export default async function PricingPage() {
                             <Alert color="neutral" startDecorator={<Warning />}>
                                 <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
                                     <span>
-                                        Paketi se trenutačno ne mogu učitati.
+                                        Paketi se trenutno ne mogu učitati.
                                         Aktualni saldo i kupnja dostupni su u
                                         vrtu.
                                     </span>
@@ -460,7 +461,7 @@ export default async function PricingPage() {
 
                 <Card className="scroll-mt-28" id="radnje">
                     <CatalogSectionHeader
-                        description="Cijene po radnji, uključujući jasno označene interne i trenutačno nedostupne radnje."
+                        description="Cijene po radnji, uključujući jasno označene interne i trenutno nedostupne radnje."
                         headingId="radnje-naslov"
                         icon={<GameToolsIcon aria-hidden />}
                         title="Radnje"
@@ -605,7 +606,7 @@ export default async function PricingPage() {
                 />
                 <Row spacing={4} className="pt-4">
                     <Typography level="body1">
-                        Jesu li ti informacije u cjeniku korisne?
+                        Jesu li ti informacije korisne?
                     </Typography>
                     <FeedbackModal topic="www/pricing" />
                 </Row>

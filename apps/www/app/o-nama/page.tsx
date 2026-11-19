@@ -51,7 +51,7 @@ function SectionHeader({
 
 export default function AboutUsPage() {
     return (
-        <Container maxWidth="md">
+        <Container maxWidth="md" padded={false}>
             <Stack spacing={16}>
                 <PageHeader
                     highlight={
@@ -164,7 +164,7 @@ export default function AboutUsPage() {
                         Naš tim
                     </SectionHeader>
                     <Typography level="body1">
-                        <strong>Gredice tim je trenutačno mali</strong>, ali iza
+                        <strong>Gredice tim je trenutno mali</strong>, ali iza
                         njega stoji puno rada, razmišljanja i stvarnog iskustva.
                     </Typography>
                     <Typography level="body1">
