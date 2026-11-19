@@ -78,6 +78,15 @@ export function PublicHeader({
                         Biljke
                     </NavLinkButton>,
                     <NavLinkButton
+                        key="pricing"
+                        href={publicChromeHref(
+                            PublicPagePaths.Pricing,
+                            linkMode,
+                        )}
+                    >
+                        Cjenik
+                    </NavLinkButton>,
+                    <NavLinkButton
                         key="news"
                         href={publicChromeHref(PublicPagePaths.News, linkMode)}
                         navigation={
@@ -96,7 +105,10 @@ export function PublicHeader({
             >
                 <div className="flex shrink-0 items-center gap-1 sm:gap-2">
                     <NavSearch
-                        className="shrink-0 md:-ml-1 xl:absolute xl:left-1/2 xl:top-1/2 xl:ml-0 xl:-translate-x-1/2 xl:-translate-y-1/2"
+                        // Centred from xl. From 2xl the search field doubles
+                        // in width, so it sits 5rem left of centre to stay
+                        // clear of the first nav link.
+                        className="shrink-0 md:-ml-1 xl:absolute xl:left-1/2 xl:top-1/2 xl:ml-0 xl:-translate-x-1/2 xl:-translate-y-1/2 2xl:left-[calc(50%-5rem)]"
                         linkMode={linkMode}
                         apiBasePath={apiBasePath}
                     />

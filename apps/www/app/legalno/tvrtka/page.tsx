@@ -15,7 +15,7 @@ export const metadata = createPublicMetadata({
 
 export default function CompanyPage() {
     return (
-        <Container maxWidth="sm">
+        <Container maxWidth="sm" padded={false} className="md:px-4">
             <Stack>
                 <PageHeader
                     padded

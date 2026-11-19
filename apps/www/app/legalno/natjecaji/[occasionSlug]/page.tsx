@@ -83,7 +83,7 @@ export default async function OccasionPage({ params }: OccasionPageProps) {
         : null;
 
     return (
-        <Container maxWidth="sm">
+        <Container maxWidth="sm" padded={false} className="md:px-4">
             <Stack>
                 <PageHeader
                     padded
@@ -111,7 +111,7 @@ export default async function OccasionPage({ params }: OccasionPageProps) {
 
                 {rulesChangedDate && (
                     <Typography level="body3" className="mt-4">
-                        Posljednja izmjena: {rulesChangedDate}
+                        Zadnja izmjena: {rulesChangedDate}
                     </Typography>
                 )}
             </Stack>

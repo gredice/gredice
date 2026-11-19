@@ -10,6 +10,7 @@ import { Button } from '@gredice/ui/Button';
 import { GameSunflowerIcon, GameTrophyIcon } from '@gredice/ui/GameIcons';
 import { Link } from '@gredice/ui/Link';
 import { PageSectionNav } from '../../components/shared/PageSectionNav';
+import { RewardsNav } from '../../components/shared/RewardsNav';
 import { KnownPages } from '../../src/KnownPages';
 import { achievementAvailability } from './achievementAvailability';
 
@@ -80,6 +81,8 @@ export function AchievementCatalog({ now }: { now: string }) {
                     />
                 </div>
             </header>
+
+            <RewardsNav current="achievements" />
 
             <section
                 aria-labelledby="earning-title"

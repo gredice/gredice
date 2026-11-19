@@ -13,12 +13,8 @@ import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import { RelatedFaq } from '../../../components/faq/RelatedFaq';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '../../../components/shared/Card';
+import { Card, CardContent, CardHeader } from '../../../components/shared/Card';
+import { CtaBand } from '../../../components/shared/CtaBand';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { WhatsAppCard } from '../../../components/social/WhatsAppCard';
 import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
@@ -29,6 +25,8 @@ import {
     formatDeliveryDate,
     formatDeliveryTime,
 } from './deliverySlotFormatting';
+import { NextOpenSlots } from './NextOpenSlots';
+import { findNextOpenSlot } from './nextOpenSlot';
 
 export const dynamic = 'force-dynamic';
 export const metadata = createPublicMetadata({
@@ -256,7 +254,7 @@ async function SlotsDisplay() {
                             aria-hidden
                             className="mx-auto size-16"
                         />
-                        <Typography level="h6">
+                        <Typography level="h6" component="h3">
                             Nema dostupnih termina
                         </Typography>
                         <Typography
@@ -272,12 +270,18 @@ async function SlotsDisplay() {
         );
     }
 
+    const now = range.referenceDate.getTime();
+
     return (
         <Stack spacing={5}>
+            <NextOpenSlots
+                delivery={findNextOpenSlot(slots, 'delivery', now)}
+                pickup={findNextOpenSlot(slots, 'pickup', now)}
+            />
             {weeks.map((week, weekIndex) => (
                 <section key={week.startAt.toISOString()}>
                     <div className="mb-2 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                        <Typography level="h6" component="h5">
+                        <Typography level="h6" component="h3">
                             <span className="font-normal text-muted-foreground">
                                 Tjedan{' '}
                             </span>
@@ -325,7 +329,7 @@ async function SlotsDisplay() {
                                 return (
                                     <div
                                         key={dateKey(day.date)}
-                                        className="grid grid-cols-[3.25rem_minmax(0,1fr)] gap-3 border-b p-3 last:border-b-0 md:gap-4"
+                                        className="grid grid-cols-[3.75rem_minmax(0,1fr)] gap-3 border-b p-3 last:border-b-0 md:gap-4"
                                     >
                                         <div className="flex min-h-10 flex-col items-start justify-center text-left">
                                             <time
@@ -337,7 +341,7 @@ async function SlotsDisplay() {
                                                 })}
                                             </time>
                                             <time
-                                                className="whitespace-nowrap text-[0.65rem] font-normal text-muted-foreground"
+                                                className="whitespace-nowrap text-xs font-normal text-muted-foreground"
                                                 dateTime={day.date.toISOString()}
                                             >
                                                 {formatDeliveryDate(day.date, {
@@ -346,7 +350,7 @@ async function SlotsDisplay() {
                                                 })}
                                             </time>
                                             {isToday && (
-                                                <span className="mt-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[0.55rem] font-semibold uppercase leading-none tracking-wide text-primary">
+                                                <span className="mt-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-xs font-semibold uppercase leading-none tracking-wide text-primary">
                                                     Danas
                                                 </span>
                                             )}
@@ -420,7 +424,7 @@ async function SlotsDisplay() {
                                                                     </span>
                                                                 )}
                                                             {isClosed && (
-                                                                <span className="border-l pl-2 text-[0.65rem] font-semibold uppercase tracking-wide">
+                                                                <span className="border-l pl-2 text-xs font-semibold uppercase tracking-wide">
                                                                     zatvoren
                                                                 </span>
                                                             )}
@@ -449,7 +453,7 @@ async function SlotsDisplay() {
 
 export default async function DeliverySlotsPage() {
     return (
-        <Container maxWidth="md">
+        <Container maxWidth="md" padded={false}>
             <Stack spacing={8}>
                 <PageHeader
                     padded
@@ -464,7 +468,13 @@ export default async function DeliverySlotsPage() {
                     Ovdje možeš vidjeti raspoložive i zatvorene termine za
                     dostavu ili osobno preuzimanje u sljedećih mjesec dana.
                     Raspoloživ termin možeš rezervirati u{' '}
-                    <strong>aplikaciji</strong> tijekom narudžbe branja.
+                    <a
+                        href={KnownPages.GardenApp}
+                        className="font-semibold underline underline-offset-4"
+                    >
+                        aplikaciji Gredice
+                    </a>{' '}
+                    tijekom narudžbe branja.
                 </Typography>
 
                 <Typography
@@ -478,13 +488,13 @@ export default async function DeliverySlotsPage() {
 
                 <Card className="w-fit p-4 pr-12 border-tertiary border-b-4">
                     <CardHeader>
-                        <CardTitle>
+                        <h2 className="text-2xl font-semibold tracking-tight">
                             <GameIdeaIcon
                                 aria-hidden
                                 className="mr-2 inline-block size-7 align-text-bottom"
                             />{' '}
                             Kako rezervirati termin?
-                        </CardTitle>
+                        </h2>
                     </CardHeader>
                     <CardContent>
                         <StyledHtml>
@@ -501,7 +511,7 @@ export default async function DeliverySlotsPage() {
                 </Card>
 
                 <Stack spacing={4}>
-                    <Typography level="h4">
+                    <Typography level="h4" component="h2">
                         Termini dostave i preuzimanja
                     </Typography>
                     <Typography level="body2" className="text-muted-foreground">
@@ -513,16 +523,25 @@ export default async function DeliverySlotsPage() {
                 </Stack>
 
                 <Stack spacing={4}>
-                    <Typography level="h6">
+                    <Typography level="h6" component="h2">
                         Potrebna ti je pomoć ili više informacija o dostavi?
                     </Typography>
                     <WhatsAppCard />
                 </Stack>
 
                 <RelatedFaq placement="deliverySlots" />
+                <CtaBand
+                    id="delivery-slots-cta-title"
+                    title="Rezerviraj termin kad plodovi dozriju."
+                    description="Složi gredicu u aplikaciji, a termin dostave ili preuzimanja odabireš pri narudžbi branja."
+                    secondaryAction={{
+                        href: KnownPages.Delivery,
+                        label: 'Sve o dostavi',
+                    }}
+                />
                 <Row spacing={4} className="mt-8">
                     <Typography level="body1">
-                        Jesu li ti ove informacije korisne?
+                        Jesu li ti informacije korisne?
                     </Typography>
                     <FeedbackModal topic="www/delivery-slots" />
                 </Row>

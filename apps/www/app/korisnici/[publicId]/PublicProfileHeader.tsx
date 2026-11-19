@@ -1,5 +1,6 @@
 import { getAchievementFamilies } from '@gredice/js/achievements';
 import {
+    GameCommunityIcon,
     GameGardenIcon,
     GameJournalIcon,
     GameProfileIcon,
@@ -7,6 +8,7 @@ import {
 } from '@gredice/ui/GameIcons';
 import { Link } from '@gredice/ui/Link';
 import { UserAchievementProgress, UserAvatar } from '@gredice/ui/UserAvatar';
+import { cx } from '@gredice/ui/utils';
 import { KnownPages } from '../../../src/KnownPages';
 import {
     formatGardenDate,
@@ -23,6 +25,7 @@ export function PublicProfileHeader({
     user,
     gardens,
     achievements,
+    contributions,
 }: PublicProfileData) {
     const membership = formatProfileMembership(user.createdAt);
     const facts = [
@@ -41,6 +44,16 @@ export function PublicProfileHeader({
             label: 'Javni vrtovi',
             value: formatGardenNumber(gardens.length),
         },
+        // Accepted content suggestions; absent while the API does not report them.
+        ...(contributions
+            ? [
+                  {
+                      icon: GameCommunityIcon,
+                      label: 'Doprinosi',
+                      value: formatGardenNumber(contributions.acceptedCount),
+                  },
+              ]
+            : []),
     ];
 
     return (
@@ -69,7 +82,7 @@ export function PublicProfileHeader({
                             <p className="mt-2 text-sm text-muted-foreground sm:text-base">
                                 <time
                                     dateTime={user.createdAt}
-                                    title={`Pridružio se ${formatGardenDate(user.createdAt)}`}
+                                    title={`U Gredicama od ${formatGardenDate(user.createdAt)}`}
                                 >
                                     {membership}
                                 </time>
@@ -89,11 +102,16 @@ export function PublicProfileHeader({
                     </Link>
                 </div>
             </div>
-            <ul className="grid grid-cols-3 divide-x border-t">
+            <ul
+                className={cx(
+                    'grid divide-x border-t',
+                    facts.length > 3 ? 'grid-cols-4' : 'grid-cols-3',
+                )}
+            >
                 {facts.map(({ icon: Icon, label, value }) => (
                     <li
                         key={label}
-                        className="flex flex-col items-center gap-1 px-2 py-4 text-center sm:flex-row sm:justify-center sm:gap-3 sm:px-5 sm:text-left"
+                        className="flex min-w-0 flex-col items-center gap-1 px-1 py-4 text-center sm:flex-row sm:justify-center sm:gap-3 sm:px-5 sm:text-left"
                     >
                         <Icon aria-hidden className="size-8 shrink-0" />
                         <p className="min-w-0">

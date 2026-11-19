@@ -59,14 +59,14 @@ export default async function CmsPublishedPageRoute({
         : sections;
 
     return (
-        <main>
+        <div>
             <SectionsView
                 sectionsData={resolvedSections}
                 componentsRegistry={sectionsComponentRegistry}
                 renderMode={parseCmsPageRenderMode(page.renderMode)}
                 renderMaxWidth={parseCmsPageRenderMaxWidth(page.renderMaxWidth)}
             />
-        </main>
+        </div>
     );
 }
 

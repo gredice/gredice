@@ -33,7 +33,7 @@ export default async function OccasionsListPage() {
     const now = new Date();
 
     return (
-        <Container maxWidth="sm">
+        <Container maxWidth="sm" padded={false} className="md:px-4">
             <Stack spacing={8}>
                 <PageHeader
                     padded

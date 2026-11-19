@@ -20,7 +20,7 @@ export const metadata = createPublicMetadata({
 export default async function PriceListDownloadsPage() {
     const snapshots = await getPublishedPriceLists();
     return (
-        <Container maxWidth="md" className="pb-12">
+        <Container maxWidth="md" padded={false} className="pb-12">
             <PageHeader
                 header="Preuzimanje cjenika"
                 subHeader="CSV cjenici objavljeni u posljednjih 30 dana. Svaka verzija ostaje dostupna putem svoje poveznice."

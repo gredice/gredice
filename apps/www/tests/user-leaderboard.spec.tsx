@@ -196,6 +196,82 @@ test('supports short lists and long names on narrow screens', async ({
     ).toBeLessThanOrEqual(320);
 });
 
+for (const width of [360, 1280]) {
+    test(`lists editors by accepted suggestions with linked profiles at ${width}px`, async ({
+        mount,
+        page,
+    }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await mount(
+            <main className="px-4">
+                <UserLeaderboard
+                    items={items}
+                    editors={[
+                        {
+                            publicId: 'u_7',
+                            displayName: 'Tomislav Radić',
+                            avatarUrl: null,
+                            achievementCount: 13,
+                            acceptedEditCount: 21,
+                        },
+                        {
+                            publicId: 'u_2',
+                            displayName: 'Petra Horvat',
+                            avatarUrl: null,
+                            achievementCount: 28,
+                            acceptedEditCount: 3,
+                        },
+                        {
+                            publicId: 'u_editor',
+                            displayName:
+                                'VrloDugačkoKorisničkoImeBezRazmakaKojeMoraStatiNaEkran',
+                            avatarUrl: null,
+                            achievementCount: 0,
+                            acceptedEditCount: 1,
+                        },
+                    ]}
+                />
+            </main>,
+        );
+        await expect(page.locator('header')).toContainText(
+            'prihvaćeni prijedlog sadržaja',
+        );
+        const editors = page.getByRole('region', { name: 'Urednici' });
+        const rows = editors.getByRole('listitem');
+        await expect(rows).toHaveCount(3);
+        await expect(rows.nth(0)).toContainText('Tomislav Radić');
+        await expect(rows.nth(0)).toContainText('21');
+        await expect(rows.nth(0)).toContainText('prihvaćen prijedlog');
+        await expect(rows.nth(1)).toContainText('prihvaćena prijedloga');
+        await expect(rows.nth(0).getByRole('link')).toHaveAttribute(
+            'href',
+            '/korisnici/u_7',
+        );
+        // The achievement ranking keeps its own ten rows.
+        await expect(page.locator('ol > li')).toHaveCount(10);
+        expect(
+            await page.evaluate(() => document.documentElement.scrollWidth),
+        ).toBeLessThanOrEqual(width);
+        expect((await new AxeBuilder({ page }).analyze()).violations).toEqual(
+            [],
+        );
+    });
+}
+
+test('shows no editors section until someone has an accepted suggestion', async ({
+    mount,
+    page,
+}) => {
+    await mount(
+        <main className="px-4">
+            <UserLeaderboard items={items} editors={[]} />
+        </main>,
+    );
+    await expect(page.getByRole('heading', { name: 'Urednici' })).toHaveCount(
+        0,
+    );
+});
+
 test('empty, loading and error states do not invent rankings and allow retry', async ({
     mount,
     page,

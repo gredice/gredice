@@ -4,10 +4,12 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { PageContributors } from '../../../../../components/community-edits/PageContributors';
 import { RelatedFaq } from '../../../../../components/faq/RelatedFaq';
 import { FeedbackModal } from '../../../../../components/shared/feedback/FeedbackModal';
 import { PublicBreadcrumbs } from '../../../../../components/shared/seo/PublicBreadcrumbs';
 import { StructuredDataScript } from '../../../../../components/shared/seo/StructuredDataScript';
+import { getEntityContributors } from '../../../../../lib/community/getEntityContributors';
 import { getOperationsData } from '../../../../../lib/plants/getOperationsData';
 import { getPlantSortsData } from '../../../../../lib/plants/getPlantSortsData';
 import { getPlantsData } from '../../../../../lib/plants/getPlantsData';
@@ -28,7 +30,9 @@ import {
     PlantRelationshipsSection,
 } from '../../PlantRelationshipsSection';
 import { PlantSortSeedsList } from '../../PlantSortSeedsList';
+import { PlantStickyBuyBar } from '../../PlantStickyBuyBar';
 import { PlantTips } from '../../PlantTips';
+import { getPlantSowingOffer } from '../../plantSowingOfferData';
 import { SowingAttributeCards } from '../../SowingAttributeCards';
 import { WateringAttributeCards } from '../../WateringAttributeCards';
 
@@ -199,6 +203,13 @@ export default async function PlantSortPage(
         ? sortData.relationships
         : basePlantData.relationships;
     const health = basePlantData.health;
+    // Tips and health records belong to the plant, so their authors come from
+    // the plant's record.
+    const [contributors, plantContributors] = await Promise.all([
+        getEntityContributors(sortData.id),
+        getEntityContributors(basePlantData.id),
+    ]);
+    const sowingOffer = getPlantSowingOffer(basePlantData, sortData);
 
     return (
         <div className="py-8">
@@ -274,6 +285,7 @@ export default async function PlantSortPage(
                     operations={operations}
                     plant={basePlantData}
                     sort={sortData}
+                    overviewContributors={contributors.sections.overview}
                     overviewEditTarget={{
                         entityTypeName: 'plantSort',
                         entityId: sortData.id,
@@ -298,10 +310,20 @@ export default async function PlantSortPage(
                             editEntityId={sortData.id}
                             editPublicPath={sortPath}
                             editSectionKey={section.id}
+                            editEntityName={sortData.information.name}
+                            contributors={contributors.sections[section.id]}
                         />
                     ))}
-                <PlantTips plant={basePlantData} publicPath={sortPath} />
+                <PlantTips
+                    contributors={plantContributors.sections['new-plant-tip']}
+                    plant={basePlantData}
+                    publicPath={sortPath}
+                />
                 <PlantHealthSection
+                    diseaseContributors={
+                        plantContributors.sections['new-disease']
+                    }
+                    pestContributors={plantContributors.sections['new-pest']}
                     health={health}
                     plantId={basePlantData.id}
                     plantName={basePlantData.information.name}
@@ -312,12 +334,22 @@ export default async function PlantSortPage(
                         entityTypeName: 'plantSort',
                         entityId: sortData.id,
                         publicPath: sortPath,
+                        entityName: sortData.information.name,
                     }}
                     relationships={relationships}
                 />
                 <PlantSortSeedsList plantSortId={sortData.id} />
                 <PlantFurtherReading />
                 <RelatedFaq placement="plant" />
+                <PageContributors
+                    contributors={contributors}
+                    edit={{
+                        entityTypeName: 'plantSort',
+                        entityId: sortData.id,
+                        publicPath: sortPath,
+                        entityName: sortData.information.name,
+                    }}
+                />
                 <Row spacing={4}>
                     <Typography level="body1">
                         Jesu li ti informacije o ovoj biljci korisne?
@@ -333,6 +365,11 @@ export default async function PlantSortPage(
                     />
                 </Row>
             </Stack>
+            <PlantStickyBuyBar
+                href={sowingOffer.href}
+                price={sowingOffer.price}
+                plantName={sortData.information.name}
+            />
         </div>
     );
 }

@@ -7,6 +7,7 @@ import {
     plantHealthIssueTitle,
 } from '../../../components/plant-health/plantHealthIssueContent';
 import { StructuredDataScript } from '../../../components/shared/seo/StructuredDataScript';
+import { getEntityContributors } from '../../../lib/community/getEntityContributors';
 import { getPlantPestsData } from '../../../lib/plants/getPlantHealthIssuesData';
 import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
 import { KnownPages } from '../../../src/KnownPages';
@@ -75,7 +76,12 @@ export default async function PlantPestPage(
                     mainEntityOfPage: `https://www.gredice.com${path}`,
                 }}
             />
-            <PlantHealthIssueDetail issue={issue} kind="pest" path={path} />
+            <PlantHealthIssueDetail
+                contributors={await getEntityContributors(issue.id)}
+                issue={issue}
+                kind="pest"
+                path={path}
+            />
         </>
     );
 }

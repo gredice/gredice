@@ -57,6 +57,22 @@ export function PublicGardenCard({
                         />
                     </div>
                 </div>
+                <div className="border-t bg-card px-3 py-2">
+                    <Typography
+                        level="body1"
+                        className="truncate font-semibold"
+                    >
+                        {garden.name}
+                    </Typography>
+                    {garden.owner?.displayName ? (
+                        <Typography
+                            level="body3"
+                            className="truncate text-muted-foreground"
+                        >
+                            {garden.owner.displayName}
+                        </Typography>
+                    ) : null}
+                </div>
                 <div className="grid grid-cols-2 divide-x border-t bg-card">
                     <div className="flex items-center gap-2 px-3 py-3">
                         <GameSeedlingIcon

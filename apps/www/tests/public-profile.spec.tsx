@@ -493,3 +493,95 @@ test('shows empty states without requesting an unavailable garden', async ({
     ).toContainText('0');
     expect(gardenRequests).toEqual([]);
 });
+
+for (const width of [360, 1280]) {
+    test(`credits accepted suggestions with a count and the improved pages at ${width}px`, async ({
+        mount,
+        page,
+    }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await mount(
+            <PublicProfileHarness
+                profile={{
+                    ...profile,
+                    contributions: {
+                        acceptedCount: 12,
+                        pages: [
+                            {
+                                title: 'Rajčica',
+                                context: 'Sijanje',
+                                publicPath: '/biljke/rajcica',
+                                appliedAt: '2026-09-03T10:00:00.000Z',
+                            },
+                            {
+                                title: 'Zalijevanje',
+                                context: null,
+                                publicPath: '/radnje/zalijevanje',
+                                appliedAt: '2026-08-20T10:00:00.000Z',
+                            },
+                        ],
+                    },
+                }}
+            />,
+        );
+
+        const facts = page.locator('header').getByRole('listitem');
+        await expect(facts).toHaveCount(4);
+        await expect(facts.filter({ hasText: 'Doprinosi' })).toContainText(
+            '12',
+        );
+        const pages = page.getByRole('region', {
+            name: 'Poboljšane stranice',
+        });
+        await expect(pages).toContainText('12 prihvaćenih prijedloga');
+        await expect(pages.getByRole('listitem')).toHaveCount(2);
+        await expect(
+            pages.getByRole('link', { name: 'Rajčica' }),
+        ).toHaveAttribute('href', '/biljke/rajcica');
+        await expect(pages.getByRole('listitem').first()).toContainText(
+            'Sijanje',
+        );
+        expect(
+            await page.evaluate(() => document.documentElement.scrollWidth),
+        ).toBeLessThanOrEqual(width);
+        // The garden preview fades in; let it settle so axe reads final colours.
+        await page.evaluate(() =>
+            Promise.all(
+                document.getAnimations().map((animation) => animation.finished),
+            ),
+        );
+        expect((await new AxeBuilder({ page }).analyze()).violations).toEqual(
+            [],
+        );
+    });
+}
+
+test('keeps the profile unchanged when the API reports no contributions', async ({
+    mount,
+    page,
+}) => {
+    const component = await mount(<PublicProfileHarness profile={profile} />);
+    await expect(page.locator('header').getByRole('listitem')).toHaveCount(3);
+    await expect(
+        page.getByRole('heading', { name: 'Poboljšane stranice' }),
+    ).toHaveCount(0);
+
+    // A gardener without accepted suggestions shows the count, not an empty list.
+    await component.update(
+        <PublicProfileHarness
+            profile={{
+                ...profile,
+                contributions: { acceptedCount: 0, pages: [] },
+            }}
+        />,
+    );
+    await expect(
+        page
+            .locator('header')
+            .getByRole('listitem')
+            .filter({ hasText: 'Doprinosi' }),
+    ).toContainText('0');
+    await expect(
+        page.getByRole('heading', { name: 'Poboljšane stranice' }),
+    ).toHaveCount(0);
+});

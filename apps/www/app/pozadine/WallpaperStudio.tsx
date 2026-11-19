@@ -169,7 +169,7 @@ export function WallpaperStudio() {
                 throw new Error('Prijava je istekla. Prijavi se ponovno.');
             }
             if (!response.ok) {
-                throw new Error('Tvoji vrtovi trenutačno nisu dostupni.');
+                throw new Error('Tvoji vrtovi trenutno nisu dostupni.');
             }
             return response.json();
         },
@@ -776,7 +776,7 @@ export function WallpaperStudio() {
                             ) : (
                                 <div className="grid max-w-sm gap-2 px-6 text-center">
                                     <Typography level="body1" bold>
-                                        Pregled trenutačno nije dostupan
+                                        Pregled trenutno nije dostupan
                                     </Typography>
                                     <Typography level="body2" secondary>
                                         Promijeni postavku kako bismo ga ponovno

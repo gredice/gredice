@@ -15,11 +15,15 @@ import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Typography } from '@gredice/ui/Typography';
 import { RelatedFaq } from '../../components/faq/RelatedFaq';
+import { CtaBand } from '../../components/shared/CtaBand';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { PublicGardenIllustration } from '../../components/visuals/PublicGardenIllustration';
+import { formatPrice } from '../../lib/formatPrice';
 import { getOperationsData } from '../../lib/plants/getOperationsData';
 import { createPublicMetadata } from '../../lib/seo/publicMetadata';
+import { sunflowersPerEuro } from '../../lib/sunflowerRate';
 import { KnownPages } from '../../src/KnownPages';
+import { getLandingPricing } from '../getLandingPricing';
 import {
     GrowthCalendarPreview,
     SowingCalendarPreview,
@@ -28,23 +32,31 @@ import {
 export const metadata = createPublicMetadata({
     title: 'Sjetva biljaka',
     description:
-        'Saznaj kako funkcionira sjetva biljaka u Gredicama, koliko košta i koje pogodnosti dobivaš tijekom ljeta.',
+        'Saznaj kako funkcionira sjetva biljaka u Gredicama, koliko košta i koje sezonske pogodnosti dobivaš.',
     path: KnownPages.Sowing,
     eyebrow: 'Planiranje vrta',
 });
 
 const DEFAULT_FREE_WATERING_OPERATION_LABEL = 'Površinsko zalijevanje (20 L)';
 const FREE_WATERING_OPERATION_ID = 274;
+const sunflowerFormatter = new Intl.NumberFormat('hr-HR', {
+    maximumFractionDigits: 0,
+});
 
 export default async function SowingPage() {
-    const operationsData = await getOperationsData();
+    const [operationsData, pricing] = await Promise.all([
+        getOperationsData(),
+        getLandingPricing(),
+    ]);
+    // Same starting price the landing page and /cjenik quote.
+    const minPlantPrice = pricing?.minPlantPrice;
     const freeWateringOperationLabel =
         operationsData.find(
             (operation) => operation.id === FREE_WATERING_OPERATION_ID,
         )?.information.label ?? DEFAULT_FREE_WATERING_OPERATION_LABEL;
 
     return (
-        <Container maxWidth="md">
+        <Container maxWidth="md" padded={false}>
             <Stack spacing={8}>
                 <PageHeader
                     header="Sjetva biljaka"
@@ -54,7 +66,7 @@ export default async function SowingPage() {
                             loading="eager"
                         />
                     }
-                    subHeader="Sve o naručivanju sjetve, cijeni i dodatnim pogodnostima tijekom ljeta."
+                    subHeader="Sve o naručivanju sjetve, cijeni i sezonskim pogodnostima."
                     padded
                 />
                 <StyledHtml size="md">
@@ -74,10 +86,24 @@ export default async function SowingPage() {
                         Cijena sjetve
                     </h2>
                     <p>
-                        Sjetva se naplaćuje po biljci i trenutno iznosi
-                        minimalno 1,99&nbsp;€ ili 1.990{' '}
-                        <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />
-                        . Cijena uključuje nabavu sjemena, pripremu tla i
+                        {typeof minPlantPrice === 'number' ? (
+                            <>
+                                Sjetva se naplaćuje po biljci i trenutno iznosi
+                                minimalno{' '}
+                                <span className="whitespace-nowrap">
+                                    {formatPrice(minPlantPrice)}
+                                </span>{' '}
+                                ili{' '}
+                                {sunflowerFormatter.format(
+                                    minPlantPrice * sunflowersPerEuro,
+                                )}{' '}
+                                <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />
+                                .
+                            </>
+                        ) : (
+                            'Sjetva se naplaćuje po biljci.'
+                        )}{' '}
+                        Cijena uključuje nabavu sjemena, pripremu tla i
                         evidenciju radnje u aplikaciji, tako da u svakom
                         trenutku znaš što je posađeno u tvojoj gredici.
                     </p>
@@ -297,9 +323,18 @@ export default async function SowingPage() {
                     </p>
                 </StyledHtml>
                 <RelatedFaq placement="sowing" />
+                <CtaBand
+                    id="sowing-cta-title"
+                    title="Posij prvu biljku u svoju gredicu."
+                    description="Odaberi biljke u aplikaciji, a mi pripremamo tlo, sijemo i brinemo o njima."
+                    secondaryAction={{
+                        href: KnownPages.Plants,
+                        label: 'Pogledaj biljke',
+                    }}
+                />
                 <Row spacing={4} className="mt-4">
                     <Typography level="body1">
-                        Jesu li ti informacije o sjetvi bile korisne?
+                        Jesu li ti informacije korisne?
                     </Typography>
                     <FeedbackModal topic="www/sowing" />
                 </Row>

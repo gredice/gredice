@@ -1589,8 +1589,11 @@ test('community edit requests can be rejected without changing live content', as
         id: request.id,
         reviewer: { id: data.reviewerId, name: 'Community Reviewer' },
         reviewerNote: 'Nije dovoljno precizno.',
+        submitterMessage: ' Dodaj izvor pa predloži ponovno. ',
     });
     assert.equal(rejected.status, 'rejected');
+    assert.equal(rejected.reviewerNote, 'Nije dovoljno precizno.');
+    assert.equal(rejected.submitterMessage, 'Dodaj izvor pa predloži ponovno.');
 
     const entity = await getEntityRaw(plantId);
     assert.ok(entity);
@@ -1629,8 +1632,10 @@ test('community edit approval applies through attribute mutations and revisions'
     const applied = await approveCommunityEditRequest({
         id: request.id,
         reviewer: { id: data.reviewerId, name: 'Community Reviewer' },
+        submitterMessage: ' Hvala, opis je sada jasniji. ',
     });
     assert.equal(applied.status, 'applied');
+    assert.equal(applied.submitterMessage, 'Hvala, opis je sada jasniji.');
 
     const entity = await getEntityRaw(plantId);
     assert.ok(entity);
@@ -1958,12 +1963,15 @@ test('community edit approval marks stale requests conflicted', async () => {
     const conflicted = await approveCommunityEditRequest({
         id: request.id,
         reviewer: { id: data.reviewerId },
+        submitterMessage: 'Hvala na prijedlogu.',
     });
     assert.equal(conflicted.status, 'conflicted');
     assert.match(
         conflicted.applicationFailureReason ?? '',
         /changed after the request was submitted/,
     );
+    // The reply was written for an approval, so a conflict keeps none.
+    assert.equal(conflicted.submitterMessage, null);
 
     const entity = await getEntityRaw(plantId);
     assert.ok(entity);

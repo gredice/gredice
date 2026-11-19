@@ -1,6 +1,7 @@
 'use client';
 
 import { clientAuthenticated, directoriesClient } from '@gredice/client';
+import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { Input } from '@gredice/ui/Input';
 import { Send } from '@gredice/ui/icons';
@@ -10,13 +11,21 @@ import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import { useQuery } from '@tanstack/react-query';
 import { type FormEvent, useId, useState } from 'react';
-import type { CommunitySuggestionPlantOption } from './CommunityEntitySuggestionButton';
+import { CommunityDialogFooter } from './CommunityDialogFooter';
+import type { CommunitySuggestionPlantOption } from './CommunityEntitySuggestionButton.types';
 import {
     inputControlClassName,
     referenceControlClassName,
     textareaControlClassName,
 } from './communityControlStyles';
-import { errorMessage, isSubmitResponse } from './communitySuggestionUtils';
+import {
+    communitySourceMaxLength,
+    communitySubmitFailedMessage,
+    communitySubmitLabel,
+    composeSubmitterNote,
+    errorMessage,
+    isSubmitResponse,
+} from './communitySuggestionUtils';
 import { PlantReferencePicker } from './PlantReferencePicker';
 
 export function ExistingPlantHealthSuggestionForm({
@@ -24,12 +33,14 @@ export function ExistingPlantHealthSuggestionForm({
     plants,
     defaultAffectedPlantId,
     publicPath,
+    onCancel,
     onSuccess,
 }: {
     kind: 'disease' | 'pest';
     plants: CommunitySuggestionPlantOption[];
     defaultAffectedPlantId?: number;
     publicPath: string;
+    onCancel: () => void;
     onSuccess: (requestId: number) => void;
 }) {
     const id = useId();
@@ -139,13 +150,7 @@ export function ExistingPlantHealthSuggestionForm({
                     entityId: selectedIssue.id,
                     publicPath,
                     sectionKey: 'relationships',
-                    submitterNote:
-                        [
-                            source.trim() ? `Izvor: ${source.trim()}` : '',
-                            note.trim(),
-                        ]
-                            .filter(Boolean)
-                            .join('\n\n') || null,
+                    submitterNote: composeSubmitterNote(source, note),
                     changes: [
                         {
                             fieldKey: field.fieldKey,
@@ -160,7 +165,7 @@ export function ExistingPlantHealthSuggestionForm({
             }
             const result: unknown = await response.json();
             if (!isSubmitResponse(result)) {
-                throw new Error('Slanje prijedloga nije uspjelo.');
+                throw new Error(communitySubmitFailedMessage);
             }
             onSuccess(result.requestId);
         } catch (submitError) {
@@ -171,8 +176,11 @@ export function ExistingPlantHealthSuggestionForm({
     }
 
     return (
-        <form className="space-y-4" onSubmit={handleSubmit}>
-            <fieldset className="min-w-0 space-y-4" disabled={isSubmitting}>
+        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+            <fieldset
+                className="flex min-w-0 flex-col gap-4"
+                disabled={isSubmitting}
+            >
                 {defaultAffectedPlantId ? (
                     <Typography level="body2">
                         Povezivanje s biljkom:{' '}
@@ -187,7 +195,7 @@ export function ExistingPlantHealthSuggestionForm({
                         sortama.
                     </Typography>
                 ) : (
-                    <div className="space-y-1">
+                    <div className="flex flex-col gap-1">
                         <label
                             htmlFor={`${id}-plants`}
                             className="text-sm font-medium"
@@ -208,7 +216,7 @@ export function ExistingPlantHealthSuggestionForm({
                         Učitavam postojeće zapise...
                     </Typography>
                 ) : issues.isError ? (
-                    <div className="space-y-2">
+                    <div className="flex flex-col gap-2">
                         <Typography role="alert" level="body2">
                             Učitavanje postojećih zapisa nije uspjelo.
                         </Typography>
@@ -260,14 +268,15 @@ export function ExistingPlantHealthSuggestionForm({
                 <Input
                     className={inputControlClassName}
                     fullWidth
-                    label="Izvor ili poveznica (opcionalno)"
-                    maxLength={500}
+                    label="Izvor (opcionalno)"
+                    maxLength={communitySourceMaxLength}
+                    placeholder="Poveznica, knjiga ili vlastito iskustvo"
                     value={source}
                     onChange={(event) => setSource(event.currentTarget.value)}
                 />
-                <label className="block space-y-1" htmlFor={`${id}-note`}>
-                    <Typography level="body2">
-                        Napomena za administratora (opcionalno)
+                <label className="flex flex-col gap-1" htmlFor={`${id}-note`}>
+                    <Typography level="body2" semiBold>
+                        Napomena za moderatora (opcionalno)
                     </Typography>
                     <textarea
                         className={cx(textareaControlClassName, 'min-h-20')}
@@ -278,26 +287,27 @@ export function ExistingPlantHealthSuggestionForm({
                     />
                 </label>
             </fieldset>
-            {error ? (
-                <Typography role="alert" level="body2" className="text-red-700">
-                    {error}
-                </Typography>
-            ) : null}
-            <Row justifyContent="end">
-                <Button
-                    type="submit"
-                    disabled={
-                        isSubmitting ||
-                        issues.isPending ||
-                        issues.isError ||
-                        !selectedIssue ||
-                        affectedPlantIds.length === 0
-                    }
-                    endDecorator={<Send className="size-4" />}
-                >
-                    {isSubmitting ? 'Šaljem...' : 'Pošalji'}
-                </Button>
-            </Row>
+            {error ? <Alert color="danger">{error}</Alert> : null}
+            <CommunityDialogFooter>
+                <Row spacing={2} className="ml-auto shrink-0">
+                    <Button onClick={onCancel} type="button" variant="plain">
+                        Odustani
+                    </Button>
+                    <Button
+                        type="submit"
+                        disabled={
+                            issues.isPending ||
+                            issues.isError ||
+                            !selectedIssue ||
+                            affectedPlantIds.length === 0
+                        }
+                        endDecorator={<Send className="size-4" />}
+                        loading={isSubmitting}
+                    >
+                        {communitySubmitLabel}
+                    </Button>
+                </Row>
+            </CommunityDialogFooter>
         </form>
     );
 }

@@ -4,6 +4,9 @@ import {
     countRegisteredUsers,
     getAccountAchievements,
     getAccountGardens,
+    getCommunityContributionSummaryForUser,
+    getCommunityEditorLeaderboard,
+    getEntityDisplayLabels,
     getLastBirthdayRewardEvent,
     getUser,
     getUserAchievementLeaderboard,
@@ -13,6 +16,7 @@ import {
 import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
+import { presentCommunityContributionPage } from '../../../lib/communityEdits/communityEditPresentation';
 import { publicSecurity } from '../../../lib/docs/security';
 import {
     type AuthVariables,
@@ -114,18 +118,23 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/public/leaderboard',
         describeRoute({
             description:
-                'Get the top 10 non-temporary users by approved achievements on their primary account. Equal scores use registration date, then user ID. Each achievement earns 100 XP. Only public profile fields are returned. `userCount` is the number of registered (non-temporary) users.',
+                'Get the top 10 non-temporary users by approved achievements on their primary account. Equal scores use registration date, then user ID. Each achievement earns 100 XP. Only public profile fields are returned. `userCount` is the number of registered (non-temporary) users. `editors` lists the top 5 non-temporary users by accepted community content suggestions (`acceptedEditCount`), with the same tie-break.',
             security: publicSecurity,
         }),
         async (context) => {
-            const [users, userCount] = await Promise.all([
+            const [users, userCount, editors] = await Promise.all([
                 getUserAchievementLeaderboard(),
                 countRegisteredUsers(),
+                getCommunityEditorLeaderboard(),
             ]);
             context.header('Cache-Control', 'no-store');
             return context.json({
                 items: users.map(publicProfileUser),
                 userCount,
+                editors: editors.map((editor) => ({
+                    ...publicProfileUser(editor),
+                    acceptedEditCount: editor.acceptedEditCount,
+                })),
             });
         },
     )
@@ -133,7 +142,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/public/:publicId/profile',
         describeRoute({
             description:
-                'Get a public user profile by public ID, excluding login names and email addresses.',
+                'Get a public user profile by public ID, excluding login names and email addresses. `contributions` counts the community content suggestions that were accepted and lists the pages most recently improved.',
             security: [{}, { bearerAuth: [] }, { cookieAuth: [] }],
         }),
         zValidator(
@@ -159,11 +168,19 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'User not found' }, 404);
             }
 
-            const [gardens, achievements] = await Promise.all([
+            const [gardens, achievements, contributions] = await Promise.all([
                 getAccountGardens(primaryAccountId),
                 getAccountAchievements(primaryAccountId),
+                getCommunityContributionSummaryForUser(userId),
             ]);
             const visibleGardens = gardens.filter((garden) => garden.isPublic);
+            const contributionEntityLabels = new Map(
+                (
+                    await getEntityDisplayLabels(
+                        contributions.pages.map((page) => page.entityId),
+                    )
+                ).map((entity) => [entity.id, entity.label]),
+            );
 
             return context.json({
                 user: publicProfileUser(dbUser),
@@ -184,6 +201,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     createdAt: achievement.createdAt,
                     updatedAt: achievement.updatedAt,
                 })),
+                contributions: {
+                    acceptedCount: contributions.acceptedCount,
+                    pages: contributions.pages.map((page) =>
+                        presentCommunityContributionPage(
+                            page,
+                            contributionEntityLabels,
+                        ),
+                    ),
+                },
             });
         },
     )

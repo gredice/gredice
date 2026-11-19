@@ -6,24 +6,35 @@ import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { KnownPages } from '../../src/KnownPages';
 import { CommunityEditButton } from '../community-edits/CommunityEditButton';
+import type { CommunityContributorView } from '../community-edits/communityContributors';
+import { SectionContributors } from '../community-edits/SectionContributors';
 import { Card } from '../shared/Card';
 
 export function PlantHealthAffectedPlants({
+    contributors = [],
     plants,
     entityId,
+    entityName,
     entityTypeName,
     publicPath,
 }: {
+    /** Gardeners whose accepted suggestions linked plants here. */
+    contributors?: readonly CommunityContributorView[];
     plants: PlantPestData['relationships']['affectedPlants'];
     entityId: number;
+    /** Public name of the disease or pest, shown in the edit dialog. */
+    entityName?: string;
     entityTypeName: 'plantDisease' | 'plantPest';
     publicPath: string;
 }) {
     return (
         <Stack spacing={3}>
-            <Typography level="h2" className="text-2xl">
-                Pogođene biljke
-            </Typography>
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+                <Typography level="h2" className="text-2xl">
+                    Pogođene biljke
+                </Typography>
+                <SectionContributors contributors={contributors} />
+            </div>
             {plants.length === 0 && (
                 <Typography level="body2" secondary>
                     Trenutno nema navedenih pogođenih biljaka.
@@ -70,6 +81,8 @@ export function PlantHealthAffectedPlants({
                     entityTypeName={entityTypeName}
                     publicPath={publicPath}
                     sectionKey="relationships"
+                    entityName={entityName}
+                    sectionLabel="Pogođene biljke"
                     label="Predloži pogođenu biljku"
                     buttonStyle="card"
                 />

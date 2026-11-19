@@ -1,8 +1,8 @@
 import { getPublicHarvestTraceGroupByToken } from '@gredice/storage';
-import { Button } from '@gredice/ui/Button';
-import { Stack } from '@gredice/ui/Stack';
-import { Typography } from '@gredice/ui/Typography';
+import { CtaBand } from '../../../../components/shared/CtaBand';
 import { createPublicMetadata } from '../../../../lib/seo/publicMetadata';
+import { KnownPages } from '../../../../src/KnownPages';
+import { InvalidTraceState } from '../../InvalidTraceState';
 import { HarvestTraceGroup } from './HarvestTraceGroup';
 
 export const dynamic = 'force-dynamic';
@@ -19,16 +19,22 @@ export default async function HarvestTraceGroupPage(
     const group = await getPublicHarvestTraceGroupByToken(token);
     if (!group) {
         return (
-            <Stack spacing={4} className="mx-auto max-w-2xl py-8 sm:py-12">
-                <Typography level="h1">Trag berbe nije dostupan</Typography>
-                <Typography>
-                    Poveznica nije važeća ili su tragovi berbe opozvani.
-                </Typography>
-                <Button href="/" variant="solid">
-                    Na početnu
-                </Button>
-            </Stack>
+            <InvalidTraceState description="Poveznica nije važeća ili su tragovi berbe opozvani. Provjeri etiketu ili nam se javi ako trebaš pomoć." />
         );
     }
-    return <HarvestTraceGroup group={group} />;
+    return (
+        <>
+            <HarvestTraceGroup group={group} />
+            <CtaBand
+                id="harvest-trace-group-cta-title"
+                title="Uzgoji i ti svoje povrće."
+                description="Složi gredicu u aplikaciji, a tim na OPG-u je sadi, njeguje i bere za tebe."
+                secondaryAction={{
+                    href: KnownPages.RaisedBeds,
+                    label: 'Kako funkcionira gredica',
+                }}
+                className="mb-12"
+            />
+        </>
+    );
 }

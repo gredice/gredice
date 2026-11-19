@@ -97,7 +97,7 @@ test('shows the delivery rules when no browser key is configured', async ({
     await mount(<DeliveryZoneMap apiKey="" />);
 
     await expect(page.getByRole('alert')).toContainText(
-        'Interaktivna karta trenutačno nije dostupna',
+        'Interaktivna karta trenutno nije dostupna',
     );
     await expect(page.getByRole('alert')).toContainText(
         'dostava uz nadoplatu unutar 100 km vožnje cestom',

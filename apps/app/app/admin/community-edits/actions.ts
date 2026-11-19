@@ -11,6 +11,7 @@ import { revalidatePath } from 'next/cache';
 import { auth } from '../../../lib/auth/auth';
 import { revalidatePublicDirectoryPagesForEntityType } from '../../../lib/revalidation/publicDirectoryPages';
 import { KnownPages } from '../../../src/KnownPages';
+import { notifyCommunityEditSubmitter } from './notifyCommunityEditSubmitter';
 
 function reviewerFromAuth(authContext: Awaited<ReturnType<typeof auth>>) {
     return {
@@ -19,14 +20,24 @@ function reviewerFromAuth(authContext: Awaited<ReturnType<typeof auth>>) {
     } satisfies CommunityEditActor;
 }
 
-function formNote(formData: FormData) {
-    const value = formData.get('reviewerNote');
+function formText(formData: FormData, name: string) {
+    const value = formData.get(name);
     if (typeof value !== 'string') {
         return null;
     }
 
     const trimmed = value.trim();
     return trimmed.length > 0 ? trimmed : null;
+}
+
+/** Internal note; never shown to the submitter. */
+function formNote(formData: FormData) {
+    return formText(formData, 'reviewerNote');
+}
+
+/** The moderator's reply, shown to the submitter. */
+function formSubmitterMessage(formData: FormData) {
+    return formText(formData, 'submitterMessage');
 }
 
 async function revalidateCommunityEditAdminPaths(requestId: number) {
@@ -59,10 +70,13 @@ export async function approveCommunityEditRequestAction(
         id: requestId,
         reviewer: reviewerFromAuth(authContext),
         reviewerNote: formNote(formData),
+        submitterMessage: formSubmitterMessage(formData),
     });
 
     await revalidateCommunityEditAdminPaths(requestId);
     await revalidateAppliedRequest(requestId);
+    // Approval ends applied, or conflicted when the content moved on.
+    await notifyCommunityEditSubmitter(requestId);
 }
 
 export async function rejectCommunityEditRequestAction(
@@ -74,9 +88,11 @@ export async function rejectCommunityEditRequestAction(
         id: requestId,
         reviewer: reviewerFromAuth(authContext),
         reviewerNote: formNote(formData),
+        submitterMessage: formSubmitterMessage(formData),
     });
 
     await revalidateCommunityEditAdminPaths(requestId);
+    await notifyCommunityEditSubmitter(requestId);
 }
 
 export async function markCommunityEditRequestConflictedAction(
@@ -89,7 +105,9 @@ export async function markCommunityEditRequestConflictedAction(
         reviewer: reviewerFromAuth(authContext),
         reason:
             formNote(formData) ?? 'Reviewer marked this request as conflicted.',
+        submitterMessage: formSubmitterMessage(formData),
     });
 
     await revalidateCommunityEditAdminPaths(requestId);
+    await notifyCommunityEditSubmitter(requestId);
 }

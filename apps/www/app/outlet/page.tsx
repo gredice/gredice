@@ -86,7 +86,7 @@ export default async function OutletPage() {
     const { lowestOutletPrice, remainingQuantity } = outletSummary(offers);
 
     return (
-        <Container className="py-10 sm:py-14">
+        <Container padded={false} className="py-10 sm:py-14">
             {offers.length > 0 ? (
                 <StructuredDataScript data={outletStructuredData(offers)} />
             ) : null}

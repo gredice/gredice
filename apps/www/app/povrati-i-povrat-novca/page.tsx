@@ -16,7 +16,7 @@ export const metadata = createPublicMetadata({
 
 export default function RefundsPage() {
     return (
-        <Container maxWidth="md">
+        <Container maxWidth="md" padded={false}>
             <Stack>
                 <PageHeader
                     padded
@@ -49,11 +49,11 @@ export default function RefundsPage() {
                     </ul>
                     <h2>Suncokreti i Gredice saldo</h2>
                     <p>
-                        Suncokreti su prepaid Gredice bodovi koji se koriste
-                        samo unutar Gredica za vrtne akcije i povezane usluge.
-                        Ne prenose se na druge korisnike i ne mogu se zamijeniti
-                        za gotovinu osim kada je povrat zakonski obvezan ili ga
-                        Gredice izričito odobre.
+                        Suncokreti su unaprijed plaćeni Gredice bodovi koji se
+                        koriste samo unutar Gredica za vrtne akcije i povezane
+                        usluge. Ne prenose se na druge korisnike i ne mogu se
+                        zamijeniti za gotovinu osim kada je povrat zakonski
+                        obvezan ili ga Gredice izričito odobre.
                     </p>
                     <p>
                         Kada naručiš akciju u vrtu, potreban broj suncokreta

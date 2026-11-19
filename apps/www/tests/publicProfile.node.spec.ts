@@ -6,6 +6,16 @@ import {
     getTopPublicAchievements,
     isCanonicalPublicUserId,
 } from '../app/korisnici/[publicId]/publicProfile';
+import {
+    readLeaderboardEditors,
+    readPublicProfileContributions,
+} from '../app/korisnici/communityContributions';
+import {
+    describeAcceptedSuggestionCount,
+    describeOtherContributors,
+    describePageContributors,
+    formatCommunityEditDate,
+} from '../components/community-edits/communityContributorsText';
 
 test('shows only the highest approved tier in each category regardless of unlock order', () => {
     const result = getTopPublicAchievements([
@@ -124,4 +134,188 @@ test('accepts only the canonical public user ID', () => {
     ]) {
         assert.equal(isCanonicalPublicUserId(malformed), false, malformed);
     }
+});
+
+test('reads accepted contributions and keeps only same-site page links', () => {
+    assert.deepEqual(
+        readPublicProfileContributions({
+            contributions: {
+                acceptedCount: 12,
+                pages: [
+                    {
+                        title: ' Rajčica ',
+                        context: 'Sijanje',
+                        publicPath: '/biljke/rajcica',
+                        appliedAt: '2026-11-03T10:00:00.000Z',
+                    },
+                    {
+                        title: 'Mrkva',
+                        context: '',
+                        publicPath: '/biljke/mrkva',
+                        appliedAt: '2026-10-20T10:00:00.000Z',
+                    },
+                    {
+                        title: 'Vanjska stranica',
+                        context: null,
+                        publicPath: '//example.com/biljke',
+                        appliedAt: '2026-10-01T10:00:00.000Z',
+                    },
+                    {
+                        title: 'Apsolutna poveznica',
+                        context: null,
+                        publicPath: 'https://example.com/biljke',
+                        appliedAt: '2026-10-01T10:00:00.000Z',
+                    },
+                    { title: '', publicPath: '/biljke/prazno', appliedAt: 'x' },
+                    'nije stranica',
+                ],
+            },
+        }),
+        {
+            acceptedCount: 12,
+            pages: [
+                {
+                    title: 'Rajčica',
+                    context: 'Sijanje',
+                    publicPath: '/biljke/rajcica',
+                    appliedAt: '2026-11-03T10:00:00.000Z',
+                },
+                {
+                    title: 'Mrkva',
+                    context: null,
+                    publicPath: '/biljke/mrkva',
+                    appliedAt: '2026-10-20T10:00:00.000Z',
+                },
+            ],
+        },
+    );
+});
+
+test('treats a profile from an API without contributions as nothing to show', () => {
+    for (const profile of [
+        {},
+        null,
+        'profil',
+        { contributions: null },
+        { contributions: { acceptedCount: '3', pages: [] } },
+        { contributions: { acceptedCount: -1, pages: [] } },
+        { contributions: { acceptedCount: 1.5, pages: [] } },
+    ]) {
+        assert.equal(readPublicProfileContributions(profile), null);
+    }
+    assert.deepEqual(
+        readPublicProfileContributions({
+            contributions: { acceptedCount: 0, pages: 'none' },
+        }),
+        { acceptedCount: 0, pages: [] },
+    );
+});
+
+test('reads the editors ranking and drops unusable rows', () => {
+    assert.deepEqual(
+        readLeaderboardEditors({
+            items: [],
+            editors: [
+                {
+                    id: 'private-user-id',
+                    publicId: 'u_ana',
+                    displayName: 'Ana Kovač',
+                    avatarUrl: 'https://cdn.gredice.com/avatars/hedgehog.webp',
+                    achievementCount: 9,
+                    acceptedEditCount: 14,
+                    createdAt: '2026-01-01T00:00:00.000Z',
+                },
+                {
+                    publicId: 'u_marko',
+                    displayName: 'Marko',
+                    avatarUrl: null,
+                    acceptedEditCount: 2,
+                },
+                {
+                    publicId: 'u_nula',
+                    displayName: 'Nula',
+                    acceptedEditCount: 0,
+                },
+                {
+                    publicId: '',
+                    displayName: 'Bez profila',
+                    acceptedEditCount: 3,
+                },
+                { displayName: 'Bez identiteta', acceptedEditCount: 3 },
+                null,
+            ],
+        }),
+        [
+            {
+                publicId: 'u_ana',
+                displayName: 'Ana Kovač',
+                avatarUrl: 'https://cdn.gredice.com/avatars/hedgehog.webp',
+                achievementCount: 9,
+                acceptedEditCount: 14,
+            },
+            {
+                publicId: 'u_marko',
+                displayName: 'Marko',
+                avatarUrl: null,
+                achievementCount: 0,
+                acceptedEditCount: 2,
+            },
+        ],
+    );
+    assert.deepEqual(readLeaderboardEditors({ items: [] }), []);
+    assert.deepEqual(readLeaderboardEditors({ editors: 'none' }), []);
+    assert.deepEqual(readLeaderboardEditors(undefined), []);
+});
+
+test('credits page editors with Croatian plurals and no gendered verb', () => {
+    assert.equal(describePageContributors([]), null);
+    assert.equal(
+        describePageContributors(['Ana']),
+        'Ovu stranicu poboljšava Ana.',
+    );
+    assert.equal(
+        describePageContributors(['Ana', 'Marko']),
+        'Ovu stranicu poboljšavaju Ana i Marko.',
+    );
+    for (const [total, expected] of [
+        [3, 'Ovu stranicu poboljšavaju Ana, Marko i još 1 vrtlar.'],
+        [4, 'Ovu stranicu poboljšavaju Ana, Marko i još 2 vrtlara.'],
+        [7, 'Ovu stranicu poboljšavaju Ana, Marko i još 5 vrtlara.'],
+        [23, 'Ovu stranicu poboljšavaju Ana, Marko i još 21 vrtlar.'],
+    ] as const) {
+        const names = [
+            'Ana',
+            'Marko',
+            ...Array.from({ length: total - 2 }, (_, index) => `V${index}`),
+        ];
+        assert.equal(describePageContributors(names), expected);
+    }
+    assert.equal(describeOtherContributors(0), null);
+    assert.equal(describeOtherContributors(1), 'i još 1 vrtlar');
+    assert.equal(describeOtherContributors(3), 'i još 3 vrtlara');
+    assert.equal(describeOtherContributors(12), 'i još 12 vrtlara');
+});
+
+test('counts accepted suggestions and formats edit dates in Croatian', () => {
+    for (const [count, expected] of [
+        [1, '1 prihvaćen prijedlog'],
+        [2, '2 prihvaćena prijedloga'],
+        [5, '5 prihvaćenih prijedloga'],
+        [11, '11 prihvaćenih prijedloga'],
+        [21, '21 prihvaćen prijedlog'],
+        [1200, '1.200 prihvaćenih prijedloga'],
+    ] as const) {
+        assert.equal(describeAcceptedSuggestionCount(count), expected);
+    }
+    assert.equal(
+        formatCommunityEditDate('2026-11-03T10:00:00.000Z'),
+        '3. studenoga 2026.',
+    );
+    // Shown in the Croatian calendar day, not the UTC one.
+    assert.equal(
+        formatCommunityEditDate('2026-11-03T23:30:00.000Z'),
+        '4. studenoga 2026.',
+    );
+    assert.equal(formatCommunityEditDate('nije datum'), null);
+    assert.equal(formatCommunityEditDate(null), null);
 });

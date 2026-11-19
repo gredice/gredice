@@ -57,6 +57,7 @@ export const KnownPages = {
     WhatsNew: '/novosti/sto-je-novo',
     PublicGardens: '/vrtovi',
     Users: '/korisnici',
+    MySuggestions: '/moji-prijedlozi',
     Achievements: '/postignuca',
     Wallpapers: '/pozadine',
     PublicGarden: (gardenId: number) =>

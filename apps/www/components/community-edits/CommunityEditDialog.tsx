@@ -1,1197 +1,96 @@
 'use client';
 
 import { clientAuthenticated } from '@gredice/client';
+import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { Input } from '@gredice/ui/Input';
-import {
-    ArrowDownToLine,
-    Check,
-    Delete,
-    Droplet,
-    Leaf,
-    Ruler,
-    Send,
-    ShoppingCart,
-    Sprout,
-    Store,
-    Sun,
-    SunMoon,
-    Tally3,
-    Thermometer,
-    Timer,
-} from '@gredice/ui/icons';
-import { Modal } from '@gredice/ui/Modal';
-import { OperationCategoryIcon } from '@gredice/ui/OperationImage';
+import { Send } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
-import dynamic from 'next/dynamic';
-import { type ReactNode, useEffect, useId, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
+import { myCommunityEditsQueryKey } from '../../hooks/useMyCommunityEdits';
 import { InlineLoginDialog } from '../auth/InlineLoginDialog';
+import { CommunityDialogFooter } from './CommunityDialogFooter';
+import { CommunityDialogFrame } from './CommunityDialogFrame';
+import { CommunityDialogSkeleton } from './CommunityDialogSkeleton';
 import type { CommunityEditButtonProps } from './CommunityEditButton.types';
+import { CommunityEditField } from './CommunityEditField';
+import { CommunityRewardHint } from './CommunityRewardHint';
+import { CommunitySubmissionSteps } from './CommunitySubmissionSteps';
+import { CommunitySuccessFooter } from './CommunitySuccessFooter';
 import {
     inputControlClassName,
-    selectControlClassName,
     textareaControlClassName,
 } from './communityControlStyles';
 import { communityEditReturnPath } from './communityEditContext';
 import {
-    PlantReferencePicker,
-    type ReferencePickerNoun,
-} from './PlantReferencePicker';
+    type CommunityEditableField,
+    type CommunityEditFieldGroup,
+    changeCountLabel,
+    communityEditFieldGroup,
+    communityEditFieldGroupLabel,
+    communityEditFieldGroups,
+    type FieldValue,
+    fieldChanged,
+    fieldValueError,
+    initialFieldValue,
+    isFieldsResponse,
+    maxCommunityEditChanges,
+    serializeFieldValue,
+} from './communityEditFields';
+import {
+    communityLoginDescription,
+    communityReasonMaxLength,
+    communitySourceMaxLength,
+    communitySubmitFailedMessage,
+    communitySubmitLabel,
+    composeSubmitterNote,
+    errorMessage,
+    isSubmitResponse,
+} from './communitySuggestionUtils';
 
-const CommunityMarkdownInput = dynamic(
-    () =>
-        import('./CommunityMarkdownInput').then(
-            (module) => module.CommunityMarkdownInput,
-        ),
-    {
-        ssr: false,
-    },
-);
-
-type CommunityEditControlType =
-    | 'boolean'
-    | 'json'
-    | 'markdown'
-    | 'number'
-    | 'operationSuggestion'
-    | 'range'
-    | 'reference'
-    | 'select'
-    | 'text';
-
-type CommunityEditableFieldOption = {
-    value: string;
-    label: string;
-    helpText?: string;
-    description?: string;
-    iconKey?: string;
+type Draft = {
+    values: Record<string, FieldValue>;
+    /** Hash of the published value each draft value was started from. */
+    bases: Record<string, string>;
 };
 
-type CommunityEditableField = {
-    entityTypeName: string;
-    entityId: number;
-    fieldKey: string;
-    sectionKey: string;
-    attributeDefinitionId: number;
-    attributeValueId: number | null;
-    attributePath: string;
-    dataType: string;
-    controlType: CommunityEditControlType;
-    multiple: boolean;
-    publicLabel: string;
-    helpText?: string;
-    options?: CommunityEditableFieldOption[];
-    operationSuggestionStage?: {
-        name: string;
-        label: string;
-    };
-    currentValue: string | null;
-    baseValueHash: string;
-};
-
-type OperationSuggestionIntent = 'add' | 'remove';
-type OperationSuggestionMode = 'existing' | 'new';
-
-type OperationSuggestionFieldValue = {
-    intent: OperationSuggestionIntent;
-    operationMode: OperationSuggestionMode;
-    operationId: string;
-    newOperationName: string;
-    newOperationDescription: string;
-    note: string;
-    source: string;
-};
-
-type OperationSuggestionSubmitValue = {
-    intent: OperationSuggestionIntent;
-    operationMode: OperationSuggestionMode;
-    stageName: string;
-    operationId?: number;
-    newOperationName?: string | null;
-    newOperationDescription?: string | null;
-    note?: string | null;
-    source?: string | null;
-};
-
-type FieldValue =
-    | string
-    | {
-          min: string;
-          max: string;
-      }
-    | OperationSuggestionFieldValue
-    | null;
-
-type SubmitValue =
-    | string
-    | string[]
-    | {
-          min: number;
-          max: number;
-      }
-    | OperationSuggestionSubmitValue
-    | null;
-
-const fieldPanelClassName =
-    'rounded-lg border border-border/70 bg-muted/30 p-3 shadow-sm';
-const attributeIconClassName = 'size-4';
-
-type CommunityEditFieldGroup =
-    | 'attributes'
-    | 'content'
-    | 'operations'
-    | 'relationships';
-
-const communityEditFieldGroups = [
-    'content',
-    'relationships',
-    'attributes',
-    'operations',
-] satisfies CommunityEditFieldGroup[];
-
-function communityEditFieldGroup(
-    field: CommunityEditableField,
-): CommunityEditFieldGroup {
-    if (
-        field.controlType === 'operationSuggestion' ||
-        field.attributePath.startsWith('operations.')
-    ) {
-        return 'operations';
-    }
-
-    if (field.attributePath.startsWith('attributes.')) {
-        return 'attributes';
-    }
-
-    if (field.attributePath.startsWith('relationships.')) {
-        return 'relationships';
-    }
-
-    return 'content';
-}
-
-function communityEditFieldGroupLabel(
-    group: CommunityEditFieldGroup,
-    entityTypeName: CommunityEditButtonProps['entityTypeName'],
-) {
-    switch (group) {
-        case 'attributes':
-            return 'Svojstva';
-        case 'operations':
-            return 'Radnje';
-        case 'relationships':
-            return entityTypeName === 'plantDisease' ||
-                entityTypeName === 'plantPest'
-                ? 'Pogođene biljke'
-                : 'Biljni susjedi';
-        case 'content':
-            return 'Sadržaj';
-    }
-}
-
-function attributeFieldIcon(field: CommunityEditableField): ReactNode {
-    switch (field.fieldKey) {
-        case 'plant.seeding-distance':
-        case 'plant.seeding-distance-min':
-        case 'plant.seeding-distance-max':
-            return <Ruler aria-hidden className={attributeIconClassName} />;
-        case 'plant.seeding-depth':
-            return (
-                <ArrowDownToLine
-                    aria-hidden
-                    className={attributeIconClassName}
-                />
-            );
-        case 'plant.germination-type':
-            return <Sprout aria-hidden className={attributeIconClassName} />;
-        case 'plant.germination-temperature':
-            return (
-                <Thermometer aria-hidden className={attributeIconClassName} />
-            );
-        case 'plant.germination-window-min':
-        case 'plant.germination-window-max':
-            return <Timer aria-hidden className={attributeIconClassName} />;
-        case 'plant.light':
-            return <Sun aria-hidden className={attributeIconClassName} />;
-        case 'plant.soil':
-            return (
-                <Tally3
-                    aria-hidden
-                    className={cx(attributeIconClassName, 'rotate-90')}
-                />
-            );
-        case 'plant.nutrients':
-            return <Leaf aria-hidden className={attributeIconClassName} />;
-        case 'plant.growth-window-min':
-        case 'plant.growth-window-max':
-            return <SunMoon aria-hidden className={attributeIconClassName} />;
-        case 'plant.water':
-            return <Droplet aria-hidden className={attributeIconClassName} />;
-        case 'plant.harvest-window-min':
-        case 'plant.harvest-window-max':
-        case 'plant.clean-harvest':
-            return <Store aria-hidden className={attributeIconClassName} />;
-        case 'plant.yield-min':
-        case 'plant.yield-max':
-        case 'plant.yield-type':
-            return (
-                <ShoppingCart aria-hidden className={attributeIconClassName} />
-            );
-        default:
-            return null;
-    }
-}
-
-function initialFieldValue(field: CommunityEditableField): FieldValue {
-    if (field.controlType === 'operationSuggestion') {
-        return {
-            intent: 'add',
-            operationMode: 'existing',
-            operationId: '',
-            newOperationName: '',
-            newOperationDescription: '',
-            note: '',
-            source: '',
-        };
-    }
-
-    if (field.controlType === 'range') {
-        if (!field.currentValue) {
-            return { min: '', max: '' };
-        }
-
-        try {
-            const parsed: unknown = JSON.parse(field.currentValue);
-            if (
-                typeof parsed === 'object' &&
-                parsed !== null &&
-                'min' in parsed &&
-                'max' in parsed
-            ) {
-                return {
-                    min:
-                        typeof parsed.min === 'number'
-                            ? String(parsed.min)
-                            : '',
-                    max:
-                        typeof parsed.max === 'number'
-                            ? String(parsed.max)
-                            : '',
-                };
-            }
-        } catch {
-            return { min: '', max: '' };
-        }
-    }
-
-    if (field.controlType === 'reference' && field.multiple) {
-        return referenceListTextFromCurrentValue(field.currentValue);
-    }
-
-    return field.currentValue ?? '';
-}
-
-function isOperationSuggestionValue(
-    value: FieldValue,
-): value is OperationSuggestionFieldValue {
-    return (
-        typeof value === 'object' &&
-        value !== null &&
-        'intent' in value &&
-        (value.intent === 'add' || value.intent === 'remove') &&
-        'operationMode' in value &&
-        (value.operationMode === 'existing' || value.operationMode === 'new') &&
-        'operationId' in value &&
-        typeof value.operationId === 'string' &&
-        'newOperationName' in value &&
-        typeof value.newOperationName === 'string' &&
-        'newOperationDescription' in value &&
-        typeof value.newOperationDescription === 'string'
-    );
-}
-
-function operationIdsFromCurrentValue(field: CommunityEditableField) {
-    if (!field.currentValue) {
-        return new Set<string>();
-    }
-
-    try {
-        const parsed: unknown = JSON.parse(field.currentValue);
-        if (!Array.isArray(parsed)) {
-            return new Set<string>();
-        }
-
-        return new Set(
-            parsed
-                .filter(
-                    (entry): entry is string | number =>
-                        typeof entry === 'string' || typeof entry === 'number',
-                )
-                .map(String),
-        );
-    } catch {
-        return new Set<string>();
-    }
-}
-
-function operationSuggestionOptionsForIntent(
-    field: CommunityEditableField,
-    intent: OperationSuggestionIntent,
-) {
-    const currentOperationIds = operationIdsFromCurrentValue(field);
-    return (field.options ?? []).filter((option) =>
-        intent === 'add'
-            ? !currentOperationIds.has(option.value)
-            : currentOperationIds.has(option.value),
-    );
-}
-
-function currentOperationOptions(field: CommunityEditableField) {
-    return operationSuggestionOptionsForIntent(field, 'remove');
-}
-
-function availableOperationOptions(field: CommunityEditableField) {
-    return operationSuggestionOptionsForIntent(field, 'add');
-}
-
-function normalizeJsonValue(value: string) {
-    const trimmed = value.trim();
-    if (!trimmed) {
-        return null;
-    }
-
-    try {
-        return JSON.stringify(JSON.parse(trimmed));
-    } catch {
-        return trimmed;
-    }
-}
-
-function referenceListTextFromCurrentValue(value: string | null) {
-    if (!value) {
-        return '';
-    }
-
-    try {
-        const parsed: unknown = JSON.parse(value);
-        if (!Array.isArray(parsed)) {
-            return value;
-        }
-
-        return parsed
-            .filter(
-                (entry): entry is string | number =>
-                    typeof entry === 'string' || typeof entry === 'number',
-            )
-            .map(String)
-            .join('\n');
-    } catch {
-        return value;
-    }
-}
-
-function referenceListFromText(value: string) {
-    return value
-        .split(/[\s,;]+/)
-        .map((entry) => entry.trim())
-        .filter(Boolean);
-}
-
-function serializeFieldValue(
-    field: CommunityEditableField,
-    value: FieldValue,
-): { comparisonValue: string | null; submitValue: SubmitValue } {
-    if (field.controlType === 'operationSuggestion') {
-        if (!isOperationSuggestionValue(value)) {
-            return {
-                comparisonValue: field.currentValue,
-                submitValue: null,
-            };
-        }
-
-        const stageName =
-            field.operationSuggestionStage?.name ?? field.sectionKey;
-        const note = value.note.trim() || null;
-        const source = value.source.trim() || null;
-
-        if (value.intent === 'remove') {
-            const operationId = Number.parseInt(value.operationId, 10);
-            const selectedOption = currentOperationOptions(field).some(
-                (option) => option.value === value.operationId,
-            );
-            if (!Number.isInteger(operationId) || !selectedOption) {
-                return {
-                    comparisonValue: field.currentValue,
-                    submitValue: null,
-                };
-            }
-
-            const submitValue: OperationSuggestionSubmitValue = {
-                intent: value.intent,
-                operationMode: 'existing',
-                operationId,
-                stageName,
-                note,
-                source,
-            };
-
-            return {
-                comparisonValue: JSON.stringify(submitValue),
-                submitValue,
-            };
-        }
-
-        if (value.operationMode === 'new') {
-            const newOperationName = value.newOperationName.trim();
-            const newOperationDescription =
-                value.newOperationDescription.trim();
-            if (!newOperationName || !newOperationDescription) {
-                return {
-                    comparisonValue: field.currentValue,
-                    submitValue: null,
-                };
-            }
-
-            const submitValue: OperationSuggestionSubmitValue = {
-                intent: value.intent,
-                operationMode: value.operationMode,
-                stageName,
-                newOperationName,
-                newOperationDescription,
-                note,
-                source,
-            };
-
-            return {
-                comparisonValue: JSON.stringify(submitValue),
-                submitValue,
-            };
-        }
-
-        const operationId = Number.parseInt(value.operationId, 10);
-        const selectedOption = availableOperationOptions(field).some(
-            (option) => option.value === value.operationId,
-        );
-        if (!Number.isInteger(operationId) || !selectedOption) {
-            return {
-                comparisonValue: field.currentValue,
-                submitValue: null,
-            };
-        }
-
-        const submitValue: OperationSuggestionSubmitValue = {
-            intent: value.intent,
-            operationMode: value.operationMode,
-            operationId,
-            stageName,
-            note,
-            source,
-        };
-
-        return {
-            comparisonValue: JSON.stringify(submitValue),
-            submitValue,
-        };
-    }
-
-    if (field.controlType === 'range') {
-        if (
-            !value ||
-            typeof value === 'string' ||
-            isOperationSuggestionValue(value)
-        ) {
-            return { comparisonValue: null, submitValue: null };
-        }
-
-        if (!value.min.trim() && !value.max.trim()) {
-            return { comparisonValue: null, submitValue: null };
-        }
-
-        const rangeValue = {
-            min: Number.parseFloat(value.min),
-            max: Number.parseFloat(value.max),
-        };
-
-        return {
-            comparisonValue: JSON.stringify(rangeValue),
-            submitValue: rangeValue,
-        };
-    }
-
-    const textValue = typeof value === 'string' ? value : '';
-    if (field.controlType === 'reference' && field.multiple) {
-        const references = referenceListFromText(textValue);
-        return {
-            comparisonValue: JSON.stringify(references),
-            submitValue: references,
-        };
-    }
-
-    if (field.controlType === 'json') {
-        const normalized = normalizeJsonValue(textValue);
-        return { comparisonValue: normalized, submitValue: textValue || null };
-    }
-
-    if (!textValue.length) {
-        return { comparisonValue: null, submitValue: null };
-    }
-
-    return {
-        comparisonValue: textValue,
-        submitValue: textValue,
-    };
-}
-
-function fieldChanged(field: CommunityEditableField, value: FieldValue) {
-    return (
-        serializeFieldValue(field, value).comparisonValue !== field.currentValue
-    );
-}
-
-function errorMessage(error: unknown) {
-    if (
-        typeof error === 'object' &&
-        error !== null &&
-        'message' in error &&
-        typeof error.message === 'string'
-    ) {
-        return error.message;
-    }
-
-    if (error instanceof Error) {
-        return error.message;
-    }
-
-    return 'Slanje prijedloga nije uspjelo.';
-}
-
-function fieldInputId(prefix: string, field: CommunityEditableField) {
-    return `${prefix}-${field.fieldKey.replace(/[^a-z0-9_-]/giu, '-')}`;
-}
-
-function OperationOptionIcon({
-    option,
-}: {
-    option: CommunityEditableFieldOption;
-}) {
-    return (
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-md border border-border/70 bg-background text-foreground">
-            <OperationCategoryIcon
-                variant="game"
-                aria-hidden
-                categoryName={option.iconKey}
-                className="size-6"
-            />
-        </span>
-    );
-}
-
-function OperationOptionSummary({
-    option,
-}: {
-    option: CommunityEditableFieldOption;
-}) {
-    return (
-        <Row spacing={2} className="min-w-0 items-start">
-            <OperationOptionIcon option={option} />
-            <Stack spacing={0.5} className="min-w-0">
-                <Typography semiBold className="break-words">
-                    {option.label}
-                </Typography>
-                {option.description || option.helpText ? (
-                    <Typography
-                        level="body3"
-                        className="text-pretty text-muted-foreground"
-                    >
-                        {option.description ?? option.helpText}
-                    </Typography>
-                ) : null}
-            </Stack>
-        </Row>
-    );
-}
-
-function OperationSuggestionInput({
-    field,
-    id,
-    onChange,
-    value,
-}: {
-    field: CommunityEditableField;
-    id: string;
-    onChange: (value: FieldValue) => void;
-    value: FieldValue;
-}) {
-    const suggestionValue = isOperationSuggestionValue(value)
-        ? value
-        : {
-              intent: 'add' as const,
-              operationMode: 'existing' as const,
-              operationId: '',
-              newOperationName: '',
-              newOperationDescription: '',
-              note: '',
-              source: '',
-          };
-    const currentOperations = currentOperationOptions(field);
-    const availableOperations = availableOperationOptions(field);
-    const selectedExistingOperation = availableOperations.find(
-        (option) => option.value === suggestionValue.operationId,
-    );
-    const selectedRemovalOperation = currentOperations.find(
-        (option) => option.value === suggestionValue.operationId,
-    );
-    const operationModeOptions: {
-        value: OperationSuggestionMode;
-        label: string;
-    }[] = [
-        { value: 'existing', label: 'Postojeća radnja' },
-        { value: 'new', label: 'Nova radnja' },
-    ];
-
-    return (
-        <Stack spacing={4}>
-            <section className="space-y-2">
-                <Typography level="body3" semiBold>
-                    Trenutne radnje
-                </Typography>
-                {currentOperations.length > 0 ? (
-                    <Stack spacing={2}>
-                        {currentOperations.map((option) => {
-                            const selected =
-                                suggestionValue.intent === 'remove' &&
-                                suggestionValue.operationId === option.value;
-                            return (
-                                <div
-                                    className={cx(
-                                        'grid gap-3 rounded-md border border-border/80 bg-card p-3 shadow-sm sm:grid-cols-[1fr_auto]',
-                                        selected && 'border-primary/70',
-                                    )}
-                                    key={option.value}
-                                >
-                                    <OperationOptionSummary option={option} />
-                                    <Button
-                                        color={selected ? 'primary' : 'danger'}
-                                        onClick={() =>
-                                            onChange({
-                                                ...suggestionValue,
-                                                intent: 'remove',
-                                                operationMode: 'existing',
-                                                operationId: option.value,
-                                            })
-                                        }
-                                        type="button"
-                                        variant={selected ? 'soft' : 'outlined'}
-                                    >
-                                        {selected ? (
-                                            <Check
-                                                aria-hidden
-                                                className="size-4"
-                                            />
-                                        ) : (
-                                            <Delete
-                                                aria-hidden
-                                                className="size-4"
-                                            />
-                                        )}
-                                        {selected ? 'Odabrano' : 'Ukloni'}
-                                    </Button>
-                                </div>
-                            );
-                        })}
-                    </Stack>
-                ) : (
-                    <Typography
-                        level="body3"
-                        className="rounded-md border border-dashed border-border/80 bg-card p-3 text-muted-foreground"
-                    >
-                        Nema trenutno povezanih radnji za ovu fazu.
-                    </Typography>
-                )}
-                {selectedRemovalOperation ? (
-                    <Typography level="body3" className="text-primary">
-                        Prijedlog će tražiti uklanjanje radnje “
-                        {selectedRemovalOperation.label}”.
-                    </Typography>
-                ) : null}
-            </section>
-
-            <section className="space-y-3 rounded-md border border-border/70 bg-card p-3">
-                <Typography level="body3" semiBold>
-                    Predloži dodavanje
-                </Typography>
-                <div className="grid grid-cols-2 gap-1 rounded-md border border-border/80 bg-background p-1 shadow-sm">
-                    {operationModeOptions.map((option) => (
-                        <label
-                            className={cx(
-                                'flex min-h-9 cursor-pointer items-center justify-center rounded-sm px-3 text-center text-sm font-medium transition-colors',
-                                suggestionValue.intent === 'add' &&
-                                    suggestionValue.operationMode ===
-                                        option.value
-                                    ? 'bg-primary text-primary-foreground shadow-sm'
-                                    : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
-                            )}
-                            key={option.value}
-                        >
-                            <input
-                                checked={
-                                    suggestionValue.intent === 'add' &&
-                                    suggestionValue.operationMode ===
-                                        option.value
-                                }
-                                className="sr-only"
-                                name={`${id}-operation-mode`}
-                                onChange={() =>
-                                    onChange({
-                                        ...suggestionValue,
-                                        intent: 'add',
-                                        operationMode: option.value,
-                                        operationId:
-                                            option.value === 'new'
-                                                ? ''
-                                                : suggestionValue.operationId,
-                                    })
-                                }
-                                type="radio"
-                                value={option.value}
-                            />
-                            {option.label}
-                        </label>
-                    ))}
-                </div>
-
-                {suggestionValue.intent !== 'add' ||
-                suggestionValue.operationMode === 'existing' ? (
-                    <Stack spacing={2}>
-                        <label
-                            className="space-y-1"
-                            htmlFor={`${id}-operation`}
-                        >
-                            <Typography level="body3">Radnja</Typography>
-                            <select
-                                className={selectControlClassName}
-                                disabled={availableOperations.length === 0}
-                                id={`${id}-operation`}
-                                onChange={(event) =>
-                                    onChange({
-                                        ...suggestionValue,
-                                        intent: 'add',
-                                        operationMode: 'existing',
-                                        operationId: event.currentTarget.value,
-                                    })
-                                }
-                                value={
-                                    availableOperations.some(
-                                        (option) =>
-                                            option.value ===
-                                            suggestionValue.operationId,
-                                    )
-                                        ? suggestionValue.operationId
-                                        : ''
-                                }
-                            >
-                                <option value="">
-                                    {availableOperations.length > 0
-                                        ? 'Odaberi radnju'
-                                        : 'Nema dostupnih radnji'}
-                                </option>
-                                {availableOperations.map((option) => (
-                                    <option
-                                        key={option.value}
-                                        value={option.value}
-                                    >
-                                        {option.label}
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
-                        {selectedExistingOperation ? (
-                            <div className="rounded-md border border-border/80 bg-background p-3">
-                                <OperationOptionSummary
-                                    option={selectedExistingOperation}
-                                />
-                            </div>
-                        ) : (
-                            <Typography
-                                level="body3"
-                                className="text-muted-foreground"
-                            >
-                                {availableOperations.length > 0
-                                    ? 'Odaberi postojeću radnju koju želiš dodati.'
-                                    : 'Sve postojeće radnje za ovu fazu već su povezane.'}
-                            </Typography>
-                        )}
-                    </Stack>
-                ) : (
-                    <Stack spacing={3}>
-                        <Input
-                            className={inputControlClassName}
-                            fullWidth
-                            id={`${id}-new-operation-name`}
-                            label="Naziv nove radnje"
-                            onChange={(event) =>
-                                onChange({
-                                    ...suggestionValue,
-                                    intent: 'add',
-                                    operationMode: 'new',
-                                    newOperationName: event.currentTarget.value,
-                                })
-                            }
-                            placeholder="Npr. Provjera vlage supstrata"
-                            value={suggestionValue.newOperationName}
-                        />
-                        <label
-                            className="space-y-1"
-                            htmlFor={`${id}-new-operation-description`}
-                        >
-                            <Typography level="body3">
-                                Što očekuješ od radnje?
-                            </Typography>
-                            <textarea
-                                className={cx(
-                                    textareaControlClassName,
-                                    'min-h-24',
-                                )}
-                                id={`${id}-new-operation-description`}
-                                onChange={(event) =>
-                                    onChange({
-                                        ...suggestionValue,
-                                        intent: 'add',
-                                        operationMode: 'new',
-                                        newOperationDescription:
-                                            event.currentTarget.value,
-                                    })
-                                }
-                                placeholder="Opiši kada se radi, što korisnik dobiva i zašto pripada ovoj fazi."
-                                value={suggestionValue.newOperationDescription}
-                            />
-                        </label>
-                    </Stack>
-                )}
-            </section>
-
-            <Input
-                className={inputControlClassName}
-                fullWidth
-                id={`${id}-source`}
-                label="Izvor"
-                onChange={(event) =>
-                    onChange({
-                        ...suggestionValue,
-                        source: event.currentTarget.value,
-                    })
-                }
-                placeholder="Poveznica, knjiga ili opažanje..."
-                value={suggestionValue.source}
-            />
-            <label className="space-y-1" htmlFor={`${id}-note`}>
-                <Typography level="body3">Napomena</Typography>
-                <textarea
-                    className={cx(textareaControlClassName, 'min-h-20')}
-                    id={`${id}-note`}
-                    onChange={(event) =>
-                        onChange({
-                            ...suggestionValue,
-                            note: event.currentTarget.value,
-                        })
-                    }
-                    placeholder="Zašto predlažeš ovu promjenu?"
-                    value={suggestionValue.note}
-                />
-            </label>
-        </Stack>
-    );
-}
-
-function isCommunityEditableField(
-    value: unknown,
-): value is CommunityEditableField {
-    return (
-        typeof value === 'object' &&
-        value !== null &&
-        'fieldKey' in value &&
-        typeof value.fieldKey === 'string' &&
-        'attributePath' in value &&
-        typeof value.attributePath === 'string' &&
-        'publicLabel' in value &&
-        typeof value.publicLabel === 'string' &&
-        'controlType' in value &&
-        typeof value.controlType === 'string' &&
-        'currentValue' in value &&
-        (typeof value.currentValue === 'string' ||
-            value.currentValue === null) &&
-        'baseValueHash' in value &&
-        typeof value.baseValueHash === 'string' &&
-        (!('options' in value) ||
-            value.options === undefined ||
-            (Array.isArray(value.options) &&
-                value.options.every(
-                    (option) =>
-                        typeof option === 'object' &&
-                        option !== null &&
-                        'value' in option &&
-                        typeof option.value === 'string' &&
-                        'label' in option &&
-                        typeof option.label === 'string' &&
-                        (!('description' in option) ||
-                            typeof option.description === 'undefined' ||
-                            typeof option.description === 'string') &&
-                        (!('iconKey' in option) ||
-                            typeof option.iconKey === 'undefined' ||
-                            typeof option.iconKey === 'string'),
-                )))
-    );
-}
-
-function isFieldsResponse(
-    value: unknown,
-): value is { fields: CommunityEditableField[] } {
-    return (
-        typeof value === 'object' &&
-        value !== null &&
-        'fields' in value &&
-        Array.isArray(value.fields) &&
-        value.fields.every(isCommunityEditableField)
-    );
-}
-
-function isSubmitResponse(value: unknown): value is { requestId: number } {
-    return (
-        typeof value === 'object' &&
-        value !== null &&
-        'requestId' in value &&
-        typeof value.requestId === 'number'
-    );
-}
-
-function FieldInput({
-    field,
-    id,
-    onChange,
-    value,
-}: {
-    field: CommunityEditableField;
-    id: string;
-    onChange: (value: FieldValue) => void;
-    value: FieldValue;
-}) {
-    if (field.controlType === 'operationSuggestion') {
-        return (
-            <OperationSuggestionInput
-                field={field}
-                id={id}
-                onChange={onChange}
-                value={value}
-            />
-        );
-    }
-
-    if (field.controlType === 'markdown') {
-        return (
-            <CommunityMarkdownInput
-                id={id}
-                onChange={onChange}
-                value={typeof value === 'string' ? value : ''}
-            />
-        );
-    }
-
-    if (field.controlType === 'boolean') {
-        return (
-            <select
-                className={selectControlClassName}
-                id={id}
-                onChange={(event) => onChange(event.currentTarget.value)}
-                value={typeof value === 'string' ? value : ''}
-            >
-                <option value="">Nije određeno</option>
-                <option value="true">Da</option>
-                <option value="false">Ne</option>
-            </select>
-        );
-    }
-
-    if (field.controlType === 'select') {
-        return (
-            <select
-                className={selectControlClassName}
-                id={id}
-                onChange={(event) => onChange(event.currentTarget.value)}
-                value={typeof value === 'string' ? value : ''}
-            >
-                <option value="">Nije određeno</option>
-                {(field.options ?? []).map((option) => (
-                    <option key={option.value} value={option.value}>
-                        {option.label}
-                    </option>
-                ))}
-            </select>
-        );
-    }
-
-    if (field.controlType === 'reference' && field.multiple) {
-        if (field.options) {
-            return (
-                <PlantReferencePicker
-                    id={id}
-                    label={field.publicLabel}
-                    noun={referencePickerNoun(field.dataType)}
-                    onValueChange={(values) => onChange(values.join('\n'))}
-                    options={field.options}
-                    selectedValues={referenceListFromText(
-                        typeof value === 'string' ? value : '',
-                    )}
-                />
-            );
-        }
-
-        return (
-            <textarea
-                className={cx(textareaControlClassName, 'min-h-24')}
-                id={id}
-                onChange={(event) => onChange(event.currentTarget.value)}
-                placeholder="Npr. 12, 34, 56"
-                value={typeof value === 'string' ? value : ''}
-            />
-        );
-    }
-
-    if (field.controlType === 'number' || field.controlType === 'reference') {
-        return (
-            <Input
-                className={inputControlClassName}
-                fullWidth
-                id={id}
-                inputMode={
-                    field.controlType === 'reference' ? 'numeric' : 'decimal'
-                }
-                onChange={(event) => onChange(event.currentTarget.value)}
-                type={field.controlType === 'reference' ? 'text' : 'number'}
-                value={typeof value === 'string' ? value : ''}
-            />
-        );
-    }
-
-    if (field.controlType === 'range') {
-        const rangeValue =
-            value &&
-            typeof value !== 'string' &&
-            !isOperationSuggestionValue(value)
-                ? value
-                : {
-                      min: '',
-                      max: '',
-                  };
-        return (
-            <div className="grid gap-2 sm:grid-cols-2">
-                <Input
-                    className={inputControlClassName}
-                    fullWidth
-                    id={`${id}-min`}
-                    inputMode="decimal"
-                    label="Najmanje"
-                    onChange={(event) =>
-                        onChange({
-                            ...rangeValue,
-                            min: event.currentTarget.value,
-                        })
-                    }
-                    type="number"
-                    value={rangeValue.min}
-                />
-                <Input
-                    className={inputControlClassName}
-                    fullWidth
-                    id={`${id}-max`}
-                    inputMode="decimal"
-                    label="Najviše"
-                    onChange={(event) =>
-                        onChange({
-                            ...rangeValue,
-                            max: event.currentTarget.value,
-                        })
-                    }
-                    type="number"
-                    value={rangeValue.max}
-                />
-            </div>
-        );
-    }
-
-    if (field.controlType === 'json') {
-        return (
-            <textarea
-                className={cx(textareaControlClassName, 'min-h-32 font-mono')}
-                id={id}
-                onChange={(event) => onChange(event.currentTarget.value)}
-                value={typeof value === 'string' ? value : ''}
-            />
-        );
-    }
-
-    return (
-        <textarea
-            className={cx(textareaControlClassName, 'min-h-24')}
-            id={id}
-            onChange={(event) => onChange(event.currentTarget.value)}
-            value={typeof value === 'string' ? value : ''}
-        />
-    );
-}
-
-function referencePickerNoun(dataType: string): ReferencePickerNoun {
-    if (dataType === 'ref:plant') {
-        return {
-            nominative: 'Biljka',
-            accusative: 'biljku',
-            accusativePlural: 'biljke',
-            genitivePlural: 'biljaka',
-        };
-    }
-    if (dataType === 'ref:operation') {
-        return {
-            nominative: 'Radnja',
-            accusative: 'radnju',
-            accusativePlural: 'radnje',
-            genitivePlural: 'radnji',
-        };
-    }
-    return {
-        nominative: 'Zapis',
-        accusative: 'zapis',
-        accusativePlural: 'zapise',
-        genitivePlural: 'zapisa',
-    };
-}
+const emptyDraft: Draft = { values: {}, bases: {} };
 
 export function CommunityEditDialog({
     open,
     onOpenChange: setOpen,
     entityId,
+    entityName,
     entityTypeName,
     fieldKey,
     label,
     publicPath,
     sectionKey,
+    sectionLabel,
 }: CommunityEditButtonProps & {
     open: boolean;
     onOpenChange: (open: boolean) => void;
 }) {
-    const [loginOpen, setLoginOpen] = useState(false);
     const [fields, setFields] = useState<CommunityEditableField[]>([]);
-    const [values, setValues] = useState<Record<string, FieldValue>>({});
-    const [submitterNote, setSubmitterNote] = useState('');
+    const [draft, setDraft] = useState(emptyDraft);
+    const [source, setSource] = useState('');
+    const [reason, setReason] = useState('');
     const [isLoadingFields, setIsLoadingFields] = useState(false);
+    const [loadAttempt, setLoadAttempt] = useState(0);
+    const [loadError, setLoadError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [successRequestId, setSuccessRequestId] = useState<number | null>(
-        null,
-    );
+    const [submitError, setSubmitError] = useState<string | null>(null);
+    const [success, setSuccess] = useState<{
+        requestId: number;
+        summary: string;
+    } | null>(null);
     const fieldIdPrefix = useId();
+    const queryClient = useQueryClient();
     const { data: user, isLoading: isLoadingUser } = useCurrentUser();
     const communityEditEntityKey = `${entityTypeName}:${entityId}`;
     const communityEditSectionKey = sectionKey ?? '';
@@ -1212,12 +111,7 @@ export function CommunityEditDialog({
         ],
     );
 
-    useEffect(() => {
-        if (!open) {
-            setLoginOpen(false);
-        }
-    }, [open]);
-
+    // biome-ignore lint/correctness/useExhaustiveDependencies: `loadAttempt` re-runs the load after a failure.
     useEffect(() => {
         if (!open || !user) {
             return;
@@ -1226,8 +120,9 @@ export function CommunityEditDialog({
         let isMounted = true;
         async function loadFields() {
             setIsLoadingFields(true);
-            setError(null);
-            setSuccessRequestId(null);
+            setLoadError(null);
+            setSubmitError(null);
+            setSuccess(null);
             try {
                 const response = await clientAuthenticated().api.directories[
                     'community-edits'
@@ -1257,17 +152,30 @@ export function CommunityEditDialog({
                     ? data.fields.filter((field) => field.fieldKey === fieldKey)
                     : data.fields;
                 setFields(editableFields);
-                setValues(
-                    Object.fromEntries(
-                        editableFields.map((field) => [
-                            field.fieldKey,
-                            initialFieldValue(field),
-                        ]),
-                    ),
-                );
-            } catch (loadError) {
+                // Keep what the visitor already changed. A value is started
+                // over only when the published value it was based on changed.
+                setDraft((current) => {
+                    const next: Draft = { values: {}, bases: {} };
+                    for (const field of editableFields) {
+                        const previous = current.values[field.fieldKey];
+                        next.values[field.fieldKey] =
+                            previous !== undefined &&
+                            current.bases[field.fieldKey] ===
+                                field.baseValueHash
+                                ? previous
+                                : initialFieldValue(field);
+                        next.bases[field.fieldKey] = field.baseValueHash;
+                    }
+                    return next;
+                });
+            } catch (error) {
                 if (isMounted) {
-                    setError(errorMessage(loadError));
+                    setLoadError(
+                        error instanceof Error &&
+                            error.message !== communitySubmitFailedMessage
+                            ? error.message
+                            : 'Učitavanje polja nije uspjelo.',
+                    );
                 }
             } finally {
                 if (isMounted) {
@@ -1280,46 +188,46 @@ export function CommunityEditDialog({
         return () => {
             isMounted = false;
         };
-    }, [entityId, entityTypeName, fieldKey, open, sectionKey, user]);
+    }, [
+        entityId,
+        entityTypeName,
+        fieldKey,
+        loadAttempt,
+        open,
+        sectionKey,
+        user,
+    ]);
 
-    const changedFields = useMemo(
-        () =>
-            fields.filter((field) =>
-                fieldChanged(field, values[field.fieldKey] ?? ''),
-            ),
-        [fields, values],
+    function fieldValue(field: CommunityEditableField) {
+        return draft.values[field.fieldKey] ?? initialFieldValue(field);
+    }
+
+    const changedFields = fields.filter((field) =>
+        fieldChanged(field, fieldValue(field)),
     );
-
-    const fieldsByGroup = {
-        content: fields.filter(
-            (field) => communityEditFieldGroup(field) === 'content',
-        ),
-        attributes: fields.filter(
-            (field) => communityEditFieldGroup(field) === 'attributes',
-        ),
-        operations: fields.filter(
-            (field) => communityEditFieldGroup(field) === 'operations',
-        ),
-        relationships: fields.filter(
-            (field) => communityEditFieldGroup(field) === 'relationships',
-        ),
-    };
+    const hasInvalidFields = fields.some((field) =>
+        fieldValueError(field, fieldValue(field)),
+    );
+    const exceedsChangeLimit = changedFields.length > maxCommunityEditChanges;
+    const hasOnlyOperationSuggestions =
+        fields.length > 0 &&
+        fields.every((field) => field.controlType === 'operationSuggestion');
+    const context =
+        [entityName, sectionLabel].filter(Boolean).join(' · ') || null;
+    const changeSummary = `${changeCountLabel(changedFields.length)}: ${changedFields
+        .map((field) => field.publicLabel)
+        .join(', ')}`;
 
     async function handleSubmit() {
-        setError(null);
+        setSubmitError(null);
         setIsSubmitting(true);
         try {
-            const changes = changedFields.map((field) => {
-                const serialized = serializeFieldValue(
-                    field,
-                    values[field.fieldKey] ?? '',
-                );
-                return {
-                    fieldKey: field.fieldKey,
-                    proposedValue: serialized.submitValue,
-                    baseValueHash: field.baseValueHash,
-                };
-            });
+            const changes = changedFields.map((field) => ({
+                fieldKey: field.fieldKey,
+                proposedValue: serializeFieldValue(field, fieldValue(field))
+                    .submitValue,
+                baseValueHash: field.baseValueHash,
+            }));
 
             if (changes.length === 0) {
                 throw new Error('Promijeni barem jedno polje prije slanja.');
@@ -1333,7 +241,9 @@ export function CommunityEditDialog({
                     entityId,
                     publicPath,
                     sectionKey: sectionKey ?? null,
-                    submitterNote: submitterNote.trim() || null,
+                    submitterNote: hasOnlyOperationSuggestions
+                        ? null
+                        : composeSubmitterNote(source, reason),
                     changes,
                 },
             });
@@ -1345,79 +255,29 @@ export function CommunityEditDialog({
 
             const result: unknown = await response.json();
             if (!isSubmitResponse(result)) {
-                throw new Error('Slanje prijedloga nije uspjelo.');
+                throw new Error(communitySubmitFailedMessage);
             }
-            setSuccessRequestId(result.requestId);
-            setSubmitterNote('');
-        } catch (submitError) {
-            setError(errorMessage(submitError));
+            setSuccess({
+                requestId: result.requestId,
+                summary: changeCountLabel(changes.length),
+            });
+            setDraft(emptyDraft);
+            setSource('');
+            setReason('');
+            await queryClient.invalidateQueries({
+                queryKey: myCommunityEditsQueryKey,
+            });
+        } catch (error) {
+            setSubmitError(errorMessage(error));
         } finally {
             setIsSubmitting(false);
         }
     }
 
-    const triggerLabel = label ?? 'Predloži izmjenu';
-    function renderEditableField(field: CommunityEditableField) {
-        const id = fieldInputId(fieldIdPrefix, field);
-        const group = communityEditFieldGroup(field);
-        const icon = group === 'attributes' ? attributeFieldIcon(field) : null;
-        const label = (
-            <label
-                className={cx('block min-w-0 space-y-1', icon && 'flex-1')}
-                htmlFor={id}
-            >
-                <Typography level="body2" semiBold>
-                    {field.publicLabel}
-                </Typography>
-                {field.helpText ? (
-                    <Typography level="body3" className="text-muted-foreground">
-                        {field.helpText}
-                    </Typography>
-                ) : null}
-            </label>
-        );
-
-        return (
-            <Stack
-                className={cx(
-                    fieldPanelClassName,
-                    group === 'attributes' && 'h-full min-w-0',
-                )}
-                data-field-group={group}
-                data-field-key={field.fieldKey}
-                key={field.fieldKey}
-                spacing={2}
-            >
-                {icon ? (
-                    <Row spacing={3} alignItems="start">
-                        <span
-                            className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border/70 bg-background text-muted-foreground shadow-xs"
-                            data-field-icon={field.fieldKey}
-                        >
-                            {icon}
-                        </span>
-                        {label}
-                    </Row>
-                ) : (
-                    label
-                )}
-                <FieldInput
-                    field={field}
-                    id={id}
-                    onChange={(nextValue) =>
-                        setValues((current) => ({
-                            ...current,
-                            [field.fieldKey]: nextValue,
-                        }))
-                    }
-                    value={values[field.fieldKey] ?? initialFieldValue(field)}
-                />
-            </Stack>
-        );
-    }
-
     function renderEditableFieldGroup(group: CommunityEditFieldGroup) {
-        const groupFields = fieldsByGroup[group];
+        const groupFields = fields.filter(
+            (field) => communityEditFieldGroup(field) === group,
+        );
         if (groupFields.length === 0) {
             return null;
         }
@@ -1426,7 +286,7 @@ export function CommunityEditDialog({
         return (
             <section
                 aria-labelledby={headingId}
-                className="space-y-3"
+                className="flex flex-col gap-3"
                 data-community-edit-group={group}
                 key={group}
             >
@@ -1437,94 +297,87 @@ export function CommunityEditDialog({
                     className={
                         group === 'attributes'
                             ? 'grid gap-3 md:grid-cols-2'
-                            : 'space-y-3'
+                            : 'flex flex-col gap-3'
                     }
                 >
-                    {groupFields.map(renderEditableField)}
+                    {groupFields.map((field) => (
+                        <CommunityEditField
+                            field={field}
+                            idPrefix={fieldIdPrefix}
+                            key={field.fieldKey}
+                            onChange={(nextValue) =>
+                                setDraft((current) => ({
+                                    values: {
+                                        ...current.values,
+                                        [field.fieldKey]: nextValue,
+                                    },
+                                    bases: {
+                                        ...current.bases,
+                                        [field.fieldKey]: field.baseValueHash,
+                                    },
+                                }))
+                            }
+                            value={fieldValue(field)}
+                        />
+                    ))}
                 </div>
             </section>
         );
     }
 
-    return (
-        <Modal
-            className="max-w-4xl border-border/70 shadow-xl"
-            onOpenChange={setOpen}
-            open={open}
-            title={triggerLabel}
-        >
-            <Stack spacing={5}>
-                <Row spacing={2} className="items-start justify-between gap-4">
-                    <Stack spacing={1}>
-                        <Typography level="h3">{triggerLabel}</Typography>
-                        <Typography
-                            level="body2"
-                            className="text-muted-foreground"
-                        >
-                            Prijedlog ide na administratorsko odobrenje prije
-                            objave.
-                        </Typography>
-                    </Stack>
-                    {successRequestId ? (
-                        <Check className="size-5 shrink-0 text-green-700" />
-                    ) : null}
-                </Row>
+    // The sign-in check decides which dialog opens. Showing neither while it
+    // runs avoids flashing the form shell at visitors who must sign in first.
+    if (isLoadingUser) {
+        return null;
+    }
 
-                {isLoadingUser ? (
-                    <Typography level="body2">
-                        Provjeravam prijavu...
-                    </Typography>
-                ) : !user ? (
-                    <Stack
-                        spacing={3}
-                        className="rounded-lg border border-border/70 bg-muted/30 p-4"
-                    >
-                        <Typography level="body2">
-                            Za slanje prijedloga treba se prijaviti.
-                        </Typography>
-                        <Button
-                            onClick={() => setLoginOpen(true)}
-                            type="button"
-                            variant="outlined"
-                        >
-                            Prijavi se i nastavi
-                        </Button>
-                        <InlineLoginDialog
-                            description="Prijavi se za slanje prijedloga i nastavi uređivati ovu sekciju."
-                            onAuthenticated={() => {
-                                setLoginOpen(false);
-                                setOpen(true);
-                            }}
-                            onOpenChange={setLoginOpen}
-                            open={loginOpen}
-                            returnTo={communityEditReturnTo}
-                        />
-                    </Stack>
-                ) : successRequestId ? (
-                    <Stack
-                        spacing={2}
-                        className="rounded-lg border border-green-700/20 bg-green-700/10 p-4"
-                    >
-                        <Typography>
-                            Prijedlog #{successRequestId} je poslan na
-                            odobrenje.
-                        </Typography>
-                        <Typography
-                            level="body2"
-                            className="text-muted-foreground"
-                        >
-                            Hvala ti. Sadržaj neće biti javno promijenjen dok ga
-                            administrator ne pregleda.
-                        </Typography>
+    const triggerLabel = label ?? 'Predloži izmjenu';
+    const showSkeleton = isLoadingFields && fields.length === 0;
+
+    return (
+        <>
+            <InlineLoginDialog
+                description={communityLoginDescription}
+                onAuthenticated={() => setOpen(true)}
+                onOpenChange={setOpen}
+                open={open && !user}
+                returnTo={communityEditReturnTo}
+            />
+            <CommunityDialogFrame
+                context={context}
+                description={
+                    success
+                        ? `Prijedlog #${success.requestId.toString()} · ${success.summary}`
+                        : undefined
+                }
+                onOpenChange={setOpen}
+                open={open && Boolean(user)}
+                size="lg"
+                title={success ? 'Prijedlog je poslan' : triggerLabel}
+            >
+                {success ? (
+                    <Stack spacing={4}>
+                        <CommunitySubmissionSteps />
+                        <CommunityRewardHint />
                     </Stack>
                 ) : (
                     <Stack spacing={4}>
-                        {isLoadingFields ? (
-                            <div className="rounded-lg border border-border/70 bg-muted/30 p-4">
-                                <Typography level="body2">
-                                    Učitavam polja...
-                                </Typography>
-                            </div>
+                        {showSkeleton ? (
+                            <CommunityDialogSkeleton />
+                        ) : loadError ? (
+                            <Stack spacing={3}>
+                                <Alert color="danger">{loadError}</Alert>
+                                <Button
+                                    className="self-start"
+                                    onClick={() =>
+                                        setLoadAttempt((attempt) => attempt + 1)
+                                    }
+                                    type="button"
+                                    variant="outlined"
+                                >
+                                    Pokušaj ponovno
+                                </Button>
+                            </Stack>
                         ) : fields.length === 0 ? (
                             <div className="rounded-lg border border-border/70 bg-muted/30 p-4">
                                 <Typography level="body2">
@@ -1540,51 +393,97 @@ export function CommunityEditDialog({
                             </Stack>
                         )}
 
-                        <label className="space-y-1">
-                            <Typography level="body2">
-                                Napomena za administratora
-                            </Typography>
-                            <textarea
-                                className={cx(
-                                    textareaControlClassName,
-                                    'min-h-20',
-                                )}
-                                onChange={(event) =>
-                                    setSubmitterNote(event.currentTarget.value)
-                                }
-                                placeholder="Kratko objasni izvor ili razlog promjene..."
-                                value={submitterNote}
-                            />
-                        </label>
-
-                        {error ? (
-                            <div className="rounded-md border border-red-700/20 bg-red-700/10 p-3">
-                                <Typography
-                                    level="body2"
-                                    className="text-red-700"
+                        {fields.length > 0 && !hasOnlyOperationSuggestions ? (
+                            <Stack spacing={3}>
+                                <Input
+                                    className={inputControlClassName}
+                                    fullWidth
+                                    id={`${fieldIdPrefix}-source`}
+                                    label="Izvor (opcionalno)"
+                                    maxLength={communitySourceMaxLength}
+                                    onChange={(event) =>
+                                        setSource(event.currentTarget.value)
+                                    }
+                                    placeholder="Poveznica, knjiga ili vlastito iskustvo"
+                                    value={source}
+                                />
+                                <label
+                                    className="flex flex-col gap-1"
+                                    htmlFor={`${fieldIdPrefix}-reason`}
                                 >
-                                    {error}
-                                </Typography>
-                            </div>
+                                    <span className="block text-sm font-medium text-foreground">
+                                        Zašto predlažeš izmjenu? (opcionalno)
+                                    </span>
+                                    <textarea
+                                        className={cx(
+                                            textareaControlClassName,
+                                            'min-h-20',
+                                        )}
+                                        id={`${fieldIdPrefix}-reason`}
+                                        maxLength={communityReasonMaxLength}
+                                        onChange={(event) =>
+                                            setReason(event.currentTarget.value)
+                                        }
+                                        value={reason}
+                                    />
+                                </label>
+                            </Stack>
                         ) : null}
 
-                        <Row spacing={2} className="justify-end">
-                            <Button
-                                disabled={
-                                    isLoadingFields ||
-                                    changedFields.length === 0
-                                }
-                                endDecorator={<Send className="size-4" />}
-                                loading={isSubmitting}
-                                onClick={handleSubmit}
-                                type="button"
-                            >
-                                Pošalji
-                            </Button>
-                        </Row>
+                        {submitError ? (
+                            <Alert color="danger">{submitError}</Alert>
+                        ) : null}
+                        <CommunityRewardHint />
                     </Stack>
                 )}
-            </Stack>
-        </Modal>
+                <CommunityDialogFooter>
+                    {success ? (
+                        <CommunitySuccessFooter
+                            onClose={() => setOpen(false)}
+                        />
+                    ) : (
+                        <>
+                            <Typography
+                                aria-live="polite"
+                                className="min-w-0 flex-1 basis-48 text-muted-foreground"
+                                data-community-edit-summary
+                                level="body2"
+                            >
+                                {hasInvalidFields
+                                    ? 'Ispravi označena polja prije slanja.'
+                                    : exceedsChangeLimit
+                                      ? `Jedan prijedlog može imati najviše ${maxCommunityEditChanges.toString()} izmjena, a sada ih je ${changedFields.length.toString()}. Vrati dio izmjena i pošalji ih u sljedećem prijedlogu.`
+                                      : changedFields.length > 0
+                                        ? changeSummary
+                                        : 'Promijeni barem jedno polje da pošalješ prijedlog.'}
+                            </Typography>
+                            <Row spacing={2} className="ml-auto shrink-0">
+                                <Button
+                                    onClick={() => setOpen(false)}
+                                    type="button"
+                                    variant="plain"
+                                >
+                                    Odustani
+                                </Button>
+                                <Button
+                                    disabled={
+                                        isLoadingFields ||
+                                        hasInvalidFields ||
+                                        exceedsChangeLimit ||
+                                        changedFields.length === 0
+                                    }
+                                    endDecorator={<Send className="size-4" />}
+                                    loading={isSubmitting}
+                                    onClick={handleSubmit}
+                                    type="button"
+                                >
+                                    {communitySubmitLabel}
+                                </Button>
+                            </Row>
+                        </>
+                    )}
+                </CommunityDialogFooter>
+            </CommunityDialogFrame>
+        </>
     );
 }

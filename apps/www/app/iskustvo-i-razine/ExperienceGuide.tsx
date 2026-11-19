@@ -10,6 +10,7 @@ import {
     UserAchievementProgress,
     UserLevelBadge,
 } from '@gredice/ui/UserAvatar';
+import { RewardsNav } from '../../components/shared/RewardsNav';
 import { KnownPages } from '../../src/KnownPages';
 
 // Use the same calculation as profiles, including every currently defined award.
@@ -72,6 +73,8 @@ export function ExperienceGuide() {
                     </p>
                 </aside>
             </header>
+
+            <RewardsNav current="experience" />
 
             <section
                 aria-labelledby="skupljanje"
@@ -168,7 +171,7 @@ export function ExperienceGuide() {
                     </table>
                 </div>
                 <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                    Tablica prikazuje pragove obuhvaćene trenutačnim katalogom
+                    Tablica prikazuje pragove obuhvaćene trenutnim katalogom
                     postignuća. Sezonska postignuća imaju svoja razdoblja
                     dostupnosti. Kad osvojiš sva postignuća iz kataloga, profil
                     prikazuje poruku „Sva postignuća osvojena!” umjesto

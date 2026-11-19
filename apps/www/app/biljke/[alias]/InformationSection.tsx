@@ -6,9 +6,9 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import type { ReactNode } from 'react';
-import { CommunityEditButton } from '../../../components/community-edits/CommunityEditButton';
+import type { CommunityContributorView } from '../../../components/community-edits/communityContributors';
+import { SectionContributionBar } from '../../../components/community-edits/SectionContributionBar';
 import { ExpandableText } from '../../../components/shared/ExpandableText';
-import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import {
     shouldMakeExpandable,
@@ -29,6 +29,10 @@ export type InformationSectionProps = {
     editEntityId?: number;
     editPublicPath?: string;
     editSectionKey?: string;
+    /** Public name of the edited plant or sort, shown in the edit dialog. */
+    editEntityName?: string;
+    /** Gardeners whose accepted suggestions shaped this section. */
+    contributors?: readonly CommunityContributorView[];
 };
 
 function isPublicOperation(operation: Pick<OperationData, 'attributes'>) {
@@ -47,6 +51,8 @@ export async function InformationSection({
     editEntityId,
     editPublicPath,
     editSectionKey = id,
+    editEntityName,
+    contributors,
 }: InformationSectionProps) {
     const hasContent = Boolean(content?.trim());
     const hasSortContent = Boolean(sortContent?.trim());
@@ -187,23 +193,28 @@ export async function InformationSection({
                         </NoDataPlaceholder>
                     </div>
                 )}
-                <div className="flex items-center gap-1">
-                    {editEntityTypeName && editEntityId && editPublicPath ? (
-                        <CommunityEditButton
-                            entityTypeName={editEntityTypeName}
-                            entityId={editEntityId}
-                            publicPath={editPublicPath}
-                            sectionKey={editSectionKey}
-                        />
-                    ) : null}
-                    <FeedbackModal
-                        topic="www/plants/information"
-                        data={{
+                <SectionContributionBar
+                    feedback={{
+                        topic: 'www/plants/information',
+                        data: {
                             plantId: plantId,
                             sectionId: id,
-                        }}
-                    />
-                </div>
+                        },
+                    }}
+                    edit={
+                        editEntityTypeName && editEntityId && editPublicPath
+                            ? {
+                                  entityTypeName: editEntityTypeName,
+                                  entityId: editEntityId,
+                                  publicPath: editPublicPath,
+                                  sectionKey: editSectionKey,
+                                  entityName: editEntityName,
+                                  sectionLabel: header,
+                              }
+                            : null
+                    }
+                    contributors={contributors}
+                />
             </Stack>
             <Stack spacing={6}>
                 {attributeCards}

@@ -83,27 +83,27 @@ export default async function PlantPestsPage({
                 subHeader={pageDescription}
                 padded
             >
-                <div className="flex w-full flex-col items-start gap-3 md:items-end">
-                    <CommunityEntitySuggestionButton
-                        kind="pest"
-                        plants={suggestionPlants}
-                        publicPath={KnownPages.PlantPests}
+                <Suspense>
+                    <PageFilterInput
+                        searchParamName="pretraga"
+                        fieldName="plant-pest-search"
+                        initialValue={search}
+                        navigateOnChange
+                        className="lg:flex items-start justify-end w-full"
                     />
-                    <Suspense>
-                        <PageFilterInput
-                            searchParamName="pretraga"
-                            fieldName="plant-pest-search"
-                            initialValue={search}
-                            navigateOnChange
-                            className="lg:flex items-start justify-end w-full"
-                        />
-                    </Suspense>
-                </div>
+                </Suspense>
             </PageHeader>
             <PlantHealthIssueDirectory
                 issues={orderedIssues}
                 kind="pest"
                 search={search}
+                suggestion={
+                    <CommunityEntitySuggestionButton
+                        kind="pest"
+                        plants={suggestionPlants}
+                        publicPath={KnownPages.PlantPests}
+                    />
+                }
             />
             <Row spacing={4}>
                 <Typography level="body1">

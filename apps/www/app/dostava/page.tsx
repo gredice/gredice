@@ -18,12 +18,6 @@ import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Typography } from '@gredice/ui/Typography';
 import DeliveryTruck from '../../assets/DeliveryTruck.webp';
 import { RelatedFaq } from '../../components/faq/RelatedFaq';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '../../components/shared/Card';
 import { CtaBand } from '../../components/shared/CtaBand';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { HighlightChip } from '../../components/shared/HighlightChip';
@@ -35,6 +29,7 @@ import { KnownPages } from '../../src/KnownPages';
 import { DeliveryAvailabilityChecker } from './DeliveryAvailabilityChecker';
 import { DeliveryZoneMap } from './DeliveryZoneMap';
 import {
+    deliveryFactTiles,
     deliverySummaryFacts,
     deliverySummaryHeading,
     deliverySummaryHeadingId,
@@ -60,7 +55,7 @@ export default function DeliveryPage() {
         process.env.NEXT_PUBLIC_GREDICE_GOOGLE_MAPS_API_KEY?.trim() ?? '';
 
     return (
-        <Container maxWidth="md">
+        <Container maxWidth="md" padded={false}>
             <Stack>
                 <PageHeader
                     padded
@@ -78,6 +73,78 @@ export default function DeliveryPage() {
                     }
                     subHeader="Sve informacije o dostavi povrća iz tvojih gredica"
                 />
+                <Stack spacing={4} className="mb-10">
+                    <DeliveryAvailabilityChecker />
+                    <ul
+                        aria-label="Dostava ukratko"
+                        className="grid gap-3 sm:grid-cols-3"
+                    >
+                        {deliveryFactTiles.map((tile) => (
+                            <li
+                                key={tile.label}
+                                className="rounded-lg border bg-card p-4 text-card-foreground"
+                            >
+                                <span className="block text-sm text-muted-foreground">
+                                    {tile.label}
+                                </span>
+                                <span className="block font-semibold">
+                                    {tile.value}
+                                </span>
+                            </li>
+                        ))}
+                    </ul>
+                    <div>
+                        <Button
+                            href={KnownPages.DeliverySlots}
+                            variant="outlined"
+                            color="neutral"
+                            className="bg-background text-primary"
+                            startDecorator={
+                                <GameCalendarIcon
+                                    aria-hidden
+                                    className="size-4"
+                                />
+                            }
+                        >
+                            Pogledaj dostupne termine
+                        </Button>
+                    </div>
+                    <figure id="zone-dostave" className="w-full scroll-mt-24">
+                        <DeliveryZoneMap apiKey={googleMapsApiKey} />
+                        <figcaption className="mt-2 text-sm text-foreground">
+                            <strong>Zone dostave</strong> – područje do 100 km
+                            izračunato je prema udaljenosti vožnje cestom i
+                            ograničeno na Hrvatsku. Podaci o cestama:{' '}
+                            <a
+                                href="https://www.openstreetmap.org/copyright"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="underline"
+                            >
+                                © OpenStreetMap contributors
+                            </a>
+                            , izračun{' '}
+                            <a
+                                href="https://valhalla.github.io/valhalla/api/isochrone/api-reference/"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="underline"
+                            >
+                                Valhalla
+                            </a>
+                            . Granica Grada Zagreba prikazana je prema{' '}
+                            <a
+                                href="https://geohub-zagreb.hub.arcgis.com/"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="underline"
+                            >
+                                službenim podacima GeoHuba Grada Zagreba
+                            </a>
+                            .
+                        </figcaption>
+                    </figure>
+                </Stack>
                 <StyledHtml size="md">
                     <h2 id={deliverySummaryHeadingId}>
                         <GameSeedlingIcon
@@ -166,43 +233,11 @@ export default function DeliveryPage() {
                         </strong>
                         .
                     </p>
-                    <DeliveryAvailabilityChecker />
-                    <p>Vidi mapu zona dostave i tablicu s cijenama ispod:</p>
-                    <figure className="not-prose mb-4 w-full">
-                        <DeliveryZoneMap apiKey={googleMapsApiKey} />
-                        <figcaption className="mt-2 text-sm text-foreground">
-                            <strong>Zone dostave</strong> – područje do 100 km
-                            izračunato je prema udaljenosti vožnje cestom i
-                            ograničeno na Hrvatsku. Podaci o cestama:{' '}
-                            <a
-                                href="https://www.openstreetmap.org/copyright"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="underline"
-                            >
-                                © OpenStreetMap contributors
-                            </a>
-                            , izračun{' '}
-                            <a
-                                href="https://valhalla.github.io/valhalla/api/isochrone/api-reference/"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="underline"
-                            >
-                                Valhalla
-                            </a>
-                            . Granica Grada Zagreba prikazana je prema{' '}
-                            <a
-                                href="https://geohub-zagreb.hub.arcgis.com/"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="underline"
-                            >
-                                službenim podacima GeoHuba Grada Zagreba
-                            </a>
-                            .
-                        </figcaption>
-                    </figure>
+                    <p>
+                        Zone dostave prikazane su na{' '}
+                        <a href="#zone-dostave">karti zona dostave</a>, a u
+                        tablici su primjeri cijena za nekoliko mjesta:
+                    </p>
                     <table className="not-prose mb-4 w-full overflow-hidden rounded-xl border border-border border-separate border-spacing-0 bg-card text-sm text-card-foreground">
                         <caption className="caption-top pb-1 text-foreground">
                             <strong>Cijena dostave</strong> -{' '}
@@ -346,17 +381,20 @@ export default function DeliveryPage() {
                         Dostave se zakazuju unaprijed, minimalno{' '}
                         <strong>48 sati</strong> prije željenog termina. Nakon
                         što zatražiš dostavu, obavijestit ćemo te ako je ona
-                        potvrđena ili eventualno odbijena, ovisno o trenutačnoj
+                        potvrđena ili eventualno odbijena, ovisno o trenutnoj
                         popunjenosti rasporeda.
                     </p>
                     <p>
                         Dostave se odvijaju u{' '}
                         <strong>2-satnim vremenskim blokovima</strong>, a sve
-                        dostupne termine možeš vidjeti u aplikaciji ili na našoj
-                        stranici s terminima. Ako te ne pronađemo na adresi u
-                        dogovoreno vrijeme, pokušat ćemo te kontaktirati. U
-                        slučaju da dostava ipak ne uspije, svoje povrće možeš
-                        naknadno osobno preuzeti na našoj lokaciji u Zagrebu.
+                        dostupne termine možeš vidjeti u aplikaciji ili na našoj{' '}
+                        <a href={KnownPages.DeliverySlots}>
+                            stranici s terminima
+                        </a>
+                        . Ako te ne pronađemo na adresi u dogovoreno vrijeme,
+                        pokušat ćemo te kontaktirati. U slučaju da dostava ipak
+                        ne uspije, svoje povrće možeš naknadno osobno preuzeti
+                        na našoj lokaciji u Zagrebu.
                     </p>
                     <h2>Neuspjela dostava i preuzimanje</h2>
                     <p>
@@ -391,41 +429,10 @@ export default function DeliveryPage() {
                     <hr />
                 </StyledHtml>
             </Stack>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                <Card className="mb-8">
-                    <CardHeader>
-                        <CardTitle>
-                            <GameCalendarIcon
-                                aria-hidden
-                                className="mr-2 inline-block size-7 align-text-bottom"
-                            />{' '}
-                            Termini dostave
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <Stack spacing={6}>
-                            <Typography>
-                                Želiš vidjeti koji su termini dostupni za
-                                dostavu tvojeg povrća?
-                            </Typography>
-                            <Button
-                                href={KnownPages.DeliverySlots}
-                                variant="solid"
-                                startDecorator={
-                                    <GameCalendarIcon
-                                        aria-hidden
-                                        className="size-4"
-                                    />
-                                }
-                            >
-                                Pogledaj dostupne termine
-                            </Button>
-                        </Stack>
-                    </CardContent>
-                </Card>
-            </div>
-            <Stack spacing={4}>
-                <Typography level="h5">Imaš dodatna pitanja?</Typography>
+            <Stack spacing={4} className="mt-8">
+                <Typography level="h5" component="h2">
+                    Imaš dodatna pitanja?
+                </Typography>
                 <WhatsAppCard />
             </Stack>
             <RelatedFaq placement="delivery" />
@@ -444,7 +451,7 @@ export default function DeliveryPage() {
                 <Typography level="body1">
                     Jesu li ti informacije korisne?
                 </Typography>
-                <FeedbackModal topic="www/faq" />
+                <FeedbackModal topic="www/delivery" />
             </Row>
         </Container>
     );

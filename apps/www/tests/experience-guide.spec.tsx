@@ -58,6 +58,21 @@ for (const width of [320, 768, 1280]) {
         await expect(
             page.getByRole('link', { name: 'Kako funkcioniraju suncokreti' }),
         ).toHaveAttribute('href', '/suncokreti');
+        const rewardsNavigation = page.getByRole('navigation', {
+            name: 'Nagrade i napredak',
+        });
+        await expect(
+            rewardsNavigation.getByRole('link', {
+                name: 'XP i razine',
+                exact: true,
+            }),
+        ).toHaveAttribute('aria-current', 'page');
+        await expect(
+            rewardsNavigation.getByRole('link', {
+                name: 'Suncokreti',
+                exact: true,
+            }),
+        ).toHaveAttribute('href', '/suncokreti');
         await expect(
             page.getByRole('link', { name: 'Pogledaj ljestvicu vrtlara' }),
         ).toHaveAttribute('href', '/korisnici');

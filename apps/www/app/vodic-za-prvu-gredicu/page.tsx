@@ -25,7 +25,7 @@ export const metadata = createPublicMetadata({
 
 export default function FirstRaisedBedGuidePage() {
     return (
-        <Container maxWidth="md">
+        <Container maxWidth="md" padded={false}>
             <Stack spacing={8}>
                 <PageHeader
                     visual={
@@ -36,13 +36,13 @@ export default function FirstRaisedBedGuidePage() {
                         />
                     }
                     header="Vodič za prvu gredicu"
-                    subHeader="Prati kratke zadatke iz onboarding prozora i pretvori prijedlog sadnje u stvaran plan za svoju gredicu."
+                    subHeader="Prati kratke zadatke iz uvodnog vodiča u aplikaciji i pretvori prijedlog sadnje u stvaran plan za svoju gredicu."
                     padded
                 />
 
                 <section className="grid gap-4 md:grid-cols-[minmax(0,1fr)_16rem]">
                     <Stack spacing={3}>
-                        <Typography level="h2">
+                        <Typography level="h4" component="h2">
                             Što ovaj vodič pokriva
                         </Typography>
                         <Typography level="body1" secondary>
@@ -65,7 +65,7 @@ export default function FirstRaisedBedGuidePage() {
                             <Typography semiBold>Brzi ulaz</Typography>
                             <Typography level="body3" secondary>
                                 Ako već imaš otvoren vrt, vrati se u aplikaciju
-                                i nastavi iz closeup prikaza gredice.
+                                i nastavi iz prikaza gredice izbliza.
                             </Typography>
                             <Button href={KnownPages.GardenApp} fullWidth>
                                 Otvori vrt
@@ -76,7 +76,9 @@ export default function FirstRaisedBedGuidePage() {
 
                 <section>
                     <Stack spacing={4}>
-                        <Typography level="h2">Svi zadaci</Typography>
+                        <Typography level="h4" component="h2">
+                            Svi zadaci
+                        </Typography>
                         <div className="grid gap-3 md:grid-cols-2">
                             {firstRaisedBedTutorialTasks.map((task, index) => (
                                 <a
@@ -105,7 +107,9 @@ export default function FirstRaisedBedGuidePage() {
 
                 <section>
                     <Stack spacing={6}>
-                        <Typography level="h2">Korak-po-korak upute</Typography>
+                        <Typography level="h4" component="h2">
+                            Korak-po-korak upute
+                        </Typography>
                         {firstRaisedBedTutorialTasks.map((task, index) => (
                             <article
                                 className="scroll-mt-24 rounded-lg border border-tertiary/30 bg-card p-5"
@@ -121,7 +125,7 @@ export default function FirstRaisedBedGuidePage() {
                                         >
                                             Zadatak {(index + 1).toString()}
                                         </Chip>
-                                        <Typography level="h3">
+                                        <Typography level="h5" component="h3">
                                             {task.title}
                                         </Typography>
                                         <Typography level="body1" secondary>
@@ -146,11 +150,13 @@ export default function FirstRaisedBedGuidePage() {
 
                 <section className="rounded-lg border border-tertiary/40 bg-muted/40 p-5">
                     <Stack spacing={3}>
-                        <Typography level="h2">Ako zapneš</Typography>
+                        <Typography level="h4" component="h2">
+                            Ako zapneš
+                        </Typography>
                         <Typography level="body1" secondary>
-                            Onboarding možeš preskočiti ili zatvoriti u bilo
+                            Uvodni vodič možeš preskočiti ili zatvoriti u bilo
                             kojem trenutku. Tvoj vrt ostaje dostupan, a prazna
-                            polja možeš urediti ručno iz closeup prikaza gredice
+                            polja možeš urediti ručno iz prikaza gredice izbliza
                             kada ti bude odgovaralo.
                         </Typography>
                         <Row className="flex-wrap" spacing={3}>
@@ -170,7 +176,7 @@ export default function FirstRaisedBedGuidePage() {
                 <RelatedFaq placement="firstGarden" />
                 <Row spacing={4} className="mt-2">
                     <Typography level="body1">
-                        Je li ti vodič za prvu gredicu bio koristan?
+                        Jesu li ti informacije korisne?
                     </Typography>
                     <FeedbackModal topic="www/first-raised-bed-guide" />
                 </Row>

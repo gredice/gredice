@@ -1,27 +1,25 @@
 import type { OperationData, PlantData } from '@gredice/client';
-import { gardenActionUrl } from '@gredice/js/gardenActions';
 import { calculatePlantsPerField, FIELD_SIZE_LABEL } from '@gredice/js/plants';
 import { slug } from '@gredice/js/slug';
 import { Chip } from '@gredice/ui/Chip';
-import { GameCoinsIcon, GameLocationIcon } from '@gredice/ui/GameIcons';
+import { GameLocationIcon } from '@gredice/ui/GameIcons';
 import { PlantGridIcon } from '@gredice/ui/GridIcons';
-import { NavigatingButton } from '@gredice/ui/NavigatingButton';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { PlantOrSortImage, SeedTimeInformationBadge } from '@gredice/ui/plants';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import Link from 'next/link';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
-import { PriceAttributeCard } from '../../../components/attributes/PriceAttributeCard';
-import { CommunityEditButton } from '../../../components/community-edits/CommunityEditButton';
-import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
+import type { CommunityContributorView } from '../../../components/community-edits/communityContributors';
+import { SectionContributionBar } from '../../../components/community-edits/SectionContributionBar';
 import type { PlantSortDataWithRelationships } from '../../../lib/plants/getPlantSortsData';
-import { resolvePlantSowingPrice } from '../../../lib/plants/resolvePlantSowingPrice';
 import { KnownPages } from '../../../src/KnownPages';
 import { getPlantImageViewTransitionName } from '../plantViewTransition';
 import { getPlantInforationSections } from './getPlantInforationSections';
 import { PlantCalendarPicker } from './PlantCalendarPicker';
+import { PlantSowingOffer } from './PlantSowingOffer';
+import { plantHealthSectionId } from './plantPageSections';
+import { getPlantSowingOffer } from './plantSowingOfferData';
 import { VerifiedInformationBadge } from './VerifiedInformationBadge';
 
 type InformationWithAlternativeName = {
@@ -63,11 +61,14 @@ function formatAlternativeNames(
 
 export function PlantPageHeader({
     operations,
+    overviewContributors,
     overviewEditTarget,
     plant,
     sort,
 }: {
     operations?: readonly OperationData[];
+    /** Gardeners whose accepted suggestions shaped the overview. */
+    overviewContributors?: readonly CommunityContributorView[];
     overviewEditTarget?: OverviewEditTarget;
     plant: PlantData & { isRecommended: boolean | null | undefined };
     sort?: PlantSortDataWithRelationships;
@@ -100,6 +101,10 @@ export function PlantPageHeader({
         });
     }
     contentLinks.push({
+        href: `#${plantHealthSectionId}`,
+        label: 'Bolesti i štetnici',
+    });
+    contentLinks.push({
         href: `#${slug('Biljni susjedi')}`,
         label: 'Biljni susjedi',
     });
@@ -112,7 +117,8 @@ export function PlantPageHeader({
     const alternativeNames =
         formatAlternativeNames(sort?.information) ||
         formatAlternativeNames(plant.information);
-    const price = resolvePlantSowingPrice(plant, sort);
+    const sowingOffer = getPlantSowingOffer(plant, sort);
+    const displayName = sort?.information?.name ?? plant.information.name;
 
     return (
         <PageHeader
@@ -151,7 +157,7 @@ export function PlantPageHeader({
                     </span>
                 )
             }
-            header={sort?.information?.name ?? plant.information.name}
+            header={displayName}
             alternativeName={
                 sort ? (
                     <Stack>
@@ -171,6 +177,7 @@ export function PlantPageHeader({
             }
             headerChildren={
                 <Stack spacing={8} alignItems="start">
+                    <PlantSowingOffer {...sowingOffer} />
                     {(origin || alternativeNames) && (
                         <Stack spacing={2}>
                             <Typography level="body2">Porijeklo</Typography>
@@ -196,14 +203,6 @@ export function PlantPageHeader({
                         )}
                         {plant.isRecommended && <SeedTimeInformationBadge />}
                     </Row>
-                    {sort?.store?.availableInStore === false && (
-                        <Typography
-                            level="body2"
-                            className="text-amber-800 dark:text-amber-300 font-semibold"
-                        >
-                            Trenutno nije dostupna za sjetvu
-                        </Typography>
-                    )}
                     {contentLinks.length > 0 && (
                         <Stack spacing={2}>
                             <Typography level="body2">Sadržaj</Typography>
@@ -220,16 +219,6 @@ export function PlantPageHeader({
                             </Row>
                         </Stack>
                     )}
-                    <NavigatingButton
-                        href={gardenActionUrl(KnownPages.GardenApp, {
-                            type: 'sow',
-                            plantId: plant.id,
-                            sortId: sort?.id,
-                        })}
-                        color="brand"
-                    >
-                        Moj vrt
-                    </NavigatingButton>
                 </Stack>
             }
         >
@@ -240,16 +229,6 @@ export function PlantPageHeader({
                         Informacije
                     </Typography>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {price && (
-                            <PriceAttributeCard
-                                icon={<GameCoinsIcon aria-hidden />}
-                                header="Cijena sijanja"
-                                currentPrice={price.currentPrice}
-                                description="Cijena jedne biljke uključuje troškove sjemena, pripreme tla, sjetve i sezonske pogodnosti. Više o samoj sjetvi u gredicama možeš pročitati u nastavku."
-                                navigateHref={KnownPages.Sowing}
-                                navigateLabel="Više o sjetvi"
-                            />
-                        )}
                         <AttributeCard
                             icon={<PlantGridIcon totalPlants={totalPlants} />}
                             header={`Broj biljaka na ${FIELD_SIZE_LABEL}`}
@@ -259,38 +238,33 @@ export function PlantPageHeader({
                             navigateLabel="Više o gredicama"
                         />
                     </div>
-                    <Row spacing={1} className="self-end">
-                        {overviewEditTarget ? (
-                            <CommunityEditButton
-                                entityTypeName={
-                                    overviewEditTarget.entityTypeName
-                                }
-                                entityId={overviewEditTarget.entityId}
-                                publicPath={overviewEditTarget.publicPath}
-                                sectionKey="overview"
-                            />
-                        ) : null}
-                        <FeedbackModal
-                            topic={
-                                sort
-                                    ? 'www/plants/sorts/information'
-                                    : 'www/plants/information'
-                            }
-                            data={{
+                    <SectionContributionBar
+                        feedback={{
+                            topic: sort
+                                ? 'www/plants/sorts/information'
+                                : 'www/plants/information',
+                            data: {
                                 plantId: plant.id,
                                 plantAlias: plant.information.name,
                                 sortId: sort?.id,
                                 sortAlias: sort?.information.name,
-                            }}
-                        />
-                    </Row>
-                    <Typography level="body2" secondary>
-                        Nisi zadovoljan uslugom ili proizvodom? Pogledaj{' '}
-                        <Link className="underline" href={KnownPages.Refunds}>
-                            30-dnevnu politiku povrata novca
-                        </Link>
-                        .
-                    </Typography>
+                            },
+                        }}
+                        edit={
+                            overviewEditTarget
+                                ? {
+                                      entityTypeName:
+                                          overviewEditTarget.entityTypeName,
+                                      entityId: overviewEditTarget.entityId,
+                                      publicPath: overviewEditTarget.publicPath,
+                                      sectionKey: 'overview',
+                                      entityName: displayName,
+                                      sectionLabel: 'Pregled',
+                                  }
+                                : null
+                        }
+                        contributors={overviewContributors}
+                    />
                 </Stack>
             </Stack>
         </PageHeader>

@@ -4,10 +4,12 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { PageContributors } from '../../../components/community-edits/PageContributors';
 import { RelatedFaq } from '../../../components/faq/RelatedFaq';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { PublicBreadcrumbs } from '../../../components/shared/seo/PublicBreadcrumbs';
 import { StructuredDataScript } from '../../../components/shared/seo/StructuredDataScript';
+import { getEntityContributors } from '../../../lib/community/getEntityContributors';
 import { getOperationsData } from '../../../lib/plants/getOperationsData';
 import { getPlantsData } from '../../../lib/plants/getPlantsData';
 import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
@@ -23,7 +25,9 @@ import { PlantHealthSection } from './PlantHealthSection';
 import { PlantPageHeader } from './PlantPageHeader';
 import { PlantRelationshipsSection } from './PlantRelationshipsSection';
 import { PlantSortsList } from './PlantSortsList';
+import { PlantStickyBuyBar } from './PlantStickyBuyBar';
 import { PlantTips } from './PlantTips';
+import { getPlantSowingOffer } from './plantSowingOfferData';
 import { SowingAttributeCards } from './SowingAttributeCards';
 import { WateringAttributeCards } from './WateringAttributeCards';
 
@@ -72,12 +76,16 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
         notFound();
     }
 
-    const operations = await getOperationsData();
+    const [operations, contributors] = await Promise.all([
+        getOperationsData(),
+        getEntityContributors(plant.id),
+    ]);
     const informationSections = getPlantInforationSections(
         plant,
         undefined,
         operations,
     );
+    const sowingOffer = getPlantSowingOffer(plant);
     const plantPath = KnownPages.Plant(plant.slug || plant.information.name);
     const plantUrl = `https://www.gredice.com${plantPath}`;
     const plantPrice = plant.prices?.perPlant;
@@ -165,6 +173,7 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
                 <PlantPageHeader
                     operations={operations}
                     plant={plant}
+                    overviewContributors={contributors.sections.overview}
                     overviewEditTarget={{
                         entityTypeName: 'plant',
                         entityId: plant.id,
@@ -192,10 +201,18 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
                             editEntityId={plant.id}
                             editPublicPath={plantPath}
                             editSectionKey={section.id}
+                            editEntityName={plant.information.name}
+                            contributors={contributors.sections[section.id]}
                         />
                     ))}
-                <PlantTips plant={plant} publicPath={plantPath} />
+                <PlantTips
+                    contributors={contributors.sections['new-plant-tip']}
+                    plant={plant}
+                    publicPath={plantPath}
+                />
                 <PlantHealthSection
+                    diseaseContributors={contributors.sections['new-disease']}
+                    pestContributors={contributors.sections['new-pest']}
                     health={plant.health}
                     plantId={plant.id}
                     plantName={plant.information.name}
@@ -206,11 +223,21 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
                         entityTypeName: 'plant',
                         entityId: plant.id,
                         publicPath: plantPath,
+                        entityName: plant.information.name,
                     }}
                     relationships={plant.relationships}
                 />
                 <PlantFurtherReading />
                 <RelatedFaq placement="plant" />
+                <PageContributors
+                    contributors={contributors}
+                    edit={{
+                        entityTypeName: 'plant',
+                        entityId: plant.id,
+                        publicPath: plantPath,
+                        entityName: plant.information.name,
+                    }}
+                />
                 <Row spacing={4}>
                     <Typography level="body1">
                         Jesu li ti informacije o ovoj biljci korisne?
@@ -224,6 +251,11 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
                     />
                 </Row>
             </Stack>
+            <PlantStickyBuyBar
+                href={sowingOffer.href}
+                price={sowingOffer.price}
+                plantName={plant.information.name}
+            />
         </div>
     );
 }

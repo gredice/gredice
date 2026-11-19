@@ -1,6 +1,7 @@
 import { safeUserDisplayName } from '@gredice/js/userDisplayName';
 import {
     CommunityEditRequestError,
+    countAcceptedCommunityEditRequests,
     createCommunityEditRequest,
     createCommunityEntitySuggestion,
     type EntityStandardized,
@@ -8,14 +9,20 @@ import {
     getCmsPages,
     getCommunityEditableFieldsForEntity,
     getEntitiesFormatted,
+    getEntityDisplayLabels,
     getEntityFormatted,
     getUser,
+    listCommunityEditRequestsForSubmitter,
     parseCmsPageContent,
     searchDirectoryEntities,
 } from '@gredice/storage';
 import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
+import {
+    communityEditRequestStatus,
+    presentCommunityEditRequest,
+} from '../../../lib/communityEdits/communityEditPresentation';
 import { authSecurity } from '../../../lib/docs/security';
 import {
     type AuthVariables,
@@ -46,7 +53,15 @@ function cmsPagePreviewSecret(requestUrl: string) {
     return isLocalPreviewHost(hostname) ? localCmsPagePreviewSecret : null;
 }
 
+const communityEditMinePageSize = 50;
 const communityEditSubmittedValueSchema = z.unknown();
+// The path is shown back as a link (submitter list, public profile), so it
+// must stay a same-site path: one leading slash, no protocol-relative form.
+const communityPublicPathSchema = z
+    .string()
+    .min(1)
+    .max(500)
+    .regex(/^\/(?!\/)[^\\]*$/, 'publicPath must be a same-site path.');
 const communityPlantHealthSuggestionFields = {
     affectedPlantIds: z.array(z.number().int().positive()).min(1).max(50),
     name: z.string().trim().min(1).max(200),
@@ -56,7 +71,7 @@ const communityPlantHealthSuggestionFields = {
     severity: z.string().max(1000).nullable().optional(),
     source: z.string().max(500).nullable().optional(),
     note: z.string().max(1000).nullable().optional(),
-    publicPath: z.string().min(1).max(500),
+    publicPath: communityPublicPathSchema,
 };
 const communityEntitySuggestionSchema = z.discriminatedUnion('kind', [
     z.object({
@@ -66,7 +81,7 @@ const communityEntitySuggestionSchema = z.discriminatedUnion('kind', [
         description: z.string().trim().min(1).max(2000),
         source: z.string().max(500).nullable().optional(),
         note: z.string().max(1000).nullable().optional(),
-        publicPath: z.string().min(1).max(500),
+        publicPath: communityPublicPathSchema,
     }),
     z.object({
         kind: z.literal('operation'),
@@ -82,7 +97,7 @@ const communityEntitySuggestionSchema = z.discriminatedUnion('kind', [
         description: z.string().trim().min(1).max(2000),
         source: z.string().max(500).nullable().optional(),
         note: z.string().max(1000).nullable().optional(),
-        publicPath: z.string().min(1).max(500),
+        publicPath: communityPublicPathSchema,
     }),
     z.object({
         kind: z.literal('disease'),
@@ -359,6 +374,61 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
         },
     )
+    .get(
+        '/community-edits/mine',
+        describeRoute({
+            description:
+                "List the authenticated user's own community edit requests and entity suggestions, newest first, 50 per page, with their review status and the moderator's reply. Pass `nextCursor` back as `before` to read the next older page; it is `null` on the last page. `acceptedCount` is the number of the user's requests that were accepted and applied. Internal reviewer notes, reviewer identity and e-mail addresses are never returned.",
+            security: authSecurity,
+        }),
+        authValidator(['user', 'admin']),
+        zValidator(
+            'query',
+            z.object({
+                before: z.coerce.number().int().positive().optional(),
+            }),
+        ),
+        async (context) => {
+            const { userId } = context.get('authContext');
+            const { before } = context.req.valid('query');
+            // One extra row tells whether an older page exists.
+            const [listedRequests, acceptedCount] = await Promise.all([
+                listCommunityEditRequestsForSubmitter(userId, {
+                    limit: communityEditMinePageSize + 1,
+                    beforeId: before,
+                }),
+                countAcceptedCommunityEditRequests(userId),
+            ]);
+            const requests = listedRequests.slice(0, communityEditMinePageSize);
+            const nextCursor =
+                listedRequests.length > communityEditMinePageSize
+                    ? (requests.at(-1)?.id ?? null)
+                    : null;
+            const entityLabels = new Map(
+                (
+                    await getEntityDisplayLabels(
+                        requests.map((request) => request.entityId),
+                    )
+                ).map((entity) => [entity.id, entity.label]),
+            );
+
+            context.header('Cache-Control', 'no-store');
+            return context.json({
+                acceptedCount,
+                nextCursor,
+                items: requests.map((request) => ({
+                    id: request.id,
+                    status: communityEditRequestStatus(request.status),
+                    ...presentCommunityEditRequest(request, entityLabels),
+                    publicPath: request.publicPath,
+                    submitterMessage: request.submitterMessage,
+                    createdAt: request.createdAt.toISOString(),
+                    reviewedAt: request.reviewedAt?.toISOString() ?? null,
+                    appliedAt: request.appliedAt?.toISOString() ?? null,
+                })),
+            });
+        },
+    )
     .post(
         '/community-edits/entity-suggestions',
         describeRoute({
@@ -415,7 +485,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             z.object({
                 entityTypeName: z.string(),
                 entityId: z.number().int().positive(),
-                publicPath: z.string().min(1).max(500),
+                publicPath: communityPublicPathSchema,
                 sectionKey: z.string().nullable().optional(),
                 submitterNote: z.string().max(2000).nullable().optional(),
                 changes: z
