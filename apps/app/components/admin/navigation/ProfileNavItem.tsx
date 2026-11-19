@@ -65,9 +65,7 @@ export function ProfileNavItem({
     }, []);
 
     const userName =
-        currentUser?.displayName?.trim() ||
-        currentUser?.userName ||
-        'Korisnik';
+        currentUser?.displayName?.trim() || currentUser?.userName || 'Korisnik';
     const userHref = useMemo(
         () =>
             currentUser?.id

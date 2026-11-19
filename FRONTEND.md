@@ -98,3 +98,7 @@ compatibility, and dependency-audit decisions.
 - The admin nav profile shows the user's display name (falling back to the
   user name) with a megaphone `UierReviewButton` beside it that toggles the
   UIer review toolbar, like the settings `UierReviewToggle`.
+
+- Closed admin mobile navigation is inert and hidden from assistive technology,
+  so off-screen controls cannot receive keyboard focus. Review button stories use
+  controlled state, matching the review toggle previews, without loading UIer.

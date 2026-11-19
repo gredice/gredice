@@ -276,10 +276,9 @@ export function AdminDashboardClient({
         <Stack spacing={6}>
             <AdminPageHeader
                 actions={
-                    <div
-                        role="group"
+                    <fieldset
                         aria-label="Period nadzorne ploče"
-                        className="flex min-w-0 flex-wrap items-end justify-end gap-2"
+                        className="m-0 flex min-w-0 flex-wrap items-end justify-end gap-2 border-0 p-0"
                     >
                         {selectedPeriod === 'custom' ? (
                             <>
@@ -326,7 +325,7 @@ export function AdminDashboardClient({
                                 Datum početka mora biti prije datuma kraja.
                             </Typography>
                         ) : null}
-                    </div>
+                    </fieldset>
                 }
             />
             <Row spacing={2} className="flex-wrap">

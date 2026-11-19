@@ -3,30 +3,8 @@ import {
     PathnameContext,
     SearchParamsContext,
 } from 'next/dist/shared/lib/hooks-client-context.shared-runtime';
-import type { ReactNode } from 'react';
 import { AdminDashboardClient } from '../components/admin/dashboard/AdminDashboardClient';
-import { useAdminPageHeaderContext } from '../components/admin/navigation/AdminPageHeaderContext';
-import { AdminPageHeaderProvider } from '../components/admin/navigation/AdminPageHeaderProvider';
-
-function HeaderSlot() {
-    const { setSlotElement } = useAdminPageHeaderContext();
-    return (
-        <div
-            className="mb-4 flex min-w-0 flex-wrap items-center justify-between gap-2"
-            data-testid="admin-page-header-slot"
-            ref={setSlotElement}
-        />
-    );
-}
-
-function HeaderFrame({ children }: { children: ReactNode }) {
-    return (
-        <AdminPageHeaderProvider>
-            <HeaderSlot />
-            {children}
-        </AdminPageHeaderProvider>
-    );
-}
+import { AdminDashboardHeaderFrame } from './AdminDashboardHeaderFrame';
 
 export function AdminDashboardHarness({
     days = 30,
@@ -54,70 +32,74 @@ export function AdminDashboardHarness({
         >
             <PathnameContext.Provider value="/admin">
                 <SearchParamsContext.Provider value={new URLSearchParams()}>
-                    <HeaderFrame>
-                    <AdminDashboardClient
-                        initialAnalyticsData={{
-                            users: 0,
-                            usersBefore: 0,
-                            accounts: 0,
-                            accountsBefore: 0,
-                            farms: 0,
-                            farmsBefore: 0,
-                            gardens: 0,
-                            gardensBefore: 0,
-                            blocks: 0,
-                            blocksBefore: 0,
-                            events: 0,
-                            eventsBefore: 0,
-                            raisedBeds: 0,
-                            raisedBedsBefore: 0,
-                            transactions: 0,
-                            transactionsBefore: 0,
-                            deliveryRequests: 0,
-                            deliveryRequestsBefore: 0,
-                            activeUsers: { daily: 0, weekly: 0, monthly: 0 },
-                        }}
-                        initialEntitiesData={[]}
-                        initialQuickActions={[]}
-                        initialQuickActionBadgeCounts={{
-                            pendingCmsPagesReviewCount: 0,
-                            pendingAchievementsCount: 0,
-                            pendingApprovalTasksCount: 0,
-                        }}
-                        initialPeriod={custom ? 'custom' : String(days)}
-                        initialFrom={custom ? dates[0] : undefined}
-                        initialTo={custom ? dates.at(-1) : undefined}
-                        initialRegistrations={dates.map((date) => ({
-                            date,
-                            count: 1,
-                        }))}
-                        initialOperationsDurationData={{
-                            totalMinutes: days * 6,
-                            operationsMinutes: days,
-                            sowingMinutes: days * 2,
-                            plannedMinutes: days * 3,
-                            byUser: [],
-                            daily: dates.map((date) => ({
+                    <AdminDashboardHeaderFrame>
+                        <AdminDashboardClient
+                            initialAnalyticsData={{
+                                users: 0,
+                                usersBefore: 0,
+                                accounts: 0,
+                                accountsBefore: 0,
+                                farms: 0,
+                                farmsBefore: 0,
+                                gardens: 0,
+                                gardensBefore: 0,
+                                blocks: 0,
+                                blocksBefore: 0,
+                                events: 0,
+                                eventsBefore: 0,
+                                raisedBeds: 0,
+                                raisedBedsBefore: 0,
+                                transactions: 0,
+                                transactionsBefore: 0,
+                                deliveryRequests: 0,
+                                deliveryRequestsBefore: 0,
+                                activeUsers: {
+                                    daily: 0,
+                                    weekly: 0,
+                                    monthly: 0,
+                                },
+                            }}
+                            initialEntitiesData={[]}
+                            initialQuickActions={[]}
+                            initialQuickActionBadgeCounts={{
+                                pendingCmsPagesReviewCount: 0,
+                                pendingAchievementsCount: 0,
+                                pendingApprovalTasksCount: 0,
+                            }}
+                            initialPeriod={custom ? 'custom' : String(days)}
+                            initialFrom={custom ? dates[0] : undefined}
+                            initialTo={custom ? dates.at(-1) : undefined}
+                            initialRegistrations={dates.map((date) => ({
                                 date,
-                                operationsMinutes: 1,
-                                sowingMinutes: 2,
-                                plannedMinutes: 3,
-                                totalMinutes: 6,
+                                count: 1,
+                            }))}
+                            initialOperationsDurationData={{
+                                totalMinutes: days * 6,
+                                operationsMinutes: days,
+                                sowingMinutes: days * 2,
+                                plannedMinutes: days * 3,
                                 byUser: [],
-                            })),
-                        }}
-                        initialSunflowersData={dates.map((date) => ({
-                            date,
-                            earned: 5,
-                            spent: 2,
-                        }))}
-                        initialAiData={{
-                            count: 0,
-                            totalTokens: 0,
-                            totalCostEur: 0,
-                        }}
-                    />
-                    </HeaderFrame>
+                                daily: dates.map((date) => ({
+                                    date,
+                                    operationsMinutes: 1,
+                                    sowingMinutes: 2,
+                                    plannedMinutes: 3,
+                                    totalMinutes: 6,
+                                    byUser: [],
+                                })),
+                            }}
+                            initialSunflowersData={dates.map((date) => ({
+                                date,
+                                earned: 5,
+                                spent: 2,
+                            }))}
+                            initialAiData={{
+                                count: 0,
+                                totalTokens: 0,
+                                totalCostEur: 0,
+                            }}
+                        />
+                    </AdminDashboardHeaderFrame>
                 </SearchParamsContext.Provider>
             </PathnameContext.Provider>
         </AppRouterContext.Provider>

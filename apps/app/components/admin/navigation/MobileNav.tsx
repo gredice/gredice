@@ -64,6 +64,8 @@ export function MobileNav() {
                     isOpen ? 'translate-x-0' : '-translate-x-full'
                 }`}
                 aria-label="Administracijski izbornik"
+                inert={!isOpen}
+                aria-hidden={!isOpen}
             >
                 <div className="border-b px-4 py-3">
                     <div className="flex items-center justify-between gap-2">
