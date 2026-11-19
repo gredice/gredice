@@ -14,6 +14,7 @@ import { KnownPages } from '../../../src/KnownPages';
 type CurrentUser = {
     id?: string;
     userName?: string | null;
+    displayName?: string | null;
     avatarUrl?: string | null;
     achievementCount?: number;
     accounts?: Array<{ accountId?: string | null }>;
@@ -63,7 +64,10 @@ export function ProfileNavItem({
         };
     }, []);
 
-    const userName = currentUser?.userName ?? 'Korisnik';
+    const userName =
+        currentUser?.displayName?.trim() ||
+        currentUser?.userName ||
+        'Korisnik';
     const userHref = useMemo(
         () =>
             currentUser?.id

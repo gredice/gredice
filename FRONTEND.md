@@ -94,3 +94,6 @@ compatibility, and dependency-audit decisions.
   sections and quick actions, in the page-level period control group.
 - Dashboard bucket descriptions include years throughout ranges spanning New Year.
 - The exported dashboard analytics action requires admin access before cache lookup.
+- The admin nav profile shows the user's display name (falling back to the
+  user name) with a megaphone `UierReviewButton` beside it that toggles the
+  UIer review toolbar, like the settings `UierReviewToggle`.
