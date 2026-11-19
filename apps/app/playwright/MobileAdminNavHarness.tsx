@@ -10,6 +10,7 @@ export function MobileAdminNavHarness() {
     return (
         <PathnameContext.Provider value="/admin">
             <MobileNav />
+            <input aria-label="Polje iza izbornika" />
         </PathnameContext.Provider>
     );
 }

@@ -99,6 +99,7 @@ compatibility, and dependency-audit decisions.
   user name) with a megaphone `UierReviewButton` beside it that toggles the
   UIer review toolbar, like the settings `UierReviewToggle`.
 
-- Closed admin mobile navigation is inert and hidden from assistive technology,
-  so off-screen controls cannot receive keyboard focus. Review button stories use
-  controlled state, matching the review toggle previews, without loading UIer.
+- Admin mobile navigation uses the shared modal for focus entry, focus containment,
+  Escape handling and focus restoration to the opener. Closed navigation is unmounted.
+  Review button stories use controlled state, matching the review toggle previews,
+  without loading UIer.
