@@ -47,6 +47,7 @@ import {
     Warning,
 } from '@gredice/ui/icons';
 import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
+import { UierReviewButton } from '@gredice/ui/UierReview';
 import { usePathname } from 'next/navigation';
 import type { CSSProperties } from 'react';
 import { useContext, useState } from 'react';
@@ -271,7 +272,21 @@ export function Nav({
     return (
         <div className={navClassName}>
             <div className="space-y-1">
-                <ProfileNavItem onItemClick={onItemClick} compact={compact} />
+                <div
+                    className={
+                        compact
+                            ? 'mb-2 flex flex-col items-center gap-1'
+                            : 'mb-2 flex items-center gap-1'
+                    }
+                >
+                    <div className={compact ? 'w-full' : 'min-w-0 flex-1'}>
+                        <ProfileNavItem
+                            onItemClick={onItemClick}
+                            compact={compact}
+                        />
+                    </div>
+                    <UierReviewButton />
+                </div>
                 <NavItem
                     href={adminPages.Dashboard.href}
                     label={adminPages.Dashboard.label}

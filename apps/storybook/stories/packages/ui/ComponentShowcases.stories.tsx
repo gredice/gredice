@@ -220,6 +220,7 @@ import { FarmerAvatarsPreview } from './FarmerAvatarsPreview';
 import { GameAccountMenuPreview } from './GameAccountMenuPreview';
 import { PlantCareHudPreview } from './PlantCareHudPreview';
 import { PublicEnvironmentPreview } from './PublicEnvironmentPreview';
+import { UierReviewButtonPreview } from './UierReviewButtonPreview';
 import { UierReviewTogglePreview } from './UierReviewTogglePreview';
 
 const sampleImages = [
@@ -1895,6 +1896,12 @@ function AccountAndStatesShowcase() {
                             <Stack spacing={4}>
                                 <EditableName />
                                 <UierReviewTogglePreview />
+                                <Row spacing={2}>
+                                    <Typography level="body2">
+                                        Aleksandar Toplek
+                                    </Typography>
+                                    <UierReviewButtonPreview />
+                                </Row>
                                 <Input
                                     fullWidth
                                     label="Naziv prikaza"

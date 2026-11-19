@@ -90,7 +90,16 @@ compatibility, and dependency-audit decisions.
   Registrations, operation durations and sunflowers share that range; charts show
   daily columns for up to seven days and at most seven contiguous date buckets
   for longer periods. The expandable chart tables expose each bucket's exact dates.
-- The dashboard period picker and custom date inputs sit above all dashboard
-  sections and quick actions, in the page-level period control group.
+- The dashboard period picker and custom date inputs sit in the page-level
+  period control group, rendered as `AdminPageHeader` actions on the right of
+  the breadcrumb row; they wrap below the breadcrumbs on narrow screens.
 - Dashboard bucket descriptions include years throughout ranges spanning New Year.
 - The exported dashboard analytics action requires admin access before cache lookup.
+- The admin nav profile shows the user's display name (falling back to the
+  user name) with a megaphone `UierReviewButton` beside it that toggles the
+  UIer review toolbar, like the settings `UierReviewToggle`.
+
+- Admin mobile navigation uses the shared modal for focus entry, focus containment,
+  Escape handling and focus restoration to the opener. Closed navigation is unmounted.
+  Review button stories use controlled state, matching the review toggle previews,
+  without loading UIer.

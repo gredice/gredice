@@ -7,6 +7,7 @@ export async function GET() {
         return Response.json({
             id: user.id,
             userName: user.userName,
+            displayName: profile?.displayName,
             avatarUrl: profile?.avatarUrl,
             achievementCount: profile?.achievementCount,
             role: user.role,

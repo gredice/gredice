@@ -42,6 +42,7 @@ import {
 } from '../../../src/dashboardQuickActions';
 import { KnownPages } from '../../../src/KnownPages';
 import { EntityTypeIcon } from '../directories/EntityTypeIcon';
+import { AdminPageHeader } from '../navigation/AdminPageHeader';
 import { ActiveUsersCard } from './ActiveUsersCard';
 import type { getAnalyticsData } from './actions';
 import { DashboardSection } from './DashboardSection';
@@ -273,55 +274,60 @@ export function AdminDashboardClient({
 
     return (
         <Stack spacing={6}>
-            <Stack spacing={2} role="group" aria-label="Period nadzorne ploče">
-                <Row className="justify-end">{periodSelect}</Row>
-                {selectedPeriod === 'custom' ? (
-                    <Stack spacing={1}>
-                        <Row spacing={2} className="flex-wrap items-end">
-                            <Input
-                                type="date"
-                                value={customFrom}
-                                onChange={(event) =>
-                                    setCustomFrom(event.target.value)
-                                }
-                                label="Od"
-                                className="max-w-48"
-                                disabled={isPending}
-                            />
-                            <Input
-                                type="date"
-                                value={customTo}
-                                onChange={(event) =>
-                                    setCustomTo(event.target.value)
-                                }
-                                label="Do"
-                                className="max-w-48"
-                                disabled={isPending}
-                            />
-                            <Button
-                                size="sm"
-                                onClick={handleCustomRangeApply}
-                                disabled={
-                                    !customFrom ||
-                                    !customTo ||
-                                    isCustomRangeInvalid ||
-                                    isPending
-                                }
-                            >
-                                Primijeni
-                            </Button>
-                        </Row>
-                        {isCustomRangeInvalid ? (
+            <AdminPageHeader
+                actions={
+                    <fieldset
+                        aria-label="Period nadzorne ploče"
+                        className="m-0 flex min-w-0 flex-wrap items-end justify-end gap-2 border-0 p-0"
+                    >
+                        {selectedPeriod === 'custom' ? (
+                            <>
+                                <Input
+                                    type="date"
+                                    value={customFrom}
+                                    onChange={(event) =>
+                                        setCustomFrom(event.target.value)
+                                    }
+                                    label="Od"
+                                    className="w-36"
+                                    disabled={isPending}
+                                />
+                                <Input
+                                    type="date"
+                                    value={customTo}
+                                    onChange={(event) =>
+                                        setCustomTo(event.target.value)
+                                    }
+                                    label="Do"
+                                    className="w-36"
+                                    disabled={isPending}
+                                />
+                                <Button
+                                    size="sm"
+                                    onClick={handleCustomRangeApply}
+                                    disabled={
+                                        !customFrom ||
+                                        !customTo ||
+                                        isCustomRangeInvalid ||
+                                        isPending
+                                    }
+                                >
+                                    Primijeni
+                                </Button>
+                            </>
+                        ) : null}
+                        {periodSelect}
+                        {selectedPeriod === 'custom' && isCustomRangeInvalid ? (
                             <Typography
                                 level="body3"
-                                className="text-destructive"
+                                className="w-full text-right text-destructive"
                             >
                                 Datum početka mora biti prije datuma kraja.
                             </Typography>
                         ) : null}
-                    </Stack>
-                ) : null}
-            </Stack>
+                    </fieldset>
+                }
+            />
             <Row spacing={2} className="flex-wrap">
                 {initialQuickActions.map((quickAction) => {
                     const badge = getDashboardQuickActionBadge(
