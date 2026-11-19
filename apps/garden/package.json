@@ -79,7 +79,7 @@
         "@types/react-dom": "19.3.0",
         "@vercel/analytics": "2.0.1",
         "nuqs": "2.10.3",
-        "postcss": "8.5.32",
+        "postcss": "8.5.33",
         "sass": "1.108.2",
         "tailwindcss": "4.3.5",
         "tsx": "4.23.15",

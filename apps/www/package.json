@@ -93,7 +93,7 @@
         "@vercel/analytics": "2.0.1",
         "dotenv": "18.0.10",
         "motion": "14.14.0",
-        "postcss": "8.5.32",
+        "postcss": "8.5.33",
         "react-confetti-boom": "2.0.1",
         "react-markdown": "10.1.0",
         "tailwindcss": "4.3.5",
