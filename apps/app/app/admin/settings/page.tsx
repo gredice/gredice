@@ -14,15 +14,9 @@ import {
     type SlackConfig,
 } from '@gredice/storage';
 import { Button } from '@gredice/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
-import { IconButton } from '@gredice/ui/IconButton';
-import { Add, Check, Edit, Warning } from '@gredice/ui/icons';
-import { Row } from '@gredice/ui/Row';
-import { Stack } from '@gredice/ui/Stack';
-import { Typography } from '@gredice/ui/Typography';
+import { Add } from '@gredice/ui/icons';
 import { UierReviewToggle } from '@gredice/ui/UierReview';
-import Link from 'next/link';
-import { EntityTypeIcon } from '../../../components/admin/directories/EntityTypeIcon';
+import { AdminPageHeader } from '../../../components/admin/navigation';
 import { auth } from '../../../lib/auth/auth';
 import {
     buildDashboardQuickActionOptions,
@@ -30,44 +24,20 @@ import {
 } from '../../../src/dashboardQuickActions';
 import { KnownPages } from '../../../src/KnownPages';
 import { SlackChannelSettingForm } from '../communication/slack/SlackChannelSettingForm';
+import { DirectoryCategoriesList } from './_components/DirectoryCategoriesList';
+import { SettingsCard } from './_components/SettingsCard';
+import { SettingsCardBody } from './_components/SettingsCardBody';
+import { SettingsLayout } from './_components/SettingsLayout';
+import { SettingsSection } from './_components/SettingsSection';
+import { SettingsStatusChip } from './_components/SettingsStatusChip';
 import { UserNotificationSettings } from './_components/UserNotificationSettings';
 import { AdminGeneralSettingForm } from './AdminGeneralSettingForm';
 import { DashboardQuickActionsSettingForm } from './DashboardQuickActionsSettingForm';
 import { GoogleCalendarSettingForm } from './GoogleCalendarSettingForm';
 import { SocialIntegrationsOverview } from './integrations/social/_components/SocialIntegrationsOverview';
+import { settingsSections } from './settingsSections';
 
 export const dynamic = 'force-dynamic';
-
-const SETTINGS_SECTIONS = [
-    {
-        id: 'general-settings',
-        title: 'Općenito',
-    },
-    {
-        id: 'directory-settings',
-        title: 'Zapisi',
-    },
-    {
-        id: 'dashboard-settings',
-        title: 'Kontrolna ploča',
-    },
-    {
-        id: 'integration-settings',
-        title: 'Integracije',
-    },
-    {
-        id: 'notification-settings',
-        title: 'Obavijesti',
-    },
-    {
-        id: 'personal-notification-settings',
-        title: 'Osobne obavijesti',
-    },
-    {
-        id: 'feedback-settings',
-        title: 'Povratne informacije',
-    },
-] as const;
 
 function getSlackChannelId(
     setting: SelectNotificationSetting | undefined,
@@ -138,431 +108,175 @@ export default async function SettingsPage() {
         adminGeneralConfig?.timeZone ?? DEFAULT_ADMIN_TIME_ZONE;
 
     return (
-        <Stack spacing={8}>
-            <div className="grid gap-8 lg:grid-cols-[240px_1fr]">
-                <nav className="lg:sticky self-start">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Postavke</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <Stack spacing={2}>
-                                {SETTINGS_SECTIONS.map((section) => (
-                                    <Link
-                                        key={section.id}
-                                        href={`#${section.id}`}
-                                        className="rounded-md px-3 py-2 text-sm font-medium hover:bg-muted"
-                                    >
-                                        {section.title}
-                                    </Link>
-                                ))}
-                            </Stack>
-                        </CardContent>
-                    </Card>
-                </nav>
-
-                <div className="space-y-16">
-                    <section
-                        id="general-settings"
-                        className="scroll-mt-28"
-                        aria-labelledby="general-settings-heading"
+        <>
+            <AdminPageHeader heading="Postavke" />
+            <SettingsLayout>
+                <SettingsSection
+                    section={settingsSections.general}
+                    description="Osnovne postavke backofficea koje koriste administrativni procesi i integracije."
+                >
+                    <SettingsCard
+                        title="Vremenska zona"
+                        description="Koristi se kao zadana vremenska zona za administrativne procese i integracije."
                     >
-                        <Stack spacing={6}>
-                            <Stack spacing={2}>
-                                <Typography
-                                    id="general-settings-heading"
-                                    level="h2"
-                                    semiBold
-                                >
-                                    Općenito
-                                </Typography>
-                                <Typography level="body1">
-                                    Osnovne postavke backofficea koje koriste
-                                    administrativni procesi i integracije.
-                                </Typography>
-                            </Stack>
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Backoffice</CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-3">
-                                    <AdminGeneralSettingForm
-                                        initialTimeZone={adminTimeZone}
-                                    />
-                                </CardContent>
-                            </Card>
-                        </Stack>
-                    </section>
+                        <AdminGeneralSettingForm
+                            initialTimeZone={adminTimeZone}
+                        />
+                    </SettingsCard>
+                </SettingsSection>
 
-                    <section
-                        id="directory-settings"
-                        className="scroll-mt-28"
-                        aria-labelledby="directory-settings-heading"
-                    >
-                        <Stack spacing={6}>
-                            <Stack spacing={2}>
-                                <Typography
-                                    id="directory-settings-heading"
-                                    level="h2"
-                                    semiBold
-                                >
-                                    Zapisi
-                                </Typography>
-                                <Typography level="body1">
-                                    Upravljaj kategorijama i tipovima zapisa u
-                                    direktoriju.
-                                </Typography>
-                            </Stack>
-                            <Row spacing={4}>
-                                <Link
+                <SettingsSection
+                    section={settingsSections.directory}
+                    description="Upravljaj kategorijama i tipovima zapisa u direktoriju."
+                >
+                    <SettingsCard
+                        title="Kategorije zapisa"
+                        aside={
+                            <>
+                                <Button
                                     href={KnownPages.DirectoryEntityTypeCreate}
+                                    size="sm"
+                                    startDecorator={<Add className="size-4" />}
                                 >
-                                    <Button variant="solid">
-                                        <Add className="size-4" />
-                                        Novi tip zapisa
-                                    </Button>
-                                </Link>
-                                <Link href={KnownPages.DirectoryCategoryCreate}>
-                                    <Button variant="outlined">
-                                        <Add className="size-4" />
-                                        Nova kategorija
-                                    </Button>
-                                </Link>
-                            </Row>
-                            {categories.length > 0 && (
-                                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-                                    {categories.map((category) => (
-                                        <Card key={category.id}>
-                                            <CardHeader>
-                                                <Row
-                                                    justifyContent="space-between"
-                                                    alignItems="center"
-                                                >
-                                                    <CardTitle>
-                                                        <Row
-                                                            spacing={2}
-                                                            alignItems="center"
-                                                        >
-                                                            <EntityTypeIcon
-                                                                icon={
-                                                                    category.icon ??
-                                                                    (category.label ===
-                                                                    'Ostali'
-                                                                        ? 'MoreHorizontal'
-                                                                        : undefined)
-                                                                }
-                                                                className="size-4"
-                                                            />
-                                                            <span>
-                                                                {category.label}
-                                                            </span>
-                                                        </Row>
-                                                    </CardTitle>
-                                                    <Link
-                                                        href={KnownPages.DirectoryCategoryEdit(
-                                                            category.id,
-                                                        )}
-                                                    >
-                                                        <IconButton
-                                                            title="Uredi kategoriju"
-                                                            variant="plain"
-                                                        >
-                                                            <Edit className="size-4" />
-                                                        </IconButton>
-                                                    </Link>
-                                                </Row>
-                                            </CardHeader>
-                                            <CardContent>
-                                                <Typography
-                                                    level="body2"
-                                                    secondary
-                                                >
-                                                    {category.name}
-                                                </Typography>
-                                            </CardContent>
-                                        </Card>
-                                    ))}
-                                </div>
+                                    Novi tip zapisa
+                                </Button>
+                                <Button
+                                    href={KnownPages.DirectoryCategoryCreate}
+                                    variant="outlined"
+                                    size="sm"
+                                    startDecorator={<Add className="size-4" />}
+                                >
+                                    Nova kategorija
+                                </Button>
+                            </>
+                        }
+                    >
+                        <SettingsCardBody>
+                            <DirectoryCategoriesList categories={categories} />
+                        </SettingsCardBody>
+                    </SettingsCard>
+                </SettingsSection>
+
+                <SettingsSection
+                    section={settingsSections.dashboard}
+                    description="Prilagodi početnu kontrolnu ploču backofficea."
+                >
+                    <SettingsCard
+                        title="Brze poveznice"
+                        description="Odaberi koje će se brze poveznice prikazivati na vrhu početne kontrolne ploče."
+                    >
+                        <DashboardQuickActionsSettingForm
+                            options={dashboardQuickActionOptions}
+                            selectedActionIds={selectedDashboardQuickActionIds}
+                        />
+                    </SettingsCard>
+                </SettingsSection>
+
+                <SettingsSection
+                    section={settingsSections.integrations}
+                    description="Poveži vanjske servise koji se koriste u operativnim procesima."
+                >
+                    <SettingsCard
+                        title="Google kalendar"
+                        description="Zahtjevi za dostavu dodaju se u Google kalendar kada nastanu, a uklanjaju kada se otkažu."
+                        aside={
+                            <SettingsStatusChip
+                                connected={Boolean(googleCalendarConfig)}
+                                label={
+                                    googleCalendarConfig
+                                        ? 'Povezano'
+                                        : 'Nije povezano'
+                                }
+                            />
+                        }
+                    >
+                        <GoogleCalendarSettingForm
+                            initialClientEmail={
+                                googleCalendarConfig?.clientEmail
+                            }
+                            initialCalendarId={googleCalendarConfig?.calendarId}
+                            hasPrivateKey={Boolean(
+                                googleCalendarConfig?.privateKey,
                             )}
-                        </Stack>
-                    </section>
-
-                    <section
-                        id="dashboard-settings"
-                        className="scroll-mt-28"
-                        aria-labelledby="dashboard-settings-heading"
+                        />
+                    </SettingsCard>
+                    <SettingsCard
+                        title="Društvene platforme"
+                        description="Direktno slanje koristi provider konfiguraciju iz deployment environment varijabli. Svaka platforma ima vlastitu instalaciju i zasebne konfiguracije za više računa."
+                        aside={
+                            <SettingsStatusChip
+                                connected={activeSocialAccounts > 0}
+                                label={
+                                    activeSocialAccounts
+                                        ? `${activeSocialAccounts} aktivno`
+                                        : 'Nije povezano'
+                                }
+                            />
+                        }
                     >
-                        <Stack spacing={6}>
-                            <Stack spacing={2}>
-                                <Typography
-                                    id="dashboard-settings-heading"
-                                    level="h2"
-                                    semiBold
-                                >
-                                    Kontrolna ploča
-                                </Typography>
-                                <Typography level="body1">
-                                    Odaberi koje će se brze poveznice
-                                    prikazivati na vrhu početne kontrolne ploče.
-                                </Typography>
-                            </Stack>
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Brze poveznice</CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-3">
-                                    <DashboardQuickActionsSettingForm
-                                        options={dashboardQuickActionOptions}
-                                        selectedActionIds={
-                                            selectedDashboardQuickActionIds
-                                        }
-                                    />
-                                </CardContent>
-                            </Card>
-                        </Stack>
-                    </section>
+                        <SettingsCardBody>
+                            <SocialIntegrationsOverview
+                                accounts={socialAccounts}
+                            />
+                        </SettingsCardBody>
+                    </SettingsCard>
+                </SettingsSection>
 
-                    <section
-                        id="integration-settings"
-                        className="scroll-mt-28"
-                        aria-labelledby="integration-settings-heading"
+                <SettingsSection
+                    section={settingsSections.notifications}
+                    description="Upravljaj Slack kanalima koji dobivaju obavijesti o ključnim aktivnostima na platformi."
+                >
+                    <SettingsCard
+                        title="Slack kanali"
+                        description="Svaka vrsta obavijesti šalje se u svoj Slack kanal."
                     >
-                        <Stack spacing={6}>
-                            <Stack spacing={2}>
-                                <Typography
-                                    id="integration-settings-heading"
-                                    level="h2"
-                                    semiBold
-                                >
-                                    Integracije
-                                </Typography>
-                                <Typography level="body1">
-                                    Poveži vanjske servise koji se koriste u
-                                    operativnim procesima.
-                                </Typography>
-                            </Stack>
-                            <Card>
-                                <CardHeader>
-                                    <Row
-                                        justifyContent="space-between"
-                                        alignItems="center"
-                                    >
-                                        <CardTitle>Google kalendar</CardTitle>
-                                        <div
-                                            className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm ${
-                                                googleCalendarConfig
-                                                    ? 'bg-green-100 text-green-800'
-                                                    : 'bg-amber-100 text-amber-800'
-                                            }`}
-                                        >
-                                            {googleCalendarConfig ? (
-                                                <Check className="size-4" />
-                                            ) : (
-                                                <Warning className="size-4" />
-                                            )}
-                                            <span>
-                                                {googleCalendarConfig
-                                                    ? 'Povezano'
-                                                    : 'Nije povezano'}
-                                            </span>
-                                        </div>
-                                    </Row>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <p className="text-sm text-muted-foreground">
-                                        Zahtjevi za dostavu dodaju se u Google
-                                        kalendar kada nastanu, a uklanjaju kada
-                                        se otkažu.
-                                    </p>
-                                    <GoogleCalendarSettingForm
-                                        initialClientEmail={
-                                            googleCalendarConfig?.clientEmail
-                                        }
-                                        initialCalendarId={
-                                            googleCalendarConfig?.calendarId
-                                        }
-                                        hasPrivateKey={Boolean(
-                                            googleCalendarConfig?.privateKey,
-                                        )}
-                                    />
-                                </CardContent>
-                            </Card>
-                            <Card>
-                                <CardHeader>
-                                    <Row
-                                        justifyContent="space-between"
-                                        alignItems="center"
-                                    >
-                                        <CardTitle>
-                                            Društvene platforme
-                                        </CardTitle>
-                                        <div
-                                            className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm ${
-                                                activeSocialAccounts
-                                                    ? 'bg-green-100 text-green-800'
-                                                    : 'bg-amber-100 text-amber-800'
-                                            }`}
-                                        >
-                                            {activeSocialAccounts ? (
-                                                <Check className="size-4" />
-                                            ) : (
-                                                <Warning className="size-4" />
-                                            )}
-                                            <span>
-                                                {activeSocialAccounts
-                                                    ? `${activeSocialAccounts} aktivno`
-                                                    : 'Nije povezano'}
-                                            </span>
-                                        </div>
-                                    </Row>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <p className="text-sm text-muted-foreground">
-                                        Direktno slanje koristi provider
-                                        konfiguraciju iz deployment environment
-                                        varijabli. Svaka platforma ima vlastitu
-                                        instalaciju i zasebne konfiguracije za
-                                        više računa.
-                                    </p>
-                                    <SocialIntegrationsOverview
-                                        accounts={socialAccounts}
-                                    />
-                                </CardContent>
-                            </Card>
-                        </Stack>
-                    </section>
+                        <div className="mt-4 divide-y border-t">
+                            <SlackChannelSettingForm
+                                settingKey="slack.delivery.channel"
+                                initialChannelId={getSlackChannelId(delivery)}
+                                title="Dostava"
+                                description="Obavijesti se šalju kada nastanu, promijene se ili se otkažu zahtjevi za dostavu."
+                                label="Slack kanal za dostavu"
+                            />
+                            <SlackChannelSettingForm
+                                settingKey="slack.new_users.channel"
+                                initialChannelId={getSlackChannelId(newUsers)}
+                                title="Novi korisnici"
+                                description="Svaka nova registracija će poslati kratku poruku o korisniku."
+                                label="Slack kanal za nove korisnike"
+                            />
+                            <SlackChannelSettingForm
+                                settingKey="slack.shopping.channel"
+                                initialChannelId={getSlackChannelId(shopping)}
+                                title="Kupnja"
+                                description="Nakon uspješne naplate, rezime kupnje se šalje u ovaj kanal."
+                                label="Slack kanal za kupnju"
+                            />
+                        </div>
+                    </SettingsCard>
+                </SettingsSection>
 
-                    <section
-                        id="notification-settings"
-                        className="scroll-mt-28"
-                        aria-labelledby="notification-settings-heading"
-                    >
-                        <Stack spacing={6}>
-                            <Stack spacing={2}>
-                                <Typography
-                                    id="notification-settings-heading"
-                                    level="h2"
-                                    semiBold
-                                >
-                                    Obavijesti
-                                </Typography>
-                                <Typography level="body1">
-                                    Upravljaj Slack kanalima koji dobivaju
-                                    obavijesti o ključnim aktivnostima na
-                                    platformi. Ostavi polje prazno kako bi
-                                    privremeno onemogućio pojedine
-                                    automatizirane poruke.
-                                </Typography>
-                            </Stack>
-                            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle>Dostava</CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="space-y-2">
-                                        <SlackChannelSettingForm
-                                            settingKey="slack.delivery.channel"
-                                            initialChannelId={getSlackChannelId(
-                                                delivery,
-                                            )}
-                                            label="Slack kanal za dostavu"
-                                            helperText="Obavijesti o novim i ažuriranim zahtjevima za dostavu."
-                                        />
-                                        <p className="text-sm text-muted-foreground">
-                                            Obavijesti se šalju kada nastanu,
-                                            promijene se ili se otkažu zahtjevi
-                                            za dostavu.
-                                        </p>
-                                    </CardContent>
-                                </Card>
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle>Novi korisnici</CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="space-y-2">
-                                        <SlackChannelSettingForm
-                                            settingKey="slack.new_users.channel"
-                                            initialChannelId={getSlackChannelId(
-                                                newUsers,
-                                            )}
-                                            label="Slack kanal za nove korisnike"
-                                            helperText="Obavijesti kada se registrira novi korisnik."
-                                        />
-                                        <p className="text-sm text-muted-foreground">
-                                            Svaka nova registracija će poslati
-                                            kratku poruku o korisniku.
-                                        </p>
-                                    </CardContent>
-                                </Card>
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle>Kupnja</CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="space-y-2">
-                                        <SlackChannelSettingForm
-                                            settingKey="slack.shopping.channel"
-                                            initialChannelId={getSlackChannelId(
-                                                shopping,
-                                            )}
-                                            label="Slack kanal za kupnju"
-                                            helperText="Obavijesti o novim Stripe kupnjama."
-                                        />
-                                        <p className="text-sm text-muted-foreground">
-                                            Nakon uspješne naplate, rezime
-                                            kupnje se šalje u ovaj kanal.
-                                        </p>
-                                    </CardContent>
-                                </Card>
-                            </div>
-                        </Stack>
-                    </section>
+                <SettingsSection
+                    section={settingsSections.personalNotifications}
+                    description="Uključi web push obavijesti za svoj račun kako bi te sustav obavijestio kad ti je dodijeljena nova radnja."
+                >
+                    <UserNotificationSettings />
+                </SettingsSection>
 
-                    <section
-                        id="personal-notification-settings"
-                        className="scroll-mt-28"
-                        aria-labelledby="personal-notification-settings-heading"
+                <SettingsSection
+                    section={settingsSections.feedback}
+                    description="Ostavi komentare izravno na stranicama backofficea."
+                >
+                    <SettingsCard
+                        title="Alatna traka za povratne informacije"
+                        description="Vrijedi za ovu karticu preglednika. Stranica se ponovno učitava kad uključiš ili isključiš alatnu traku."
                     >
-                        <Stack spacing={6}>
-                            <Stack spacing={2}>
-                                <Typography
-                                    id="personal-notification-settings-heading"
-                                    level="h2"
-                                    semiBold
-                                >
-                                    Osobne obavijesti
-                                </Typography>
-                                <Typography level="body1">
-                                    Uključi web push obavijesti za svoj račun
-                                    kako bi te sustav obavijestio kad ti je
-                                    dodijeljena nova radnja.
-                                </Typography>
-                            </Stack>
-                            <UserNotificationSettings />
-                        </Stack>
-                    </section>
-
-                    <section
-                        id="feedback-settings"
-                        className="scroll-mt-28"
-                        aria-labelledby="feedback-settings-heading"
-                    >
-                        <Stack spacing={6}>
-                            <Typography
-                                id="feedback-settings-heading"
-                                level="h2"
-                                semiBold
-                            >
-                                Povratne informacije
-                            </Typography>
-                            <Card>
-                                <CardContent noHeader>
-                                    <UierReviewToggle />
-                                </CardContent>
-                            </Card>
-                        </Stack>
-                    </section>
-                </div>
-            </div>
-        </Stack>
+                        <SettingsCardBody>
+                            <UierReviewToggle />
+                        </SettingsCardBody>
+                    </SettingsCard>
+                </SettingsSection>
+            </SettingsLayout>
+        </>
     );
 }

@@ -98,6 +98,25 @@ compatibility, and dependency-audit decisions.
 - The admin nav profile shows the user's display name (falling back to the
   user name) with a megaphone `UierReviewButton` beside it that toggles the
   UIer review toolbar, like the settings `UierReviewToggle`.
+- The admin settings page (`/admin/settings`) is one page of sections whose
+  ids in `settingsSections.ts` are link targets for other pages (for example
+  `#integration-settings`), so keep them stable. `SettingsLayout` shows
+  `SettingsSectionNav` beside the content when there is room and as a sticky
+  scrolling row above it otherwise, and marks the section being read with
+  `aria-current="location"`. The admin navigation can be open or collapsed, so
+  the page follows the available width: inside setting cards use the
+  `@…/settings:` container variants, not screen breakpoints.
+  Everything in the content column has a scroll margin, so a section that is
+  jumped to and a control that receives keyboard focus both stop below the
+  sticky row instead of under it.
+- Each admin setting is a `SettingsCard` (title, description, optional status
+  chip or actions) with a `SettingsCardBody`; forms end with a
+  `SettingsCardFooter` holding `SettingsFormMessage` and the save button.
+  "Backoffice" sections are shared by all admins; "Osobno" sections apply to
+  the signed-in admin or the current browser.
+  Their stories are under `apps/storybook/stories/apps/app/Settings*.stories.tsx`;
+  Storybook reads the settings styles through the `@source` entry in
+  `apps/storybook/styles.css`.
 
 - Admin mobile navigation uses the shared modal for focus entry, focus containment,
   Escape handling and focus restoration to the opener. Closed navigation is unmounted.
