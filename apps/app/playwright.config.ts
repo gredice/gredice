@@ -33,6 +33,10 @@ export const config: PlaywrightTestConfig = {
         trace: 'on-first-retry',
         ctPort: getComponentTestPort(app),
         ctViteConfig: {
+            define: {
+                'process.env.NEXT_PUBLIC_VERCEL_BLOB_API_URL':
+                    'globalThis.__testBlobApiUrl',
+            },
             // Playwright CT 1.62 bundles Vite 8, whose CJS interop turns default imports
             // of Next's CJS entry points (e.g. next/image) into module objects.
             legacy: { inconsistentCjsInterop: true },
@@ -67,9 +71,12 @@ export const config: PlaywrightTestConfig = {
                         }
                         if (
                             source.endsWith('/operationActions') &&
-                            importer?.endsWith(
+                            (importer?.endsWith(
                                 '/OperationCompletionEvidenceEditModal.tsx',
-                            )
+                            ) ||
+                                importer?.endsWith(
+                                    '/CompleteOperationModal.tsx',
+                                ))
                         ) {
                             return fileURLToPath(
                                 new URL(

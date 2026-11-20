@@ -11,3 +11,10 @@ export async function updateOperationCompletionEvidenceAction(
     }
     return { success: true };
 }
+
+export async function completeOperationWithImageUrls(...args: unknown[]) {
+    document.documentElement.dataset.completedPhotoOperation =
+        JSON.stringify(args);
+}
+
+export const completeOperation = completeOperationWithImageUrls;

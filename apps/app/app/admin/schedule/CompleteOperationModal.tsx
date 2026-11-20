@@ -215,6 +215,8 @@ export function CompleteOperationModal({
                         )}
                         <ImageUploadManager
                             ref={imageUploaderRef}
+                            editPhotos
+                            layout="grid"
                             disabled={isSubmitting}
                             handleUploadUrl="/api/operations/images/upload"
                             clientPayload={JSON.stringify({ operationId })}

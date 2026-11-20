@@ -3,11 +3,14 @@
 import { Button } from '@gredice/ui/Button';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Camera, Clear, Upload } from '@gredice/ui/icons';
+import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
+import type { PhotoEdit } from '@retusha/inline-editor';
 import { upload } from '@vercel/blob/client';
+import dynamic from 'next/dynamic';
 import {
     type ChangeEvent,
     type ClipboardEvent,
@@ -19,13 +22,20 @@ import {
     useState,
 } from 'react';
 import { ImageUploadPreview } from './ImageUploadPreview';
+import type { PendingPhoto } from './PendingPhotoEditor';
 import { runTasksWithConcurrency } from './runTasksWithConcurrency';
+
+const PendingPhotoEditor = dynamic(
+    () =>
+        import('./PendingPhotoEditor').then(
+            (module) => module.PendingPhotoEditor,
+        ),
+    { ssr: false, loading: () => <p role="status">Otvaranje uređivača…</p> },
+);
 
 type UploadItemStatus = 'pending' | 'uploading' | 'uploaded' | 'failed';
 
-type UploadItem = {
-    id: string;
-    file: File;
+type UploadItem = PendingPhoto & {
     progress: number;
     status: UploadItemStatus;
     uploadedUrl?: string;
@@ -67,6 +77,7 @@ type ImageUploadManagerProps = {
         | string
         | ((input: ClientPayloadInput) => string | undefined);
     disabled?: boolean;
+    editPhotos?: boolean;
     emptyLabel?: string;
     handleUploadUrl: string;
     itemLabel?: (item: ImageUploadSelectionItem) => string | undefined;
@@ -183,6 +194,7 @@ export const ImageUploadManager = forwardRef<
         className,
         clientPayload,
         disabled,
+        editPhotos = false,
         emptyLabel = 'Odaberite slike ili ih zalijepite iz međuspremnika.',
         handleUploadUrl,
         itemLabel,
@@ -201,6 +213,39 @@ export const ImageUploadManager = forwardRef<
 ) {
     const [uploadItems, setUploadItems] = useState<UploadItem[]>([]);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const pending = uploadItems.filter(
+        (item) => item.status === 'pending' || item.status === 'failed',
+    );
+    const editingPhoto = editingId
+        ? pending.find((item) => item.id === editingId)
+        : undefined;
+
+    function applyPhotoEdits(edits: Map<string, PhotoEdit>) {
+        setUploadItems((current) =>
+            current.map((item) => {
+                const edit = edits.get(item.id);
+                if (
+                    !edit ||
+                    (item.status !== 'pending' && item.status !== 'failed')
+                )
+                    return item;
+                return {
+                    ...item,
+                    ...edit,
+                    original: item.original ?? item.file,
+                    progress: 0,
+                    status: 'pending',
+                    attempts: 0,
+                    errorMessage: undefined,
+                    uploadedUrl: undefined,
+                };
+            }),
+        );
+        setErrorMessage(null);
+        setEditingId(null);
+    }
+
     const fileInputRef = useRef<HTMLInputElement>(null);
     const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -209,7 +254,7 @@ export const ImageUploadManager = forwardRef<
     );
     const selectedItems = uploadItems.map((uploadItem) => ({
         id: uploadItem.id,
-        file: uploadItem.file,
+        file: uploadItem.original ?? uploadItem.file,
     }));
     const selectionKey = selectedItems.map((item) => item.id).join(':');
     const selectionSnapshotRef = useRef({ selectionKey, selectedItems });
@@ -271,6 +316,7 @@ export const ImageUploadManager = forwardRef<
     };
 
     const handlePaste = (event: ClipboardEvent<HTMLDivElement>) => {
+        if (disabled || editingId) return;
         const pastedImageFiles = getClipboardImageFiles(event.clipboardData);
         if (pastedImageFiles.length === 0) return;
 
@@ -386,6 +432,7 @@ export const ImageUploadManager = forwardRef<
 
     const reset = useCallback(() => {
         setUploadItems([]);
+        setEditingId(null);
         setErrorMessage(null);
         resetInput(fileInputRef.current);
         resetInput(cameraInputRef.current);
@@ -401,6 +448,7 @@ export const ImageUploadManager = forwardRef<
             hasImages: () => uploadItems.length > 0,
             reset,
             uploadPendingImages: async () => {
+                if (editingId) return null;
                 setErrorMessage(null);
                 const imageUrls = await runTasksWithConcurrency(
                     uploadItems,
@@ -429,7 +477,7 @@ export const ImageUploadManager = forwardRef<
                 );
             },
         }),
-        [reset, uploadConcurrency, uploadImage, uploadItems],
+        [editingId, reset, uploadConcurrency, uploadImage, uploadItems],
     );
 
     return (
@@ -508,7 +556,7 @@ export const ImageUploadManager = forwardRef<
                                 : clampUploadProgress(uploadItem.progress);
                         const label = itemLabel?.({
                             id: uploadItem.id,
-                            file: uploadItem.file,
+                            file: uploadItem.original ?? uploadItem.file,
                         });
 
                         return (
@@ -599,6 +647,23 @@ export const ImageUploadManager = forwardRef<
                                             style={{ width: `${progress}%` }}
                                         />
                                     </div>
+                                    {editPhotos &&
+                                        (uploadItem.status === 'pending' ||
+                                            uploadItem.status === 'failed') && (
+                                            <Button
+                                                type="button"
+                                                variant="outlined"
+                                                size="sm"
+                                                className="mt-2"
+                                                aria-label={`Uredi sliku ${uploadItem.file.name}`}
+                                                disabled={disabled}
+                                                onClick={() =>
+                                                    setEditingId(uploadItem.id)
+                                                }
+                                            >
+                                                Uredi sliku
+                                            </Button>
+                                        )}
                                     {uploadItem.status === 'failed' &&
                                         !disabled && (
                                             <div className="mt-2">
@@ -621,6 +686,24 @@ export const ImageUploadManager = forwardRef<
                         );
                     })}
                 </div>
+            )}
+            {editingPhoto && (
+                <Modal
+                    open
+                    title={`Uredi sliku ${editingPhoto.file.name}`}
+                    className="max-w-2xl"
+                    onOpenChange={(open) => {
+                        if (!open) setEditingId(null);
+                    }}
+                >
+                    <PendingPhotoEditor
+                        key={editingPhoto.id}
+                        photo={editingPhoto}
+                        pending={pending}
+                        onApply={applyPhotoEdits}
+                        onCancel={() => setEditingId(null)}
+                    />
+                </Modal>
             )}
             {errorMessage && (
                 <Typography level="body2" className="text-red-600">

@@ -454,6 +454,9 @@ importers:
       '@posthog/next':
         specifier: 0.11.0
         version: 0.11.0(@opentelemetry/api@1.10.0)(@types/react@19.3.0)(@vercel/functions@3.11.3(@aws-sdk/credential-provider-web-identity@3.972.90)(ws@8.21.3))(next@16.4.6(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.108.2))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      '@retusha/inline-editor':
+        specifier: file:vendor/retusha-inline-editor-0.1.0.tgz
+        version: file:apps/app/vendor/retusha-inline-editor-0.1.0.tgz(react@19.3.1)
       '@vercel/blob':
         specifier: 2.9.0
         version: 2.9.0
@@ -4682,6 +4685,12 @@ packages:
         optional: true
       react-redux:
         optional: true
+
+  '@retusha/inline-editor@file:apps/app/vendor/retusha-inline-editor-0.1.0.tgz':
+    resolution: {integrity: sha512-fusEehqMgpqyPzyWmGXnqHDNOcbDsKgE0j8XFwgzE8mB5Iki3+i0/YX5e+3PBZ2mDSi5pcvtmSPlD355ATOKBw==, tarball: file:apps/app/vendor/retusha-inline-editor-0.1.0.tgz}
+    version: 0.1.0
+    peerDependencies:
+      react: 19.3.1
 
   '@rolldown/binding-android-arm-eabi@1.2.19':
     resolution: {integrity: sha512-e+Ebe0WT+9tbXmNKPIiC8YrWAHYwug3m6i4p3rZGGulfZri1jtI4HslT+OZnFf/OIHowWF71DTlHwXBP2SiA7A==}
@@ -13456,6 +13465,10 @@ snapshots:
     optionalDependencies:
       react: 19.3.1
       react-redux: 9.3.0(@types/react@19.3.0)(react@19.3.1)(redux@5.0.1)
+
+  '@retusha/inline-editor@file:apps/app/vendor/retusha-inline-editor-0.1.0.tgz(react@19.3.1)':
+    dependencies:
+      react: 19.3.1
 
   '@rolldown/binding-android-arm-eabi@1.2.19':
     optional: true

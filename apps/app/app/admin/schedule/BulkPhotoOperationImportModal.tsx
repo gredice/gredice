@@ -289,6 +289,7 @@ export function BulkPhotoOperationImportModal({
 
                 <ImageUploadManager
                     ref={imageUploaderRef}
+                    editPhotos
                     disabled={isSubmitting}
                     handleUploadUrl="/api/operations/images/upload"
                     clientPayload={clientPayload}

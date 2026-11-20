@@ -106,6 +106,7 @@ web_modules/
 
 # Output of 'npm pack'
 *.tgz
+!apps/app/vendor/retusha-inline-editor-*.tgz
 
 # Yarn Integrity file
 .yarn-integrity
