@@ -113,3 +113,7 @@ compatibility, and dependency-audit decisions.
 - The admin schedule "Dostava" section groups requests with the delivery page's
   `groupDeliveryRequests` (account + slot), one row per destination with mode,
   slot, request count and status chips.
+- Admin schedule assign dialogs share `AssignUsersPanel` (avatar rows,
+  multi-select, search from 7 users). Bulk assign blocks saving while a selected
+  user is no longer eligible for every task, and blocks empty saves when the
+  group has confirmed tasks (`assignmentRequired`), which must stay assigned.
