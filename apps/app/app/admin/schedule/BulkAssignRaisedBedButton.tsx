@@ -4,26 +4,17 @@ import type {
     OperationAssignableFarmUser,
     RaisedBedFieldAssignableFarmUser,
 } from '@gredice/storage';
-import { Button } from '@gredice/ui/Button';
 import { IconButton } from '@gredice/ui/IconButton';
 import { User } from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
-import { Row } from '@gredice/ui/Row';
-import { Stack } from '@gredice/ui/Stack';
-import { Typography } from '@gredice/ui/Typography';
 import { useMemo, useState } from 'react';
-import {
-    UserPickerField,
-    type UserPickerOption,
-} from '../../../components/shared/fields/UserPickerField';
 import { assignOperationUserAction } from '../../(actions)/operationActions';
 import { assignRaisedBedFieldUserAction } from '../../(actions)/raisedBedFieldsActions';
-
-const unassignedValue = '__unassigned__';
+import { AssignUsersPanel } from './AssignUsersPanel';
 
 type AssignableUser = Pick<
     RaisedBedFieldAssignableFarmUser | OperationAssignableFarmUser,
-    'id' | 'userName' | 'displayName'
+    'id' | 'userName' | 'displayName' | 'avatarUrl' | 'achievementCount'
 >;
 
 type FieldAssignmentTarget = {
@@ -49,12 +40,6 @@ interface BulkAssignRaisedBedButtonProps {
     onSubmit?: (assignedUserIds: string[]) => unknown | Promise<unknown>;
 }
 
-function getUserLabel(user: AssignableUser) {
-    return user.displayName
-        ? `${user.displayName} (${user.userName})`
-        : user.userName;
-}
-
 export function BulkAssignRaisedBedButton({
     physicalId,
     targetLabel,
@@ -63,7 +48,7 @@ export function BulkAssignRaisedBedButton({
     onSubmit,
 }: BulkAssignRaisedBedButtonProps) {
     const [open, setOpen] = useState(false);
-    const [selectedUserId, setSelectedUserId] = useState(unassignedValue);
+    const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -103,20 +88,10 @@ export function BulkAssignRaisedBedButton({
             .filter((user) => user !== undefined);
     }, [fields, operations]);
 
-    const pickerUsers = useMemo<UserPickerOption[]>(
-        () =>
-            selectableUsers.map((user) => ({
-                id: user.id,
-                label: getUserLabel(user),
-                searchText: `${user.displayName ?? ''} ${user.userName}`,
-            })),
-        [selectableUsers],
-    );
-
     const handleOpenChange = (nextOpen: boolean) => {
         setOpen(nextOpen);
         if (!nextOpen) {
-            setSelectedUserId(unassignedValue);
+            setSelectedUserIds([]);
             setErrorMessage(null);
         }
     };
@@ -127,8 +102,9 @@ export function BulkAssignRaisedBedButton({
         }
 
         setErrorMessage(null);
-        const assignedUserIds =
-            selectedUserId === unassignedValue ? [] : [selectedUserId];
+        const assignedUserIds = selectedUserIds.filter((userId) =>
+            selectableUsers.some((user) => user.id === userId),
+        );
 
         if (onSubmit) {
             await onSubmit(assignedUserIds);
@@ -185,50 +161,19 @@ export function BulkAssignRaisedBedButton({
                 </IconButton>
             }
         >
-            <Stack spacing={4}>
-                <Typography level="h5">Skupna dodjela korisnika</Typography>
-                <Typography>
-                    {`Odaberi korisnika za sve zadatke (${totalItems}) ${targetText}.`}
-                </Typography>
-
-                <UserPickerField
-                    users={pickerUsers}
-                    value={selectedUserId}
-                    onValueChange={setSelectedUserId}
-                    emptyOption={{
-                        value: unassignedValue,
-                        label: 'Bez dodjele',
-                    }}
-                />
-
-                {errorMessage && (
-                    <Typography level="body2" className="text-red-600">
-                        {errorMessage}
-                    </Typography>
-                )}
-
-                <Row spacing={2} justifyContent="end">
-                    <Button
-                        variant="outlined"
-                        onClick={() => handleOpenChange(false)}
-                        disabled={isSubmitting}
-                    >
-                        Odustani
-                    </Button>
-                    <Button
-                        variant="solid"
-                        onClick={handleSubmit}
-                        loading={isSubmitting}
-                        disabled={
-                            isSubmitting ||
-                            (selectedUserId !== unassignedValue &&
-                                selectableUsers.length === 0)
-                        }
-                    >
-                        Spremi dodjelu
-                    </Button>
-                </Row>
-            </Stack>
+            <AssignUsersPanel
+                title="Skupna dodjela korisnika"
+                description={`Odaberi korisnike za sve zadatke (${totalItems}) ${targetText}. Bez odabira se uklanjaju sve dodjele.`}
+                users={selectableUsers}
+                selectedUserIds={selectedUserIds}
+                onSelectedUserIdsChange={setSelectedUserIds}
+                errorMessage={errorMessage}
+                isSaving={isSubmitting}
+                saveDisabled={totalItems === 0}
+                emptyMessage="Nema korisnika dostupnih za sve odabrane zadatke."
+                onCancel={() => handleOpenChange(false)}
+                onSave={handleSubmit}
+            />
         </Modal>
     );
 }
