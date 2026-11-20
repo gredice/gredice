@@ -41,9 +41,7 @@ test('blocks saving when a selected user stops being eligible', async ({
         .getByRole('button', { name: 'Dodijeli korisnika svim zadacima' })
         .click();
     const dialog = page.getByRole('dialog');
-    await dialog.getByRole('checkbox', { name: /Vesna/ }).check({
-        force: true,
-    });
+    await dialog.locator('label', { hasText: 'Vesna' }).click();
     const save = dialog.getByRole('button', { name: 'Spremi dodjelu' });
     await expect(save).toBeEnabled();
 
@@ -66,16 +64,12 @@ test('blocks saving when a selected user stops being eligible', async ({
     ).toBeVisible();
     await expect(save).toBeDisabled();
 
-    // Unchecking removes the unavailable row, so click rather than uncheck().
-    await dialog.getByRole('checkbox', { name: /Vesna/ }).click({
-        force: true,
-    });
+    // Unchecking removes the unavailable row.
+    await dialog.locator('label', { hasText: 'Vesna' }).click();
     await expect(dialog.getByRole('checkbox', { name: /Vesna/ })).toHaveCount(
         0,
     );
-    await dialog.getByRole('checkbox', { name: /Aleks/ }).check({
-        force: true,
-    });
+    await dialog.locator('label', { hasText: 'Aleks' }).click();
     await expect(save).toBeEnabled();
     await save.click();
     await expect(component.getByTestId('submitted')).toHaveText('[aleks]');
@@ -104,9 +98,7 @@ test('requires a user when the group includes confirmed tasks', async ({
     const save = dialog.getByRole('button', { name: 'Spremi dodjelu' });
     await expect(save).toBeDisabled();
 
-    await dialog.getByRole('checkbox', { name: /Aleks/ }).check({
-        force: true,
-    });
+    await dialog.locator('label', { hasText: 'Aleks' }).click();
     await expect(save).toBeEnabled();
     await save.click();
     await expect(component.getByTestId('submitted')).toHaveText('[aleks]');

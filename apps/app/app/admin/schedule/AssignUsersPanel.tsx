@@ -174,6 +174,16 @@ export function AssignUsersPanel({
                                         checked={isSelected}
                                         disabled={isSaving}
                                         onChange={() => toggleUser(user.id)}
+                                        onFocus={(event) =>
+                                            // The browser only scrolls the 1px
+                                            // hidden checkbox into view; reveal
+                                            // the whole row (name included).
+                                            event.currentTarget
+                                                .closest('label')
+                                                ?.scrollIntoView({
+                                                    block: 'nearest',
+                                                })
+                                        }
                                     />
                                     <UserAvatar
                                         avatarUrl={user.avatarUrl}

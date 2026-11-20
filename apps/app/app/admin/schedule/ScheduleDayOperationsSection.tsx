@@ -154,6 +154,7 @@ export async function ScheduleDayOperationsSection({
             expectedEntityId: operation.entityId,
             expectedTaskVersionEventId: operation.taskVersionEventId,
             farmUsers: assignableFarmUsersByOperationId[operation.id] ?? [],
+            assignmentRequired: operation.isAccepted,
         }));
     const dayOperationsToReschedule = scheduledOperations
         .filter(

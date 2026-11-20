@@ -113,11 +113,12 @@ test('shows an empty state when the farm has no users', async ({ mount }) => {
     await expect(component.getByRole('checkbox')).toHaveCount(0);
 });
 
-test('scrolls keyboard-focused rows into view inside the list', async ({
+test('scrolls keyboard-focused rows fully into view in both directions', async ({
     mount,
     page,
 }) => {
-    await page.setViewportSize({ width: 600, height: 500 });
+    // Phone-sized viewport, as in the mobile drawer.
+    await page.setViewportSize({ width: 390, height: 520 });
     const manyUsers = Array.from({ length: 6 }, (_, index) => ({
         id: `user-${index}`,
         userName: `korisnik${index}@example.com`,
@@ -129,25 +130,35 @@ test('scrolls keyboard-focused rows into view inside the list', async ({
     );
     const list = component.locator('fieldset');
 
+    async function expectRowFullyVisible(index: number) {
+        await expect(
+            component.getByRole('checkbox', {
+                name: new RegExp(`Korisnik ${index}`),
+            }),
+        ).toBeFocused();
+        const listBox = await list.boundingBox();
+        const rowBox = await component
+            .locator('label', { hasText: `Korisnik ${index}` })
+            .boundingBox();
+        expect(listBox).not.toBeNull();
+        expect(rowBox).not.toBeNull();
+        if (!listBox || !rowBox) {
+            return;
+        }
+        expect(rowBox.y).toBeGreaterThanOrEqual(listBox.y - 1);
+        expect(rowBox.y + rowBox.height).toBeLessThanOrEqual(
+            listBox.y + listBox.height + 1,
+        );
+    }
+
     await component.getByRole('checkbox', { name: /Korisnik 0/ }).focus();
+    await expectRowFullyVisible(0);
     for (let index = 1; index < manyUsers.length; index++) {
         await page.keyboard.press('Tab');
+        await expectRowFullyVisible(index);
     }
-    await expect(
-        component.getByRole('checkbox', { name: /Korisnik 5/ }),
-    ).toBeFocused();
-
-    const listBox = await list.boundingBox();
-    const rowBox = await component
-        .locator('label', { hasText: 'Korisnik 5' })
-        .boundingBox();
-    expect(listBox).not.toBeNull();
-    expect(rowBox).not.toBeNull();
-    if (!listBox || !rowBox) {
-        return;
+    for (let index = manyUsers.length - 2; index >= 0; index--) {
+        await page.keyboard.press('Shift+Tab');
+        await expectRowFullyVisible(index);
     }
-    expect(rowBox.y).toBeGreaterThanOrEqual(listBox.y - 1);
-    expect(rowBox.y + rowBox.height).toBeLessThanOrEqual(
-        listBox.y + listBox.height + 1,
-    );
 });
