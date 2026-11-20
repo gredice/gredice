@@ -1,13 +1,15 @@
 'use client';
 
 import { clientAuthenticated } from '@gredice/client';
+import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
-import { Close, Megaphone } from '@gredice/ui/icons';
-import { Row } from '@gredice/ui/Row';
-import { Stack } from '@gredice/ui/Stack';
+import { Chip } from '@gredice/ui/Chip';
+import { Close, Device, Megaphone, Warning } from '@gredice/ui/icons';
 import { Typography } from '@gredice/ui/Typography';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { SettingsCard } from './SettingsCard';
+import { SettingsCardBody } from './SettingsCardBody';
+import { SettingsCardFooter } from './SettingsCardFooter';
 import { usePushSubscription } from './usePushSubscription';
 
 const notificationDevicesKey = ['notifications', 'devices'];
@@ -144,184 +146,231 @@ export function UserNotificationSettings() {
         updateDeviceMutation.isPending || revokeDeviceMutation.isPending;
     const testNotificationResult = sendTestMutation.data;
 
-    return (
-        <Stack spacing={4}>
-            <Card>
-                <CardHeader>
-                    <CardTitle>Push obavijesti na ovom uređaju</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <Stack spacing={2}>
-                        <Typography level="body2" secondary>
-                            Primaj push obavijesti u pregledniku kad ti je
-                            dodijeljena nova radnja ili kad se dogodi važna
-                            promjena.
-                        </Typography>
-                        <Typography level="body3" secondary>
-                            Preglednik:{' '}
-                            {notificationsSupported
-                                ? 'podržava obavijesti'
-                                : 'ne podržava obavijesti'}{' '}
-                            · Dozvola:{' '}
-                            {permissionStatusLabel(pushOnboarding.status)} ·
-                            Status:{' '}
-                            {pushStatusLabel(pushStatusQuery.data?.status)}
-                        </Typography>
-                        {pushStatusQuery.isError && (
-                            <Typography level="body3" secondary>
-                                Status obavijesti nije učitan.
-                            </Typography>
-                        )}
-                        {pushOnboarding.status === 'denied' && (
-                            <Typography level="body3" secondary>
-                                Obavijesti su blokirane u pregledniku. Otvori
-                                postavke preglednika i omogući obavijesti za ovu
-                                stranicu.
-                            </Typography>
-                        )}
-                        {pushOnboarding.status === 'unconfigured' && (
-                            <Typography level="body3" secondary>
-                                Web push obavijesti nisu konfigurirane na ovom
-                                okruženju.
-                            </Typography>
-                        )}
-                        {pushOnboarding.canPrompt &&
-                            pushStatusQuery.data?.status !== 'subscribed' && (
-                                <Row justifyContent="end">
-                                    <Button
-                                        size="sm"
-                                        onClick={handleEnablePush}
-                                        startDecorator={
-                                            <Megaphone className="size-4" />
-                                        }
-                                    >
-                                        Uključi obavijesti
-                                    </Button>
-                                </Row>
-                            )}
-                    </Stack>
-                </CardContent>
-            </Card>
+    const canEnablePush =
+        pushOnboarding.canPrompt &&
+        pushStatusQuery.data?.status !== 'subscribed';
+    const pushStatusItems = [
+        {
+            label: 'Preglednik',
+            value: notificationsSupported
+                ? 'podržava obavijesti'
+                : 'ne podržava obavijesti',
+        },
+        {
+            label: 'Dozvola',
+            value: permissionStatusLabel(pushOnboarding.status),
+        },
+        {
+            label: 'Status',
+            value: pushStatusLabel(pushStatusQuery.data?.status),
+        },
+    ];
 
-            <Card>
-                <CardHeader>
-                    <Row
-                        justifyContent="space-between"
-                        alignItems="center"
-                        spacing={2}
-                        className="flex-wrap"
-                    >
-                        <CardTitle>Uređaji za obavijesti</CardTitle>
+    return (
+        <>
+            <SettingsCard
+                title="Push obavijesti na ovom uređaju"
+                description="Primaj push obavijesti u pregledniku kad ti je dodijeljena nova radnja ili kad se dogodi važna promjena."
+            >
+                <SettingsCardBody>
+                    <dl className="grid grid-cols-1 gap-x-6 gap-y-3 @md/settings:grid-cols-3">
+                        {pushStatusItems.map((item) => (
+                            <div key={item.label} className="min-w-0">
+                                <dt className="text-xs text-muted-foreground">
+                                    {item.label}
+                                </dt>
+                                <dd className="text-sm font-medium">
+                                    {item.value}
+                                </dd>
+                            </div>
+                        ))}
+                    </dl>
+                    {pushStatusQuery.isError && (
+                        <Alert
+                            color="danger"
+                            startDecorator={<Warning className="size-4" />}
+                        >
+                            Status obavijesti nije učitan.
+                        </Alert>
+                    )}
+                    {pushOnboarding.status === 'denied' && (
+                        <Alert
+                            color="warning"
+                            role="note"
+                            startDecorator={<Warning className="size-4" />}
+                        >
+                            Obavijesti su blokirane u pregledniku. Otvori
+                            postavke preglednika i omogući obavijesti za ovu
+                            stranicu.
+                        </Alert>
+                    )}
+                    {pushOnboarding.status === 'unconfigured' && (
+                        <Alert
+                            color="warning"
+                            role="note"
+                            startDecorator={<Warning className="size-4" />}
+                        >
+                            Web push obavijesti nisu konfigurirane na ovom
+                            okruženju.
+                        </Alert>
+                    )}
+                </SettingsCardBody>
+                {canEnablePush && (
+                    <SettingsCardFooter>
+                        <p className="text-sm text-muted-foreground">
+                            Preglednik će zatražiti dozvolu za obavijesti.
+                        </p>
                         <Button
-                            size="sm"
-                            disabled={sendTestMutation.isPending}
-                            onClick={() => sendTestMutation.mutate()}
+                            onClick={handleEnablePush}
                             startDecorator={<Megaphone className="size-4" />}
                         >
-                            Pošalji probnu obavijest
+                            Uključi obavijesti
                         </Button>
-                    </Row>
-                </CardHeader>
-                <CardContent>
-                    <Stack spacing={2}>
-                        {sendTestMutation.isError && (
-                            <Typography level="body3" secondary>
-                                Probna obavijest nije poslana.
-                            </Typography>
-                        )}
-                        {sendTestMutation.isSuccess && (
-                            <Typography level="body3" secondary>
-                                Probna obavijest je poslana. Ciljano:{' '}
-                                {testNotificationResult?.targeted ?? 0} ·
-                                Prihvaćeno:{' '}
-                                {testNotificationResult?.accepted ?? 0} ·
-                                Neuspjelo: {testNotificationResult?.failed ?? 0}
-                            </Typography>
-                        )}
-                        {devicesQuery.isPending ? (
-                            <Typography level="body2" secondary>
-                                Uređaji se učitavaju.
-                            </Typography>
-                        ) : devicesQuery.isError ? (
-                            <Typography level="body2" secondary>
-                                Uređaji za obavijesti nisu učitani.
-                            </Typography>
-                        ) : devicesQuery.data?.length ? (
-                            devicesQuery.data.map((device) => (
-                                <Card key={device.id} className="bg-muted/30">
-                                    <CardContent>
-                                        <Stack spacing={1}>
-                                            <Typography semiBold>
+                    </SettingsCardFooter>
+                )}
+            </SettingsCard>
+
+            <SettingsCard
+                title="Uređaji za obavijesti"
+                description="Uređaji i preglednici prijavljeni za push obavijesti tvog računa."
+                aside={
+                    <Button
+                        size="sm"
+                        variant="outlined"
+                        disabled={sendTestMutation.isPending}
+                        onClick={() => sendTestMutation.mutate()}
+                        startDecorator={<Megaphone className="size-4" />}
+                    >
+                        Pošalji probnu obavijest
+                    </Button>
+                }
+            >
+                <SettingsCardBody>
+                    {sendTestMutation.isError && (
+                        <Alert
+                            color="danger"
+                            startDecorator={<Warning className="size-4" />}
+                        >
+                            Probna obavijest nije poslana.
+                        </Alert>
+                    )}
+                    {sendTestMutation.isSuccess && (
+                        <Alert color="success" role="status">
+                            Probna obavijest je poslana. Ciljano:{' '}
+                            {testNotificationResult?.targeted ?? 0} ·
+                            Prihvaćeno: {testNotificationResult?.accepted ?? 0}{' '}
+                            · Neuspjelo: {testNotificationResult?.failed ?? 0}
+                        </Alert>
+                    )}
+                    {(updateDeviceMutation.isError ||
+                        revokeDeviceMutation.isError) && (
+                        <Alert
+                            color="danger"
+                            startDecorator={<Warning className="size-4" />}
+                        >
+                            {revokeDeviceMutation.isError
+                                ? 'Uređaj nije uklonjen.'
+                                : 'Uređaj nije ažuriran.'}{' '}
+                            Pokušaj ponovno.
+                        </Alert>
+                    )}
+                    {devicesQuery.isPending ? (
+                        <Typography level="body2" secondary>
+                            Uređaji se učitavaju.
+                        </Typography>
+                    ) : devicesQuery.isError ? (
+                        <Alert
+                            color="danger"
+                            startDecorator={<Warning className="size-4" />}
+                        >
+                            Uređaji za obavijesti nisu učitani.
+                        </Alert>
+                    ) : devicesQuery.data?.length ? (
+                        <ul className="divide-y rounded-md border">
+                            {devicesQuery.data.map((device) => (
+                                <li
+                                    key={device.id}
+                                    className="flex flex-col gap-3 p-3 @lg/settings:flex-row @lg/settings:items-center"
+                                >
+                                    <Device
+                                        className="hidden size-5 shrink-0 text-muted-foreground @lg/settings:block"
+                                        aria-hidden
+                                    />
+                                    <div className="min-w-0 flex-1 space-y-0.5">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span className="text-sm font-medium">
                                                 {device.deviceLabel ||
                                                     'Nepoznati uređaj'}
-                                            </Typography>
-                                            <Typography level="body3" secondary>
-                                                {device.userAgent ||
-                                                    'Nepoznat preglednik'}
-                                            </Typography>
-                                            <Typography level="body3" secondary>
-                                                Status:{' '}
+                                            </span>
+                                            <Chip
+                                                color={
+                                                    device.enabled
+                                                        ? 'success'
+                                                        : 'neutral'
+                                                }
+                                                variant="soft"
+                                                size="sm"
+                                            >
                                                 {device.enabled
-                                                    ? 'aktivan'
-                                                    : 'isključen'}{' '}
-                                                · Zadnji put viđen:{' '}
-                                                {device.lastSeenAt
-                                                    ? new Date(
-                                                          device.lastSeenAt,
-                                                      ).toLocaleString('hr-HR')
-                                                    : 'nema podataka'}
-                                            </Typography>
-                                            <Row spacing={2}>
-                                                <Button
-                                                    size="sm"
-                                                    variant="plain"
-                                                    disabled={
-                                                        deviceMutationBusy
-                                                    }
-                                                    onClick={() =>
-                                                        updateDeviceMutation.mutate(
-                                                            {
-                                                                id: device.id,
-                                                                enabled:
-                                                                    !device.enabled,
-                                                            },
-                                                        )
-                                                    }
-                                                >
-                                                    {device.enabled
-                                                        ? 'Isključi'
-                                                        : 'Uključi'}
-                                                </Button>
-                                                <Button
-                                                    size="sm"
-                                                    variant="plain"
-                                                    disabled={
-                                                        deviceMutationBusy
-                                                    }
-                                                    startDecorator={
-                                                        <Close className="size-4" />
-                                                    }
-                                                    onClick={() =>
-                                                        revokeDeviceMutation.mutate(
-                                                            device.id,
-                                                        )
-                                                    }
-                                                >
-                                                    Ukloni
-                                                </Button>
-                                            </Row>
-                                        </Stack>
-                                    </CardContent>
-                                </Card>
-                            ))
-                        ) : (
-                            <Typography level="body2" secondary>
-                                Nema uređaja prijavljenih za obavijesti.
-                            </Typography>
-                        )}
-                    </Stack>
-                </CardContent>
-            </Card>
-        </Stack>
+                                                    ? 'Aktivan'
+                                                    : 'Isključen'}
+                                            </Chip>
+                                        </div>
+                                        <p className="break-words text-xs text-muted-foreground">
+                                            {device.userAgent ||
+                                                'Nepoznat preglednik'}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                            Zadnji put viđen:{' '}
+                                            {device.lastSeenAt
+                                                ? new Date(
+                                                      device.lastSeenAt,
+                                                  ).toLocaleString('hr-HR')
+                                                : 'nema podataka'}
+                                        </p>
+                                    </div>
+                                    <div className="flex shrink-0 items-center gap-1">
+                                        <Button
+                                            size="sm"
+                                            variant="outlined"
+                                            disabled={deviceMutationBusy}
+                                            onClick={() =>
+                                                updateDeviceMutation.mutate({
+                                                    id: device.id,
+                                                    enabled: !device.enabled,
+                                                })
+                                            }
+                                        >
+                                            {device.enabled
+                                                ? 'Isključi'
+                                                : 'Uključi'}
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            variant="plain"
+                                            disabled={deviceMutationBusy}
+                                            startDecorator={
+                                                <Close className="size-4" />
+                                            }
+                                            onClick={() =>
+                                                revokeDeviceMutation.mutate(
+                                                    device.id,
+                                                )
+                                            }
+                                        >
+                                            Ukloni
+                                        </Button>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <Typography level="body2" secondary>
+                            Nema uređaja prijavljenih za obavijesti.
+                        </Typography>
+                    )}
+                </SettingsCardBody>
+            </SettingsCard>
+        </>
     );
 }

@@ -2,10 +2,12 @@
 
 import { Button } from '@gredice/ui/Button';
 import { SelectItems } from '@gredice/ui/SelectItems';
-import { Stack } from '@gredice/ui/Stack';
 import { getTimeZones } from '@vvo/tzdb';
 import { useActionState, useEffect, useMemo, useState } from 'react';
 import { updateAdminGeneralSettingsAction } from '../../(actions)/adminGeneralSettingsActions';
+import { SettingsCardBody } from './_components/SettingsCardBody';
+import { SettingsCardFooter } from './_components/SettingsCardFooter';
+import { SettingsFormMessage } from './_components/SettingsFormMessage';
 
 const timeZones = getTimeZones();
 
@@ -38,33 +40,25 @@ export function AdminGeneralSettingForm({
     }, [state]);
 
     return (
-        <form action={formAction} className="space-y-3">
-            <Stack spacing={2}>
-                <SelectItems
-                    name="timeZone"
-                    label="Vremenska zona backofficea"
-                    value={timeZone}
-                    onValueChange={setTimeZone}
-                    items={timeZoneOptions}
-                    disabled={isPending}
-                />
-                <p className="text-sm text-muted-foreground">
-                    Koristi se kao zadana vremenska zona za administrativne
-                    procese i integracije.
-                </p>
-            </Stack>
-            <Button type="submit" disabled={isPending} variant="solid">
-                {isPending ? 'Spremanje…' : 'Spremi opće postavke'}
-            </Button>
-            {state && (
-                <p
-                    className={`text-sm ${
-                        state.success ? 'text-green-600' : 'text-red-600'
-                    }`}
-                >
-                    {state.message}
-                </p>
-            )}
+        <form action={formAction}>
+            <SettingsCardBody>
+                <div className="max-w-xl">
+                    <SelectItems
+                        name="timeZone"
+                        label="Vremenska zona backofficea"
+                        value={timeZone}
+                        onValueChange={setTimeZone}
+                        items={timeZoneOptions}
+                        disabled={isPending}
+                    />
+                </div>
+            </SettingsCardBody>
+            <SettingsCardFooter>
+                <SettingsFormMessage state={state} />
+                <Button type="submit" disabled={isPending} variant="solid">
+                    {isPending ? 'Spremanje…' : 'Spremi opće postavke'}
+                </Button>
+            </SettingsCardFooter>
         </form>
     );
 }
