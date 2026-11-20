@@ -56,6 +56,8 @@ import {
     isOperationCompleted,
     isOperationPendingVerification,
     isSameScheduleDay,
+    scheduleGroupHeaderClassName,
+    scheduleGroupTasksClassName,
 } from './scheduleShared';
 import type { Operation } from './types';
 import { useOptimisticScheduleActions } from './useOptimisticScheduleActions';
@@ -197,8 +199,8 @@ export function FarmOperationsScheduleSection({
     );
 
     return (
-        <Stack spacing={2}>
-            <Row spacing={2} className="w-full items-center flex-wrap gap-y-1">
+        <Stack spacing={1}>
+            <Row spacing={2} className={scheduleGroupHeaderClassName}>
                 <Row
                     spacing={2}
                     className="min-w-0 grow items-center flex-wrap gap-y-1"
@@ -404,7 +406,7 @@ export function FarmOperationsScheduleSection({
                     />
                 </Row>
             </Row>
-            <Stack spacing={0}>
+            <Stack spacing={0} className={scheduleGroupTasksClassName}>
                 {dayOperations.map((operation) => {
                     const operationData = operationDataById.get(
                         operation.entityId,
