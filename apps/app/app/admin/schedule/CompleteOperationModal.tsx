@@ -14,6 +14,7 @@ import {
     type ImageUploadManagerState,
 } from '../../../components/shared/media/ImageUploadManager';
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
+import { MAX_OPERATION_IMAGE_SIZE_BYTES } from '../../../lib/operationPhotoUpload';
 import {
     completeOperation,
     completeOperationWithImageUrls,
@@ -215,6 +216,9 @@ export function CompleteOperationModal({
                         )}
                         <ImageUploadManager
                             ref={imageUploaderRef}
+                            editPhotos
+                            maxFileBytes={MAX_OPERATION_IMAGE_SIZE_BYTES}
+                            layout="grid"
                             disabled={isSubmitting}
                             handleUploadUrl="/api/operations/images/upload"
                             clientPayload={JSON.stringify({ operationId })}

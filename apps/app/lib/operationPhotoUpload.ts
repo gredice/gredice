@@ -1,0 +1,1 @@
+export const MAX_OPERATION_IMAGE_SIZE_BYTES = 25 * 1024 * 1024;
