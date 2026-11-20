@@ -45,9 +45,11 @@ function mapsHref(value: string) {
     return `https://www.google.com/maps/dir//${encodeURIComponent(value)}`;
 }
 
-export function getDeliveryRequestDestinationTitle(
-    request: DeliveryRequestDetails,
-) {
+export function getDeliveryRequestDestinationTitle(request: {
+    mode?: string | null;
+    location?: { name?: string | null } | null;
+    address?: { contactName?: string | null } | null;
+}) {
     if (request.mode === 'pickup') {
         return cleanText(request.location?.name) ?? 'Nepoznata lokacija';
     }
