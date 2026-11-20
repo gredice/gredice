@@ -28,7 +28,7 @@
         "server-only": "0.0.1"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.6.7",
+        "@biomejs/biome": "2.6.8",
         "@gredice/storage": "workspace:*",
         "@gredice/ui": "workspace:*",
         "@tailwindcss/postcss": "4.3.5",
