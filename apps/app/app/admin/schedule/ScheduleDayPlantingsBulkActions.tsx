@@ -43,6 +43,8 @@ type FieldAssignmentTarget = {
     expectedPlantCycleVersionEventId: number;
     expectedPlantSortId: number;
     farmUsers: RaisedBedFieldAssignableFarmUser[];
+    /** Confirmed tasks must keep at least one assigned user. */
+    assignmentRequired?: boolean;
 };
 
 type FieldRescheduleTarget = {

@@ -130,6 +130,7 @@ export async function ScheduleDayPlantingsSection({
                           farmUsers:
                               assignableFarmUsersByRaisedBedFieldId[field.id] ??
                               [],
+                          assignmentRequired: field.plantStatus === 'planned',
                       },
                   ]
                 : [];

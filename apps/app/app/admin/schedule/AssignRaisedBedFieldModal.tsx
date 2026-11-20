@@ -1,17 +1,15 @@
 'use client';
 
 import type { RaisedBedFieldAssignableFarmUser } from '@gredice/storage';
-import { Button } from '@gredice/ui/Button';
-import { Checkbox } from '@gredice/ui/Checkbox';
 import { IconButton } from '@gredice/ui/IconButton';
 import { User } from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
-import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { UserAvatar } from '@gredice/ui/UserAvatar';
 import { useEffect, useMemo, useState } from 'react';
 import { assignRaisedBedFieldUserAction } from '../../(actions)/raisedBedFieldsActions';
+import { AssignUsersPanel } from './AssignUsersPanel';
 
 const missingAssignedUserLabel = 'Trenutno dodijeljeni korisnik';
 
@@ -30,12 +28,6 @@ interface AssignRaisedBedFieldModalProps {
     assignedUserIds?: string[];
     disabled?: boolean;
     onSubmit?: (selectedUserIds: string[]) => unknown | Promise<unknown>;
-}
-
-function getUserLabel(user: AssignableUser) {
-    return user.displayName
-        ? `${user.displayName} (${user.userName})`
-        : user.userName;
 }
 
 export function AssignRaisedBedFieldModal({
@@ -102,21 +94,6 @@ export function AssignRaisedBedFieldModal({
                 ),
         [initialAssignedUserIds, selectableUsers],
     );
-
-    const toggleSelectedUser = (userId: string, checked: boolean) => {
-        if (checked) {
-            setSelectedUserIds((currentIds) =>
-                currentIds.includes(userId)
-                    ? currentIds
-                    : [...currentIds, userId],
-            );
-            return;
-        }
-
-        setSelectedUserIds((currentIds) =>
-            currentIds.filter((selectedUserId) => selectedUserId !== userId),
-        );
-    };
 
     const handleSubmit = async () => {
         setIsLoading(true);
@@ -200,78 +177,30 @@ export function AssignRaisedBedFieldModal({
             open={open}
             onOpenChange={setOpen}
         >
-            <Stack spacing={4}>
-                <Typography level="h5">Dodjela sijanja</Typography>
-                <Typography>
-                    Odaberi korisnike kojima želiš dodijeliti zadatak{' '}
-                    <strong>{label}</strong>.
-                </Typography>
-
-                {selectableUsers.length > 0 ? (
-                    <Stack spacing={2}>
-                        <Button
-                            variant="plain"
-                            className="justify-start px-0"
-                            onClick={() => setSelectedUserIds([])}
-                            disabled={selectedUserIds.length === 0}
-                        >
-                            Ukloni sve dodjele
-                        </Button>
-                        {selectableUsers.map((user) => (
-                            <Checkbox
-                                key={user.id}
-                                label={getUserLabel(user)}
-                                checked={selectedUserIds.includes(user.id)}
-                                onCheckedChange={(checked: boolean) =>
-                                    toggleSelectedUser(
-                                        user.id,
-                                        Boolean(checked),
-                                    )
-                                }
-                            />
-                        ))}
-                    </Stack>
-                ) : (
-                    <Typography level="body2" className="text-muted-foreground">
-                        Na ovu farmu još nije dodijeljen nijedan korisnik.
-                    </Typography>
-                )}
-
-                {errorMessage && (
-                    <Typography level="body2" className="text-red-600">
-                        {errorMessage}
-                    </Typography>
-                )}
-
-                <Row spacing={2} justifyContent="end">
-                    <Button
-                        variant="outlined"
-                        onClick={() => setOpen(false)}
-                        disabled={isLoading}
-                    >
-                        Odustani
-                    </Button>
-                    <Button
-                        variant="solid"
-                        onClick={handleSubmit}
-                        loading={isLoading}
-                        disabled={
-                            isLoading ||
-                            (selectedUserIds.length ===
-                                initialAssignedUserIds.length &&
-                                selectedUserIds.every((selectedUserId) =>
-                                    initialAssignedUserIds.includes(
-                                        selectedUserId,
-                                    ),
-                                )) ||
-                            (selectableUsers.length === 0 &&
-                                initialAssignedUserIds.length === 0)
-                        }
-                    >
-                        Spremi dodjelu
-                    </Button>
-                </Row>
-            </Stack>
+            <AssignUsersPanel
+                title="Dodjela sijanja"
+                description={
+                    <>
+                        Odaberi korisnike kojima želiš dodijeliti zadatak{' '}
+                        <strong>{label}</strong>.
+                    </>
+                }
+                users={selectableUsers}
+                selectedUserIds={selectedUserIds}
+                onSelectedUserIdsChange={setSelectedUserIds}
+                errorMessage={errorMessage}
+                isSaving={isLoading}
+                saveDisabled={
+                    (selectedUserIds.length === initialAssignedUserIds.length &&
+                        selectedUserIds.every((selectedUserId) =>
+                            initialAssignedUserIds.includes(selectedUserId),
+                        )) ||
+                    (selectableUsers.length === 0 &&
+                        initialAssignedUserIds.length === 0)
+                }
+                onCancel={() => setOpen(false)}
+                onSave={handleSubmit}
+            />
         </Modal>
     );
 }

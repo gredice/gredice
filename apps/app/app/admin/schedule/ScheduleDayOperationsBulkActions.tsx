@@ -42,6 +42,8 @@ type OperationAssignmentTarget = {
     expectedEntityId: number;
     expectedTaskVersionEventId: number;
     farmUsers: OperationAssignableFarmUser[];
+    /** Confirmed tasks must keep at least one assigned user. */
+    assignmentRequired?: boolean;
 };
 
 type OperationRescheduleTarget = {

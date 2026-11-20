@@ -39,6 +39,7 @@ import {
     updateSelectedPlantingLifecycleStatusAction,
     verifySelectedPlantingTaskAction,
 } from '../../(actions)/selectedRaisedBedPlantingActions';
+import { AssignUsersPanel } from './AssignUsersPanel';
 import { CancelRequestModal } from './CancelRequestModal';
 import { CompletePlantingModal } from './CompletePlantingModal';
 import { RescheduleModal } from './RescheduleModal';
@@ -232,60 +233,22 @@ function SelectedPlantingAssignmentModal({
             title={`Dodjela: ${item.label}`}
             trigger={trigger}
         >
-            <Stack spacing={4}>
-                <Typography level="h5">Dodjela sijanja</Typography>
-                <Stack spacing={2}>
-                    <Button
-                        disabled={selectedUserIds.length === 0}
-                        onClick={() => setSelectedUserIds([])}
-                        variant="plain"
-                    >
-                        Ukloni sve dodjele
-                    </Button>
-                    {users.map((user) => (
-                        <Checkbox
-                            checked={selectedUserIds.includes(user.id)}
-                            key={user.id}
-                            label={
-                                user.displayName
-                                    ? `${user.displayName} (${user.userName})`
-                                    : user.userName
-                            }
-                            onCheckedChange={(checked: boolean) =>
-                                setSelectedUserIds((current) =>
-                                    checked
-                                        ? [...new Set([...current, user.id])]
-                                        : current.filter(
-                                              (userId) => userId !== user.id,
-                                          ),
-                                )
-                            }
-                        />
-                    ))}
-                </Stack>
-                {errorMessage ? (
-                    <Typography className="text-red-600" level="body2">
-                        {errorMessage}
-                    </Typography>
-                ) : null}
-                <Row justifyContent="end" spacing={2}>
-                    <Button
-                        disabled={isLoading}
-                        onClick={() => handleOpenChange(false)}
-                        variant="outlined"
-                    >
-                        Odustani
-                    </Button>
-                    <Button
-                        disabled={isLoading}
-                        loading={isLoading}
-                        onClick={handleSubmit}
-                        variant="solid"
-                    >
-                        Spremi dodjelu
-                    </Button>
-                </Row>
-            </Stack>
+            <AssignUsersPanel
+                title="Dodjela sijanja"
+                description={
+                    <>
+                        Odaberi korisnike kojima želiš dodijeliti zadatak{' '}
+                        <strong>{item.label}</strong>.
+                    </>
+                }
+                users={users}
+                selectedUserIds={selectedUserIds}
+                onSelectedUserIdsChange={setSelectedUserIds}
+                errorMessage={errorMessage}
+                isSaving={isLoading}
+                onCancel={() => handleOpenChange(false)}
+                onSave={handleSubmit}
+            />
         </Modal>
     );
 }

@@ -86,6 +86,18 @@ export const config: PlaywrightTestConfig = {
                             );
                         }
                         if (
+                            (source.endsWith('/operationActions') ||
+                                source.endsWith('/raisedBedFieldsActions')) &&
+                            importer?.endsWith('/BulkAssignRaisedBedButton.tsx')
+                        ) {
+                            return fileURLToPath(
+                                new URL(
+                                    './playwright/bulkAssignActionsMock.ts',
+                                    import.meta.url,
+                                ),
+                            );
+                        }
+                        if (
                             source.endsWith(
                                 '/raisedBedPlantCorrectionActions',
                             ) &&
