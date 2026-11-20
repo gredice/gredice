@@ -22,6 +22,13 @@ export function SettingsLayoutStory() {
                     >
                         <SettingsCard title={`Postavka: ${section.title}`}>
                             <SettingsCardBody>
+                                <label className="block text-sm">
+                                    Polje: {section.title}
+                                    <input
+                                        className="block w-full rounded-md border px-3 py-2"
+                                        name={`${section.id}-field`}
+                                    />
+                                </label>
                                 <div
                                     className={
                                         index >=
@@ -30,6 +37,9 @@ export function SettingsLayoutStory() {
                                             : 'h-[520px]'
                                     }
                                 />
+                                <button type="button">
+                                    Spremi: {section.title}
+                                </button>
                             </SettingsCardBody>
                         </SettingsCard>
                     </SettingsSection>

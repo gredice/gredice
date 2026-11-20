@@ -107,9 +107,10 @@ export function SocialIntegrationsOverview({
                                                 key={account.id}
                                                 className="flex flex-col gap-2 rounded-md border bg-muted/20 p-3 sm:flex-row sm:items-center sm:justify-between"
                                             >
-                                                <div className="min-w-0">
+                                                {/* Long labels and account keys wrap instead of running under the button. */}
+                                                <div className="min-w-0 flex-1">
                                                     <div className="flex flex-wrap items-center gap-2">
-                                                        <span className="font-medium">
+                                                        <span className="min-w-0 font-medium wrap-anywhere">
                                                             {account.label}
                                                         </span>
                                                         <Chip
@@ -119,7 +120,7 @@ export function SocialIntegrationsOverview({
                                                             {status.label}
                                                         </Chip>
                                                     </div>
-                                                    <p className="text-sm text-muted-foreground">
+                                                    <p className="text-sm text-muted-foreground wrap-anywhere">
                                                         {
                                                             account.providerAccountKey
                                                         }
@@ -130,6 +131,7 @@ export function SocialIntegrationsOverview({
                                                         account.provider,
                                                         account.id,
                                                     )}
+                                                    className="shrink-0"
                                                 >
                                                     <Button
                                                         variant="outlined"

@@ -2,6 +2,7 @@
 @import "@gredice/ui/utilities.css";
 @config "./tailwind.config.ts";
 @source "../app/components";
+@source "../app/app/admin/settings";
 @source "../farm/components";
 @source "../garden/components";
 @source "../www/components";

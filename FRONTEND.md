@@ -106,11 +106,17 @@ compatibility, and dependency-audit decisions.
   `aria-current="location"`. The admin navigation can be open or collapsed, so
   the page follows the available width: inside setting cards use the
   `@…/settings:` container variants, not screen breakpoints.
+  Everything in the content column has a scroll margin, so a section that is
+  jumped to and a control that receives keyboard focus both stop below the
+  sticky row instead of under it.
 - Each admin setting is a `SettingsCard` (title, description, optional status
   chip or actions) with a `SettingsCardBody`; forms end with a
   `SettingsCardFooter` holding `SettingsFormMessage` and the save button.
   "Backoffice" sections are shared by all admins; "Osobno" sections apply to
   the signed-in admin or the current browser.
+  Their stories are under `apps/storybook/stories/apps/app/Settings*.stories.tsx`;
+  Storybook reads the settings styles through the `@source` entry in
+  `apps/storybook/styles.css`.
 
 - Admin mobile navigation uses the shared modal for focus entry, focus containment,
   Escape handling and focus restoration to the opener. Closed navigation is unmounted.

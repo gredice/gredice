@@ -15,7 +15,12 @@ export function SettingsLayout({ children }: { children: ReactNode }) {
         <div className="@container/settings-page">
             <div className="grid grid-cols-1 gap-x-8 gap-y-6 @4xl/settings-page:grid-cols-[13rem_minmax(0,1fr)]">
                 <SettingsSectionNav />
-                <div className="@container/settings min-w-0 max-w-4xl space-y-10 pb-8">
+                {/*
+                  The scroll margin on everything in the content keeps a
+                  control that receives keyboard focus, like a section that
+                  is jumped to, below the sticky row of section links.
+                */}
+                <div className="@container/settings min-w-0 max-w-4xl space-y-10 pb-8 [&_*]:scroll-mt-16 @4xl/settings-page:[&_*]:scroll-mt-4">
                     {children}
                 </div>
             </div>

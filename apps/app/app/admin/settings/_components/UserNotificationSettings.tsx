@@ -7,6 +7,7 @@ import { Chip } from '@gredice/ui/Chip';
 import { Close, Device, Megaphone, Warning } from '@gredice/ui/icons';
 import { Typography } from '@gredice/ui/Typography';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { SettingsCard } from './SettingsCard';
 import { SettingsCardBody } from './SettingsCardBody';
 import { SettingsCardFooter } from './SettingsCardFooter';
@@ -54,6 +55,11 @@ function pushStatusLabel(status: string | undefined) {
 export function UserNotificationSettings() {
     const pushOnboarding = usePushSubscription();
     const queryClient = useQueryClient();
+    // Error of the last device switch or removal. Starting another device
+    // action clears it, so it never describes an older, different action.
+    const [deviceActionError, setDeviceActionError] = useState<string | null>(
+        null,
+    );
 
     const devicesQuery = useQuery({
         queryKey: notificationDevicesKey,
@@ -95,6 +101,8 @@ export function UserNotificationSettings() {
                 });
             if (!response.ok) throw new Error('Uređaj nije ažuriran');
         },
+        onMutate: () => setDeviceActionError(null),
+        onError: () => setDeviceActionError('Uređaj nije ažuriran.'),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: notificationDevicesKey });
             queryClient.invalidateQueries({
@@ -113,6 +121,8 @@ export function UserNotificationSettings() {
                 });
             if (!response.ok) throw new Error('Uređaj nije uklonjen');
         },
+        onMutate: () => setDeviceActionError(null),
+        onError: () => setDeviceActionError('Uređaj nije uklonjen.'),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: notificationDevicesKey });
             queryClient.invalidateQueries({
@@ -262,16 +272,12 @@ export function UserNotificationSettings() {
                             · Neuspjelo: {testNotificationResult?.failed ?? 0}
                         </Alert>
                     )}
-                    {(updateDeviceMutation.isError ||
-                        revokeDeviceMutation.isError) && (
+                    {deviceActionError && (
                         <Alert
                             color="danger"
                             startDecorator={<Warning className="size-4" />}
                         >
-                            {revokeDeviceMutation.isError
-                                ? 'Uređaj nije uklonjen.'
-                                : 'Uređaj nije ažuriran.'}{' '}
-                            Pokušaj ponovno.
+                            {deviceActionError} Pokušaj ponovno.
                         </Alert>
                     )}
                     {devicesQuery.isPending ? (

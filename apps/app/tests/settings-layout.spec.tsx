@@ -86,6 +86,48 @@ test.describe('desktop', () => {
 test.describe('narrow screens', () => {
     test.use({ viewport: { width: 390, height: 844 } });
 
+    test('keeps keyboard focus visible below the sticky row', async ({
+        mount,
+        page,
+    }) => {
+        await mount(<SettingsLayoutStory />);
+
+        const nav = page.getByRole('navigation', { name: 'Odjeljci postavki' });
+
+        // Start at the end of the page, then walk back through every control:
+        // each one scrolls up into view and must stop below the sticky row.
+        await page
+            .getByRole('button', { name: 'Spremi: Povratne informacije' })
+            .focus();
+        let checked = 0;
+        for (let step = 0; step < 20; step += 1) {
+            await page.keyboard.press('Shift+Tab');
+            const focused = page.locator(':focus');
+            if (
+                await focused.evaluate((element) =>
+                    Boolean(element.closest('nav')),
+                )
+            ) {
+                break;
+            }
+
+            const navBox = await nav.boundingBox();
+            const focusedBox = await focused.boundingBox();
+            if (!navBox || !focusedBox) {
+                throw new Error(
+                    'Expected the focused control to be measurable',
+                );
+            }
+            expect(focusedBox.y).toBeGreaterThanOrEqual(
+                navBox.y + navBox.height,
+            );
+            await expect(focused).toBeInViewport({ ratio: 1 });
+            checked += 1;
+        }
+        // Every field and button except the one focus started on.
+        expect(checked).toBe(13);
+    });
+
     test('shows the section links as a sticky scrolling row', async ({
         mount,
         page,
