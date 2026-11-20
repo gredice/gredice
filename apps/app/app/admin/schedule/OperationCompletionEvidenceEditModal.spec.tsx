@@ -191,16 +191,20 @@ const firstPhoto =
     'https://myegtvromcktt2y7.public.blob.vercel-storage.com/operations/5089/first.jpg';
 const secondPhoto = 'https://cdn.gredice.com/operations/5089/second.jpg';
 
-test('retouches the selected submitted gallery photo, then saves its replacement in place before verification', async ({
-    mount,
-    page,
-}) => {
+async function makeSubmittedJpeg() {
     const sharp = (await import('sharp')).default;
-    const original = await sharp({
+    return sharp({
         create: { width: 96, height: 64, channels: 3, background: '#d95524' },
     })
         .jpeg()
         .toBuffer();
+}
+
+test('retouches the selected submitted gallery photo, then saves its replacement in place before verification', async ({
+    mount,
+    page,
+}) => {
+    const original = await makeSubmittedJpeg();
     const approvedUrl = firstPhoto.replace('first.jpg', 'approved.jpg');
     let sourceRequests = 0;
     let uploadRequests = 0;
@@ -328,4 +332,45 @@ test('keeps submitted originals on cancel, retries a failed source and keeps ver
     await expect(
         page.getByRole('button', { name: 'Uredi sliku', exact: true }),
     ).toHaveCount(0);
+});
+
+test('returns to the editable notes when another admin verifies the operation during a photo edit', async ({
+    mount,
+    page,
+}) => {
+    const original = await makeSubmittedJpeg();
+    await page.route('**/api/operations/images/source?**', (route) =>
+        route.fulfill({ contentType: 'image/jpeg', body: original }),
+    );
+    const row = await mount(
+        <OperationCompletionEvidenceEditHarness
+            submittedImages={[secondPhoto]}
+        />,
+    );
+    await page.getByRole('button', { name: 'Uredi zapis završetka' }).click();
+    const note = page.getByRole('textbox', { name: 'Napomena', exact: true });
+    await note.fill('Moja skica napomene');
+    await page.getByRole('button', { name: 'Uredi sliku 1' }).click();
+    await page
+        .getByRole('dialog', { name: 'Uredi sliku u Retushi' })
+        .getByLabel('Predložak')
+        .selectOption({ label: 'Crno-bijelo' });
+    await row.update(
+        <OperationCompletionEvidenceEditHarness
+            submittedImages={[secondPhoto]}
+            verified
+        />,
+    );
+    const verified = page.getByRole('dialog', {
+        name: 'Uredi napomenu završetka',
+    });
+    await expect(verified).toBeVisible();
+    await expect(note).toBeEditable();
+    await expect(note).toHaveValue('Moja skica napomene');
+    await expect(
+        verified.getByRole('button', { name: /Uredi sliku/ }),
+    ).toHaveCount(0);
+    await expect(
+        verified.getByRole('button', { name: 'Spremi izmjene' }),
+    ).toBeEnabled();
 });

@@ -108,7 +108,10 @@ export function OperationCompletionEvidenceEditModal({
     const [open, setOpen] = useState(false);
     const [notes, setNotes] = useState(initialNotes ?? '');
     const [imageUrls, setImageUrls] = useState(initialUrls);
-    const [editingSrc, setEditingSrc] = useState<string | null>(null);
+    const [selectedImageSrc, setSelectedImageSrc] = useState<string | null>(
+        null,
+    );
+    const editingSrc = notesOnly ? null : selectedImageSrc;
     const [edits, setEdits] = useState(new Map<string, SubmittedPhotoEdit>());
     const uploadedEdits = useRef(new WeakMap<File, string>());
     const [uploadItemCount, setUploadItemCount] = useState(0);
@@ -121,7 +124,7 @@ export function OperationCompletionEvidenceEditModal({
     const resetForm = useCallback(() => {
         setNotes(initialNotes ?? '');
         setImageUrls(initialUrls);
-        setEditingSrc(null);
+        setSelectedImageSrc(null);
         setEdits(new Map());
         uploadedEdits.current = new WeakMap();
         setUploadItemCount(0);
@@ -331,7 +334,7 @@ export function OperationCompletionEvidenceEditModal({
                 editImage: (src) => {
                     if (notesOnly || isSubmitting) return;
                     handleOpenChange(true);
-                    setEditingSrc(src);
+                    setSelectedImageSrc(src);
                 },
                 defaultTrigger,
             })}
@@ -344,13 +347,13 @@ export function OperationCompletionEvidenceEditModal({
                 }
                 className={editingSrc ? 'max-w-4xl' : 'max-w-2xl'}
             >
-                {open && editingSrc && !notesOnly && (
+                {open && editingSrc && (
                     <SubmittedPhotoEditor
                         key={editingSrc}
                         operationId={operationId}
                         src={editingSrc}
                         edit={edits.get(editingSrc)}
-                        onCancel={() => setEditingSrc(null)}
+                        onCancel={() => setSelectedImageSrc(null)}
                         onApply={(edit) => {
                             setEdits((current) => {
                                 const next = new Map(current);
@@ -359,7 +362,7 @@ export function OperationCompletionEvidenceEditModal({
                                 else next.set(editingSrc, edit);
                                 return next;
                             });
-                            setEditingSrc(null);
+                            setSelectedImageSrc(null);
                         }}
                     />
                 )}
@@ -445,7 +448,9 @@ export function OperationCompletionEvidenceEditModal({
                                                         hasVersionConflict
                                                     }
                                                     onClick={() =>
-                                                        setEditingSrc(imageUrl)
+                                                        setSelectedImageSrc(
+                                                            imageUrl,
+                                                        )
                                                     }
                                                 >
                                                     Uredi
