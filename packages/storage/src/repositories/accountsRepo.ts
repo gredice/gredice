@@ -246,8 +246,9 @@ export function getAccounts() {
 }
 
 /**
- * Lightweight admin labels: the earliest account user's display name, falling
- * back to their username. Accounts without users are left out of the map.
+ * Lightweight admin labels use the primary member's display name or username.
+ * Memberships are ordered by creation time, then membership ID.
+ * Accounts without users are left out of the map.
  */
 export async function getAccountDisplayNames(accountIds: string[]) {
     const names = new Map<string, string>();
@@ -263,7 +264,7 @@ export async function getAccountDisplayNames(accountIds: string[]) {
         .from(accountUsers)
         .innerJoin(users, eq(accountUsers.userId, users.id))
         .where(inArray(accountUsers.accountId, uniqueIds))
-        .orderBy(asc(accountUsers.createdAt));
+        .orderBy(asc(accountUsers.createdAt), asc(accountUsers.id));
 
     for (const row of rows) {
         if (names.has(row.accountId)) continue;

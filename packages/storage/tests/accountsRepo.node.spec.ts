@@ -203,6 +203,37 @@ test('getAccountDisplayNames prefers display name, then username', async () => {
     assert.strictEqual((await getAccountDisplayNames([])).size, 0);
 });
 
+test('getAccountDisplayNames breaks membership timestamp ties by membership ID', async () => {
+    createTestDb();
+    const db = storage();
+    const accountId = await createTestAccount();
+    const createdAt = new Date('2026-05-01T00:00:00Z');
+    const primaryUserId = `z-${randomUUID()}`;
+    const otherUserId = `a-${randomUUID()}`;
+
+    await db.insert(users).values([
+        {
+            id: otherUserId,
+            userName: `${otherUserId}@example.com`,
+            role: 'user',
+        },
+        {
+            id: primaryUserId,
+            userName: `${primaryUserId}@example.com`,
+            displayName: 'Primary Member',
+            role: 'user',
+        },
+    ]);
+    await db.insert(accountUsers).values([
+        { id: -1, accountId, userId: otherUserId, createdAt },
+        { id: -2, accountId, userId: primaryUserId, createdAt },
+    ]);
+
+    const names = await getAccountDisplayNames([accountId]);
+
+    assert.strictEqual(names.get(accountId), 'Primary Member');
+});
+
 test('getAccount returns undefined for non-existent account', async () => {
     createTestDb();
     const account = await getAccount('non-existent-id');
