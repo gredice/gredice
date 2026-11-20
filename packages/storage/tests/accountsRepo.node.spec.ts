@@ -6,10 +6,12 @@ import {
     assignStripeCustomerId,
     assignStripeCustomerIdIfUnchanged,
     createEvent,
+    createUserWithPassword,
     earnSunflowers,
     earnSunflowersForPayment,
     earnSunflowersOnce,
     getAccount,
+    getAccountDisplayNames,
     getAccounts,
     getAccountUsers,
     getLastBirthdayRewardEvent,
@@ -27,7 +29,7 @@ import {
     storage,
     users,
 } from '@gredice/storage';
-import { createTestAccount } from './helpers/testHelpers';
+import { createTestAccount, ensureFarmId } from './helpers/testHelpers';
 import { createTestDb } from './testDb';
 
 function createInsertBarrierDb(
@@ -157,6 +159,48 @@ test('getAccounts returns all accounts', async () => {
     const accounts = await getAccounts();
     assert.ok(Array.isArray(accounts));
     assert.ok(accounts.some((a) => a.id === accountId));
+});
+
+test('getAccountDisplayNames prefers display name, then username', async () => {
+    createTestDb();
+    await ensureFarmId();
+    const namedUserId = await createUserWithPassword(
+        `named-${randomUUID()}@example.com`,
+        'secret-password',
+    );
+    await storage()
+        .update(users)
+        .set({ displayName: 'Ana Vrtlarica' })
+        .where(sql`${users.id} = ${namedUserId}`);
+    const plainUserName = `plain-${randomUUID()}@example.com`;
+    const plainUserId = await createUserWithPassword(
+        plainUserName,
+        'secret-password',
+    );
+    await storage()
+        .update(users)
+        .set({ displayName: null })
+        .where(sql`${users.id} = ${plainUserId}`);
+    const emptyAccountId = await createTestAccount();
+    const [namedLink, plainLink] = await Promise.all(
+        [namedUserId, plainUserId].map((userId) =>
+            storage().query.accountUsers.findFirst({
+                where: (link, { eq }) => eq(link.userId, userId),
+            }),
+        ),
+    );
+    assert.ok(namedLink && plainLink);
+
+    const names = await getAccountDisplayNames([
+        namedLink.accountId,
+        plainLink.accountId,
+        emptyAccountId,
+    ]);
+
+    assert.strictEqual(names.get(namedLink.accountId), 'Ana Vrtlarica');
+    assert.strictEqual(names.get(plainLink.accountId), plainUserName);
+    assert.strictEqual(names.has(emptyAccountId), false);
+    assert.strictEqual((await getAccountDisplayNames([])).size, 0);
 });
 
 test('getAccount returns undefined for non-existent account', async () => {

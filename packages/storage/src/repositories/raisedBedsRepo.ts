@@ -1232,11 +1232,14 @@ export async function getAllRaisedBedsFiltered(filters?: { status?: string }) {
     }
 
     const rows = await storage()
-        .select({ raisedBed: raisedBeds })
+        .select({ raisedBed: raisedBeds, gardenName: gardens.name })
         .from(raisedBeds)
         .leftJoin(gardens, eq(raisedBeds.gardenId, gardens.id))
         .where(and(...whereConditions));
-    const allRaisedBeds = rows.map((row) => row.raisedBed);
+    const allRaisedBeds = rows.map((row) => ({
+        ...row.raisedBed,
+        gardenName: row.gardenName,
+    }));
 
     const raisedBedIds = allRaisedBeds.map((raisedBed) => raisedBed.id);
     const [

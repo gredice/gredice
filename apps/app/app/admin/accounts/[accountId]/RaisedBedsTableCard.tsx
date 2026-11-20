@@ -1,4 +1,5 @@
 import {
+    getAccountDisplayNames,
     getAccountGardens,
     getAllRaisedBedsFiltered,
     getRaisedBeds,
@@ -43,14 +44,34 @@ export async function RaisedBedsTableCard({
         status: statusFilter || undefined,
     };
 
-    // Fetch filtered data using the repository filtering functions
-    const raisedBeds = accountId
-        ? (await getAccountGardens(accountId, filters)).flatMap(
-              (garden) => garden.raisedBeds,
-          )
-        : gardenId
-          ? await getRaisedBeds(gardenId, filters)
-          : await getAllRaisedBedsFiltered(filters);
+    // Fetch filtered data using the repository filtering functions.
+    // Garden and account names replace internal IDs in the row labels.
+    const gardenNames = new Map<number, string>();
+    let raisedBeds: Awaited<ReturnType<typeof getRaisedBeds>>;
+    if (accountId) {
+        const accountGardens = await getAccountGardens(accountId, filters);
+        for (const garden of accountGardens) {
+            gardenNames.set(garden.id, garden.name);
+        }
+        raisedBeds = accountGardens.flatMap((garden) => garden.raisedBeds);
+    } else if (gardenId) {
+        raisedBeds = await getRaisedBeds(gardenId, filters);
+    } else {
+        const allRaisedBeds = await getAllRaisedBedsFiltered(filters);
+        for (const bed of allRaisedBeds) {
+            if (bed.gardenId && bed.gardenName) {
+                gardenNames.set(bed.gardenId, bed.gardenName);
+            }
+        }
+        raisedBeds = allRaisedBeds;
+    }
+    const accountNames = accountId
+        ? new Map<string, string>()
+        : await getAccountDisplayNames(
+              raisedBeds.flatMap((bed) =>
+                  bed.accountId ? [bed.accountId] : [],
+              ),
+          );
 
     const sortedRaisedBeds = [...raisedBeds].sort((a, b) => {
         if (a.physicalId && b.physicalId) {
@@ -113,11 +134,22 @@ export async function RaisedBedsTableCard({
                                 (item) => item.value === bed.status,
                             );
                             const raisedBedHref = KnownPages.RaisedBed(bed.id);
-                            const gardenLabel =
-                                !gardenId && bed.gardenId ? bed.gardenId : null;
-                            const accountLabel =
+                            const gardenLink =
+                                !gardenId && bed.gardenId
+                                    ? {
+                                          id: bed.gardenId,
+                                          label:
+                                              gardenNames.get(bed.gardenId) ??
+                                              `#${bed.gardenId}`,
+                                      }
+                                    : null;
+                            const accountName =
                                 !accountId && bed.accountId
-                                    ? bed.accountId
+                                    ? accountNames.get(bed.accountId)
+                                    : undefined;
+                            const accountLink =
+                                bed.accountId && accountName
+                                    ? { id: bed.accountId, label: accountName }
                                     : null;
                             const sproutedFieldPercentage =
                                 (fields.filter(
@@ -174,40 +206,36 @@ export async function RaisedBedsTableCard({
                                                             level="body3"
                                                             className="mt-0.5 block text-muted-foreground"
                                                         >
-                                                            Gredica #{bed.id}
                                                             {bed.physicalId
-                                                                ? ` | Fizički ID ${bed.physicalId}`
-                                                                : ''}
+                                                                ? `Fizički ID ${bed.physicalId}`
+                                                                : `Gredica #${bed.id}`}
                                                         </Typography>
                                                     </span>
                                                 </Link>
                                             </div>
 
-                                            {gardenLabel || accountLabel ? (
+                                            {gardenLink || accountLink ? (
                                                 <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 pl-0 sm:pl-12">
-                                                    {gardenLabel ? (
+                                                    {gardenLink ? (
                                                         <Link
                                                             href={KnownPages.Garden(
-                                                                gardenLabel,
+                                                                gardenLink.id,
                                                             )}
                                                             className="min-w-0 truncate text-xs text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
                                                         >
-                                                            Vrt #{gardenLabel}
+                                                            Vrt:{' '}
+                                                            {gardenLink.label}
                                                         </Link>
                                                     ) : null}
-                                                    {accountLabel ? (
+                                                    {accountLink ? (
                                                         <Link
                                                             href={KnownPages.Account(
-                                                                accountLabel,
+                                                                accountLink.id,
                                                             )}
                                                             className="min-w-0 truncate text-xs text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
                                                         >
                                                             Račun:{' '}
-                                                            {accountLabel.slice(
-                                                                0,
-                                                                6,
-                                                            )}
-                                                            ...
+                                                            {accountLink.label}
                                                         </Link>
                                                     ) : null}
                                                 </div>
