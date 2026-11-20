@@ -88,11 +88,10 @@ export function OperationCompletionNotesEditor({
     );
 
     useEffect(() => {
-        if (attemptedAutomatic.current) return;
+        if (attemptedAutomatic.current || disabled) return;
         const timer = setTimeout(() => {
             attemptedAutomatic.current = true;
-            if (!previouslyEdited && notes.trim() && !disabled)
-                void generate('automatic');
+            if (!previouslyEdited && notes.trim()) void generate('automatic');
         }, 0);
         return () => clearTimeout(timer);
     }, [disabled, generate, notes, previouslyEdited]);

@@ -95,7 +95,7 @@ type ImageUploadManagerProps = {
 };
 
 const MAX_UPLOAD_ATTEMPTS = 3;
-const MULTIPART_UPLOAD_THRESHOLD_BYTES = 5 * 1024 * 1024;
+export const MULTIPART_UPLOAD_THRESHOLD_BYTES = 5 * 1024 * 1024;
 const IMAGE_EXTENSION_PATTERN = /\.(avif|gif|jpe?g|png|svg|webp)$/i;
 
 function createUploadItem(file: File): UploadItem {

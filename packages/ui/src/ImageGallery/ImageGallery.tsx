@@ -10,10 +10,19 @@ import {
     useRef,
     useState,
 } from 'react';
+import { Button } from '../Button';
 import { Chip } from '../Chip';
 import { useImageFitZoom } from '../hooks/useImageFitZoom';
 import { IconButton } from '../IconButton';
-import { Add, ArrowLeft, ArrowRight, Close, Remove, Save } from '../icons';
+import {
+    Add,
+    ArrowLeft,
+    ArrowRight,
+    Close,
+    Edit,
+    Remove,
+    Save,
+} from '../icons';
 import { Modal } from '../Modal';
 import { cx } from '../utils';
 
@@ -30,6 +39,7 @@ interface ImageGalleryProps {
     previewAs?: 'button' | 'div';
     previewVariant?: 'carousel' | 'grid' | 'stacked';
     previewLimitBeforeStack?: number;
+    onEditImage?: (src: string) => void;
 }
 
 export function ImageGallery({
@@ -39,6 +49,7 @@ export function ImageGallery({
     previewAs = 'button',
     previewVariant = 'carousel',
     previewLimitBeforeStack,
+    onEditImage,
 }: ImageGalleryProps) {
     const imageInstructionsId = useId();
     const lastFocusedElementRef = useRef<Element | null>(null);
@@ -656,6 +667,24 @@ export function ImageGallery({
                             touchAction: 'pan-x',
                         }}
                     >
+                        {onEditImage && (
+                            <Button
+                                type="button"
+                                variant="outlined"
+                                aria-label="Uredi sliku"
+                                startDecorator={
+                                    <Edit className="size-4 shrink-0" />
+                                }
+                                className="rounded-xl bg-background/80 backdrop-blur"
+                                onClick={(event) => {
+                                    event.stopPropagation();
+                                    setIsExpanded(false);
+                                    onEditImage(activeImage.src);
+                                }}
+                            >
+                                Uredi
+                            </Button>
+                        )}
                         <IconButton
                             aria-label="Prethodna slika"
                             title="Prethodna"
@@ -771,7 +800,11 @@ export function ImageGallery({
                     <Chip
                         aria-label={`Slika ${safeIndex + 1} od ${images.length}, zumiranje ${Math.round(zoomLevel * 100)} posto`}
                         aria-live="polite"
-                        className="absolute [left:calc(env(safe-area-inset-left)+1rem)] [top:calc(env(safe-area-inset-top)+0.75rem)] z-10 select-none border-0 bg-black/60 text-white/80 backdrop-blur"
+                        className={cx(
+                            'absolute [left:calc(env(safe-area-inset-left)+1rem)] [top:calc(env(safe-area-inset-top)+0.75rem)] z-10 select-none border-0 bg-black/60 text-white/80 backdrop-blur',
+                            onEditImage &&
+                                'max-sm:[top:calc(env(safe-area-inset-top)+3.75rem)]',
+                        )}
                         variant="solid"
                     >
                         {safeIndex + 1}/{images.length} •{' '}

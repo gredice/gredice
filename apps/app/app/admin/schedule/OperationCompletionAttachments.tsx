@@ -2,11 +2,14 @@
 
 import { IconButton } from '@gredice/ui/IconButton';
 import { ImageGallery } from '@gredice/ui/ImageGallery';
-import { FileText } from '@gredice/ui/icons';
+import { Edit, FileText } from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import { OperationCompletionEvidenceEditModal } from './OperationCompletionEvidenceEditModal';
+import { isOperationPendingVerification } from './scheduleShared';
+import type { Operation } from './types';
 
 const THUMBNAIL_SIZE = 56;
 
@@ -14,7 +17,7 @@ type OperationCompletionAttachmentsProps = {
     operationId: number;
     notes?: string | null;
     imageUrls?: string[] | null;
-    className?: string;
+    onEditImage?: (src: string) => void;
 };
 
 function getImageItems(operationId: number, imageUrls?: string[] | null) {
@@ -26,11 +29,11 @@ function getImageItems(operationId: number, imageUrls?: string[] | null) {
         }));
 }
 
-export function OperationCompletionAttachments({
+function AttachmentPreviews({
     operationId,
     notes,
     imageUrls,
-    className,
+    onEditImage,
 }: OperationCompletionAttachmentsProps) {
     const trimmedNotes = notes?.trim();
     const images = getImageItems(operationId, imageUrls);
@@ -40,12 +43,7 @@ export function OperationCompletionAttachments({
     }
 
     return (
-        <Row
-            spacing={1}
-            className={['shrink-0 items-center', className]
-                .filter(Boolean)
-                .join(' ')}
-        >
+        <Row spacing={1} className="shrink-0 items-center">
             {trimmedNotes && (
                 <Modal
                     title="Napomena završetka"
@@ -76,6 +74,7 @@ export function OperationCompletionAttachments({
                 <div className="size-14 shrink-0 overflow-visible">
                     <ImageGallery
                         images={images}
+                        onEditImage={onEditImage}
                         previewWidth={THUMBNAIL_SIZE}
                         previewHeight={THUMBNAIL_SIZE}
                         previewVariant="stacked"
@@ -83,5 +82,57 @@ export function OperationCompletionAttachments({
                 </div>
             )}
         </Row>
+    );
+}
+
+export function OperationCompletionAttachments({
+    operation,
+    label,
+}: {
+    operation: Pick<
+        Operation,
+        | 'id'
+        | 'status'
+        | 'taskVersionEventId'
+        | 'completionNotes'
+        | 'completionNotesEdited'
+        | 'imageUrls'
+    >;
+    label: string;
+}) {
+    const canEditImages = isOperationPendingVerification(operation.status);
+    return (
+        <OperationCompletionEvidenceEditModal
+            operationId={operation.id}
+            expectedTaskVersionEventId={operation.taskVersionEventId}
+            label={label}
+            initialNotes={operation.completionNotes}
+            completionNotesEdited={operation.completionNotesEdited}
+            initialImageUrls={operation.imageUrls}
+            notesOnly={!canEditImages}
+            renderTrigger={({ openModal, editImage }) => (
+                <>
+                    <AttachmentPreviews
+                        operationId={operation.id}
+                        notes={operation.completionNotes}
+                        imageUrls={operation.imageUrls}
+                        onEditImage={canEditImages ? editImage : undefined}
+                    />
+                    <IconButton
+                        title={
+                            canEditImages
+                                ? 'Uredi zapis završetka'
+                                : 'Uredi napomenu završetka'
+                        }
+                        type="button"
+                        size="xs"
+                        variant="plain"
+                        onClick={openModal}
+                    >
+                        <Edit className="size-4 shrink-0" />
+                    </IconButton>
+                </>
+            )}
+        />
     );
 }

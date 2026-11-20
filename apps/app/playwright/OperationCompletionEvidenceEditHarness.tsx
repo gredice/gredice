@@ -1,15 +1,18 @@
 import { AppRouterContext } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 import { OperationDescriptionCard } from '../app/admin/operations/OperationDescriptionCard';
+import { OperationCompletionAttachments } from '../app/admin/schedule/OperationCompletionAttachments';
 import { OperationCompletionEvidenceEditModal } from '../app/admin/schedule/OperationCompletionEvidenceEditModal';
 
 export function OperationCompletionEvidenceEditHarness({
     edited = false,
     verified = false,
     administration = false,
+    submittedImages,
 }: {
     edited?: boolean;
     verified?: boolean;
     administration?: boolean;
+    submittedImages?: string[];
 }) {
     return (
         <AppRouterContext.Provider
@@ -25,7 +28,19 @@ export function OperationCompletionEvidenceEditHarness({
                 prefetch() {},
             }}
         >
-            {administration ? (
+            {submittedImages ? (
+                <OperationCompletionAttachments
+                    label="Detaljan pregled gredice"
+                    operation={{
+                        id: 5089,
+                        status: verified ? 'completed' : 'pendingVerification',
+                        taskVersionEventId: 20,
+                        completionNotes: 'rajcice vrh odrezat',
+                        completionNotesEdited: true,
+                        imageUrls: submittedImages,
+                    }}
+                />
+            ) : administration ? (
                 <OperationDescriptionCard
                     description="Beremo samo zrele plodove biljke."
                     label="Branje zrelih plodova"

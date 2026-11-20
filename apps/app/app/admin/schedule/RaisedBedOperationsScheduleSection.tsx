@@ -4,7 +4,7 @@ import type { OperationAssignableFarmUser } from '@gredice/storage';
 import { Checkbox } from '@gredice/ui/Checkbox';
 import { Chip } from '@gredice/ui/Chip';
 import { IconButton } from '@gredice/ui/IconButton';
-import { Calendar, Close, Edit } from '@gredice/ui/icons';
+import { Calendar, Close } from '@gredice/ui/icons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { OperationRequestNote } from '@gredice/ui/OperationRequestNote';
 import { Row } from '@gredice/ui/Row';
@@ -35,7 +35,6 @@ import { CancelOperationModal } from './CancelOperationModal';
 import { CompleteOperationModal } from './CompleteOperationModal';
 import { CopyTasksButton } from './CopyTasksButton';
 import { OperationCompletionAttachments } from './OperationCompletionAttachments';
-import { OperationCompletionEvidenceEditModal } from './OperationCompletionEvidenceEditModal';
 import { OperationRequirementIcons } from './OperationRequirementIcons';
 import { RaisedBedScheduleGroupTitle } from './RaisedBedScheduleGroupTitle';
 import { RescheduleOperationModal } from './RescheduleOperationModal';
@@ -791,47 +790,8 @@ export function RaisedBedOperationsScheduleSection({
                                     {(isOperationCompleted(operation.status) ||
                                         operationPendingVerification) && (
                                         <OperationCompletionAttachments
-                                            operationId={operation.id}
-                                            notes={operation.completionNotes}
-                                            imageUrls={operation.imageUrls}
-                                        />
-                                    )}
-                                    {(isOperationCompleted(operation.status) ||
-                                        operationPendingVerification) && (
-                                        <OperationCompletionEvidenceEditModal
-                                            completionNotesEdited={
-                                                operation.completionNotesEdited
-                                            }
-                                            operationId={operation.id}
-                                            expectedTaskVersionEventId={
-                                                operation.taskVersionEventId
-                                            }
+                                            operation={operation}
                                             label={operationLabel}
-                                            initialNotes={
-                                                operation.completionNotes ?? ''
-                                            }
-                                            initialImageUrls={
-                                                operation.imageUrls ?? []
-                                            }
-                                            notesOnly={isOperationCompleted(
-                                                operation.status,
-                                            )}
-                                            trigger={
-                                                <IconButton
-                                                    title={
-                                                        isOperationCompleted(
-                                                            operation.status,
-                                                        )
-                                                            ? 'Uredi napomenu završetka'
-                                                            : 'Uredi zapis završetka'
-                                                    }
-                                                    type="button"
-                                                    size="xs"
-                                                    variant="plain"
-                                                >
-                                                    <Edit className="size-4 shrink-0" />
-                                                </IconButton>
-                                            }
                                         />
                                     )}
                                     <AssignOperationModal
