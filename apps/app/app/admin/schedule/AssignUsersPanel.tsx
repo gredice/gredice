@@ -1,8 +1,9 @@
 'use client';
 
+import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { Input } from '@gredice/ui/Input';
-import { Check, People, Search } from '@gredice/ui/icons';
+import { Check, People, Search, Warning } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -18,6 +19,8 @@ export type AssignUsersPanelUser = {
     displayName: string | null;
     avatarUrl?: string | null;
     achievementCount?: number;
+    /** Shown in place of the email when the user can no longer be selected. */
+    unavailableReason?: string;
 };
 
 interface AssignUsersPanelProps {
@@ -26,6 +29,8 @@ interface AssignUsersPanelProps {
     users: AssignUsersPanelUser[];
     selectedUserIds: string[];
     onSelectedUserIdsChange: (selectedUserIds: string[]) => void;
+    /** Warning shown above the list, for example why saving is blocked. */
+    notice?: ReactNode;
     errorMessage?: string | null;
     isSaving?: boolean;
     saveDisabled?: boolean;
@@ -34,11 +39,14 @@ interface AssignUsersPanelProps {
     onSave: () => void;
 }
 
+// Same mapping as the www and farm search normalizers: NFD leaves Đ/đ intact.
 function normalizeSearch(value: string) {
     return value
+        .replace(/[Đđ]/g, 'd')
         .normalize('NFD')
-        .replace(/\p{Diacritic}/gu, '')
-        .toLocaleLowerCase('hr');
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLocaleLowerCase('hr-HR')
+        .trim();
 }
 
 /**
@@ -51,6 +59,7 @@ export function AssignUsersPanel({
     users,
     selectedUserIds,
     onSelectedUserIdsChange,
+    notice,
     errorMessage,
     isSaving = false,
     saveDisabled = false,
@@ -99,6 +108,15 @@ export function AssignUsersPanel({
                 </Stack>
             </Row>
 
+            {notice && (
+                <Alert
+                    color="warning"
+                    startDecorator={<Warning aria-hidden className="size-4" />}
+                >
+                    {notice}
+                </Alert>
+            )}
+
             {users.length > 0 ? (
                 <Stack spacing={2}>
                     {showSearch && (
@@ -142,10 +160,12 @@ export function AssignUsersPanel({
                                 <label
                                     key={user.id}
                                     className={cx(
-                                        'flex w-full min-w-0 cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-inset has-[:focus-visible]:ring-ring has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60 motion-reduce:transition-none',
+                                        'relative flex w-full min-w-0 cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-inset has-[:focus-visible]:ring-ring has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60 motion-reduce:transition-none',
                                         isSelected
                                             ? 'bg-primary/10 hover:bg-primary/15'
                                             : 'hover:bg-muted/60',
+                                        user.unavailableReason &&
+                                            'bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-950/60',
                                     )}
                                 >
                                     <input
@@ -165,10 +185,16 @@ export function AssignUsersPanel({
                                         <span className="truncate text-sm font-medium text-foreground">
                                             {name}
                                         </span>
-                                        {user.displayName && (
-                                            <span className="truncate text-xs text-muted-foreground">
-                                                {user.userName}
+                                        {user.unavailableReason ? (
+                                            <span className="text-xs text-amber-800 dark:text-amber-200">
+                                                {user.unavailableReason}
                                             </span>
+                                        ) : (
+                                            user.displayName && (
+                                                <span className="truncate text-xs text-muted-foreground">
+                                                    {user.userName}
+                                                </span>
+                                            )
                                         )}
                                     </span>
                                     <span

@@ -274,6 +274,7 @@ export function RaisedBedPlantingScheduleSection({
                           farmUsers:
                               assignableFarmUsersByRaisedBedFieldId[field.id] ??
                               [],
+                          assignmentRequired: field.plantStatus === 'planned',
                       },
                   ]
                 : [];

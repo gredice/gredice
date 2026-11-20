@@ -172,6 +172,7 @@ export function FarmOperationsScheduleSection({
             expectedEntityId: operation.entityId,
             expectedTaskVersionEventId: operation.taskVersionEventId,
             farmUsers: assignableFarmUsersByOperationId[operation.id] ?? [],
+            assignmentRequired: operation.isAccepted,
         }));
     const operationsToCancel = dayOperations
         .filter(

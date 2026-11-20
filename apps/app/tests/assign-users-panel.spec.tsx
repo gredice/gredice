@@ -68,7 +68,12 @@ test('filters long user lists by name or email', async ({ mount }) => {
     const manyUsers = Array.from({ length: 8 }, (_, index) => ({
         id: `user-${index}`,
         userName: `korisnik${index}@example.com`,
-        displayName: index === 5 ? 'Željka' : `Korisnik ${index}`,
+        displayName:
+            index === 5
+                ? 'Željka'
+                : index === 6
+                  ? 'Đurđica'
+                  : `Korisnik ${index}`,
         avatarUrl: null,
     }));
     const component = await mount(
@@ -82,6 +87,12 @@ test('filters long user lists by name or email', async ({ mount }) => {
     await expect(component.getByRole('checkbox')).toHaveCount(1);
     await expect(
         component.getByRole('checkbox', { name: /Željka/ }),
+    ).toBeVisible();
+
+    await search.fill('durdica');
+    await expect(component.getByRole('checkbox')).toHaveCount(1);
+    await expect(
+        component.getByRole('checkbox', { name: /Đurđica/ }),
     ).toBeVisible();
 
     await search.fill('nepostojeci');
@@ -100,4 +111,43 @@ test('shows an empty state when the farm has no users', async ({ mount }) => {
         ),
     ).toBeVisible();
     await expect(component.getByRole('checkbox')).toHaveCount(0);
+});
+
+test('scrolls keyboard-focused rows into view inside the list', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize({ width: 600, height: 500 });
+    const manyUsers = Array.from({ length: 6 }, (_, index) => ({
+        id: `user-${index}`,
+        userName: `korisnik${index}@example.com`,
+        displayName: `Korisnik ${index}`,
+        avatarUrl: null,
+    }));
+    const component = await mount(
+        <AssignUsersPanelHarness users={manyUsers} />,
+    );
+    const list = component.locator('fieldset');
+
+    await component.getByRole('checkbox', { name: /Korisnik 0/ }).focus();
+    for (let index = 1; index < manyUsers.length; index++) {
+        await page.keyboard.press('Tab');
+    }
+    await expect(
+        component.getByRole('checkbox', { name: /Korisnik 5/ }),
+    ).toBeFocused();
+
+    const listBox = await list.boundingBox();
+    const rowBox = await component
+        .locator('label', { hasText: 'Korisnik 5' })
+        .boundingBox();
+    expect(listBox).not.toBeNull();
+    expect(rowBox).not.toBeNull();
+    if (!listBox || !rowBox) {
+        return;
+    }
+    expect(rowBox.y).toBeGreaterThanOrEqual(listBox.y - 1);
+    expect(rowBox.y + rowBox.height).toBeLessThanOrEqual(
+        listBox.y + listBox.height + 1,
+    );
 });
