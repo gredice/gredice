@@ -8,11 +8,9 @@ import { Chip } from '@gredice/ui/Chip';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Calendar, Close, ToggleLeft, ToggleRight } from '@gredice/ui/icons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import Link from 'next/link';
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
 import { KnownPages } from '../../../src/KnownPages';
 import {
@@ -36,6 +34,7 @@ import { BulkRescheduleRaisedBedButton } from './BulkRescheduleRaisedBedButton';
 import { CancelRaisedBedFieldModal } from './CancelRaisedBedFieldModal';
 import { CompletePlantingModal } from './CompletePlantingModal';
 import { CopyTasksButton } from './CopyTasksButton';
+import { RaisedBedScheduleGroupTitle } from './RaisedBedScheduleGroupTitle';
 import { RescheduleRaisedBedFieldModal } from './RescheduleRaisedBedFieldModal';
 import { SchedulePlantVisual } from './ScheduleTaskVisual';
 import { SelectedPlantingScheduleTaskRow } from './SelectedPlantingScheduleTaskRow';
@@ -47,7 +46,6 @@ import { parseScheduledDateInput } from './scheduleOptimisticHelpers';
 import {
     activePlantCycleEventId,
     activePlantCycleVersionEventId,
-    formatMinutes,
     getScheduleTaskRowClassName,
     isFieldApproved,
     isFieldBlocked,
@@ -55,6 +53,8 @@ import {
     isFieldPendingVerification,
     isSameScheduleDay,
     PLANTING_TASK_DURATION_MINUTES,
+    scheduleGroupHeaderClassName,
+    scheduleGroupTasksClassName,
 } from './scheduleShared';
 import type { AdminSelectedPlantingScheduleItem } from './selectedPlantingSchedulePresentation';
 import type { RaisedBed, RaisedBedField } from './types';
@@ -324,37 +324,13 @@ export function RaisedBedPlantingScheduleSection({
     }
 
     return (
-        <Stack key={physicalId} spacing={2}>
-            <Row spacing={2} className="w-full items-center flex-wrap gap-y-1">
-                <Row
-                    spacing={1}
-                    className="min-w-0 grow items-center flex-wrap gap-y-1"
-                >
-                    {raisedBedDetailsLink ? (
-                        <Link
-                            href={raisedBedDetailsLink}
-                            prefetch={false}
-                            aria-label={`Gredica ${physicalId}`}
-                        >
-                            <RaisedBedIcon
-                                physicalId={physicalId}
-                                className="size-5"
-                                containerClassName="h-5"
-                            />
-                        </Link>
-                    ) : (
-                        <RaisedBedIcon
-                            physicalId={physicalId}
-                            className="size-5"
-                            containerClassName="h-5"
-                        />
-                    )}
-                    <Typography level="body2" className="text-muted-foreground">
-                        {formatMinutes(durations.completed, true)} /{' '}
-                        {formatMinutes(durations.approved)} (
-                        {formatMinutes(durations.total)})
-                    </Typography>
-                </Row>
+        <Stack key={physicalId} spacing={1}>
+            <Row spacing={2} className={scheduleGroupHeaderClassName}>
+                <RaisedBedScheduleGroupTitle
+                    physicalId={physicalId}
+                    detailsHref={raisedBedDetailsLink}
+                    durations={durations}
+                />
                 <Row spacing={1} className="ml-auto shrink-0 items-center">
                     <BulkApproveRaisedBedButton
                         physicalId={physicalId.toString()}
@@ -530,7 +506,7 @@ export function RaisedBedPlantingScheduleSection({
                     />
                 </Row>
             </Row>
-            <Stack spacing={0}>
+            <Stack spacing={0} className={scheduleGroupTasksClassName}>
                 {!dayFields.length && !selectedPlantingTasks.length && (
                     <Typography level="body2">
                         Trenutno nema sijanja za ovu gredicu.

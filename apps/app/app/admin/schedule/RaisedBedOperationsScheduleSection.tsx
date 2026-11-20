@@ -7,7 +7,6 @@ import { IconButton } from '@gredice/ui/IconButton';
 import { Calendar, Close, Edit } from '@gredice/ui/icons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { OperationRequestNote } from '@gredice/ui/OperationRequestNote';
-import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -38,6 +37,7 @@ import { CopyTasksButton } from './CopyTasksButton';
 import { OperationCompletionAttachments } from './OperationCompletionAttachments';
 import { OperationCompletionEvidenceEditModal } from './OperationCompletionEvidenceEditModal';
 import { OperationRequirementIcons } from './OperationRequirementIcons';
+import { RaisedBedScheduleGroupTitle } from './RaisedBedScheduleGroupTitle';
 import { RescheduleOperationModal } from './RescheduleOperationModal';
 import { ScheduleOperationVisual } from './ScheduleTaskVisual';
 import {
@@ -51,7 +51,6 @@ import {
 } from './scheduleOptimisticHelpers';
 import {
     canAcceptOperationTask,
-    formatMinutes,
     getOperationDurationMinutes,
     getScheduleTaskRowClassName,
     isOperationBlocked,
@@ -59,6 +58,8 @@ import {
     isOperationCompleted,
     isOperationPendingVerification,
     isSameScheduleDay,
+    scheduleGroupHeaderClassName,
+    scheduleGroupTasksClassName,
 } from './scheduleShared';
 import type { Operation, RaisedBed } from './types';
 import { useOptimisticScheduleActions } from './useOptimisticScheduleActions';
@@ -279,37 +280,13 @@ export function RaisedBedOperationsScheduleSection({
     );
 
     return (
-        <Stack key={physicalId} spacing={2}>
-            <Row spacing={2} className="w-full items-center flex-wrap gap-y-1">
-                <Row
-                    spacing={1}
-                    className="min-w-0 grow items-center flex-wrap gap-y-1"
-                >
-                    {raisedBedDetailsLink ? (
-                        <Link
-                            href={raisedBedDetailsLink}
-                            prefetch={false}
-                            aria-label={`Gredica ${physicalId}`}
-                        >
-                            <RaisedBedIcon
-                                physicalId={physicalId}
-                                className="size-5"
-                                containerClassName="h-5"
-                            />
-                        </Link>
-                    ) : (
-                        <RaisedBedIcon
-                            physicalId={physicalId}
-                            className="size-5"
-                            containerClassName="h-5"
-                        />
-                    )}
-                    <Typography level="body2" className="text-muted-foreground">
-                        {formatMinutes(durations.completed, true)} /{' '}
-                        {formatMinutes(durations.approved)} (
-                        {formatMinutes(durations.total)})
-                    </Typography>
-                </Row>
+        <Stack key={physicalId} spacing={1}>
+            <Row spacing={2} className={scheduleGroupHeaderClassName}>
+                <RaisedBedScheduleGroupTitle
+                    physicalId={physicalId}
+                    detailsHref={raisedBedDetailsLink}
+                    durations={durations}
+                />
                 <Row spacing={1} className="ml-auto shrink-0 items-center">
                     <BulkApproveRaisedBedButton
                         physicalId={physicalId.toString()}
@@ -496,7 +473,7 @@ export function RaisedBedOperationsScheduleSection({
                     />
                 </Row>
             </Row>
-            <Stack spacing={0}>
+            <Stack spacing={0} className={scheduleGroupTasksClassName}>
                 {!dayOperations.length && (
                     <Typography level="body2">
                         Trenutno nema radnji za ovu gredicu.

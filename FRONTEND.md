@@ -103,3 +103,13 @@ compatibility, and dependency-audit decisions.
   Escape handling and focus restoration to the opener. Closed navigation is unmounted.
   Review button stories use controlled state, matching the review toggle previews,
   without loading UIer.
+
+- Admin schedule raised-bed and farm blocks open with a tinted group header band
+  (`scheduleGroupHeaderClassName`; raised beds show icon, "Gredica N" and
+  durations) and indent their task rows under a left rule
+  (`scheduleGroupTasksClassName`), so headers never read as task rows.
+- Admin schedule completed-task photos preview at 56px; clicking opens the
+  full-size gallery.
+- The admin schedule "Dostava" section groups requests with the delivery page's
+  `groupDeliveryRequests` (account + slot), one row per destination with mode,
+  slot, request count and status chips.

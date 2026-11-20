@@ -238,6 +238,14 @@ export function formatMinutes(minutes: number, hideUnit = false) {
     return hideUnit ? `${rounded}` : `${rounded} min`;
 }
 
+/** Group header band for a raised bed or farm block in the schedule lists. */
+export const scheduleGroupHeaderClassName =
+    'w-full flex-wrap items-center gap-y-1 rounded-md border border-border bg-muted/60 px-2 py-1';
+
+/** Indented task list under a schedule group header, tied to it by a left rule. */
+export const scheduleGroupTasksClassName =
+    'ml-2 border-l-2 border-border pl-1 md:ml-3 md:pl-2';
+
 export function getScheduleTaskRowClassName({
     pendingAcceptance,
 }: {
