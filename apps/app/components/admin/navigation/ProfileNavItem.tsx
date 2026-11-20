@@ -131,12 +131,15 @@ export function ProfileNavItem({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-64">
                 <DropdownMenuLabel className="flex items-center gap-3 px-2 py-2 font-normal">
-                    <UserAvatar
-                        achievementCount={currentUser?.achievementCount}
-                        displayName={userName}
-                        avatarUrl={currentUser?.avatarUrl}
-                        size="md"
-                    />
+                    {/* Decorative: the visible name next to it already labels the header. */}
+                    <span aria-hidden className="flex shrink-0">
+                        <UserAvatar
+                            achievementCount={currentUser?.achievementCount}
+                            displayName={userName}
+                            avatarUrl={currentUser?.avatarUrl}
+                            size="md"
+                        />
+                    </span>
                     <span className="flex min-w-0 flex-col">
                         <span className="truncate font-semibold text-foreground">
                             {userName}
