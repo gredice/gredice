@@ -186,3 +186,191 @@ test('description card has a right-aligned plain pencil and admins can edit veri
     );
     expect(saved).toEqual([5089, 20, [], 'rajcice vrh odrezat', true]);
 });
+
+const firstPhoto =
+    'https://myegtvromcktt2y7.public.blob.vercel-storage.com/operations/5089/first.jpg';
+const secondPhoto = 'https://cdn.gredice.com/operations/5089/second.jpg';
+
+async function makeSubmittedJpeg() {
+    const sharp = (await import('sharp')).default;
+    return sharp({
+        create: { width: 96, height: 64, channels: 3, background: '#d95524' },
+    })
+        .jpeg()
+        .toBuffer();
+}
+
+test('retouches the selected submitted gallery photo, then saves its replacement in place before verification', async ({
+    mount,
+    page,
+}) => {
+    const original = await makeSubmittedJpeg();
+    const approvedUrl = firstPhoto.replace('first.jpg', 'approved.jpg');
+    let sourceRequests = 0;
+    let uploadRequests = 0;
+    await page.route('**/api/operations/images/source?**', async (route) => {
+        const params = new URL(route.request().url()).searchParams;
+        expect(params.get('operationId')).toBe('5089');
+        expect(params.get('src')).toBe(secondPhoto);
+        sourceRequests++;
+        await route.fulfill({ body: original, contentType: 'image/jpeg' });
+    });
+    await page.route('**/api/operations/images/upload', async (route) => {
+        const { payload } = route.request().postDataJSON();
+        expect(JSON.parse(payload.clientPayload)).toEqual({
+            operationId: 5089,
+        });
+        expect(payload.pathname).toMatch(/^operations\/5089\/.+\.jpg$/);
+        uploadRequests++;
+        await route.fulfill({
+            json: { clientToken: 'vercel_blob_client_fixture_unused' },
+        });
+    });
+    await page.evaluate(() =>
+        Reflect.set(
+            globalThis,
+            '__testBlobApiUrl',
+            `${location.origin}/fixture-blob`,
+        ),
+    );
+    await page.route('**/fixture-blob/**', (route) =>
+        route.fulfill({
+            json: { url: approvedUrl, contentType: 'image/jpeg' },
+        }),
+    );
+    await mount(
+        <OperationCompletionEvidenceEditHarness
+            submittedImages={[firstPhoto, secondPhoto]}
+        />,
+    );
+    await page.getByRole('button', { name: /Otvori galeriju/ }).click();
+    await page.getByRole('button', { name: 'Sljedeća slika' }).click();
+    await page
+        .getByRole('button', { name: 'Uredi sliku', exact: true })
+        .click();
+    const editor = page.getByRole('dialog', { name: 'Uredi sliku u Retushi' });
+    await editor.getByLabel('Predložak').selectOption({ label: 'Crno-bijelo' });
+    await editor
+        .getByRole('button', { name: 'Primijeni', exact: true })
+        .click();
+    const form = page.getByRole('dialog', { name: 'Uredi zapis završetka' });
+    const preview = form.locator('img[src^="blob:"]');
+    await expect(preview).toHaveCount(1);
+    const rgb = await preview.evaluate(async (node: HTMLImageElement) => {
+        await node.decode();
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('Missing 2D context');
+        ctx.drawImage(node, 0, 0);
+        return Array.from(ctx.getImageData(0, 0, 1, 1).data).slice(0, 3);
+    });
+    expect(rgb[0]).toBeGreaterThan(30);
+    expect(Math.max(...rgb) - Math.min(...rgb)).toBeLessThanOrEqual(2);
+    await form.getByRole('button', { name: 'Uredi sliku 2' }).click();
+    await expect(editor.getByLabel('Predložak')).toHaveValue('builtin:bw');
+    await editor.getByRole('button', { name: 'Odustani' }).click();
+    expect(sourceRequests).toBe(1);
+    expect(uploadRequests).toBe(0);
+    await page.evaluate(() => {
+        document.documentElement.dataset.evidenceSaveFailsOnce = 'true';
+    });
+    await form.getByRole('button', { name: 'Spremi izmjene' }).click();
+    await expect(
+        form.getByText('Spremanje izmjena nije uspjelo. Pokušajte ponovno.'),
+    ).toBeVisible();
+    expect(uploadRequests).toBe(1);
+
+    await form.getByRole('button', { name: 'Spremi izmjene' }).click();
+    await expect(page.locator('html')).toHaveAttribute(
+        'data-saved-evidence',
+        JSON.stringify([
+            5089,
+            20,
+            [firstPhoto, approvedUrl],
+            'rajcice vrh odrezat',
+        ]),
+    );
+    expect(uploadRequests).toBe(1);
+    await expect(form).not.toBeVisible();
+});
+
+test('keeps submitted originals on cancel, retries a failed source and keeps verified galleries read-only', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize({ width: 360, height: 780 });
+    const gallery = await mount(
+        <OperationCompletionEvidenceEditHarness
+            submittedImages={[firstPhoto]}
+        />,
+    );
+    let attempts = 0;
+    await page.route(firstPhoto, (route) => {
+        if (route.request().resourceType() === 'fetch') attempts++;
+        return route.fulfill({ status: 503, body: '' });
+    });
+    await page.getByRole('button', { name: /Otvori galeriju/ }).click();
+    await page
+        .getByRole('button', { name: 'Uredi sliku', exact: true })
+        .click();
+    await page.getByRole('button', { name: 'Pokušaj ponovno' }).click();
+    await expect.poll(() => attempts).toBe(2);
+    await page.getByRole('button', { name: 'Odustani', exact: true }).click();
+    await page.getByRole('button', { name: 'Odustani', exact: true }).click();
+    await expect(page.locator('html')).not.toHaveAttribute(
+        'data-saved-evidence',
+        /.+/,
+    );
+    await gallery.update(
+        <OperationCompletionEvidenceEditHarness
+            submittedImages={[firstPhoto]}
+            verified
+        />,
+    );
+    await page.getByRole('button', { name: /Otvori galeriju/ }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Uredi sliku', exact: true }),
+    ).toHaveCount(0);
+});
+
+test('returns to the editable notes when another admin verifies the operation during a photo edit', async ({
+    mount,
+    page,
+}) => {
+    const original = await makeSubmittedJpeg();
+    await page.route('**/api/operations/images/source?**', (route) =>
+        route.fulfill({ contentType: 'image/jpeg', body: original }),
+    );
+    const row = await mount(
+        <OperationCompletionEvidenceEditHarness
+            submittedImages={[secondPhoto]}
+        />,
+    );
+    await page.getByRole('button', { name: 'Uredi zapis završetka' }).click();
+    const note = page.getByRole('textbox', { name: 'Napomena', exact: true });
+    await note.fill('Moja skica napomene');
+    await page.getByRole('button', { name: 'Uredi sliku 1' }).click();
+    await page
+        .getByRole('dialog', { name: 'Uredi sliku u Retushi' })
+        .getByLabel('Predložak')
+        .selectOption({ label: 'Crno-bijelo' });
+    await row.update(
+        <OperationCompletionEvidenceEditHarness
+            submittedImages={[secondPhoto]}
+            verified
+        />,
+    );
+    const verified = page.getByRole('dialog', {
+        name: 'Uredi napomenu završetka',
+    });
+    await expect(verified).toBeVisible();
+    await expect(note).toBeEditable();
+    await expect(note).toHaveValue('Moja skica napomene');
+    await expect(
+        verified.getByRole('button', { name: /Uredi sliku/ }),
+    ).toHaveCount(0);
+    await expect(
+        verified.getByRole('button', { name: 'Spremi izmjene' }),
+    ).toBeEnabled();
+});

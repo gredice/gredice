@@ -7,6 +7,8 @@ import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import { upload } from '@vercel/blob/client';
+import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
@@ -21,12 +23,23 @@ import {
     ImageUploadManager,
     type ImageUploadManagerHandle,
     type ImageUploadManagerState,
+    MULTIPART_UPLOAD_THRESHOLD_BYTES,
 } from '../../../components/shared/media/ImageUploadManager';
+import { ImageUploadPreview } from '../../../components/shared/media/ImageUploadPreview';
 import { MAX_OPERATION_IMAGE_SIZE_BYTES } from '../../../lib/operationPhotoUpload';
 import { updateOperationCompletionEvidenceAction } from '../../(actions)/operationActions';
 import { OperationCompletionNotesEditor } from './OperationCompletionNotesEditor';
 import { buildOperationCompletionEvidenceActionArguments } from './operationCompletionEvidenceEditModel';
+import type { SubmittedPhotoEdit } from './SubmittedPhotoEditor';
 import { useOptimisticScheduleActions } from './useOptimisticScheduleActions';
+
+const SubmittedPhotoEditor = dynamic(
+    () =>
+        import('./SubmittedPhotoEditor').then(
+            (module) => module.SubmittedPhotoEditor,
+        ),
+    { ssr: false, loading: () => <p role="status">Otvaranje uređivača…</p> },
+);
 
 const MAX_COMPLETION_IMAGE_COUNT = 20;
 const MAX_COMPLETION_NOTES_LENGTH = 2000;
@@ -34,6 +47,7 @@ const MAX_COMPLETION_NOTES_LENGTH = 2000;
 type EditOperationCompletionEvidenceTriggerProps = {
     isSubmitting: boolean;
     openModal: () => void;
+    editImage: (src: string) => void;
     defaultTrigger: ReactElement;
 };
 
@@ -94,6 +108,12 @@ export function OperationCompletionEvidenceEditModal({
     const [open, setOpen] = useState(false);
     const [notes, setNotes] = useState(initialNotes ?? '');
     const [imageUrls, setImageUrls] = useState(initialUrls);
+    const [selectedImageSrc, setSelectedImageSrc] = useState<string | null>(
+        null,
+    );
+    const editingSrc = notesOnly ? null : selectedImageSrc;
+    const [edits, setEdits] = useState(new Map<string, SubmittedPhotoEdit>());
+    const uploadedEdits = useRef(new WeakMap<File, string>());
     const [uploadItemCount, setUploadItemCount] = useState(0);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -104,6 +124,9 @@ export function OperationCompletionEvidenceEditModal({
     const resetForm = useCallback(() => {
         setNotes(initialNotes ?? '');
         setImageUrls(initialUrls);
+        setSelectedImageSrc(null);
+        setEdits(new Map());
+        uploadedEdits.current = new WeakMap();
         setUploadItemCount(0);
         setErrorMessage(null);
         setHasVersionConflict(false);
@@ -111,13 +134,12 @@ export function OperationCompletionEvidenceEditModal({
     }, [initialNotes, initialUrls]);
 
     const handleOpenChange = (nextOpen: boolean) => {
+        if (isSubmitting) return;
         setOpen(nextOpen);
         if (nextOpen) {
             openedTaskVersionEventIdRef.current = expectedTaskVersionEventId;
-            resetForm();
-        } else if (!isSubmitting) {
-            resetForm();
         }
+        resetForm();
     };
 
     const handleUploadStateChange = useCallback(
@@ -158,6 +180,38 @@ export function OperationCompletionEvidenceEditModal({
         setErrorMessage(null);
     };
 
+    // Keep the submission order and reuse successful uploads when a save is retried.
+    async function getSubmittedImageUrls() {
+        const urls = [];
+        for (const src of imageUrls) {
+            const edit = edits.get(src);
+            if (!edit) {
+                urls.push(src);
+                continue;
+            }
+            let url = uploadedEdits.current.get(edit.file);
+            if (!url) {
+                const path = operationImageUploadPath({
+                    attempt: 1,
+                    itemId: crypto.randomUUID(),
+                    file: edit.file,
+                });
+                const blob = await upload(path, edit.file, {
+                    access: 'public',
+                    contentType: edit.file.type,
+                    clientPayload: JSON.stringify({ operationId }),
+                    handleUploadUrl: '/api/operations/images/upload',
+                    multipart:
+                        edit.file.size > MULTIPART_UPLOAD_THRESHOLD_BYTES,
+                });
+                url = blob.url;
+                uploadedEdits.current.set(edit.file, url);
+            }
+            urls.push(url);
+        }
+        return urls;
+    }
+
     const handleSave = async () => {
         try {
             setErrorMessage(null);
@@ -183,7 +237,10 @@ export function OperationCompletionEvidenceEditModal({
 
             const nextImageUrls = notesOnly
                 ? initialUrls
-                : normalizeImageUrls([...imageUrls, ...uploadedImageUrls]);
+                : normalizeImageUrls([
+                      ...(await getSubmittedImageUrls()),
+                      ...uploadedImageUrls,
+                  ]);
             if (nextImageUrls.length > MAX_COMPLETION_IMAGE_COUNT) {
                 setErrorMessage(
                     `Zapis završetka može imati najviše ${MAX_COMPLETION_IMAGE_COUNT} slika.`,
@@ -205,10 +262,14 @@ export function OperationCompletionEvidenceEditModal({
                     const currentArguments =
                         buildOperationCompletionEvidenceActionArguments({
                             operationId: actionArguments[0],
-                            expectedTaskVersionEventId: getVersion(
-                                `operation:${operationId}`,
-                                actionArguments[1],
-                            ),
+                            // A replacement was rendered from the version the admin opened.
+                            expectedTaskVersionEventId:
+                                edits.size > 0
+                                    ? actionArguments[1]
+                                    : getVersion(
+                                          `operation:${operationId}`,
+                                          actionArguments[1],
+                                      ),
                             imageUrls: actionArguments[2],
                             notes: actionArguments[3],
                         });
@@ -224,7 +285,7 @@ export function OperationCompletionEvidenceEditModal({
             );
             if (!result.success) {
                 setErrorMessage(
-                    `${result.message} Zatvorite i ponovno otvorite uređivanje kako biste učitali najnoviju napomenu.`,
+                    `${result.message} Zatvorite i ponovno otvorite uređivanje kako biste učitali najnoviji zapis.`,
                 );
                 setHasVersionConflict(true);
                 router.refresh();
@@ -270,18 +331,45 @@ export function OperationCompletionEvidenceEditModal({
             {renderTrigger?.({
                 isSubmitting,
                 openModal: () => handleOpenChange(true),
+                editImage: (src) => {
+                    if (notesOnly || isSubmitting) return;
+                    handleOpenChange(true);
+                    setSelectedImageSrc(src);
+                },
                 defaultTrigger,
             })}
             <Modal
-                title={editorTitle}
+                title={editingSrc ? 'Uredi sliku u Retushi' : editorTitle}
                 open={open}
                 onOpenChange={handleOpenChange}
                 trigger={
                     renderTrigger ? undefined : (trigger ?? defaultTrigger)
                 }
-                className="max-w-2xl"
+                className={editingSrc ? 'max-w-4xl' : 'max-w-2xl'}
             >
-                <Stack spacing={4}>
+                {open && editingSrc && (
+                    <SubmittedPhotoEditor
+                        key={editingSrc}
+                        operationId={operationId}
+                        src={editingSrc}
+                        edit={edits.get(editingSrc)}
+                        onCancel={() => setSelectedImageSrc(null)}
+                        onApply={(edit) => {
+                            setEdits((current) => {
+                                const next = new Map(current);
+                                if (edit.file === edit.original)
+                                    next.delete(editingSrc);
+                                else next.set(editingSrc, edit);
+                                return next;
+                            });
+                            setSelectedImageSrc(null);
+                        }}
+                    />
+                )}
+                <Stack
+                    spacing={4}
+                    className={editingSrc ? 'hidden' : undefined}
+                >
                     <Stack spacing={1}>
                         <Typography level="h5">{editorTitle}</Typography>
                         <Typography
@@ -308,7 +396,11 @@ export function OperationCompletionEvidenceEditModal({
                             }
                             notes={notes}
                             previouslyEdited={completionNotesEdited}
-                            disabled={isSubmitting || hasVersionConflict}
+                            disabled={
+                                !!editingSrc ||
+                                isSubmitting ||
+                                hasVersionConflict
+                            }
                             onChange={(value) => {
                                 setNotes(value);
                                 setErrorMessage(null);
@@ -322,34 +414,64 @@ export function OperationCompletionEvidenceEditModal({
                             </Typography>
                             {imageUrls.length > 0 ? (
                                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                                    {imageUrls.map((imageUrl, index) => (
-                                        <div
-                                            key={imageUrl}
-                                            className="relative overflow-hidden rounded-md border bg-muted"
-                                        >
-                                            <Image
-                                                src={imageUrl}
-                                                alt={`Slika završetka radnje ${operationId}-${index + 1}`}
-                                                width={240}
-                                                height={180}
-                                                className="aspect-[4/3] w-full object-cover"
-                                            />
-                                            <IconButton
-                                                aria-label={`Ukloni sliku ${index + 1}`}
-                                                type="button"
-                                                size="xs"
-                                                variant="solid"
-                                                color="danger"
-                                                className="absolute right-2 top-2"
-                                                disabled={isSubmitting}
-                                                onClick={() =>
-                                                    removeImageUrl(imageUrl)
-                                                }
+                                    {imageUrls.map((imageUrl, index) => {
+                                        const edit = edits.get(imageUrl);
+                                        return (
+                                            <div
+                                                key={imageUrl}
+                                                className="relative overflow-hidden rounded-md border bg-muted"
                                             >
-                                                <Clear className="size-3.5" />
-                                            </IconButton>
-                                        </div>
-                                    ))}
+                                                {edit ? (
+                                                    <ImageUploadPreview
+                                                        file={edit.file}
+                                                    />
+                                                ) : (
+                                                    <Image
+                                                        src={imageUrl}
+                                                        alt={`Slika završetka radnje ${operationId}-${index + 1}`}
+                                                        width={240}
+                                                        height={180}
+                                                        className="aspect-[4/3] w-full object-cover"
+                                                    />
+                                                )}
+                                                <Button
+                                                    type="button"
+                                                    size="xs"
+                                                    variant="solid"
+                                                    aria-label={`Uredi sliku ${index + 1}`}
+                                                    className="absolute bottom-2 left-2"
+                                                    startDecorator={
+                                                        <Edit className="size-3.5" />
+                                                    }
+                                                    disabled={
+                                                        isSubmitting ||
+                                                        hasVersionConflict
+                                                    }
+                                                    onClick={() =>
+                                                        setSelectedImageSrc(
+                                                            imageUrl,
+                                                        )
+                                                    }
+                                                >
+                                                    Uredi
+                                                </Button>
+                                                <IconButton
+                                                    aria-label={`Ukloni sliku ${index + 1}`}
+                                                    type="button"
+                                                    size="xs"
+                                                    variant="solid"
+                                                    color="danger"
+                                                    className="absolute right-2 top-2"
+                                                    disabled={isSubmitting}
+                                                    onClick={() =>
+                                                        removeImageUrl(imageUrl)
+                                                    }
+                                                >
+                                                    <Clear className="size-3.5" />
+                                                </IconButton>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             ) : (
                                 <Typography

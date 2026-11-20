@@ -2,6 +2,7 @@ import { resolveAvatarSource } from '@gredice/ui/Avatar';
 import { ImageGallery } from '@gredice/ui/ImageGallery';
 import { sunflowerSadMascotArtwork } from '@gredice/ui/SunflowerVisuals';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
+import { expect, fn, within } from 'storybook/test';
 
 const largeImageSvg = encodeURIComponent(
     '<svg xmlns="http://www.w3.org/2000/svg" width="4000" height="3000" viewBox="0 0 4000 3000"><rect width="4000" height="3000" fill="#2f7d46"/><circle cx="2000" cy="1500" r="900" fill="#f7d04a"/><text x="2000" y="1540" text-anchor="middle" font-size="240" font-family="Arial" fill="#1f2937">4000 x 3000</text></svg>',
@@ -99,5 +100,33 @@ export const WideImage: Story = {
 export const NoImages: Story = {
     args: {
         images: [],
+    },
+};
+
+export const ReviewSubmittedPhotos: Story = {
+    args: {
+        images: [
+            { src: '/operation-photos/gredica.jpg', alt: 'Gredica' },
+            { src: '/operation-photos/sadnica.jpg', alt: 'Sadnica' },
+        ],
+        previewVariant: 'stacked',
+        onEditImage: fn(),
+    },
+    play: async ({ canvas, canvasElement, userEvent, args }) => {
+        await userEvent.click(
+            await canvas.findByRole('button', { name: /Otvori galeriju/ }),
+        );
+        const dialog = await within(
+            canvasElement.ownerDocument.body,
+        ).findByRole('dialog');
+        await userEvent.click(
+            within(dialog).getByRole('button', { name: 'Sljedeća slika' }),
+        );
+        await userEvent.click(
+            within(dialog).getByRole('button', { name: 'Uredi sliku' }),
+        );
+        await expect(args.onEditImage).toHaveBeenCalledWith(
+            '/operation-photos/sadnica.jpg',
+        );
     },
 };
