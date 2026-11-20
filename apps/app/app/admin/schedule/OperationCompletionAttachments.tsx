@@ -8,7 +8,7 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 
-const THUMBNAIL_SIZE = 32;
+const THUMBNAIL_SIZE = 56;
 
 type OperationCompletionAttachmentsProps = {
     operationId: number;
@@ -73,7 +73,7 @@ export function OperationCompletionAttachments({
                 </Modal>
             )}
             {images.length > 0 && (
-                <div className="size-8 shrink-0 overflow-visible">
+                <div className="size-14 shrink-0 overflow-visible">
                     <ImageGallery
                         images={images}
                         previewWidth={THUMBNAIL_SIZE}
