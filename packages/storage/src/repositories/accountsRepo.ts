@@ -8,6 +8,7 @@ import {
     ensureAccountAchievement,
     events,
     storage,
+    users,
 } from '..';
 import { lockAccountAndAssertNotDeleting } from './accountDeletionFenceRepo';
 import {
@@ -242,6 +243,35 @@ export function getAccounts() {
         },
         orderBy: desc(accounts.createdAt),
     });
+}
+
+/**
+ * Lightweight admin labels use the primary member's display name or username.
+ * Memberships are ordered by creation time, then membership ID.
+ * Accounts without users are left out of the map.
+ */
+export async function getAccountDisplayNames(accountIds: string[]) {
+    const names = new Map<string, string>();
+    const uniqueIds = [...new Set(accountIds)];
+    if (uniqueIds.length === 0) return names;
+
+    const rows = await storage()
+        .select({
+            accountId: accountUsers.accountId,
+            displayName: users.displayName,
+            userName: users.userName,
+        })
+        .from(accountUsers)
+        .innerJoin(users, eq(accountUsers.userId, users.id))
+        .where(inArray(accountUsers.accountId, uniqueIds))
+        .orderBy(asc(accountUsers.createdAt), asc(accountUsers.id));
+
+    for (const row of rows) {
+        if (names.has(row.accountId)) continue;
+        const name = row.displayName?.trim() || row.userName;
+        if (name) names.set(row.accountId, name);
+    }
+    return names;
 }
 
 export function getAccount(accountId: string) {
