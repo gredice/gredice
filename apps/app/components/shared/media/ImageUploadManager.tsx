@@ -83,6 +83,7 @@ type ImageUploadManagerProps = {
     itemLabel?: (item: ImageUploadSelectionItem) => string | undefined;
     layout?: 'grid' | 'list';
     maxItems?: number;
+    maxFileBytes?: number;
     multiple?: boolean;
     onSelectionChange?: (items: ImageUploadSelectionItem[]) => void;
     onStateChange?: (state: ImageUploadManagerState) => void;
@@ -200,6 +201,7 @@ export const ImageUploadManager = forwardRef<
         itemLabel,
         layout = 'list',
         maxItems,
+        maxFileBytes,
         multiple = true,
         onSelectionChange,
         onStateChange,
@@ -346,6 +348,20 @@ export const ImageUploadManager = forwardRef<
 
     const uploadImage = useCallback(
         async (uploadItem: UploadItem) => {
+            if (
+                maxFileBytes !== undefined &&
+                uploadItem.file.size > maxFileBytes
+            ) {
+                updateUploadItem(uploadItem.id, (item) => ({
+                    ...item,
+                    status: 'failed',
+                    progress: 0,
+                    attempts: 0,
+                    uploadedUrl: undefined,
+                    errorMessage: `Slika premašuje ograničenje od ${maxFileBytes / (1024 * 1024)} MiB.`,
+                }));
+                return null;
+            }
             let lastErrorMessage = 'Spremanje slike nije uspjelo.';
 
             for (let attempt = 1; attempt <= MAX_UPLOAD_ATTEMPTS; attempt++) {
@@ -427,7 +443,13 @@ export const ImageUploadManager = forwardRef<
 
             return null;
         },
-        [clientPayload, handleUploadUrl, updateUploadItem, uploadPath],
+        [
+            clientPayload,
+            handleUploadUrl,
+            maxFileBytes,
+            updateUploadItem,
+            uploadPath,
+        ],
     );
 
     const reset = useCallback(() => {
@@ -699,6 +721,7 @@ export const ImageUploadManager = forwardRef<
                     <PendingPhotoEditor
                         key={editingPhoto.id}
                         photo={editingPhoto}
+                        maxFileBytes={maxFileBytes}
                         pending={pending}
                         onApply={applyPhotoEdits}
                         onCancel={() => setEditingId(null)}

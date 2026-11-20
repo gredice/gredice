@@ -22,6 +22,7 @@ import {
     type ImageUploadManagerHandle,
     type ImageUploadManagerState,
 } from '../../../components/shared/media/ImageUploadManager';
+import { MAX_OPERATION_IMAGE_SIZE_BYTES } from '../../../lib/operationPhotoUpload';
 import { updateOperationCompletionEvidenceAction } from '../../(actions)/operationActions';
 import { OperationCompletionNotesEditor } from './OperationCompletionNotesEditor';
 import { buildOperationCompletionEvidenceActionArguments } from './operationCompletionEvidenceEditModel';
@@ -362,6 +363,9 @@ export function OperationCompletionEvidenceEditModal({
                                 <ImageUploadManager
                                     ref={imageUploaderRef}
                                     editPhotos
+                                    maxFileBytes={
+                                        MAX_OPERATION_IMAGE_SIZE_BYTES
+                                    }
                                     layout="grid"
                                     disabled={isSubmitting}
                                     handleUploadUrl="/api/operations/images/upload"

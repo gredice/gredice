@@ -14,6 +14,7 @@ import {
     type ImageUploadManagerState,
     type ImageUploadSelectionItem,
 } from '../../../components/shared/media/ImageUploadManager';
+import { MAX_OPERATION_IMAGE_SIZE_BYTES } from '../../../lib/operationPhotoUpload';
 import { completeOperationsWithImageUrls } from '../../(actions)/operationActions';
 import {
     type BulkPhotoOperationTarget,
@@ -290,6 +291,7 @@ export function BulkPhotoOperationImportModal({
                 <ImageUploadManager
                     ref={imageUploaderRef}
                     editPhotos
+                    maxFileBytes={MAX_OPERATION_IMAGE_SIZE_BYTES}
                     disabled={isSubmitting}
                     handleUploadUrl="/api/operations/images/upload"
                     clientPayload={clientPayload}

@@ -1,5 +1,4 @@
 'use client';
-
 import { Checkbox } from '@gredice/ui/Checkbox';
 import {
     BUILT_IN_PRESETS,
@@ -12,6 +11,7 @@ import {
 } from '@retusha/inline-editor';
 import '@retusha/inline-editor/style.css';
 import { useEffect, useRef, useState } from 'react';
+import { fitPhotoEdit } from './fitPhotoEdit';
 
 export type PendingPhoto = {
     id: string;
@@ -38,11 +38,13 @@ const presets = BUILT_IN_PRESETS.filter((preset) => preset.id in names).map(
 export function PendingPhotoEditor({
     photo,
     pending,
+    maxFileBytes,
     onApply,
     onCancel,
 }: {
     photo: PendingPhoto;
     pending: PendingPhoto[];
+    maxFileBytes?: number;
     onApply: (edits: Map<string, PhotoEdit>) => void;
     onCancel: () => void;
 }) {
@@ -56,7 +58,16 @@ export function PendingPhotoEditor({
     }, []);
 
     async function save(edit: PhotoEdit) {
-        const edits = new Map([[photo.id, edit]]);
+        const edits = new Map([
+            [
+                photo.id,
+                await fitPhotoEdit(
+                    edit,
+                    photo.original ?? photo.file,
+                    maxFileBytes,
+                ),
+            ],
+        ]);
         if (applyToAll) {
             // Render sequentially to bound GPU memory. Commit the queue only
             // after every render succeeds, so a failed batch is safe to retry.
@@ -67,12 +78,11 @@ export function PendingPhotoEditor({
                     edit.adjustments,
                     normalizeAdjustments(item.adjustments),
                 );
+                const original = item.original ?? item.file;
+                const rendered = await renderEditedPhoto(original, adjustments);
                 edits.set(
                     item.id,
-                    await renderEditedPhoto(
-                        item.original ?? item.file,
-                        adjustments,
-                    ),
+                    await fitPhotoEdit(rendered, original, maxFileBytes),
                 );
             }
         }

@@ -211,6 +211,45 @@ test('a photo the editor cannot decode can still be kept or removed', async ({
     ).toBeDisabled();
 });
 
+test('rejects an oversized original before requesting an upload token', async ({
+    mount,
+    page,
+}) => {
+    let tokenRequests = 0;
+    await page.route('**/api/operations/images/upload', (route) => {
+        tokenRequests++;
+        return route.abort();
+    });
+    await mount(
+        <CompleteOperationModal
+            operationId={2}
+            expectedEntityId={1}
+            expectedTaskVersionEventId={3}
+            label="Pregled"
+            conditions={{ completionAttachImagesRequired: true }}
+        />,
+    );
+    await page.getByRole('checkbox').click();
+    await page
+        .locator('input[type=file]')
+        .first()
+        .evaluate((input: HTMLInputElement) => {
+            const transfer = new DataTransfer();
+            transfer.items.add(
+                new File([new Uint8Array(25 * 1024 * 1024 + 1)], 'camera.png', {
+                    type: 'image/png',
+                }),
+            );
+            input.files = transfer.files;
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+    await page.getByRole('button', { name: 'Potvrdi', exact: true }).click();
+    await expect(
+        page.getByText(/Slika premašuje ograničenje od 25 MiB/),
+    ).toBeVisible();
+    expect(tokenRequests).toBe(0);
+});
+
 test.describe('phone camera', () => {
     test.use({
         viewport: { width: 390, height: 844 },

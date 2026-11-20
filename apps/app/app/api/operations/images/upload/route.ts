@@ -1,8 +1,7 @@
 import { getOperationById } from '@gredice/storage';
 import { handleUpload } from '@vercel/blob/client';
 import { withAuth } from '../../../../../lib/auth/auth';
-
-const MAX_OPERATION_IMAGE_SIZE_BYTES = 25 * 1024 * 1024;
+import { MAX_OPERATION_IMAGE_SIZE_BYTES } from '../../../../../lib/operationPhotoUpload';
 
 function getOperationIdFromClientPayload(clientPayload: string | null) {
     if (!clientPayload) {
