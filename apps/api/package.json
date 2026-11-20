@@ -65,7 +65,7 @@
         "zod-to-json-schema": "3.25.2"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.6.7",
+        "@biomejs/biome": "2.6.8",
         "@electric-sql/pglite": "0.5.16",
         "@gredice/auth": "workspace:*",
         "@gredice/directory-types": "workspace:*",
