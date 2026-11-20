@@ -1,10 +1,13 @@
 'use client';
 
-import { Bank, LogOut, User } from '@gredice/ui/icons';
+import { Bank, ExpandDown, LogOut, User } from '@gredice/ui/icons';
 import {
     DropdownMenu,
     DropdownMenuContent,
+    DropdownMenuGroup,
     DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@gredice/ui/Menu';
 import { UserAvatar } from '@gredice/ui/UserAvatar';
@@ -19,6 +22,8 @@ type CurrentUser = {
     achievementCount?: number;
     accounts?: Array<{ accountId?: string | null }>;
 };
+
+const menuItemClassName = 'h-9 rounded-md px-2';
 
 function isCurrentUser(value: unknown): value is CurrentUser {
     return typeof value === 'object' && value !== null;
@@ -66,6 +71,10 @@ export function ProfileNavItem({
 
     const userName =
         currentUser?.displayName?.trim() || currentUser?.userName || 'Korisnik';
+    const userSubtitle =
+        currentUser?.userName && currentUser.userName !== userName
+            ? currentUser.userName
+            : null;
     const userHref = useMemo(
         () =>
             currentUser?.id
@@ -108,29 +117,69 @@ export function ProfileNavItem({
                         size="sm"
                     />
                     {!compact && (
-                        <span className="min-w-0 flex-1 truncate text-left">
-                            {userName}
-                        </span>
+                        <>
+                            <span className="min-w-0 flex-1 truncate text-left">
+                                {userName}
+                            </span>
+                            <ExpandDown
+                                aria-hidden
+                                className="size-4 shrink-0 text-muted-foreground transition-transform group-data-[popup-open]/nav-item:rotate-180"
+                            />
+                        </>
                     )}
                 </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent>
+            <DropdownMenuContent align="start" className="w-64">
+                <DropdownMenuLabel className="flex items-center gap-3 px-2 py-2 font-normal">
+                    {/* Decorative: the visible name next to it already labels the header. */}
+                    <span aria-hidden className="flex shrink-0">
+                        <UserAvatar
+                            achievementCount={currentUser?.achievementCount}
+                            displayName={userName}
+                            avatarUrl={currentUser?.avatarUrl}
+                            size="md"
+                        />
+                    </span>
+                    <span className="flex min-w-0 flex-col">
+                        <span className="truncate font-semibold text-foreground">
+                            {userName}
+                        </span>
+                        {userSubtitle && (
+                            <span className="truncate text-muted-foreground text-xs">
+                                {userSubtitle}
+                            </span>
+                        )}
+                    </span>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                    <DropdownMenuItem
+                        className={menuItemClassName}
+                        startDecorator={
+                            <User className="size-4 shrink-0 text-muted-foreground" />
+                        }
+                        href={userHref}
+                        onClick={onItemClick}
+                    >
+                        Detalji korisnika
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                        className={menuItemClassName}
+                        startDecorator={
+                            <Bank className="size-4 shrink-0 text-muted-foreground" />
+                        }
+                        href={accountHref}
+                        onClick={onItemClick}
+                    >
+                        Detalji računa
+                    </DropdownMenuItem>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem
-                    startDecorator={<User className="size-5" />}
-                    href={userHref}
-                    onClick={onItemClick}
-                >
-                    Detalji korisnika
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                    startDecorator={<Bank className="size-5" />}
-                    href={accountHref}
-                    onClick={onItemClick}
-                >
-                    Detalji računa
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                    startDecorator={<LogOut className="size-5" />}
+                    className={menuItemClassName}
+                    startDecorator={
+                        <LogOut className="size-4 shrink-0 text-muted-foreground" />
+                    }
                     href={KnownPages.Logout}
                     onClick={onItemClick}
                 >
