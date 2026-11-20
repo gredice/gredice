@@ -38,13 +38,15 @@ test.describe('regional sowing calendar', () => {
                     table.locator(`a[href="/biljke/${crop}"]`),
                 ).toHaveCount(1);
             }
-            expect(
-                await page.evaluate(
-                    () =>
-                        document.documentElement.scrollWidth <=
-                        window.innerWidth,
-                ),
-            ).toBe(true);
+            await expect
+                .poll(() =>
+                    page.evaluate(
+                        () =>
+                            document.documentElement.scrollWidth <=
+                            window.innerWidth,
+                    ),
+                )
+                .toBe(true);
             const region = page.getByRole('region', {
                 name: 'Kalendar po mjesecima',
             });
@@ -83,7 +85,15 @@ test('regional calendar has accessible headings, filters, table and breadcrumbs'
     page,
 }) => {
     test.setTimeout(60_000);
+    // Axe treats the layered night sky as white. The pixel contrast suite
+    // measures the rendered sky at night and across the theme transitions.
+    await page.clock.setFixedTime(new Date('2026-09-23T11:00:00Z'));
     await page.goto('/kalendar-sjetve', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('html')).toHaveAttribute(
+        'data-public-environment',
+        'on',
+    );
+    await expect(page.locator('html')).toHaveClass(/\blight\b/);
     const result = await new AxeBuilder({ page })
         .withTags(['wcag2a', 'wcag2aa'])
         .analyze();
