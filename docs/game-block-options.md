@@ -75,7 +75,7 @@ Validation from the repository root:
 pnpm --filter @gredice/js test
 pnpm --filter @gredice/game test
 pnpm --filter @gredice/game exec tsc --noEmit
-pnpm --filter garden exec playwright test --project=chromium-webgl block-options
+pnpm --filter garden exec playwright test --project=chromium-webgl-block-options
 ```
 
 The browser specs mount `packages/game/tests/BlockOptionsFixture.tsx` and stub

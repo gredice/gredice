@@ -58,6 +58,11 @@ pnpm --filter @gredice/game exec tsx --test src/arrangements/autumnArrangements.
 pnpm --filter garden exec playwright test --config playwright.autumn-arrangements.config.ts --update-snapshots
 ```
 
+Start from an empty `apps/garden/playwright/.cache`. Until the sky rim and
+surface gradient shader patches are installed in one fixed order, a cache that
+also holds other component tests changes their order and the rendered pixels
+(see [the preparation notes](autumn-starter-pack-preparation.md)).
+
 Commit source inputs before capturing. The harness rejects dirty inputs outside its
 two output folders, records the input commit/tree and each scene's actual ISO time,
 season state, object identities, geometry counts and projected bounds, and verifies
@@ -69,7 +74,13 @@ checks complement visual inspection; they are not an occlusion or device-perform
 benchmark. The committed JSON records are the reproduction evidence.
 
 
-## Reviewed examples
+## Examples awaiting review
+
+The images below were captured again on 2026-11-27 after the party-toy art
+restyle (#5874) and are awaiting the owner's visual review. The notes under the
+tables describe the original review of the earlier, muted art. In the party-toy
+style the night is light lavender, so night views are no longer dark and the
+lamp's warm pool is much fainter.
 
 | Harvest corner | Woodland path | Cozy evening seat |
 | --- | --- | --- |
