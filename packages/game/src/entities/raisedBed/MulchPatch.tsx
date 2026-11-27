@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { type BufferGeometry, DoubleSide, MeshStandardMaterial } from 'three';
 import { useBlockData } from '../../hooks/useBlockData';
+import { seasonalRoles } from '../../scene/seasonalRoles';
 import { SnowOverlay } from '../../snow/SnowOverlay';
 import { snowPresets } from '../../snow/snowPresets';
 import type { EntityInstanceProps } from '../../types/runtime/EntityInstanceProps';
@@ -24,10 +25,15 @@ import {
 } from './mulchPatchGeometry';
 
 const mulchPatchSize: [number, number] = [1, 1];
+/**
+ * Mulch colours as albedo. A sunlit top face shows about 3.2 times its albedo
+ * through neutral tone mapping, so players see lighter colours: coir about
+ * #ad653c, straw #f2cb5a (the hay role) and wood chips #cf8a45 at midday.
+ */
 const mulchPatchColors = {
-    MulchCoconut: '#6a4930',
-    MulchHey: '#9a7b3e',
-    MulchWood: '#4f3524',
+    MulchCoconut: '#683f26',
+    MulchHey: seasonalRoles.hay.albedo,
+    MulchWood: '#7c5329',
 } satisfies Record<MulchBlockName, string>;
 
 const mulchPatchVertexParameters = `
@@ -120,7 +126,8 @@ float mulchPatchStraightEdgeBand = 1.0 - smoothstep(0.0, mulchPatchStraightEdgeB
 float mulchPatchInnerEdgeBand = 1.0 - smoothstep(0.0, mulchPatchInnerEdgeBandWidth, mulchPatchInnerEdgeDistance);
 float mulchPatchEdgeBand = max(mulchPatchStraightEdgeBand, mulchPatchInnerEdgeBand);
 float mulchPatchShade = max(vMulchEdge, mulchPatchEdgeBand * 0.82);
-diffuseColor.rgb *= mix(1.0, 0.78, mulchPatchShade);
+// A faint edge tone only: the rounded edge itself carries the shading.
+diffuseColor.rgb *= mix(1.0, 0.9, mulchPatchShade);
 `;
 
 type StackMulchPatchTarget = MulchPatchTarget & {
@@ -138,9 +145,8 @@ type MulchPatchRenderGroup = {
 function createMulchPatchMaterial(blockName: MulchBlockName) {
     const material = new MeshStandardMaterial({
         color: mulchPatchColors[blockName],
-        flatShading: true,
         metalness: 0,
-        roughness: 0.96,
+        roughness: 0.8,
         side: DoubleSide,
     });
 
@@ -164,7 +170,7 @@ function createMulchPatchMaterial(blockName: MulchBlockName) {
                 `#include <color_fragment>\n${mulchPatchColorFragment}`,
             );
     };
-    material.customProgramCacheKey = () => 'mulch-patch-edge-shading-v2';
+    material.customProgramCacheKey = () => 'mulch-patch-edge-shading-v3';
     material.needsUpdate = true;
 
     return material;

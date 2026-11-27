@@ -8,10 +8,14 @@ const singleLineBaseFontSize = 112;
 const doubleLineBaseFontSize = 88;
 const minimumFontSize = 32;
 const woodenSignInkColor = '#3f2a1d';
+// The writing board is recessed inside a chunky frame: its faces sit at
+// +-0.0325, and the message sits just in front of each face, inside the
+// frame opening (0.72 x 0.31).
 const woodenSignFaces = [
-    { positionZ: 0.061, rotationY: 0 },
-    { positionZ: -0.061, rotationY: Math.PI },
+    { positionZ: 0.036, rotationY: 0 },
+    { positionZ: -0.036, rotationY: Math.PI },
 ] as const;
+const woodenSignMessageSize = [0.7, 0.33] as const;
 
 function fitFontSize(
     context: CanvasRenderingContext2D,
@@ -100,7 +104,7 @@ export function WoodenSignText({ message }: { message: string }) {
             renderOrder={1}
             raycast={() => null}
         >
-            <planeGeometry args={[0.72, 0.34]} />
+            <planeGeometry args={woodenSignMessageSize} />
             <meshBasicMaterial
                 map={texture}
                 transparent

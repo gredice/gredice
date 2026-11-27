@@ -6,10 +6,10 @@ First-party references inspected: Rabbit for the small faceted animal and restra
 
 | Model | Triangles | GLB bytes | Meshes / materials |
 | --- | ---: | ---: | ---: |
-| Hedgehog | 444 | 70,104 | 6 / 1 |
-| HedgehogShelter | 260 | 24,732 | 1 / 1 |
+| Hedgehog | 1,876 | 63,252 | 6 / 1 |
+| HedgehogShelter | 888 | 36,068 | 1 / 1 |
 
-Both are lazy, opaque, untextured and share their own rough vertex-color palette. The shelter bounds are 0.8 × 0.74 × 0.48. Actor animation samples stay within 0.25 wide, 0.46 long and 0.27 high. The shelter uses the existing snow/wet-surface helpers; the actor uses a cloned hierarchy with cached geometry/materials, a private mixer, no picking surfaces and no shadow-casting meshes. Its grounding shadow uses the shared bounded shadow registry. Teardown stops/uncaches the mixer without disposing shared GLTF resources.
+Both are lazy, opaque and untextured, each with its own vertex-color palette in the seasonal roles of [GAME_ART.md](../GAME_ART.md). On screen the hedgehog shows a conker body `#c4683a`, acorn-cap spines `#c28a50`, a cream face `#f2e4c6`, nut caramel ears `#dc9a4c` and ink violet eyes and nose `#5c4590`, at roughness 0.75. The shelter keeps the shared wood tones with hay bedding `#f2cb5a`, at roughness 0.55. The shelter bounds are 0.8 × 0.74 × 0.48. Actor animation samples stay within 0.25 wide, 0.46 long and 0.27 high. The shelter uses the existing snow/wet-surface helpers; the actor uses a cloned hierarchy with cached geometry/materials, a private mixer, no picking surfaces and no shadow-casting meshes. Its grounding shadow uses the shared bounded shadow registry. Teardown stops/uncaches the mixer without disposing shared GLTF resources.
 
 ## Habitat and lifecycle
 

@@ -7,6 +7,7 @@ import {
     ShaderMaterial,
 } from 'three';
 import { applyGroundPatchMaterial } from '../entities/helpers/groundPatchMaterial';
+import { getRainWetSheenColorUniform, rainWetLook } from '../rain/rainWetSheen';
 import {
     getCloudShadowAttenuationMaterialUniforms,
     retainCloudShadowAttenuationMaterial,
@@ -16,6 +17,8 @@ import {
     getWeatherSurfacePluginVariantKey,
     resolveWeatherSurfacePluginMode,
     supportsIntegratedWeatherSurfaceMaterial,
+    weatherSnowLightFloor,
+    weatherSnowLightTint,
 } from './weatherSurfaceMaterial';
 
 const options = {
@@ -72,6 +75,41 @@ void main() {
     };
 }
 
+/** The wet branch only lifts: saturation, lower roughness and a sky sheen. */
+function assertWetLookIsRicherNotDarker(fragmentShader: string) {
+    assert.match(fragmentShader, /if \(uGrediceRainWetness > 0\.001\)/);
+    assert.match(
+        fragmentShader,
+        new RegExp(
+            `1\\.0 \\+ ${rainWetLook.saturation.toFixed(2)} \\* grediceWeatherWet`,
+        ),
+    );
+    assert.match(
+        fragmentShader,
+        new RegExp(
+            `roughnessFactor = mix\\(\\s*roughnessFactor,\\s*${rainWetLook.roughness.toFixed(2)},\\s*grediceWeatherWet`,
+        ),
+    );
+    assert.match(
+        fragmentShader,
+        new RegExp(
+            `outgoingLight \\+= uGrediceRainSheenColor \\* \\(\\s*${rainWetLook.sheen.toFixed(2)} \\*`,
+        ),
+    );
+    assert.equal(rainWetLook.saturation, 0.22);
+    assert.equal(rainWetLook.roughness, 0.26);
+    assert.equal(rainWetLook.sheen, 0.07);
+    // No darkening, no near-black, no hash puddles or speckle.
+    assert.doesNotMatch(
+        fragmentShader,
+        /uGrediceRainDarkness|grediceWeatherPuddle|grediceWeatherRainLocal|grediceWeatherRainAlpha|pow\(\s*max\(gl_FragColor/,
+    );
+    assert.doesNotMatch(
+        fragmentShader,
+        /grediceWeatherFragmentNoise\([^)]*Rain/,
+    );
+}
+
 test('integrated weather material composes existing shader hooks', () => {
     const source = new MeshStandardMaterial();
     let sourceHookCount = 0;
@@ -116,7 +154,7 @@ float grediceGroundPatchApplied = 1.0;`,
     );
     assert.match(
         shader.vertexShader,
-        /grediceWeatherNoise\(\s*aWeatherLocalPosition \* uGrediceSnowNoiseScale/,
+        /grediceWeatherNoise\(\s*\(grediceWeatherObjectMatrix \* vec4\(transformed, 1\.0\)\)\.xyz \*\s*uGrediceSnowNoiseScale/,
     );
     assert.match(
         shader.vertexShader,
@@ -133,54 +171,42 @@ float grediceGroundPatchApplied = 1.0;`,
         /normalize\(vGrediceWeatherWorldNormal\)\.y/,
     );
     assert.ok(
-        shader.fragmentShader.indexOf('float grediceWeatherTopness') >
+        shader.fragmentShader.indexOf('float grediceWeatherWet =') >
             shader.fragmentShader.indexOf('#include <color_fragment>'),
     );
     assert.ok(
-        shader.fragmentShader.indexOf('float grediceWeatherTopness') <
+        shader.fragmentShader.indexOf('float grediceWeatherWet =') <
             shader.fragmentShader.indexOf('#include <aomap_fragment>'),
         'combined rain computation remains at the color stage',
     );
-    assert.deepEqual(
-        Reflect.get(shader.uniforms, 'uGrediceRainBoundsMin').value.toArray(),
-        [-2, -0.25, -3],
+    // The wet look is richer, never darker (GAME_ART.md "Weather > Rain and
+    // heavy rain"): saturation +22%, roughness toward 0.26 and a 7% sky
+    // sheen, with no darkening and no per-pixel noise.
+    assertWetLookIsRicherNotDarker(shader.fragmentShader);
+    assert.equal(
+        Reflect.get(shader.uniforms, 'uGrediceRainSheenColor'),
+        getRainWetSheenColorUniform(),
     );
-    assert.deepEqual(
-        Reflect.get(shader.uniforms, 'uGrediceRainBoundsMax').value.toArray(),
-        [4, 0.75, 5],
+    assert.ok(
+        shader.fragmentShader.indexOf('#include <color_fragment>') <
+            shader.fragmentShader.indexOf('diffuseColor.rgb = max('),
+        'wet saturation changes the base colour before lighting',
     );
-    assert.match(
-        shader.fragmentShader,
-        /vec3 grediceWeatherRainLocal =[\s\S]*vGrediceWeatherWorldPosition -[\s\S]*uGrediceRainBoundsMin[\s\S]*uGrediceRainBoundsMax -[\s\S]*uGrediceRainBoundsMin/,
+    assert.ok(
+        shader.fragmentShader.indexOf('#include <roughnessmap_fragment>') <
+            shader.fragmentShader.indexOf(
+                `${rainWetLook.roughness.toFixed(2)},\n    grediceWeatherWet`,
+            ),
+        'wet roughness follows the material roughness',
     );
-    assert.match(
-        shader.fragmentShader,
-        /grediceWeatherFragmentNoise\(\s*grediceWeatherRainLocal \* 17\.0/,
-    );
-    assert.match(
-        shader.fragmentShader,
-        /grediceWeatherFragmentNoise\(\s*grediceWeatherRainLocal \* 23\.0/,
-    );
-    assert.doesNotMatch(
-        shader.fragmentShader,
-        /vGrediceWeatherWorldPosition \* (17|23)\.0/,
-    );
-    assert.match(shader.fragmentShader, /pow\(grediceWeatherNormalY, 20\.0\)/);
-    assert.doesNotMatch(
-        shader.fragmentShader,
-        /pow\(grediceWeatherTopness, 20\.0\)/,
-    );
-    assert.doesNotMatch(
-        shader.fragmentShader,
-        /mix\(\s*roughnessFactor,\s*0\.18/,
+    assert.ok(
+        shader.fragmentShader.indexOf(
+            'outgoingLight += uGrediceRainSheenColor',
+        ) < shader.fragmentShader.indexOf('#include <opaque_fragment>'),
+        'the sheen is added to the light before the output',
     );
     assert.ok(
         shader.fragmentShader.indexOf('#include <fog_fragment>') <
-            shader.fragmentShader.indexOf('float grediceWeatherRainAlpha'),
-        'legacy rain blending happens in final output space after fog',
-    );
-    assert.ok(
-        shader.fragmentShader.indexOf('float grediceWeatherRainAlpha') <
             shader.fragmentShader.indexOf('#include <dithering_fragment>'),
         'dithering remains the final output step',
     );
@@ -196,9 +222,29 @@ float grediceGroundPatchApplied = 1.0;`,
         shader.fragmentShader.indexOf('float grediceWeatherEarlySnowCoverage'),
         shader.fragmentShader.indexOf('float grediceWeatherSnowCoverage'),
     );
-    assert.match(fastSnowPath, /#include <fog_fragment>/);
-    assert.doesNotMatch(fastSnowPath, /#include <colorspace_fragment>/);
-    assert.doesNotMatch(fastSnowPath, /#include <tonemapping_fragment>/);
+    // Covered snow is lit by the scene lights like every other surface, so
+    // it tone maps and converts colour space in the same order as the full
+    // path before fog.
+    assert.match(
+        fastSnowPath,
+        /#include <tonemapping_fragment>[\s\S]*#include <colorspace_fragment>[\s\S]*#include <fog_fragment>/,
+    );
+    assert.match(fastSnowPath, /hemisphereLights\[i\]/);
+    assert.doesNotMatch(fastSnowPath, /vec3\(0\.8\)/);
+    // Snow keeps only part of the light's tint, so it stays blue-white.
+    assert.ok(weatherSnowLightTint > 0 && weatherSnowLightTint < 1);
+    assert.ok(
+        fastSnowPath.includes(weatherSnowLightTint.toFixed(2)),
+        'covered snow mixes the light toward its luminance',
+    );
+    // GAME_ART.md "Weather > Snow": a light floor of 0.62 keeps it clean.
+    assert.equal(weatherSnowLightFloor, 0.62);
+    assert.ok(
+        fastSnowPath.includes(
+            `grediceWeatherEarlySnowColor * ${weatherSnowLightFloor.toFixed(2)}`,
+        ),
+        'covered snow never drops below its light floor',
+    );
     assert.doesNotMatch(
         shader.fragmentShader,
         /uGrediceSnowNoiseInfluence\s*\*\s*uGrediceSnowAmount/,
@@ -270,7 +316,7 @@ float grediceGroundPatchApplied = 1.0;`,
     assert.match(shader.fragmentShader, /grediceCloudShadowAttenuation/);
     assert.equal(
         material.customProgramCacheKey(),
-        `ground-patch:grass|${getWeatherSurfacePluginVariantKey('combined')}|gredice-cloud-shadow-attenuation-v1`,
+        `ground-patch:grass|${getWeatherSurfacePluginVariantKey('combined')}|gredice-cloud-shadow-ellipses-v1`,
     );
 
     integratedCloudLease.release();
@@ -353,52 +399,36 @@ test('rain-only specialization omits every snow shader input and operation', () 
         /vGrediceWeatherWorldNormalY = normalize\(\s*inverseTransformDirection\(transformedNormal, viewMatrix\)\s*\)\.y;/,
     );
     assert.match(shader.vertexShader, /vGrediceWeatherWorldPosition/);
-    assert.match(shader.fragmentShader, /grediceWeatherRainLocal/);
-    assert.match(shader.fragmentShader, /grediceWeatherRainAlpha/);
     assert.doesNotMatch(
         shader.fragmentShader,
         /normalize\(vGrediceWeatherWorldNormal/,
     );
-    const colorStage = shader.fragmentShader.slice(
-        shader.fragmentShader.indexOf('#include <color_fragment>'),
-        shader.fragmentShader.indexOf('#include <aomap_fragment>'),
-    );
-    assert.doesNotMatch(
-        colorStage,
-        /grediceWeatherTopness|grediceWeatherRainLocal|grediceWeatherWet/,
-    );
+    assertWetLookIsRicherNotDarker(shader.fragmentShader);
+    // Rain-only computes the wetness once, from the varying normal, right
+    // before the roughness it changes.
     const rainComputationIndex = shader.fragmentShader.indexOf(
-        'float grediceWeatherTopness',
-    );
-    const rainOutputIndex = shader.fragmentShader.indexOf(
-        'float grediceWeatherRainAlpha',
+        'float grediceWeatherWet =',
     );
     assert.equal(
-        shader.fragmentShader.match(/float grediceWeatherTopness/g)?.length,
+        shader.fragmentShader.match(/float grediceWeatherWet =/g)?.length,
         1,
+    );
+    assert.match(
+        shader.fragmentShader,
+        /grediceWeatherNormalY = max\(vGrediceWeatherWorldNormalY, 0\.0\);/,
     );
     assert.ok(
         rainComputationIndex >
-            shader.fragmentShader.indexOf('#include <fog_fragment>'),
-        'rain-only computation runs after the base PBR output and fog',
+            shader.fragmentShader.indexOf('#include <color_fragment>'),
     );
-    assert.ok(rainOutputIndex > rainComputationIndex);
     assert.ok(
-        rainOutputIndex <
-            shader.fragmentShader.indexOf('#include <dithering_fragment>'),
+        rainComputationIndex <
+            shader.fragmentShader.indexOf('#include <roughnessmap_fragment>'),
     );
-    assert.doesNotMatch(
-        shader.fragmentShader.slice(rainComputationIndex, rainOutputIndex),
-        /#include </,
-        'rain-only computation is adjacent to its final output blend',
-    );
-    assert.match(
-        shader.fragmentShader,
-        /grediceWeatherNormalY = max\(\s*vGrediceWeatherWorldNormalY,\s*0\.0\s*\);\s*if \(grediceWeatherNormalY > 0\.0\) \{[\s\S]*vec3 grediceWeatherRainLocal/,
-    );
-    assert.match(
-        shader.fragmentShader,
-        /float grediceWeatherPuddleMask =[\s\S]*if \(grediceWeatherPuddleMask > 0\.0\) \{\s*float grediceWeatherPuddleNoise =\s*grediceWeatherFragmentNoise/,
+    assert.equal(
+        shader.fragmentShader.match(/roughnessFactor\s*=\s*mix/g)?.length,
+        1,
+        'only the wet roughness, no snow roughness',
     );
     assert.doesNotMatch(
         shader.vertexShader,
@@ -408,10 +438,7 @@ test('rain-only specialization omits every snow shader input and operation', () 
         shader.fragmentShader,
         /uGrediceSnow|vGrediceSnow|grediceWeatherSnow|grediceWeatherEarlySnow/,
     );
-    assert.doesNotMatch(
-        shader.fragmentShader,
-        /roughnessFactor\s*=\s*mix|metalnessFactor\s*=\s*mix/,
-    );
+    assert.doesNotMatch(shader.fragmentShader, /metalnessFactor\s*=\s*mix/);
     assert.equal(
         Object.keys(shader.uniforms).some((key) =>
             key.startsWith('uGrediceSnow'),

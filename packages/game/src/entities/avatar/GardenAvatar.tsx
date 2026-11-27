@@ -1415,7 +1415,15 @@ export function GardenAvatar({
 
     const activateAvatarView = useCallback(() => {
         const actor = actorRef.current;
-        if (!actor || view !== 'overview') {
+        // Expand, a block move and the remove confirmation keep the
+        // overview: the avatar view would end them. The options pop-up
+        // just closes, as on any other canvas press.
+        const editingMode = gameStateStore.getState().blockEditing?.mode;
+        if (
+            !actor ||
+            view !== 'overview' ||
+            (editingMode !== undefined && editingMode !== 'menu')
+        ) {
             return;
         }
         getGardenAvatarPerspectiveEntryPosition({
@@ -1430,7 +1438,7 @@ export function GardenAvatar({
         roamRef.current.route = [];
         dismissSpeechMessage();
         setView('third-person');
-    }, [camera, dismissSpeechMessage, setView, view]);
+    }, [camera, dismissSpeechMessage, gameStateStore, setView, view]);
 
     useEffect(() => {
         if (

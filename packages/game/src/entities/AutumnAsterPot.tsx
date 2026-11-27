@@ -6,6 +6,9 @@ import { useGameGLTF } from '../utils/useGameGLTF';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 import { WeatheredEntityPart } from './helpers/WeatheredEntityPart';
 
+/** Satin band of GAME_ART.md, as the aster violet role. */
+const autumnAsterPetalRoughness = 0.6;
+
 export function AutumnAsterPot({
     stack,
     block,
@@ -43,7 +46,7 @@ export function AutumnAsterPot({
             >
                 <meshStandardMaterial
                     color={config.color}
-                    roughness={0.95}
+                    roughness={autumnAsterPetalRoughness}
                     metalness={0}
                 />
             </WeatheredEntityPart>
@@ -54,7 +57,7 @@ export function AutumnAsterPot({
             >
                 <meshStandardMaterial
                     color={config.centerColor}
-                    roughness={0.95}
+                    roughness={autumnAsterPetalRoughness}
                     metalness={0}
                 />
             </WeatheredEntityPart>

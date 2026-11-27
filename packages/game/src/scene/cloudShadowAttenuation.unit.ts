@@ -5,138 +5,490 @@ import {
     MeshStandardMaterial,
     Object3D,
     ShaderMaterial,
-    Texture,
-    Vector2,
     Vector4,
 } from 'three';
 import CustomShaderMaterial from 'three-custom-shader-material/vanilla';
 import {
+    type CloudShadowField,
     type CloudShadowMaterialLeaseMap,
+    cloudShadowEllipseCapacity,
     cloudShadowFragmentShaderChunk,
+    cloudShadowRules,
+    createCloudShadowMaterialUniforms,
     getCloudShadowAttenuationMaterialCandidateRevision,
+    getCloudShadowUniformBindingName,
+    isCloudShadowLayerActive,
     projectCloudShadowReceiverToGround,
     registerCloudShadowAttenuationMaterialCandidate,
     releaseCloudShadowAttenuationMaterials,
     resolveCloudShadowAttenuationActivation,
-    resolveCloudShadowAttenuationConfig,
-    resolveCloudShadowAttenuationUpdateTick,
-    resolveCloudShadowMaskPlacement,
+    resolveCloudShadowCount,
+    resolveCloudShadowEllipses,
+    resolveCloudShadowLap,
+    resolveCloudShadowOvercast,
+    resolveCloudShadowProjection,
+    resolveCloudShadowStrength,
     retainCloudShadowAttenuationMaterial,
     supportsCloudShadowAttenuation,
     syncCloudShadowAttenuationMaterials,
 } from './cloudShadowAttenuation';
-import { gameQualityProfiles, resolveGameQualityProfile } from './gameQuality';
+import { resolveCloudShadowField } from './weather/sky/CloudShadowDriver';
+import { resolveCloudShadowSpeed } from './weather/windClass';
 
-const uniforms = {
-    bounds: { value: new Vector4(-10, -10, 0.05, 0.05) },
-    hardness: { value: 0 },
-    map: { value: new Texture() },
-    projection: { value: new Vector2(0.5, -0.25) },
-    strength: { value: 0.8 },
+/** Laps of `field` run at `speed` units per second by `seconds`. */
+function lapsAt(field: CloudShadowField, speed: number, seconds: number) {
+    return (speed * seconds) / resolveCloudShadowLap(field);
+}
+
+const uniforms = createCloudShadowMaterialUniforms();
+uniforms.strength.value = 0.8;
+const ownedBindings = Object.keys(uniforms).map(
+    getCloudShadowUniformBindingName,
+);
+
+const islandField = {
+    centreX: 0,
+    centreZ: 0,
+    halfAlong: 3.54,
+    halfAcross: 3.54,
 };
+const wind = { x: -Math.SQRT1_2, z: Math.SQRT1_2 };
 
-describe('cloud shadow attenuation quality', () => {
-    it('scales mask resolution and cadence with quality', () => {
-        const constrained = resolveGameQualityProfile('auto', undefined, {
-            coarsePointer: true,
-            coreCount: 4,
-            dpr: 3,
-            memoryGb: 4,
-            narrowViewport: true,
+function ellipses() {
+    return Array.from(
+        { length: cloudShadowEllipseCapacity },
+        () => new Vector4(),
+    );
+}
+
+/** Share of the tint at a ground point, as the shader computes it. */
+function shadowAt(
+    x: number,
+    z: number,
+    list: Vector4[],
+    amounts: number[],
+    axis = wind,
+) {
+    let share = 0;
+    for (let index = 0; index < list.length; index += 1) {
+        const ellipse = list[index];
+        if (!ellipse) continue;
+        const dx = x - ellipse.x;
+        const dz = z - ellipse.y;
+        const along = (dx * axis.x + dz * axis.z) / ellipse.z;
+        const across = (dx * -axis.z + dz * axis.x) / ellipse.w;
+        const distance = Math.hypot(along, across);
+        const t = Math.min(1, Math.max(0, (distance - 0.5) / 0.5));
+        share = Math.max(
+            share,
+            (amounts[index] ?? 0) * (1 - t * t * (3 - 2 * t)),
+        );
+    }
+    return share;
+}
+
+describe('cloud shadow ellipses', () => {
+    it('shows three shadows when partly cloudy and the tier cap under overcast', () => {
+        assert.equal(resolveCloudShadowCount(0.4, 6), 3);
+        assert.equal(resolveCloudShadowCount(0.85, 6), 6);
+        assert.equal(resolveCloudShadowCount(1, 4), 4);
+        assert.equal(resolveCloudShadowCount(0.4, 4), 3);
+        assert.equal(resolveCloudShadowCount(1, 0), 0);
+        assert.equal(resolveCloudShadowCount(0.4, 0), 0);
+    });
+
+    it('takes the time-of-day strength and weakens it under overcast, rain and snow', () => {
+        const partly = { cloudy: 0.4, foggy: 0, rainy: 0, snowy: 0 };
+        assert.ok(
+            Math.abs(resolveCloudShadowStrength(partly, 0.85) - 0.85) < 1e-9,
+        );
+        assert.ok(
+            Math.abs(resolveCloudShadowStrength(partly, 0.5) - 0.5) < 1e-9,
+        );
+        const overcast = { ...partly, cloudy: 1 };
+        assert.ok(
+            Math.abs(
+                resolveCloudShadowStrength(overcast, 0.85) -
+                    0.85 * cloudShadowRules.overcastStrength,
+            ) < 1e-9,
+        );
+        assert.ok(
+            Math.abs(
+                resolveCloudShadowStrength({ ...overcast, rainy: 1 }, 1) -
+                    cloudShadowRules.overcastStrength * 0.8,
+            ) < 1e-9,
+        );
+        assert.ok(
+            Math.abs(
+                resolveCloudShadowStrength({ ...overcast, snowy: 1 }, 1) -
+                    cloudShadowRules.overcastStrength * 0.65,
+            ) < 1e-9,
+        );
+    });
+
+    it('has no shadows under a clear sky or in fog', () => {
+        assert.equal(
+            resolveCloudShadowStrength(
+                { cloudy: 0.04, foggy: 0, rainy: 0, snowy: 0 },
+                0.85,
+            ),
+            0,
+        );
+        assert.equal(
+            resolveCloudShadowStrength(
+                { cloudy: 0.6, foggy: 1, rainy: 0, snowy: 0 },
+                0.85,
+            ),
+            0,
+        );
+    });
+
+    it('moves at (0.16 + 0.05 × wind class), 0.6× under overcast and 40% with reduced motion', () => {
+        assert.ok(Math.abs(resolveCloudShadowSpeed(0) - 0.16) < 1e-9);
+        assert.ok(Math.abs(resolveCloudShadowSpeed(2) - 0.26) < 1e-9);
+        assert.ok(
+            Math.abs(resolveCloudShadowSpeed(0, { overcast: 1 }) - 0.096) <
+                1e-9,
+        );
+        assert.ok(
+            Math.abs(
+                resolveCloudShadowSpeed(0, { reducedMotion: true }) - 0.064,
+            ) < 1e-9,
+        );
+    });
+
+    it('runs three lanes 2.4 apart with radii 1.65 to 2.05 and a solid core', () => {
+        const list = ellipses();
+        const amounts = Array.from({ length: list.length }, () => 0);
+        resolveCloudShadowEllipses({
+            amounts,
+            count: 6,
+            ellipses: list,
+            field: islandField,
+            overcast: 0,
+            strength: 0.85,
+            laps: 0,
+            axis: wind,
         });
-
-        assert.deepEqual(
-            resolveCloudShadowAttenuationConfig({
-                prefersReducedMotion: false,
-                quality: constrained,
-            }),
-            {
-                enabled: true,
-                maskResolution: 64,
-                updateMs: 240,
-            },
-        );
-        assert.deepEqual(
-            resolveCloudShadowAttenuationConfig({
-                prefersReducedMotion: false,
-                quality: gameQualityProfiles.medium,
-            }),
-            {
-                enabled: true,
-                maskResolution: 128,
-                updateMs: 160,
-            },
-        );
-        assert.deepEqual(
-            resolveCloudShadowAttenuationConfig({
-                prefersReducedMotion: false,
-                quality: gameQualityProfiles.high,
-            }),
-            {
-                enabled: true,
-                maskResolution: 192,
-                updateMs: 96,
-            },
-        );
-    });
-
-    it('slows and caps the mask for reduced motion', () => {
-        assert.deepEqual(
-            resolveCloudShadowAttenuationConfig({
-                prefersReducedMotion: true,
-                quality: gameQualityProfiles.high,
-            }),
-            {
-                enabled: true,
-                maskResolution: 128,
-                updateMs: 320,
-            },
+        for (const [index, ellipse] of list.entries()) {
+            assert.ok(
+                ellipse.z >= 1.65 * 0.85 - 1e-9 &&
+                    ellipse.z <= 1.65 * 1.15 + 1e-9,
+            );
+            const aspect = ellipse.w / ellipse.z;
+            assert.ok(
+                aspect >= 0.66 - 1e-9 && aspect <= 0.8 + 1e-9,
+                `aspect ${aspect}`,
+            );
+            const across = ellipse.x * -wind.z + ellipse.y * wind.x;
+            const lane = (index % 3) - 1;
+            assert.ok(
+                Math.abs(across - lane * 2.4) <= 0.2 + 1e-9,
+                `lane ${index}`,
+            );
+        }
+        const overcastList = ellipses();
+        resolveCloudShadowEllipses({
+            amounts,
+            count: 6,
+            ellipses: overcastList,
+            field: islandField,
+            overcast: 1,
+            strength: 0.6,
+            laps: 0,
+            axis: wind,
+        });
+        assert.ok((overcastList[0]?.z ?? 0) > (list[0]?.z ?? 0));
+        // The core is solid: the full amount inside half the radius.
+        const first = overcastList[0];
+        assert.ok(first);
+        assert.ok(
+            Math.abs(
+                shadowAt(first.x, first.y, overcastList, amounts) -
+                    Math.max(...amounts),
+            ) < 0.6,
         );
     });
 
-    it('honors an adaptive minimum cadence without changing High fidelity', () => {
-        assert.deepEqual(
-            resolveCloudShadowAttenuationConfig({
-                minimumUpdateMs: 160,
-                prefersReducedMotion: false,
-                quality: gameQualityProfiles.high,
-            }),
-            {
-                enabled: true,
-                maskResolution: 192,
-                updateMs: 160,
-            },
-        );
-        assert.deepEqual(
-            resolveCloudShadowAttenuationConfig({
-                minimumUpdateMs: 96,
-                prefersReducedMotion: true,
-                quality: gameQualityProfiles.high,
-            }),
-            {
-                enabled: true,
-                maskResolution: 128,
-                updateMs: 320,
-            },
-        );
+    it('travels along the wind, fades at the field ends and never exceeds the strength', () => {
+        const list = ellipses();
+        const amounts = Array.from({ length: list.length }, () => 0);
+        const before = ellipses();
+        resolveCloudShadowEllipses({
+            amounts,
+            count: 6,
+            ellipses: before,
+            field: islandField,
+            overcast: 0,
+            strength: 0.85,
+            laps: lapsAt(islandField, 0.2, 10),
+            axis: wind,
+        });
+        resolveCloudShadowEllipses({
+            amounts,
+            count: 6,
+            ellipses: list,
+            field: islandField,
+            overcast: 0,
+            strength: 0.85,
+            laps: lapsAt(islandField, 0.2, 11),
+            axis: wind,
+        });
+        let moved = 0;
+        for (const [index, ellipse] of list.entries()) {
+            const previous = before[index];
+            assert.ok(previous);
+            const step =
+                (ellipse.x - previous.x) * wind.x +
+                (ellipse.y - previous.y) * wind.z;
+            const sideways =
+                (ellipse.x - previous.x) * -wind.z +
+                (ellipse.y - previous.y) * wind.x;
+            assert.ok(Math.abs(sideways) < 1e-9);
+            if (Math.abs(step - 0.2) < 1e-9) moved += 1;
+        }
+        // All but a shadow that wrapped this second moved 0.2 downwind.
+        assert.ok(moved >= 5);
+        for (const amount of amounts) {
+            assert.ok(amount >= 0 && amount <= 0.85 + 1e-9);
+        }
+        // At the very end of its travel a shadow is gone.
+        const span = islandField.halfAlong + cloudShadowRules.travelMargin;
+        const wrapList = ellipses();
+        const wrapAmounts = Array.from({ length: list.length }, () => 0);
+        for (let t = 0; t < 200; t += 0.5) {
+            resolveCloudShadowEllipses({
+                amounts: wrapAmounts,
+                count: 1,
+                ellipses: wrapList,
+                field: islandField,
+                overcast: 0,
+                strength: 0.85,
+                laps: lapsAt(islandField, 0.2, t),
+                axis: wind,
+            });
+            const along =
+                (wrapList[0]?.x ?? 0) * wind.x + (wrapList[0]?.y ?? 0) * wind.z;
+            if (Math.abs(along) > span - 0.05) {
+                assert.ok((wrapAmounts[0] ?? 1) < 0.02);
+            }
+        }
     });
 
-    it('disables attenuation with user shadows', () => {
-        assert.deepEqual(
-            resolveCloudShadowAttenuationConfig({
-                prefersReducedMotion: false,
-                quality: gameQualityProfiles.low,
-            }),
-            {
-                enabled: false,
-                maskResolution: 0,
-                updateMs: 0,
-            },
-        );
+    it('shades about an eighth of the island when partly cloudy and more under overcast', () => {
+        const coverage = (
+            overcast: number,
+            count: number,
+            strength: number,
+        ) => {
+            const list = ellipses();
+            const amounts = Array.from({ length: list.length }, () => 0);
+            let shaded = 0;
+            let samples = 0;
+            for (let t = 0; t < 120; t += 4) {
+                resolveCloudShadowEllipses({
+                    amounts,
+                    count,
+                    ellipses: list,
+                    field: islandField,
+                    overcast,
+                    strength,
+                    laps: lapsAt(islandField, 0.2, t),
+                    axis: wind,
+                });
+                for (let x = -2.4; x <= 2.4; x += 0.2) {
+                    for (let z = -2.4; z <= 2.4; z += 0.2) {
+                        samples += 1;
+                        if (shadowAt(x, z, list, amounts) > strength * 0.5) {
+                            shaded += 1;
+                        }
+                    }
+                }
+            }
+            return shaded / samples;
+        };
+        const partly = coverage(resolveCloudShadowOvercast(0.4), 3, 0.85);
+        const overcast = coverage(resolveCloudShadowOvercast(0.9), 6, 0.6);
+        assert.ok(partly > 0.06 && partly < 0.22, `partly ${partly}`);
+        assert.ok(overcast > partly, `overcast ${overcast}`);
+    });
+
+    it('runs either way along the axis and keeps its place when the field changes', () => {
+        const place = (laps: number, field: CloudShadowField = islandField) => {
+            const list = ellipses();
+            const amounts = Array.from({ length: list.length }, () => 0);
+            resolveCloudShadowEllipses({
+                amounts,
+                axis: wind,
+                count: 3,
+                ellipses: list,
+                field,
+                laps,
+                overcast: 0,
+                strength: 0.85,
+            });
+            return list.slice(0, 3);
+        };
+        const along = (ellipse: Vector4) =>
+            ellipse.x * wind.x + ellipse.y * wind.z;
+        const across = (ellipse: Vector4) =>
+            ellipse.x * -wind.z + ellipse.y * wind.x;
+        const lap = resolveCloudShadowLap(islandField);
+        const start = place(1000);
+        const ahead = place(1000 + 0.1 / lap);
+        const back = place(1000 - 0.1 / lap);
+        for (const [index, ellipse] of start.entries()) {
+            const forward = ahead[index];
+            const backward = back[index];
+            assert.ok(forward && backward);
+            // A shadow that did not wrap moved 0.1 along the axis either way,
+            // in its lane.
+            if (Math.abs(along(forward) - along(ellipse)) < 1) {
+                assert.ok(
+                    Math.abs(along(forward) - along(ellipse) - 0.1) < 1e-6,
+                );
+                assert.ok(Math.abs(across(forward) - across(ellipse)) < 1e-9);
+            }
+            if (Math.abs(along(backward) - along(ellipse)) < 1) {
+                assert.ok(
+                    Math.abs(along(backward) - along(ellipse) + 0.1) < 1e-6,
+                );
+            }
+        }
+        // A slightly longer field (the view turning) only stretches the
+        // lap: far into a session the shadows barely move.
+        const longer = place(1000, { ...islandField, halfAlong: 3.6 });
+        for (const [index, ellipse] of start.entries()) {
+            const stretched = longer[index];
+            assert.ok(stretched);
+            assert.ok(Math.abs(along(stretched) - along(ellipse)) < 0.1);
+        }
+    });
+
+    it('spreads the lanes over a field wider than the target island', () => {
+        const list = ellipses();
+        const amounts = Array.from({ length: list.length }, () => 0);
+        resolveCloudShadowEllipses({
+            amounts,
+            count: 3,
+            ellipses: list,
+            field: { centreX: 10, centreZ: -4, halfAlong: 9, halfAcross: 10 },
+            overcast: 0,
+            strength: 0.85,
+            laps: 0,
+            axis: { x: 1, z: 0 },
+        });
+        const acrossValues = list
+            .slice(0, 3)
+            .map((ellipse) => ellipse.y + 4)
+            .sort((a, b) => a - b);
+        assert.ok((acrossValues[2] ?? 0) - (acrossValues[0] ?? 0) > 10);
     });
 });
 
-describe('cloud shadow attenuation scheduling', () => {
+describe('cloud shadow field', () => {
+    const garden = (width: number, depth: number) =>
+        Array.from({ length: width * depth }, (_, index) => ({
+            position: { x: index % width, y: 0, z: Math.floor(index / width) },
+        }));
+    const diagonal = { x: -Math.SQRT1_2, z: Math.SQRT1_2 };
+
+    it('measures a rectangle along its sides like its bounding box', () => {
+        const field = resolveCloudShadowField(garden(6, 4), { x: 1, z: 0 });
+        assert.ok(Math.abs(field.centreX - 2.5) < 1e-9);
+        assert.ok(Math.abs(field.centreZ - 1.5) < 1e-9);
+        assert.ok(Math.abs(field.halfAlong - 3) < 1e-9);
+        assert.ok(Math.abs(field.halfAcross - 2) < 1e-9);
+        assert.deepEqual(resolveCloudShadowField(undefined, diagonal), {
+            centreX: 0,
+            centreZ: 0,
+            halfAlong: 2.5,
+            halfAcross: 2.5,
+        });
+    });
+
+    it('keeps the shadows over the garden when they cross it on the diagonal', () => {
+        // Share of the garden in shadow over time, crossing it along a side
+        // and (sideways on screen) on the diagonal.
+        const coverage = (
+            stacks: ReturnType<typeof garden>,
+            axis: { x: number; z: number },
+        ) => {
+            const field = resolveCloudShadowField(stacks, axis);
+            const list = ellipses();
+            const amounts = Array.from({ length: list.length }, () => 0);
+            let shaded = 0;
+            let samples = 0;
+            for (let t = 0; t < 300; t += 3) {
+                resolveCloudShadowEllipses({
+                    amounts,
+                    axis,
+                    count: 6,
+                    ellipses: list,
+                    field,
+                    laps: lapsAt(field, 0.13, t),
+                    overcast: 1,
+                    strength: 1,
+                });
+                for (const { position } of stacks) {
+                    samples += 1;
+                    if (
+                        shadowAt(position.x, position.z, list, amounts, axis) >
+                        0.5
+                    ) {
+                        shaded += 1;
+                    }
+                }
+            }
+            return shaded / samples;
+        };
+        for (const [width, depth] of [
+            [5, 5],
+            [16, 10],
+        ] as const) {
+            const stacks = garden(width, depth);
+            const side = coverage(stacks, { x: 1, z: 0 });
+            const across = coverage(stacks, diagonal);
+            assert.ok(
+                across > 0.8 * side,
+                `${width} x ${depth}: ${across} vs ${side}`,
+            );
+        }
+    });
+});
+
+describe('cloud shadow world projection', () => {
+    it('maps raised receivers onto the same sun ray as the ground footprint', () => {
+        const projection = { x: 0.5, z: -0.25 };
+        const ground = projectCloudShadowReceiverToGround(
+            { x: 7, y: 0, z: 4.5 },
+            projection,
+        );
+        const raised = projectCloudShadowReceiverToGround(
+            { x: 8, y: 2, z: 4 },
+            projection,
+        );
+
+        assert.deepEqual(raised, ground);
+    });
+
+    it('projects along the key light and clamps grazing light', () => {
+        assert.deepEqual(resolveCloudShadowProjection({ x: 5, y: 10, z: -6 }), {
+            x: 0.5,
+            z: -0.6,
+        });
+        assert.deepEqual(resolveCloudShadowProjection({ x: 9, y: 1, z: 0 }), {
+            x: 1.5,
+            z: 0,
+        });
+        assert.deepEqual(resolveCloudShadowProjection({ x: 1, y: 0, z: 1 }), {
+            x: 0,
+            z: 0,
+        });
+    });
+});
+
+describe('cloud shadow activation', () => {
     it('activates lazily and remains active after weather clears', () => {
         assert.equal(
             resolveCloudShadowAttenuationActivation({
@@ -168,115 +520,16 @@ describe('cloud shadow attenuation scheduling', () => {
         );
     });
 
-    it('updates only when due and schedules from now without catch-up', () => {
-        assert.deepEqual(
-            resolveCloudShadowAttenuationUpdateTick({
-                enabled: true,
-                force: false,
-                nextUpdateAt: 1_000,
-                now: 999,
-                updateMs: 160,
-            }),
-            {
-                nextUpdateAt: 1_000,
-                shouldUpdate: false,
-            },
-        );
-        assert.deepEqual(
-            resolveCloudShadowAttenuationUpdateTick({
-                enabled: true,
-                force: false,
-                nextUpdateAt: 1_000,
-                now: 1_400,
-                updateMs: 160,
-            }),
-            {
-                nextUpdateAt: 1_560,
-                shouldUpdate: true,
-            },
-        );
-    });
-
-    it('supports forced updates and remains idle while disabled', () => {
-        assert.equal(
-            resolveCloudShadowAttenuationUpdateTick({
-                enabled: true,
-                force: true,
-                nextUpdateAt: 10_000,
-                now: 500,
-                updateMs: 240,
-            }).shouldUpdate,
-            true,
-        );
-        assert.deepEqual(
-            resolveCloudShadowAttenuationUpdateTick({
-                enabled: false,
-                force: true,
-                nextUpdateAt: 10_000,
-                now: 500,
-                updateMs: 240,
-            }),
-            {
-                nextUpdateAt: 10_000,
-                shouldUpdate: false,
-            },
-        );
-    });
-});
-
-describe('cloud shadow world projection', () => {
-    it('maps raised receivers onto the same sun ray as the ground footprint', () => {
-        const projection = { x: 0.5, z: -0.25 };
-        const ground = projectCloudShadowReceiverToGround(
-            { x: 7, y: 0, z: 4.5 },
-            projection,
-        );
-        const raised = projectCloudShadowReceiverToGround(
-            { x: 8, y: 2, z: 4 },
-            projection,
-        );
-
-        assert.deepEqual(raised, ground);
-    });
-
-    it('projects cloud altitude before mapping to mask pixels', () => {
-        const placement = resolveCloudShadowMaskPlacement({
-            bounds: { maxX: 10, maxZ: 10, minX: -10, minZ: -10 },
-            projection: { x: 0.5, z: -0.25 },
-            resolution: 100,
-            sample: {
-                altitude: 10,
-                height: 4,
-                opacity: 0.75,
-                rotation: 0.2,
-                width: 8,
-                x: 12,
-                z: 2,
-            },
-        });
-
-        assert.deepEqual(
-            {
-                alpha: placement.alpha,
-                height: placement.height,
-                rotation: placement.rotation,
-                width: placement.width,
-                x: placement.x,
-            },
-            {
-                alpha: 0.75,
-                height: 20,
-                rotation: -0.2,
-                width: 40,
-                x: 85,
-            },
-        );
-        assert.ok(Math.abs(placement.y - 27.5) < Number.EPSILON * 32);
+    it('reports an active shadow layer only while it drives the uniforms', () => {
+        const table = createCloudShadowMaterialUniforms();
+        assert.equal(isCloudShadowLayerActive(table), false);
+        table.active.value = 1;
+        assert.equal(isCloudShadowLayerActive(table), true);
     });
 });
 
 describe('cloud shadow material integration', () => {
-    it('skips the texture lookup when cloud strength is zero', () => {
+    it('skips the ellipses when cloud strength is zero and tints all light', () => {
         assert.match(
             cloudShadowFragmentShaderChunk,
             /if \( grediceCloudShadowStrength > 0\.001 \)/,
@@ -286,9 +539,23 @@ describe('cloud shadow material integration', () => {
                 'grediceCloudShadowStrength > 0.001',
             ) <
                 cloudShadowFragmentShaderChunk.indexOf(
-                    'texture2D( grediceCloudShadowMap',
+                    'grediceCloudShadowAmount(',
                 ),
         );
+        for (const term of [
+            'directDiffuse',
+            'directSpecular',
+            'indirectDiffuse',
+            'indirectSpecular',
+        ]) {
+            assert.match(
+                cloudShadowFragmentShaderChunk,
+                new RegExp(
+                    `reflectedLight\\.${term} \\*= grediceCloudShadowAttenuation`,
+                ),
+            );
+        }
+        assert.match(cloudShadowFragmentShaderChunk, /grediceCloudShadowTint/);
     });
 
     it('composes and restores exact material shader hooks', () => {
@@ -316,7 +583,7 @@ describe('cloud shadow material integration', () => {
         );
         assert.match(
             material.customProgramCacheKey(),
-            /^existing-cache-key\|gredice-cloud-shadow-attenuation-v1$/,
+            /^existing-cache-key\|gredice-cloud-shadow-ellipses-v1$/,
         );
         const shader = {
             fragmentShader:
@@ -453,7 +720,7 @@ describe('cached cloud program uniform bindings', () => {
             },
         };
     }
-    it('refreshes only five owned aliases without changing cached programs, lists, hooks, keys or unrelated uniforms', () => {
+    it('refreshes only its owned aliases without changing cached programs, lists, hooks, keys or unrelated uniforms', () => {
         const material = new MeshStandardMaterial();
         const originalHook = material.onBeforeCompile,
             originalKey = material.customProgramCacheKey;
@@ -467,34 +734,20 @@ describe('cached cloud program uniform bindings', () => {
             uniforms,
             rendererWith(properties),
         );
-        assert.equal(Reflect.get(table, 'grediceCloudShadowMap'), uniforms.map);
+        for (const [key, uniform] of Object.entries(uniforms)) {
+            assert.equal(
+                Reflect.get(table, getCloudShadowUniformBindingName(key)),
+                uniform,
+            );
+        }
         assert.equal(
-            Reflect.get(table, 'grediceCloudShadowBounds'),
-            uniforms.bounds,
-        );
-        assert.equal(
-            Reflect.get(table, 'grediceCloudShadowProjection'),
-            uniforms.projection,
-        );
-        assert.equal(
-            Reflect.get(table, 'grediceCloudShadowStrength'),
-            uniforms.strength,
-        );
-        assert.equal(
-            Reflect.get(table, 'grediceCloudShadowHardness'),
-            uniforms.hardness,
+            Reflect.get(table, 'grediceCloudShadowEllipses'),
+            uniforms.ellipses,
         );
         assert.equal(table.roughness, pbr);
         assert.deepEqual(
             Object.keys(table).sort(),
-            [
-                'roughness',
-                'grediceCloudShadowMap',
-                'grediceCloudShadowBounds',
-                'grediceCloudShadowProjection',
-                'grediceCloudShadowStrength',
-                'grediceCloudShadowHardness',
-            ].sort(),
+            ['roughness', ...ownedBindings].sort(),
         );
         assert.equal(properties.programs, programs);
         assert.equal(properties.uniformsList, list);

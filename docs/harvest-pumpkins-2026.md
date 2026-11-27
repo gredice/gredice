@@ -13,8 +13,12 @@ Three original Blender sources each supply orange (`#E08A3C`), cream
 (`#EEE3CB`) and muted green (`#7D8F68`) catalogue identities. Every colour has
 its own saved block name and matching image. A group contains three pumpkins
 of the selected colour; it is one item, with no randomized companions.
-The common stem uses the brief's `#4E7F35`. Fruit and stem are matte,
-nonmetallic, unlit surfaces with roughness 0.86 and weather overlays.
+In the game the skin shows the seasonal and base roles from
+[GAME_ART.md](../GAME_ART.md): pumpkin `#F0803A`, cream `#F2E4C6` and canopy
+green `#43B93A` on screen (`harvestPumpkinSkinColor` in `HarvestPumpkin.tsx`).
+The common stem is crop leaf green, `#3E7A2C` albedo (`#5FC93A` on screen).
+The skin is gloss (roughness 0.4) and the stem satin (0.55), both nonmetallic
+and unlit, with weather overlays.
 
 | Shape / model | Block name suffixes | Height / hitbox W×D | Draft price |
 | --- | --- | --- | --- |
@@ -51,9 +55,9 @@ and two material roles; the group merges its parts into two meshes.
 
 | Lazy GLB | Bytes | Triangles | Meshes / material roles |
 | --- | ---: | ---: | ---: |
-| Squat | 41,264 | 760 | 2 / 2 |
-| Gourd | 41,264 | 760 | 2 / 2 |
-| Group | 119,704 | 2,280 | 2 / 2 |
+| Squat | 26,328 | 1,344 | 2 / 2 |
+| Gourd | 26,332 | 1,344 | 2 / 2 |
+| Group | 45,540 | 2,400 | 2 / 2 |
 
 No textures, animation clips, particles or point lights. Each instance uses two
 base-pass draws, plus the existing shadow/weather passes when active. The
@@ -105,7 +109,8 @@ and setting `prices.sunflowers`. Run the standard WWW generator with
 Copy each generated `_1.webp` to its base `.webp` in the top-down directory.
 The orthographic option on the standard generator creates side elevations,
 so it is not the garden plan-view renderer.
-Refresh the release manifest hashes if any exported bytes change.
+If any exported bytes change, rebuild the release manifest with
+`pnpm --filter @gredice/game exec tsx scripts/build-harvest-pumpkins-release.ts`.
 
 With an explicitly configured storage environment, the importer also accepts
 `--dry-run` or `--apply-drafts` (run `tsx --conditions=react-server --env-file=.env`).

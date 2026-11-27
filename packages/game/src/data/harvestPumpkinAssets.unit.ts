@@ -152,7 +152,7 @@ describe('decorative HarvestPumpkin release', () => {
             });
             assert.equal(
                 triangles,
-                asset === 'HarvestPumpkinGroup' ? 2280 : 760,
+                asset === 'HarvestPumpkinGroup' ? 2400 : 1344,
             );
             for (const item of harvestPumpkins.filter(
                 (entry) => entry.asset === asset,

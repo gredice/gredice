@@ -10,6 +10,7 @@ import {
 } from './autumnAccumulation';
 import { autumnSeed } from './autumnState';
 import type { GameQualityProfileTier } from './gameQuality';
+import { resolveWindClass, windClassThresholds } from './weather/windClass';
 
 export const autumnGustCaps = {
     low: 2,
@@ -123,7 +124,8 @@ export function resolveAutumnGustCount({
         !enabled ||
         ![windSpeed, rain, snow, settledLeafAmount].every(Number.isFinite) ||
         anchorCount <= 0 ||
-        windSpeed < 0.75 ||
+        // Gusts lift settled leaves from the class wind leaves start at.
+        resolveWindClass({ windSpeed }) < windClassThresholds.leaves ||
         rain >= 0.6 ||
         snow >= 0.25 ||
         settledLeafAmount < 0.12
@@ -166,7 +168,7 @@ export function sampleAutumnGustLeaf(
     windSpeed: number,
     windDirection: number,
 ) {
-    const wind = Math.min(3, Math.max(0, windSpeed));
+    const wind = resolveWindClass({ windSpeed });
     const direction = (windDirection * Math.PI) / 180;
     const phase = autumnSeed(`${id}:${index}:phase`);
     const travel = progress * (0.32 + wind * 0.16);

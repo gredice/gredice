@@ -189,12 +189,21 @@ describe('Autumn grass release', () => {
                             object.geometry.getAttribute('position').count) / 3;
                 }
             });
-            assert.equal(triangles, asset === 'AutumnGrassTuft' ? 1020 : 1440);
+            assert.equal(triangles, asset === 'AutumnGrassTuft' ? 1732 : 2932);
             assert.ok(bytes.length < 250_000);
             for (const material of document.materials) {
                 assert.equal(material.pbrMetallicRoughness.metallicFactor, 0);
+                // GAME_ART bands (float32 factors): dry grass is the matte hay
+                // role, the gravel island the satin stone role.
+                const [low, high] =
+                    material.name === 'Material.AutumnGrasses.Blades'
+                        ? [0.75, 0.85]
+                        : [0.5, 0.6];
                 assert.ok(
-                    material.pbrMetallicRoughness.roughnessFactor >= 0.82,
+                    material.pbrMetallicRoughness.roughnessFactor >=
+                        low - 1e-6 &&
+                        material.pbrMetallicRoughness.roughnessFactor <=
+                            high + 1e-6,
                 );
                 assert.equal(material.emissiveFactor, undefined);
             }

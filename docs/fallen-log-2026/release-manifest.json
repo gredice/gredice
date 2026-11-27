@@ -4,19 +4,19 @@
   "snapshotDate": "2026-10-22T12:00:00+02:00",
   "source": {
     "path": "assets/game-assets/FallenLog.blend",
-    "bytes": 95341,
-    "sha256": "4a37fa9a8dbf052591a108f28f225b75fd50af3f118e1768d96ff56e5b3d0d0a"
+    "bytes": 120753,
+    "sha256": "3dfcf68df06eca6d22d78161f8cfdfdf9fe94fd95d49dd269e8db1a738f32f78"
   },
   "models": [
     {
       "name": "FallenLog",
       "path": "apps/garden/public/assets/models/FallenLog.glb",
-      "bytes": 22988,
-      "sha256": "dd66f61eb3e5755e5ae696a72ca6cd3041fa531ec2203aa77cd5aeef899c15a3",
-      "url": "https://vrt.gredice.com/assets/models/FallenLog.glb?v=dd66f61eb3e5",
-      "triangles": 389,
+      "bytes": 56096,
+      "sha256": "19a362ca265a064e81e85a8e2bf65eb44273e171abee704659ddd2f4272ca951",
+      "url": "https://vrt.gredice.com/assets/models/FallenLog.glb?v=19a362ca265a",
+      "triangles": 1814,
       "trianglesByMesh": {
-        "FallenLog_Timber": 389
+        "FallenLog_Timber": 1814
       },
       "meshCount": 1,
       "materialCount": 1
@@ -49,53 +49,53 @@
       "images": [
         {
           "path": "apps/www/public/assets/blocks/FallenLog.webp",
-          "bytes": 21464,
-          "sha256": "50fd3ffaf57cfa054b0a766ffdb1160fa2cd7c08c70141096324ca5d16e74a4c"
+          "bytes": 16510,
+          "sha256": "b7d6ad1b21c6635ed1c39b511681a865353cfcf067cc9f6f5e0ccfc4003a9d95"
         },
         {
           "path": "apps/www/public/assets/blocks/FallenLog_1.webp",
-          "bytes": 21464,
-          "sha256": "50fd3ffaf57cfa054b0a766ffdb1160fa2cd7c08c70141096324ca5d16e74a4c"
+          "bytes": 16510,
+          "sha256": "b7d6ad1b21c6635ed1c39b511681a865353cfcf067cc9f6f5e0ccfc4003a9d95"
         },
         {
           "path": "apps/www/public/assets/blocks/FallenLog_2.webp",
-          "bytes": 23510,
-          "sha256": "0e9f090614c9763273b559edfac51bd70da82a67eb1a46fd6c6fecfc8dc5fffa"
+          "bytes": 16596,
+          "sha256": "ad3922d5d4f8ed19c4c6447b7a35e754fe30f64add8cd0497f34e698404a9cfc"
         },
         {
           "path": "apps/www/public/assets/blocks/FallenLog_3.webp",
-          "bytes": 21950,
-          "sha256": "36eec84cb8967f44de4b70ce4de50f3477cfcb9749666052ed5c9f26e3730af1"
+          "bytes": 17940,
+          "sha256": "7f63bbf2c05f0ab683f68f20966d6ec6ff3728e191b3bf6e956a583d525b518f"
         },
         {
           "path": "apps/www/public/assets/blocks/FallenLog_4.webp",
-          "bytes": 23782,
-          "sha256": "4e3bd2d337df5673a90c17d6b8412d2f426ac120efb1bd4d53dbc5771296514d"
+          "bytes": 19354,
+          "sha256": "3303b3b1d828617d0406265db64125ae7c6c55ebca13e3210508252ee81a4840"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/FallenLog.webp",
-          "bytes": 2178,
-          "sha256": "1abe7dc8f1f1332aa4940f713ad83c1209d2cac8a1683f52903d07e4faac815a"
+          "bytes": 3448,
+          "sha256": "8e917bb35cd98755a3d2ff89436ffdd5e5f8cfd5498a40f01138f30760ebdc27"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/FallenLog_1.webp",
-          "bytes": 2178,
-          "sha256": "1abe7dc8f1f1332aa4940f713ad83c1209d2cac8a1683f52903d07e4faac815a"
+          "bytes": 3448,
+          "sha256": "8e917bb35cd98755a3d2ff89436ffdd5e5f8cfd5498a40f01138f30760ebdc27"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/FallenLog_2.webp",
-          "bytes": 2512,
-          "sha256": "a217a8bd9ed8b044017644d132634d44b8a85b8d0208d8f186dec07ee69a4701"
+          "bytes": 3290,
+          "sha256": "7ff0582b78a356452a649e49bfafc6ce911966abe062c3f0ee9b77bd1ed592a5"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/FallenLog_3.webp",
-          "bytes": 1958,
-          "sha256": "cf0aad1f751594489c70a16dfc67c74ee693cf97577f2ae1630bebb7915ce24d"
+          "bytes": 3486,
+          "sha256": "9a43ee432f63fe5ce9d6662e690d23cbc44bc8fca1fe8456b6e45a9d537b3e6e"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/FallenLog_4.webp",
-          "bytes": 2534,
-          "sha256": "e7d9dc9005eca8326b2b3ed810097a180e19d66d2b3ecc22bc93921fad6dc7b7"
+          "bytes": 3380,
+          "sha256": "2a6ad10f76ed9c15176fbdb6239ae571d6d0f11ba8ad27b3871e1b7a79fe5510"
         }
       ]
     }

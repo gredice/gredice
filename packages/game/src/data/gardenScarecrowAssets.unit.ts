@@ -149,7 +149,7 @@ describe('GardenScarecrow release', () => {
                             object.geometry.getAttribute('position').count) / 3;
                 }
             });
-            assert.equal(triangles, 2088);
+            assert.equal(triangles, 2896);
             for (const item of scarecrows) {
                 const hitbox = getBlockHitboxSize(
                     getLocalSandboxBlockData().find(

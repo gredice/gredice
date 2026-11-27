@@ -1,3 +1,4 @@
+import { useContext } from 'react';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import type { Block } from '../../types/Block';
 import type { GardenStack } from '../../types/Stack';
@@ -8,6 +9,7 @@ import {
     isFenceTopologyBlockName,
     resolveFenceConnection,
 } from '../fenceConnections';
+import { EntityNeighborStacksContext } from './EntityNeighborStacksContext';
 import { resolveEntityNeighbors } from './useEntityNeighbors';
 
 export function resolveFenceConnectionState(
@@ -48,8 +50,9 @@ export function useFenceConnectionState(
     fallbackRotation: number,
 ) {
     const { data: garden } = useCurrentGarden();
+    const neighborStacks = useContext(EntityNeighborStacksContext);
     return resolveFenceConnectionState(
-        garden?.stacks,
+        neighborStacks ?? garden?.stacks,
         stack,
         block,
         fallbackRotation,

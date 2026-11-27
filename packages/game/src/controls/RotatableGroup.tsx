@@ -1,14 +1,18 @@
 import type { ThreeEvent } from '@react-three/fiber';
 import { type PropsWithChildren, useContext, useRef } from 'react';
-import type { Vector3 } from 'three';
 import { useBlockRotate } from '../hooks/useBlockRotate';
 import type { Block } from '../types/Block';
 import type { Stack } from '../types/Stack';
 import { GameStateContext, useGameState } from '../useGameState';
 import { useBlockInteractionTargetRegistration } from './BlockInteractionRegistry';
-import { canRotatePlacedBlock } from './blockRotation';
+import { areBlockInteractionsSuppressed } from './blockInteractionSuppression';
+import {
+    canRotatePlacedBlock,
+    didPointerLeaveRotationTarget,
+    isRotationTapDrag,
+    type RotationTapPointer,
+} from './blockRotation';
 
-const ROTATE_DRAG_THRESHOLD = 0.1;
 const DOUBLE_TAP_THRESHOLD_MS = 320;
 
 export function RotatableGroup({
@@ -30,7 +34,7 @@ export function RotatableGroup({
         'https://cdn.gredice.com/sounds/effects/Swipe Generic 01.mp3',
     );
 
-    const rotatePointerDownPoint = useRef<Vector3 | null>(null);
+    const rotatePointerDown = useRef<RotationTapPointer | null>(null);
     const firstTapTimeStamp = useRef(0);
 
     function doRotate() {
@@ -38,11 +42,15 @@ export function RotatableGroup({
             return false;
         }
 
+        // A tap right after a hold-release (which opened the options pop-up)
+        // is not a double-click, and Expand switches rotation off (D6).
         const gameState = gameStateStore?.getState();
         if (
             gameState?.isDragging ||
             gameState?.pickupBlock ||
-            gameState?.hudPlacementDrag
+            gameState?.hudPlacementDrag ||
+            gameState?.blockEditing?.mode === 'expand' ||
+            areBlockInteractionsSuppressed()
         ) {
             return false;
         }
@@ -62,11 +70,16 @@ export function RotatableGroup({
             return;
         }
 
-        rotatePointerDownPoint.current = event.point.clone();
+        const { clientX, clientY, pointerType } = event.nativeEvent;
+        rotatePointerDown.current = { clientX, clientY, pointerType };
     }
 
-    function handleRotateCancel() {
-        rotatePointerDownPoint.current = null;
+    function handleRotateCancel(event: ThreeEvent<globalThis.PointerEvent>) {
+        if (!didPointerLeaveRotationTarget(event)) {
+            return;
+        }
+
+        rotatePointerDown.current = null;
     }
 
     function handlePointerUp(event: ThreeEvent<globalThis.PointerEvent>) {
@@ -74,14 +87,14 @@ export function RotatableGroup({
             return;
         }
 
-        const pointerDownPoint = rotatePointerDownPoint.current;
-        rotatePointerDownPoint.current = null;
+        const pointerDown = rotatePointerDown.current;
+        rotatePointerDown.current = null;
 
-        if (!pointerDownPoint) {
+        if (!pointerDown) {
             return;
         }
 
-        if (event.point.distanceTo(pointerDownPoint) > ROTATE_DRAG_THRESHOLD) {
+        if (isRotationTapDrag(pointerDown, event.nativeEvent)) {
             firstTapTimeStamp.current = 0;
             return;
         }

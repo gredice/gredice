@@ -223,7 +223,6 @@ test('active drags suppress ripples until placement finishes', async ({
 for (const surface of ['Block_Water', 'Block_Swamp_Water']) {
     test(`${surface} responds to light rain without ground puddles`, async ({
         mount,
-        page,
     }) => {
         const fixture = await mount(
             <RainRippleFixture surface={surface} rain={0.4} date="summer" />,
@@ -231,6 +230,11 @@ for (const surface of ['Block_Water', 'Block_Swamp_Water']) {
         const sample = async () =>
             JSON.parse((await fixture.getAttribute('data-sample')) ?? '{}');
         await expect.poll(async () => (await sample()).count).toBe(16);
+        // Let the fixture finish loading (wetness near its 0.4 target) so the
+        // draw stats below differ only by the ring draw.
+        await expect
+            .poll(async () => (await sample()).wetness)
+            .toBeGreaterThanOrEqual(0.39);
         const active = await sample();
         expect(active.puddles).toBe(0);
         expect(active.rain).toBe(0.4);
@@ -241,7 +245,6 @@ for (const surface of ['Block_Water', 'Block_Swamp_Water']) {
         expect(
             active.matrices.filter((_: number, i: number) => i % 16 === 13),
         ).toEqual(Array(16).fill(0.344));
-        const withRings = await page.locator('canvas').screenshot();
         await fixture.update(
             <RainRippleFixture
                 surface={surface}
@@ -251,9 +254,11 @@ for (const surface of ['Block_Water', 'Block_Swamp_Water']) {
             />,
         );
         await expect.poll(async () => (await sample()).count).toBe(0);
-        expect(
-            withRings.equals(await page.locator('canvas').screenshot()),
-        ).toBe(false);
+        // Light rings are too faint to change canvas bytes at this view; the
+        // stool's retired wet overlay sheen used to. Check the ring draw.
+        const baseline = await sample();
+        expect(active.calls - baseline.calls).toBe(1);
+        expect(active.triangles - baseline.triangles).toBe(32);
         for (const props of [
             { rain: 0 },
             { snow: 1 },

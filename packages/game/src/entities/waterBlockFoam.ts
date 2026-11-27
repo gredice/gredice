@@ -3,6 +3,13 @@ import { Vector4 } from 'three';
 import type { Block } from '../types/Block';
 import type { Stack } from '../types/Stack';
 import {
+    cornerIndexTowards,
+    resolveTerrainColumn,
+    sideIndexTowards,
+    terrainColumnCornerHeight,
+    terrainColumnSideHeights,
+} from './terrainRim/terrainShapes';
+import {
     getWaterBlockVerticalRange,
     type WaterBlockVerticalRange,
 } from './waterBlockHeight';
@@ -144,4 +151,98 @@ export function resolveWaterFoamCorners({
             ? 1
             : 0,
     );
+}
+
+/**
+ * A neighbour must reach this close to the water's top to cover its side,
+ * as for the terrain rim (`terrainRim/terrainRimPlacements.ts`).
+ */
+const waterRimCoveredTolerance = 0.02;
+
+/**
+ * How high the unbroken run of terrain at the bottom of the stack at
+ * (x, z) reaches all along the edge it shares with water in direction
+ * (dx, dz) from it, or at the shared corner for a diagonal: the lowest point
+ * of a ramp, corner or stairs top there, as the terrain rim reads it
+ * (`terrainRim/terrainShapes.ts`). No stack is no ground.
+ */
+function terrainReachAt(
+    stacks: Stack[],
+    x: number,
+    z: number,
+    dx: number,
+    dz: number,
+    blockData: BlockData[] | null | undefined,
+) {
+    const stack = stacks.find(
+        (candidate) => candidate.position.x === x && candidate.position.z === z,
+    );
+    if (!stack) return Number.NEGATIVE_INFINITY;
+    const column = resolveTerrainColumn(blockData, stack);
+    if (dx !== 0 && dz !== 0) {
+        return terrainColumnCornerHeight(column, cornerIndexTowards(-dx, -dz));
+    }
+    return Math.min(
+        ...terrainColumnSideHeights(column, sideIndexTowards(-dx, -dz)),
+    );
+}
+
+/**
+ * Where the water block's rim rounds over. `edges` (foam edge order) marks
+ * the sides with nothing at the water's height next to them: no water and
+ * no terrain reaching its top, such as the island edge or the sides of a
+ * raised block, or a ramp's toe or side below the water's top. `corners`
+ * (foam corner order) marks inner corners whose two side neighbours are
+ * water while the diagonal one is open, where those neighbours' lips turn
+ * the corner. Sides at a bank, under the bank's own grass lip, stay square.
+ * A block with water stacked on it uses the flags for its rounded vertical
+ * corners only; its top shows no lip.
+ */
+export function resolveWaterRimExposure({
+    block,
+    blockData,
+    stack,
+    stacks,
+}: {
+    block: Block;
+    blockData?: BlockData[] | null;
+    stack: Stack;
+    stacks: Stack[] | undefined;
+}) {
+    const none = {
+        corners: new Vector4(0, 0, 0, 0),
+        edges: new Vector4(0, 0, 0, 0),
+    };
+    if (!blockData || stack.blocks.indexOf(block) < 0) {
+        return none;
+    }
+
+    const allStacks = stacks ?? [stack];
+    const range = getWaterBlockVerticalRange({ block, blockData, stack });
+    if (!range) return none;
+
+    const { x, z } = stack.position;
+    const covered = (dx: number, dz: number) =>
+        hasOverlappingWater(allStacks, x + dx, z + dz, range, blockData) ||
+        terrainReachAt(allStacks, x + dx, z + dz, dx, dz, blockData) >=
+            range.max - waterRimCoveredTolerance;
+    const isWater = (dx: number, dz: number) =>
+        hasOverlappingWater(allStacks, x + dx, z + dz, range, blockData);
+    const openCorner = (dx: number, dz: number) =>
+        isWater(dx, 0) && isWater(0, dz) && !covered(dx, dz);
+
+    return {
+        corners: new Vector4(
+            openCorner(-1, -1) ? 1 : 0,
+            openCorner(1, -1) ? 1 : 0,
+            openCorner(-1, 1) ? 1 : 0,
+            openCorner(1, 1) ? 1 : 0,
+        ),
+        edges: new Vector4(
+            covered(-1, 0) ? 0 : 1,
+            covered(1, 0) ? 0 : 1,
+            covered(0, -1) ? 0 : 1,
+            covered(0, 1) ? 0 : 1,
+        ),
+    };
 }

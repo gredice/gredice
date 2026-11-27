@@ -1,9 +1,10 @@
+import { cropFlowerPalette, cropLeafPalette } from '../cropPalette';
 import type { PlantDefinition } from '../plant-definition-types';
 import { createDevelopmentProgram, createPlant } from './helpers';
 
 const grassFlower = {
     enabled: false,
-    color: '#ffffff',
+    color: cropFlowerPalette.cream,
     size: 0,
 };
 
@@ -31,13 +32,13 @@ export const grassPlants = {
         }),
         height: 0.92,
         stem: {
-            color: '#79a44a',
+            color: cropLeafPalette.light,
             radius: 0.012,
             radiusDecay: 0.16,
             minRadius: 0.003,
         },
         leaf: {
-            color: '#79a44a',
+            color: cropLeafPalette.light,
             size: 0.2,
             type: 'strap',
         },
@@ -61,13 +62,13 @@ export const grassPlants = {
         }),
         height: 0.44,
         stem: {
-            color: '#82ac4c',
+            color: cropLeafPalette.highlight,
             radius: 0.008,
             radiusDecay: 0.16,
             minRadius: 0.002,
         },
         leaf: {
-            color: '#82ac4c',
+            color: cropLeafPalette.highlight,
             size: 0.11,
             type: 'strap',
         },
@@ -91,13 +92,13 @@ export const grassPlants = {
         }),
         height: 1.08,
         stem: {
-            color: '#5f8740',
+            color: cropLeafPalette.base,
             radius: 0.011,
             radiusDecay: 0.16,
             minRadius: 0.003,
         },
         leaf: {
-            color: '#5f8740',
+            color: cropLeafPalette.base,
             size: 0.22,
             type: 'strap',
         },

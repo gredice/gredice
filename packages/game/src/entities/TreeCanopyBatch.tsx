@@ -1,8 +1,16 @@
 import { useEffect, useMemo } from 'react';
 import { useAutumnFoliageGeometry } from '../hooks/useAutumnFoliageGeometry';
 import { useAutumnState } from '../hooks/useAutumnState';
-import { getAutumnCanopyStage } from '../scene/autumnCanopy';
+import { useSeasonState } from '../hooks/useSeasonState';
+import {
+    type getAutumnCanopyStage,
+    getAutumnTreeCanopyStage,
+    resolveTreeFoliageColorProgress,
+} from '../scene/autumnCanopy';
 import { getAutumnPaletteSeed } from '../scene/autumnPalette';
+import { useIdleBreathingUniforms } from '../scene/IdleBreathingMotion';
+import { bindIdleBreathingMaterial } from '../scene/idleBreathing';
+import { useSnowOverlayVisible } from '../snow/SnowOverlay';
 import { snowPresets } from '../snow/snowPresets';
 import { useGameState } from '../useGameState';
 import { useGameGLTF } from '../utils/useGameGLTF';
@@ -10,6 +18,7 @@ import {
     type EntityBlockInstance,
     EntityInstancesGeometry,
 } from './EntityInstancesBlock';
+import { treeEntityScale } from './treeEntityScale';
 
 export function TreeCanopyBatch({
     instances,
@@ -29,33 +38,53 @@ export function TreeCanopyBatch({
     const disabled = useGameState(
         (state) => state.weatherVisualizationDisabled,
     );
-    const progress = disabled ? 0 : autumn.foliageColorProgress;
+    const season = useSeasonState();
+    const progress = disabled
+        ? 0
+        : resolveTreeFoliageColorProgress(
+              autumn.foliageColorProgress,
+              season.season,
+          );
     const selected = useMemo(
         () =>
             instances.filter(
                 (instance) =>
                     getAutumnPaletteSeed(instance.block.id) === palette &&
-                    getAutumnCanopyStage(
+                    // A bare tree has no crown, so it is in no batch.
+                    getAutumnTreeCanopyStage(
                         disabled ? 1 : autumn.leafRetention,
                         instance.block.id,
                     ) === stage,
             ),
         [instances, palette, stage, disabled, autumn.leafRetention],
     );
+    const snowLoaded = useSnowOverlayVisible({
+        coverageMultiplier: snowPresets.treeCanopyInner.coverageMultiplier,
+        minCoverage: snowOverlayMinCoverage,
+    });
+    // Crown and sprigs share one pivot and phase so they breathe together.
+    // Snow overlays do not breathe, so a snowy crown holds still.
+    const breathing = useIdleBreathingUniforms(
+        'canopy',
+        nodes.Tree_1_2.geometry,
+        !(renderSnow && snowLoaded),
+    );
     const material = useMemo(() => {
         const value = materials['Material.Leaves'].clone();
         value.color.set('white');
         value.vertexColors = true;
+        bindIdleBreathingMaterial(value, breathing);
         return value;
-    }, [materials]);
+    }, [materials, breathing]);
     useEffect(() => () => material.dispose(), [material]);
     const sprigMaterial = useMemo(() => {
         if (stage !== 'full') return null;
         const value = materials['Material.GrassPart'].clone();
         value.color.set('white');
         value.vertexColors = true;
+        bindIdleBreathingMaterial(value, breathing);
         return value;
-    }, [materials, stage]);
+    }, [materials, stage, breathing]);
     useEffect(() => () => sprigMaterial?.dispose(), [sprigMaterial]);
     const geometry = useAutumnFoliageGeometry(
         stage === 'full'
@@ -82,7 +111,7 @@ export function TreeCanopyBatch({
                 instances={selected}
                 geometry={geometry}
                 material={material}
-                scale={[0.125, 0.5, 0.125]}
+                scale={treeEntityScale}
                 castShadow
                 receiveShadow
                 renderSnow={renderSnow}
@@ -96,7 +125,7 @@ export function TreeCanopyBatch({
                     instances={selected}
                     geometry={sprigGeometry}
                     material={sprigMaterial}
-                    scale={[0.125, 0.5, 0.125]}
+                    scale={treeEntityScale}
                     castShadow
                     receiveShadow
                 />

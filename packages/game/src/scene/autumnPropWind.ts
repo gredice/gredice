@@ -3,6 +3,7 @@ import { autumnGrassWind } from '@gredice/js/autumnGrasses';
 import type { BufferGeometry, IUniform, Material, Vector2 } from 'three';
 import { SeededRNG } from '../generators/plant/lib/rng';
 import type { GameQualityProfileTier } from './gameQuality';
+import { resolveWindClass, resolveWindSway } from './weather/windClass';
 
 export type AutumnPropWindRole =
     | 'grass'
@@ -11,6 +12,11 @@ export type AutumnPropWindRole =
     | 'garland'
     | 'scarf';
 
+/**
+ * Prop sway strength, 0 to 1, on the one wind scale (`weather/windClass.ts`):
+ * in proportion to the blended wind class like plant sway, 30% under
+ * reduced motion. `speed` is the wind class (the API's 0 to 4).
+ */
 export function resolveAutumnPropWindStrength({
     tier,
     speed,
@@ -26,7 +32,6 @@ export function resolveAutumnPropWindStrength({
 }) {
     if (
         !enabled ||
-        reducedMotion ||
         tier === 'low' ||
         tier === 'auto-constrained' ||
         !Number.isFinite(speed) ||
@@ -35,7 +40,7 @@ export function resolveAutumnPropWindStrength({
         return 0;
     // Snow-loaded foliage is still. Strong wind never increases the reserve.
     return (
-        Math.min(1, Math.max(0, speed) / 3) *
+        resolveWindSway(resolveWindClass({ windSpeed: speed }), reducedMotion) *
         (1 - Math.min(1, Math.max(0, snow) * 4))
     );
 }

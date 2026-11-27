@@ -1,6 +1,7 @@
 export * from './autumn-activity';
 export * from './directories-api';
 export * from './favorites';
+export * from './garden-block-batch';
 export * from './garden-likes';
 export * from './garden-pack-catalogue';
 export * from './garden-pack-layouts';

@@ -205,7 +205,11 @@ function cloneHorseMaterial(
     if (tint && clone instanceof MeshStandardMaterial) {
         clone.color.set(tint.color).multiplyScalar(tint.darken ?? 1);
         clone.metalness = 0;
-        clone.roughness = Math.max(clone.roughness, 0.82);
+        // Fur stays matte; the muzzle (and the blush in its colour) keeps
+        // the face kit's authored 0.45 gloss (GAME_ART.md "Animals").
+        if (material.name !== 'Material.Horse.Muzzle') {
+            clone.roughness = Math.max(clone.roughness, 0.82);
+        }
     }
     return clone;
 }

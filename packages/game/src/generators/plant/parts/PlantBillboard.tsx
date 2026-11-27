@@ -20,16 +20,24 @@ import {
 } from '../lib/plantInstanceBuffers';
 import type { PlantLodLevel } from '../lib/plantLod';
 import {
-    getMidBillboardCanopyCards,
+    createPlantBillboardShapeUniforms,
+    getMidBillboardAccentCards,
     getMidBillboardSwayPhase,
+    getPlantBillboardAccentSeed,
+    getPlantBillboardClump,
+    getPlantBillboardClumpAccent,
     midBillboardCardGeometry,
     midBillboardFragmentShader,
     midBillboardVertexShader,
+    PLANT_BILLBOARD_SHAPE,
+    type PlantBillboardCard,
+    type PlantBillboardShape,
 } from '../lib/plantMidBillboardMaterial';
 
 export interface PlantBillboardSummary {
     accentCenterY: number;
     accentColor?: string;
+    accentRadius?: number;
     canopyCenterY: number;
     canopyWidth: number;
     dominantColor: string;
@@ -60,56 +68,69 @@ interface PlantBillboardBatchProps {
 }
 
 interface BillboardInstanceItem {
+    /** Produce dots painted into a far clump: albedo and packed layout. */
+    accent: THREE.Vector4;
     color: THREE.Color;
     matrix: THREE.Matrix4;
-    opacity: number;
     swayPhase: number;
 }
 
-interface BillboardInstanceMeshProps {
-    debugName: string;
-    geometry: THREE.BufferGeometry;
-    items: BillboardInstanceItem[];
-    opacity: number;
+interface PlantBillboardAccent {
+    color: string;
+    /** Dot layout seed; batched cards take it from the sway phase instead. */
+    seed: number;
+    value: number;
 }
 
-interface MidBillboardInstanceMeshProps
-    extends Omit<BillboardInstanceMeshProps, 'opacity'> {
+interface BillboardInstanceMeshProps {
+    animate?: boolean;
+    debugName: string;
+    items: BillboardInstanceItem[];
+    shape: PlantBillboardShape;
     swaySeed: string;
 }
 
 const BILLBOARD_IDENTITY_QUATERNION = new THREE.Quaternion();
-const billboardPlaneGeometry = new THREE.PlaneGeometry(1, 1);
 
-export const billboardVertexShader = /* glsl */ `
-    attribute vec3 instanceTint;
+/**
+ * Every plant card draws in two passes over the same triangles (the card
+ * geometry has one draw group per pass). The opaque pass draws the solid
+ * inside and writes depth, so neighbouring plants overlap correctly whatever
+ * order their instances are drawn in. The blended pass draws only the soft
+ * fringe outside the outline, without writing depth, so a card's edge never
+ * hides the plant behind it. Both are lit by the scene like the 3D plant.
+ */
+const plantCardSharedMaterialProps = {
+    baseMaterial: THREE.MeshLambertMaterial,
+    fragmentShader: midBillboardFragmentShader,
+    side: THREE.FrontSide,
+    vertexShader: midBillboardVertexShader,
+} as const;
 
-    varying vec3 vInstanceTint;
+const plantCardPassMaterialProps = [
+    { ...plantCardSharedMaterialProps, depthWrite: true, transparent: false },
+    { ...plantCardSharedMaterialProps, depthWrite: false, transparent: true },
+] as const;
 
-    void main() {
-        vInstanceTint = instanceTint;
-
-        vec4 instanceCenter = instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
-        vec3 instanceOffset = (instanceMatrix * vec4(position, 0.0)).xyz;
-        vec4 mvPosition = modelViewMatrix * instanceCenter;
-        mvPosition.xy += instanceOffset.xy;
-        mvPosition.z += instanceOffset.z;
-
-        gl_Position = projectionMatrix * mvPosition;
-    }
-`;
-
-export const billboardFragmentShader = /* glsl */ `
-    uniform float uOpacity;
-
-    varying vec3 vInstanceTint;
-
-    void main() {
-        gl_FragColor = vec4(vInstanceTint, uOpacity);
-        #include <tonemapping_fragment>
-        #include <colorspace_fragment>
-    }
-`;
+function PlantCardMaterials({
+    uniforms,
+}: {
+    uniforms: Record<string, THREE.IUniform>;
+}) {
+    return (
+        <>
+            {plantCardPassMaterialProps.map((props, pass) => (
+                <CSM
+                    // One material per draw group of the card geometry.
+                    key={props.transparent ? 'edge' : 'solid'}
+                    attach={`material-${pass}`}
+                    {...props}
+                    uniforms={uniforms}
+                />
+            ))}
+        </>
+    );
+}
 
 function CameraFacingBillboard({ children }: PropsWithChildren) {
     const groupRef = useRef<THREE.Group>(null);
@@ -140,34 +161,71 @@ function CameraFacingBillboard({ children }: PropsWithChildren) {
     return <group ref={groupRef}>{children}</group>;
 }
 
-function createBillboardItem({
-    color,
-    height,
-    opacity = 1,
-    position,
-    radius,
-    swayPosition,
-    width,
-}: {
-    color: string;
-    height: number;
-    opacity?: number;
-    position: readonly [number, number, number];
-    radius?: number;
-    swayPosition?: readonly [number, number, number];
-    width?: number;
-}) {
-    const scaleX = radius ?? width ?? 1;
-    const scaleY = radius ?? height;
-
+function getStemCard(summary: PlantBillboardSummary): PlantBillboardCard {
     return {
+        centerX: 0,
+        centerY: summary.height * 0.42,
+        halfHeight: Math.max(summary.height * 0.9, 0.2) / 2,
+        halfWidth: Math.max(summary.stemWidth, 0.06) / 2,
+    };
+}
+
+function getClumpColor(summary: PlantBillboardSummary) {
+    return summary.hasFoliage ? summary.foliageColor : summary.dominantColor;
+}
+
+/** Produce or flower dots for a far clump, which has no accent cards. */
+function getFarClumpAccent(
+    summary: PlantBillboardSummary,
+    seed = 0,
+): PlantBillboardAccent | undefined {
+    if (!summary.accentColor) {
+        return undefined;
+    }
+    return {
+        color: summary.accentColor,
+        seed,
+        value: getPlantBillboardClumpAccent(summary),
+    };
+}
+
+function createBillboardItem({
+    accent,
+    card,
+    color,
+    position,
+    scale,
+    swayPosition,
+}: {
+    accent?: PlantBillboardAccent;
+    card: PlantBillboardCard;
+    color: string;
+    position: readonly [number, number, number];
+    scale: number;
+    swayPosition?: readonly [number, number, number];
+}) {
+    const accentColor = new THREE.Color(accent?.color ?? '#ffffff');
+    return {
+        accent: new THREE.Vector4(
+            accentColor.r,
+            accentColor.g,
+            accentColor.b,
+            accent?.value ?? 0,
+        ),
         color: new THREE.Color(color),
         matrix: new THREE.Matrix4().compose(
-            new THREE.Vector3(...position),
+            new THREE.Vector3(
+                position[0] + card.centerX * scale,
+                position[1] + card.centerY * scale,
+                position[2],
+            ),
             BILLBOARD_IDENTITY_QUATERNION,
-            new THREE.Vector3(scaleX, scaleY, 1),
+            new THREE.Vector3(
+                card.halfWidth * scale,
+                card.halfHeight * scale,
+                1,
+            ),
         ),
-        opacity,
         swayPhase:
             swayPosition === undefined
                 ? 0
@@ -176,86 +234,15 @@ function createBillboardItem({
 }
 
 function BillboardInstanceMesh({
+    animate = true,
     debugName,
-    geometry: sourceGeometry,
     items,
-    opacity,
+    shape,
+    swaySeed,
 }: BillboardInstanceMeshProps) {
     const meshRef = useRef<THREE.InstancedMesh | null>(null);
     const instanceCapacity = items.length;
-    const geometry = useMemo(() => sourceGeometry.clone(), [sourceGeometry]);
-    const tintAttribute = useMemo(
-        () => createStaticInstancedBufferAttribute(instanceCapacity, 3),
-        [instanceCapacity],
-    );
-    const uniforms = useMemo(
-        () => ({
-            uOpacity: { value: opacity },
-        }),
-        [opacity],
-    );
-    usePlantInstanceBufferMetrics({
-        extraAllocatedBytes: tintAttribute.array.byteLength,
-        kind: 'billboard',
-        liveCount: items.length,
-        meshRef,
-    });
-
-    useLayoutEffect(() => {
-        const mesh = meshRef.current;
-        if (!mesh) {
-            return;
-        }
-
-        mesh.geometry.setAttribute('instanceTint', tintAttribute);
-        items.forEach((item, index) => {
-            mesh.setMatrixAt(index, item.matrix);
-            tintAttribute.setXYZ(
-                index,
-                item.color.r,
-                item.color.g,
-                item.color.b,
-            );
-        });
-        finalizeStaticInstanceMatrixUpload(mesh, items.length);
-        markStaticInstancedAttributeForUpload(tintAttribute, items.length);
-        mesh.computeBoundingBox();
-        mesh.computeBoundingSphere();
-    }, [items, tintAttribute]);
-
-    useLayoutEffect(() => () => geometry.dispose(), [geometry]);
-
-    if (items.length === 0) {
-        return null;
-    }
-
-    return (
-        <instancedMesh
-            ref={meshRef}
-            name={debugName}
-            args={[geometry, undefined, instanceCapacity]}
-            frustumCulled={false}
-        >
-            <shaderMaterial
-                depthWrite={false}
-                fragmentShader={billboardFragmentShader}
-                transparent
-                uniforms={uniforms}
-                vertexShader={billboardVertexShader}
-            />
-        </instancedMesh>
-    );
-}
-
-function MidBillboardInstanceMesh({
-    debugName,
-    geometry: sourceGeometry,
-    items,
-    swaySeed,
-}: MidBillboardInstanceMeshProps) {
-    const meshRef = useRef<THREE.InstancedMesh | null>(null);
-    const instanceCapacity = items.length;
-    const geometry = useMemo(() => sourceGeometry.clone(), [sourceGeometry]);
+    const geometry = useMemo(() => midBillboardCardGeometry.clone(), []);
     const tintAttribute = useMemo(
         () => createStaticInstancedBufferAttribute(instanceCapacity, 3),
         [instanceCapacity],
@@ -268,23 +255,30 @@ function MidBillboardInstanceMesh({
         () => createStaticInstancedBufferAttribute(instanceCapacity, 1),
         [instanceCapacity],
     );
+    const accentAttribute = useMemo(
+        () => createStaticInstancedBufferAttribute(instanceCapacity, 4),
+        [instanceCapacity],
+    );
     const swayUniforms = usePlantSway(swaySeed, {
         amplitude: 0.055,
+        enabled: animate,
         speed: 1.1,
     });
     const uniforms = useMemo(
         () => ({
             ...swayUniforms,
+            ...createPlantBillboardShapeUniforms(shape),
             uOpacity: { value: 1 },
             uTint: { value: new THREE.Color('#ffffff') },
         }),
-        [swayUniforms],
+        [shape, swayUniforms],
     );
     usePlantInstanceBufferMetrics({
         extraAllocatedBytes:
             tintAttribute.array.byteLength +
             swayPhaseAttribute.array.byteLength +
-            opacityAttribute.array.byteLength,
+            opacityAttribute.array.byteLength +
+            accentAttribute.array.byteLength,
         kind: 'billboard',
         liveCount: items.length,
         meshRef,
@@ -299,6 +293,7 @@ function MidBillboardInstanceMesh({
         mesh.geometry.setAttribute('instanceTint', tintAttribute);
         mesh.geometry.setAttribute('instanceOpacity', opacityAttribute);
         mesh.geometry.setAttribute('instanceSwayPhase', swayPhaseAttribute);
+        mesh.geometry.setAttribute('instanceAccent', accentAttribute);
         items.forEach((item, index) => {
             mesh.setMatrixAt(index, item.matrix);
             tintAttribute.setXYZ(
@@ -307,16 +302,30 @@ function MidBillboardInstanceMesh({
                 item.color.g,
                 item.color.b,
             );
-            opacityAttribute.setX(index, item.opacity);
+            opacityAttribute.setX(index, 1);
             swayPhaseAttribute.setX(index, item.swayPhase);
+            accentAttribute.setXYZW(
+                index,
+                item.accent.x,
+                item.accent.y,
+                item.accent.z,
+                item.accent.w,
+            );
         });
         finalizeStaticInstanceMatrixUpload(mesh, items.length);
         markStaticInstancedAttributeForUpload(tintAttribute, items.length);
         markStaticInstancedAttributeForUpload(opacityAttribute, items.length);
         markStaticInstancedAttributeForUpload(swayPhaseAttribute, items.length);
+        markStaticInstancedAttributeForUpload(accentAttribute, items.length);
         mesh.computeBoundingBox();
         mesh.computeBoundingSphere();
-    }, [items, opacityAttribute, swayPhaseAttribute, tintAttribute]);
+    }, [
+        accentAttribute,
+        items,
+        opacityAttribute,
+        swayPhaseAttribute,
+        tintAttribute,
+    ]);
 
     useLayoutEffect(() => () => geometry.dispose(), [geometry]);
 
@@ -331,115 +340,80 @@ function MidBillboardInstanceMesh({
             args={[geometry, undefined, instanceCapacity]}
             frustumCulled={false}
         >
-            <CSM
-                baseMaterial={THREE.MeshLambertMaterial}
-                depthWrite={false}
-                fragmentShader={midBillboardFragmentShader}
-                side={THREE.FrontSide}
-                transparent
-                uniforms={uniforms}
-                vertexShader={midBillboardVertexShader}
-            />
+            <PlantCardMaterials uniforms={uniforms} />
         </instancedMesh>
     );
 }
 
+/**
+ * Far and mid crops are the same leafy clump, so changing between the two
+ * never changes the silhouette. The far clump paints its produce or flower
+ * dots in; the mid view adds sway, breathing and the dots as cards; a plant
+ * without leaves shows its stem there.
+ */
 export function PlantBillboardBatch({
     debugName = 'PlantBillboardBatch',
     level,
     billboards,
 }: PlantBillboardBatchProps) {
-    const farItems = useMemo(() => {
-        if (level !== 'far') {
-            return [];
-        }
-
-        return billboards.map(({ position, scale, summary }) =>
-            createBillboardItem({
-                color: summary.dominantColor,
-                height: Math.max(summary.height * 0.72, 0.18) * scale,
-                position: [
-                    position[0],
-                    position[1] + summary.height * 0.5 * scale,
-                    position[2],
-                ],
-                width: Math.max(summary.canopyWidth * 0.42, 0.12) * scale,
-            }),
-        );
-    }, [billboards, level]);
-    const midStemItems = useMemo(() => {
-        if (level !== 'mid') {
-            return [];
-        }
-
-        return billboards.map(({ position, scale, summary }) =>
-            createBillboardItem({
-                color: summary.stemColor,
-                height: Math.max(summary.height * 0.9, 0.2) * scale,
-                position: [
-                    position[0],
-                    position[1] + summary.height * 0.42 * scale,
-                    position[2] - 0.02 * scale,
-                ],
-                width: Math.max(summary.stemWidth, 0.06) * scale,
-            }),
-        );
-    }, [billboards, level]);
-    const midCanopyItems = useMemo(() => {
-        if (level !== 'mid') {
-            return [];
-        }
-
-        return billboards
-            .filter((billboard) => billboard.summary.hasFoliage)
-            .flatMap(({ position, scale, summary }) =>
-                getMidBillboardCanopyCards(summary).map((card) =>
+    const clumpItems = useMemo(
+        () =>
+            billboards
+                .filter(({ summary }) => level === 'far' || summary.hasFoliage)
+                .map(({ position, scale, summary }) =>
                     createBillboardItem({
-                        color: summary.foliageColor,
-                        height: card.halfHeight * scale,
-                        position: [
-                            position[0] + card.offsetX * scale,
-                            position[1] + card.centerY * scale,
-                            position[2] + card.offsetZ * scale,
-                        ],
-                        opacity: card.opacity,
+                        accent:
+                            level === 'far'
+                                ? getFarClumpAccent(summary)
+                                : undefined,
+                        card: getPlantBillboardClump(summary),
+                        color: getClumpColor(summary),
+                        position,
+                        scale,
                         swayPosition: position,
-                        width: card.halfWidth * scale,
                     }),
                 ),
-            );
-    }, [billboards, level]);
-    const midAccentItems = useMemo(() => {
-        if (level !== 'mid') {
-            return [];
-        }
-
-        return billboards
-            .filter(
-                (
-                    billboard,
-                ): billboard is PlantBillboardBatchItem & {
-                    summary: PlantBillboardSummary & { accentColor: string };
-                } => Boolean(billboard.summary.accentColor),
-            )
-            .map(({ position, scale, summary }) =>
-                createBillboardItem({
-                    color: summary.accentColor,
-                    height: 1,
-                    position: [
-                        position[0],
-                        position[1] + summary.accentCenterY * scale,
-                        position[2] + 0.02 * scale,
-                    ],
-                    opacity: 0.95,
-                    radius: Math.max(summary.canopyWidth * 0.1, 0.07) * scale,
-                    swayPosition: position,
-                }),
-            );
-    }, [billboards, level]);
-    const midFoliageItems = useMemo(
-        () => [...midCanopyItems, ...midAccentItems],
-        [midAccentItems, midCanopyItems],
+        [billboards, level],
+    );
+    const stemItems = useMemo(
+        () =>
+            level === 'mid'
+                ? billboards
+                      .filter(({ summary }) => !summary.hasFoliage)
+                      .map(({ position, scale, summary }) =>
+                          createBillboardItem({
+                              card: getStemCard(summary),
+                              color: summary.stemColor,
+                              position,
+                              scale,
+                          }),
+                      )
+                : [],
+        [billboards, level],
+    );
+    const accentItems = useMemo(
+        () =>
+            level === 'mid'
+                ? billboards.flatMap(({ position, scale, summary }) =>
+                      summary.accentColor
+                          ? getMidBillboardAccentCards(
+                                summary,
+                                // The far clump lays its dots out with the
+                                // same value, its instanceSwayPhase.
+                                getMidBillboardSwayPhase(position),
+                            ).map((card) =>
+                                createBillboardItem({
+                                    card,
+                                    color: summary.accentColor ?? '#ffffff',
+                                    position,
+                                    scale,
+                                    swayPosition: position,
+                                }),
+                            )
+                          : [],
+                  )
+                : [],
+        [billboards, level],
     );
 
     if (billboards.length === 0) {
@@ -449,10 +423,11 @@ export function PlantBillboardBatch({
     if (level === 'far') {
         return (
             <BillboardInstanceMesh
-                debugName={`${debugName}:far:count:${farItems.length}`}
-                geometry={billboardPlaneGeometry}
-                items={farItems}
-                opacity={0.84}
+                animate={false}
+                debugName={`${debugName}:far:count:${clumpItems.length}`}
+                items={clumpItems}
+                shape={PLANT_BILLBOARD_SHAPE.clump}
+                swaySeed={`${debugName}:far`}
             />
         );
     }
@@ -460,125 +435,74 @@ export function PlantBillboardBatch({
     return (
         <group name={`${debugName}:mid:count:${billboards.length}`}>
             <BillboardInstanceMesh
-                debugName={`${debugName}:mid:stems:${midStemItems.length}`}
-                geometry={billboardPlaneGeometry}
-                items={midStemItems}
-                opacity={0.9}
+                animate={false}
+                debugName={`${debugName}:mid:stems:${stemItems.length}`}
+                items={stemItems}
+                shape={PLANT_BILLBOARD_SHAPE.stem}
+                swaySeed={`${debugName}:mid:stems`}
             />
-            {midFoliageItems.length > 0 ? (
-                <MidBillboardInstanceMesh
-                    debugName={`${debugName}:mid:foliage:${midFoliageItems.length}`}
-                    geometry={midBillboardCardGeometry}
-                    items={midFoliageItems}
-                    swaySeed={`${debugName}:mid`}
-                />
-            ) : null}
+            <BillboardInstanceMesh
+                debugName={`${debugName}:mid:foliage:${clumpItems.length}`}
+                items={clumpItems}
+                shape={PLANT_BILLBOARD_SHAPE.clump}
+                swaySeed={`${debugName}:mid`}
+            />
+            <BillboardInstanceMesh
+                debugName={`${debugName}:mid:accents:${accentItems.length}`}
+                items={accentItems}
+                shape={PLANT_BILLBOARD_SHAPE.dot}
+                swaySeed={`${debugName}:mid`}
+            />
         </group>
     );
 }
 
-function MidPlantBillboard({
-    animate,
-    seed,
-    summary,
+function PlantCardMesh({
+    accent,
+    card,
+    color,
+    shape,
+    swayUniforms,
 }: {
-    animate: boolean;
-    seed: string;
-    summary: PlantBillboardSummary;
+    accent?: PlantBillboardAccent;
+    card: PlantBillboardCard;
+    color: string;
+    shape: PlantBillboardShape;
+    swayUniforms: ReturnType<typeof usePlantSway>;
 }) {
-    const swayUniforms = usePlantSway(`${seed}:mid-billboard`, {
-        amplitude: 0.055,
-        enabled: animate,
-        speed: 1.1,
-    });
-    const canopyCards = useMemo(
-        () =>
-            getMidBillboardCanopyCards(summary).map((card) => ({
-                ...card,
-                uniforms: {
-                    ...swayUniforms,
-                    uOpacity: { value: card.opacity },
-                    uTint: { value: new THREE.Color(summary.foliageColor) },
-                },
-            })),
-        [summary, swayUniforms],
-    );
+    const accentColor = accent?.color;
+    const accentSeed = accent?.seed;
+    const accentValue = accent?.value;
     const uniforms = useMemo(
         () => ({
-            accent: {
-                ...swayUniforms,
-                uOpacity: { value: 0.95 },
-                uTint: {
-                    value: new THREE.Color(summary.accentColor ?? '#ffffff'),
-                },
-            },
+            ...swayUniforms,
+            ...createPlantBillboardShapeUniforms(
+                shape,
+                undefined,
+                accentColor === undefined ||
+                    accentSeed === undefined ||
+                    accentValue === undefined
+                    ? undefined
+                    : {
+                          color: accentColor,
+                          seed: accentSeed,
+                          value: accentValue,
+                      },
+            ),
+            uOpacity: { value: 1 },
+            uTint: { value: new THREE.Color(color) },
         }),
-        [summary.accentColor, swayUniforms],
+        [accentColor, accentSeed, accentValue, color, shape, swayUniforms],
     );
 
     return (
-        <group>
-            <mesh position={[0, summary.height * 0.42, -0.02]}>
-                <planeGeometry
-                    args={[
-                        Math.max(summary.stemWidth, 0.06),
-                        Math.max(summary.height * 0.9, 0.2),
-                    ]}
-                />
-                <meshBasicMaterial
-                    color={summary.stemColor}
-                    transparent
-                    opacity={0.9}
-                    depthWrite={false}
-                />
-            </mesh>
-            {summary.hasFoliage ? (
-                <group>
-                    {canopyCards.map((card) => (
-                        <mesh
-                            key={card.id}
-                            position={[
-                                card.offsetX,
-                                card.centerY,
-                                card.offsetZ,
-                            ]}
-                        >
-                            <planeGeometry
-                                args={[card.halfWidth * 2, card.halfHeight * 2]}
-                            />
-                            <CSM
-                                baseMaterial={THREE.MeshLambertMaterial}
-                                depthWrite={false}
-                                fragmentShader={midBillboardFragmentShader}
-                                side={THREE.FrontSide}
-                                transparent
-                                uniforms={card.uniforms}
-                                vertexShader={midBillboardVertexShader}
-                            />
-                        </mesh>
-                    ))}
-                </group>
-            ) : null}
-            {summary.accentColor ? (
-                <mesh position={[0, summary.accentCenterY, 0.02]}>
-                    <planeGeometry
-                        args={[
-                            Math.max(summary.canopyWidth * 0.1, 0.07) * 2,
-                            Math.max(summary.canopyWidth * 0.1, 0.07) * 2,
-                        ]}
-                    />
-                    <CSM
-                        baseMaterial={THREE.MeshLambertMaterial}
-                        depthWrite={false}
-                        fragmentShader={midBillboardFragmentShader}
-                        side={THREE.FrontSide}
-                        transparent
-                        uniforms={uniforms.accent}
-                        vertexShader={midBillboardVertexShader}
-                    />
-                </mesh>
-            ) : null}
-        </group>
+        <mesh
+            geometry={midBillboardCardGeometry}
+            position={[card.centerX, card.centerY, 0]}
+            scale={[card.halfWidth, card.halfHeight, 1]}
+        >
+            <PlantCardMaterials uniforms={uniforms} />
+        </mesh>
     );
 }
 
@@ -588,35 +512,51 @@ export function PlantBillboard({
     seed,
     summary,
 }: PlantBillboardProps) {
-    const farColor = useMemo(
-        () => new THREE.Color(summary.dominantColor),
-        [summary.dominantColor],
-    );
+    const isMid = level === 'mid';
+    const swayUniforms = usePlantSway(`${seed}:mid-billboard`, {
+        amplitude: 0.055,
+        breathSeed: seed,
+        enabled: animate && isMid,
+        speed: 1.1,
+    });
+    const accentSeed = useMemo(() => getPlantBillboardAccentSeed(seed), [seed]);
+    const accentCards = isMid
+        ? getMidBillboardAccentCards(summary, accentSeed)
+        : [];
 
     return (
         <CameraFacingBillboard>
-            {level === 'mid' ? (
-                <MidPlantBillboard
-                    animate={animate}
-                    seed={seed}
-                    summary={summary}
+            {isMid && !summary.hasFoliage ? (
+                <PlantCardMesh
+                    card={getStemCard(summary)}
+                    color={summary.stemColor}
+                    shape={PLANT_BILLBOARD_SHAPE.stem}
+                    swayUniforms={swayUniforms}
                 />
             ) : (
-                <mesh position={[0, summary.height * 0.5, 0]}>
-                    <planeGeometry
-                        args={[
-                            Math.max(summary.canopyWidth * 0.42, 0.12),
-                            Math.max(summary.height * 0.72, 0.18),
-                        ]}
-                    />
-                    <meshBasicMaterial
-                        color={farColor}
-                        transparent
-                        opacity={0.84}
-                        depthWrite={false}
-                    />
-                </mesh>
+                <PlantCardMesh
+                    accent={
+                        isMid
+                            ? undefined
+                            : getFarClumpAccent(summary, accentSeed)
+                    }
+                    card={getPlantBillboardClump(summary)}
+                    color={getClumpColor(summary)}
+                    shape={PLANT_BILLBOARD_SHAPE.clump}
+                    swayUniforms={swayUniforms}
+                />
             )}
+            {summary.accentColor
+                ? accentCards.map((card) => (
+                      <PlantCardMesh
+                          key={`${card.centerX}:${card.centerY}`}
+                          card={card}
+                          color={summary.accentColor ?? '#ffffff'}
+                          shape={PLANT_BILLBOARD_SHAPE.dot}
+                          swayUniforms={swayUniforms}
+                      />
+                  ))
+                : null}
         </CameraFacingBillboard>
     );
 }

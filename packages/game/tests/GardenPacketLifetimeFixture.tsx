@@ -8,22 +8,14 @@ import {
     useRef,
     useState,
 } from 'react';
-import {
-    DataTexture,
-    Mesh,
-    MeshStandardMaterial,
-    RGBAFormat,
-    Texture,
-    Vector2,
-    Vector3,
-    Vector4,
-} from 'three';
+import { Mesh, MeshStandardMaterial, Texture, Vector3 } from 'three';
 import {
     type EntityBlockInstance,
     EntityInstancesGeometry,
 } from '../src/entities/EntityInstancesBlock';
 import { useGroundPatchMaterial } from '../src/entities/helpers/groundPatchMaterial';
 import {
+    createCloudShadowMaterialUniforms,
     releaseCloudShadowAttenuationMaterials,
     syncCloudShadowAttenuationMaterials,
 } from '../src/scene/cloudShadowAttenuation';
@@ -157,37 +149,18 @@ function LifetimeScene({
         contextRestored: 0,
     });
     const tracked = useRef(new Set<MeshStandardMaterial>());
-    const cloud = useMemo(() => {
-        const map = new DataTexture(
-            new Uint8Array([255, 255, 255, 255]),
-            1,
-            1,
-            RGBAFormat,
-        );
-        map.needsUpdate = true;
-        const alternateMap = new DataTexture(
-            new Uint8Array([180, 180, 180, 255]),
-            1,
-            1,
-            RGBAFormat,
-        );
-        alternateMap.needsUpdate = true;
-        return {
-            map,
-            alternateMap,
+    // Each root binds its own cloud shadow table (the analytic ellipses),
+    // so two roots with different shadows never share uniform values.
+    const cloud = useMemo(
+        () => ({
             leases: new Map<
                 string,
                 { material: MeshStandardMaterial; release: () => void }
             >(),
-            uniforms: {
-                bounds: { value: new Vector4(-20, -20, 1 / 40, 1 / 40) },
-                hardness: { value: 0 },
-                map: { value: map },
-                projection: { value: new Vector2() },
-                strength: { value: 0 },
-            },
-        };
-    }, []);
+            uniforms: createCloudShadowMaterialUniforms(),
+        }),
+        [],
+    );
     const key = `${mounted}:${wetStrength}:${cloudStrength}:${aborted}`;
     const epoch = useRef({ key: '', frames: 0, reported: false });
     const latest = useRef<Readback>({ key: '' });
@@ -199,10 +172,9 @@ function LifetimeScene({
                 cacheKey: string;
                 cloud: unknown;
                 wet: unknown;
-                bounds: unknown;
+                ellipse: unknown;
                 projection: unknown;
-                hardness: unknown;
-                mapMatches: boolean | undefined;
+                amount: unknown;
             }
         >(),
     );
@@ -277,44 +249,14 @@ function LifetimeScene({
                         ? [...value]
                         : undefined;
                 };
-                const sampler = gpuUniform('grediceCloudShadowMap');
-                let mapMatches: boolean | undefined;
-                if (typeof sampler === 'number' && Number.isInteger(sampler)) {
-                    const context = gl.getContext();
-                    const activeTexture: unknown = context.getParameter(
-                        context.ACTIVE_TEXTURE,
-                    );
-                    if (typeof activeTexture !== 'number')
-                        throw new Error(
-                            'Actual texture unit state is required.',
-                        );
-                    const textureProperties: unknown = gl.properties.get(
-                        cloud.uniforms.map.value,
-                    );
-                    const uploaded: unknown =
-                        typeof textureProperties === 'object' &&
-                        textureProperties !== null
-                            ? Reflect.get(textureProperties, '__webglTexture')
-                            : undefined;
-                    context.activeTexture(context.TEXTURE0 + sampler);
-                    try {
-                        mapMatches =
-                            uploaded instanceof WebGLTexture &&
-                            context.getParameter(context.TEXTURE_BINDING_2D) ===
-                                uploaded;
-                    } finally {
-                        context.activeTexture(activeTexture);
-                    }
-                }
                 firstMainUniforms.current.set(material.uuid, {
                     material: material.uuid,
                     cacheKey,
                     cloud: gpuUniform('grediceCloudShadowStrength'),
                     wet: gpuUniform('uGroundPatchWetStrength'),
-                    bounds: vector('grediceCloudShadowBounds'),
+                    ellipse: vector('grediceCloudShadowEllipses[0]'),
                     projection: vector('grediceCloudShadowProjection'),
-                    hardness: gpuUniform('grediceCloudShadowHardness'),
-                    mapMatches,
+                    amount: gpuUniform('grediceCloudShadowAmounts[0]'),
                 });
             }
         };
@@ -394,16 +336,17 @@ function LifetimeScene({
         }
         witness.setEpoch(key);
         cloud.uniforms.strength.value = cloudStrength;
-        cloud.uniforms.map.value =
-            cloudStrength > 0.5 ? cloud.alternateMap : cloud.map;
-        if (cloudStrength > 0.5)
-            cloud.uniforms.bounds.value.set(-10, -10, 0.04, 0.04);
-        else cloud.uniforms.bounds.value.set(-20, -20, 0.025, 0.025);
+        const firstEllipse = cloud.uniforms.ellipses.value[0];
+        // The strong state lays a lilac shadow over the right-hand Dirt, so
+        // the two states differ in pixels as well as in uniforms.
+        cloud.uniforms.tint.value.set('#c3c9f8');
+        if (cloudStrength > 0.5) firstEllipse?.set(3, 0, 2, 1.5);
+        else firstEllipse?.set(-20, -20, 1.75, 1.25);
         cloud.uniforms.projection.value.set(
             cloudStrength > 0.5 ? 0.15 : 0,
             cloudStrength > 0.5 ? -0.2 : 0,
         );
-        cloud.uniforms.hardness.value = cloudStrength > 0.5 ? 0.6 : 0;
+        cloud.uniforms.amounts.value[0] = cloudStrength > 0.5 ? 0.6 : 0;
         syncCloudShadowAttenuationMaterials({
             enabled: cloudStrength !== 0,
             leases: cloud.leases,

@@ -7,6 +7,7 @@ import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { dryGroundBaseColor } from './dryGroundPalette';
 import {
+    groundSurfaceColors,
     useGroundPatchMaterial,
     useGroundPatchStandardMaterial,
 } from './helpers/groundPatchMaterial';
@@ -23,7 +24,7 @@ export function BlockDryGroundReverseCorner({
     const material = useGroundPatchStandardMaterial({
         color: dryGroundBaseColor,
         metalness: 0,
-        roughness: 1,
+        roughness: 0.8,
         surface: 'dryDirt',
     });
 
@@ -166,9 +167,9 @@ export function BlockSnowReverseCorner({
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
     const snowMaterial = useGroundPatchStandardMaterial({
-        color: '#f0f7ff',
+        color: groundSurfaceColors.snow,
         metalness: 0,
-        roughness: 1,
+        roughness: 0.8,
         surface: 'snow',
     });
 

@@ -169,12 +169,8 @@ describe('Horse asset', () => {
         const bay = getHorseAppearanceVariantDefinition(0);
 
         assertMaterialColor(document, 'Material.Horse.Coat', bay.coatColor);
-        assertMaterialColor(
-            document,
-            'Material.Horse.CoatDark',
-            bay.coatColor,
-            0.72,
-        );
+        // CoatDark shows the coat colour too: no painted shading.
+        assertMaterialColor(document, 'Material.Horse.CoatDark', bay.coatColor);
         assertMaterialColor(document, 'Material.Horse.Mane', bay.maneColor);
         assertMaterialColor(
             document,

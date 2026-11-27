@@ -34,6 +34,10 @@ function assets(...names: GameAssetName[]): BlockAssetRequirement {
  * Exact GLBs each block renderer resolves through `useGameGLTF`. The mapped
  * type forces every renderable block to declare its requirements, so a new
  * entity cannot silently fall back to bucket preloading.
+ *
+ * Ramps, corners and stairs also list their flat block's GLB: the terrain
+ * rim they wear takes its lip (and the stone body) from it
+ * (`entities/terrainRim/TerrainRimInstances.tsx`).
  */
 export const blockAssetRequirements: {
     readonly [Name in EntityName]: BlockAssetRequirement;
@@ -50,27 +54,41 @@ export const blockAssetRequirements: {
     Block_Swamp_Ground: assets('BlockSand'),
     Block_Swamp_Ground_Angle: assets('BlockSandAngle'),
     Block_Stone: assets('BlockStone'),
-    Block_Stone_Angle: assets('BlockStoneAngle'),
+    Block_Stone_Angle: assets('BlockStoneAngle', 'BlockStone'),
     Block_Gravel: assets('BlockGravel'),
-    Block_Gravel_Angle: assets('BlockGravelAngle'),
-    Block_Stone_Stairs: assets('BlockStoneStairs'),
-    Block_Stone_Stairs_Corner: assets('BlockStoneStairsCorner'),
-    Block_Stone_Stairs_Half: assets('BlockStoneStairsCorner'),
+    Block_Gravel_Angle: assets('BlockGravelAngle', 'BlockGravel'),
+    Block_Stone_Stairs: assets('BlockStoneStairs', 'BlockStone'),
+    Block_Stone_Stairs_Corner: assets('BlockStoneStairsCorner', 'BlockStone'),
+    Block_Stone_Stairs_Half: assets('BlockStoneStairsCorner', 'BlockStone'),
     Block_Polished_Stone: assets('BlockPolishedStone'),
-    Block_Polished_Stone_Angle: assets('BlockPolishedStoneAngle'),
-    Block_Polished_Stone_Stairs: assets('BlockPolishedStoneStairs'),
+    Block_Polished_Stone_Angle: assets(
+        'BlockPolishedStoneAngle',
+        'BlockPolishedStone',
+    ),
+    Block_Polished_Stone_Stairs: assets(
+        'BlockPolishedStoneStairs',
+        'BlockPolishedStone',
+    ),
     Block_Polished_Stone_Stairs_Corner: assets(
         'BlockPolishedStoneStairsCorner',
+        'BlockPolishedStone',
     ),
-    Block_Ground_Angle: assets('BlockGroundAngle'),
-    Block_Grass_Angle: assets('BlockGrassAngle'),
-    Block_Sand_Angle: assets('BlockSandAngle'),
-    Block_Ground_Corner: assets('BlockTerrainCorner'),
-    Block_Grass_Corner: assets('BlockTerrainCorner'),
-    Block_Sand_Corner: assets('BlockTerrainCorner'),
-    Block_Ground_Reverse_Corner: assets('BlockTerrainReverseCorner'),
-    Block_Grass_Reverse_Corner: assets('BlockTerrainReverseCorner'),
-    Block_Sand_Reverse_Corner: assets('BlockTerrainReverseCorner'),
+    // Dirt ramps draw the shared sand wedge in the flat dirt material.
+    Block_Ground_Angle: assets('BlockSandAngle', 'BlockGround'),
+    Block_Grass_Angle: assets('BlockGrassAngle', 'BlockGrass'),
+    Block_Sand_Angle: assets('BlockSandAngle', 'BlockSand'),
+    Block_Ground_Corner: assets('BlockTerrainCorner', 'BlockGround'),
+    Block_Grass_Corner: assets('BlockTerrainCorner', 'BlockGrass'),
+    Block_Sand_Corner: assets('BlockTerrainCorner', 'BlockSand'),
+    Block_Ground_Reverse_Corner: assets(
+        'BlockTerrainReverseCorner',
+        'BlockGround',
+    ),
+    Block_Grass_Reverse_Corner: assets(
+        'BlockTerrainReverseCorner',
+        'BlockGrass',
+    ),
+    Block_Sand_Reverse_Corner: assets('BlockTerrainReverseCorner', 'BlockSand'),
     Block_Snow: assets('BlockSand'),
     Block_Snow_Angle: assets('BlockSandAngle'),
     Block_Snow_Corner: assets('BlockTerrainCorner'),

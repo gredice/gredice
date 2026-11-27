@@ -1,8 +1,12 @@
 import type { GameAssetName } from '../data/models';
 import type { GLTFResult } from '../models/GameAssets';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
+import { IdleBreathingGroup } from '../scene/IdleBreathingMotion';
+import type { IdleBreathingRole } from '../scene/idleBreathing';
 import { animated } from '../scene/sceneSpring';
+import { seasonalRoles } from '../scene/seasonalRoles';
 import { SnowOverlay } from '../snow/SnowOverlay';
+import { canopyDomeSlopeRange } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
@@ -31,13 +35,28 @@ export type CactusVariantConfig = {
     groundSink: number;
 };
 
+/**
+ * Flower petal albedos from the colour roles in GAME_ART.md. Ripe red and
+ * the sunflower petal are base roles; petalYellow is the reachable stand-in
+ * the sunflower petals use, since #ffd31c cannot be reached by lit albedo.
+ * Carrot orange (#ff8a1c) cannot be reached either, so the orange flower
+ * takes the pumpkin role.
+ */
+const cactusFlowerColors = {
+    pink: seasonalRoles.blossomPink.albedo,
+    orange: seasonalRoles.pumpkin.albedo,
+    violet: seasonalRoles.asterViolet.albedo,
+    ripeRed: '#9c241b', // ripe red #f23b2c on screen
+    petalYellow: '#957700', // #f0c21d on screen, as Sunflower.tsx petals
+};
+
 const cactusVariants = {
     CactusBarrel: {
         assetName: 'CactusBarrel',
         bodyNode: 'Cactus_Barrel_Body',
         flowers: [
             {
-                color: '#ff7ab8',
+                color: cactusFlowerColors.pink,
                 id: 'crown',
                 position: [0.02, 0.63, 0],
                 rotation: [0.18, 0.4, -0.1],
@@ -53,14 +72,14 @@ const cactusVariants = {
         bodyNode: 'Cactus_ColumnCluster_Body',
         flowers: [
             {
-                color: '#ff9f43',
+                color: cactusFlowerColors.orange,
                 id: 'tall-column',
                 position: [0.027, 1.12, 0.029],
                 rotation: [0.12, 1.1, 0.18],
                 scale: 2.35,
             },
             {
-                color: '#e66dff',
+                color: cactusFlowerColors.violet,
                 id: 'side-column',
                 position: [0.233, 0.93, -0.15],
                 rotation: [0.05, -0.7, -0.2],
@@ -76,14 +95,14 @@ const cactusVariants = {
         bodyNode: 'Cactus_PricklyPear_Body',
         flowers: [
             {
-                color: '#ff5f8f',
+                color: cactusFlowerColors.ripeRed,
                 id: 'top-pad',
                 position: [0.029, 1.045, 0.056],
                 rotation: [0.16, 0.15, -0.24],
                 scale: 2.15,
             },
             {
-                color: '#ffd166',
+                color: cactusFlowerColors.petalYellow,
                 id: 'side-pad',
                 position: [0.204, 0.855, -0.14],
                 rotation: [0.2, -0.55, 0.16],
@@ -104,18 +123,6 @@ export function getCactusVariantConfig(blockName: string) {
     return cactusVariantByName.get(blockName) ?? null;
 }
 
-const cactusBodyMaterial = {
-    color: '#4a6411',
-    roughness: 0.82,
-    metalness: 0,
-};
-
-const cactusSpineMaterial = {
-    color: '#8a5a2b',
-    roughness: 0.78,
-    metalness: 0,
-};
-
 function CactusEntity({
     stack,
     block,
@@ -125,8 +132,9 @@ function CactusEntity({
     const { nodes } = useGameGLTF(config.assetName);
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
-    const bodyGeometry = nodes[config.bodyNode].geometry;
-    const spineGeometry = nodes[config.spineNode].geometry;
+    const body = nodes[config.bodyNode];
+    const spines = nodes[config.spineNode];
+    const bodyGeometry = body.geometry;
 
     return (
         <animated.group
@@ -136,14 +144,21 @@ function CactusEntity({
             rotation={animatedRotation as unknown as [number, number, number]}
             scale={config.scale}
         >
-            <mesh castShadow receiveShadow geometry={bodyGeometry}>
-                <meshStandardMaterial {...cactusBodyMaterial} />
+            {/* Colours come from the model: Material.Cactus.Body and
+                Material.Cactus.Spines in assets/game-assets/Cactus*.blend. */}
+            <mesh
+                castShadow
+                receiveShadow
+                geometry={bodyGeometry}
+                material={body.material}
+            >
                 <SnowOverlay
                     geometry={bodyGeometry}
                     maxThickness={0.04}
                     slopeExponent={1.9}
                     noiseScale={4.5}
                     coverageMultiplier={0.55}
+                    slopeRange={canopyDomeSlopeRange}
                 />
                 <RainWetOverlay
                     geometry={bodyGeometry}
@@ -152,22 +167,35 @@ function CactusEntity({
                     glossiness={0.45}
                 />
             </mesh>
-            <mesh castShadow receiveShadow geometry={spineGeometry}>
-                <meshStandardMaterial {...cactusSpineMaterial} />
-            </mesh>
+            <mesh
+                castShadow
+                receiveShadow
+                geometry={spines.geometry}
+                material={spines.material}
+            />
             {config.flowers.map((flower) => (
-                <GardenFlowerModel
+                // Blooms are living parts: each breathes from its own base
+                // while the cactus body holds still.
+                <IdleBreathingGroup
                     key={`${config.assetName}-flower-${flower.id}`}
-                    bloomOnly
-                    petalColor={flower.color}
-                    position={flower.position}
-                    rotation={flower.rotation}
-                    scale={flower.scale}
-                />
+                    pivot={flower.position}
+                    role={cactusBloomBreathingRole}
+                >
+                    <GardenFlowerModel
+                        bloomOnly
+                        petalColor={flower.color}
+                        position={flower.position}
+                        rotation={flower.rotation}
+                        scale={flower.scale}
+                    />
+                </IdleBreathingGroup>
             ))}
         </animated.group>
     );
 }
+
+/** Cactus blooms breathe like flowers (GAME_ART.md, "Motion"). */
+export const cactusBloomBreathingRole: IdleBreathingRole = 'flower';
 
 export function Cactus(props: EntityInstanceProps) {
     const config = getCactusVariantConfig(props.block.name);

@@ -11,6 +11,13 @@ const summerDays = getSeasonLengthDays('summer', 2000);
 const autumnDays = getSeasonLengthDays('autumn', 2000);
 const yellowingStart = getSeasonState(new Date(2001, 7, 22)).progress;
 const yellowingLeadDays = (1 - yellowingStart) * summerDays;
+// Spring progress by which canopies are fully green again, about ten days.
+const springGreeningEnd = 0.11;
+// How far a spring canopy leans toward the spring green role (GAME_ART
+// "Seasonal roles"). Kept partial: the full role has the lawn's hue, so a
+// canopy at this share reads fresh and light, near the canopy highlight, but
+// still apart from the grass.
+const springFreshnessPeak = 0.35;
 
 function foliageColorProgress(daysSinceAutumnStart: number) {
     return smooth(-yellowingLeadDays, autumnDays * 0.8, daysSinceAutumnStart);
@@ -33,6 +40,7 @@ export function getAutumnState({ season, progress }: SeasonState) {
             fallingLeafIntensity:
                 smooth(0.05, 0.35, p) * (1 - smooth(0.6, 0.95, p)),
             settledLeafAmount: 0.85 * smooth(0.1, 0.85, p),
+            springFreshness: 0,
         };
     }
     if (season === 'winter') {
@@ -41,15 +49,25 @@ export function getAutumnState({ season, progress }: SeasonState) {
             leafRetention: 0.08,
             fallingLeafIntensity: 0,
             settledLeafAmount: 0.85 - 0.75 * smooth(0, 1, p),
+            springFreshness: 0,
         };
     }
     if (season === 'spring') {
         const growth = smooth(0, 0.65, p);
         return {
-            foliageColorProgress: 1 - growth,
+            // Winter's leftover leaves turn green in the first days of
+            // spring, so regrowing canopies are fresh green, never autumn
+            // orange (GAME_ART "Time of day and seasons").
+            foliageColorProgress: 1 - smooth(0, springGreeningEnd, p),
             leafRetention: 0.08 + 0.92 * growth,
             fallingLeafIntensity: 0,
             settledLeafAmount: 0.1 * (1 - smooth(0, 0.4, p)),
+            // New leaves are a lighter, fresher green that matures into the
+            // summer canopy green by the end of spring.
+            springFreshness:
+                springFreshnessPeak *
+                smooth(0, springGreeningEnd, p) *
+                (1 - smooth(0.5, 1, p)),
         };
     }
     return {
@@ -57,6 +75,7 @@ export function getAutumnState({ season, progress }: SeasonState) {
         leafRetention: 1,
         fallingLeafIntensity: 0,
         settledLeafAmount: 0,
+        springFreshness: 0,
     };
 }
 

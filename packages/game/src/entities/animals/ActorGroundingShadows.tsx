@@ -20,8 +20,17 @@ import {
     ShaderMaterial,
     Vector3,
 } from 'three';
+import {
+    contactShadowMultiplyBlending,
+    contactShadowSurfaceLift,
+    contactShadowTint,
+    resolveContactShadowLift,
+    resolveContactShadowSnowCoverage,
+    resolveContactShadowSnowStrength,
+} from '../../scene/contactShadowStyle';
 import { updateGameProfileMetadata } from '../../scene/gameProfileMetadata';
 import { useOptionalGameState } from '../../useGameState';
+import type { ContactShadowReceiverLookup } from '../helpers/staticContactShadowLayout';
 import {
     type ActorGroundingShadowRegistration,
     ActorGroundingShadowRegistry,
@@ -39,10 +48,18 @@ actorGroundingShadowGeometry.rotateX(-Math.PI / 2);
 actorGroundingShadowGeometry.name = 'ActorGroundingShadowGeometry';
 const actorGroundingShadowProfileReportIntervalSeconds = 0.25;
 
+// Profile opacities were tuned as black over alpha. The cool multiply keeps
+// roughly that darkness while tinting the shadow blue instead of black.
+const actorGroundingShadowTintScale = 1.8;
+
 const actorGroundingShadowMaterial = new ShaderMaterial({
+    ...contactShadowMultiplyBlending,
     depthTest: true,
     depthWrite: false,
     fragmentShader: `
+        uniform vec3 uTint;
+        uniform float uTintScale;
+
         varying float vActorShadowOpacity;
         varying vec2 vActorShadowUv;
 
@@ -58,11 +75,18 @@ const actorGroundingShadowMaterial = new ShaderMaterial({
                 discard;
             }
 
-            gl_FragColor = vec4(0.0, 0.0, 0.0, alpha);
+            gl_FragColor = vec4(
+                mix(vec3(1.0), uTint, clamp(alpha * uTintScale, 0.0, 1.0)),
+                1.0
+            );
         }
     `,
     side: DoubleSide,
     transparent: true,
+    uniforms: {
+        uTint: { value: new Vector3(...contactShadowTint) },
+        uTintScale: { value: actorGroundingShadowTintScale },
+    },
     vertexShader: `
         varying float vActorShadowOpacity;
         varying vec2 vActorShadowUv;
@@ -91,8 +115,20 @@ const actorGroundingShadowMaterial = new ShaderMaterial({
 actorGroundingShadowMaterial.name = 'ActorGroundingShadowMaterial';
 actorGroundingShadowMaterial.toneMapped = false;
 
+/**
+ * The ground under each blob, published by `StaticContactShadows`, which
+ * knows the garden: blobs on known ground rise above its snow like static
+ * blobs do; elsewhere (prop tops, slopes, water) they keep the registry lift.
+ */
+type ActorGroundingShadowReceivers = {
+    lookup: ContactShadowReceiverLookup | null;
+    snowOverlayMinCoverage: number;
+    version: number;
+};
+
 type ActorGroundingShadowContextValue = {
     enabled: boolean;
+    receivers: ActorGroundingShadowReceivers;
     registry: ActorGroundingShadowRegistry;
 };
 
@@ -209,14 +245,17 @@ function reportActorGroundingShadowProfile({
 
 function ActorGroundingShadowBatch({
     owner,
+    receivers,
     registry,
 }: {
     owner: symbol;
+    receivers: ActorGroundingShadowReceivers;
     registry: ActorGroundingShadowRegistry;
 }) {
     const meshRef = useRef<InstancedMesh | null>(null);
     const snowCoverage = useOptionalGameState((state) => state.snowCoverage, 0);
     const batchCountRef = useRef(0);
+    const lastReceiversVersionRef = useRef(-1);
     const lastSnowCoverageRef = useRef(Number.NaN);
     const lastProfileReportAtRef = useRef(Number.NEGATIVE_INFINITY);
     const lastVersionRef = useRef(-1);
@@ -266,8 +305,13 @@ function ActorGroundingShadowBatch({
         const membershipVersion = registry.getMembershipVersion();
         const matricesChanged =
             lastVersionRef.current !== version ||
+            lastReceiversVersionRef.current !== receivers.version ||
             !Object.is(lastSnowCoverageRef.current, snowCoverage);
         if (matricesChanged) {
+            const tierSnowCoverage = resolveContactShadowSnowCoverage(
+                snowCoverage,
+                receivers.snowOverlayMinCoverage,
+            );
             const entries = registry.getEntries();
             const drawCount =
                 entries.length === 0
@@ -298,11 +342,29 @@ function ActorGroundingShadowBatch({
                 if (entry.kind !== 'placement') {
                     visibleCount += 1;
                 }
-                scratch.position.set(resolved.x, resolved.y, resolved.z);
+                // On known ground, rise above its snow as static blobs do.
+                const receiverSnow = receivers.lookup?.(
+                    resolved.x,
+                    resolved.z,
+                    entry.state.receiverY,
+                );
+                const lift = receiverSnow
+                    ? resolveContactShadowLift(tierSnowCoverage, receiverSnow)
+                    : null;
+                scratch.position.set(
+                    resolved.x,
+                    lift === null ? resolved.y : entry.state.receiverY + lift,
+                    resolved.z,
+                );
                 scratch.quaternion.setFromAxisAngle(upAxis, resolved.yaw);
                 scratch.scale.set(
                     resolved.halfWidth,
-                    resolved.opacity,
+                    lift === null
+                        ? resolved.opacity
+                        : resolved.opacity *
+                              resolveContactShadowSnowStrength(
+                                  lift - contactShadowSurfaceLift,
+                              ),
                     resolved.halfLength,
                 );
                 scratch.matrix.compose(
@@ -328,6 +390,7 @@ function ActorGroundingShadowBatch({
             );
             previousDrawCountRef.current = drawCount;
             visibleCountRef.current = visibleCount;
+            lastReceiversVersionRef.current = receivers.version;
             lastSnowCoverageRef.current = snowCoverage;
             lastVersionRef.current = version;
             profileReportPendingRef.current = true;
@@ -378,11 +441,18 @@ export function ActorGroundingShadowProvider({
     enabled,
 }: PropsWithChildren<{ enabled: boolean }>) {
     const registry = useMemo(() => new ActorGroundingShadowRegistry(), []);
+    const receivers = useMemo<ActorGroundingShadowReceivers>(
+        () => ({ lookup: null, snowOverlayMinCoverage: 0, version: 0 }),
+        [],
+    );
     const profileOwner = useMemo(
         () => Symbol('actor-grounding-shadow-profile-owner'),
         [],
     );
-    const context = useMemo(() => ({ enabled, registry }), [enabled, registry]);
+    const context = useMemo(
+        () => ({ enabled, receivers, registry }),
+        [enabled, receivers, registry],
+    );
 
     useLayoutEffect(() => {
         if (!enabled) {
@@ -396,11 +466,39 @@ export function ActorGroundingShadowProvider({
             {enabled && (
                 <ActorGroundingShadowBatch
                     owner={profileOwner}
+                    receivers={receivers}
                     registry={registry}
                 />
             )}
         </ActorGroundingShadowContext.Provider>
     );
+}
+
+/**
+ * Tells the actor and placement blobs what ground lies where, and from which
+ * snow coverage the quality tier draws snow on it. Without a provider it does
+ * nothing.
+ */
+export function useActorGroundingShadowReceivers(
+    lookup: ContactShadowReceiverLookup,
+    snowOverlayMinCoverage: number,
+) {
+    const receivers = useContext(ActorGroundingShadowContext)?.receivers;
+
+    useLayoutEffect(() => {
+        if (!receivers) {
+            return;
+        }
+        receivers.lookup = lookup;
+        receivers.snowOverlayMinCoverage = snowOverlayMinCoverage;
+        receivers.version += 1;
+        return () => {
+            if (receivers.lookup === lookup) {
+                receivers.lookup = null;
+                receivers.version += 1;
+            }
+        };
+    }, [lookup, receivers, snowOverlayMinCoverage]);
 }
 
 export function useActorGroundingShadow({

@@ -8,6 +8,8 @@ import {
     Vector3,
 } from 'three';
 import { useBlockData } from '../hooks/useBlockData';
+import { useAnimalIdleBreathingAmplitude } from '../scene/IdleBreathingMotion';
+import { idleBreathingSeed } from '../scene/idleBreathing';
 import { sceneFrameRates, useSceneTimeInvalidation } from '../scene/SceneTime';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useGameState, useGameStateStore } from '../useGameState';
@@ -186,6 +188,8 @@ function poseRigNode(
 
 function updateCowPose({
     behavior,
+    breathAmplitude,
+    breathSeed,
     delta,
     moving,
     now,
@@ -193,6 +197,8 @@ function updateCowPose({
     walkDistance,
 }: {
     behavior: CowBehavior;
+    breathAmplitude: number;
+    breathSeed: number;
     delta: number;
     moving: boolean;
     now: number;
@@ -211,6 +217,8 @@ function updateCowPose({
     }
     const targets = getCowPoseTargets({
         behavior,
+        breathAmplitude,
+        breathSeed,
         moving: rig.walkPoseAmount > 0.01,
         now,
         trot,
@@ -218,6 +226,7 @@ function updateCowPose({
     });
     poseRigNode(rig.body, delta, {
         positionY: targets.bodyPositionY * rig.walkPoseAmount,
+        scaleX: targets.bodyScaleX,
         scaleY: targets.bodyScaleY,
         scaleZ: targets.bodyScaleZ,
     });
@@ -334,6 +343,9 @@ export function Cow({ block, rotation, stack, stacks }: EntityInstanceProps) {
     const gameStateStore = useGameStateStore();
     const groupRef = useRef<Group>(null);
     const poseWalkDistance = useFaunaWalkDistance();
+    const breathAmplitude = useAnimalIdleBreathingAmplitude();
+    // Each cow breathes in its own phase, keyed to its home tile.
+    const breathSeed = idleBreathingSeed(stack.position.x, stack.position.z);
     const poseSample = useFaunaPresentationSample<{
         behavior: CowBehavior;
         moving: boolean;
@@ -711,6 +723,8 @@ export function Cow({ block, rotation, stack, stacks }: EntityInstanceProps) {
         if (presentation && shouldPoseCow()) {
             updateCowPose({
                 behavior: presentation.value.behavior,
+                breathAmplitude,
+                breathSeed,
                 delta: presentation.delta,
                 moving: presentation.value.moving,
                 now: presentation.time,

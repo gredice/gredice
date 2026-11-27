@@ -1,22 +1,27 @@
+import {
+    cropFlowerPalette,
+    cropLeafPalette,
+    cropStemPalette,
+} from '../cropPalette';
 import type { PlantDefinition } from '../plant-definition-types';
 import { createDevelopmentProgram, createPlant } from './helpers';
 
 const legumeAppearance = {
     height: 0.88,
     stem: {
-        color: '#5d7e36',
+        color: cropStemPalette.base,
         radius: 0.024,
         radiusDecay: 0.5,
         minRadius: 0.003,
     },
     leaf: {
-        color: '#5e8a30',
+        color: cropLeafPalette.base,
         size: 0.18,
         type: 'compound',
     },
     flower: {
         enabled: true,
-        color: '#ffffff',
+        color: cropFlowerPalette.cream,
         size: 0.06,
     },
 } satisfies Pick<PlantDefinition, 'flower' | 'height' | 'leaf' | 'stem'>;
@@ -68,7 +73,7 @@ export const legumePlants = {
         },
         flower: {
             ...legumeAppearance.flower,
-            color: '#f7f7f7',
+            color: cropFlowerPalette.cream,
         },
         vegetable: {
             enabled: true,
@@ -171,7 +176,7 @@ export const legumePlants = {
         },
         flower: {
             ...legumeAppearance.flower,
-            color: '#f2edf7',
+            color: cropFlowerPalette.cream,
         },
         vegetable: {
             enabled: true,

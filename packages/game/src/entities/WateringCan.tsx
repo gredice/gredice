@@ -3,6 +3,7 @@ import { DoubleSide } from 'three';
 import type { GLTFResult } from '../models/GameAssets';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
 import { animated } from '../scene/sceneSpring';
+import { seasonalRoles } from '../scene/seasonalRoles';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
@@ -33,10 +34,28 @@ const darkNodeNames = [
     'WateringCan_Rose_Face_Dots',
 ] satisfies WateringCanNodeName[];
 
-const metalMaterial = {
-    color: '#555555',
+// Linear albedo in sRGB hex: the scene lights a sunlit face to about 3.2
+// times its albedo (assets/scripts/party-pass-props.py). Enamel blue body
+// #3f8ff0 and holiday gold trim #f2c040 from the roles in GAME_ART.md, and a
+// steel rose plate #8fc0ee.
+export const wateringCanBodyMaterial = {
+    color: seasonalRoles.enamelBlue.albedo,
     metalness: 0,
-    roughness: 0.5,
+    roughness: seasonalRoles.enamelBlue.roughness,
+    side: DoubleSide,
+};
+
+export const wateringCanTrimMaterial = {
+    color: seasonalRoles.holidayGold.albedo,
+    metalness: 0,
+    roughness: seasonalRoles.holidayGold.roughness,
+    side: DoubleSide,
+};
+
+export const wateringCanRoseMaterial = {
+    color: '#5a7895',
+    metalness: 0,
+    roughness: 0.3,
     side: DoubleSide,
 };
 
@@ -79,7 +98,7 @@ export function WateringCan({ stack, block, rotation }: EntityInstanceProps) {
 
                 return (
                     <WateringCanPart key={nodeName} node={node}>
-                        <meshStandardMaterial {...metalMaterial} />
+                        <meshStandardMaterial {...wateringCanBodyMaterial} />
                         <SnowOverlay
                             geometry={node.geometry}
                             {...snowPresets.tool}
@@ -98,7 +117,7 @@ export function WateringCan({ stack, block, rotation }: EntityInstanceProps) {
 
                 return (
                     <WateringCanPart key={nodeName} node={node}>
-                        <meshStandardMaterial {...metalMaterial} />
+                        <meshStandardMaterial {...wateringCanTrimMaterial} />
                         <SnowOverlay
                             geometry={node.geometry}
                             {...snowPresets.tool}
@@ -117,7 +136,7 @@ export function WateringCan({ stack, block, rotation }: EntityInstanceProps) {
 
                 return (
                     <WateringCanPart key={nodeName} node={node}>
-                        <meshStandardMaterial {...metalMaterial} />
+                        <meshStandardMaterial {...wateringCanRoseMaterial} />
                         <SnowOverlay
                             geometry={node.geometry}
                             {...snowPresets.tool}

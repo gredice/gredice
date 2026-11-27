@@ -1180,39 +1180,65 @@ export async function getRunnableAutomationEventTypes() {
 
 export async function enqueueAutomationRunsForEvent(
     event: DomainEventRow,
+    options: {
+        db?: DatabaseClient;
+    } = {},
+): Promise<SelectAutomationRun[]> {
+    return enqueueAutomationRunsForEvents([event], options);
+}
+
+/**
+ * Enqueue the enabled event automations for several events, reading the
+ * definitions once per event type. Runs are created in event order, then
+ * definition order, as calling `enqueueAutomationRunsForEvent` for each
+ * event would; with no enabled definition no run statement is issued.
+ */
+export async function enqueueAutomationRunsForEvents(
+    domainEvents: readonly DomainEventRow[],
     {
         db = storage(),
     }: {
         db?: DatabaseClient;
     } = {},
 ): Promise<SelectAutomationRun[]> {
-    const definitions = await listEnabledAutomationDefinitionsForEventType(
-        event.type,
-        db,
-    );
+    const definitionsByEventType = new Map<
+        string,
+        SelectAutomationDefinition[]
+    >();
     const createdRuns: SelectAutomationRun[] = [];
 
-    for (const definition of definitions) {
-        const run = await createAutomationRun(
-            {
-                automationDefinition: definition,
-                source: 'event',
-                sourceEvent: event,
-                input: {
-                    eventId: event.id,
-                    eventType: event.type,
-                    aggregateId: event.aggregateId,
-                    data:
-                        event.data && typeof event.data === 'object'
-                            ? (event.data as AutomationJsonObject)
-                            : {},
-                },
-            },
-            db,
-        );
+    for (const event of domainEvents) {
+        let definitions = definitionsByEventType.get(event.type);
+        if (!definitions) {
+            definitions = await listEnabledAutomationDefinitionsForEventType(
+                event.type,
+                db,
+            );
+            definitionsByEventType.set(event.type, definitions);
+        }
 
-        if (run) {
-            createdRuns.push(run);
+        for (const definition of definitions) {
+            const run = await createAutomationRun(
+                {
+                    automationDefinition: definition,
+                    source: 'event',
+                    sourceEvent: event,
+                    input: {
+                        eventId: event.id,
+                        eventType: event.type,
+                        aggregateId: event.aggregateId,
+                        data:
+                            event.data && typeof event.data === 'object'
+                                ? (event.data as AutomationJsonObject)
+                                : {},
+                    },
+                },
+                db,
+            );
+
+            if (run) {
+                createdRuns.push(run);
+            }
         }
     }
 

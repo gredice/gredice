@@ -108,6 +108,7 @@ export {
     Monitor as Desktop,
     Moon,
     MoreHorizontal,
+    Move,
     Outdent as TextLinked,
     PanelLeftClose,
     PanelLeftOpen,

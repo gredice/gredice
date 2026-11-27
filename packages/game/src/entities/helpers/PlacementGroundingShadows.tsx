@@ -16,6 +16,7 @@ import type {
     ActorGroundingShadowState,
     GroundingShadowProfile,
 } from '../animals/actorGroundingShadowRegistry';
+import { hasStaticContactShadowAt } from './staticContactShadowLayout';
 
 const placementShadowOpacity = 0.24;
 const placementShadowMinimumHalfExtent = 0.12;
@@ -49,10 +50,16 @@ export function resolvePlacementGroundingShadowProfile(
 export function resolvePlacementGroundingShadowDescriptors({
     animations,
     blockData,
+    hasStaticShadow,
     stacks,
 }: {
     animations: Readonly<Record<string, BlockPlacementDropAnimation>>;
     blockData: BlockData[] | null | undefined;
+    /**
+     * Blocks that keep a static contact blob through the animation need no
+     * second, projected one.
+     */
+    hasStaticShadow?: (stack: Stack, blockIndex: number) => boolean;
     stacks: Stack[] | undefined;
 }): PlacementGroundingShadowDescriptor[] {
     if (!stacks?.length) {
@@ -82,7 +89,13 @@ export function resolvePlacementGroundingShadowDescriptors({
                 break;
             }
         }
-        if (!matched) {
+        if (
+            !matched ||
+            hasStaticShadow?.(
+                matched.stack,
+                matched.stack.blocks.indexOf(matched.block),
+            )
+        ) {
             continue;
         }
 
@@ -136,6 +149,8 @@ export function PlacementGroundingShadows({
             resolvePlacementGroundingShadowDescriptors({
                 animations,
                 blockData,
+                hasStaticShadow: (stack, blockIndex) =>
+                    hasStaticContactShadowAt({ blockData, blockIndex, stack }),
                 stacks,
             }),
         [animations, blockData, stacks],

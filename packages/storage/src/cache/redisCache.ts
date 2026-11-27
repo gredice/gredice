@@ -77,6 +77,55 @@ export function redisCacheClient(
     return client;
 }
 
+const failFastRedisClients = new Map<string, Redis>();
+
+/**
+ * A Redis client for checks on a request path that must not wait on an
+ * outage, such as a rate limit that fails open. Unlike `redisCacheClient`,
+ * whose requester retries five times with backoff, it never retries, and
+ * each command (connect included) is aborted after `timeoutMs`. The abort is
+ * set on the request the middleware sends, because the Upstash client-level
+ * `signal` option is bypassed once a requester middleware is installed.
+ * Returns null when the namespace has no credentials.
+ */
+export function redisFailFastClient(
+    namespace: RedisCacheNamespace,
+    { timeoutMs }: Readonly<{ timeoutMs: number }>,
+): Redis | null {
+    if (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0) {
+        throw new RangeError(
+            'Fail-fast Redis timeout must be a positive integer of milliseconds.',
+        );
+    }
+
+    const clientKey = `${namespace}:${timeoutMs.toString()}`;
+    const existingClient = failFastRedisClients.get(clientKey);
+    if (existingClient) {
+        return existingClient;
+    }
+
+    const { url, token } = cacheCredentials(namespace);
+    if (!url || !token) {
+        return null;
+    }
+
+    const client = new Redis({
+        url,
+        token,
+        retry: false,
+        enableAutoPipelining: false,
+    });
+    const requester = createUpstashRedisRequester({ url, token, retry: false });
+    client.use((request) =>
+        requester.request({
+            ...request,
+            signal: request.signal ?? AbortSignal.timeout(timeoutMs),
+        }),
+    );
+    failFastRedisClients.set(clientKey, client);
+    return client;
+}
+
 function ttlWithJitter(ttl: number, jitterRatio: number) {
     const jitter = Math.floor(ttl * jitterRatio);
     if (jitter <= 0) {

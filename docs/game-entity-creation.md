@@ -35,6 +35,9 @@ CMS schema and do not require schema changes.
 
 ## Source Model
 
+Shape, colour and material rules for the model are in
+[GAME_ART.md](../GAME_ART.md).
+
 1. Download the model from the task source, for example a Linear attachment.
 2. Save it as `assets/game-assets/<EntityName>.blend`.
 3. Inspect object names in Blender and rename them to stable, entity-prefixed
@@ -89,8 +92,9 @@ Recommended component shape:
   `useAnimatedEntityRotation(rotation)`.
 - Group meshes by material role, for example body, trim, dark details, and
   water.
-- Add `SnowOverlay` and `RainWetOverlay` to solid meshes when the item is
-  visible outdoors.
+- Add `SnowOverlay` to solid meshes when the item is visible outdoors. Do not
+  add `RainWetOverlay`: it draws nothing; the wet look comes from the
+  base-ground material, puddles and rings.
 - Keep a stable scale and shadow behavior that matches neighboring assets.
 
 Then register the component in:

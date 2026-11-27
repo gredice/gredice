@@ -4,20 +4,20 @@
   "snapshotDate": "2026-10-22T12:00:00+02:00",
   "source": {
     "path": "assets/game-assets/GardenBrazier.blend",
-    "bytes": 107809,
-    "sha256": "2a30f841896468188b1802659389def6468b757e06bd32a1c93441a147f140f9"
+    "bytes": 127079,
+    "sha256": "c70659236b7b9dfdea1878d1fb6c24b45996433c1f6d02e8ea896a9dc9a12a40"
   },
   "models": [
     {
       "name": "GardenBrazier",
       "path": "apps/garden/public/assets/models/GardenBrazier.glb",
-      "bytes": 102196,
-      "sha256": "1e7f678336c5b459bf0be8dc8ebc9fe3586969dc1a476b493a696b8962376553",
-      "url": "https://vrt.gredice.com/assets/models/GardenBrazier.glb?v=1e7f678336c5",
-      "triangles": 1088,
+      "bytes": 74396,
+      "sha256": "76b54faf0aa7e0c10d233654b26fa0b10fa78307b4f077d8286ee257bd539db6",
+      "url": "https://vrt.gredice.com/assets/models/GardenBrazier.glb?v=76b54faf0aa7",
+      "triangles": 2424,
       "trianglesByMesh": {
-        "GardenBrazier_Embers": 176,
-        "GardenBrazier_Metal": 912
+        "GardenBrazier_Embers": 432,
+        "GardenBrazier_Metal": 1992
       },
       "meshCount": 2,
       "materialCount": 2
@@ -50,53 +50,53 @@
       "images": [
         {
           "path": "apps/www/public/assets/blocks/GardenBrazier.webp",
-          "bytes": 7460,
-          "sha256": "939add75453fe0f63c43f6d3d7a56c454d12e141d326bf89422083a94af9c3c6"
+          "bytes": 9136,
+          "sha256": "a67980fe28c6aaa4c139326e584ddce29ed3add794148e4e380be192400a47df"
         },
         {
           "path": "apps/www/public/assets/blocks/GardenBrazier_1.webp",
-          "bytes": 7460,
-          "sha256": "939add75453fe0f63c43f6d3d7a56c454d12e141d326bf89422083a94af9c3c6"
+          "bytes": 9136,
+          "sha256": "a67980fe28c6aaa4c139326e584ddce29ed3add794148e4e380be192400a47df"
         },
         {
           "path": "apps/www/public/assets/blocks/GardenBrazier_2.webp",
-          "bytes": 7616,
-          "sha256": "5105c79547baad37a045c3cec864b0dd819b581c7b1755d45388fa6dfc9ae28f"
+          "bytes": 9740,
+          "sha256": "284e06492d9328cd388085832eac71fb9fc8fc908d06d43915f2e81fce2f57e2"
         },
         {
           "path": "apps/www/public/assets/blocks/GardenBrazier_3.webp",
-          "bytes": 7670,
-          "sha256": "c08dd02895c09da4bdbbba99dbad5aa8ea89489909d8d06b006b5972ebe40de5"
+          "bytes": 9484,
+          "sha256": "ebe1eda628f72e4efa92b2c247dca60d272853279cbb424e00b3b9f4c94f2451"
         },
         {
           "path": "apps/www/public/assets/blocks/GardenBrazier_4.webp",
-          "bytes": 7536,
-          "sha256": "f3ef8cc8cf0bbda5eb8666f292c8dc2479969a231f18003f76f8fd90ad1e63c2"
+          "bytes": 9656,
+          "sha256": "341dabd449065642fac0539f7f496f2a7c8f99b5e691167d801cabf434e12ba9"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/GardenBrazier.webp",
-          "bytes": 5198,
-          "sha256": "4711e02cce84a38f7867752c007b614c1899a50d1ebb1d3e3da665f31144a2ec"
+          "bytes": 6588,
+          "sha256": "a60b122aff991e8d3710863028bb24970956a14f89685c17550bcdd870b02f74"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/GardenBrazier_1.webp",
-          "bytes": 5198,
-          "sha256": "4711e02cce84a38f7867752c007b614c1899a50d1ebb1d3e3da665f31144a2ec"
+          "bytes": 6588,
+          "sha256": "a60b122aff991e8d3710863028bb24970956a14f89685c17550bcdd870b02f74"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/GardenBrazier_2.webp",
-          "bytes": 4762,
-          "sha256": "d145c4f3efdacfbec40e0689a96a4da4e0157f670104c8b5befbf26e3d84db35"
+          "bytes": 6920,
+          "sha256": "bddb2f05db8db96591bcc4cf31ae4bb302167d87ad92eb83aa99ee9e4c968f54"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/GardenBrazier_3.webp",
-          "bytes": 5060,
-          "sha256": "e7851f8ab771bf8915bc06000879fb4ea2c707e52c76fb5c631aaf814f95be9f"
+          "bytes": 6468,
+          "sha256": "d7ccf03d915d5794942aee88cf219d634f08353fe5f62062c4266886eae038c6"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/GardenBrazier_4.webp",
-          "bytes": 4806,
-          "sha256": "f0f2318921f51b6577b577b83a7e091e8db41ba2097ba495b7a772c7db34faae"
+          "bytes": 6694,
+          "sha256": "c08fa2912038d88f5673e27d291f86895b49361752224c8d639da11231d3d8e5"
         }
       ]
     }

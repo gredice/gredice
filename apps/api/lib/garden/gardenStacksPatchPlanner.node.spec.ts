@@ -615,4 +615,74 @@ describe('planGardenStacksPatch recycle planning', () => {
             'INVALID_REFUND_PRICE',
         );
     });
+
+    test('refunds the stored paid price whatever the directory price is', () => {
+        for (const [paidSunflowers, directoryPrice] of [
+            [12, 75],
+            [90, 75],
+            [0, 75],
+            [5, 0],
+        ] as const) {
+            const plan = expectSuccess(
+                planGardenStacksPatch(
+                    plannerInput({
+                        blockData: [
+                            directoryBlock('Block_Grass', {
+                                price: directoryPrice,
+                            }),
+                        ],
+                        blocks: [{ ...block('ground'), paidSunflowers }],
+                        operations: [{ op: 'remove', path: '/0/0/0' }],
+                    }),
+                ),
+            );
+            assert.deepEqual(plan.recycle, {
+                blockId: 'ground',
+                blockName: 'Block_Grass',
+                refundBasis: 'paid-price',
+                refundSunflowers: paidSunflowers,
+            });
+        }
+    });
+
+    test('treats a null stored price as legacy and ignores stored prices in sandboxes', () => {
+        const legacy = expectSuccess(
+            planGardenStacksPatch(
+                plannerInput({
+                    blockData: [directoryBlock('Block_Grass', { price: 75 })],
+                    blocks: [{ ...block('ground'), paidSunflowers: null }],
+                    operations: [{ op: 'remove', path: '/0/0/0' }],
+                }),
+            ),
+        );
+        assert.equal(legacy.recycle?.refundBasis, 'directory-price');
+        assert.equal(legacy.recycle?.refundSunflowers, 75);
+
+        const sandbox = expectSuccess(
+            planGardenStacksPatch(
+                plannerInput({
+                    blockData: [directoryBlock('Block_Grass', { price: 75 })],
+                    blocks: [{ ...block('ground'), paidSunflowers: 40 }],
+                    isSandbox: true,
+                    operations: [{ op: 'remove', path: '/0/0/0' }],
+                }),
+            ),
+        );
+        assert.equal(sandbox.recycle?.refundBasis, 'sandbox');
+        assert.equal(sandbox.recycle?.refundSunflowers, 0);
+    });
+
+    test('rejects a stored paid price outside storage bounds', () => {
+        for (const paidSunflowers of [-1, 1.5, 2_147_483_648]) {
+            expectFailure(
+                planGardenStacksPatch(
+                    plannerInput({
+                        blocks: [{ ...block('ground'), paidSunflowers }],
+                        operations: [{ op: 'remove', path: '/0/0/0' }],
+                    }),
+                ),
+                'INVALID_REFUND_PRICE',
+            );
+        }
+    });
 });

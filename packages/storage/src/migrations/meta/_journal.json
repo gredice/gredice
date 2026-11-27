@@ -673,6 +673,20 @@
       "when": 1795101786744,
       "tag": "0095_community_edit_submitter_message",
       "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "7",
+      "when": 1795708929886,
+      "tag": "0096_garden_block_paid_sunflowers",
+      "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1795710016815,
+      "tag": "0097_garden_block_purchase_batch_kind",
+      "breakpoints": true
     }
   ]
 }

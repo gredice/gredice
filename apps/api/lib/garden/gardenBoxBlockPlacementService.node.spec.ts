@@ -77,6 +77,10 @@ describe('placeGardenBoxBlock', () => {
             item: { entityTypeName: 'block', entityId: '101', amount: 1 },
         } as const;
         let storedPayload: unknown;
+        const recordedPaidSunflowers: {
+            block: number | null | undefined;
+            consumed: number | null | undefined;
+        } = { block: undefined, consumed: undefined };
         let directoryUnavailable = false;
         let directoryPending = false;
 
@@ -85,18 +89,21 @@ describe('placeGardenBoxBlock', () => {
                 _accountId,
                 _gardenId,
                 _gardenBoxBlockId,
-                _payload,
+                payload,
                 receivedTransaction,
             ) => {
                 assert.equal(receivedTransaction, transaction);
+                recordedPaidSunflowers.consumed = payload.paidSunflowers;
                 calls.push('consume');
             },
             createGardenBlock: async (
                 _gardenId,
                 _blockName,
                 receivedTransaction,
+                paidSunflowers,
             ) => {
                 assert.equal(receivedTransaction, transaction);
+                recordedPaidSunflowers.block = paidSunflowers;
                 calls.push('create-block');
                 return 'placed-1';
             },
@@ -124,6 +131,19 @@ describe('placeGardenBoxBlock', () => {
             getGardenBlockForUpdate: async () => {
                 calls.push('box-authority');
                 return { id: command.gardenBoxBlockId, name: 'GardenBox' };
+            },
+            getGardenBoxBlockUnitPaidSunflowers: async (
+                input,
+                receivedTransaction,
+            ) => {
+                assert.equal(receivedTransaction, transaction);
+                assert.deepEqual(input, {
+                    accountId: command.accountId,
+                    entityId: command.entityId,
+                    gardenBoxBlockId: command.gardenBoxBlockId,
+                    gardenId: command.gardenId,
+                });
+                return 37;
             },
             getGardenMutationAuthorityForUpdate: async (
                 _gardenId,
@@ -286,6 +306,9 @@ describe('placeGardenBoxBlock', () => {
             'update-stack',
             'consume',
         ]);
+        // The block placed back keeps the unit's paid price, and the box
+        // records which price left it.
+        assert.deepEqual(recordedPaidSunflowers, { block: 37, consumed: 37 });
 
         calls.length = 0;
         directoryUnavailable = true;
@@ -371,6 +394,7 @@ describe('placeGardenBoxBlock', () => {
                 id: command.gardenBoxBlockId,
                 name: 'GardenBox',
             }),
+            getGardenBoxBlockUnitPaidSunflowers: async () => null,
             getGardenMutationAuthorityForUpdate: async () => ({
                 accountId: command.accountId,
                 id: command.gardenId,

@@ -12,6 +12,7 @@ import {
     getAllEvents,
     getGardenBlockForUpdate,
     getGardenBlocks,
+    getGardenBoxBlockUnitPaidSunflowers,
     getGardenBoxInventory,
     getGardenMutationAuthorityForUpdate,
     getGardenMutationOperationReceipt,
@@ -104,11 +105,19 @@ function integrationService({
                     throw new Error('Injected failure after real consumption');
                 }
             },
-            createGardenBlock: (gardenId, blockName, transaction) =>
-                createGardenBlock(gardenId, blockName, transaction),
+            createGardenBlock: (
+                gardenId,
+                blockName,
+                transaction,
+                paidSunflowers,
+            ) =>
+                createGardenBlock(gardenId, blockName, null, transaction, {
+                    paidSunflowers,
+                }),
             createGardenStack,
             getBlockData: async () => blockData,
             getGardenBlockForUpdate,
+            getGardenBoxBlockUnitPaidSunflowers,
             getGardenMutationAuthorityForUpdate,
             getGardenPlacementSnapshotForUpdate,
             resolveGardenBlockPlacement,
@@ -237,8 +246,16 @@ test('real GardenBox placement commits one receipt, placement, and consumption a
         amount: 1,
         entityId: '101',
         entityTypeName: 'block',
+        paidSunflowers: null,
         source: 'gardenBox:place',
     });
+    // A unit stored without a known price keeps the legacy refund rule.
+    assert.equal(
+        (await getGardenBlocks(fixtureData.gardenId)).find(
+            (block) => block.id === first.blockId,
+        )?.paidSunflowers,
+        null,
+    );
     assert.equal(
         (await getGardenStacks(fixtureData.gardenId)).filter((stack) =>
             stack.blocks.includes(first.blockId),
@@ -326,4 +343,49 @@ test('real GardenBox placement rejects operation payload reuse without another e
     });
     assert.equal((await consumptionEvents(fixtureData)).length, 1);
     assert.equal((await getGardenBlocks(fixtureData.gardenId)).length, 4);
+});
+
+test('real GardenBox placement carries each stored unit price onto the placed block', {
+    skip: !storageIntegrationEnabled,
+}, async () => {
+    const fixtureData = await fixture();
+    for (const paidSunflowers of [40, 25]) {
+        await addGardenBoxInventoryItem(
+            fixtureData.accountId,
+            fixtureData.gardenId,
+            fixtureData.gardenBoxBlockId,
+            {
+                amount: 1,
+                entityId: '101',
+                entityTypeName: 'block',
+                paidSunflowers,
+                source: `test:garden-box-place:${randomUUID()}`,
+            },
+        );
+    }
+    const service = integrationService();
+    const placedPrices: (number | null)[] = [];
+    for (let index = 0; index < 3; index += 1) {
+        const result = await service(commandFromFixture(fixtureData));
+        assert.equal(result.ok, true);
+        if (!result.ok) {
+            throw new Error('Expected GardenBox placement to succeed');
+        }
+        const placed = (await getGardenBlocks(fixtureData.gardenId)).find(
+            (block) => block.id === result.blockId,
+        );
+        placedPrices.push(placed?.paidSunflowers ?? null);
+    }
+
+    // Known prices leave the box cheapest first; the unpriced fixture unit last.
+    assert.deepEqual(placedPrices, [25, 40, null]);
+    assert.deepEqual(
+        (await consumptionEvents(fixtureData)).map((event) => {
+            const data: unknown = event.data;
+            return data && typeof data === 'object' && 'paidSunflowers' in data
+                ? data.paidSunflowers
+                : undefined;
+        }),
+        [25, 40, null],
+    );
 });

@@ -12,7 +12,9 @@ import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 type SandcastleSmallModelName = Extract<GameAssetName, 'SandcastleSmallA'>;
 type SandcastleSmallNode = GLTFResult['nodes'][keyof GLTFResult['nodes']];
 
-const sandcastleSmallScale = 0.1286;
+// 1.2x the original 0.1286 so crenels and the flag pole stay at least 0.03
+// units thick; the castle still fits well inside its tile.
+const sandcastleSmallScale = 0.1543;
 
 function SandcastleSmallPart({ node }: { node: SandcastleSmallNode }) {
     return (

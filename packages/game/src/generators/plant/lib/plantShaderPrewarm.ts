@@ -6,10 +6,6 @@ import {
 } from '../../../entities/raisedBed/plantShadowProxy';
 import { plantSwayVertexShader } from '../hooks/usePlantSway';
 import {
-    billboardFragmentShader,
-    billboardVertexShader,
-} from '../parts/PlantBillboard';
-import {
     instancedStemSurfaceVertexShader,
     stemSurfaceFragmentShader,
 } from './plant-stem-material';
@@ -18,9 +14,18 @@ import {
     leafColorVertexShader,
 } from './plantLeafMaterial';
 import {
+    createPlantBillboardShapeUniforms,
     midBillboardFragmentShader,
     midBillboardVertexShader,
+    PLANT_BILLBOARD_SHAPE,
+    type PlantBillboardShape,
 } from './plantMidBillboardMaterial';
+import {
+    PLANT_LEAF_ROUGHNESS,
+    PLANT_LEAF_SPECULAR_INTENSITY,
+    PLANT_PETAL_ROUGHNESS,
+    PLANT_STEM_ROUGHNESS,
+} from './plantPartRendering';
 import {
     createPlantStemGeometryShell,
     disposePlantStemGeometryShell,
@@ -282,6 +287,9 @@ function createSwayUniforms() {
         uSwayPhase: { value: 0 },
         uWindStrength: { value: 0 },
         uWindDirection: { value: [1, 0] },
+        uBreathAmplitude: { value: 0.03 },
+        uBreathSpeed: { value: 1 },
+        uBreathPhase: { value: 0 },
     };
 }
 
@@ -320,8 +328,8 @@ export function createGeneratedPlantShaderPrewarmResources(): GeneratedPlantShad
             uStemDetailStrength: { value: 0.3 },
         },
         color: '#4c7a3f',
-        roughness: 0.8,
-        metalness: 0.2,
+        roughness: PLANT_STEM_ROUGHNESS,
+        metalness: 0,
     });
     const stem = initializeWarmupMesh(
         new THREE.InstancedMesh(stemGeometry, stemMaterial, 1),
@@ -338,13 +346,15 @@ export function createGeneratedPlantShaderPrewarmResources(): GeneratedPlantShad
         ),
     );
     const leafMaterial = new CustomShaderMaterial({
-        baseMaterial: THREE.MeshStandardMaterial,
+        baseMaterial: THREE.MeshPhysicalMaterial,
         vertexShader: leafColorVertexShader,
         fragmentShader: leafColorFragmentShader,
         uniforms: createSwayUniforms(),
         color: '#ffffff',
         side: THREE.DoubleSide,
-        roughness: 0.6,
+        roughness: PLANT_LEAF_ROUGHNESS,
+        metalness: 0,
+        specularIntensity: PLANT_LEAF_SPECULAR_INTENSITY,
     });
     const leaf = initializeWarmupMesh(
         new THREE.InstancedMesh(leafGeometry, leafMaterial, 1),
@@ -354,11 +364,13 @@ export function createGeneratedPlantShaderPrewarmResources(): GeneratedPlantShad
 
     const flowerGeometry = new THREE.CircleGeometry(1, 5);
     const flowerMaterial = new CustomShaderMaterial({
-        baseMaterial: THREE.MeshBasicMaterial,
+        baseMaterial: THREE.MeshStandardMaterial,
         vertexShader: plantSwayVertexShader,
         uniforms: createSwayUniforms(),
         color: '#ffffff',
         side: THREE.DoubleSide,
+        roughness: PLANT_PETAL_ROUGHNESS,
+        metalness: 0,
     });
     const flower = initializeWarmupMesh(
         new THREE.InstancedMesh(flowerGeometry, flowerMaterial, 1),
@@ -402,28 +414,6 @@ export function createGeneratedPlantShaderPrewarmResources(): GeneratedPlantShad
     );
     vegetable.name = 'GeneratedPlantShaderPrewarm:vegetable';
 
-    const billboardGeometry = new THREE.PlaneGeometry(1, 1);
-    billboardGeometry.setAttribute(
-        'instanceTint',
-        new THREE.InstancedBufferAttribute(
-            new Float32Array([0.3, 0.6, 0.2]),
-            3,
-        ),
-    );
-    const billboardMaterial = new THREE.ShaderMaterial({
-        depthWrite: false,
-        fragmentShader: billboardFragmentShader,
-        transparent: true,
-        uniforms: {
-            uOpacity: { value: 0.9 },
-        },
-        vertexShader: billboardVertexShader,
-    });
-    const billboard = initializeWarmupMesh(
-        new THREE.InstancedMesh(billboardGeometry, billboardMaterial, 1),
-    );
-    billboard.name = 'GeneratedPlantShaderPrewarm:billboard';
-
     const midBillboardGeometry = new THREE.PlaneGeometry(2, 2);
     midBillboardGeometry.setAttribute(
         'instanceTint',
@@ -436,30 +426,59 @@ export function createGeneratedPlantShaderPrewarmResources(): GeneratedPlantShad
         'instanceOpacity',
         new THREE.InstancedBufferAttribute(new Float32Array([0.9]), 1),
     );
-    const createMidBillboardMaterial = () =>
-        new CustomShaderMaterial({
-            baseMaterial: THREE.MeshLambertMaterial,
-            depthWrite: false,
-            fragmentShader: midBillboardFragmentShader,
-            side: THREE.FrontSide,
-            transparent: true,
-            uniforms: {
-                ...createSwayUniforms(),
-                uOpacity: { value: 0.9 },
-                uTint: { value: new THREE.Color('#ffffff') },
-            },
-            vertexShader: midBillboardVertexShader,
-        });
-    const midBillboardMaterial = createMidBillboardMaterial();
+    midBillboardGeometry.setAttribute(
+        'instanceAccent',
+        new THREE.InstancedBufferAttribute(
+            new Float32Array([0.6, 0.15, 0.1, 3.5]),
+            4,
+        ),
+    );
+    // Every plant card (clump, accent dot and stem, far and mid) shares one
+    // shader in two passes, an opaque inside and a blended edge (see
+    // PlantBillboard.tsx); only uniforms differ. Both passes compile here.
+    const midBillboardIndexCount = midBillboardGeometry.index?.count ?? 6;
+    midBillboardGeometry.addGroup(0, midBillboardIndexCount, 0);
+    midBillboardGeometry.addGroup(0, midBillboardIndexCount, 1);
+    const createMidBillboardMaterials = (
+        shape: PlantBillboardShape = PLANT_BILLBOARD_SHAPE.clump,
+    ) => {
+        const uniforms = {
+            ...createSwayUniforms(),
+            ...createPlantBillboardShapeUniforms(shape),
+            uOpacity: { value: 1 },
+            uTint: { value: new THREE.Color('#ffffff') },
+        };
+        return [false, true].map(
+            (transparent) =>
+                new CustomShaderMaterial({
+                    baseMaterial: THREE.MeshLambertMaterial,
+                    depthWrite: !transparent,
+                    fragmentShader: midBillboardFragmentShader,
+                    side: THREE.FrontSide,
+                    transparent,
+                    uniforms,
+                    vertexShader: midBillboardVertexShader,
+                }),
+        );
+    };
+    const billboardMaterials = createMidBillboardMaterials(
+        PLANT_BILLBOARD_SHAPE.clump,
+    );
+    const billboard = initializeWarmupMesh(
+        new THREE.InstancedMesh(midBillboardGeometry, billboardMaterials, 1),
+        { usesSway: true },
+    );
+    billboard.name = 'GeneratedPlantShaderPrewarm:billboard';
+    const midBillboardMaterials = createMidBillboardMaterials();
     const midBillboard = initializeWarmupMesh(
-        new THREE.InstancedMesh(midBillboardGeometry, midBillboardMaterial, 1),
+        new THREE.InstancedMesh(midBillboardGeometry, midBillboardMaterials, 1),
         { usesSway: true },
     );
     midBillboard.name = 'GeneratedPlantShaderPrewarm:mid-billboard';
-    const midBillboardSingleMaterial = createMidBillboardMaterial();
+    const midBillboardSingleMaterials = createMidBillboardMaterials();
     const midBillboardSingle = new THREE.Mesh(
         midBillboardGeometry,
-        midBillboardSingleMaterial,
+        midBillboardSingleMaterials,
     );
     midBillboardSingle.name =
         'GeneratedPlantShaderPrewarm:mid-billboard-single';
@@ -499,8 +518,9 @@ export function createGeneratedPlantShaderPrewarmResources(): GeneratedPlantShad
         flowerMaterial,
         standardSwayMaterial,
         vegetableMaterial,
-        midBillboardMaterial,
-        midBillboardSingleMaterial,
+        ...billboardMaterials,
+        ...midBillboardMaterials,
+        ...midBillboardSingleMaterials,
     ];
     return {
         root,
@@ -529,7 +549,6 @@ export function createGeneratedPlantShaderPrewarmResources(): GeneratedPlantShad
             flowerGeometry.dispose();
             standardSwayGeometry.dispose();
             vegetableGeometry.dispose();
-            billboardGeometry.dispose();
             midBillboardGeometry.dispose();
             shadowProxyGeometry.dispose();
             stemMaterial.dispose();
@@ -537,9 +556,13 @@ export function createGeneratedPlantShaderPrewarmResources(): GeneratedPlantShad
             flowerMaterial.dispose();
             standardSwayMaterial.dispose();
             vegetableMaterial.dispose();
-            billboardMaterial.dispose();
-            midBillboardMaterial.dispose();
-            midBillboardSingleMaterial.dispose();
+            for (const material of [
+                ...billboardMaterials,
+                ...midBillboardMaterials,
+                ...midBillboardSingleMaterials,
+            ]) {
+                material.dispose();
+            }
             shadowProxyColorMaterial.dispose();
             shadowProxyDepthMaterial.dispose();
         },

@@ -14,9 +14,8 @@ export function getHorseMaterialTint({
     materialName: string;
     meshName: string;
 }): HorseMaterialTint | null {
-    if (materialName.includes('Material.Horse.CoatDark')) {
-        return { color: appearance.coatColor, darken: 0.72 };
-    }
+    // CoatDark (belly, haunch, lower legs) shows the same coat colour: the
+    // light does the shading, not the colour (GAME_ART.md).
     if (materialName.includes('Material.Horse.Coat')) {
         return { color: appearance.coatColor };
     }

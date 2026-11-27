@@ -65,9 +65,9 @@ function LemonadeStandPart({
         >
             {liquid && (
                 <meshStandardMaterial
-                    color="#f3cf45"
+                    color="#b09635"
                     metalness={0}
-                    roughness={0.48}
+                    roughness={0.15}
                     transparent
                     opacity={0.82}
                     depthWrite={false}
@@ -75,9 +75,11 @@ function LemonadeStandPart({
             )}
             {glass && (
                 <meshPhysicalMaterial
-                    color="#f8fff2"
+                    // Cool tinted glass albedo (on screen #d4ecf4), the
+                    // glass_cool role in party-pass-lights-summer.py.
+                    color="#8d9da3"
                     metalness={0}
-                    roughness={0.08}
+                    roughness={0.12}
                     transparent
                     opacity={0.38}
                     depthWrite={false}

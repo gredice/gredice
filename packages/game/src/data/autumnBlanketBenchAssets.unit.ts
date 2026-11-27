@@ -157,7 +157,7 @@ describe('AutumnBlanketBench release', () => {
                             object.geometry.getAttribute('position').count) / 3;
                 }
             });
-            assert.equal(triangles, 1768);
+            assert.equal(triangles, 2096);
             assert.ok(bytes.length < 300_000);
             for (const item of benches) {
                 const hitbox = getBlockHitboxSize(

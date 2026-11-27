@@ -20,6 +20,7 @@ import {
     getGardenMutationOperationReceipt,
     getGardenPlacementSnapshotForUpdate,
     getGardenStackForUpdate,
+    getLegacyGardenBlockPaidSunflowers,
     isPurchasedGardenPackBlock,
     storeGardenPackBlock,
     updateGardenStack,
@@ -44,6 +45,8 @@ type GardenBoxBlockStorageSnapshot = Readonly<{
         id: string;
         message?: string | null;
         name: string;
+        /** Stored paid price (`garden_blocks.paid_sunflowers`); null = legacy. */
+        paidSunflowers?: number | null;
         rotation?: number | null;
     }>[];
     stacks: readonly Readonly<{
@@ -68,6 +71,8 @@ export type GardenBoxBlockStorageDependencies<Transaction> = Readonly<{
             entityTypeName: string;
             entityId: string;
             amount: number;
+            /** The stored block's paid price, kept for its later placement. */
+            paidSunflowers: number | null;
             source: string;
         }>,
         transaction: Transaction,
@@ -116,6 +121,15 @@ export type GardenBoxBlockStorageDependencies<Transaction> = Readonly<{
         position: Readonly<{ x: number; y: number }>,
         transaction: Transaction,
     ) => Promise<GardenBoxSourceStack | null>;
+    /** Exact paid price of a legacy block from its purchase records, or null. */
+    getLegacyGardenBlockPaidSunflowers: (
+        input: Readonly<{
+            accountId: string;
+            blockId: string;
+            gardenId: number;
+        }>,
+        transaction: Transaction,
+    ) => Promise<number | null>;
     updateGardenStack: (
         gardenId: number,
         stack: Readonly<{ x: number; y: number; blocks: string[] }>,
@@ -487,6 +501,7 @@ export function createGardenBoxBlockStorageService<Transaction>(
                             let prepared:
                                 | Readonly<{
                                       blockData: readonly BlockData[];
+                                      paidSunflowers: number | null;
                                       snapshot: GardenBoxBlockStorageSnapshot;
                                       sourceStack: GardenBoxSourceStack;
                                   }>
@@ -570,8 +585,23 @@ export function createGardenBoxBlockStorageService<Transaction>(
                                     );
                                 }
                                 inventoryEntityId = authoritativeEntityId;
+                                // The unit keeps what was paid. A legacy block's purchase
+                                // record is tied to its old ID, so resolve it now.
+                                const paidSunflowers =
+                                    block.paidSunflowers ??
+                                    (snapshot.garden.isSandbox
+                                        ? 0
+                                        : await dependencies.getLegacyGardenBlockPaidSunflowers(
+                                              {
+                                                  accountId: command.accountId,
+                                                  blockId: block.id,
+                                                  gardenId: command.gardenId,
+                                              },
+                                              gardenTransaction,
+                                          ));
                                 prepared = {
                                     blockData,
+                                    paidSunflowers,
                                     snapshot,
                                     sourceStack,
                                 };
@@ -635,6 +665,8 @@ export function createGardenBoxBlockStorageService<Transaction>(
                                                 entityId:
                                                     resolvedInventoryEntityId,
                                                 amount: 1,
+                                                paidSunflowers:
+                                                    mutation.paidSunflowers,
                                                 source: `gardenBox:store:${operationId}`,
                                             },
                                             operationTransaction,
@@ -742,6 +774,7 @@ const defaultDependencies: GardenBoxBlockStorageDependencies<GardenPlacementTran
         getGardenMutationOperationReceipt,
         getGardenPlacementSnapshotForUpdate,
         getGardenStackForUpdate,
+        getLegacyGardenBlockPaidSunflowers,
         updateGardenStack,
         withGardenBoxInventoryTransaction: (
             accountId,

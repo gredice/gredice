@@ -20,7 +20,7 @@ export function BlockDryGround({
     const material = useGroundPatchStandardMaterial({
         color: dryGroundBaseColor,
         metalness: 0,
-        roughness: 1,
+        roughness: 0.8,
         surface: 'dryDirt',
     });
 

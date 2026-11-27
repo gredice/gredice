@@ -1,3 +1,8 @@
+import {
+    cropFlowerPalette,
+    cropLeafPalette,
+    cropStemPalette,
+} from '../cropPalette';
 import type { PlantDefinition } from '../plant-definition-types';
 import { createDevelopmentProgram, createPlant } from './helpers';
 
@@ -7,19 +12,19 @@ const brassicaBase: Pick<
 > = {
     height: 0.68,
     stem: {
-        color: '#62853a',
+        color: cropStemPalette.pale,
         radius: 0.03,
         radiusDecay: 0.6,
         minRadius: 0.003,
     },
     leaf: {
-        color: '#6d983e',
+        color: cropLeafPalette.brassica,
         size: 0.24,
         type: 'lobed',
     },
     flower: {
         enabled: false,
-        color: '#ffffff',
+        color: cropFlowerPalette.yellow,
         size: 0,
     },
 };
@@ -89,7 +94,7 @@ export const brassicaPlants = {
         }),
         leaf: {
             ...brassicaBase.leaf,
-            color: '#739943',
+            color: cropLeafPalette.brassica,
             size: 0.25,
         },
         vegetable: {
@@ -152,14 +157,14 @@ export const brassicaPlants = {
         height: 0.66,
         stem: {
             ...brassicaBase.stem,
-            color: '#5f8436',
+            color: cropStemPalette.pale,
             radius: 0.02,
             radiusDecay: 0.7,
             minRadius: 0.006,
         },
         leaf: {
             ...brassicaBase.leaf,
-            color: '#7ba444',
+            color: cropLeafPalette.brassica,
             size: 0.2,
             type: 'oval',
         },
@@ -193,7 +198,7 @@ export const brassicaPlants = {
         height: 0.46,
         leaf: {
             ...brassicaBase.leaf,
-            color: '#84a850',
+            color: cropLeafPalette.brassica,
             size: 0.28,
             type: 'round',
         },
@@ -225,7 +230,7 @@ export const brassicaPlants = {
         height: 0.78,
         leaf: {
             ...brassicaBase.leaf,
-            color: '#67883d',
+            color: cropLeafPalette.brassica,
             size: 0.27,
             type: 'lobed',
         },

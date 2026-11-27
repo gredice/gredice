@@ -221,7 +221,7 @@ test('different articulation parents never share a render batch', () => {
 });
 
 for (const { asset, parents, savings } of [
-    { asset: 'Bee', parents: ['Bee_HeadPivot', 'Bee_BodyPivot'], savings: 17 },
+    { asset: 'Bee', parents: ['Bee_HeadPivot', 'Bee_BodyPivot'], savings: 16 },
     {
         asset: 'Ladybug',
         parents: [

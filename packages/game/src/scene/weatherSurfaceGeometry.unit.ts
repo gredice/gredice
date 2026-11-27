@@ -123,9 +123,6 @@ describe('createWeatherSurfaceGeometry', () => {
     it('adds compact shader attributes for base and skirt vertices', () => {
         const source = createIndexedQuad();
         const prepared = createWeatherSurfaceGeometry(source);
-        const localPosition = prepared.getAttribute(
-            WEATHER_SURFACE_ATTRIBUTE_NAMES.localPosition,
-        );
         const snowLayer = prepared.getAttribute(
             WEATHER_SURFACE_ATTRIBUTE_NAMES.snowLayer,
         );
@@ -136,7 +133,9 @@ describe('createWeatherSurfaceGeometry', () => {
             WEATHER_SURFACE_ATTRIBUTE_NAMES.surface,
         );
 
-        assert.equal(localPosition.count, 20);
+        // Snow noise samples world positions, so no source-local copy of
+        // the position is stored (GAME_ART.md terrain: no joints).
+        assert.equal(prepared.getAttribute('aWeatherLocalPosition'), undefined);
         assert.equal(snowLayer.count, 20);
         assert.equal(snowTopDistance.count, 20);
         assert.equal(surface.count, 20);
@@ -158,10 +157,43 @@ describe('createWeatherSurfaceGeometry', () => {
             Array.from(snowTopDistance.array),
             new Array(20).fill(0),
         );
-        assert.deepEqual(
-            Array.from(localPosition.array).slice(0, 12),
-            quadPositions,
+    });
+
+    it('keeps a snow layer the source brings, on base vertices and skirt tops', () => {
+        const source = createIndexedQuad();
+        source.setAttribute(
+            WEATHER_SURFACE_ATTRIBUTE_NAMES.snowLayer,
+            new Float32BufferAttribute([1, 0.5, 0, 2], 1),
         );
+        const prepared = createWeatherSurfaceGeometry(source);
+        const snowLayer = prepared.getAttribute(
+            WEATHER_SURFACE_ATTRIBUTE_NAMES.snowLayer,
+        );
+        const position = prepared.getAttribute('position');
+        // Clamped to 0..1.
+        const sourceLayers = [1, 0.5, 0, 1];
+        const sourceIndexAt = (vertex: number) =>
+            [0, 1, 2, 3].find(
+                (index) =>
+                    quadPositions[index * 3] === position.getX(vertex) &&
+                    quadPositions[index * 3 + 2] === position.getZ(vertex),
+            ) ?? -1;
+
+        for (let vertex = 0; vertex < 4; vertex++) {
+            assert.equal(snowLayer.getX(vertex), sourceLayers[vertex]);
+        }
+        assert.equal(snowLayer.count, 20);
+        // Every skirt's top follows its source vertex; its base stays.
+        for (let offset = 4; offset < snowLayer.count; offset += 4) {
+            for (const top of [offset, offset + 1]) {
+                assert.equal(
+                    snowLayer.getX(top),
+                    sourceLayers[sourceIndexAt(top)],
+                );
+            }
+            assert.equal(snowLayer.getX(offset + 2), 0);
+            assert.equal(snowLayer.getX(offset + 3), 0);
+        }
     });
 
     it('stores nonnegative source-local distance from the source top', () => {
@@ -240,7 +272,7 @@ describe('createWeatherSurfaceGeometry', () => {
         );
     });
 
-    it('keeps legacy source-local snow-noise coordinates across merged tiles', () => {
+    it('keeps the snow attributes of every merged tile', () => {
         const source = createIndexedQuad();
         const prepared = createWeatherSurfaceGeometry(source);
         const merged = createMergedChunkGeometry({
@@ -262,19 +294,19 @@ describe('createWeatherSurfaceGeometry', () => {
         }
 
         const position = merged.getAttribute('position');
-        const localPosition = merged.getAttribute(
-            WEATHER_SURFACE_ATTRIBUTE_NAMES.localPosition,
-        );
         const snowTopDistance = merged.getAttribute(
             WEATHER_SURFACE_ATTRIBUTE_NAMES.snowTopDistance,
         );
-        const preparedPosition = prepared.getAttribute('position');
-        const localPositionValues = Array.from(localPosition.array);
-        assert.deepEqual(
-            localPositionValues.slice(0, 20 * 3),
-            localPositionValues.slice(20 * 3, 40 * 3),
-            'each baked tile must retain the source-local noise coordinate sampled by the legacy instanced overlay',
+        const snowLayerValues = Array.from(
+            merged.getAttribute(WEATHER_SURFACE_ATTRIBUTE_NAMES.snowLayer)
+                .array,
         );
+        assert.deepEqual(
+            snowLayerValues.slice(0, 20),
+            snowLayerValues.slice(20, 40),
+            'each baked tile keeps its own skirt layers',
+        );
+        const preparedPosition = prepared.getAttribute('position');
         assert.equal(position.getX(20), preparedPosition.getX(0) + 10);
         assert.equal(position.getY(20), preparedPosition.getY(0) + 3);
         assert.equal(position.getZ(20), preparedPosition.getZ(0) - 2);

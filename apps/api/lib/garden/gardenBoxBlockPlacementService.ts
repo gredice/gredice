@@ -13,6 +13,7 @@ import {
     type GardenMutationOperationStoredResponse,
     type GardenPlacementTransaction,
     getGardenBlockForUpdate,
+    getGardenBoxBlockUnitPaidSunflowers,
     getGardenMutationAuthorityForUpdate,
     getGardenPlacementSnapshotForUpdate,
     updateGardenStack,
@@ -54,14 +55,18 @@ export type GardenBoxBlockPlacementDependencies<Transaction> = Readonly<{
             entityTypeName: string;
             entityId: string;
             amount: number;
+            /** The paid price the taken-out unit carries onto the new block. */
+            paidSunflowers: number | null;
             source: string;
         }>,
         transaction: Transaction,
     ) => Promise<void>;
+    /** Insert the block recording the paid price carried from the box. */
     createGardenBlock: (
         gardenId: number,
         blockName: string,
         transaction: Transaction,
+        paidSunflowers: number | null,
     ) => Promise<string>;
     createGardenStack: (
         gardenId: number,
@@ -78,6 +83,16 @@ export type GardenBoxBlockPlacementDependencies<Transaction> = Readonly<{
         }>,
         transaction: Transaction,
     ) => Promise<Readonly<{ id: string; name: string }> | null>;
+    /** Paid price for the next unit of this block taken out of the box. */
+    getGardenBoxBlockUnitPaidSunflowers: (
+        input: Readonly<{
+            accountId: string;
+            entityId: string;
+            gardenBoxBlockId: string;
+            gardenId: number;
+        }>,
+        transaction: Transaction,
+    ) => Promise<number | null>;
     getGardenMutationAuthorityForUpdate: (
         gardenId: number,
         transaction: Transaction,
@@ -484,11 +499,24 @@ export function createGardenBoxBlockPlacementService<Transaction>(
                                                 operationTransaction,
                                             );
                                         }
+                                        const paidSunflowers =
+                                            await dependencies.getGardenBoxBlockUnitPaidSunflowers(
+                                                {
+                                                    accountId:
+                                                        command.accountId,
+                                                    entityId: command.entityId,
+                                                    gardenBoxBlockId:
+                                                        command.gardenBoxBlockId,
+                                                    gardenId: command.gardenId,
+                                                },
+                                                operationTransaction,
+                                            );
                                         const createdBlockId =
                                             await dependencies.createGardenBlock(
                                                 command.gardenId,
                                                 blockName,
                                                 operationTransaction,
+                                                paidSunflowers,
                                             );
                                         await dependencies.updateGardenStack(
                                             command.gardenId,
@@ -511,6 +539,7 @@ export function createGardenBoxBlockPlacementService<Transaction>(
                                                 entityTypeName: 'block',
                                                 entityId: command.entityId,
                                                 amount: 1,
+                                                paidSunflowers,
                                                 source: 'gardenBox:place',
                                             },
                                             operationTransaction,
@@ -591,11 +620,14 @@ export function createGardenBoxBlockPlacementService<Transaction>(
 const defaultDependencies: GardenBoxBlockPlacementDependencies<GardenPlacementTransaction> =
     {
         consumeGardenBoxInventoryItem,
-        createGardenBlock: (gardenId, blockName, transaction) =>
-            createGardenBlock(gardenId, blockName, transaction),
+        createGardenBlock: (gardenId, blockName, transaction, paidSunflowers) =>
+            createGardenBlock(gardenId, blockName, null, transaction, {
+                paidSunflowers,
+            }),
         createGardenStack,
         getBlockData,
         getGardenBlockForUpdate,
+        getGardenBoxBlockUnitPaidSunflowers,
         getGardenMutationAuthorityForUpdate,
         getGardenPlacementSnapshotForUpdate,
         resolveGardenBlockPlacement,

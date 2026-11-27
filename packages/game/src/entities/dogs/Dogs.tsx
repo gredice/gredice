@@ -412,7 +412,10 @@ function targetForCoverBlock({
 }) {
     const seed = hashString(block.id);
     const angle = (seed / 4294967296) * fullTurn;
-    const radius = 0.26 + ((seed >>> 5) % 9) * 0.012;
+    // The dog faces the trunk, so its muzzle (0.36 ahead of its origin at
+    // dogScale) must stop outside the trunk (radius 0.145) instead of
+    // walking into it; still inside the canopy (radius 0.56).
+    const radius = 0.53 + ((seed >>> 5) % 9) * 0.005;
     const x = stack.position.x + Math.cos(angle) * radius;
     const z = stack.position.z + Math.sin(angle) * radius;
     const y = getDogGroundYFromHeight(getStackHeight(blockData, stack, block));

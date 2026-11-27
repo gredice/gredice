@@ -20,7 +20,10 @@ import {
     finalizeStaticInstanceMatrixUpload,
     markStaticInstancedAttributeForUpload,
 } from '../lib/plantInstanceBuffers';
-import { resolvePlantPartCastShadow } from '../lib/plantPartRendering';
+import {
+    PLANT_PETAL_ROUGHNESS,
+    resolvePlantPartCastShadow,
+} from '../lib/plantPartRendering';
 
 interface FlowersProps {
     bounds?: PackedPlantBounds;
@@ -111,6 +114,7 @@ export function Flowers({
         [instanceCapacity],
     );
     const swayUniforms = usePlantSway(`${seed}-flowers`, {
+        breathSeed: seed,
         amplitude: 0.14,
         enabled: animate,
         speed: 1.6,
@@ -170,11 +174,13 @@ export function Flowers({
             castShadow={shouldCastShadow}
         >
             <CSM
-                baseMaterial={THREE.MeshBasicMaterial}
+                baseMaterial={THREE.MeshStandardMaterial}
                 vertexShader={plantSwayVertexShader}
                 uniforms={swayUniforms}
                 color={color}
                 side={THREE.DoubleSide}
+                roughness={PLANT_PETAL_ROUGHNESS}
+                metalness={0}
             />
         </instancedMesh>
     );

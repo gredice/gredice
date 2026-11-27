@@ -1,5 +1,10 @@
 import type { GardenBlockDataLike } from '@gredice/js/gardenBlocks';
 import {
+    type GardenBlockRecycleRefundBasis,
+    gardenBlockRecycleFallbackSunflowers,
+    resolveGardenBlockRecycleRefund,
+} from './gardenBlockRecycleRefund';
+import {
     validateSpanningBlockMove,
     validateStackPlacement,
 } from './stacksPatchValidation';
@@ -8,7 +13,8 @@ export const gardenStacksPatchMaxOperations = 256;
 export const gardenStacksPatchMaxMutations = 128;
 export const gardenStacksPatchMaxPathLength = 256;
 export const gardenStacksPatchMaxBlockIdentifierLength = 128;
-export const gardenStacksPatchRecycleFallbackSunflowers = 10;
+export const gardenStacksPatchRecycleFallbackSunflowers =
+    gardenBlockRecycleFallbackSunflowers;
 const minimumStorageInteger = -2_147_483_648;
 const maximumStorageInteger = 2_147_483_647;
 
@@ -65,6 +71,8 @@ export type GardenStacksPatchDirectoryBlock = Readonly<{
 export type GardenStacksPatchBlock = Readonly<{
     id: string;
     name: string;
+    /** Stored paid price (`garden_blocks.paid_sunflowers`); null = legacy. */
+    paidSunflowers?: number | null;
     rotation?: number | null;
 }>;
 
@@ -101,10 +109,7 @@ export type GardenStacksPatchStackDelta = Readonly<{
     y: number;
 }>;
 
-export type GardenStacksPatchRecycleRefundBasis =
-    | 'directory-price'
-    | 'fallback'
-    | 'sandbox';
+export type GardenStacksPatchRecycleRefundBasis = GardenBlockRecycleRefundBasis;
 
 export type GardenStacksPatchRecycleDelta = Readonly<{
     blockId: string;
@@ -412,12 +417,14 @@ function getRecycleDelta({
     blockId,
     blockName,
     isSandbox,
+    paidSunflowers,
     raisedBeds,
 }: Readonly<{
     blockDataByName: ReadonlyMap<string, GardenStacksPatchDirectoryBlock>;
     blockId: string;
     blockName: string;
     isSandbox: boolean;
+    paidSunflowers: number | null | undefined;
     raisedBeds: readonly GardenStacksPatchRaisedBed[];
 }>): GardenStacksPatchRecycleDelta {
     if (blockName === 'GardenBox') {
@@ -465,34 +472,20 @@ function getRecycleDelta({
         );
     }
 
-    let refundBasis: GardenStacksPatchRecycleRefundBasis = 'sandbox';
-    let refundSunflowers = 0;
-    if (!isSandbox) {
-        const directoryPrice = directoryBlock.prices?.sunflowers;
-        if (
-            typeof directoryPrice === 'number' &&
-            directoryPrice > 0 &&
-            (!Number.isSafeInteger(directoryPrice) ||
-                directoryPrice > maximumStorageInteger)
-        ) {
-            fail(
-                'INVALID_REFUND_PRICE',
-                409,
-                'The recycled block has an invalid sunflower price',
-            );
-        }
-        if (
-            typeof directoryPrice === 'number' &&
-            Number.isSafeInteger(directoryPrice) &&
-            directoryPrice > 0
-        ) {
-            refundBasis = 'directory-price';
-            refundSunflowers = directoryPrice;
-        } else {
-            refundBasis = 'fallback';
-            refundSunflowers = gardenStacksPatchRecycleFallbackSunflowers;
-        }
+    const resolvedRefund = resolveGardenBlockRecycleRefund({
+        directoryPrice: directoryBlock.prices?.sunflowers,
+        isSandbox,
+        paidSunflowers,
+    });
+    if (!resolvedRefund.ok) {
+        fail(
+            'INVALID_REFUND_PRICE',
+            409,
+            'The recycled block has an invalid sunflower price',
+        );
     }
+    const refundBasis = resolvedRefund.refund.basis;
+    const refundSunflowers = resolvedRefund.refund.sunflowers;
 
     const recycle: {
         blockId: string;
@@ -587,6 +580,9 @@ function buildPlan(
     );
     const blockRotationById = new Map(
         input.snapshot.blocks.map((block) => [block.id, block.rotation]),
+    );
+    const blockPaidSunflowersById = new Map(
+        input.snapshot.blocks.map((block) => [block.id, block.paidSunflowers]),
     );
     const directoryBlockByName = new Map(
         input.blockData.map((block) => [block.information.name, block]),
@@ -707,6 +703,7 @@ function buildPlan(
                 blockId,
                 blockName,
                 isSandbox: input.snapshot.garden.isSandbox,
+                paidSunflowers: blockPaidSunflowersById.get(blockId),
                 raisedBeds: input.snapshot.raisedBeds ?? [],
             });
             stack.blocks.splice(path.index, 1);

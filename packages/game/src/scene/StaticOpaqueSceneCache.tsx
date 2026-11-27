@@ -13,11 +13,9 @@ import {
     useRef,
 } from 'react';
 import {
-    ACESFilmicToneMapping,
     AlwaysDepth,
     type Camera,
     Color,
-    DataTexture,
     DepthFormat,
     DepthTexture,
     GLSL3,
@@ -26,7 +24,6 @@ import {
     Matrix4,
     NearestFilter,
     NoBlending,
-    NoColorSpace,
     type Object3D,
     RGBAFormat,
     type Scene,
@@ -42,8 +39,11 @@ import {
 import { useOptionalGameState } from '../useGameState';
 import {
     type CloudShadowMaterialUniforms,
+    cloudShadowEllipseFunction,
     getCloudShadowAttenuationMaterialUniforms,
+    isCloudShadowLayerActive,
 } from './cloudShadowAttenuation';
+import { gameToneMapping } from './gameArtStyle';
 import {
     type StaticOpaqueSceneCacheLayerState,
     updateGameProfileMetadata,
@@ -92,6 +92,12 @@ import {
     type StaticOpaqueSceneCacheRuntime,
     transitionStaticOpaqueSceneCache,
 } from './staticOpaqueSceneCacheState';
+import {
+    getGroundMistUniforms,
+    groundMistReplayFragment,
+    groundMistShaderFunctions,
+    suspendGroundMist,
+} from './weather/fog/groundMistShaderChunk';
 
 export type StaticOpaqueSceneCacheGroup = 'base-terrain' | 'static-props';
 
@@ -847,23 +853,6 @@ function createCloudResponseTarget() {
     });
 }
 
-function createCloudResponseMaskTexture() {
-    const texture = new DataTexture(
-        new Uint8Array([255, 255, 255, 255]),
-        1,
-        1,
-        RGBAFormat,
-        UnsignedByteType,
-    );
-    texture.colorSpace = NoColorSpace;
-    texture.generateMipmaps = false;
-    texture.magFilter = NearestFilter;
-    texture.minFilter = NearestFilter;
-    texture.name = 'StaticOpaqueSceneCache.CloudFullResponseMask';
-    texture.needsUpdate = true;
-    return texture;
-}
-
 function createCacheTarget(samples: number) {
     const depthTexture = new DepthTexture(1, 1, UnsignedIntType);
     depthTexture.format = DepthFormat;
@@ -907,12 +896,12 @@ function createCacheReplayMaterial({
             uniform sampler2D cacheBaseColor;
             uniform sampler2D cacheShadowColor;
             uniform sampler2D cacheDepth;
-            uniform sampler2D cloudShadowMap;
-            uniform vec4 cloudShadowBounds;
-            uniform vec2 cloudShadowProjection;
-            uniform float cloudShadowStrength;
-            uniform float cloudShadowHardness;
             uniform mat4 inverseViewProjection;
+            // WP1 cloud shadows: the analytic ellipses of the lit materials.
+            ${cloudShadowEllipseFunction}
+
+            // WP4 ground mist and back haze, as in the lit materials.
+            ${groundMistShaderFunctions}
 
             void main() {
                 ivec2 pixel = ivec2(gl_FragCoord.xy);
@@ -924,7 +913,7 @@ function createCacheReplayMaterial({
                 float cloudResponse = 0.0;
                 float cachedDepth = texelFetch(cacheDepth, pixel, 0).r;
                 if (
-                    cloudShadowStrength > 0.001 &&
+                    grediceCloudShadowStrength > 0.001 &&
                     cachedDepth < 0.9999999
                 ) {
                     vec2 textureSizePixels =
@@ -938,22 +927,7 @@ function createCacheReplayMaterial({
                     );
                     vec3 world =
                         worldPosition.xyz / max(worldPosition.w, 0.000001);
-                    vec2 groundPosition =
-                        world.xz - cloudShadowProjection * world.y;
-                    vec2 cloudUv =
-                        (groundPosition - cloudShadowBounds.xy) *
-                        cloudShadowBounds.zw;
-                    float inBounds =
-                        step(0.0, cloudUv.x) *
-                        step(0.0, cloudUv.y) *
-                        step(cloudUv.x, 1.0) *
-                        step(cloudUv.y, 1.0);
-                    float cloudMask =
-                        texture(cloudShadowMap, cloudUv).r * inBounds;
-                    float hardMask = smoothstep(0.08, 0.52, cloudMask);
-                    cloudResponse =
-                        mix(cloudMask, hardMask, cloudShadowHardness) *
-                        cloudShadowStrength;
+                    cloudResponse = grediceCloudShadowAmount(world.xz, world.y);
                 }
 
                 vec3 normalizedBase =
@@ -972,6 +946,7 @@ function createCacheReplayMaterial({
                         response
                     );
                 }
+                ${groundMistReplayFragment}
                 float coverage = clamp(baseColor.a, 0.0, 1.0);
                 gl_FragDepth = cachedDepth;
                 gl_FragColor = vec4(cachedColor, coverage);
@@ -983,12 +958,15 @@ function createCacheReplayMaterial({
             cacheBaseColor: { value: baseColorTexture },
             cacheShadowColor: { value: shadowColorTexture },
             cacheDepth: { value: depthTexture },
-            cloudShadowBounds: cloudUniforms.bounds,
-            cloudShadowHardness: cloudUniforms.hardness,
-            cloudShadowMap: cloudUniforms.map,
-            cloudShadowProjection: cloudUniforms.projection,
-            cloudShadowStrength: cloudUniforms.strength,
+            grediceCloudShadowAmounts: cloudUniforms.amounts,
+            grediceCloudShadowAxis: cloudUniforms.axis,
+            grediceCloudShadowCapture: cloudUniforms.capture,
+            grediceCloudShadowEllipses: cloudUniforms.ellipses,
+            grediceCloudShadowProjection: cloudUniforms.projection,
+            grediceCloudShadowStrength: cloudUniforms.strength,
+            grediceCloudShadowTint: cloudUniforms.tint,
             inverseViewProjection: { value: inverseViewProjection },
+            ...getGroundMistUniforms(),
         },
         vertexShader: staticOpaqueSceneCacheReplayVertexShader,
     });
@@ -1048,7 +1026,14 @@ function captureStaticScene({
         gl.setRenderTarget(target);
         gl.setClearColor(0x000000, 0);
         gl.clear(true, true, false);
-        gl.render(scene, camera);
+        // WP4: the cache holds the garden without the moving ground mist;
+        // the replay adds it on top every frame.
+        const resumeGroundMist = suspendGroundMist();
+        try {
+            gl.render(scene, camera);
+        } finally {
+            resumeGroundMist();
+        }
 
         const context = gl.getContext();
         return (
@@ -1072,7 +1057,6 @@ function captureStaticCloudResponse({
     boundaries,
     camera,
     cloudUniforms,
-    fullResponseMask,
     gl,
     responseTarget,
     scene,
@@ -1081,17 +1065,19 @@ function captureStaticCloudResponse({
     boundaries: readonly StaticOpaqueSceneCacheBoundaryEntry[];
     camera: Parameters<WebGLRenderer['render']>[1];
     cloudUniforms: CloudShadowMaterialUniforms;
-    fullResponseMask: Texture;
     gl: WebGLRenderer;
     responseTarget: WebGLRenderTarget;
     scene: Scene;
     target: WebGLRenderTarget;
 }) {
-    const previousMap = cloudUniforms.map.value;
+    // The fully shadowed capture shades every static fragment with the
+    // whole cloud shadow tint; the replay blends toward it per pixel.
+    const shadowsActive = isCloudShadowLayerActive(cloudUniforms);
+    const previousCapture = cloudUniforms.capture.value;
     const previousStrength = cloudUniforms.strength.value;
     try {
-        if (previousMap !== null) {
-            cloudUniforms.map.value = fullResponseMask;
+        if (shadowsActive) {
+            cloudUniforms.capture.value = 1;
             cloudUniforms.strength.value = 1;
             const responseCaptured = captureStaticScene({
                 boundaries,
@@ -1113,7 +1099,7 @@ function captureStaticCloudResponse({
             gl.copyTextureToTexture(target.texture, responseTarget.texture);
         }
 
-        cloudUniforms.map.value = previousMap;
+        cloudUniforms.capture.value = 0;
         cloudUniforms.strength.value = 0;
         const submissionsBefore = gl.info.render.calls;
         const trianglesBefore = gl.info.render.triangles;
@@ -1125,12 +1111,12 @@ function captureStaticCloudResponse({
                 scene,
                 target,
             }),
-            passes: previousMap !== null ? 2 : 1,
+            passes: shadowsActive ? 2 : 1,
             submissions: gl.info.render.calls - submissionsBefore,
             triangles: gl.info.render.triangles - trianglesBefore,
         };
     } finally {
-        cloudUniforms.map.value = previousMap;
+        cloudUniforms.capture.value = previousCapture;
         cloudUniforms.strength.value = previousStrength;
     }
 }
@@ -1242,7 +1228,6 @@ function StaticOpaqueSceneCacheRenderer({
         () => [target, cloudFullResponseTarget],
         [target, cloudFullResponseTarget],
     );
-    const cloudFullResponseMask = useMemo(createCloudResponseMaskTexture, []);
     const inverseViewProjection = useMemo(() => new Matrix4(), []);
     const cacheReplayMaterial = useMemo(() => {
         const material = createCacheReplayMaterial({
@@ -1332,18 +1317,11 @@ function StaticOpaqueSceneCacheRenderer({
     useEffect(
         () => () => {
             cloudFullResponseTarget.dispose();
-            cloudFullResponseMask.dispose();
             cacheReplay.dispose();
             cacheReplayMaterial.dispose();
             target.dispose();
         },
-        [
-            cloudFullResponseTarget,
-            cloudFullResponseMask,
-            cacheReplay,
-            cacheReplayMaterial,
-            target,
-        ],
+        [cloudFullResponseTarget, cacheReplay, cacheReplayMaterial, target],
     );
 
     const consumeGpuSamples = (
@@ -1387,7 +1365,7 @@ function StaticOpaqueSceneCacheRenderer({
         const webGlSupported =
             gl.capabilities.isWebGL2 &&
             cacheSampleCount > 0 &&
-            gl.toneMapping === ACESFilmicToneMapping &&
+            gl.toneMapping === gameToneMapping &&
             gl.outputColorSpace === SRGBColorSpace &&
             target.texture.colorSpace === SRGBColorSpace &&
             cloudFullResponseTarget.texture.colorSpace === SRGBColorSpace &&
@@ -1491,7 +1469,9 @@ function StaticOpaqueSceneCacheRenderer({
                 gl.toneMapping,
                 gl.toneMappingExposure,
                 qualityKey,
-                cloudUniforms.map.value?.uuid ?? 'no-cloud-response',
+                isCloudShadowLayerActive(cloudUniforms)
+                    ? `cloud-response:${cloudUniforms.tint.value.getHexString()}`
+                    : 'no-cloud-response',
             ].join(':'),
             buildCameraSignature(camera),
             buildLightingSignature(scene),
@@ -1595,7 +1575,6 @@ function StaticOpaqueSceneCacheRenderer({
                     boundaries,
                     camera,
                     cloudUniforms,
-                    fullResponseMask: cloudFullResponseMask,
                     gl,
                     responseTarget: cloudFullResponseTarget,
                     scene,

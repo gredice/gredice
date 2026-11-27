@@ -424,12 +424,13 @@ export type GameProfileMetadata = {
     actorGroundingShadowUpdateCount?: number;
     actorGroundingShadowVisibleCount?: number;
     animatedCasterShadowRefreshCount?: number;
-    cloudAttenuationMaskResolution?: number;
+    /** Garden materials patched for the moving cloud shadows. */
     cloudAttenuationMaterialCount?: number;
-    cloudAttenuationUpdateCount?: number;
-    cloudAttenuationUpdateMs?: number;
+    /** How much of the overcast deck shows, 0 to 1. */
+    cloudDeckAmount?: number;
+    /** Moving cloud shadow ellipses (high 6, medium 4, low 0). */
     cloudProjectedShadowCount?: number;
-    cloudRealShadowCasterCount?: number;
+    /** Separate clouds in the top band (high 10, medium 7, low 4). */
     cloudVisualCount?: number;
     dprCap?: number;
     groundDecorationAtlasEstimatedGpuBytes?: number;
@@ -536,12 +537,23 @@ export type GameProfileMetadata = {
     placementShadowDeferredChangeCount?: number;
     placementShadowFlushCount?: number;
     qualityTier?: GameQualityProfileTier;
+    /** Falling raindrops (slim streaks). */
     rainParticleCount?: number;
+    /** Puddles on path and bare soil that show. */
+    rainPuddleCount?: number;
     rainRippleCapacity?: number;
+    /** Splash rings where drops land on ground and bed soil. */
+    rainSplashCount?: number;
     frostIntensity?: number;
     coldBreathCapacity?: number;
     coldBreathCount?: number;
+    /** Rings on water blocks while it rains. */
     rainRippleCount?: number;
+    /** Strikes since the storm started (one bolt each). */
+    lightningStrikeCount?: number;
+    /** Mist rolls along the island rim and in free sky. */
+    mistRimRollCount?: number;
+    mistSkyRollCount?: number;
     morningMistCapacity?: number;
     morningMistCount?: number;
     rainWetOverlayDistinctUniformCount?: number;
@@ -589,9 +601,15 @@ export type GameProfileMetadata = {
     snowOverlayDistinctUniformCount?: number;
     snowOverlayMaterialConsumerCount?: number;
     snowOverlayMinCoverage?: number;
+    /** Snowflake capacity of the falling snow (discs and icon flakes). */
     snowParticleCapacity?: number;
+    /** Falling flakes: discs plus icon snowflakes. */
     snowParticleCount?: number;
     snowParticleGeometryBuildCount?: number;
+    /** Icon snowflakes among the falling flakes. */
+    snowIconFlakeCount?: number;
+    /** Twinkling sparkles on full snow cover. */
+    snowSparkleCount?: number;
     staticOpaqueSceneCacheAllocatedTargetBytes?: number;
     staticOpaqueSceneCacheBaseTerrainLayer?: StaticOpaqueSceneCacheLayerState;
     staticOpaqueSceneCacheBenefitEvaluationCount?: number;
@@ -647,6 +665,9 @@ export type GameProfileMetadata = {
     staticOpaqueSceneCacheTriangleCount?: number;
     staticOpaqueSceneCacheUnexpectedStaticSubmissionCount?: number;
     weatherDisabled?: boolean;
+    /** Tumbling wind leaves and curly sky swooshes. */
+    windLeafCount?: number;
+    windSwooshCount?: number;
     weatherSurfaceAvoidedOverlaySubmissionCount?: number;
     weatherSurfaceAvoidedOverlayTriangleCount?: number;
     weatherSurfaceFallbackOverlaySubmissionCount?: number;

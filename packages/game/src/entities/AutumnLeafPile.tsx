@@ -46,7 +46,7 @@ export function AutumnLeafPile({
                 snow={
                     disabled
                         ? false
-                        : { maxThickness: 0.012, coverageMultiplier: 0.35 }
+                        : { maxThickness: 0.03, coverageMultiplier: 0.7 }
                 }
                 rain={disabled ? false : { glossiness: 0.15 }}
             />

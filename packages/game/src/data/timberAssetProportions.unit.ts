@@ -129,16 +129,16 @@ function assertVectorClose(
 }
 
 describe('timber asset proportions', () => {
-    it('keeps the approved low-poly bevel topology on older timber models', () => {
+    it('keeps the approved bevel topology on timber models', () => {
         const expectedWoodVertexCounts = {
-            Bucket: 381,
-            Composter: 388,
-            Fence: 1026,
-            GardenBox: 984,
-            RaisedBed: 425,
-            Shade: 2467,
-            Stool: 271,
-            WaterWell: 5005,
+            Bucket: 128,
+            Composter: 1364,
+            Fence: 3460,
+            GardenBox: 2400,
+            RaisedBed: 3127,
+            Shade: 5258,
+            Stool: 511,
+            WaterWell: 1408,
         } satisfies Record<string, number>;
 
         for (const [assetName, expectedCount] of Object.entries(
@@ -155,31 +155,32 @@ describe('timber asset proportions', () => {
         }
     });
 
-    it('keeps the raised-bed footprint while enlarging soil for narrower planks', () => {
+    it('keeps the raised-bed footprint with soil inside its thick planks', () => {
         const document = readGlbDocument('RaisedBed');
         const outer = readBounds(document, 'Raised Bed O', 'Material.Planks');
         const soil = readBounds(document, 'Raised Bed O', 'Material.Dirt');
 
         assertVectorClose(outer.minimum, [-0.5, -1, -0.5]);
-        assertVectorClose(outer.maximum, [0.5, -0.7, 0.5]);
-        assertVectorClose(soil.minimum, [-0.42, -1, -0.42]);
-        assertVectorClose(soil.maximum, [0.42, -0.75, 0.42]);
+        // Corner posts stand 0.4 tall; the planks between them stop at 0.3.
+        assertVectorClose(outer.maximum, [0.5, -0.6, 0.5]);
+        assertVectorClose(soil.minimum, [-0.39, -1, -0.39]);
+        assertVectorClose(soil.maximum, [0.39, -0.75, 0.39]);
     });
 
     it('keeps connected raised-bed soil flush with every open edge', () => {
         const document = readGlbDocument('RaisedBed');
         const expected: Record<string, Bounds> = {
             'Raised Bed I': {
-                maximum: [0.42, -0.75, 0.5],
-                minimum: [-0.42, -1, -0.5],
+                maximum: [0.39, -0.75, 0.5],
+                minimum: [-0.39, -1, -0.5],
             },
             'Raised Bed L': {
-                maximum: [0.5, -0.75, 0.42],
-                minimum: [-0.42, -1, -0.5],
+                maximum: [0.5, -0.75, 0.39],
+                minimum: [-0.39, -1, -0.5],
             },
             'Raised Bed U': {
-                maximum: [0.5, -0.75, 0.42],
-                minimum: [-0.42, -1, -0.42],
+                maximum: [0.5, -0.75, 0.39],
+                minimum: [-0.39, -1, -0.39],
             },
         };
 

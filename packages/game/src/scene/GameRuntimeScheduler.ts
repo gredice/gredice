@@ -749,6 +749,15 @@ export class GameRuntimeScheduler {
     }
 
     /**
+     * Whether frames come at a steady rate: a render lease or a base frame
+     * rate is active. One-off render requests do not count. Ambient effects
+     * without a lease of their own (snow sparkles) advance only then.
+     */
+    isRenderingContinuously() {
+        return !this.disposed && this.getTargetFramesPerSecond() > 0;
+    }
+
+    /**
      * Returns the scalar scheduler state sampled on every profiling RAF.
      * Keep this allocation-free beyond the result object: the full snapshot
      * sorts owners and builds lease summaries, which would make the observer

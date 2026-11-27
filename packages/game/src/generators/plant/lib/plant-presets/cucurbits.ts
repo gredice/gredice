@@ -1,22 +1,27 @@
+import {
+    cropFlowerPalette,
+    cropLeafPalette,
+    cropStemPalette,
+} from '../cropPalette';
 import type { PlantDefinition } from '../plant-definition-types';
 import { createDevelopmentProgram, createPlant } from './helpers';
 
 const cucurbitAppearance = {
     height: 0.74,
     stem: {
-        color: '#4f7028',
+        color: cropStemPalette.base,
         radius: 0.028,
         radiusDecay: 0.42,
         minRadius: 0.004,
     },
     leaf: {
-        color: '#567f2a',
+        color: cropLeafPalette.base,
         size: 0.38,
         type: 'palmate',
     },
     flower: {
         enabled: true,
-        color: '#f5e642',
+        color: cropFlowerPalette.yellow,
         size: 0.09,
     },
 } satisfies Pick<PlantDefinition, 'flower' | 'height' | 'leaf' | 'stem'>;
@@ -111,7 +116,7 @@ export const cucurbitPlants = {
         leaf: {
             ...cucurbitAppearance.leaf,
             size: 0.42,
-            color: '#608a35',
+            color: cropLeafPalette.base,
         },
         vegetable: {
             enabled: true,
@@ -161,7 +166,7 @@ export const cucurbitPlants = {
         leaf: {
             ...cucurbitAppearance.leaf,
             size: 0.44,
-            color: '#648930',
+            color: cropLeafPalette.light,
         },
         vegetable: {
             enabled: true,
@@ -211,7 +216,7 @@ export const cucurbitPlants = {
         leaf: {
             ...cucurbitAppearance.leaf,
             size: 0.4,
-            color: '#6c933e',
+            color: cropLeafPalette.light,
         },
         vegetable: {
             enabled: true,

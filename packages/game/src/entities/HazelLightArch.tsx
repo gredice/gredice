@@ -11,7 +11,8 @@ import { WeatheredEntityPart } from './helpers/WeatheredEntityPart';
 import { getStackedOnWalkwayPlacementYOffset } from './walkwayPlacement';
 
 const archLightColor = '#ffb93b';
-const archBulbColor = '#000000';
+// Warm glass, #fbe6b8 on a sunlit face, so unlit bulbs are never black.
+const archBulbColor = '#d7c292';
 const archLightPosition = [0, 1.2, 0] as const;
 const archRain = {
     darkness: 0.7,
@@ -67,7 +68,7 @@ export function HazelLightArch({
                     emissiveIntensity={0.25}
                     metalness={0}
                     ref={glowMaterialRef}
-                    roughness={0.3}
+                    roughness={0.2}
                 />
             </WeatheredEntityPart>
             <GardenNightLight

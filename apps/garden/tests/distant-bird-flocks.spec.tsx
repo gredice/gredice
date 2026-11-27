@@ -78,7 +78,7 @@ test('frozen exact formation reuses existing meshes, never intercepts ground and
     const initial = await read(fixture);
     expect(initial.rayHits).toBe(0);
     expect(initial.depthTest).toBe(true);
-    expect(initial.depthWrite).toBe(false);
+    expect(initial.depthWrite).toBe(true);
     expect(initial.castShadow).toBe(false);
     expect(initial.receiveShadow).toBe(false);
     expect(initial.calls).toBe(2);

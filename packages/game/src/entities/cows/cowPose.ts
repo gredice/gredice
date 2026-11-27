@@ -1,13 +1,24 @@
+import {
+    idleBreathingAmplitudes,
+    idleBreathingScale,
+    idleBreathingWave,
+} from '../../scene/idleBreathing';
 import type { CowBehavior } from './cowBehavior';
 
 export function getCowPoseTargets({
     behavior,
+    breathAmplitude = idleBreathingAmplitudes.animal,
+    breathSeed = 0,
     moving,
     now,
     trot,
     walkPhase,
 }: {
     behavior: CowBehavior;
+    /** Peak body stretch; zero for reduced motion and fixed-time captures. */
+    breathAmplitude?: number;
+    /** Phase seed of this cow's idle breathing (`idleBreathingSeed`). */
+    breathSeed?: number;
     moving: boolean;
     now: number;
     trot: boolean;
@@ -15,7 +26,12 @@ export function getCowPoseTargets({
 }) {
     const grazing = behavior === 'graze' && !moving ? 1 : 0;
     const chewing = behavior === 'chew-cud' && !moving ? 1 : 0;
-    const breathing = Math.sin(now * 1.45) * 0.012;
+    // Idle breathing (GAME_ART.md, "Motion"): the shared volume-preserving
+    // stretch, about one breath every four seconds in this cow's own phase.
+    const breath = idleBreathingScale(
+        breathAmplitude,
+        idleBreathingWave(now, breathSeed),
+    );
     const gaitAmount = moving ? (trot ? 0.52 : 0.34) : 0;
     const diagonalStep = Math.sin(walkPhase) * gaitAmount;
     const heavyBob = moving
@@ -26,8 +42,9 @@ export function getCowPoseTargets({
 
     return {
         bodyPositionY: heavyBob,
-        bodyScaleY: 1 + breathing * 0.45,
-        bodyScaleZ: 1 + breathing,
+        bodyScaleX: breath.side,
+        bodyScaleY: breath.up,
+        bodyScaleZ: breath.side,
         earRotationZ: Math.sin(now * 3.1) * 0.12,
         headRotationX:
             grazing * -0.62 +

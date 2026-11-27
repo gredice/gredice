@@ -60,6 +60,7 @@ export const gardens = pgTable(
 
 export const gardenMutationOperationKinds = [
     'block-purchase',
+    'block-purchase-batch',
     'garden-box-block-place',
     'garden-box-block-store',
     'gift-open',
@@ -110,7 +111,7 @@ export const gardenMutationOperations = pgTable(
         ),
         check(
             'garden_mutation_operations_kind_check',
-            sql`${table.kind} in ('block-purchase', 'garden-box-block-place', 'garden-box-block-store', 'gift-open')`,
+            sql`${table.kind} in ('block-purchase', 'block-purchase-batch', 'garden-box-block-place', 'garden-box-block-store', 'gift-open')`,
         ),
         check(
             'garden_mutation_operations_payload_hash_check',
@@ -471,6 +472,15 @@ export const gardenBlocks = pgTable(
         rotation: integer('rotation'),
         variant: integer('variant'),
         message: text('message'),
+        /**
+         * Sunflowers actually paid for this block when it was created: the
+         * debited price for purchases, 0 for free (starter, reward, sandbox)
+         * blocks, and the carried price for blocks placed back from a garden
+         * box. Recycling refunds this amount. NULL marks legacy rows created
+         * before prices were recorded, and pack-unit blocks whose refund
+         * authority is `garden_pack_units`. Written only at insert time.
+         */
+        paidSunflowers: integer('paid_sunflowers'),
         createdAt: timestamp('created_at').notNull().defaultNow(),
         updatedAt: timestamp('updated_at')
             .notNull()
@@ -480,6 +490,10 @@ export const gardenBlocks = pgTable(
     (table) => [
         index('garden_gb_garden_id_idx').on(table.gardenId),
         index('garden_gb_is_deleted_idx').on(table.isDeleted),
+        check(
+            'garden_blocks_paid_sunflowers_check',
+            sql`${table.paidSunflowers} IS NULL OR ${table.paidSunflowers} >= 0`,
+        ),
     ],
 );
 
@@ -495,7 +509,13 @@ export type InsertGardenBlock = typeof gardenBlocks.$inferInsert;
 export type UpdateGardenBlock = Partial<
     Omit<
         typeof gardenBlocks.$inferInsert,
-        'id' | 'gardenId' | 'name' | 'createdAt' | 'updatedAt' | 'isDeleted'
+        | 'id'
+        | 'gardenId'
+        | 'name'
+        | 'paidSunflowers'
+        | 'createdAt'
+        | 'updatedAt'
+        | 'isDeleted'
     >
 > &
     Pick<typeof gardenBlocks.$inferSelect, 'id'>;

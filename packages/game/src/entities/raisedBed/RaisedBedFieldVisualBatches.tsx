@@ -42,8 +42,8 @@ import { useGameState } from '../../useGameState';
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
 import type { RaisedBedOrientation } from '../../utils/raisedBedOrientation';
 import { useGameGLTF } from '../../utils/useGameGLTF';
-import { defaultGameWoodColor } from '../woodPalette';
 import { mockPlantPresetLabelsBySortId } from './RaisedBedPlantField';
+import { raisedBedAccessoryPalette } from './raisedBedAccessoryPalette';
 import {
     hasActiveRaisedBedProtectiveCover,
     resolveRaisedBedProtectiveCoverPositions,
@@ -580,35 +580,29 @@ export function compileRaisedBedFieldVisualBatches({
 function createFieldVisualMaterials() {
     const materials = {
         coverBar: new MeshStandardMaterial({
-            color: '#c9c2ad',
-            roughness: 1,
+            ...raisedBedAccessoryPalette.fabric,
         }),
         coverHem: new MeshStandardMaterial({
-            color: '#eee9d8',
-            roughness: 1,
+            ...raisedBedAccessoryPalette.fabric,
         }),
         coverPlane: new MeshStandardMaterial({
-            color: '#dcd7c6',
+            ...raisedBedAccessoryPalette.fabric,
             depthWrite: false,
             opacity: 0.76,
             polygonOffset: true,
             polygonOffsetFactor: -4,
-            roughness: 1,
             transparent: true,
         }),
         seedSown: new MeshStandardMaterial({
-            color: '#4b3223',
+            ...raisedBedAccessoryPalette.seed,
             opacity: 0.72,
-            roughness: 0.95,
             transparent: true,
         }),
         support: new MeshStandardMaterial({
-            color: defaultGameWoodColor,
-            roughness: 0.9,
+            ...raisedBedAccessoryPalette.wood,
         }),
         weed: new MeshStandardMaterial({
-            color: '#4b7f3b',
-            roughness: 1,
+            ...raisedBedAccessoryPalette.weed,
         }),
     };
 

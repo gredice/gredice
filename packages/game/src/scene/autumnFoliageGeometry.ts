@@ -1,5 +1,8 @@
-import { type BufferGeometry, type Color, Float32BufferAttribute } from 'three';
+import { type BufferGeometry, Color, Float32BufferAttribute } from 'three';
 import { getAutumnLeafColor } from './autumnPalette';
+import { seasonalRoles } from './seasonalRoles';
+
+const springGreen = new Color(seasonalRoles.springGreen.albedo);
 
 /** The crown changes first; lower foliage catches up before the winter endpoint. */
 export function getAutumnFoliageProgress(progress: number, height: number) {
@@ -19,6 +22,7 @@ export function createAutumnFoliageGeometry(
     progress: number,
     seed: string,
     textureColor?: Color,
+    springFreshness = 0,
 ) {
     const geometry = source.clone();
     const positions = geometry.getAttribute('position');
@@ -41,6 +45,9 @@ export function createAutumnFoliageGeometry(
             getAutumnFoliageProgress(progress, relativeHeight),
             seed,
         );
+        // Spring leaves lean toward the spring green role on the shown
+        // albedo, so textured and flat canopies shift the same way.
+        if (springFreshness > 0) color.lerp(springGreen, springFreshness);
         // Keep palette textures intact; compensate for their green multiplication.
         if (textureColor) {
             color.r /= textureColor.r;

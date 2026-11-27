@@ -1,3 +1,4 @@
+import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo } from 'react';
 import type {
     BufferGeometry,
@@ -10,21 +11,38 @@ import {
     ShaderMaterial,
     UniformsLib,
     UniformsUtils,
+    Vector2,
     Vector3,
 } from 'three';
 import {
     useAutumnPropWindOverlay,
     useAutumnPropWindOverlayGeometry,
 } from '../scene/AutumnPropWindMaterial';
+import { seasonalRoles } from '../scene/seasonalRoles';
 import { useSnowSurfaceAmountUniform } from '../scene/WeatherSurfaceUniformProvider';
+import { weatherSnowSunlitGain } from '../scene/weatherSurfaceMaterial';
 import { useGameState } from '../useGameState';
 import { createSnowOverlayGeometry } from './createSnowOverlayGeometry';
 import {
+    resolveSnowSettleAmountRange,
+    snowCoverRules,
     snowOverlayFragmentShader,
     snowOverlayVertexShader,
 } from './snowShader';
 
-const defaultColor = '#f7f7ff';
+/**
+ * Snow cover colour: the snow role (`#d6e2f2` on screen, GAME_ART "Seasonal
+ * roles") as the light a sunlit snow top sends before tone mapping, that is
+ * its albedo times the sunlit gain both snow shaders divide by. Shaded
+ * sides, dawn and night follow the scene lights from there. Copy it, never
+ * change it in place. Its linear blue is above 1 (about 1.08), so it is the
+ * default when no `color` is given; passed as `color`, resolveColorKey's
+ * getHexString would clamp it.
+ */
+export const snowCoverColor = new Color(
+    seasonalRoles.snow.albedo,
+).multiplyScalar(weatherSnowSunlitGain);
+const defaultColor = snowCoverColor;
 const fallbackBounds = {
     min: [-0.5, -0.5, -0.5] as Vector3Tuple,
     max: [0.5, 0.5, 0.5] as Vector3Tuple,
@@ -43,6 +61,20 @@ export type SnowMaterialOptions = {
         max: Vector3Tuple;
     };
     overrideSnow?: number;
+    /**
+     * Cover every face whose world normal's up component is in this range
+     * or above (smoothly from the first to the second value), instead of
+     * the slope exponent, and grow the snow along the normals. For a
+     * canopy's lighter cap, which is covered completely.
+     */
+    slopeRange?: readonly [number, number];
+    /**
+     * Centimetres of lying snow over which this surface's translucent
+     * dusting grows from none to its full partial cover (GAME_ART.md
+     * "Weather > Snow": grass settles more slowly than paths and roofs).
+     * Without it the dusting follows the shared cover ramp alone.
+     */
+    settleCm?: readonly [number, number];
 };
 
 export type SnowOverlayProps = SnowMaterialOptions & {
@@ -104,6 +136,8 @@ export function useSnowMaterial({
     color,
     bounds,
     overrideSnow,
+    slopeRange,
+    settleCm,
 }: SnowMaterialOptions = {}) {
     const snowAmountUniform = useSnowSurfaceAmountUniform({
         coverageMultiplier,
@@ -112,10 +146,16 @@ export function useSnowMaterial({
     const colorKey = resolveColorKey(color);
     const snowColor = useMemo(() => new Color(colorKey), [colorKey]);
     const resolvedBounds = bounds ?? fallbackBounds;
+    const slopeRangeFrom = slopeRange?.[0] ?? 0;
+    const slopeRangeTo = slopeRange?.[1] ?? 1;
+    const slopeRangeEnabled = slopeRange ? 1 : 0;
+    const [settleFrom, settleTo] = settleCm
+        ? resolveSnowSettleAmountRange(settleCm, coverageMultiplier)
+        : [-1, 0];
 
     const material = useMemo(() => {
         const mat = new ShaderMaterial({
-            transparent: false,
+            transparent: true,
             fog: true,
             depthWrite: true,
             depthTest: true,
@@ -132,11 +172,22 @@ export function useSnowMaterial({
                     uNoiseAmplitude: { value: noiseAmplitude },
                     uSnowColor: { value: snowColor.clone() },
                     uNoiseInfluence: { value: noiseInfluence },
+                    uSnowBlend: { value: 1 },
                     uBoundsMin: {
                         value: new Vector3(...resolvedBounds.min),
                     },
                     uBoundsMax: {
                         value: new Vector3(...resolvedBounds.max),
+                    },
+                    uSlopeRange: {
+                        value: new Vector3(
+                            slopeRangeFrom,
+                            slopeRangeTo,
+                            slopeRangeEnabled,
+                        ),
+                    },
+                    uSnowSettle: {
+                        value: new Vector2(settleFrom, settleTo),
                     },
                 },
             ]),
@@ -158,6 +209,11 @@ export function useSnowMaterial({
         snowAmountUniform,
         resolvedBounds.max,
         resolvedBounds.min,
+        slopeRangeEnabled,
+        slopeRangeFrom,
+        slopeRangeTo,
+        settleFrom,
+        settleTo,
     ]);
 
     useEffect(() => {
@@ -171,6 +227,16 @@ export function useSnowMaterial({
     }, [bounds, material]);
 
     useEffect(() => () => material.dispose(), [material]);
+
+    // Settling or melting snow blends as a translucent dusting; full cover
+    // draws opaque. Only the render list and blending change, no program.
+    useFrame(() => {
+        const blend =
+            material.uniforms.uSnowAmount.value < snowCoverRules.opaqueFrom;
+        if (material.transparent === blend) return;
+        material.transparent = blend;
+        material.uniforms.uSnowBlend.value = blend ? 1 : 0;
+    });
 
     useAutumnPropWindOverlay(material);
     return material;

@@ -1,6 +1,7 @@
 import { useMemo, useRef } from 'react';
 import type { MeshStandardMaterial } from 'three';
 import { animated } from '../scene/sceneSpring';
+import { seasonalEmissive, seasonalRoles } from '../scene/seasonalRoles';
 import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
@@ -9,8 +10,9 @@ import { GardenNightLight } from './helpers/GardenNightLight';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 import { WeatheredEntityPart } from './helpers/WeatheredEntityPart';
 
-const enamelLightColor = '#ffce53';
-const enamelBulbColor = '#000000';
+// The warm lamp glow role: its day colour on the bulb, its emissive at night.
+const enamelLightColor = seasonalEmissive.lampWarm;
+const enamelBulb = seasonalRoles.lampWarm;
 const enamelLightPosition = [0.13, 0.965, 0] as const;
 const lampRain = {
     darkness: 0.72,
@@ -64,21 +66,22 @@ export function EnamelGardenLamp({
                 receiveShadow={false}
             >
                 <meshStandardMaterial
-                    color={enamelBulbColor}
+                    color={enamelBulb.albedo}
                     emissive={enamelLightColor}
                     emissiveIntensity={0.25}
                     metalness={0}
                     ref={glowMaterialRef}
-                    roughness={0.28}
+                    roughness={enamelBulb.roughness}
                 />
             </WeatheredEntityPart>
             <GardenNightLight
                 color={enamelLightColor}
-                distance={8}
+                decay={2}
+                distance={5}
                 emissiveBaseIntensity={0.25}
                 emissiveMaterialRefs={emissiveMaterialRefs}
-                emissivePeakIntensity={3.1}
-                lightIntensity={2.2}
+                emissivePeakIntensity={4.6}
+                lightIntensity={1.5}
                 lightKey={`EnamelGardenLamp:${block.id}`}
                 position={enamelLightPosition}
             />

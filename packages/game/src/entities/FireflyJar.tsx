@@ -8,6 +8,7 @@ import {
     useSceneTimeInvalidation,
 } from '../scene/SceneTime';
 import { animated } from '../scene/sceneSpring';
+import { seasonalEmissive, seasonalRoles } from '../scene/seasonalRoles';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
@@ -40,14 +41,17 @@ const fireflyCenter = [0.015, 0.255, -0.018] as const;
 const fireflyVerticalBaseOffset = -0.095;
 const fireflyVerticalPrimaryAmplitude = 0.068;
 const fireflyVerticalSecondaryAmplitude = 0.014;
-const glowColor = '#ffda24';
-const glowSourceColor = '#000000';
-const bodyColor = '#1f2018';
-const wingColor = '#d7f4ff';
+// The warm lamp glow role: its day colour on the abdomen, its emissive at
+// night. Albedo colours below are the authored values that show the party
+// palette under the scene lighting.
+const glowColor = seasonalEmissive.lampWarm;
+const glowSource = seasonalRoles.lampWarm;
+const bodyColor = '#3c476a';
+const wingColor = '#b3c2c9';
 const lidMetalMaterial = {
-    color: '#555555',
+    color: '#9c241b',
     metalness: 0,
-    roughness: 0.5,
+    roughness: 0.35,
     side: DoubleSide,
 };
 function FireflyJarPart({
@@ -136,7 +140,7 @@ export function FireflyJar({ stack, block, rotation }: EntityInstanceProps) {
                             depthWrite={false}
                             metalness={0}
                             opacity={0.34}
-                            roughness={0.08}
+                            roughness={0.12}
                             side={DoubleSide}
                             transparent
                         />
@@ -181,7 +185,7 @@ export function FireflyJar({ stack, block, rotation }: EntityInstanceProps) {
                                     depthWrite={!isWing}
                                     metalness={0}
                                     opacity={isWing ? 0.58 : 1}
-                                    roughness={isWing ? 0.2 : 0.72}
+                                    roughness={isWing ? 0.15 : 0.55}
                                     side={DoubleSide}
                                     transparent={isWing}
                                 />
@@ -194,24 +198,24 @@ export function FireflyJar({ stack, block, rotation }: EntityInstanceProps) {
                         receiveShadow={false}
                     >
                         <meshStandardMaterial
-                            color={glowSourceColor}
+                            color={glowSource.albedo}
                             emissive={glowColor}
                             emissiveIntensity={0.35}
                             metalness={0}
                             ref={glowMaterialRef}
-                            roughness={0.32}
+                            roughness={glowSource.roughness}
                         />
                     </FireflyJarPart>
                 </group>
             </group>
             <GardenNightLight
                 color={glowColor}
-                decay={1.7}
-                distance={4.5}
+                decay={2}
+                distance={3.2}
                 emissiveBaseIntensity={0.35}
                 emissiveMaterialRefs={emissiveMaterialRefs}
-                emissivePeakIntensity={3.55}
-                lightIntensity={1.8}
+                emissivePeakIntensity={4.6}
+                lightIntensity={1.05}
                 lightKey={`FireflyJar:${block.id}`}
                 position={fireflyCenter}
             />

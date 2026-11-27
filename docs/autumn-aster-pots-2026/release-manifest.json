@@ -4,23 +4,23 @@
   "sources": [
     {
       "path": "assets/game-assets/AutumnAsterPot.blend",
-      "bytes": 127369,
-      "sha256": "02536e550fb25285149923f330da63be1eb37f81db2d2b8cea7ed3cfcd475a81"
+      "bytes": 123932,
+      "sha256": "8720c7578099d11164551c3f0f624da46e973e3a5f1e24c1d76a94b9b90f57c0"
     }
   ],
   "reusedPot": {
     "path": "assets/game-assets/PotLowBowl.blend",
-    "bytes": 91268,
-    "sha256": "649c07f1a59b54cd502734bb886b1034835f20426f2ae81625abf3d000310e5c"
+    "bytes": 100518,
+    "sha256": "090507fce240ae9c41caa3c9ddb81e9413125e43a87a0e54a14e08e5751fd679"
   },
   "models": [
     {
       "name": "AutumnAsterPot",
       "path": "apps/garden/public/assets/models/AutumnAsterPot.glb",
-      "bytes": 128672,
-      "sha256": "f6a6dc858dbb4d186770b80d0fcc1e6391fa14b7a1c7cf572894d144fe2641a5",
-      "url": "https://vrt.gredice.com/assets/models/AutumnAsterPot.glb?v=f6a6dc858dbb",
-      "triangles": 2152,
+      "bytes": 48456,
+      "sha256": "1d67a82c21a77c3a0d7336808ecb89824f4499a7a2ef028274c202c6f2c75706",
+      "url": "https://vrt.gredice.com/assets/models/AutumnAsterPot.glb?v=1d67a82c21a7",
+      "triangles": 2300,
       "meshCount": 5,
       "materialCount": 5
     }
@@ -28,8 +28,8 @@
   "items": [
     {
       "name": "AutumnAsterPotMauve",
-      "color": "#9B709C",
-      "centerColor": "#D6B83F",
+      "color": "#753d85",
+      "centerColor": "#987f25",
       "information": {
         "label": "Ukrasni jesenski asteri – ljubičasti",
         "shortDescription": "Pet širokih cvjetova u niskoj posudi od terakote.",
@@ -54,60 +54,60 @@
       "images": [
         {
           "path": "apps/www/public/assets/blocks/AutumnAsterPotMauve.webp",
-          "bytes": 11230,
-          "sha256": "020bb40b07c9081cfafd558d5428773977d97ffc379769c116f1b90e72f57460"
+          "bytes": 12066,
+          "sha256": "2443c349df98956215a2c313800ee79ccb7fd9651a6d3ae7c986907ef7aa897e"
         },
         {
           "path": "apps/www/public/assets/blocks/AutumnAsterPotMauve_1.webp",
-          "bytes": 11230,
-          "sha256": "020bb40b07c9081cfafd558d5428773977d97ffc379769c116f1b90e72f57460"
+          "bytes": 12066,
+          "sha256": "2443c349df98956215a2c313800ee79ccb7fd9651a6d3ae7c986907ef7aa897e"
         },
         {
           "path": "apps/www/public/assets/blocks/AutumnAsterPotMauve_2.webp",
-          "bytes": 11098,
-          "sha256": "b750e4b1fab6ace8441c3a4f667fcb3b890b07d4a07ae584f49482e1ed117821"
+          "bytes": 11844,
+          "sha256": "2238a97426ea8d5add482e1a57b0af4fe200707a87f02be77f3c95c6f4d11f1e"
         },
         {
           "path": "apps/www/public/assets/blocks/AutumnAsterPotMauve_3.webp",
-          "bytes": 11112,
-          "sha256": "666eef0f55adb205bce31835900d74dd300670f7558a866a23e8cd066ffed53d"
+          "bytes": 11564,
+          "sha256": "3550dd72ee90957165c78d8030b7dfc97142e1e6c1ac0d31f61e550c557d6a1d"
         },
         {
           "path": "apps/www/public/assets/blocks/AutumnAsterPotMauve_4.webp",
-          "bytes": 10948,
-          "sha256": "fcfc2250ca1a4580b7f4b2490f7fe9cf3102e521dd69d3b2660df92c538f9b99"
+          "bytes": 11718,
+          "sha256": "094db75a5db5edc6a94bbee1a3803c44e978baee70e2eb1810c265bd4842ff4e"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/AutumnAsterPotMauve.webp",
-          "bytes": 5688,
-          "sha256": "5dbc5e8e1183d79a639f33f617d5c195ea0022e40e8244a521ed101e7f102949"
+          "bytes": 6594,
+          "sha256": "a76a1b739a08bf39d505cfd809e74c8d2b9b5474f7fb5aece701b71c9a4802c7"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/AutumnAsterPotMauve_1.webp",
-          "bytes": 5688,
-          "sha256": "5dbc5e8e1183d79a639f33f617d5c195ea0022e40e8244a521ed101e7f102949"
+          "bytes": 6594,
+          "sha256": "a76a1b739a08bf39d505cfd809e74c8d2b9b5474f7fb5aece701b71c9a4802c7"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/AutumnAsterPotMauve_2.webp",
-          "bytes": 5854,
-          "sha256": "68ecf6dcb0210e42debe6a715622a3f20720e79296df4f53af7be23475500c97"
+          "bytes": 6486,
+          "sha256": "5d7b992238bca68c36ef1ecbf61f58e11e4bf97bf7ae9bd8e5b6cd6623db6aec"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/AutumnAsterPotMauve_3.webp",
-          "bytes": 5866,
-          "sha256": "27b508f6f0d0e13ab8b84f0ee880049eca7ec4d8b89f6cde3a5c4da9b45d6bc2"
+          "bytes": 6584,
+          "sha256": "820cd6277350a1c4ee9bc1def85c9732ad7deb9e4eff607132f9d16bf3b74ca3"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/AutumnAsterPotMauve_4.webp",
-          "bytes": 5734,
-          "sha256": "7e0c14d4535060739813415639be3eb9b590b06a0ca37677e76c5bb74a024a24"
+          "bytes": 6274,
+          "sha256": "ef37467f9a08cfabbfa07fb2e3ddd2459225f6ef31f165ed9b216140f3156a40"
         }
       ]
     },
     {
       "name": "AutumnAsterPotCream",
-      "color": "#EEE3CB",
-      "centerColor": "#D6B83F",
+      "color": "#9d9380",
+      "centerColor": "#987f25",
       "information": {
         "label": "Ukrasni jesenski asteri – krem",
         "shortDescription": "Pet širokih cvjetova u niskoj posudi od terakote.",
@@ -132,60 +132,60 @@
       "images": [
         {
           "path": "apps/www/public/assets/blocks/AutumnAsterPotCream.webp",
-          "bytes": 10010,
-          "sha256": "5b49e3292afbcd6d13949d12d4b55d118f73bb19a4351956a1e6a65dff97e76e"
+          "bytes": 11228,
+          "sha256": "0c061b2bc7987e5fc8685f6840ef5e891716fd05151958968ba49ea3c51d74a3"
         },
         {
           "path": "apps/www/public/assets/blocks/AutumnAsterPotCream_1.webp",
-          "bytes": 10010,
-          "sha256": "5b49e3292afbcd6d13949d12d4b55d118f73bb19a4351956a1e6a65dff97e76e"
+          "bytes": 11228,
+          "sha256": "0c061b2bc7987e5fc8685f6840ef5e891716fd05151958968ba49ea3c51d74a3"
         },
         {
           "path": "apps/www/public/assets/blocks/AutumnAsterPotCream_2.webp",
-          "bytes": 9936,
-          "sha256": "0efc8dcd2f6b1894b4f0dcb079a129b21dc1357c4fbbd20a9140c3c81b7dc09d"
+          "bytes": 10836,
+          "sha256": "ab5469b43adfab2922cd909952697b76328c896f39e9116d272921fde3e42a3b"
         },
         {
           "path": "apps/www/public/assets/blocks/AutumnAsterPotCream_3.webp",
-          "bytes": 10088,
-          "sha256": "ccaf40d0f5b1cc10019eaa5d3047619969bbdb6e910189f52bba78626214a6bc"
+          "bytes": 10756,
+          "sha256": "523852943f3aa8193cd4bb995217ac73c8574a568b4ae15c8194fcd182b4a497"
         },
         {
           "path": "apps/www/public/assets/blocks/AutumnAsterPotCream_4.webp",
-          "bytes": 9754,
-          "sha256": "1a77a983a19ad88f912e68629854d56a0970e6ce65c7e85750873a4144e2acd2"
+          "bytes": 11110,
+          "sha256": "437eb5a4cac3a8afc7aecc8acd4c42912ff6f90d89200f2b2fd2498b7efef3ab"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/AutumnAsterPotCream.webp",
-          "bytes": 5282,
-          "sha256": "b4e046dda7db9b97422563b1167f86872e049a4f9515122005680e547a3445a5"
+          "bytes": 6254,
+          "sha256": "eb0d3680fde1bf0cec4423ac87fe72d6892d89893922ecb3d15eaf1d042132c0"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/AutumnAsterPotCream_1.webp",
-          "bytes": 5282,
-          "sha256": "b4e046dda7db9b97422563b1167f86872e049a4f9515122005680e547a3445a5"
+          "bytes": 6254,
+          "sha256": "eb0d3680fde1bf0cec4423ac87fe72d6892d89893922ecb3d15eaf1d042132c0"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/AutumnAsterPotCream_2.webp",
-          "bytes": 5198,
-          "sha256": "bb3b7c854c7388109bd153884b27e9c94deb101521ef6c0f1b55e658126f380b"
+          "bytes": 6070,
+          "sha256": "c5515587b846dd157f05c7a2a838134b1b82d02385f096a76208be259f1ce82c"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/AutumnAsterPotCream_3.webp",
-          "bytes": 5450,
-          "sha256": "1512a23b0ea0451b779aed3de72707fe798a69c811328e858c877894f36b3574"
+          "bytes": 6030,
+          "sha256": "288102f5741f25b8ae9445e3595890da519bc714ad715d2addc570ecb4cbaa1f"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/AutumnAsterPotCream_4.webp",
-          "bytes": 5296,
-          "sha256": "7cdec05248fb9d757aa571351dd5f2f8f42921c71f551ea017f876f39a67da46"
+          "bytes": 6388,
+          "sha256": "b765214e07de017752102b9fd45a1ec25b4c035b293ab802663209f64396a0cd"
         }
       ]
     },
     {
       "name": "AutumnAsterPotGold",
-      "color": "#D6B83F",
-      "centerColor": "#965D30",
+      "color": "#987f25",
+      "centerColor": "#77432c",
       "information": {
         "label": "Ukrasni jesenski asteri – zlatni",
         "shortDescription": "Pet širokih cvjetova u niskoj posudi od terakote.",
@@ -210,53 +210,53 @@
       "images": [
         {
           "path": "apps/www/public/assets/blocks/AutumnAsterPotGold.webp",
-          "bytes": 11028,
-          "sha256": "b9713c11bf2c72e35b4f8156eb4a507ef3038e8881d9d12b985f56fdeaac7351"
+          "bytes": 11996,
+          "sha256": "c5e4449b2d0e340a97ecde46cccd48eab8131965ef1f2779ba96f939df5d34fa"
         },
         {
           "path": "apps/www/public/assets/blocks/AutumnAsterPotGold_1.webp",
-          "bytes": 11028,
-          "sha256": "b9713c11bf2c72e35b4f8156eb4a507ef3038e8881d9d12b985f56fdeaac7351"
+          "bytes": 11996,
+          "sha256": "c5e4449b2d0e340a97ecde46cccd48eab8131965ef1f2779ba96f939df5d34fa"
         },
         {
           "path": "apps/www/public/assets/blocks/AutumnAsterPotGold_2.webp",
-          "bytes": 11098,
-          "sha256": "184cdca0d226cb3e0e9519196a6d5487badd57e0d33a8465df8782b7a14ad989"
+          "bytes": 11882,
+          "sha256": "d00f7d5f1286d19a601c66598dff51d133a81dc21159087c858d2acc24d9ef4d"
         },
         {
           "path": "apps/www/public/assets/blocks/AutumnAsterPotGold_3.webp",
-          "bytes": 11280,
-          "sha256": "da7ea5d71e2105373a1518306b6f93f11bee48532eac82f275f83903d9c1e27f"
+          "bytes": 11628,
+          "sha256": "c62c08b507d2c435d2ddb1bf11c00aac582bd9b9e1d44e3187db3b6e154568a5"
         },
         {
           "path": "apps/www/public/assets/blocks/AutumnAsterPotGold_4.webp",
-          "bytes": 11012,
-          "sha256": "379337d9db11f78292b686eb0dea0dcc728974ca23ac20bbde23209cffc21652"
+          "bytes": 11760,
+          "sha256": "dbbdedbd984ad93b7a80410a98ffe1e193276590379541e87cf20243bedd11b2"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/AutumnAsterPotGold.webp",
-          "bytes": 6008,
-          "sha256": "2599e6000596d150ecceb986091544656318a105ef96bc22b1b612e343936e2a"
+          "bytes": 6434,
+          "sha256": "f60db488a7be41fed830583fb8b43e4682ffb5308f0b5c651b47439f11281f17"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/AutumnAsterPotGold_1.webp",
-          "bytes": 6008,
-          "sha256": "2599e6000596d150ecceb986091544656318a105ef96bc22b1b612e343936e2a"
+          "bytes": 6434,
+          "sha256": "f60db488a7be41fed830583fb8b43e4682ffb5308f0b5c651b47439f11281f17"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/AutumnAsterPotGold_2.webp",
-          "bytes": 5732,
-          "sha256": "8f2123caba473fdad60e514e6a94a500528366ec4addc795c1dfbec7d4617c64"
+          "bytes": 6202,
+          "sha256": "95ecf4eb34015f88c7d5b60b71a47d0cf1b48f32bc56318eabf751b0ace2a0f0"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/AutumnAsterPotGold_3.webp",
-          "bytes": 6130,
-          "sha256": "3502b6586fb936f4999471b469474bf32cde9ca337c6b210eb1af781b9026659"
+          "bytes": 6218,
+          "sha256": "b73fe2200da684787f457827c63e8f037a02270f8a7fe5191fc3ae7a7e35a84d"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/AutumnAsterPotGold_4.webp",
-          "bytes": 5870,
-          "sha256": "92deddf7bbd5d83d4f807865fc3a7d996bdbdbe1063e045fed2dea1c23679c22"
+          "bytes": 6232,
+          "sha256": "bbf1c907c39136d75a711cbb2ad6855ceb07734183a77af8da5bc47ef3446959"
         }
       ]
     }

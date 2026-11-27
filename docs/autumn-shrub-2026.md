@@ -27,7 +27,7 @@ The Croatian label is **Listopadni ukrasni grm**, with a proposed price of
 **55 sunflowers**. Copy explains the seasonal changes and explicitly says it is
 ornamental and yields no harvest. It occupies one tile, with a 0.9 × 0.9 × 0.72
 hitbox and base-centred origin. Actual full-model dimensions are approximately
-0.862 × 0.758 × 0.700 tiles. Compatible ground, walkways and display tables can
+0.825 × 0.749 × 0.643 tiles. Compatible ground, walkways and display tables can
 support it; it cannot sit on water or support another block.
 
 The **Dekoracija** picker hides the item while its catalogue row is absent.
@@ -43,8 +43,8 @@ The entity reads `useAutumnState` and `useSeasonState`, including the common
 | State | Appearance |
 | --- | --- |
 | Summer | Full green foliage, following the shared yellowing curve from August 22 |
-| Early/mid autumn | Full gold/russet crown; colour progresses with the shared curve |
-| Late autumn | ID-seeded thinning and sparse stages; brown at the end |
+| Early/mid autumn | Full gold/orange crown; colour progresses with the shared curve |
+| Late autumn | ID-seeded thinning and sparse stages; red at the end |
 | Winter | Bare branches once retention reaches 0.1 |
 | Spring | Bare initially, then green buds, thinning foliage and full green regrowth |
 | Per-entity or global weather disabled | Full green crown, without shrub rain/snow overlays |
@@ -61,20 +61,26 @@ ground gusts or leaf-rustle ambience; those systems retain tree-only eligibility
 
 ## Materials, cost and review
 
-Source colours are wood `#79563C`, gold `#D6B83F` and russet `#B06A3D`.
-Summer/spring foliage uses `#6D913F` and `#4E7F35`. Roughness is 0.86 for wood
-and 0.95 for foliage; all materials are nonmetallic and nonemissive. Shared
+Colours follow the bright seasonal roles in GAME_ART.md (2026-11-23
+party-style pass; shapes and source colours come from
+`assets/scripts/party-pass-autumn.py`, which runs after the generator). Source
+colours, as albedo, are wood `#6E442D` (trunk role, `#B56A3C` on screen), gold
+`#987F25` (`#F0C832`) and russet `#944523` (autumn orange, `#EE6C2B`). Summer and
+spring foliage uses the canopy green `#30712C` (`#43B93A`) on both masses; in
+autumn the main mass turns gold and then red (`#8A3327`, `#E44A2E`), the side
+mass orange. Roughness is 0.6 for wood and 0.55 for foliage; all materials are
+nonmetallic and nonemissive. Shared
 weather overlays provide rain and light snow when enabled.
 
-The lazy GLB is **96,420 bytes**, with seven stored meshes, three material roles
-and **1,000 stored triangles**. Only the wood plus one foliage pair is mounted:
+The lazy GLB is **62,664 bytes**, with seven stored meshes, three material roles
+and **3,120 stored triangles**. Only the wood plus one foliage pair is mounted:
 
 | Stage | Rendered triangles | Base-pass draws |
 | --- | ---: | ---: |
-| Full | 640 | 3 |
-| Thinning | 560 | 3 |
-| Sparse/buds | 480 | 3 |
-| Bare | 340 | 1 |
+| Full | 2,032 | 3 |
+| Thinning | 1,156 | 3 |
+| Sparse/buds | 1,068 | 3 |
+| Bare | 568 | 1 |
 
 Shadow/weather passes add their usual cost. There are no textures, animations,
 lights, particles or dedicated idle render leases. These are structural counts,

@@ -10,7 +10,6 @@ import {
     type GameQualityTier,
     gameQualityProfiles,
 } from '../src/scene/gameQuality';
-import { Drops } from '../src/scene/Rain/Drops';
 import { Scene } from '../src/scene/Scene';
 import { SceneBlockDataBoundary } from '../src/scene/SceneBlockDataBoundary';
 import { getSeasonDebugDates } from '../src/scene/seasonDebugDates';
@@ -21,6 +20,7 @@ import {
 } from '../src/useGameState';
 import { ColdWeatherActor } from './ColdWeatherActor';
 import { ColdWeatherProbe } from './ColdWeatherProbe';
+import { FixtureRainField } from './FixtureRainField';
 
 const actorIds = Array.from({ length: 10 }, (_, index) => ({
     id: `cold-actor:${index}`,
@@ -164,7 +164,10 @@ export function ColdWeatherFixture({
                                     enabled={!disabled}
                                 />
                                 {precipitation && rain > 0 && (
-                                    <Drops intensity={rain} count={700} />
+                                    <FixtureRainField
+                                        rainy={rain}
+                                        count={700}
+                                    />
                                 )}
                                 <RainRipples
                                     stacks={stacks}

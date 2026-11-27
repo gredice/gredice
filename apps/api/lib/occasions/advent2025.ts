@@ -566,11 +566,14 @@ export async function openAdventCalendar2025Day({
                 };
 
                 // Place Christmas tree (advent pine) on first day opened
+                // Calendar rewards are free, so recycling them refunds nothing.
                 if (isFirstDayOpened) {
                     const blockId = await createGardenBlock(
                         primaryGarden.id,
                         CHRISTMAS_TREE_BLOCK_NAME,
+                        null,
                         tx,
+                        { paidSunflowers: 0 },
                     );
                     await placeBlockAtAvailablePosition(blockId);
                 }
@@ -580,7 +583,9 @@ export async function openAdventCalendar2025Day({
                         const blockId = await createGardenBlock(
                             primaryGarden.id,
                             award.blockId,
+                            null,
                             tx,
+                            { paidSunflowers: 0 },
                         );
                         await placeBlockAtAvailablePosition(blockId);
                     }

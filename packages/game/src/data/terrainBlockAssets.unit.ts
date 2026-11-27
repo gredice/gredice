@@ -258,6 +258,13 @@ function sortedNames(value: unknown) {
         .toSorted();
 }
 
+/**
+ * Linear average of the shared painted path texture (sRGB #e0a765). A
+ * textured material multiplies it by its base colour factor.
+ */
+const pathTextureAverage = [0.745, 0.3864, 0.1301];
+
+/** Base colour each material shows, with any shared texture averaged in. */
 function getMaterialColors(document: Record<string, unknown>) {
     assert.ok(Array.isArray(document.materials));
     return document.materials.map((material) => {
@@ -265,7 +272,13 @@ function getMaterialColors(document: Record<string, unknown>) {
         assert.ok(isRecord(material.pbrMetallicRoughness));
         const color = material.pbrMetallicRoughness.baseColorFactor;
         assert.ok(isNumberArray(color));
-        return color.slice(0, 3);
+        const textured =
+            material.pbrMetallicRoughness.baseColorTexture !== undefined;
+        return color
+            .slice(0, 3)
+            .map((channel, index) =>
+                textured ? channel * pathTextureAverage[index] : channel,
+            );
     });
 }
 

@@ -117,9 +117,16 @@ function createLatheProduceGeometry(
     profile: LatheProducePoint[],
     options: LatheProduceOptions = {},
 ) {
+    // Deeply ribbed produce (pumpkin, okra, artichoke) gets six segments per
+    // rib, so its lobes read as smooth bulges instead of polygon corners.
+    // Shallow ribs stay on the default 24 segments.
+    const ribSegments =
+        options.ribCount && (options.ribStrength ?? 0) >= 0.1
+            ? options.ribCount * 6
+            : 0;
     const geometry = new THREE.LatheGeometry(
         profile.map((point) => new THREE.Vector2(point.radius, point.y)),
-        24,
+        Math.max(24, ribSegments),
     );
 
     centerGeometry(geometry);
@@ -731,6 +738,7 @@ export function Vegetables({
 }: VegetablesProps) {
     const shouldCastShadow = resolvePlantPartCastShadow(castShadow);
     const swayUniforms = usePlantSway(`${seed}-vegetables`, {
+        breathSeed: seed,
         amplitude: 0.08,
         enabled: animate,
         speed: 1.15,
@@ -934,6 +942,7 @@ export function Vegetables({
                         uniforms={swayUniforms}
                         color="#ffffff"
                         roughness={vegetableMaterialProps[group.type].roughness}
+                        metalness={0}
                     />
                 </instancedMesh>
             ))}

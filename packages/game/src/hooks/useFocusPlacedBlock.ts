@@ -15,6 +15,32 @@ function prefersReducedMotion() {
     );
 }
 
+/**
+ * Where the camera goes after blocks appear. Several new blocks next to
+ * blocks that were already there (an Expand batch) focus the middle of the
+ * placed area; one new block, or a garden whose blocks are all new (another
+ * garden loaded), focuses the latest block as before.
+ */
+function getPlacedBlocksFocusPoint(
+    newPositions: readonly Vector3[],
+    totalPlacementCount: number,
+) {
+    const latest = newPositions.at(-1);
+    if (
+        !latest ||
+        newPositions.length === 1 ||
+        newPositions.length >= totalPlacementCount
+    ) {
+        return latest?.clone() ?? null;
+    }
+
+    const centroid = new Vector3();
+    for (const position of newPositions) {
+        centroid.add(position);
+    }
+    return centroid.divideScalar(newPositions.length);
+}
+
 export function useFocusPlacedBlock() {
     const { data: garden } = useCurrentGarden();
     const gameCamera = useGameState((state) => state.gameCamera);
@@ -63,9 +89,12 @@ export function useFocusPlacedBlock() {
         );
 
         if (newPlacements.length > 0 && gameCamera) {
-            const latestPlacement = newPlacements.at(-1);
-            if (latestPlacement?.position) {
-                gameCamera.focus(latestPlacement.position.clone(), {
+            const focusPoint = getPlacedBlocksFocusPoint(
+                newPlacements.map((placement) => placement.position),
+                placementEntries.length,
+            );
+            if (focusPoint) {
+                gameCamera.focus(focusPoint, {
                     immediate: prefersReducedMotion(),
                 });
             }

@@ -29,16 +29,20 @@ the source's 0.013-tile foot gap to ground the new model. Original part names
 remain editable vertex groups in `AutumnBlanketBench_Timber`. The separate
 `AutumnBlanketBench_Textile` mesh has broad folded panels and a solid hem.
 
-Bounds are **1.092 × 0.470 × 0.422 tiles**, with a **1.2 × 0.5 × 0.45** hitbox.
+Bounds are **1.092 × 0.430 × 0.438 tiles**, with a **1.2 × 0.5 × 0.45** hitbox.
 The original bench is wider than one tile's 0.9-tile art clearance, so the new
 variant deliberately reserves **2×1**, rotating to **1×2**. Its centred model
 is offset into the footprint growing positively from the anchor. The original
 bench's footprint and behavior are not changed.
 
-Timber uses its original baked colours at roughness 0.87. Textile uses cream
-`#EEE3CB`/`#E7D9BB` and rust `#A85835` at roughness 0.98. Both are nonmetallic and
-nonemissive, with exported `COLOR_0` palettes. The lazy GLB is **162,344 bytes**,
-**1,768 triangles** (1,556 timber + 212 textile), two meshes/primitives/materials
+Shapes and colours come from `assets/scripts/party-pass-autumn.py`, which runs
+after the generator (2026-11-23 party-style pass with the bright seasonal roles
+in GAME_ART.md). Timber uses the light and dark timber roles, `#F2A53A` on the
+seat and braces and `#DC8427` on the legs and rails as seen on screen, at
+roughness 0.55. Textile uses cream `#F2E4C6` and textile rust `#E45F3A` at
+roughness 0.8. Both are nonmetallic and nonemissive, with exported `COLOR_0`
+palettes. The lazy GLB is **60,824 bytes**,
+**2,096 triangles** (1,060 timber + 1,036 textile), two meshes/primitives/materials
 and two base-pass draws. There are no textures, embedded lights, animations,
 sounds, particles or dedicated idle render leases. Geometry and materials are
 shared immutably across instances. These are structural costs, not measured

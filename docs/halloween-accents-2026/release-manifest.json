@@ -5,33 +5,33 @@
   "sources": [
     {
       "path": "assets/game-assets/FriendlyGhost.blend",
-      "bytes": 98528,
-      "sha256": "568b4d43d9bc92617dbe9e088aaebb1575085c60e36415d6832ff2e214630c73"
+      "bytes": 116018,
+      "sha256": "cf5bb9397be94f40d541791b8d253099bc989ab599560d2b7b08184ef773cb2c"
     },
     {
       "path": "assets/game-assets/SupportedCobweb.blend",
-      "bytes": 100861,
-      "sha256": "82670d7f1c154da4771c84846227e6d04459d3286a95dd48c7b22b2b07fdbcdb"
+      "bytes": 119750,
+      "sha256": "dbf87be33673707b1ddcf407c47b70fb3742a70038391e0c05eff6e99be9c84c"
     }
   ],
   "models": [
     {
       "name": "FriendlyGhost",
       "path": "apps/garden/public/assets/models/FriendlyGhost.glb",
-      "bytes": 47100,
-      "sha256": "533808c570548c7abb33db5a9a1ef18fc1dcae7e5a4fbd8f6ccdb12ec587a8c3",
-      "url": "https://vrt.gredice.com/assets/models/FriendlyGhost.glb?v=533808c57054",
-      "triangles": 468,
+      "bytes": 51224,
+      "sha256": "12673452e9a0c61dc3fb627db9f6de2d53b9b14e9f04369bc6ff40b613cb5db7",
+      "url": "https://vrt.gredice.com/assets/models/FriendlyGhost.glb?v=12673452e9a0",
+      "triangles": 1656,
       "meshCount": 1,
       "materialCount": 1
     },
     {
       "name": "SupportedCobweb",
       "path": "apps/garden/public/assets/models/SupportedCobweb.glb",
-      "bytes": 55884,
-      "sha256": "db82dafef4be49817fb6406c580d3095b7411c78feff369760c7741514bcbb61",
-      "url": "https://vrt.gredice.com/assets/models/SupportedCobweb.glb?v=db82dafef4be",
-      "triangles": 596,
+      "bytes": 53736,
+      "sha256": "f423245e268af4412ac7a99b9893b2a96a88abf96dcc657f1aaf96d674ab5625",
+      "url": "https://vrt.gredice.com/assets/models/SupportedCobweb.glb?v=f423245e268a",
+      "triangles": 1780,
       "meshCount": 1,
       "materialCount": 1
     }
@@ -63,53 +63,53 @@
       "images": [
         {
           "path": "apps/www/public/assets/blocks/FriendlyGhost.webp",
-          "bytes": 5262,
-          "sha256": "1f129d58799d48db9782d20ae26cc599b63e05e865cb45a884b80728448f670f"
+          "bytes": 7486,
+          "sha256": "331cb98a87476dbee664e58cb06af05ad3010313c998ca4b94bdf894aa5c2f93"
         },
         {
           "path": "apps/www/public/assets/blocks/FriendlyGhost_1.webp",
-          "bytes": 4596,
-          "sha256": "6572356c82e53678c74a8bf7dac0db48b37a00e170c3b58e4c82f965cff317a1"
+          "bytes": 6860,
+          "sha256": "c925a50f7f0c3cb91c5d8981cdb61ba314063370c2f89b9a4c447dfb274dcf72"
         },
         {
           "path": "apps/www/public/assets/blocks/FriendlyGhost_2.webp",
-          "bytes": 4706,
-          "sha256": "2385d6eeea9a3e69f378c6dfebc60daf78cfbb7a6173b99ea9a2b7da3134f5e5"
+          "bytes": 6998,
+          "sha256": "ff1ece463a555ae17bad8f1c548f7434f7662419a0d846056aa7542c0acd1c45"
         },
         {
           "path": "apps/www/public/assets/blocks/FriendlyGhost_3.webp",
-          "bytes": 5262,
-          "sha256": "1f129d58799d48db9782d20ae26cc599b63e05e865cb45a884b80728448f670f"
+          "bytes": 7486,
+          "sha256": "331cb98a87476dbee664e58cb06af05ad3010313c998ca4b94bdf894aa5c2f93"
         },
         {
           "path": "apps/www/public/assets/blocks/FriendlyGhost_4.webp",
-          "bytes": 4614,
-          "sha256": "a0b626586d16ad7780a1af87ee7ec58eea329e0ce5c3e1fb3b7e223b6238bf3e"
+          "bytes": 6822,
+          "sha256": "12a3b339ad58ff14ddab65e2606f46626789dd06f7c1cb3b09c71252401b01e3"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/FriendlyGhost.webp",
-          "bytes": 2674,
-          "sha256": "fec06288998d70f13f765f564edf5743d7476c48caabd98e954e9dcc29f3940e"
+          "bytes": 3090,
+          "sha256": "5dfadffa4142ac554870aea3f2f2fa8e4f6af37384f7221f8b6598f9d6da870a"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/FriendlyGhost_1.webp",
-          "bytes": 2674,
-          "sha256": "fec06288998d70f13f765f564edf5743d7476c48caabd98e954e9dcc29f3940e"
+          "bytes": 3090,
+          "sha256": "5dfadffa4142ac554870aea3f2f2fa8e4f6af37384f7221f8b6598f9d6da870a"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/FriendlyGhost_2.webp",
-          "bytes": 2136,
-          "sha256": "0bea1311d353e3bfc9fd2f6632ca2a14f9bdaa8348bcc9bff9bec4deb7db598f"
+          "bytes": 2700,
+          "sha256": "6af52cb086465be3ab33b0f036ec4296792040cfa1ae65951a8639cddb6f096b"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/FriendlyGhost_3.webp",
-          "bytes": 2362,
-          "sha256": "46283b5b9c1394245165e9bd42c1f1f9abc87bc3abefe0e8fb4cdcaf2848277a"
+          "bytes": 2914,
+          "sha256": "96f8ba54f660b5596570d3be9318a8fbc9466462f4c6b344147fe96b247c42d1"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/FriendlyGhost_4.webp",
-          "bytes": 2536,
-          "sha256": "46a09e95033d2ab26b27fa7b9f693229c919817e67b33ea6141e22ee3f6ee193"
+          "bytes": 3134,
+          "sha256": "88734f6ccda723f1ebe0880015e09bf1d453da4a1f39487aee9a711b9dfe0485"
         }
       ]
     },
@@ -139,53 +139,53 @@
       "images": [
         {
           "path": "apps/www/public/assets/blocks/SupportedCobweb.webp",
-          "bytes": 6606,
-          "sha256": "412c4624652003cd636f60e6ea2cf4e91ae8f5c4bf444483cf82b3018c0af866"
+          "bytes": 11572,
+          "sha256": "8770ad0304fd0627c3e2e3e0a84e1cd681368c06e5a98e0ce3669517b4a61473"
         },
         {
           "path": "apps/www/public/assets/blocks/SupportedCobweb_1.webp",
-          "bytes": 6488,
-          "sha256": "840c036d56bbc53398f28b66bf64909569672dfd6ea47c9e4585359581b8a49d"
+          "bytes": 9472,
+          "sha256": "60275121de317e94adca323155a58bb62a11892d3da4f06cf223446ded22d2e0"
         },
         {
           "path": "apps/www/public/assets/blocks/SupportedCobweb_2.webp",
-          "bytes": 2636,
-          "sha256": "9eea3d7b47b5ce9135bdf2d8dc71485c7a9dd3098d2f2a718cb427f79939b57f"
+          "bytes": 6310,
+          "sha256": "d9e86293befba95e6313141f3c58c9f90556dde772789b42eb90e5c730f4a9af"
         },
         {
           "path": "apps/www/public/assets/blocks/SupportedCobweb_3.webp",
-          "bytes": 6606,
-          "sha256": "412c4624652003cd636f60e6ea2cf4e91ae8f5c4bf444483cf82b3018c0af866"
+          "bytes": 11572,
+          "sha256": "8770ad0304fd0627c3e2e3e0a84e1cd681368c06e5a98e0ce3669517b4a61473"
         },
         {
           "path": "apps/www/public/assets/blocks/SupportedCobweb_4.webp",
-          "bytes": 3308,
-          "sha256": "1e0ddb301e5d1a2117a6b9860456ba49395ed75da4920f4c9f602aaa5f59596d"
+          "bytes": 6328,
+          "sha256": "6f5ccdf7a4a48193eb054f11255ec7c715eaa0d2f54edc2e5e351d28bec05ce8"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/SupportedCobweb.webp",
-          "bytes": 3364,
-          "sha256": "45e3441ed17565ad22c17dc2010571622cd3853460a2f832c9ab5cdcaafe5c3f"
+          "bytes": 4040,
+          "sha256": "1a2333c66fc2ddd185cb9b280c42101b352e6fafff54741968dba273b6e3c20f"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/SupportedCobweb_1.webp",
-          "bytes": 3364,
-          "sha256": "45e3441ed17565ad22c17dc2010571622cd3853460a2f832c9ab5cdcaafe5c3f"
+          "bytes": 4040,
+          "sha256": "1a2333c66fc2ddd185cb9b280c42101b352e6fafff54741968dba273b6e3c20f"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/SupportedCobweb_2.webp",
-          "bytes": 3290,
-          "sha256": "888fe3cba0943844404168b1a1925e0793cfaec909fc542ffc3faf0b4f7d771e"
+          "bytes": 4252,
+          "sha256": "43d31a524cd3b1d4bb2eb8015d14b70127796846a047e38d0a75782f5d0ea9a3"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/SupportedCobweb_3.webp",
-          "bytes": 3442,
-          "sha256": "976c8fa7e4ebab2eecbed5311120e712906a88ef3f32478caad057ffb90dcf4a"
+          "bytes": 3984,
+          "sha256": "9276c39b455d38fc8b2fe8a259684cc6eabf0ffa4d81d37ac6f39f4c19a7f1c1"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/SupportedCobweb_4.webp",
-          "bytes": 3046,
-          "sha256": "4bc22e04137b5a2619837264f8373255063019a7930e1b5c564c77f3fadf3f01"
+          "bytes": 3926,
+          "sha256": "79fa5dc50c431fb9f2b054d6e5c277bcf5816591b40e84c05c91df859edbab95"
         }
       ]
     }

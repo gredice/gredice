@@ -134,6 +134,48 @@ describe('shareCurrentGardenData', () => {
         assert.equal(sharedGarden?.stacks[0]?.blocks[0]?.message, 'BILJE');
     });
 
+    it('takes the paid price a refetch adds to an otherwise equal block', () => {
+        // An optimistic placement swaps in the saved id without the price;
+        // the refetch brings it, so the remove dialog can show the refund.
+        const previousBlock = createBlock({ id: 'saved-bush', name: 'Bush' });
+        const previousGarden = createGarden({
+            stacks: [createStack(0, 0, [previousBlock])],
+        });
+        const nextGarden = createGarden({
+            stacks: [
+                createStack(0, 0, [
+                    createBlock({
+                        id: 'saved-bush',
+                        name: 'Bush',
+                        paidSunflowers: 25,
+                    }),
+                ]),
+            ],
+        });
+
+        const sharedGarden = shareCurrentGardenData(previousGarden, nextGarden);
+
+        assert.notEqual(sharedGarden?.stacks[0]?.blocks[0], previousBlock);
+        assert.equal(sharedGarden?.stacks[0]?.blocks[0]?.paidSunflowers, 25);
+
+        // A missing price and null mean the same: nothing to replace.
+        const unknownGarden = createGarden({
+            stacks: [
+                createStack(0, 0, [
+                    createBlock({
+                        id: 'saved-bush',
+                        name: 'Bush',
+                        paidSunflowers: null,
+                    }),
+                ]),
+            ],
+        });
+        assert.equal(
+            shareCurrentGardenData(previousGarden, unknownGarden),
+            previousGarden,
+        );
+    });
+
     it('returns new data when garden metadata changes', () => {
         const previousGarden = createGarden();
         const nextGarden = createGarden({ name: 'Renamed garden' });

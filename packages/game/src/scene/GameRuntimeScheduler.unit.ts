@@ -2843,6 +2843,28 @@ describe('GameRuntimeScheduler visibility and bounded work', () => {
 });
 
 describe('GameRuntimeScheduler lifecycle and telemetry', () => {
+    it('reports steady rendering only for leases and a base frame rate', () => {
+        // Lease-free ambient effects (snow sparkles) advance only while this
+        // is true, so one-off frames and fixed steps must not count.
+        const { scheduler } = createScheduler();
+        assert.equal(scheduler.isRenderingContinuously(), false);
+        scheduler.requestRender('hover');
+        const releaseFixed = scheduler.acquireFixedStepLease('clock', {
+            callback: () => undefined,
+            stepsPerSecond: 10,
+        });
+        assert.equal(scheduler.isRenderingContinuously(), false);
+        const releaseLease = scheduler.acquireSharedRenderLease('fauna', 30);
+        assert.equal(scheduler.isRenderingContinuously(), true);
+        releaseLease();
+        assert.equal(scheduler.isRenderingContinuously(), false);
+        scheduler.setBaseFramesPerSecond(30);
+        assert.equal(scheduler.isRenderingContinuously(), true);
+        releaseFixed();
+        scheduler.dispose();
+        assert.equal(scheduler.isRenderingContinuously(), false);
+    });
+
     it('survives overlapping StrictMode-style acquire and release lifecycles', () => {
         const { scheduler } = createScheduler();
         const releaseFirst = scheduler.acquireRenderLease('strict-effect', 30);

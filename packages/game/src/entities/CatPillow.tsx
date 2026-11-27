@@ -3,6 +3,7 @@ import { DoubleSide } from 'three';
 import type { GLTFResult } from '../models/GameAssets';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
 import { animated } from '../scene/sceneSpring';
+import { seasonalRoles } from '../scene/seasonalRoles';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
@@ -17,17 +18,20 @@ type CatPillowNode = GLTFResult['nodes'][CatPillowNodeName];
 
 const catPillowScale = 0.62;
 
-const fabricMaterial = {
-    color: '#b80718',
+// Linear albedo in sRGB hex: the scene lights a sunlit face to about 3.2
+// times its albedo, so the cushion shows coral red #ee5048 and the piping the
+// cream role #f2e4c6 (assets/scripts/party-pass-props.py). Matte fabric.
+export const catPillowFabricMaterial = {
+    color: '#953632',
     metalness: 0,
-    roughness: 0.94,
+    roughness: 0.8,
     side: DoubleSide,
 };
 
-const seamMaterial = {
-    color: '#6b0610',
+export const catPillowSeamMaterial = {
+    color: seasonalRoles.cream.albedo,
     metalness: 0,
-    roughness: 0.92,
+    roughness: seasonalRoles.cream.roughness,
     side: DoubleSide,
 };
 
@@ -103,14 +107,14 @@ export function CatPillow({ stack, block, rotation }: EntityInstanceProps) {
                 snowMaxThickness={0.045}
                 snowCoverageMultiplier={0.5}
             >
-                <meshStandardMaterial {...fabricMaterial} />
+                <meshStandardMaterial {...catPillowFabricMaterial} />
             </WeatheredCatPillowPart>
             <WeatheredCatPillowPart
                 node={nodes.CatPillow_Seam}
                 snowMaxThickness={0.025}
                 snowCoverageMultiplier={0.42}
             >
-                <meshStandardMaterial {...seamMaterial} />
+                <meshStandardMaterial {...catPillowSeamMaterial} />
             </WeatheredCatPillowPart>
         </animated.group>
     );

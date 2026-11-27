@@ -178,16 +178,19 @@ describe('Woodland arrangement release', () => {
             assert.equal(
                 triangles,
                 asset === 'WoodlandAcorns'
-                    ? 620
+                    ? 2400
                     : asset === 'WoodlandConkers'
-                      ? 486
-                      : 960,
+                      ? 1936
+                      : 2852,
             );
             assert.ok(bytes.length < 250_000);
             for (const material of document.materials) {
                 assert.equal(material.pbrMetallicRoughness.metallicFactor, 0);
+                // Roughness follows the GAME_ART.md bands.
                 assert.ok(
-                    material.pbrMetallicRoughness.roughnessFactor >= 0.82,
+                    Math.abs(
+                        material.pbrMetallicRoughness.roughnessFactor - 0.55,
+                    ) < 1e-6,
                 );
                 assert.equal(material.emissiveFactor, undefined);
             }

@@ -4,19 +4,19 @@
   "snapshotDate": "2026-10-22T12:00:00+02:00",
   "source": {
     "path": "assets/game-assets/SeedDryingRack.blend",
-    "bytes": 110633,
-    "sha256": "908047ee578878f2cd46cc524502ed90067506ed8ebb9a5f7c0cc52560fa5d17"
+    "bytes": 126052,
+    "sha256": "451ea7e066fcda09b23eff2ce25ef289b1efd8d1105b20da3a0b9aada617f400"
   },
   "models": [
     {
       "name": "SeedDryingRack",
       "path": "apps/garden/public/assets/models/SeedDryingRack.glb",
-      "bytes": 145780,
-      "sha256": "87d42acc7817cce025bb1433998fa0d0affe7a62ccfa5983789f3d4d85a9c64c",
-      "url": "https://vrt.gredice.com/assets/models/SeedDryingRack.glb?v=87d42acc7817",
-      "triangles": 1452,
+      "bytes": 72720,
+      "sha256": "8aae2f281282e12e2cc2f0d16c4b2fc57e4b58c9e2390c1cfd8fa1897cb4f4a9",
+      "url": "https://vrt.gredice.com/assets/models/SeedDryingRack.glb?v=8aae2f281282",
+      "triangles": 2868,
       "trianglesByMesh": {
-        "SeedDryingRack_Arrangement": 1452
+        "SeedDryingRack_Arrangement": 2868
       },
       "meshCount": 1,
       "materialCount": 1
@@ -49,53 +49,53 @@
       "images": [
         {
           "path": "apps/www/public/assets/blocks/SeedDryingRack.webp",
-          "bytes": 12576,
-          "sha256": "1a8838c690c756fb92343ecb2c1e52bad3d5df420eaf0168a75588c6c4022116"
+          "bytes": 19868,
+          "sha256": "86c6620477f0420f8fe16a41d9c899ffba1a7db7b185592f29277565682dba04"
         },
         {
           "path": "apps/www/public/assets/blocks/SeedDryingRack_1.webp",
-          "bytes": 12576,
-          "sha256": "1a8838c690c756fb92343ecb2c1e52bad3d5df420eaf0168a75588c6c4022116"
+          "bytes": 19868,
+          "sha256": "86c6620477f0420f8fe16a41d9c899ffba1a7db7b185592f29277565682dba04"
         },
         {
           "path": "apps/www/public/assets/blocks/SeedDryingRack_2.webp",
-          "bytes": 12700,
-          "sha256": "fd65d4018d0fe4516cd08653d94a3293ad37ca32e0e9105d5b0ab1b511b90230"
+          "bytes": 19924,
+          "sha256": "99a7b99e195770187584b7f34834e5ea6ec315c5798ae4d250fd668824e84c20"
         },
         {
           "path": "apps/www/public/assets/blocks/SeedDryingRack_3.webp",
-          "bytes": 12750,
-          "sha256": "0bf1da2c45750040c1acb6dcee402b82c2b82589056cfdeac51d1b373d703819"
+          "bytes": 19864,
+          "sha256": "4012f92bb825875abecf0d1b91a10143243a4099aa852b0d19a3d6717b031e01"
         },
         {
           "path": "apps/www/public/assets/blocks/SeedDryingRack_4.webp",
-          "bytes": 12642,
-          "sha256": "53d4c68b3599978a69ba433fd6e2563674f6164877c35a07efd895ddc78db3e2"
+          "bytes": 19932,
+          "sha256": "fd2d1a85f8f121dc425b2ddd8fcc423c98539b1ec101f9aaa9aa35edb9331a47"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/SeedDryingRack.webp",
-          "bytes": 2516,
-          "sha256": "80c1e11634b6cfb03c45f0faa819f58bb8d1df1f43825f865cb751a16b9d86d7"
+          "bytes": 6516,
+          "sha256": "0ab6d4d28f32c6a62cb7eca1be7b92228e0b88a8c0481e1af3b90a5086c74a16"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/SeedDryingRack_1.webp",
-          "bytes": 2516,
-          "sha256": "80c1e11634b6cfb03c45f0faa819f58bb8d1df1f43825f865cb751a16b9d86d7"
+          "bytes": 6516,
+          "sha256": "0ab6d4d28f32c6a62cb7eca1be7b92228e0b88a8c0481e1af3b90a5086c74a16"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/SeedDryingRack_2.webp",
-          "bytes": 2498,
-          "sha256": "63e3b066cd18cd52bf10b4355329630cc1e5389ef4796d96e0a97b0c28d66846"
+          "bytes": 6378,
+          "sha256": "c8ba4a163af10858f4ef6a4498fd39a69e0dc43f76b28f4f9a46da45a64560de"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/SeedDryingRack_3.webp",
-          "bytes": 2564,
-          "sha256": "7c8bc98ce4eee5100fb4cb41f3361dd82c3bdeafb54d23c047a0b8baca0b2ea8"
+          "bytes": 6518,
+          "sha256": "41181cac3bc5ba5d206fa0605cce70658c6ef23d9eb84ee54cba99aa412e4f91"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/SeedDryingRack_4.webp",
-          "bytes": 2302,
-          "sha256": "edd2799b3745ddcbf70500bee5e5c60c9f6e208e90b160c912962274d8d194ef"
+          "bytes": 6382,
+          "sha256": "2fd2dabaae2d49548406adfa5a39920da6c6f2519297a891d476c592bcbc0d93"
         }
       ]
     }

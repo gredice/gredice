@@ -40,7 +40,7 @@ async function checkLog(
     for (const item of data.clusters) {
         expect(item.vertexColors).toBe(true);
         expect(item.colorCount).toBeGreaterThan(0);
-        expect(item.triangles).toBe(389);
+        expect(item.triangles).toBe(1814);
         expect(item.rotation).toBeCloseTo((rotation * Math.PI) / 2, 5);
         expect(item.minY).toBeCloseTo(raised ? 1.07 : 0.4, 3);
         expect(item.height).toBeGreaterThan(0.42);

@@ -57,6 +57,7 @@ type TestState = {
     blocks: {
         id: string;
         name: string;
+        paidSunflowers?: number | null;
         rotation: number | null;
         variant: number | null;
     }[];
@@ -188,6 +189,7 @@ function makeHarness(options: HarnessOptions = {}) {
             requestedBlockName,
             variant,
             receivedTransaction,
+            paidSunflowers,
         ) => {
             assert.equal(receivedTransaction, transaction);
             const id = `placed-${nextBlockId.toString()}`;
@@ -195,6 +197,7 @@ function makeHarness(options: HarnessOptions = {}) {
             state.blocks.push({
                 id,
                 name: requestedBlockName,
+                paidSunflowers,
                 rotation: null,
                 variant,
             });
@@ -779,6 +782,23 @@ describe('purchaseGardenBlock', () => {
         assert.equal(state.raisedBeds.length, 1);
         assert.equal(state.debits.length, 1);
         assert.equal(state.receipts.size, 1);
+    });
+
+    it('records the debited price on the purchased block and 0 in sandboxes', async () => {
+        const real = makeHarness({ directoryPrice: 64 });
+        const sandbox = makeHarness({ directoryPrice: 64, sandbox: true });
+
+        const realResult = await real.service(real.command());
+        const sandboxResult = await sandbox.service(sandbox.command());
+
+        assert.equal(realResult.ok && sandboxResult.ok, true);
+        assert.equal(real.state().blocks.at(-1)?.paidSunflowers, 64);
+        assert.deepEqual(
+            real.state().debits.map((debit) => debit.amount),
+            [64],
+        );
+        assert.equal(sandbox.state().blocks.at(-1)?.paidSunflowers, 0);
+        assert.deepEqual(sandbox.state().debits, []);
     });
 
     it('keeps sandbox raised-bed purchases free while creating the isolated planting projection', async () => {

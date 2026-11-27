@@ -6,6 +6,7 @@ import {
     resolvePlacementGroundingShadowDescriptors,
     resolvePlacementGroundingShadowProfile,
 } from './PlacementGroundingShadows';
+import { hasStaticContactShadowAt } from './staticContactShadowLayout';
 
 describe('placement grounding-shadow projection', () => {
     it('uses a conservative hitbox footprint', () => {
@@ -131,5 +132,49 @@ describe('placement grounding-shadow projection', () => {
             }),
             [],
         );
+    });
+
+    it('leaves blocks with a static contact blob to that blob', () => {
+        const blockData = getLocalSandboxBlockData();
+        const animations = {
+            bucket: {
+                createdAt: 1,
+                mutationConfirmed: true,
+                particlesSpawned: false,
+                renderId: 7,
+                sequence: 1,
+                sourceBlockId: 'bucket',
+                visualComplete: false,
+                visualStarted: true,
+            },
+        };
+        const stacks = [
+            {
+                blocks: [
+                    { id: 'grass', name: 'Block_Grass', rotation: 0 },
+                    { id: 'bucket', name: 'Bucket', rotation: 0 },
+                ],
+                position: new Vector3(0, 0, 0),
+            },
+        ];
+        const checked: number[] = [];
+
+        assert.deepEqual(
+            resolvePlacementGroundingShadowDescriptors({
+                animations,
+                blockData,
+                hasStaticShadow: (stack, blockIndex) => {
+                    checked.push(blockIndex);
+                    return hasStaticContactShadowAt({
+                        blockData,
+                        blockIndex,
+                        stack,
+                    });
+                },
+                stacks,
+            }),
+            [],
+        );
+        assert.deepEqual(checked, [1]);
     });
 });

@@ -527,12 +527,9 @@ export type GLTFResult = GLTF & {
         Sheep_Leg_RL: THREE.Mesh;
         Sheep_Hoof_RR: THREE.Mesh;
         Sheep_Leg_RR: THREE.Mesh;
-        Sheep_Tail_1: THREE.Mesh;
-        Sheep_Tail_2: THREE.Mesh;
-        Sheep_WoolBody_1: THREE.Mesh;
-        Sheep_WoolBody_2: THREE.Mesh;
-        Sheep_WoolChest_1: THREE.Mesh;
-        Sheep_WoolChest_2: THREE.Mesh;
+        Sheep_Tail: THREE.Mesh;
+        Sheep_WoolBody: THREE.Mesh;
+        Sheep_WoolChest: THREE.Mesh;
         Slug_Foot: THREE.Mesh;
         Slug_LowerFeeler_L: THREE.Mesh;
         Slug_LowerFeelerTip_L: THREE.Mesh;

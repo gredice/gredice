@@ -1,5 +1,7 @@
 import * as THREE from 'three';
+import { cropLeafPalette } from '../lib/cropPalette';
 import type { PlantDefinition } from '../lib/plant-definitions';
+import { getNominalMaturePlantHeight } from '../lib/plantNominalHeight';
 import type {
     PlantLodSummary,
     PlantRenderData,
@@ -27,6 +29,8 @@ interface BuildDevelopmentalPlantRenderDataOptions {
 }
 
 const STEM_UP = new THREE.Vector3(0, 1, 0);
+/** Share of a storage root's radius that shows as its shoulder. */
+const ROOT_VISIBLE_RADIUS_FRACTION = 0.6;
 const MIN_VISIBLE_SCALE = 0.001;
 
 interface OrganAttachment {
@@ -147,7 +151,12 @@ export function buildDevelopmentalPlantRenderData({
     const vegetables: PlantRenderData['vegetables'] = [];
     const attachmentByOrganId = new Map<string, OrganAttachment>();
     const baseLeafColor = new THREE.Color(plantDefinition.leaf.color);
-    const senescentLeafColor = new THREE.Color('#9b783d');
+    const highlightLeafColor = new THREE.Color(cropLeafPalette.highlight);
+    const senescentLeafColor = new THREE.Color(cropLeafPalette.senescent);
+    const nominalMatureHeight = Math.max(
+        getNominalMaturePlantHeight(plantDefinition),
+        0.01,
+    );
     const dominantColor = new THREE.Color(plantDefinition.stem.color);
     let maxHeight = 0.12;
     let maxHorizontalReach = 0.06;
@@ -158,6 +167,7 @@ export function buildDevelopmentalPlantRenderData({
     let accentSumY = 0;
     const accentColorSum = new THREE.Color(0, 0, 0);
     let accentColorWeight = 0;
+    let accentRadiusSquareSum = 0;
 
     const trackAccentColor = (color: THREE.Color, radius: number) => {
         const weight = Math.max(radius * radius, Number.EPSILON);
@@ -231,13 +241,30 @@ export function buildDevelopmentalPlantRenderData({
                 const leafRng = new SeededRNG(
                     `${graph.seed}:${graph.plantKey}:organ-renderer:${organ.id}`,
                 );
+                const hueShift = leafRng.nextRange(-0.025, 0.025);
+                // Leaves vary a little in hue and lightness but never lose
+                // saturation: main surfaces stay at 0.55 or more on screen.
+                const saturationShift = leafRng.nextRange(-0.015, 0.05);
+                const lightnessShift = leafRng.nextRange(-0.035, 0.025);
+                // Upper leaves catch the light: they lean toward the crop leaf
+                // highlight, so the plant reads as one lit mass with a lighter
+                // cap instead of a flat colour. It depends only on the leaf's
+                // mature height, so a leaf keeps its colour while it grows.
+                const capLift = THREE.MathUtils.smoothstep(
+                    organ.transform.position[1] / nominalMatureHeight,
+                    0.25,
+                    1.05,
+                );
+                // The lean stays small: the highlight is lighter and a little
+                // less saturated, and leaves turned to the sun brighten it
+                // further, so a strong lean washes the top of a plant out.
                 const color = baseLeafColor
                     .clone()
-                    .offsetHSL(
-                        leafRng.nextRange(-0.025, 0.025),
-                        leafRng.nextRange(-0.07, 0.045),
-                        leafRng.nextRange(-0.035, 0.025),
+                    .lerp(
+                        highlightLeafColor,
+                        0.04 + capLift * 0.28 + leafRng.nextRange(0, 0.08),
                     )
+                    .offsetHSL(hueShift, saturationShift, lightnessShift)
                     .lerp(senescentLeafColor, (1 - organ.health) * 0.82);
                 if (renderDetailedGeometry) {
                     leaves.push(
@@ -263,6 +290,7 @@ export function buildDevelopmentalPlantRenderData({
                     getTransformRadius(organ.transform) * flowerGrowth;
                 accentSamples += 1;
                 accentSumY += position.y;
+                accentRadiusSquareSum += radius * radius;
                 trackAccentColor(
                     new THREE.Color(plantDefinition.flower.color),
                     radius,
@@ -298,6 +326,12 @@ export function buildDevelopmentalPlantRenderData({
                 );
                 accentSamples += 1;
                 accentSumY += Math.max(0.04, position.y);
+                // Only the shoulder of a root shows above the soil.
+                const visibleRadius =
+                    organ.type === 'root'
+                        ? radius * ROOT_VISIBLE_RADIUS_FRACTION
+                        : radius;
+                accentRadiusSquareSum += visibleRadius * visibleRadius;
                 trackAccentColor(color, radius);
                 trackPosition(position, radius);
                 if (renderDetailedGeometry) {
@@ -364,6 +398,10 @@ export function buildDevelopmentalPlantRenderData({
                 ? Math.max(0.08, accentSumY / accentSamples)
                 : Math.max(height * 0.7, 0.12),
         accentColor,
+        accentRadius:
+            accentSamples > 0
+                ? Math.sqrt(accentRadiusSquareSum / accentSamples)
+                : undefined,
         canopyCenterY:
             showLeaves && foliageSamples > 0
                 ? foliageSumY / foliageSamples

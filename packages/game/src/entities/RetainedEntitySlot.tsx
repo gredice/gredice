@@ -1,8 +1,7 @@
 import { Suspense } from 'react';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import {
-    formatBlockPlacementDropAnimationRenderIdentity,
-    getBlockPlacementDropAnimationRenderIdForBlockId,
+    resolveBlockPlacementDropAnimationRenderIdentity,
     useGameState,
 } from '../useGameState';
 import { EntityFactory } from './EntityFactory';
@@ -12,20 +11,14 @@ export function RetainedEntitySlot({
     noControl,
     ...props
 }: EntityInstanceProps & { noControl?: boolean }) {
-    const renderId = useGameState((state) =>
-        getBlockPlacementDropAnimationRenderIdForBlockId(
-            state.blockPlacementDropAnimations,
+    const renderIdentity = useGameState((state) =>
+        resolveBlockPlacementDropAnimationRenderIdentity(
             props.block.id,
+            state.blockPlacementDropAnimations,
         ),
     );
     return (
-        <Suspense
-            key={formatBlockPlacementDropAnimationRenderIdentity(
-                props.block.id,
-                renderId,
-            )}
-            fallback={null}
-        >
+        <Suspense key={renderIdentity} fallback={null}>
             <EntityFactory
                 {...props}
                 name={props.block.name}

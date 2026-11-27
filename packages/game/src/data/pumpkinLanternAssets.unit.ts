@@ -130,7 +130,7 @@ describe('Carved pumpkin lantern release', () => {
             });
             assert.equal(
                 triangles,
-                name === 'PumpkinLanternSmile' ? 1560 : 1578,
+                name === 'PumpkinLanternSmile' ? 2688 : 2712,
             );
             assert.ok(bytes.length < 200000);
             for (const material of document.materials) {

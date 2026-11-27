@@ -106,6 +106,24 @@ test.beforeEach(async ({ page }) => {
             });
         },
     );
+
+    // Painted textures (for example the terrain rim soil) come from the local
+    // checkout too, so snapshots match the models they are rendered with.
+    await page.route('**/assets/textures/*', async (route) => {
+        const assetName = new URL(route.request().url()).pathname
+            .split('/')
+            .at(-1);
+        if (!assetName) {
+            await route.abort();
+            return;
+        }
+        await route.fulfill({
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+            },
+            path: resolve(`../garden/public/assets/textures/${assetName}`),
+        });
+    });
 });
 
 function shouldRenderSnapshotDetails(entityName: string) {
@@ -160,11 +178,16 @@ const CLOSEUP_ENTITY_ZOOM = new Map<string, number>([
     ['WickerGardenLantern', 130],
     ['WoodenHandLantern', 145],
     ['MoonRainBarrel', 120],
+    ['Rose', 120],
     ['Sheep', 128],
 ]);
 const NORMAL_ENTITY_ZOOM = new Map<string, number>([
+    ['ChestnutRoastingCart', 78],
+    ['Cow', 72],
     ['CowShelter', 56],
     ['FishingBoat', 58],
+    ['HarvestWheelbarrow', 80],
+    ['Horse', 58],
     // Fit the complete 1 x 2 bed before trimming and padding the snapshot.
     ['Raised_Bed', 60],
     ['SheepFold', 56],
@@ -414,7 +437,22 @@ test.describe('block screenshots', () => {
 });
 
 test.describe('icons', () => {
-    test('block ground over grass', async ({ mount }) => {
+    test('block ground over grass', async ({ mount, page }) => {
+        // The component-test bundle copies public/ when it is built, so serve
+        // the block images just generated instead of that stale copy. The
+        // offsets keep the top block inside the frame for the trimmed images.
+        await page.route('**/assets/blocks/*.webp', async (route) => {
+            const assetName = new URL(route.request().url()).pathname
+                .split('/')
+                .at(-1);
+            if (!assetName) {
+                await route.abort();
+                return;
+            }
+            await route.fulfill({
+                path: join(snapshotOutputDirectory, assetName),
+            });
+        });
         const component = await mount(
             <div
                 style={{
@@ -430,7 +468,7 @@ test.describe('icons', () => {
                     alt="Block_Grass"
                     width={128}
                     height={128}
-                    style={{ left: 16, position: 'absolute', top: 20 }}
+                    style={{ left: 16, position: 'absolute', top: 32 }}
                 />
                 {/** biome-ignore lint/performance/noImgElement: Not part of NextJS app */}
                 <img
@@ -438,7 +476,7 @@ test.describe('icons', () => {
                     alt="Block_Sand"
                     width={128}
                     height={128}
-                    style={{ left: 16, position: 'absolute', top: -10 }}
+                    style={{ left: 16, position: 'absolute', top: 2 }}
                 />
                 {/** biome-ignore lint/performance/noImgElement: Not part of NextJS app */}
                 <img
@@ -446,7 +484,7 @@ test.describe('icons', () => {
                     alt="Block_Ground"
                     width={128}
                     height={128}
-                    style={{ left: 16, position: 'absolute', top: -40 }}
+                    style={{ left: 16, position: 'absolute', top: -22 }}
                 />
             </div>,
         );

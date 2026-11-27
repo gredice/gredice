@@ -5,6 +5,12 @@ import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
+import {
+    birdHouseRidgeColor,
+    birdHouseRidgeRoughness,
+    birdHouseRoofColor,
+    birdHouseRoofRoughness,
+} from './birdHousePalette';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 import { defaultGameWoodColor } from './woodPalette';
 
@@ -16,9 +22,16 @@ const birdHouseWoodMaterial = {
 };
 
 const birdHouseRoofMaterial = {
-    color: '#2f3437',
+    color: birdHouseRoofColor,
     metalness: 0,
-    roughness: 0.62,
+    roughness: birdHouseRoofRoughness,
+    side: DoubleSide,
+};
+
+const birdHouseRidgeMaterial = {
+    color: birdHouseRidgeColor,
+    metalness: 0,
+    roughness: birdHouseRidgeRoughness,
     side: DoubleSide,
 };
 
@@ -136,7 +149,7 @@ export function BirdHouse({ stack, block, rotation }: EntityInstanceProps) {
                 receiveShadow
                 geometry={nodes.Birdhouse_Ridge_Cap.geometry}
             >
-                <meshStandardMaterial {...birdHouseRoofMaterial} />
+                <meshStandardMaterial {...birdHouseRidgeMaterial} />
                 <SnowOverlay
                     geometry={nodes.Birdhouse_Ridge_Cap.geometry}
                     maxThickness={0.08}

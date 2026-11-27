@@ -1072,6 +1072,8 @@ export function createMockGarden(
         isPublic: false,
         backgroundPalette: defaultGameBackgroundPaletteKey,
         homeCamera: null,
+        // Block_Ground stacks form a soil trail along one side of the lawn and
+        // across it, so the path and its grass banks show in the default garden.
         stacks: [
             {
                 position: createGardenPosition(
@@ -1177,7 +1179,7 @@ export function createMockGarden(
                 blocks: [
                     {
                         id: '7',
-                        name: 'Block_Grass',
+                        name: 'Block_Ground',
                         rotation: 0,
                     },
                 ],
@@ -1191,7 +1193,7 @@ export function createMockGarden(
                 blocks: [
                     {
                         id: '9',
-                        name: 'Block_Grass',
+                        name: 'Block_Ground',
                         rotation: 0,
                     },
                 ],
@@ -1205,7 +1207,7 @@ export function createMockGarden(
                 blocks: [
                     {
                         id: '10',
-                        name: 'Block_Grass',
+                        name: 'Block_Ground',
                         rotation: 0,
                     },
                 ],
@@ -1233,7 +1235,7 @@ export function createMockGarden(
                 blocks: [
                     {
                         id: '13',
-                        name: 'Block_Grass',
+                        name: 'Block_Ground',
                         rotation: 0,
                     },
                 ],
@@ -1261,7 +1263,7 @@ export function createMockGarden(
                 blocks: [
                     {
                         id: '15',
-                        name: 'Block_Grass',
+                        name: 'Block_Ground',
                         rotation: 0,
                     },
                 ],
@@ -1403,6 +1405,7 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
                                       rotation: block.rotation ?? 0,
                                       variant: block.variant,
                                       message: block.message,
+                                      paidSunflowers: block.paidSunflowers,
                                   };
                               })
                             : [],

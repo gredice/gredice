@@ -5,48 +5,48 @@
   "sources": [
     {
       "path": "assets/game-assets/AutumnWreathPost.blend",
-      "bytes": 105828,
-      "sha256": "93e3d7acabe11ab299936fe7098fe8439df5bc16ba35803e02e74d7cf33e2c51"
+      "bytes": 132669,
+      "sha256": "f2c7f269c34e07d5a2f42fdab9ced3c76bd3b2bacdf69f704c73643b98f86c04"
     },
     {
       "path": "assets/game-assets/AutumnGarland.blend",
-      "bytes": 102486,
-      "sha256": "c0c9cfee278c7a1e3a6e5826dff5a7148904e30d6915929a16e82fa09abad9f9"
+      "bytes": 124869,
+      "sha256": "cbe94190e35d836ceff4ef02bc8e8f60f6b36c4b53b4bfdbd284d3a8bd91b38e"
     },
     {
       "path": "assets/game-assets/AutumnFenceGate.blend",
-      "bytes": 118768,
-      "sha256": "c48bf5792a630918feec45855edfaec191be2612f7df1e7b12669257be7a1885"
+      "bytes": 130639,
+      "sha256": "ebe1df3edad0fd705b07bf3cc69f3446f2534bedcf8f4da73491443f598660df"
     }
   ],
   "models": [
     {
       "name": "AutumnWreathPost",
       "path": "apps/garden/public/assets/models/AutumnWreathPost.glb",
-      "bytes": 83200,
-      "sha256": "3f647ea3a7e4fa410fc2d1d7a52bece31023e95db162883c80f8c908e0116667",
-      "url": "https://vrt.gredice.com/assets/models/AutumnWreathPost.glb?v=3f647ea3a7e4",
-      "triangles": 920,
+      "bytes": 65280,
+      "sha256": "1a54ebb4017bfaa92426bfed37be84fc325ab39b7a88b088d154cf4dae8ad0fc",
+      "url": "https://vrt.gredice.com/assets/models/AutumnWreathPost.glb?v=1a54ebb4017b",
+      "triangles": 2584,
       "meshCount": 2,
       "materialCount": 2
     },
     {
       "name": "AutumnGarland",
       "path": "apps/garden/public/assets/models/AutumnGarland.glb",
-      "bytes": 65340,
-      "sha256": "a8563cbfee9adf2d4ea03c7ef8d4406e4ae4c4d12d835d92205c868844588c3b",
-      "url": "https://vrt.gredice.com/assets/models/AutumnGarland.glb?v=a8563cbfee9a",
-      "triangles": 696,
+      "bytes": 55592,
+      "sha256": "523ff6c89285b728f9c2a04564ce3c5fe2cc2d2d2fff2ffac301919cde411dc7",
+      "url": "https://vrt.gredice.com/assets/models/AutumnGarland.glb?v=523ff6c89285",
+      "triangles": 2176,
       "meshCount": 2,
       "materialCount": 2
     },
     {
       "name": "AutumnFenceGate",
       "path": "apps/garden/public/assets/models/AutumnFenceGate.glb",
-      "bytes": 149908,
-      "sha256": "71388daaed2d6eb4a2930bc703695a16f91efbe89956de4cb7dd02f26e37479a",
-      "url": "https://vrt.gredice.com/assets/models/AutumnFenceGate.glb?v=71388daaed2d",
-      "triangles": 1972,
+      "bytes": 72340,
+      "sha256": "a788947e18e7c149fd2950ee8a3dfe401edea9146726c30fb4b873dcbd0446b8",
+      "url": "https://vrt.gredice.com/assets/models/AutumnFenceGate.glb?v=a788947e18e7",
+      "triangles": 2348,
       "meshCount": 3,
       "materialCount": 3
     }
@@ -78,53 +78,53 @@
       "images": [
         {
           "path": "apps/www/public/assets/blocks/AutumnWreathPost.webp",
-          "bytes": 8644,
-          "sha256": "5c15ef49a0ce1d3ab6cce07b0a9da4da60cebfe8cb2b4f842cf5f6d32f89fbdb"
+          "bytes": 8004,
+          "sha256": "bfcf109cea8b36e4ad9331cc8a063f6e3e35f87df9272aca4476c70e4d42e3c1"
         },
         {
           "path": "apps/www/public/assets/blocks/AutumnWreathPost_1.webp",
-          "bytes": 8644,
-          "sha256": "5c15ef49a0ce1d3ab6cce07b0a9da4da60cebfe8cb2b4f842cf5f6d32f89fbdb"
+          "bytes": 8004,
+          "sha256": "bfcf109cea8b36e4ad9331cc8a063f6e3e35f87df9272aca4476c70e4d42e3c1"
         },
         {
           "path": "apps/www/public/assets/blocks/AutumnWreathPost_2.webp",
-          "bytes": 8678,
-          "sha256": "2bd2fdae8f0f70f85a057394af5705479341dc573cdc27f64574425d0a9bb59c"
+          "bytes": 7974,
+          "sha256": "9e39cfac625dcdedb217f8f7af829f88fdd01a7fe85ead36dd75ac57873cfacb"
         },
         {
           "path": "apps/www/public/assets/blocks/AutumnWreathPost_3.webp",
-          "bytes": 7950,
-          "sha256": "69ce1dc6a23c0e18b4ad4be2056862fed5e712446ca4428fd4a5155a3e08a1d2"
+          "bytes": 8168,
+          "sha256": "f7db464ea4505ca6f743aac265c5aad11a40f2117eccbaf6cb6d2ddaaf699a47"
         },
         {
           "path": "apps/www/public/assets/blocks/AutumnWreathPost_4.webp",
-          "bytes": 7846,
-          "sha256": "7d06cee1aa02213271e8be1ab4e0bc044ad804e70c0a06b418fe82ed185e38bc"
+          "bytes": 8712,
+          "sha256": "ee41115ee322c020a077a1be9a4a0b2f4190e97502a6acee91867718975563bb"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/AutumnWreathPost.webp",
-          "bytes": 1870,
-          "sha256": "e3eb9542295e22c69adaa66206ae5f3c3d332a610ce60493884efc1b97b73fc4"
+          "bytes": 2452,
+          "sha256": "bb83bc0ef1551a109b01d4e857a610b6db60ad616a9ff325e8b0730dadeaad72"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/AutumnWreathPost_1.webp",
-          "bytes": 1870,
-          "sha256": "e3eb9542295e22c69adaa66206ae5f3c3d332a610ce60493884efc1b97b73fc4"
+          "bytes": 2452,
+          "sha256": "bb83bc0ef1551a109b01d4e857a610b6db60ad616a9ff325e8b0730dadeaad72"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/AutumnWreathPost_2.webp",
-          "bytes": 1364,
-          "sha256": "2d318b9333299b1ff00751dfaa51bb3fd4cb603175defd5d5ae61abc16cfe006"
+          "bytes": 1886,
+          "sha256": "818fe5fbbc3080140f8e7a6f691f371ec0a5827e34a205c37e0fa020fb183991"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/AutumnWreathPost_3.webp",
-          "bytes": 1798,
-          "sha256": "2b3fe6a215be19494b35ce6210b2b269fe7d05383f6cc90d5be6ab28aa833c39"
+          "bytes": 2270,
+          "sha256": "c2147937798b59c3500bfedee94c9d2f692f69bb98f48dad5a492c8a2913eae1"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/AutumnWreathPost_4.webp",
-          "bytes": 1388,
-          "sha256": "6446722fb1d656674eae65c5e8963ca1bc027f689f5e04d428fe8a96df911bc9"
+          "bytes": 2060,
+          "sha256": "5c8c188938738d23275ab9eb173208a4d8fedcf598750f6d35c0292ae4116605"
         }
       ]
     },
@@ -154,53 +154,53 @@
       "images": [
         {
           "path": "apps/www/public/assets/blocks/AutumnGarland.webp",
-          "bytes": 7088,
-          "sha256": "59e88157c0828061ec6cdbaac67b6add694e2f8c3548cdc9d95538a561a65729"
+          "bytes": 8092,
+          "sha256": "01e5159e5bf4cbb68970088c5e6be7a98e42f20a9258435716c2a1ea9ce419be"
         },
         {
           "path": "apps/www/public/assets/blocks/AutumnGarland_1.webp",
-          "bytes": 7088,
-          "sha256": "59e88157c0828061ec6cdbaac67b6add694e2f8c3548cdc9d95538a561a65729"
+          "bytes": 8092,
+          "sha256": "01e5159e5bf4cbb68970088c5e6be7a98e42f20a9258435716c2a1ea9ce419be"
         },
         {
           "path": "apps/www/public/assets/blocks/AutumnGarland_2.webp",
-          "bytes": 6780,
-          "sha256": "686d24fed88ded5bed230415124078514f5f883ff5cc363e9e229fa62d21de05"
+          "bytes": 8234,
+          "sha256": "22c5eb620322c408c5b552f8526cafc075acdb3aa89fd1b84245b728b4982b52"
         },
         {
           "path": "apps/www/public/assets/blocks/AutumnGarland_3.webp",
-          "bytes": 6584,
-          "sha256": "cc5c3e330cce9b282b8d731c26b214973e3c318bcaa3701b4957e9499fd12737"
+          "bytes": 8598,
+          "sha256": "b779412aae3dc4e8b1fb28ae755d4b16533f03417e549427c6dfa446806c53fb"
         },
         {
           "path": "apps/www/public/assets/blocks/AutumnGarland_4.webp",
-          "bytes": 6620,
-          "sha256": "80017cda4b7e52a045243f384b91f1d33166731dcd7d5cb8668bca3b36654fa7"
+          "bytes": 8972,
+          "sha256": "545b1d2b34ee8b28787f084e176ea0c78d8426266f80f56f4e40bdcf9ad71233"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/AutumnGarland.webp",
-          "bytes": 1828,
-          "sha256": "71f426644dcdbdad14cd3537464756224e624c07ae722bd6b4dc98ad46c42965"
+          "bytes": 2372,
+          "sha256": "175b9e3ca4da898ebf92c63bd6b37d2ccd1c369b54c96604c32cf687ca98f604"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/AutumnGarland_1.webp",
-          "bytes": 1828,
-          "sha256": "71f426644dcdbdad14cd3537464756224e624c07ae722bd6b4dc98ad46c42965"
+          "bytes": 2372,
+          "sha256": "175b9e3ca4da898ebf92c63bd6b37d2ccd1c369b54c96604c32cf687ca98f604"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/AutumnGarland_2.webp",
-          "bytes": 1768,
-          "sha256": "41806583028f3196ff5779cc363388780bb321b3f8114cb79e4eb420c6e1f858"
+          "bytes": 1902,
+          "sha256": "d4b97621c5a6fe661f3a0a213ab9abf7c8b6d8e57003201676f594923b37e948"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/AutumnGarland_3.webp",
-          "bytes": 1754,
-          "sha256": "779b366849e680ad81d3b83c7d085db0244ce7279855721027225c6d4e9db71c"
+          "bytes": 2294,
+          "sha256": "8bd53815089b72f24b61ae7f969f85afd639123902ec75eb7ffcf83920b06830"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/AutumnGarland_4.webp",
-          "bytes": 1728,
-          "sha256": "394f298785125fc61eacde4de8618381d75c00e67d7086fb784d8c9d5d4ef7f5"
+          "bytes": 1924,
+          "sha256": "e7009ae2f8b0285fc270c7b2174da328f6bdc43a120f4088eae0853e4730deec"
         }
       ]
     },
@@ -230,53 +230,53 @@
       "images": [
         {
           "path": "apps/www/public/assets/blocks/AutumnFenceGate.webp",
-          "bytes": 7380,
-          "sha256": "7c311d43552716aa0045305fe1d6df79d1a667dfd1c8284a65cac72f56ffe2bd"
+          "bytes": 9058,
+          "sha256": "0bcc710922603ecd59088609170ad5c48644e505eaefef302b2a615813d4f1f4"
         },
         {
           "path": "apps/www/public/assets/blocks/AutumnFenceGate_1.webp",
-          "bytes": 7380,
-          "sha256": "7c311d43552716aa0045305fe1d6df79d1a667dfd1c8284a65cac72f56ffe2bd"
+          "bytes": 9058,
+          "sha256": "0bcc710922603ecd59088609170ad5c48644e505eaefef302b2a615813d4f1f4"
         },
         {
           "path": "apps/www/public/assets/blocks/AutumnFenceGate_2.webp",
-          "bytes": 7692,
-          "sha256": "1e3eebfffd4808cdc086cc3c1b3ce96ab3cb93bb5ae4b2cf9a9fc1643fbfd6a8"
+          "bytes": 9946,
+          "sha256": "922fd5136f0e99337f285d1f772fc8168b92f28df48b3933b5df2f0c891bea35"
         },
         {
           "path": "apps/www/public/assets/blocks/AutumnFenceGate_3.webp",
-          "bytes": 7334,
-          "sha256": "eee18f3441f36ff293b8a807a06b7ae668ba78dda6f24a5a16c06bcde24ab6b5"
+          "bytes": 9370,
+          "sha256": "761a9659a1bec40c7cec69dc6b946c0ac2c13f09540553a2e748c4582c601714"
         },
         {
           "path": "apps/www/public/assets/blocks/AutumnFenceGate_4.webp",
-          "bytes": 7582,
-          "sha256": "71c829574065b76b74c1b72aba63f302da1c027fe9c1a487951d7916a2e4ab45"
+          "bytes": 10008,
+          "sha256": "a9ac5d245cd541906dd02126adc261c0024cf761efcc4a0b3cfeda27ea009152"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/AutumnFenceGate.webp",
-          "bytes": 1874,
-          "sha256": "de37612f8f0f9e2526bdc03f10e4543dab55073636396c693257e98d63fd4f13"
+          "bytes": 2638,
+          "sha256": "d340dfcfeee0319a358db0254653a72aa2ee17aadebae5bf724ca5c0879f947d"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/AutumnFenceGate_1.webp",
-          "bytes": 1874,
-          "sha256": "de37612f8f0f9e2526bdc03f10e4543dab55073636396c693257e98d63fd4f13"
+          "bytes": 2638,
+          "sha256": "d340dfcfeee0319a358db0254653a72aa2ee17aadebae5bf724ca5c0879f947d"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/AutumnFenceGate_2.webp",
-          "bytes": 1882,
-          "sha256": "33980bf027df0f2e5f647621108a7cb9bec7441fc8d1c1a2104a4b67cb8bd4bd"
+          "bytes": 2310,
+          "sha256": "85cc4d5c576b1840367b9ebd6df31928d866e57d04180aaf943d5aa991945d1b"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/AutumnFenceGate_3.webp",
-          "bytes": 1824,
-          "sha256": "e2c593ac5949a669feb706284bfc9994cd37e205af5d9616a31fbdba31b61dbe"
+          "bytes": 2620,
+          "sha256": "268e6165dce66a5262c49047f0888b7c06468413f4bd204187162824cc2e6ebe"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/AutumnFenceGate_4.webp",
-          "bytes": 1846,
-          "sha256": "0ad21b6d14ed11b610bf0f18872c36bf3e4efe2d4d66c706dee7d775d02dfe3c"
+          "bytes": 2232,
+          "sha256": "25ee0bf0d6e3bbb84d47a4359d61243a64244442ac7f66d47e850e041eb023b9"
         }
       ]
     }

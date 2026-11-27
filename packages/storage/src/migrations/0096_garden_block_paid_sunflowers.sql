@@ -1,0 +1,2 @@
+ALTER TABLE "garden_blocks" ADD COLUMN "paid_sunflowers" integer;--> statement-breakpoint
+ALTER TABLE "garden_blocks" ADD CONSTRAINT "garden_blocks_paid_sunflowers_check" CHECK ("garden_blocks"."paid_sunflowers" IS NULL OR "garden_blocks"."paid_sunflowers" >= 0);

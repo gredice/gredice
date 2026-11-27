@@ -10,6 +10,14 @@ export type EnvironmentWeather = {
     thundery?: number;
     windDirection?: string | null;
     windSpeed?: number;
+    /**
+     * Damped storm amount, 0 to 1, that follows the discrete `thundery`
+     * flag while a blend runs (GAME_ART.md "Weather > Blends": the storm
+     * tint follows a damped storm amount, the bolt itself stops at once).
+     * Only blended weather carries it; read it with `resolveWeatherStorm`,
+     * which falls back to the thunder flag once the blend has converged.
+     */
+    storm?: number;
 };
 
 export type WeatherBlendState = {
@@ -18,6 +26,31 @@ export type WeatherBlendState = {
 };
 
 export const weatherBlendEpsilon = 0.0005;
+
+function clamp01(value: number) {
+    return Math.min(1, Math.max(0, value));
+}
+
+/** The storm amount a weather state blends toward: its thunder flag. */
+export function getWeatherStormTarget(
+    weather: EnvironmentWeather | null | undefined,
+) {
+    const thundery = weather?.thundery ?? 0;
+    return Number.isFinite(thundery) ? clamp01(thundery) : 0;
+}
+
+/**
+ * Damped storm amount of blended weather, 0 to 1. During a blend it eases
+ * like the other amounts; at rest it equals the thunder flag.
+ */
+export function resolveWeatherStorm(
+    weather: EnvironmentWeather | null | undefined,
+) {
+    const storm = weather?.storm;
+    return typeof storm === 'number' && Number.isFinite(storm)
+        ? clamp01(storm)
+        : getWeatherStormTarget(weather);
+}
 
 function dampNumber(
     current: number,
@@ -50,7 +83,14 @@ export function hasWeatherBlendConverged(
         isWithinBlendEpsilon(current.rainy, target.rainy) &&
         isWithinBlendEpsilon(current.snowy, target.snowy) &&
         isWithinBlendEpsilon(current.windSpeed, target.windSpeed) &&
-        isWithinBlendEpsilon(current.snowAccumulation, target.snowAccumulation)
+        isWithinBlendEpsilon(
+            current.snowAccumulation,
+            target.snowAccumulation,
+        ) &&
+        isWithinBlendEpsilon(
+            resolveWeatherStorm(current),
+            resolveWeatherStorm(target),
+        )
     );
 }
 
@@ -140,8 +180,15 @@ export function advanceWeatherBlend(
             smoothing,
             delta,
         ),
+        storm: dampNumber(
+            resolveWeatherStorm(state.weather),
+            getWeatherStormTarget(target),
+            smoothing,
+            delta,
+        ),
         // Keep direction and thunder discrete to preserve deterministic storm
-        // timing and prevent jitter around cardinal boundaries.
+        // timing and prevent jitter around cardinal boundaries. The storm
+        // tint follows the damped `storm` amount instead.
         windDirection: target.windDirection,
         thundery: target.thundery,
     };

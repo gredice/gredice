@@ -37,7 +37,7 @@ it('exports readable independent idle/walk/sniff clips within the bounded actor 
         }
     });
     assert.equal(meshes, 6);
-    assert.equal(triangles, 444);
+    assert.equal(triangles, 1876);
     for (const clip of gltf.animations) {
         const root = gltf.scene.clone(true);
         const mixer = new AnimationMixer(root);

@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+    dragEdgeAutopanPushPx,
     getDragEdgeAutopanDelta,
     hasDragEdgeAutopanDelta,
+    isDragEdgeAutopanArmed,
 } from './dragEdgeAutopan';
 
 const viewport = {
@@ -61,5 +63,71 @@ describe('getDragEdgeAutopanDelta', () => {
         });
 
         assert.deepEqual(delta, { x: -30, y: -30 });
+    });
+});
+
+describe('isDragEdgeAutopanArmed', () => {
+    // A 360 px phone canvas: the 96 px edge bands cover over half its width.
+    const phone = { left: 0, top: 0, width: 360, height: 740 };
+    const at = (clientX: number, clientY: number) => ({ clientX, clientY });
+
+    it('stays off while a press that started in a band holds still or moves along it', () => {
+        // Pomakni at x 313 in the right band, dragged straight down 90 px.
+        for (const pointer of [at(313, 400), at(313, 450), at(310, 490)]) {
+            assert.equal(
+                isDragEdgeAutopanArmed({
+                    start: at(313, 400),
+                    pointer,
+                    viewport: phone,
+                }),
+                false,
+                `${pointer.clientX},${pointer.clientY}`,
+            );
+        }
+    });
+
+    it('arms when the pointer pushes further toward the start edge', () => {
+        assert.equal(
+            isDragEdgeAutopanArmed({
+                start: at(313, 400),
+                pointer: at(313 + dragEdgeAutopanPushPx, 410),
+                viewport: phone,
+            }),
+            true,
+        );
+    });
+
+    it('arms once the pointer leaves the band it started in', () => {
+        assert.equal(
+            isDragEdgeAutopanArmed({
+                start: at(313, 400),
+                pointer: at(200, 400),
+                viewport: phone,
+            }),
+            true,
+        );
+    });
+
+    it('arms at once outside every band', () => {
+        assert.equal(
+            isDragEdgeAutopanArmed({
+                start: at(180, 370),
+                pointer: at(180, 370),
+                viewport: phone,
+            }),
+            true,
+        );
+    });
+
+    it('takes a custom push distance', () => {
+        assert.equal(
+            isDragEdgeAutopanArmed({
+                start: at(313, 400),
+                pointer: at(318, 400),
+                pushPx: 4,
+                viewport: phone,
+            }),
+            true,
+        );
     });
 });

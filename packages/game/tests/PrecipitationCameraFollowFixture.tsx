@@ -3,9 +3,9 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import { useMemo, useState } from 'react';
-import { Vector3 } from 'three';
+import { Color, Vector3 } from 'three';
 import { GameCameraRig } from '../src/controls/GameCameraRig';
-import { Drops } from '../src/scene/Rain/Drops';
+import { RainDropField } from '../src/scene/Rain/Drops';
 import { Scene } from '../src/scene/Scene';
 import Snow from '../src/scene/Snow/Snow';
 import {
@@ -31,6 +31,9 @@ type PrecipitationPositions = {
     rain: string;
     snow: string;
 };
+
+const rainHead = new Color('#a2dcff');
+const rainTail = new Color('#2f9aff');
 
 function formatPosition({ x, y, z }: { x: number; y: number; z: number }) {
     return JSON.stringify([x, y, z]);
@@ -125,7 +128,22 @@ export function PrecipitationCameraFollowFixture() {
                             zoom={100}
                         >
                             <group name="GlobalWeather">
-                                <Drops count={1} intensity={1} />
+                                <RainDropField
+                                    capacity={1}
+                                    coreWidthPx={2.5}
+                                    count={1}
+                                    fallSpeed={7.5}
+                                    fallVelocity={0.75}
+                                    groundY={0.4}
+                                    head={rainHead}
+                                    lengthPx={14}
+                                    opacity={1}
+                                    quadWidthPx={5}
+                                    slant={0}
+                                    tail={rainTail}
+                                    viewHeightPx={400}
+                                    windVelocity={0}
+                                />
                                 <Snow count={1} />
                             </group>
                             <group name="LocalMagicSnow" position={[7, 0, 9]}>

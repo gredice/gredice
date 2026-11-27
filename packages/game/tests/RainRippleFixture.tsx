@@ -9,7 +9,6 @@ import {
     type GameQualityTier,
     gameQualityProfiles,
 } from '../src/scene/gameQuality';
-import { Drops } from '../src/scene/Rain/Drops';
 import { Scene } from '../src/scene/Scene';
 import { SceneBlockDataBoundary } from '../src/scene/SceneBlockDataBoundary';
 import { getSeasonDebugDates } from '../src/scene/seasonDebugDates';
@@ -18,6 +17,7 @@ import {
     GameStateContext,
     useDisposeGameStateStore,
 } from '../src/useGameState';
+import { FixtureRainField } from './FixtureRainField';
 import { RainRippleProbe } from './RainRippleProbe';
 
 export function RainRippleFixture({
@@ -206,8 +206,8 @@ export function RainRippleFixture({
                                             enabled={!disabled}
                                         />
                                         {precipitation && rain > 0 && (
-                                            <Drops
-                                                intensity={rain}
+                                            <FixtureRainField
+                                                rainy={rain}
                                                 count={700}
                                             />
                                         )}

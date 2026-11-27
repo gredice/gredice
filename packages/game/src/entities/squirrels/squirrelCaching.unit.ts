@@ -126,7 +126,8 @@ describe('seasonal squirrel caching', () => {
             undefined,
         );
         assert.equal(nut.mesh.parent?.name, 'Squirrel_HeadPivot');
-        assert.equal(nut.mesh.geometry.getAttribute('position').count / 3, 20);
+        // A smooth detail-2 icosahedron (180 triangles), not a faceted one.
+        assert.equal(nut.mesh.geometry.getAttribute('position').count / 3, 180);
         assert.equal(nut.mesh.castShadow, false);
         const parent = nut.mesh.parent;
         assert.ok(parent);

@@ -48,8 +48,9 @@ async function checkShrubs(
         legacyBushColors: string[];
     } = JSON.parse((await fixture.getAttribute('data-ready')) ?? '{}');
     expect(data.shrubs).toHaveLength(3);
-    expect(data.cached.gold).toBe('d6b83f');
-    expect(data.cached.russet).toBe('b06a3d');
+    // The cached GLTF keeps the autumn gold and orange role albedos.
+    expect(data.cached.gold).toBe('987f25');
+    expect(data.cached.russet).toBe('944523');
     expect(data.cached.goldHasVertexColors).toBe(false);
     expect(data.legacyBushColors).toHaveLength(2);
     const ownedMaterials = data.shrubs.flatMap((shrub) =>
@@ -70,18 +71,21 @@ async function checkShrubs(
         expect(shrub.width).toBeLessThanOrEqual(0.9);
         expect(shrub.depth).toBeLessThanOrEqual(0.9);
         expect(shrub.foliage).toHaveLength(shrub.stage === 'bare' ? 0 : 2);
-        if (
-            disabled ||
-            scenario === 'summer' ||
-            scenario.startsWith('spring')
-        ) {
+        if (disabled || scenario === 'summer') {
+            // Both masses share the summer canopy role albedo.
             expect(shrub.foliage.map((part) => part.color)).toEqual([
-                '#6d913f',
-                '#4e7f35',
+                '#30712c',
+                '#30712c',
             ]);
+        } else if (scenario.startsWith('spring')) {
+            // Spring leaves share one fresh green, leaning toward the spring
+            // green role until the end of spring.
+            const [gold, russet] = shrub.foliage.map((part) => part.color);
+            expect(gold).toBe(russet);
+            expect(gold).toMatch(/^#[3-5][0-9a-f][7-8][0-9a-f][2-3][0-9a-f]$/);
         } else if (scenario === 'autumn') {
             expect(shrub.foliage.map((part) => part.color)).not.toContain(
-                '#6d913f',
+                '#30712c',
             );
         }
         if (disabled) {

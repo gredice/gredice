@@ -6,6 +6,7 @@ import { Plane, Raycaster, Vector2, Vector3 } from 'three';
 import { EntityFactory } from '../entities/EntityFactory';
 import { blockPickupOutlineStyle } from '../entities/helpers/blockPickupOutlineStyle';
 import { HoverOutline } from '../entities/helpers/HoverOutline';
+import { TerrainRimPreview } from '../entities/terrainRim/TerrainRimInstances';
 import type { Block } from '../types/Block';
 import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
@@ -179,6 +180,14 @@ export function HudPlacementDragPreview() {
                                 block={block}
                                 rotation={block.rotation}
                                 noControl
+                            />
+                            {/* Placed terrain wears its rounded rim; so does the preview. */}
+                            <TerrainRimPreview
+                                baseBlocks={placementPreview.baseBlocks}
+                                blockId={block.id}
+                                blockName={block.name}
+                                blockRotation={block.rotation}
+                                position={placementPreview.position}
                             />
                         </group>
                     </HoverOutline>

@@ -21,14 +21,25 @@ and baked colours, with no texture dependency. First-party references inspected:
 
 `assets/game-assets/FallenLog.blend` contains one joined mesh with named vertex
 groups `Bark`, `CutEndLeft`, `CutEndRight`, `BranchStub` and `Moss`. The generator
-preserves these independently selectable parts and audits the saved source.
-The base-centred model bounds are approximately **1.842 × 0.7071 × 0.432 tiles**;
+preserves these independently selectable parts and audits the saved source; the
+party-style pass adds `Sprout` and `Knot`.
+The base-centred model bounds are approximately **1.834 × 0.614 × 0.447 tiles**;
 its underside touches the support plane. Declared hitbox: **1.9 × 0.9 × 0.45**.
 
-The bark palette uses `#79502F`, `#845933` and `#94653B`; cut ends use `#C0925C`
-and `#D2A56F`; moss ranges from `#66723E` to `#839050`. Corner vertex colours
-export as `COLOR_0`, sharing one rough, nonmetallic, nonemissive material.
-The lazy GLB is **22,988 bytes**, **389 triangles**, one mesh/primitive/material
+Shapes and colours come from `assets/scripts/party-pass-autumn.py`, which runs
+after the generator (2026-11-23 party-style pass with the bright roles in
+GAME_ART.md, reworked 2026-11-26 after feedback that the smooth log with a flat
+moss patch looked like a tube with a sticker). The barrel is six soft bark plates
+whose grooves deepen and fade along a tapered, gently bowed body on a flat seat.
+Both cut faces lean back toward the camera. A large moss cushion with two smaller
+ones tucked under its edge grows over the crown and spills down the camera side,
+each sunk into the bark under a rounded lip; a small tuft sits near the thick
+end. The stub is chunkier and carries one small leaf, and a knot sits on the near
+side. As seen on screen, the bark is the trunk role `#B56A3C`; cut ends are the
+end grain role `#F2C674` with nut caramel `#DC9A4C` rings; moss is the moss role
+`#78CC58`; the leaf is light canopy `#6FD040`. Corner vertex colours export as
+`COLOR_0`, sharing one satin (roughness 0.6), nonmetallic, nonemissive material.
+The lazy GLB is **56,096 bytes**, **1,814 triangles**, one mesh/primitive/material
 and one base-pass draw per instance. Runtime shares immutable cached geometry
 and material. Rain/snow use existing overlays, respecting global and per-entity
 disablement. There are no textures, embedded lights, animations, sounds or
@@ -53,16 +64,19 @@ all use `@gredice/js/fallenLog`.
 
 ## Future leaf-weathering surface review
 
-The `.blend` `Bark` group supplies twelve longitudinal facets over five segments.
-Its two upper facets per segment (original bark polygon indices 2/3, 14/15,
-26/27, 38/39 and 50/51) face upward. A conservative future resting zone is the
-uncovered upper barrel at Blender **x 0.42–0.78, y −0.04–0.04**, roughly
-**z 0.38–0.40**. In the exported Y-up model this maps to x unchanged, height Y,
-and Z equal to negative Blender y. A future anchor must sample the actual facet
-height and rotate/translate with the two-cell entity.
+The `.blend` `Bark` group supplies thirty longitudinal facets (six plates of five)
+over nine segments. The plates turn a little along the log and their grooves
+deepen and fade, so no facet row stays on top for the whole length. A
+conservative future resting zone is the uncovered upper barrel at Blender
+**x 0.46–0.78, y −0.04–0.04**, roughly **z 0.31–0.34**, clear of the stub (which
+starts at x 0.25 on the far side) and the knot (y above 0.08). In the exported
+Y-up model this maps to x unchanged, height Y, and Z equal to negative Blender y.
+A future anchor must sample the actual facet height and rotate/translate with the
+two-cell entity.
 
 Reject the vertical cut ends, lower bark, underside and narrow branch tip.
-The raised moss fan occupies roughly x −0.58–0.12 and needs its own surface
+The raised moss cushions occupy roughly x −0.35–0.25, with a small tuft at
+x −0.81 to −0.69, and need their own surface
 sampling; a flat barrel anchor there could clip. No seasonal source or leaf
 resting anchor is enabled by this change. That requires explicit registration
 and overlap/coverage review in the existing seasonal system.

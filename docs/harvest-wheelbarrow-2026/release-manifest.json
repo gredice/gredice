@@ -3,17 +3,17 @@
   "publicationIssue": 5000,
   "source": {
     "path": "assets/game-assets/HarvestWheelbarrow.blend",
-    "bytes": 148812,
-    "sha256": "f032dcd2687fb16b425dce617e7212f1c4e01c55e1fb5b969e7384796b090bfa"
+    "bytes": 163870,
+    "sha256": "a178734b065cf9c64035ff6d5f97c5c93c5fffdd9a6989cfde284653335f9da0"
   },
   "models": [
     {
       "name": "HarvestWheelbarrow",
       "path": "apps/garden/public/assets/models/HarvestWheelbarrow.glb",
-      "bytes": 248256,
-      "sha256": "85ff185c54862e8992892d441356c5a0205d0b0406c52cbe9be04c2f77cde1cd",
-      "url": "https://vrt.gredice.com/assets/models/HarvestWheelbarrow.glb?v=85ff185c5486",
-      "triangles": 3984,
+      "bytes": 104908,
+      "sha256": "7a83ade0324696e72562bd745f6681709d4e0156c21b5aebe2993cf55027c3c8",
+      "url": "https://vrt.gredice.com/assets/models/HarvestWheelbarrow.glb?v=7a83ade03246",
+      "triangles": 4824,
       "meshCount": 6,
       "materialCount": 6
     }
@@ -45,53 +45,53 @@
       "images": [
         {
           "path": "apps/www/public/assets/blocks/HarvestWheelbarrow.webp",
-          "bytes": 26706,
-          "sha256": "e0a7c003bbcc6812b139e2ce3bd78d8ca0b3880e7e47eb6a3d9254043ec08297"
+          "bytes": 28044,
+          "sha256": "b52cf31eb8832d0d422fee970485b1bd314ffd96e741e46e9e323b9afff59782"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestWheelbarrow_1.webp",
-          "bytes": 21344,
-          "sha256": "3a5e01eac4d72a1597b92f0ba7a8e7f56e6e16ce56b369dd562d38078a45a7e6"
+          "bytes": 21146,
+          "sha256": "028f03e5bfd743a5ff88b59b10c91715316633d15fecb5fb70f7d68299ebe0f7"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestWheelbarrow_2.webp",
-          "bytes": 26706,
-          "sha256": "e0a7c003bbcc6812b139e2ce3bd78d8ca0b3880e7e47eb6a3d9254043ec08297"
+          "bytes": 28044,
+          "sha256": "b52cf31eb8832d0d422fee970485b1bd314ffd96e741e46e9e323b9afff59782"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestWheelbarrow_3.webp",
-          "bytes": 26740,
-          "sha256": "a98be79b21c17ff0b47c1a33f60fadb7b5865fb62f569a4ccc18b5c149e50368"
+          "bytes": 25208,
+          "sha256": "ac21cc650fa19dcd792627e037ad8f82369e15916ffdef915b2646a213ae9071"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestWheelbarrow_4.webp",
-          "bytes": 22866,
-          "sha256": "7758dc1d9c3b76740fbe86d321342c38f6c86eba3729f0524781669eec6e852c"
+          "bytes": 22472,
+          "sha256": "3a88b456fd4d45533ea531419555589d68c56e5e0319f188cfdbaee2e2796cfb"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestWheelbarrow.webp",
-          "bytes": 4394,
-          "sha256": "9dee507d7b7c7e8a1a6eeccfe650ea660c0ff16d436742577bb5a2fe426dc8d5"
+          "bytes": 4272,
+          "sha256": "31c1cb8b253c04db16d261c1a7d3fc151fdc7b4d3893cb9d1dad1cae249b6bf7"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestWheelbarrow_1.webp",
-          "bytes": 4394,
-          "sha256": "9dee507d7b7c7e8a1a6eeccfe650ea660c0ff16d436742577bb5a2fe426dc8d5"
+          "bytes": 4272,
+          "sha256": "31c1cb8b253c04db16d261c1a7d3fc151fdc7b4d3893cb9d1dad1cae249b6bf7"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestWheelbarrow_2.webp",
-          "bytes": 3712,
-          "sha256": "0fd8cb8e1d830a16b5f5edf9a4dd865f5096a25f7712a3c60fa8a1b5b2398085"
+          "bytes": 4208,
+          "sha256": "9afcb5d9083a41a254645c7b209d6c93500591ac82d199aa173042bc62d30e8d"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestWheelbarrow_3.webp",
-          "bytes": 4352,
-          "sha256": "1dc5cad72f3c1a7d4064f93a688e0b95193d5daf1a323c535b1fdd8956504870"
+          "bytes": 4740,
+          "sha256": "e716ea81eae7f0057fafef3c07ce1b9339f27aac63e4fe030609e6e01f8985f7"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestWheelbarrow_4.webp",
-          "bytes": 3798,
-          "sha256": "6f7c88c8aae66307294b5752547ecf3387585e69eb199841af0af607cf39d40c"
+          "bytes": 4208,
+          "sha256": "38a7ab90a5e3ccf27e336cd712f9b7d3ee18f848d511cc8efe0de5decd3f29c1"
         }
       ]
     }

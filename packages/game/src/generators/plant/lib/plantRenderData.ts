@@ -11,6 +11,12 @@ export interface PlantStemSegment {
 export interface PlantLodSummary {
     accentCenterY: number;
     accentColor?: string;
+    /**
+     * Typical radius of the produce or flowers that show, in plant units:
+     * the root-mean-square over organs, counting only the shoulder of a
+     * root. The far and mid cards size their produce dots with it.
+     */
+    accentRadius?: number;
     canopyCenterY: number;
     canopyWidth: number;
     dominantColor: string;

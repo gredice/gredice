@@ -18,14 +18,15 @@ const fenceAssets = [
             'Material.StoneFence.Dark',
         ],
         name: 'StoneFence',
-        roughness: [0.88, 0.91, 0.94],
+        // Stone sits in the satin roughness band (GAME_ART.md).
+        roughness: [0.6, 0.6, 0.6],
         soloMaximum: [0.16, -0.32, 0.16],
         soloMinimum: [-0.16, -1, -0.16],
     },
     {
         materialNames: ['Material.PolishedStoneFence.Surface'],
         name: 'PolishedStoneFence',
-        roughness: [0.58],
+        roughness: [0.5],
         soloMaximum: [0.14, -0.32, 0.14],
         soloMinimum: [-0.14, -1, -0.14],
     },

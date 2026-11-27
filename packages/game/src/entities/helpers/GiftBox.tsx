@@ -1,5 +1,6 @@
 import { useHoveredBlockStore } from '../../controls/useHoveredBlockStore';
 import { animated } from '../../scene/sceneSpring';
+import { seasonalRoles } from '../../scene/seasonalRoles';
 import { SnowOverlay } from '../../snow/SnowOverlay';
 import { snowPresets } from '../../snow/snowPresets';
 import type { EntityInstanceProps } from '../../types/runtime/EntityInstanceProps';
@@ -9,12 +10,75 @@ import { useGameGLTF } from '../../utils/useGameGLTF';
 import { HoverOutline } from './HoverOutline';
 import { useAnimatedEntityRotation } from './useAnimatedEntityRotation';
 
-type GiftBoxProps = EntityInstanceProps & {
+export type GiftBoxPalette = {
     boxColor: string;
     ribbonColor: string;
-    boxMetalness?: number;
-    boxRoughness?: number;
+    boxRoughness: number;
 };
+
+const {
+    cream,
+    enamelBlue,
+    evergreen,
+    halloweenPurple,
+    holidayGold,
+    holidayRed,
+    snow,
+} = seasonalRoles;
+
+/**
+ * Gift box colour variants, taken from the seasonal roles in GAME_ART.md
+ * (scene/seasonalRoles.ts) so a palette change reaches the GiftBox* entities
+ * and the instanced gift boxes alike. Colours are linear albedo in sRGB hex,
+ * darker than the on-screen colour noted on each variant. Each box keeps its
+ * role's roughness. Metalness is always 0.
+ */
+export const giftBoxPalettes = {
+    // Holiday red box #dc2f4c, cream ribbon #f2e4c6.
+    GiftBox_RedWhite: {
+        boxColor: holidayRed.albedo,
+        ribbonColor: cream.albedo,
+        boxRoughness: holidayRed.roughness,
+    },
+    // Evergreen box #42b848, holiday gold ribbon #f2c040.
+    GiftBox_GreenGold: {
+        boxColor: evergreen.albedo,
+        ribbonColor: holidayGold.albedo,
+        boxRoughness: evergreen.roughness,
+    },
+    // Enamel blue box #3f8ff0, cream ribbon #f2e4c6.
+    GiftBox_BlueWhite: {
+        boxColor: enamelBlue.albedo,
+        ribbonColor: cream.albedo,
+        boxRoughness: enamelBlue.roughness,
+    },
+    // Purple box #9a4ce0, snow-white ribbon #d6e2f2 in place of silver.
+    GiftBox_PurpleSilver: {
+        boxColor: halloweenPurple.albedo,
+        ribbonColor: snow.albedo,
+        boxRoughness: halloweenPurple.roughness,
+    },
+    // Holiday gold box #f2c040, holiday red ribbon #dc2f4c.
+    GiftBox_GoldRed: {
+        boxColor: holidayGold.albedo,
+        ribbonColor: holidayRed.albedo,
+        boxRoughness: holidayGold.roughness,
+    },
+    // Cream box #f2e4c6 (matte paper), evergreen ribbon #42b848.
+    GiftBox_WhiteGreen: {
+        boxColor: cream.albedo,
+        ribbonColor: evergreen.albedo,
+        boxRoughness: cream.roughness,
+    },
+} satisfies Record<string, GiftBoxPalette>;
+
+/**
+ * Every ribbon and bow is glossy satin ribbon, the holiday ribbon role, so all
+ * variants share one ribbon roughness whatever its colour.
+ */
+export const giftBoxRibbonRoughness = holidayRed.roughness;
+
+type GiftBoxProps = EntityInstanceProps & GiftBoxPalette;
 
 export function GiftBox({
     stack,
@@ -22,8 +86,7 @@ export function GiftBox({
     rotation,
     boxColor,
     ribbonColor,
-    boxMetalness = 0.3,
-    boxRoughness = 0.7,
+    boxRoughness,
 }: GiftBoxProps) {
     const { nodes } = useGameGLTF('GiftBox');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
@@ -51,7 +114,7 @@ export function GiftBox({
                 >
                     <meshStandardMaterial
                         color={boxColor}
-                        metalness={boxMetalness}
+                        metalness={0}
                         roughness={boxRoughness}
                     />
                 </mesh>
@@ -62,8 +125,8 @@ export function GiftBox({
                 >
                     <meshStandardMaterial
                         color={ribbonColor}
-                        metalness={0.5}
-                        roughness={0.3}
+                        metalness={0}
+                        roughness={giftBoxRibbonRoughness}
                     />
                 </mesh>
                 <mesh
@@ -75,8 +138,8 @@ export function GiftBox({
                 >
                     <meshStandardMaterial
                         color={ribbonColor}
-                        metalness={0.5}
-                        roughness={0.3}
+                        metalness={0}
+                        roughness={giftBoxRibbonRoughness}
                     />
                 </mesh>
                 <SnowOverlay

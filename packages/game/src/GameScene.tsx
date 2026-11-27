@@ -11,6 +11,7 @@ import {
     useState,
 } from 'react';
 import { Vector3 } from 'three';
+import { BlockOptionsScene } from './blockOptions/BlockOptionsScene';
 import { BlockInteractionLayer } from './controls/BlockInteractionLayer';
 import { BlockInteractionRegistryProvider } from './controls/BlockInteractionRegistry';
 import { GameCameraRig } from './controls/GameCameraRig';
@@ -108,6 +109,7 @@ import { useGardenSceneManifests } from './scene/resources/useGardenSceneManifes
 import { Scene } from './scene/Scene';
 import { SceneBlockDataProvider } from './scene/SceneBlockDataProvider';
 import { StaticOpaqueSceneCacheOcclusionFixture } from './scene/StaticOpaqueSceneCacheOcclusionFixture';
+import type { WeatherDebugOptions } from './scene/weather/weatherDebug';
 import type { Block } from './types/Block';
 import type { Stack } from './types/Stack';
 import {
@@ -124,6 +126,8 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     appBaseUrl?: string;
     spriteBaseUrl?: string;
     zoom?: 'far' | 'normal';
+    /** Debug: initial camera zoom in pixels per world unit (overrides `zoom`). */
+    cameraZoom?: number;
     cameraPosition?: [x: number, y: number, z: number];
 
     // Demo purposes only
@@ -136,6 +140,8 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     suppressOpeningHud?: boolean;
     debugHud?: boolean;
     noWeather?: boolean;
+    /** Debug weather switches (style, hidden layers, reduced motion). */
+    weatherDebug?: WeatherDebugOptions;
     noSound?: boolean;
     mockGarden?: boolean;
     mockGardenProfile?: MockGardenProfile;
@@ -294,8 +300,10 @@ function useAdaptiveHighInteractionActivity(enabled: boolean) {
 export function GameScene({
     cameraPosition = defaultGameCameraPosition,
     zoom = 'normal',
+    cameraZoom,
     noControls,
     noWeather,
+    weatherDebug,
     noBackground,
     noSound,
     hideHud,
@@ -482,6 +490,7 @@ export function GameScene({
         [gardenHomeCamera],
     );
     const sceneCameraZoom =
+        cameraZoom ??
         gardenHomeCamera?.zoom ??
         (zoom === 'far' ? farGameCameraZoom : defaultGameCameraZoom);
     const gardenBackgroundPalette = garden?.backgroundPalette;
@@ -633,17 +642,14 @@ export function GameScene({
                             <CosmeticLeafRaking noSound={noSound} />
                             <PackLayoutPreviewScene />
                             {!hideHud ? <HudPlacementDragPreview /> : null}
+                            {!hideHud ? <BlockOptionsScene /> : null}
                             <Environment
-                                cloudShadowUpdateMs={
-                                    adaptiveHighEnabled
-                                        ? adaptiveHighProfile.cloudShadowUpdateMs
-                                        : undefined
-                                }
                                 noBackground={noBackground}
                                 noWeather={weatherDisabled}
                                 noSound={noSound}
                                 quality={qualityProfile}
                                 weather={weather}
+                                weatherDebug={weatherDebug}
                             />
                             {enableStaticOpaqueSceneCacheOcclusionFixture &&
                             staticOpaqueCacheEnabled ? (

@@ -1,8 +1,18 @@
-import * as THREE from 'three';
-import type { PlantDefinition } from './plant-definitions';
+import {
+    buildGeneratedPlantRenderData,
+    generatePlantTopology,
+} from './generatedPlantRenderData';
+import {
+    getGeneratedPlantTemplateSeed,
+    resolveGeneratedPlantTemplateVariant,
+} from './generatedPlantTemplates';
+import {
+    MAX_PLANT_GENERATION,
+    type PlantDefinition,
+} from './plant-definition-types';
 import type { PlantLodSummary } from './plantRenderData';
-import { SeededRNG } from './rng';
-import { resolveVegetableColor } from './vegetableRenderMetadata';
+
+export { getNominalMaturePlantHeight } from './plantNominalHeight';
 
 interface BuildApproximatePlantLodSummaryOptions {
     flowerGrowth: number;
@@ -15,47 +25,29 @@ interface BuildApproximatePlantLodSummaryOptions {
     showProduce?: boolean;
 }
 
-function getLifecycleGrowth(
-    generation: number,
-    start: number,
-    matureAt: number,
-) {
-    if (generation < start) {
-        return 0;
-    }
-    if (matureAt <= start) {
-        return 1;
-    }
-    return THREE.MathUtils.smoothstep(generation, start, matureAt);
-}
+/** Summaries kept per plant definition before the oldest is dropped. */
+export const PLANT_LOD_SUMMARY_CACHE_LIMIT = 256;
 
-export function getNominalMaturePlantHeight(plantDefinition: PlantDefinition) {
-    const { development } = plantDefinition;
-    const isBasal =
-        development.architecture === 'rosette' ||
-        development.architecture === 'clump';
-    const isProstrate = development.axes.habit === 'prostrate';
-    const storageHeight = development.storage
-        ? plantDefinition.vegetable.baseSize *
-          development.storage.sizeScale *
-          Math.max(0.5, development.storage.aboveSoilFraction)
-        : 0;
-    const basalFoliageHeight =
-        plantDefinition.leaf.size *
-        (1.05 + development.foliage.petioleLengthScale * 0.5);
-    const axialFoliageHeight =
-        plantDefinition.height *
-            development.axes.internodeLengthScale *
-            (isProstrate ? 0.18 : 0.98) +
-        plantDefinition.leaf.size;
+const templateLodSummaryCache = new WeakMap<
+    PlantDefinition,
+    Map<string, PlantLodSummary>
+>();
 
-    return Math.max(
-        isBasal ? basalFoliageHeight : axialFoliageHeight,
-        storageHeight,
-        0.16,
-    );
-}
-
+/**
+ * The far and mid summary of a plant in a raised bed: the size, colours and
+ * produce of the 3D plant the near view draws for the same instance seed.
+ *
+ * A bed's near view draws one of a few shared templates per definition and
+ * generation (`resolveGeneratedPlantTemplateVariant`). This builds that
+ * template's organ graph without geometry, which costs a fraction of a
+ * millisecond, and keeps the summary per definition, so a bed of plants of
+ * one age builds it once. The cards then match the 3D plant when the camera
+ * zooms between levels of detail, instead of an estimate from the definition
+ * that missed sprawling and basal crops by up to half their width.
+ *
+ * The instance scale and yaw variation stay with the caller, as in the near
+ * view.
+ */
 export function buildApproximatePlantLodSummary({
     flowerGrowth,
     fruitGrowth,
@@ -66,140 +58,53 @@ export function buildApproximatePlantLodSummary({
     showLeaves = true,
     showProduce = true,
 }: BuildApproximatePlantLodSummaryOptions): PlantLodSummary {
-    const { development } = plantDefinition;
-    const structureGrowth = getLifecycleGrowth(
-        generation,
-        development.phenology.emergenceStart,
-        development.phenology.maturityGeneration,
+    const templateGeneration = Math.min(
+        MAX_PLANT_GENERATION,
+        Math.max(0, generation),
     );
-    const variation = new SeededRNG(`${seed}:lod-summary`);
-    const heightVariation = variation.nextRange(0.94, 1.06);
-    const canopyVariation = variation.nextRange(0.92, 1.08);
-    const stemVariation = variation.nextRange(0.95, 1.05);
-    const hasFoliage =
-        showLeaves &&
-        generation >= development.phenology.emergenceStart &&
-        development.foliage.count > 0 &&
-        plantDefinition.leaf.size > 0.01;
-    const isBasal =
-        development.architecture === 'rosette' ||
-        development.architecture === 'clump';
-    const isProstrate = development.axes.habit === 'prostrate';
-    const matureHeight = getNominalMaturePlantHeight(plantDefinition);
-    const minimumHeight = Math.max(
-        plantDefinition.vegetable.baseSize * 1.2,
-        plantDefinition.leaf.size * (isBasal ? 1.1 : 0.7),
-        0.16,
-    );
-    const height = Math.max(
-        minimumHeight,
-        THREE.MathUtils.lerp(minimumHeight, matureHeight, structureGrowth) *
-            heightVariation,
-    );
-    const stemRadius = Math.max(
-        plantDefinition.stem.minRadius,
-        plantDefinition.stem.radius * structureGrowth,
-    );
-    const stemWidth = Math.max(stemRadius * 4.5 * stemVariation, 0.05);
-    const branchHorizontalReach =
-        plantDefinition.height *
-        development.axes.branchLengthScale *
-        Math.sin(THREE.MathUtils.degToRad(development.axes.branchPitchDegrees));
-    const architectureWidth = isBasal
-        ? plantDefinition.leaf.size *
-          2 *
-          (1 + development.foliage.petioleLengthScale)
-        : isProstrate
-          ? plantDefinition.height *
-                development.axes.internodeLengthScale *
-                1.9 +
-            plantDefinition.leaf.size * 2
-          : (branchHorizontalReach + plantDefinition.leaf.size) * 2;
-    const developedArchitectureWidth = THREE.MathUtils.lerp(
-        plantDefinition.leaf.size * 1.4,
-        architectureWidth,
-        structureGrowth,
-    );
-    const canopyWidth = hasFoliage
-        ? Math.max(
-              developedArchitectureWidth * canopyVariation,
-              plantDefinition.leaf.size * 1.6,
-              0.22,
-          )
-        : Math.max(stemRadius * 5 * canopyVariation, 0.12);
-    const canopyCenterY = hasFoliage
-        ? Math.max(height * (isBasal ? 0.24 : 0.62), 0.08)
-        : Math.max(height * 0.66, 0.16);
-    const reproduction = development.reproduction;
-    const storage = development.storage;
-    const fruitStart = storage?.birthGeneration ?? reproduction.fruitStart;
-    const produceMaturity =
-        fruitStart === undefined
-            ? 0
-            : getLifecycleGrowth(
-                  generation,
-                  fruitStart,
-                  storage?.matureGeneration ?? fruitStart + 2.2,
-              );
-    const produceGrowth = fruitGrowth * produceMaturity;
-    const flowerStageGrowth =
-        flowerGrowth *
-        getLifecycleGrowth(
-            generation,
-            reproduction.flowerStart +
-                ((development.architecture === 'vine' &&
-                    reproduction.flowerStart >= 5.7) ||
-                (development.architecture === 'upright' &&
-                    development.axes.nodeCount <= 5)
-                    ? 0.75
-                    : 0),
-            reproduction.flowerStart + 1.95,
-        );
-    let accentColor: string | undefined;
-    let accentCenterY = Math.max(height * 0.7, 0.12);
+    const variant = resolveGeneratedPlantTemplateVariant(seed);
+    const key = JSON.stringify([
+        templateGeneration,
+        variant,
+        flowerGrowth,
+        fruitGrowth,
+        showFlowers,
+        showLeaves,
+        showProduce,
+    ]);
+    let summaries = templateLodSummaryCache.get(plantDefinition);
+    if (!summaries) {
+        summaries = new Map();
+        templateLodSummaryCache.set(plantDefinition, summaries);
+    }
 
-    if (
-        showProduce &&
-        plantDefinition.vegetable.enabled &&
-        produceGrowth > 0.01
-    ) {
-        accentColor = resolveVegetableColor(
-            plantDefinition.vegetable.type,
-            produceMaturity,
-        );
-        if (storage) {
-            accentCenterY = Math.max(
-                plantDefinition.vegetable.baseSize * storage.aboveSoilFraction,
-                0.06,
-            );
+    let summary = summaries.get(key);
+    if (!summary) {
+        summary = buildGeneratedPlantRenderData({
+            flowerGrowth,
+            fruitGrowth,
+            plantDefinition,
+            renderDetailedGeometry: false,
+            showFlowers,
+            showLeaves,
+            showProduce,
+            topology: generatePlantTopology({
+                generation: templateGeneration,
+                plantDefinition,
+                seed: getGeneratedPlantTemplateSeed({
+                    definition: plantDefinition,
+                    variant,
+                }),
+            }),
+        }).lodSummary;
+        if (summaries.size >= PLANT_LOD_SUMMARY_CACHE_LIMIT) {
+            const oldestKey = summaries.keys().next().value;
+            if (oldestKey !== undefined) {
+                summaries.delete(oldestKey);
+            }
         }
-    } else if (
-        showFlowers &&
-        plantDefinition.flower.enabled &&
-        flowerStageGrowth > 0.01
-    ) {
-        accentColor = plantDefinition.flower.color;
+        summaries.set(key, summary);
     }
 
-    const dominantColor = new THREE.Color(plantDefinition.stem.color);
-    dominantColor.lerp(
-        new THREE.Color(plantDefinition.leaf.color),
-        showLeaves ? 0.68 : 0.2,
-    );
-    if (accentColor) {
-        dominantColor.lerp(new THREE.Color(accentColor), 0.16);
-    }
-
-    return {
-        accentCenterY,
-        accentColor,
-        canopyCenterY,
-        canopyWidth,
-        dominantColor: `#${dominantColor.getHexString()}`,
-        foliageColor: plantDefinition.leaf.color,
-        hasFoliage,
-        height,
-        stemColor: plantDefinition.stem.color,
-        stemWidth,
-    };
+    return { ...summary };
 }

@@ -151,33 +151,65 @@ describe('generated plant shader prewarm', () => {
             );
         }
 
-        const billboard = meshesByVariant.get('billboard');
-        assert.ok(billboard?.geometry.hasAttribute('instanceTint'));
-        assert.ok(billboard?.material instanceof THREE.ShaderMaterial);
-        assert.equal(billboard.material.transparent, true);
-        assert.equal(billboard.material.depthWrite, false);
-
         const midBillboard = meshesByVariant.get('mid-billboard');
         assert.ok(midBillboard);
         assert.ok(midBillboard.geometry.hasAttribute('instanceTint'));
         assert.ok(midBillboard.geometry.hasAttribute('instanceOpacity'));
         assert.ok(midBillboard.geometry.hasAttribute('instanceSwayPhase'));
-        const midBillboardMaterial = midBillboard.material;
-        assert.ok(!Array.isArray(midBillboardMaterial));
-        assert.equal(midBillboardMaterial.type, 'MeshLambertMaterial');
+        assert.ok(midBillboard.geometry.hasAttribute('instanceAccent'));
+        const midBillboardMaterials = midBillboard.material;
+        assert.ok(Array.isArray(midBillboardMaterials));
         assert.equal(midBillboard.geometry.index?.count, 6);
-        assert.equal(midBillboardMaterial.transparent, true);
-        assert.equal(midBillboardMaterial.depthWrite, false);
-        assert.equal(midBillboardMaterial.side, THREE.FrontSide);
+        // Plant cards draw twice over the same triangles: an opaque inside
+        // that writes depth, so neighbouring plants overlap correctly
+        // whatever order their instances are drawn in, and a blended soft
+        // edge that writes no depth, so it never cuts into a plant behind.
+        assert.deepEqual(
+            midBillboard.geometry.groups.map(
+                ({ count, materialIndex, start }) => [
+                    start,
+                    count,
+                    materialIndex,
+                ],
+            ),
+            [
+                [0, 6, 0],
+                [0, 6, 1],
+            ],
+        );
+        assert.deepEqual(
+            midBillboardMaterials.map((material) => [
+                material.type,
+                material.transparent,
+                material.depthWrite,
+                material.side,
+            ]),
+            [
+                ['MeshLambertMaterial', false, true, THREE.FrontSide],
+                ['MeshLambertMaterial', true, false, THREE.FrontSide],
+            ],
+        );
+
+        // Distant clumps and standalone cards share the mid card programs
+        // pass by pass; only uniforms differ.
+        const getProgramKeys = (mesh: THREE.Mesh | undefined) =>
+            (Array.isArray(mesh?.material) ? mesh.material : []).map(
+                (material) => material.customProgramCacheKey(),
+            );
+        const billboard = meshesByVariant.get('billboard');
+        assert.ok(billboard?.geometry.hasAttribute('instanceTint'));
+        assert.deepEqual(
+            getProgramKeys(billboard),
+            getProgramKeys(midBillboard),
+        );
 
         const singleMidBillboard = meshesByVariant.get('mid-billboard-single');
         assert.ok(singleMidBillboard);
         assert.equal(singleMidBillboard instanceof THREE.InstancedMesh, false);
-        assert.notEqual(singleMidBillboard.material, midBillboardMaterial);
-        assert.ok(!Array.isArray(singleMidBillboard.material));
-        assert.equal(
-            singleMidBillboard.material.customProgramCacheKey(),
-            midBillboardMaterial.customProgramCacheKey(),
+        assert.notEqual(singleMidBillboard.material, midBillboardMaterials);
+        assert.deepEqual(
+            getProgramKeys(singleMidBillboard),
+            getProgramKeys(midBillboard),
         );
 
         const customShaderMaterials = meshes.flatMap((mesh) => {

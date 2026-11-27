@@ -1,5 +1,8 @@
 import type { BlockData } from '@gredice/client';
-import { getGardenBlockFootprintOffsets } from '@gredice/js/gardenBlocks';
+import {
+    getEffectiveGardenStackBlockHeight,
+    getGardenBlockFootprintOffsets,
+} from '@gredice/js/gardenBlocks';
 import type { EntityBlockInstance } from '../entities/EntityInstancesBlock';
 import { getWaterBlockDepthAtLocalPosition } from '../entities/waterBlockDepth';
 import {
@@ -10,6 +13,7 @@ import { getWaterBlockVerticalRange } from '../entities/waterBlockHeight';
 import { isWaterBlockName, waterBlockNames } from '../entities/waterBlockNames';
 import { autumnSeed } from '../scene/autumnState';
 import type { GameQualityProfileTier } from '../scene/gameQuality';
+import { rainSplashLook } from '../scene/Rain/rainParticles';
 import type { Stack } from '../types/Stack';
 
 // These flat assets all render a top 0.4 above their stack base, despite
@@ -192,4 +196,120 @@ export function rainRipplesEnabled({
         snow < 0.01 &&
         rainRippleCaps[tier] > 0
     );
+}
+
+/*
+ * Party-style splash rings (GAME_ART.md "Weather > Rain and heavy rain"):
+ * light rings with a blue edge where drops land on ground or bed soil, never
+ * on props. The rings are placed in the vertex shader from a list of
+ * landing cells, so they land on grass too, where no per-block ripple ever
+ * mounted. Water keeps its per-block ripples above.
+ */
+
+/** Flat terrain tops a drop can splash on (no slopes, water or snow). */
+export const rainSplashTerrainNames: readonly string[] = [
+    'Block_Grass',
+    'Block_Ground',
+    'Block_Dry_Ground',
+    'Block_Sand',
+    'Block_Gravel',
+    'Block_Swamp_Ground',
+    'Block_Polished_Stone',
+    'Block_Stone',
+];
+
+/** Flat terrain tops render this far above their stack base. */
+export const rainTerrainTopOffset = 0.4;
+
+export const rainSplashCellRules = {
+    /**
+     * Rings land within this distance of a terrain cell's centre, so a full
+     * ring (radius 0.12) stays 0.03 inside its own tile: never over the
+     * island edge or onto a neighbouring tile where something stands.
+     */
+    terrainHalfExtent: 0.5 - rainSplashLook.radius - 0.03,
+    /** Bed soil sits this far above the terrain top, inside the planks. */
+    bedSoilHeight: 0.25,
+    /** A full ring on bed soil reaches 0.42 from the centre, inside the planks. */
+    bedHalfExtent: 0.3,
+} as const;
+
+export type RainSplashCell = {
+    x: number;
+    y: number;
+    z: number;
+    /** Rings land within ± this of the centre in x and z. */
+    halfExtent: number;
+    kind: 'ground' | 'bed';
+};
+
+function isRaisedBedBlockName(name: string) {
+    return name.startsWith('Raised_Bed');
+}
+
+function blockHeightLookup(blockData: readonly BlockData[]) {
+    const heights = new Map<string, number>();
+    for (const block of blockData) {
+        heights.set(
+            block.information.name,
+            Math.max(0, block.attributes.height ?? 0),
+        );
+    }
+    return (name: string) => heights.get(name) ?? 0;
+}
+
+/**
+ * Landing cells for splash rings: every exposed flat terrain top and the
+ * soil of every raised bed; a cell where anything else stands (a plant,
+ * animal home or item) gets none. Recompute when the stacks change.
+ */
+export function createRainSplashCells(
+    stacks: readonly Stack[],
+    blockData: readonly BlockData[],
+): RainSplashCell[] {
+    const heightOf = blockHeightLookup(blockData);
+    const cells: RainSplashCell[] = [];
+    for (const stack of stacks) {
+        const { x, z } = stack.position;
+        const blocks = stack.blocks;
+        const top = blocks[blocks.length - 1];
+        if (!top) continue;
+        let height = stack.position.y;
+        for (const [index, block] of blocks.entries()) {
+            if (index === blocks.length - 1) break;
+            height += getEffectiveGardenStackBlockHeight({
+                blockHeight: heightOf(block.name),
+                blockName: block.name,
+                supportBlockName: blocks[index - 1]?.name,
+            });
+        }
+        if (rainSplashTerrainNames.includes(top.name)) {
+            cells.push({
+                x,
+                y: height + rainTerrainTopOffset,
+                z,
+                halfExtent: rainSplashCellRules.terrainHalfExtent,
+                kind: 'ground',
+            });
+            continue;
+        }
+        const support = blocks[blocks.length - 2];
+        if (
+            isRaisedBedBlockName(top.name) &&
+            support &&
+            rainSplashTerrainNames.includes(support.name)
+        ) {
+            // `height` is the bed's base: the top of the terrain below it.
+            const terrainTop =
+                height - heightOf(support.name) + rainTerrainTopOffset;
+            cells.push({
+                x,
+                y: terrainTop + rainSplashCellRules.bedSoilHeight,
+                z,
+                halfExtent: rainSplashCellRules.bedHalfExtent,
+                kind: 'bed',
+            });
+        }
+    }
+    return cells;
 }

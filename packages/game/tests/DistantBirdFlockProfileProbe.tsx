@@ -25,6 +25,11 @@ export function DistantBirdFlockProfileProbe({
         );
     }, [enabled, requestRender]);
     useSceneAfterFrame(() => {
+        const state = sample.current;
+        if (state.frames >= 30) return;
+        // A frozen scene with settled weather holds no render lease, so the
+        // probe asks for each frame it samples itself.
+        requestRender('test:flock-profile-sample');
         const metadata = readGameProfileMetadata();
         if (
             !metadata?.autumnLeafCount ||
@@ -35,8 +40,6 @@ export function DistantBirdFlockProfileProbe({
         const mesh = scene.getObjectByName('Environment:DistantBirdFlocks');
         if (enabled && (!(mesh instanceof InstancedMesh) || mesh.count !== 5))
             return;
-        const state = sample.current;
-        if (state.frames >= 30) return;
         if (state.frames >= 10) {
             state.calls += gl.info.render.calls;
             state.triangles += gl.info.render.triangles;

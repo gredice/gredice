@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { CatmullRomCurve3, Vector3 } from 'three';
 import { useAdventCalendar } from '../hooks/useAdventCalendar';
 import { animated } from '../scene/sceneSpring';
+import { seasonalEmissive, seasonalRoles } from '../scene/seasonalRoles';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
@@ -17,27 +18,31 @@ const MAX_BALL_DECORATIONS = 128;
 /** Maximum number of string lights on the tree */
 const MAX_STRING_LIGHTS = 32;
 
-/** Festive decoration colors for balls */
-const DECORATION_COLORS = [
-    '#e63946', // red
-    '#f4a261', // orange/gold
-    '#2a9d8f', // teal
-    '#e9c46a', // yellow/gold
-    '#264653', // dark blue
-    '#9b2226', // dark red
-    '#bb3e03', // burnt orange
-    '#005f73', // deep teal
+/**
+ * Ornament roles from "Seasonal roles" in GAME_ART.md: holiday red dominant,
+ * holiday gold second and enamel blue as the small cool accent.
+ */
+const DECORATION_ROLES = [
+    seasonalRoles.holidayRed,
+    seasonalRoles.holidayGold,
+    seasonalRoles.enamelBlue,
+    seasonalRoles.holidayRed,
+    seasonalRoles.holidayGold,
 ];
+const DECORATION_COLORS = DECORATION_ROLES.map((role) => role.albedo);
+const DECORATION_ROUGHNESS = seasonalRoles.holidayRed.roughness;
 
-/** String light colors (warm festive lights) */
-const STRING_LIGHT_COLORS = [
-    '#ffcc00', // warm yellow
-    '#ff6b35', // orange
-    '#ff4444', // red
-    '#44ff88', // green
-    '#4488ff', // blue
-    '#ff44aa', // pink
-];
+/** Fairy lights use the warm lamp role: its day colour, glowing warm. */
+const STRING_LIGHT_COLOR = seasonalRoles.lampWarm.albedo;
+const STRING_LIGHT_EMISSIVE = seasonalEmissive.lampWarm;
+const STRING_LIGHT_EMISSIVE_INTENSITY = 1.4;
+/**
+ * Bulb radius in the tree group's units: 0.036 m across after the group's
+ * 0.09 scale, so each light stays above GAME_ART's 0.03 m minimum.
+ */
+const STRING_LIGHT_RADIUS = 0.2;
+/** The light wire reads as an evergreen garland; a line is unlit. */
+const STRING_LIGHT_WIRE_COLOR = seasonalRoles.evergreen.screen;
 
 type DecorationPosition = {
     x: number;
@@ -50,15 +55,14 @@ type StringLightPosition = {
     x: number;
     y: number;
     z: number;
-    color: string;
 };
 
 /** Tree base Y position where decorations start */
-const TREE_BASE_Y = 0.15;
+const TREE_BASE_Y = 0.02;
 /** Tree top Y position where decorations end */
-const TREE_TOP_Y = 2.3;
+const TREE_TOP_Y = 1.45;
 /** Default radius when decoration falls outside defined tiers */
-const DEFAULT_RADIUS = 4;
+const DEFAULT_RADIUS = 3.5;
 /** Golden angle multiplier for spiral distribution */
 const SPIRAL_MULTIPLIER = 7.16;
 /** Base variation factor for natural look */
@@ -70,11 +74,15 @@ const VARIATION_MODULO = 10;
 /** Variation seed multiplier */
 const VARIATION_SEED = 7;
 
-/** Tree tier definitions for decoration placement */
+/**
+ * Tree tier definitions for decoration placement, matching the visible part
+ * of each tier in Pine.glb (PINE_TIERS in assets/scripts/party-pass-nature.py).
+ * A decoration at `y` sits `y + 0.4` above the ground.
+ */
 const TREE_TIERS = [
-    { bottomY: 0, topY: 0.7, baseRadius: 6.2, topRadius: 4.2 }, // bottom tier
-    { bottomY: 0.55, topY: 1.2, baseRadius: 5.8, topRadius: 2.8 }, // middle tier
-    { bottomY: 1.2, topY: 2.7, baseRadius: 3.5, topRadius: 0 }, // top tier
+    { bottomY: -0.05, topY: 0.41, baseRadius: 5.8, topRadius: 3.1 }, // bottom tier
+    { bottomY: 0.41, topY: 0.85, baseRadius: 4.7, topRadius: 2.5 }, // middle tier
+    { bottomY: 0.85, topY: 1.68, baseRadius: 3.6, topRadius: 0 }, // top tier
 ];
 
 /**
@@ -170,9 +178,7 @@ function generateStringLightPositions(count: number): StringLightPosition[] {
         const x = Math.cos(angle) * radius * variation;
         const z = Math.sin(angle) * radius * variation;
 
-        const color = STRING_LIGHT_COLORS[i % STRING_LIGHT_COLORS.length];
-
-        positions.push({ x, y, z, color });
+        positions.push({ x, y, z });
     }
 
     return positions;
@@ -183,28 +189,28 @@ function Decoration({ x, y, z, color }: DecorationPosition) {
     // We need to scale Y by 0.09 to make the sphere appear round
     return (
         <mesh position={[x, y - 0.6, z]} scale={[1, 0.09, 1]} castShadow>
-            <sphereGeometry args={[0.4, 8, 8]} />
+            <sphereGeometry args={[0.4, 10, 8]} />
             <meshStandardMaterial
                 color={color}
-                roughness={0.2}
-                metalness={0.7}
+                roughness={DECORATION_ROUGHNESS}
+                metalness={0}
             />
         </mesh>
     );
 }
 
-function StringLight({ x, y, z, color }: StringLightPosition) {
+function StringLight({ x, y, z }: StringLightPosition) {
     // String lights are smaller than ball decorations and glow
     // Counter-scale Y to compensate for parent's non-uniform scale
     return (
         <mesh position={[x, y - 0.6, z]} scale={[1, 0.09, 1]}>
-            <sphereGeometry args={[0.1, 5, 5]} />
+            <sphereGeometry args={[STRING_LIGHT_RADIUS, 8, 6]} />
             <meshStandardMaterial
-                color={color}
-                emissive={color}
-                emissiveIntensity={2}
-                roughness={0.3}
-                metalness={0.1}
+                color={STRING_LIGHT_COLOR}
+                emissive={STRING_LIGHT_EMISSIVE}
+                emissiveIntensity={STRING_LIGHT_EMISSIVE_INTENSITY}
+                roughness={seasonalRoles.lampWarm.roughness}
+                metalness={0}
             />
         </mesh>
     );
@@ -240,14 +246,20 @@ function StringLightWire({ positions }: { positions: StringLightPosition[] }) {
         return null;
     }
 
-    return <Line points={curvePoints} color="#1a4a1a" lineWidth={0.7} />;
+    return (
+        <Line
+            points={curvePoints}
+            color={STRING_LIGHT_WIRE_COLOR}
+            lineWidth={0.7}
+        />
+    );
 }
 
 /** Light positions for each tree tier - placed on surface for better illumination */
 const TIER_LIGHT_POSITIONS = [
-    { y: 0.35, radius: 5.2 }, // bottom tier
-    { y: 0.85, radius: 4.3 }, // middle tier
-    { y: 1.7, radius: 2.0 }, // top tier
+    { y: -0.12, radius: 4.2 }, // bottom tier
+    { y: 0.33, radius: 3.4 }, // middle tier
+    { y: 0.8, radius: 2.2 }, // top tier
 ];
 
 /** Number of lights per tier (placed around the circumference) */
@@ -266,8 +278,8 @@ function TierLights({ lightCount, maxLights }: TierLightsProps) {
         return null;
     }
 
-    // Warm yellowish light color to simulate string lights glow
-    const lightColor = '#ffcc66';
+    // The fairy lights' warm lamp glow
+    const lightColor = STRING_LIGHT_EMISSIVE;
 
     return (
         <>

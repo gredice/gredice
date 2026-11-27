@@ -9,6 +9,7 @@ import {
     GardenPackNotFoundError,
     type GardenPlacementTransaction,
     getGardenPlacementSnapshotForUpdate,
+    getLegacyGardenBlockPaidSunflowers,
     isPurchasedGardenPackBlock,
     listGardenRaisedBedMetadataForUpdate,
     recycleGardenPackUnitForAccount,
@@ -22,6 +23,10 @@ import {
 } from '@gredice/storage';
 import { z } from 'zod';
 import { getBlockData } from '../blocks/blockDataService';
+import {
+    capLegacyGardenBlockRecycleRefund,
+    isLegacyGardenBlockRecycleRefund,
+} from './gardenBlockRecycleRefund';
 import {
     type GardenStacksPatchDirectoryBlock,
     type GardenStacksPatchOperation,
@@ -104,6 +109,15 @@ export type GardenStacksPatchServiceDependencies<Transaction> = Readonly<{
         gardenId: number,
         transaction: Transaction,
     ) => Promise<GardenStacksPatchSnapshot | null>;
+    /** Exact paid price of a legacy block from its purchase records, or null. */
+    getLegacyGardenBlockPaidSunflowers: (
+        input: Readonly<{
+            accountId: string;
+            blockId: string;
+            gardenId: number;
+        }>,
+        transaction: Transaction,
+    ) => Promise<number | null>;
     listGardenRaisedBedMetadataForUpdate: (
         gardenId: number,
         transaction: Transaction,
@@ -390,6 +404,41 @@ export function createGardenStacksPatchService<Transaction>(
                                                 planned.error,
                                             );
                                         }
+                                        const plannedRecycle =
+                                            planned.plan.recycle;
+                                        let refundSunflowers =
+                                            plannedRecycle?.refundSunflowers ??
+                                            0;
+                                        if (plannedRecycle) {
+                                            const plannedRefund = {
+                                                basis: plannedRecycle.refundBasis,
+                                                sunflowers: refundSunflowers,
+                                            };
+                                            if (
+                                                isLegacyGardenBlockRecycleRefund(
+                                                    plannedRefund,
+                                                )
+                                            ) {
+                                                // Legacy block: never refund more than its recorded purchase.
+                                                const recoveredPaidSunflowers =
+                                                    await dependencies.getLegacyGardenBlockPaidSunflowers(
+                                                        {
+                                                            accountId:
+                                                                command.accountId,
+                                                            blockId:
+                                                                plannedRecycle.blockId,
+                                                            gardenId:
+                                                                command.gardenId,
+                                                        },
+                                                        gardenTransaction,
+                                                    );
+                                                refundSunflowers =
+                                                    capLegacyGardenBlockRecycleRefund(
+                                                        plannedRefund,
+                                                        recoveredPaidSunflowers,
+                                                    ).sunflowers;
+                                            }
+                                        }
 
                                         for (const delta of planned.plan
                                             .stackDeltas) {
@@ -457,11 +506,11 @@ export function createGardenStacksPatchService<Transaction>(
                                             }
                                             if (
                                                 !snapshot.garden.isSandbox &&
-                                                recycle.refundSunflowers > 0
+                                                refundSunflowers > 0
                                             ) {
                                                 await dependencies.earnSunflowersOnce(
                                                     command.accountId,
-                                                    recycle.refundSunflowers,
+                                                    refundSunflowers,
                                                     `gardenBlock:${command.gardenId.toString()}:recycle:${recycle.blockId}`,
                                                     gardenTransaction,
                                                 );
@@ -483,8 +532,7 @@ export function createGardenStacksPatchService<Transaction>(
                                                 refundedSunflowers: snapshot
                                                     .garden.isSandbox
                                                     ? 0
-                                                    : (recycle?.refundSunflowers ??
-                                                      0),
+                                                    : refundSunflowers,
                                             } as const,
                                         };
                                     },
@@ -519,6 +567,7 @@ const defaultDependencies: GardenStacksPatchServiceDependencies<GardenPlacementT
         earnSunflowersOnce,
         getBlockData,
         getGardenPlacementSnapshotForUpdate,
+        getLegacyGardenBlockPaidSunflowers,
         listGardenRaisedBedMetadataForUpdate,
         planGardenStacksPatch,
         softDeleteGardenBlockOnce,

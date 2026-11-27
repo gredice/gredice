@@ -29,6 +29,10 @@ const STAR_FIELD = {
     // Probability falloff applied near the edge of the forward hemisphere so
     // the count fades out smoothly instead of cutting off.
     edgeFadeStart: 0.15,
+    // The overview gathers the cap toward the view, so about 28 stars show
+    // on a clear 1280 × 800 night (GAME_ART.md "Weather > Clear"); the
+    // whole cap put only about 11 on screen.
+    overviewSpread: 0.62,
 };
 
 const STAR_BRIGHTNESS = {
@@ -48,9 +52,10 @@ const STAR_TWINKLE = {
     speedBase: 0.7,
     speedRange: 2.4,
     offsetRange: Math.PI * 2,
-    opacityBase: 0.16,
-    // Keep cloudy-sky stars subtle while making a fully clear sky readable.
-    opacityVisibilityFactor: 0.4,
+    opacityBase: 0.2,
+    // Keep cloudy-sky stars subtle while making a fully clear sky readable
+    // (0.85 at full visibility).
+    opacityVisibilityFactor: 0.65,
     intensityBase: 0.15,
     intensityRange: 0.45,
 };
@@ -64,7 +69,8 @@ const STAR_RENDERING = {
     renderOrder: -1,
     positionStride: 3,
     // CSS-pixel target; the shader receives the drawing-buffer pixel size.
-    pointSize: 1.8,
+    // Small but readable: 2 to 3 px stars like the target's.
+    pointSize: 2.8,
 };
 
 type StarsProps = {
@@ -140,8 +146,8 @@ export function Stars({ visibility = 1 }: StarsProps) {
             return {
                 baseColor,
                 brightness,
-                x: direction.x * radius,
-                y: direction.y * radius,
+                x: direction.x * radius * STAR_FIELD.overviewSpread,
+                y: direction.y * radius * STAR_FIELD.overviewSpread,
                 z: direction.z * radius,
                 twinkleColor: {
                     r:

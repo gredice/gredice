@@ -6,6 +6,14 @@ import {
     Vector3,
 } from 'three';
 import { createAutumnLeafGeometry } from './autumnLeafGeometry';
+import { seasonalRoles } from './seasonalRoles';
+
+// Settled leaves in three of the canopy roles (GAME_ART "Seasonal roles").
+const settledLeafColors = [
+    seasonalRoles.autumnGold.albedo,
+    seasonalRoles.autumnOrange.albedo,
+    seasonalRoles.autumnRed.albedo,
+];
 
 export function createAutumnLeafClusterGeometry(
     gradientX: number,
@@ -14,7 +22,7 @@ export function createAutumnLeafClusterGeometry(
 ) {
     const positions: number[] = [];
     const colors: number[] = [];
-    for (const [index, hex] of ['#c39635', '#b96634', '#845237'].entries()) {
+    for (const [index, hex] of settledLeafColors.entries()) {
         const source = createAutumnLeafGeometry();
         const leaf = source.toNonIndexed();
         source.dispose();

@@ -35,7 +35,9 @@ test('shared frozen wind is repeatable, keeps targets fixed and adds no draws to
     });
     const fixture = await mount(<AutumnPropWindFixture />);
     await expect.poll(async () => (await sample(fixture)).bound).toBe(5);
-    await expect.poll(async () => (await sample(fixture)).strength).toBe(1);
+    // One wind scale (GAME_ART.md "Weather > Wind"): sway follows the wind
+    // class, so the fixture's class 3 of 4 sways at 0.75.
+    await expect.poll(async () => (await sample(fixture)).strength).toBe(0.75);
     await expect
         .poll(async () => (await sample(fixture)).renderSubmitSamples)
         .toBe(40);
@@ -98,8 +100,9 @@ test('quality, reduced motion, weather disablement, snow and strong wind remain 
     await expect.poll(async () => (await sample(fixture)).strength).toBe(0);
     await fixture.update(<AutumnPropWindFixture wind={100} />);
     await expect.poll(async () => (await sample(fixture)).strength).toBe(1);
+    // Reduced motion keeps 30% of the sway (GAME_ART.md "Reduced motion").
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await expect.poll(async () => (await sample(fixture)).strength).toBe(0);
+    await expect.poll(async () => (await sample(fixture)).strength).toBe(0.3);
     await page.emulateMedia({ reducedMotion: 'no-preference' });
     await expect.poll(async () => (await sample(fixture)).strength).toBe(1);
     await fixture.update(<AutumnPropWindFixture disabled />);
@@ -121,13 +124,18 @@ test('rain follows sway at rotated placements and unmount disposes owned resourc
     const fixture = await mount(
         <AutumnPropWindFixture rain={1} rotation={1} />,
     );
-    await expect.poll(async () => (await sample(fixture)).overlays).toBe(5);
-    await expect.poll(async () => (await sample(fixture)).strength).toBe(1);
+    await expect
+        .poll(async () => (await sample(fixture)).bound)
+        .toBeGreaterThan(0);
+    await expect.poll(async () => (await sample(fixture)).strength).toBe(0.75);
     await expect
         .poll(async () => (await sample(fixture)).renderSubmitSamples)
         .toBe(40);
     const initial = await sample(fixture);
     expect(initial.mismatched).toBe(0);
+    // Rain draws no per-prop wet overlay copies any more: the wet look
+    // lives in the garden materials (GAME_ART.md "Weather > Rain").
+    expect(initial.overlays).toBe(0);
     await testInfo.attach('rain-wind.png', {
         body: await page
             .locator('canvas')
@@ -136,9 +144,12 @@ test('rain follows sway at rotated placements and unmount disposes owned resourc
     });
     await page.getByRole('button', { name: 'Toggle props' }).click();
     await expect.poll(async () => (await sample(fixture)).bound).toBe(0);
-    expect((await sample(fixture)).disposed).toBeGreaterThanOrEqual(10);
+    // The five sway materials; rain adds no wet overlay copies to dispose.
+    expect((await sample(fixture)).disposed).toBeGreaterThanOrEqual(5);
     await page.getByRole('button', { name: 'Toggle props' }).click();
-    await expect.poll(async () => (await sample(fixture)).overlays).toBe(5);
+    await expect
+        .poll(async () => (await sample(fixture)).bound)
+        .toBe(initial.bound);
     expect((await sample(fixture)).geometries).toBe(initial.geometries);
 });
 
@@ -147,7 +158,7 @@ test('live sway releases its scene owner when hidden and after props unmount', a
     page,
 }) => {
     const fixture = await mount(<AutumnPropWindFixture live />);
-    await expect.poll(async () => (await sample(fixture)).strength).toBe(1);
+    await expect.poll(async () => (await sample(fixture)).strength).toBe(0.75);
     const owners = () =>
         page.evaluate(() => {
             const profile = Reflect.get(window, '__grediceGameProfile');
@@ -172,7 +183,7 @@ test('live sway releases its scene owner when hidden and after props unmount', a
         Reflect.deleteProperty(document, 'visibilityState');
         document.dispatchEvent(new Event('visibilitychange'));
     });
-    await expect.poll(async () => (await sample(fixture)).strength).toBe(1);
+    await expect.poll(async () => (await sample(fixture)).strength).toBe(0.75);
     await page.getByRole('button', { name: 'Toggle props' }).click();
     await expect.poll(async () => (await sample(fixture)).bound).toBe(0);
     await expect.poll(owners).not.toContain('autumn-prop-wind');
@@ -189,7 +200,9 @@ test('frozen calendar dates preserve the seeded prop pose', async ({
     const { targets, phases } = await sample(fixture);
     for (const date of ['2026-10-22', '2026-11-21', '2027-01-02']) {
         await fixture.update(<AutumnPropWindFixture date={date} />);
-        await expect.poll(async () => (await sample(fixture)).strength).toBe(1);
+        await expect
+            .poll(async () => (await sample(fixture)).strength)
+            .toBe(0.75);
         await expect.poll(async () => (await sample(fixture)).date).toBe(date);
         expect((await sample(fixture)).phases).toEqual(phases);
         expect((await sample(fixture)).time).toBe(12);

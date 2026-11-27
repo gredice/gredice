@@ -61,11 +61,16 @@ type GardenPurchaseLocation = Readonly<{
 
 export type PurchaseGardenBlockDependencies<Transaction> = Readonly<{
     bustScheduleCache: () => Promise<void>;
+    /**
+     * Insert the block recording `paidSunflowers`, the Sunflowers debited
+     * for it (0 in a sandbox garden); recycling refunds exactly that.
+     */
     createGardenBlock: (
         gardenId: number,
         blockName: string,
         variant: number | null,
         transaction: Transaction,
+        paidSunflowers: number,
     ) => Promise<string>;
     createGardenStack: (
         gardenId: number,
@@ -677,12 +682,17 @@ export function createPurchaseGardenBlockService<Transaction>(
                                                         operationTransaction,
                                                     );
                                                 }
+                                                const paidSunflowers = snapshot
+                                                    .garden.isSandbox
+                                                    ? 0
+                                                    : cost;
                                                 const createdBlockId =
                                                     await dependencies.createGardenBlock(
                                                         command.gardenId,
                                                         command.blockName,
                                                         variant,
                                                         operationTransaction,
+                                                        paidSunflowers,
                                                     );
                                                 await dependencies.updateGardenStack(
                                                     command.gardenId,
@@ -722,7 +732,7 @@ export function createPurchaseGardenBlockService<Transaction>(
                                                 ) {
                                                     await dependencies.debitSunflowers(
                                                         command.accountId,
-                                                        cost,
+                                                        paidSunflowers,
                                                         `gardenBlock:${command.gardenId.toString()}:purchase:${command.operationId}`,
                                                         operationTransaction,
                                                     );
@@ -803,8 +813,16 @@ const defaultDependencies: PurchaseGardenBlockDependencies<GardenPlacementTransa
     {
         bustScheduleCache,
         createAppearanceVariant: createEntityAppearanceVariantForPlacement,
-        createGardenBlock: (gardenId, blockName, variant, transaction) =>
-            createGardenBlock(gardenId, blockName, variant, transaction),
+        createGardenBlock: (
+            gardenId,
+            blockName,
+            variant,
+            transaction,
+            paidSunflowers,
+        ) =>
+            createGardenBlock(gardenId, blockName, variant, transaction, {
+                paidSunflowers,
+            }),
         createGardenStack,
         createRaisedBedInTransaction: (input, transaction) =>
             createRaisedBedInTransaction(input, transaction),

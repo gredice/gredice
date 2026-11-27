@@ -18,6 +18,10 @@ import {
 } from 'three';
 import { useHoveredBlockStore } from '../src/controls/useHoveredBlockStore';
 import { useEntityBlockInstances } from '../src/entities/EntityInstancesBlock';
+import {
+    bounceMotions,
+    bouncePoseTransform,
+} from '../src/entities/helpers/bounceMotion';
 import { readPlacementAnimationProfileMetrics } from '../src/entities/placementAnimationProfileMetrics';
 import type { GLTFResult } from '../src/models/GameAssets';
 import { readChunkCompilerMetrics } from '../src/scene/compiler/chunkCompilerMetrics';
@@ -37,6 +41,23 @@ import type {
     GardenPaletteFrameInputReceipt,
     GardenPaletteFrameInputSnapshot,
 } from './gardenPaletteFrameInput';
+
+/**
+ * The placement bounce moves the drop group with one scene spring per
+ * transform value; its height is the `positionY` spring. The drop starts
+ * lifted and stretched about the block's ground point (its stack height).
+ */
+const placementDropSpringKey = 'positionY';
+function placementDropStartOffsetY(instance?: {
+    position: readonly number[];
+    stackHeight: number;
+}) {
+    if (!instance) return null;
+    return bouncePoseTransform(
+        [bounceMotions.drop.lift, bounceMotions.drop.stretch],
+        [0, instance.stackHeight - (instance.position[1] ?? 0), 0],
+    ).positionY;
+}
 
 type DropNativeDraw = {
     geometry: string;
@@ -249,7 +270,7 @@ export function GardenPaletteInteractionProbe({
             const result = original.call(this, deltaMs);
             const after: unknown = this.get();
             if (
-                this.key === 'dropOffsetY' &&
+                this.key === placementDropSpringKey &&
                 typeof before === 'number' &&
                 typeof after === 'number'
             ) {
@@ -277,7 +298,7 @@ export function GardenPaletteInteractionProbe({
     useLayoutEffect(() => {
         const original = runtime.startAnimation;
         const observed: typeof original = (animation) => {
-            if ('key' in animation && animation.key === 'dropOffsetY')
+            if ('key' in animation && animation.key === placementDropSpringKey)
                 springStarted.current = true;
             original(animation);
         };
@@ -393,19 +414,9 @@ export function GardenPaletteInteractionProbe({
                 elapsedTime: clock.elapsedTime,
                 delta: lastDelta.current,
             };
-            let rainOverlayCount = 0;
-            scene.traverse((object) => {
-                if (!(object instanceof Mesh) || !object.visible) return;
-                for (const material of Array.isArray(object.material)
-                    ? object.material
-                    : [object.material])
-                    if (
-                        material instanceof ShaderMaterial &&
-                        'uWetness' in material.uniforms
-                    )
-                        rainOverlayCount++;
-            });
-            if (rainOverlayCount === 2 && rainNativeDraws.current.size === 2) {
+            // Rain draws no wet overlay copy since 2026-11-25, so weather
+            // frames count while the rain surface target is on.
+            if (store.getState().rainSurfaceIntensity > 0) {
                 const evolution = weatherEvolution.current;
                 evolution.frames++;
                 evolution.deltaSeconds += lastDelta.current;
@@ -430,7 +441,8 @@ export function GardenPaletteInteractionProbe({
             const value = snapshot();
             if (
                 value.dropOffsetY !== null &&
-                value.dropOffsetY < 0.1 &&
+                value.dropStartOffsetY !== null &&
+                value.dropOffsetY < value.dropStartOffsetY &&
                 value.dropOffsetY > 0
             )
                 activeDrop.current = {
@@ -440,7 +452,7 @@ export function GardenPaletteInteractionProbe({
                     frameInputReceipt:
                         window.gardenPaletteFrameInput?.activeReceipt(runtime),
                 };
-        }, [clock, phase, snapshot, gl, scene, runtime]),
+        }, [clock, phase, snapshot, gl, store, runtime]),
     );
     useLayoutEffect(() => {
         const witness = {
@@ -624,6 +636,11 @@ function readInteractionSnapshot({
             originalGeometries.has(mesh.geometry),
         ).length,
         dropOffsetY: drop?.position.y ?? null,
+        dropStartOffsetY: placementDropStartOffsetY(
+            instances?.find(
+                (instance) => instance.block.id === 'palette-picked-tree',
+            ),
+        ),
         dropAnimation:
             state.blockPlacementDropAnimations['palette-picked-tree'],
         treePositions: instances?.map((instance) => ({

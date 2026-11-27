@@ -7,6 +7,12 @@ import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
+import {
+    animalHomeDoorwayColor,
+    animalHomeDoorwayRoughness,
+    animalHomeRoofColor,
+    animalHomeRoofRoughness,
+} from './animalHomePalette';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 import { WaterSurfaceMaterial } from './helpers/WaterSurfaceMaterial';
 import { dogHouseWoodColors } from './woodPalette';
@@ -19,45 +25,45 @@ type DogHouseNode = GLTFResult['nodes'][DogHouseNodeName];
 
 const dogHouseScale = 0.72;
 
+// Wood keeps the doghouse palette in woodPalette.ts and sits in the satin
+// band of GAME_ART.md.
+const woodRoughness = 0.55;
+
 const wallMaterial = {
     color: dogHouseWoodColors.wall,
     metalness: 0,
-    roughness: 0.9,
+    roughness: woodRoughness,
     side: DoubleSide,
 };
 
-const darkWallMaterial = {
-    color: dogHouseWoodColors.darkWall,
-    metalness: 0,
-    roughness: 0.92,
-    side: DoubleSide,
-};
-
+// The roof red every animal home shares with the bird house.
 const roofMaterial = {
-    color: dogHouseWoodColors.roof,
+    color: animalHomeRoofColor,
     metalness: 0,
-    roughness: 0.82,
+    roughness: animalHomeRoofRoughness,
     side: DoubleSide,
 };
 
 const trimMaterial = {
     color: dogHouseWoodColors.trim,
     metalness: 0,
-    roughness: 0.78,
+    roughness: woodRoughness,
     side: DoubleSide,
 };
 
+// The doorway and the round back vent show the shadowed interior, like the
+// other home doorways.
 const doorMaterial = {
-    color: '#14100d',
+    color: animalHomeDoorwayColor,
     metalness: 0,
-    roughness: 0.96,
+    roughness: animalHomeDoorwayRoughness,
     side: DoubleSide,
 };
 
 const bowlMaterial = {
     color: '#2d70ad',
     metalness: 0,
-    roughness: 0.72,
+    roughness: 0.35,
     side: DoubleSide,
 };
 
@@ -136,7 +142,7 @@ export function DogHouse({ stack, block, rotation }: EntityInstanceProps) {
                 snowCoverageMultiplier={0.45}
                 snowMaxThickness={0.03}
             >
-                <meshStandardMaterial {...darkWallMaterial} />
+                <meshStandardMaterial {...doorMaterial} />
             </WeatheredDogHousePart>
             <DogHousePart node={nodes.DogHouse_Door}>
                 <meshStandardMaterial {...doorMaterial} />

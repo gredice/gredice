@@ -1,17 +1,22 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
+import { seasonalEmissive, seasonalRoles } from '../scene/seasonalRoles';
 
 type PineAdventStarProps = {
     isVisible: boolean;
 };
 
 /** Christmas star dimensions */
-const STAR_CENTER_Y = 1.8;
+/** Just above the rounded tip of Pine.glb, 2.08 m above the ground. */
+const STAR_CENTER_Y = 1.14;
 const STAR_OUTER_RADIUS = 0.1;
-const STAR_INNER_RADIUS = 0.03;
+const STAR_INNER_RADIUS = 0.045;
 const STAR_DEPTH = 0.02;
 const STAR_POINT_COUNT = 5;
-const STAR_GLOW_INTENSITY = 0.8;
+/** Share of each edge rounded off at a star point, so no tip is sharp. */
+const STAR_TIP_ROUNDING = 0.3;
+/** Low enough that the star still reads holiday gold by day. */
+const STAR_GLOW_INTENSITY = 0.4;
 
 // `PineAdvent` scales the whole tree group as: scale={[0.09, 1, 0.09]}.
 // That non-uniform scaling makes any symmetric mesh look ~11x taller than wide.
@@ -25,20 +30,33 @@ function createStarShape(
 ): THREE.Shape {
     const shape = new THREE.Shape();
     const angleStep = Math.PI / points;
-
-    for (let i = 0; i < points * 2; i++) {
+    const corners = Array.from({ length: points * 2 }, (_, i) => {
         const radius = i % 2 === 0 ? outerRadius : innerRadius;
         // Start from top point (-PI/2 offset)
         const angle = i * angleStep - Math.PI / 2;
-        const x = Math.cos(angle) * radius;
-        const y = Math.sin(angle) * radius;
+        return new THREE.Vector2(
+            Math.cos(angle) * radius,
+            Math.sin(angle) * radius,
+        );
+    });
 
-        if (i === 0) {
-            shape.moveTo(x, y);
-        } else {
-            shape.lineTo(x, y);
+    // Each point is a soft curve between the two edges that meet there.
+    corners.forEach((corner, i) => {
+        if (i % 2 === 1) {
+            shape.lineTo(corner.x, corner.y);
+            return;
         }
-    }
+        const previous = corners[(i + corners.length - 1) % corners.length];
+        const next = corners[(i + 1) % corners.length];
+        const start = corner.clone().lerp(previous, STAR_TIP_ROUNDING);
+        const end = corner.clone().lerp(next, STAR_TIP_ROUNDING);
+        if (i === 0) {
+            shape.moveTo(start.x, start.y);
+        } else {
+            shape.lineTo(start.x, start.y);
+        }
+        shape.quadraticCurveTo(corner.x, corner.y, end.x, end.y);
+    });
     shape.closePath();
 
     return shape;
@@ -72,8 +90,10 @@ export function PineAdventStar({ isVisible }: PineAdventStarProps) {
         return null;
     }
 
-    const starColorBase = '#d4a017';
-    const starColorLight = '#f6d365';
+    // Holiday gold by day, glowing in the warm lamp colour (GAME_ART.md
+    // seasonal roles).
+    const starColorBase = seasonalRoles.holidayGold.albedo;
+    const starColorLight = seasonalEmissive.lampWarm;
 
     return (
         <group position={[0, STAR_CENTER_Y, 0]} rotation={[0, 0, 0]}>
@@ -90,8 +110,8 @@ export function PineAdventStar({ isVisible }: PineAdventStarProps) {
                         color={starColorBase}
                         emissive={starColorLight}
                         emissiveIntensity={STAR_GLOW_INTENSITY}
-                        roughness={0.3}
-                        metalness={0.7}
+                        roughness={seasonalRoles.holidayGold.roughness}
+                        metalness={0}
                         side={THREE.DoubleSide}
                     />
                 </mesh>

@@ -80,7 +80,7 @@ export function SeasonalMaple({
                 <meshStandardMaterial
                     color="white"
                     vertexColors
-                    roughness={0.9}
+                    roughness={0.55}
                 />
                 {!disabled && (
                     <SnowOverlay

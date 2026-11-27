@@ -30,7 +30,7 @@ describe('arrow sign configuration', () => {
     it('maps names to a stable color and face rotation', () => {
         assert.deepEqual(getArrowSignConfig('ArrowSignRedLeft'), {
             color: 'Red',
-            colorHex: '#c9574d',
+            colorHex: '#9c241b',
             direction: 'Left',
             faceRotation: Math.PI,
             name: 'ArrowSignRedLeft',
@@ -45,7 +45,7 @@ describe('arrow sign configuration', () => {
         );
         assert.deepEqual(getArrowSignConfig('ArrowSignWoodRight'), {
             color: 'Wood',
-            colorHex: '#7d4422',
+            colorHex: '#875627',
             direction: 'Right',
             faceRotation: 0,
             name: 'ArrowSignWoodRight',

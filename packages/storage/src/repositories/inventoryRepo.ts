@@ -28,6 +28,8 @@ type InventoryItemEventPayload = {
     entityId: string;
     amount: number;
     source?: string | null;
+    /** Garden box block units: Sunflowers paid per unit (see below). */
+    paidSunflowers?: number | null;
 };
 
 type InventoryItemFields = Pick<
@@ -596,6 +598,7 @@ export async function addGardenBoxInventoryItem(
         return;
     }
 
+    assertGardenBoxUnitPaidSunflowers(payload.paidSunflowers);
     const aggregateId = getGardenBoxInventoryAggregateId({
         accountId,
         gardenId,
@@ -642,6 +645,7 @@ export async function consumeGardenBoxInventoryItem(
         return;
     }
 
+    assertGardenBoxUnitPaidSunflowers(payload.paidSunflowers);
     const aggregateId = getGardenBoxInventoryAggregateId({
         accountId,
         gardenId,
@@ -667,6 +671,133 @@ export async function consumeGardenBoxInventoryItem(
         knownEvents.inventory.consumedV1(aggregateId, payload),
         db,
     );
+}
+
+const maximumGardenBoxUnitPaidSunflowers = 2_147_483_647;
+
+function assertGardenBoxUnitPaidSunflowers(value: number | null | undefined) {
+    if (
+        value !== undefined &&
+        value !== null &&
+        (!Number.isSafeInteger(value) ||
+            value < 0 ||
+            value > maximumGardenBoxUnitPaidSunflowers)
+    ) {
+        throw new RangeError(
+            'Garden box unit paid sunflowers must be a non-negative 32-bit integer',
+        );
+    }
+}
+
+function readGardenBoxUnitPaidSunflowers(value: unknown) {
+    return typeof value === 'number' &&
+        Number.isSafeInteger(value) &&
+        value >= 0 &&
+        value <= maximumGardenBoxUnitPaidSunflowers
+        ? value
+        : null;
+}
+
+function readGardenBoxUnitAmount(value: unknown) {
+    return typeof value === 'number' && Number.isSafeInteger(value) && value > 0
+        ? value
+        : 0;
+}
+
+export type GardenBoxBlockUnitPaidSunflowersInput = Readonly<{
+    accountId: string;
+    entityId: string;
+    gardenBoxBlockId: string;
+    gardenId: number;
+}>;
+
+/**
+ * Decide the paid price that the next unit of one block type taken out of a
+ * garden box carries. Box contents are fungible counts, so prices form a
+ * pool: each stored unit adds its recorded paid price (unknown for older
+ * events and for units without a price), and each unit taken out removes the
+ * price it was given. A unit taken out with an unknown or missing price
+ * removes an unknown unit first, otherwise the most expensive known unit, so
+ * history can never make later units worth more.
+ *
+ * Returns the cheapest known price still in the box, or null when only
+ * unknown units remain (the block then keeps the legacy refund rule). The
+ * total refundable value of the units placed back never exceeds what was
+ * recorded for the units stored. Call it after taking the box inventory lock
+ * and pass the result to both `createGardenBlock` and
+ * `consumeGardenBoxInventoryItem` in the same transaction.
+ */
+export async function getGardenBoxBlockUnitPaidSunflowers(
+    {
+        accountId,
+        entityId,
+        gardenBoxBlockId,
+        gardenId,
+    }: GardenBoxBlockUnitPaidSunflowersInput,
+    db: DatabaseClient = storage(),
+): Promise<number | null> {
+    const inventoryEvents = await getAllEvents(
+        [knownEventTypes.inventory.add, knownEventTypes.inventory.consume],
+        [
+            getGardenBoxInventoryAggregateId({
+                accountId,
+                gardenId,
+                blockId: gardenBoxBlockId,
+            }),
+        ],
+        { db },
+    );
+    const knownUnits = new Map<number, number>();
+    let unknownUnits = 0;
+
+    const removeKnownUnits = (price: number, amount: number) => {
+        const available = knownUnits.get(price) ?? 0;
+        const removed = Math.min(available, amount);
+        if (available - removed > 0) {
+            knownUnits.set(price, available - removed);
+        } else {
+            knownUnits.delete(price);
+        }
+        return amount - removed;
+    };
+
+    for (const event of inventoryEvents) {
+        const data: unknown = event.data;
+        if (!data || typeof data !== 'object') continue;
+        const entityTypeName =
+            'entityTypeName' in data ? data.entityTypeName : undefined;
+        const eventEntityId = 'entityId' in data ? data.entityId : undefined;
+        if (entityTypeName !== 'block' || eventEntityId !== entityId) continue;
+        const amount = readGardenBoxUnitAmount(
+            'amount' in data ? data.amount : undefined,
+        );
+        const price = readGardenBoxUnitPaidSunflowers(
+            'paidSunflowers' in data ? data.paidSunflowers : undefined,
+        );
+
+        if (event.type === knownEventTypes.inventory.add) {
+            if (price === null) {
+                unknownUnits += amount;
+            } else {
+                knownUnits.set(price, (knownUnits.get(price) ?? 0) + amount);
+            }
+            continue;
+        }
+
+        let remaining =
+            price === null ? amount : removeKnownUnits(price, amount);
+        const fromUnknown = Math.min(unknownUnits, remaining);
+        unknownUnits -= fromUnknown;
+        remaining -= fromUnknown;
+        while (remaining > 0 && knownUnits.size > 0) {
+            remaining = removeKnownUnits(
+                Math.max(...knownUnits.keys()),
+                remaining,
+            );
+        }
+    }
+
+    return knownUnits.size > 0 ? Math.min(...knownUnits.keys()) : null;
 }
 
 export async function setGardenBoxInventory(

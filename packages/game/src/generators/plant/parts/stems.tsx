@@ -23,7 +23,10 @@ import {
     finalizeStaticInstanceMatrixUpload,
     markStaticInstancedAttributeForUpload,
 } from '../lib/plantInstanceBuffers';
-import { resolvePlantPartCastShadow } from '../lib/plantPartRendering';
+import {
+    PLANT_STEM_ROUGHNESS,
+    resolvePlantPartCastShadow,
+} from '../lib/plantPartRendering';
 import type { PlantStemSegment } from '../lib/plantRenderData';
 import {
     createPlantStemGeometryShell,
@@ -58,6 +61,7 @@ export function Stems({
     const instanceCapacity = instanceCount;
     const shouldCastShadow = resolvePlantPartCastShadow(castShadow);
     const swayUniforms = usePlantSway(`${seed}-stems`, {
+        breathSeed: seed,
         amplitude: 0.055,
         enabled: animate,
         speed: 1.1,
@@ -149,8 +153,8 @@ export function Stems({
                     ...stemSurfaceUniforms,
                 }}
                 color={stem.color}
-                roughness={0.8}
-                metalness={0.2}
+                roughness={PLANT_STEM_ROUGHNESS}
+                metalness={0}
             />
         </instancedMesh>
     );

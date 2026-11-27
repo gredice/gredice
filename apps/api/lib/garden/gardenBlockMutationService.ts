@@ -18,6 +18,7 @@ import {
     GardenPackNotFoundError,
     type GardenPlacementTransaction,
     getGardenPlacementSnapshotForUpdate,
+    getLegacyGardenBlockPaidSunflowers,
     isPurchasedGardenPackBlock,
     listGardenRaisedBedMetadataForUpdate,
     recycleGardenPackUnitForAccount,
@@ -33,9 +34,13 @@ import {
 } from '@gredice/storage';
 import { z } from 'zod';
 import { getBlockData } from '../blocks/blockDataService';
+import {
+    capLegacyGardenBlockRecycleRefund,
+    isLegacyGardenBlockRecycleRefund,
+    resolveGardenBlockRecycleRefund,
+} from './gardenBlockRecycleRefund';
 import { validateRotatedBlockPlacement } from './rotatedBlockPlacementValidation';
 
-const defaultRecycleRefund = 10;
 const maximumAccountIdentifierLength = 128;
 const maximumBlockIdentifierLength = 128;
 const minimumStorageInteger = -2_147_483_648;
@@ -108,6 +113,8 @@ type GardenBlockMutationSnapshot = Readonly<{
         id: string;
         message?: string | null;
         name: string;
+        /** Stored paid price (`garden_blocks.paid_sunflowers`); null = legacy. */
+        paidSunflowers?: number | null;
         rotation: number | null;
         variant: number | null;
     }>[];
@@ -161,6 +168,15 @@ export type GardenBlockMutationDependencies<Transaction> = Readonly<{
         gardenId: number,
         transaction: Transaction,
     ) => Promise<GardenBlockMutationSnapshot | null>;
+    /** Exact paid price of a legacy block from its purchase records, or null. */
+    getLegacyGardenBlockPaidSunflowers: (
+        input: Readonly<{
+            accountId: string;
+            blockId: string;
+            gardenId: number;
+        }>,
+        transaction: Transaction,
+    ) => Promise<number | null>;
     listGardenRaisedBedMetadataForUpdate: (
         gardenId: number,
         transaction: Transaction,
@@ -518,6 +534,35 @@ export function createGardenBlockMutationService<Transaction>(
                         );
                     }
 
+                    const resolvedRefund = resolveGardenBlockRecycleRefund({
+                        directoryPrice: directoryBlock.prices?.sunflowers,
+                        isSandbox: snapshot.garden.isSandbox,
+                        paidSunflowers: block.paidSunflowers,
+                    });
+                    if (!resolvedRefund.ok) {
+                        fail(
+                            'BLOCK_DIRECTORY_UNAVAILABLE',
+                            503,
+                            'Garden block refund price is invalid',
+                        );
+                    }
+                    // Legacy blocks never refund more than their recorded purchase.
+                    const refund = isLegacyGardenBlockRecycleRefund(
+                        resolvedRefund.refund,
+                    )
+                        ? capLegacyGardenBlockRecycleRefund(
+                              resolvedRefund.refund,
+                              await dependencies.getLegacyGardenBlockPaidSunflowers(
+                                  {
+                                      accountId: command.accountId,
+                                      blockId: block.id,
+                                      gardenId: command.gardenId,
+                                  },
+                                  transaction,
+                              ),
+                          )
+                        : resolvedRefund.refund;
+
                     if (placement) {
                         await dependencies.updateGardenStack(
                             command.gardenId,
@@ -560,26 +605,10 @@ export function createGardenBlockMutationService<Transaction>(
                         );
                     }
 
-                    const directoryPrice =
-                        directoryBlock.prices?.sunflowers ?? 0;
-                    const refundAmount =
-                        directoryPrice > 0
-                            ? directoryPrice
-                            : defaultRecycleRefund;
-                    if (
-                        !Number.isSafeInteger(refundAmount) ||
-                        refundAmount <= 0
-                    ) {
-                        fail(
-                            'BLOCK_DIRECTORY_UNAVAILABLE',
-                            503,
-                            'Garden block refund price is invalid',
-                        );
-                    }
-                    if (!snapshot.garden.isSandbox) {
+                    if (refund.sunflowers > 0) {
                         await dependencies.earnSunflowersOnce(
                             command.accountId,
-                            refundAmount,
+                            refund.sunflowers,
                             `gardenBlock:${command.gardenId.toString()}:recycle:${block.id}`,
                             transaction,
                         );
@@ -590,9 +619,7 @@ export function createGardenBlockMutationService<Transaction>(
                         result: {
                             ok: true,
                             blockId: block.id,
-                            refundedSunflowers: snapshot.garden.isSandbox
-                                ? 0
-                                : refundAmount,
+                            refundedSunflowers: refund.sunflowers,
                         } satisfies RecycleGardenBlockResult,
                     };
                 },
@@ -802,6 +829,7 @@ const defaultDependencies: GardenBlockMutationDependencies<GardenPlacementTransa
         earnSunflowersOnce,
         getBlockData,
         getGardenPlacementSnapshotForUpdate,
+        getLegacyGardenBlockPaidSunflowers,
         listGardenRaisedBedMetadataForUpdate,
         softDeleteGardenBlockOnce,
         softDeleteNewRaisedBedOnce,

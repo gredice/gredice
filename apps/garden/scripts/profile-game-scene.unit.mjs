@@ -1241,7 +1241,9 @@ test('foliage-budget High scenario reserves exact detail for explicit close-up',
     assert.equal(request.quality, 'high');
 });
 
-test('weather-material High scenarios pair legacy and integrated rain and snow', () => {
+// Rain is no longer paired: the wet overlay is retired, so legacy rain has
+// no overlay for the integrated surface to save. Snow keeps its pair.
+test('weather-material High scenarios run rain once per mode and pair snow', () => {
     const scenarios = resolveScenarios('high-target-weather-materials');
 
     assert.deepEqual(
@@ -1256,15 +1258,15 @@ test('weather-material High scenarios pair legacy and integrated rain and snow',
     assert.deepEqual(
         scenarios.map((scenario) => scenario.comparisonPair),
         [
-            'rain-weather-surfaces',
-            'rain-weather-surfaces',
+            undefined,
+            undefined,
             'snow-weather-surfaces',
             'snow-weather-surfaces',
         ],
     );
     assert.deepEqual(
         scenarios.map((scenario) => scenario.comparisonRole),
-        ['legacy', 'integrated', 'legacy', 'integrated'],
+        [undefined, undefined, 'legacy', 'integrated'],
     );
     assert.deepEqual(
         scenarios.map((scenario) => getScenarioRequest(scenario.path).mode),
@@ -1283,11 +1285,14 @@ test('weather-material High scenarios pair legacy and integrated rain and snow',
         assert.equal(scenario.budget, 'gameHighTarget');
         assert.equal(scenario.dpr, 2);
         assert.equal(scenario.isMobile, false);
-        assert.equal(scenario.repeat, 5);
+        assert.equal(
+            scenario.repeat,
+            getScenarioRequest(scenario.path).mode === 'rain' ? 1 : 5,
+        );
     }
 });
 
-test('weather-material runs interleave five legacy and integrated samples per pair', () => {
+test('weather-material runs interleave five legacy and integrated snow samples', () => {
     const queue = buildScenarioRunQueue(
         resolveScenarios('high-target-weather-materials'),
     );
@@ -1304,22 +1309,27 @@ test('weather-material runs interleave five legacy and integrated samples per pa
         'integrated:5',
     ];
 
-    assert.equal(queue.length, 20);
-    for (const [pairIndex, pairName] of [
-        [0, 'rain-weather-surfaces'],
-        [1, 'snow-weather-surfaces'],
-    ]) {
-        assert.deepEqual(
-            queue
-                .slice(pairIndex * 10, pairIndex * 10 + 10)
-                .map(
-                    ({ baseScenario, runIndex }) =>
-                        `${baseScenario.comparisonRole}:${runIndex}`,
-                ),
-            expectedPairOrder,
-            `${pairName} should use an ABBA-balanced order`,
-        );
-    }
+    // Two single rain runs, then the ten-run snow pair.
+    assert.equal(queue.length, 12);
+    assert.deepEqual(
+        queue
+            .slice(0, 2)
+            .map(({ baseScenario, runIndex }) => [baseScenario.name, runIndex]),
+        [
+            ['game-high-target-rain-legacy-weather-surfaces-desktop', 1],
+            ['game-high-target-rain-integrated-weather-surfaces-desktop', 1],
+        ],
+    );
+    assert.deepEqual(
+        queue
+            .slice(2)
+            .map(
+                ({ baseScenario, runIndex }) =>
+                    `${baseScenario.comparisonRole}:${runIndex}`,
+            ),
+        expectedPairOrder,
+        'snow-weather-surfaces should use an ABBA-balanced order',
+    );
 
     const unpairedQueue = buildScenarioRunQueue(
         resolveScenarios('high-target-operation-visuals'),
@@ -4040,7 +4050,7 @@ test('high target acceptance proves the intended workload rendered', () => {
             instancedInteractionResolutionCount: 1,
             instancedInteractionResolvedTargetCount: 1,
             qualityTier: 'high',
-            rainParticleCount: 2_000,
+            rainParticleCount: 756,
             shadowMapSize: 4_096,
             shadowsEnabled: true,
         },
@@ -8418,7 +8428,7 @@ function createPassingRuntimeOwnersAcceptanceInput({
             'fauna:dogs',
             'plant-sway',
             'rain-particles',
-            'weather-animation',
+            'sky-clouds',
         ].map((owner) => [
             owner,
             {
@@ -9056,7 +9066,7 @@ test('runtime-owner markdown reports cadence, owned work, and screenshot evidenc
         /30: 4000 ms; 120 \/ 120 \(1\) \/ 60: 1000 ms; 60 \/ 60 \(1\)/,
     );
     assert.match(markdown, /60 FPS across 5 frames/);
-    assert.match(markdown, /weather-animation 30 FPS @ 95%/);
+    assert.match(markdown, /sky-clouds 30 FPS @ 95%/);
     assert.match(markdown, /900 ms \/ Δv4 \/ drift 0/);
     assert.match(markdown, /Δv5 \/ drift 0/);
     assert.match(markdown, /150 \/ 180 \/ 180/);
@@ -9728,7 +9738,7 @@ test('weather-surface High acceptance proves integrated work without hiding fall
                 groundDecorationDensity: 1,
                 groundDecorationVisibleCount: rain ? 571 : null,
                 qualityTier: 'high',
-                rainParticleCount: rain ? 2_000 : 0,
+                rainParticleCount: rain ? 756 : 0,
                 rendererShaders: rain
                     ? integrated
                         ? 38
@@ -9738,31 +9748,24 @@ test('weather-surface High acceptance proves integrated work without hiding fall
                       : 43,
                 shadowMapSize: 4_096,
                 shadowsEnabled: true,
-                snowParticleCapacity: rain ? 0 : 5_000,
-                snowParticleCount: rain ? 0 : 3_500,
-                weatherSurfaceAvoidedOverlaySubmissionCount: integrated
-                    ? rain
-                        ? 16
-                        : 8
-                    : 0,
-                weatherSurfaceAvoidedOverlayTriangleCount: integrated
-                    ? rain
-                        ? 2_556
-                        : 11_880
-                    : 0,
-                weatherSurfaceFallbackOverlaySubmissionCount: integrated
-                    ? rain
-                        ? 29
-                        : 48
-                    : rain
-                      ? 45
+                snowParticleCapacity: rain ? 0 : 930,
+                snowParticleCount: rain ? 0 : 328,
+                // Rain draws no wet overlay in either mode any more, so it
+                // neither avoids nor falls back to one (was 16/2,556 avoided,
+                // 29/13,562 integrated and 45/16,118 legacy fallback).
+                weatherSurfaceAvoidedOverlaySubmissionCount:
+                    integrated && !rain ? 8 : 0,
+                weatherSurfaceAvoidedOverlayTriangleCount:
+                    integrated && !rain ? 11_880 : 0,
+                weatherSurfaceFallbackOverlaySubmissionCount: rain
+                    ? 0
+                    : integrated
+                      ? 48
                       : 56,
-                weatherSurfaceFallbackOverlayTriangleCount: integrated
-                    ? rain
-                        ? 13_562
-                        : 72_608
-                    : rain
-                      ? 16_118
+                weatherSurfaceFallbackOverlayTriangleCount: rain
+                    ? 0
+                    : integrated
+                      ? 72_608
                       : 84_488,
                 weatherSurfaceIntegratedInstanceCount: integrated
                     ? rain
@@ -9881,24 +9884,25 @@ test('weather-surface High acceptance proves integrated work without hiding fall
             2,
             'highTargetWeatherSurfacePluginVariants',
         ],
+        // A single rain overlay submission or triangle now fails.
         [
             'weatherSurfaceAvoidedOverlaySubmissionCount',
-            15,
+            1,
             'highTargetWeatherSurfaceAvoidedOverlaySubmissions',
         ],
         [
             'weatherSurfaceAvoidedOverlayTriangleCount',
-            2_555,
+            1,
             'highTargetWeatherSurfaceAvoidedOverlayTriangles',
         ],
         [
             'weatherSurfaceFallbackOverlaySubmissionCount',
-            28,
+            1,
             'highTargetWeatherSurfaceFallbackOverlaySubmissions',
         ],
         [
             'weatherSurfaceFallbackOverlayTriangleCount',
-            13_561,
+            1,
             'highTargetWeatherSurfaceFallbackOverlayTriangles',
         ],
         ['rendererShaders', 0, 'highTargetWeatherSurfaceRendererPrograms'],
@@ -9922,7 +9926,7 @@ test('weather-surface High acceptance proves integrated work without hiding fall
             ...rainIntegrated,
             runtime: {
                 ...rainIntegrated.runtime,
-                rainParticleCount: 1_999,
+                rainParticleCount: 755,
             },
         }).pass,
         false,
@@ -10747,20 +10751,17 @@ test('adaptive High acceptance allows bounded effective DPR during interaction',
             ...input.runtime,
             actorGroundingShadowCount: 4,
             actorGroundingShadowVisibleCount: 4,
-            cloudVisualCount: 8,
-        },
-        sample: {
-            ...input.sample,
-            cloudAttenuationUpdateCountDelta: 1,
+            cloudProjectedShadowCount: 6,
+            cloudVisualCount: 10,
         },
     };
     assert.equal(evaluateHighTargetAcceptance(cloudy).pass, true);
     assert.equal(
         evaluateHighTargetAcceptance({
             ...cloudy,
-            sample: {
-                ...cloudy.sample,
-                cloudAttenuationUpdateCountDelta: 0,
+            runtime: {
+                ...cloudy.runtime,
+                cloudProjectedShadowCount: 0,
             },
         }).pass,
         false,
@@ -10775,7 +10776,8 @@ test('adaptive High acceptance allows bounded effective DPR during interaction',
         runtime: {
             ...cloudy.runtime,
             adaptiveHighAmbientFps: 20,
-            cloudVisualCount: 7,
+            cloudProjectedShadowCount: 3,
+            cloudVisualCount: 5,
         },
     };
     assert.equal(evaluateHighTargetAcceptance(windy).pass, true);
@@ -10791,8 +10793,8 @@ test('adaptive High acceptance allows bounded effective DPR during interaction',
     );
 
     for (const [mode, particleField, particleCount] of [
-        ['rain', 'rainParticleCount', 2_000],
-        ['snow', 'snowParticleCount', 3_500],
+        ['rain', 'rainParticleCount', 756],
+        ['snow', 'snowParticleCount', 328],
     ]) {
         const weather = {
             ...input,
@@ -10810,7 +10812,7 @@ test('adaptive High acceptance allows bounded effective DPR during interaction',
                     ? {
                           groundDecorationCount: 0,
                           groundDecorationVisibleCount: null,
-                          snowParticleCapacity: 5_000,
+                          snowParticleCapacity: 930,
                       }
                     : {}),
             },
@@ -11265,12 +11267,10 @@ test('cloudy static scene-cache acceptance proves live cloud attenuation without
             staticSceneCache: 'cache',
         },
         runtime: {
-            cloudAttenuationMaskResolution: 192,
             cloudAttenuationMaterialCount: 19,
-            cloudAttenuationUpdateMs: 96,
-            cloudProjectedShadowCount: 8,
-            cloudRealShadowCasterCount: 0,
-            cloudVisualCount: 8,
+            cloudDeckAmount: 0.99,
+            cloudProjectedShadowCount: 6,
+            cloudVisualCount: 10,
             staticOpaqueSceneCacheBoundaryCount: 19,
             staticOpaqueSceneCacheCaptureSubmissionCount: 19,
             staticOpaqueSceneCacheCaptureTriangleCount: 12_000,
@@ -11296,7 +11296,6 @@ test('cloudy static scene-cache acceptance proves live cloud attenuation without
                 height: 1440,
                 width: 2560,
             },
-            cloudAttenuationUpdateCountDelta: 52,
             drawCalls: 100,
             elapsedMs: 5_000,
             primaryShadowRefreshCountDelta: 0,
@@ -11326,22 +11325,21 @@ test('cloudy static scene-cache acceptance proves live cloud attenuation without
         check.name.startsWith('highTargetStaticSceneCacheCloud'),
     );
 
-    assert.equal(checks.length, 9);
+    assert.equal(checks.length, 6);
     assert.equal(
         checks.every((check) => check.pass),
         true,
     );
+    // Overcast must show the continuous deck, not separate clouds only.
     assert.equal(
         evaluateHighTargetAcceptance({
             ...input,
-            sample: {
-                ...input.sample,
-                cloudAttenuationUpdateCountDelta: 1,
+            runtime: {
+                ...input.runtime,
+                cloudDeckAmount: 0.4,
             },
         }).checks.find(
-            (check) =>
-                check.name ===
-                'highTargetStaticSceneCacheCloudAttenuationUpdates',
+            (check) => check.name === 'highTargetStaticSceneCacheCloudDeck',
         )?.pass,
         false,
     );
@@ -12317,6 +12315,9 @@ test('static scene-cache visual comparison fails closed without a deterministic 
     assert.match(comparison.reason, /no deterministic scene-time/);
 });
 
+// A synthetic legacy/integrated pair for the comparison builder. It keeps the
+// rain pair's name and the old rain overlay numbers as fixtures only: the
+// real rain scenarios are no longer paired since the wet overlay retired.
 test('weather-surface comparison gates render work, GPU time, and renderer programs', () => {
     const pairedRun = ({ comparisonRole, index }) => {
         const integrated = comparisonRole === 'integrated';

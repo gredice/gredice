@@ -571,7 +571,13 @@ function cloneButterflyMaterial(
     }
 
     clone.metalness = 0;
-    clone.roughness = objectName.includes('Wing') ? 0.68 : 0.78;
+    // Satin wings, matte body; the ink eyes and glints keep their authored
+    // gloss (GAME_ART.md roughness bands).
+    if (objectName.includes('Wing')) {
+        clone.roughness = 0.55;
+    } else if (!objectName.includes('Eye')) {
+        clone.roughness = 0.78;
+    }
     if (objectName.includes('WingFore')) {
         clone.color.set(variant.primary);
     } else if (objectName.includes('WingHind')) {
@@ -649,18 +655,20 @@ function updateButterflyRig({
           ? flap * 0.42 + 0.36
           : flap;
 
+    // The wing pivots hinge along the body (local Z): a positive amount lifts
+    // both wings, so they flap up and down and fold up over the back at rest.
     if (rig.wingLeft.object) {
-        rig.wingLeft.object.rotation.y = MathUtils.damp(
-            rig.wingLeft.object.rotation.y,
-            rig.wingLeft.baseRotationY + wingAmount,
+        rig.wingLeft.object.rotation.z = MathUtils.damp(
+            rig.wingLeft.object.rotation.z,
+            rig.wingLeft.baseRotationZ - wingAmount,
             resting ? 3.5 : 18,
             delta,
         );
     }
     if (rig.wingRight.object) {
-        rig.wingRight.object.rotation.y = MathUtils.damp(
-            rig.wingRight.object.rotation.y,
-            rig.wingRight.baseRotationY - wingAmount,
+        rig.wingRight.object.rotation.z = MathUtils.damp(
+            rig.wingRight.object.rotation.z,
+            rig.wingRight.baseRotationZ + wingAmount,
             resting ? 3.5 : 18,
             delta,
         );

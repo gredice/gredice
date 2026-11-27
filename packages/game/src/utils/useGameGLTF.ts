@@ -8,7 +8,10 @@ import {
     trackGameGLTF,
 } from '../scene/resources/gameGLTFResources';
 import { useGameState } from '../useGameState';
-import { configureGameGLTFColorPaletteMaterials } from './configureGameGLTFMaterials';
+import {
+    configureGameGLTFColorPaletteMaterials,
+    normalizeGameGLTFMatteMetalness,
+} from './configureGameGLTFMaterials';
 
 export function resolveGameAssetModelUrl(
     appBaseUrl: string,
@@ -43,6 +46,7 @@ export function useGameGLTF(assetName: GameAssetName) {
 
     return useMemo(() => {
         configureGameGLTFColorPaletteMaterials(gltf);
+        normalizeGameGLTFMatteMetalness(gltf);
         return gltf;
     }, [gltf]);
 }

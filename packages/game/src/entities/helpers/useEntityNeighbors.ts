@@ -1,6 +1,8 @@
+import { useContext } from 'react';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import type { Block } from '../../types/Block';
 import type { GardenStack } from '../../types/Stack';
+import { EntityNeighborStacksContext } from './EntityNeighborStacksContext';
 
 export function resolveEntityNeighbors(
     stacks: GardenStack[] | undefined,
@@ -68,9 +70,10 @@ export function useEntityNeighbors(
     isCompatibleName?: (name: string) => boolean,
 ) {
     const { data: garden } = useCurrentGarden();
+    const neighborStacks = useContext(EntityNeighborStacksContext);
 
     return resolveEntityNeighbors(
-        garden?.stacks,
+        neighborStacks ?? garden?.stacks,
         stack,
         block,
         isCompatibleName,

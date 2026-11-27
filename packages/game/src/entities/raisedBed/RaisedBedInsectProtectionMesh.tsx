@@ -7,6 +7,7 @@ import {
 } from 'three';
 import { blockInteractionPassthroughUserDataKey } from '../../controls/BlockInteractionResolver';
 import type { RaisedBedOrientation } from '../../utils/raisedBedOrientation';
+import { raisedBedAccessoryPalette } from './raisedBedAccessoryPalette';
 import { getRaisedBedFieldSurfacePosition } from './raisedBedSoilWetPatches';
 
 export type RaisedBedInsectProtectionMeshLayout = {
@@ -279,10 +280,10 @@ export function RaisedBedInsectProtectionMesh({
         >
             <mesh geometry={coverGeometry} renderOrder={10}>
                 <meshStandardMaterial
-                    color="#eef2df"
+                    color={raisedBedAccessoryPalette.fabric.color}
                     depthWrite={false}
                     opacity={0.2}
-                    roughness={1}
+                    roughness={raisedBedAccessoryPalette.fabric.roughness}
                     side={DoubleSide}
                     transparent
                 />
@@ -296,10 +297,10 @@ export function RaisedBedInsectProtectionMesh({
                 >
                     <shapeGeometry args={[visual.endShape]} />
                     <meshStandardMaterial
-                        color="#eef2df"
+                        color={raisedBedAccessoryPalette.fabric.color}
                         depthWrite={false}
                         opacity={0.16}
-                        roughness={1}
+                        roughness={raisedBedAccessoryPalette.fabric.roughness}
                         side={DoubleSide}
                         transparent
                     />
@@ -314,7 +315,9 @@ export function RaisedBedInsectProtectionMesh({
                     rotation={rod.rotation}
                 >
                     <cylinderGeometry args={[0.009, 0.009, rod.length, 6]} />
-                    <meshStandardMaterial color="#d7d6bd" roughness={0.92} />
+                    <meshStandardMaterial
+                        {...raisedBedAccessoryPalette.fabric}
+                    />
                 </mesh>
             ))}
             {visual.anchors.map((position, index) => (
@@ -325,7 +328,7 @@ export function RaisedBedInsectProtectionMesh({
                     renderOrder={12}
                 >
                     <boxGeometry args={[0.07, 0.026, 0.05]} />
-                    <meshStandardMaterial color="#8c7650" roughness={1} />
+                    <meshStandardMaterial {...raisedBedAccessoryPalette.wood} />
                 </mesh>
             ))}
         </group>

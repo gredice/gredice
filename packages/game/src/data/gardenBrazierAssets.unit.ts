@@ -190,16 +190,24 @@ describe('Garden brazier release', () => {
                             object.geometry.getAttribute('position').count) / 3;
                 }
             });
-            assert.equal(triangles, 1088);
+            assert.equal(triangles, 2424);
+            // One colour per part from the seasonal roles: iron bowl and
+            // legs, steel rim and handles, conker charcoal.
             assert.ok(
-                palette.size >= 7,
+                palette.size >= 3,
                 'Metal and dormant charcoal colours survive export',
             );
             assert.ok(bytes.length < 250_000);
             for (const material of document.materials) {
                 assert.equal(material.pbrMetallicRoughness.metallicFactor, 0);
+                // Roughness follows the GAME_ART.md bands.
                 assert.ok(
-                    material.pbrMetallicRoughness.roughnessFactor >= 0.82,
+                    Math.abs(
+                        material.pbrMetallicRoughness.roughnessFactor -
+                            (material.name === 'Material.GardenBrazier.Embers'
+                                ? 0.55
+                                : 0.35),
+                    ) < 1e-6,
                 );
                 if (material.name === 'Material.GardenBrazier.Embers')
                     assert.ok(

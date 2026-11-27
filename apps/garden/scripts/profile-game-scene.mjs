@@ -164,7 +164,9 @@ const runtimeOwnerPersistentLeaseRates = {
     'fauna:dogs': 30,
     'plant-sway': 30,
     'rain-particles': 30,
-    'weather-animation': 30,
+    // The cloud band drifts in rain on every tier; weather has no
+    // environment-wide lease any more (each layer holds its own).
+    'sky-clouds': 30,
 };
 const runtimeOwnerLeaseRates = {
     'camera-interaction': 60,
@@ -213,16 +215,20 @@ const highTargetOperationVisualRenderedObjectLimit = 64;
 const highTargetGeneratedPlantDetailInstanceBudget = 179;
 const highTargetBudgetedGeneratedPlantClusterTriangleCount = 2_740;
 const highTargetWeatherSurfaceExpectations = {
+    // Rain draws no wet overlay copy in either mode (the instanced block
+    // overlay was retired, GAME_ART.md "Weather > Rain and heavy rain"):
+    // base-ground wets through its integrated material, so rain neither
+    // avoids nor falls back to an overlay.
     rain: {
-        avoidedOverlaySubmissionCount: 16,
-        avoidedOverlayTriangleCount: 2_556,
+        avoidedOverlaySubmissionCount: 0,
+        avoidedOverlayTriangleCount: 0,
         fallbackOverlaySubmissionCount: {
-            integrated: 29,
-            legacy: 45,
+            integrated: 0,
+            legacy: 0,
         },
         fallbackOverlayTriangleCount: {
-            integrated: 13_562,
-            legacy: 16_118,
+            integrated: 0,
+            legacy: 0,
         },
         integratedInstanceCount: 213,
         integratedMaterialCount: 2,
@@ -266,6 +272,22 @@ const highTargetStaticSceneCacheComparisonPairs = new Set([
 ]);
 const staticSceneCacheVisualComparisonUnavailableReason =
     'The scenario has no deterministic scene-time screenshot contract';
+/**
+ * The weather at 1280 × 720 on high (GAME_ART.md "Weather > Quality
+ * tiers"): drops 840 × rainy^1.3 × area, flakes 520 × snowy × area (the snow
+ * mode's snowy 0.7) with 820 disc and 110 icon-flake slots, the top band's
+ * separate clouds by cover (10 at overcast, 5 at the windy mode's 0.45) and
+ * six moving cloud shadows.
+ */
+const highTargetWeatherExpectation = {
+    overcastBandClouds: 10,
+    overcastCloudShadows: 6,
+    overcastDeckMinimum: 0.9,
+    partlyBandClouds: 5,
+    rainDrops: 756,
+    snowFlakeCapacity: 930,
+    snowFlakes: 328,
+};
 const highTargetWeatherSurfaceOnsetExpectation = {
     avoidedOverlaySubmissionCount: 0,
     avoidedOverlayTriangleCount: 0,
@@ -737,6 +759,10 @@ const highTargetFoliageBudgetScenarios = [
     },
 ];
 
+// Rain runs once per mode and is not paired: with the wet overlay retired,
+// legacy rain draws no overlay for the integrated surface to save, so the
+// paired "fewer fallback overlays, less GPU" gate has nothing to compare.
+// The single runs still check that neither mode draws a wet overlay.
 const highTargetWeatherMaterialScenarios = [
     {
         name: 'game-high-target-rain-legacy-weather-surfaces-desktop',
@@ -745,9 +771,7 @@ const highTargetWeatherMaterialScenarios = [
         dpr: 2,
         isMobile: false,
         budget: 'gameHighTarget',
-        comparisonPair: 'rain-weather-surfaces',
-        comparisonRole: 'legacy',
-        repeat: 5,
+        repeat: 1,
     },
     {
         name: 'game-high-target-rain-integrated-weather-surfaces-desktop',
@@ -756,9 +780,7 @@ const highTargetWeatherMaterialScenarios = [
         dpr: 2,
         isMobile: false,
         budget: 'gameHighTarget',
-        comparisonPair: 'rain-weather-surfaces',
-        comparisonRole: 'integrated',
-        repeat: 5,
+        repeat: 1,
     },
     {
         name: 'game-high-target-snow-legacy-weather-surfaces-desktop',
@@ -10282,9 +10304,6 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             const adaptiveHighTransitionCountAtStart = readProfileNumber(
                 'adaptiveHighTransitionCount',
             );
-            const cloudAttenuationUpdateCountAtStart = readProfileNumber(
-                'cloudAttenuationUpdateCount',
-            );
             const hoverOutlineCompositePassCountAtStart = readProfileNumber(
                 'hoverOutlineCompositePassCount',
             );
@@ -10773,9 +10792,6 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             const adaptiveHighTransitionCountAtEnd = readProfileNumber(
                 'adaptiveHighTransitionCount',
             );
-            const cloudAttenuationUpdateCountAtEnd = readProfileNumber(
-                'cloudAttenuationUpdateCount',
-            );
             const hoverOutlineCompositePassCountAtEnd = readProfileNumber(
                 'hoverOutlineCompositePassCount',
             );
@@ -10971,12 +10987,6 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 drawCallsPerRenderedFrame:
                     renderedFrames > 0 ? drawCalls / safeRenderedFrames : 0,
                 drawCallsPerSecond: drawCalls / safeElapsedSeconds,
-                cloudAttenuationUpdateCountDelta:
-                    cloudAttenuationUpdateCountAtStart === null ||
-                    cloudAttenuationUpdateCountAtEnd === null
-                        ? null
-                        : cloudAttenuationUpdateCountAtEnd -
-                          cloudAttenuationUpdateCountAtStart,
                 effectiveDprAtEnd: readEffectiveDpr(),
                 effectiveDprMin,
                 elapsedMs: elapsedSeconds * 1000,
@@ -11399,29 +11409,17 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 typeof metadata.animatedCasterShadowRefreshCount === 'number'
                     ? metadata.animatedCasterShadowRefreshCount
                     : null,
-            cloudAttenuationMaskResolution:
-                typeof metadata.cloudAttenuationMaskResolution === 'number'
-                    ? metadata.cloudAttenuationMaskResolution
-                    : null,
             cloudAttenuationMaterialCount:
                 typeof metadata.cloudAttenuationMaterialCount === 'number'
                     ? metadata.cloudAttenuationMaterialCount
                     : null,
-            cloudAttenuationUpdateCount:
-                typeof metadata.cloudAttenuationUpdateCount === 'number'
-                    ? metadata.cloudAttenuationUpdateCount
-                    : null,
-            cloudAttenuationUpdateMs:
-                typeof metadata.cloudAttenuationUpdateMs === 'number'
-                    ? metadata.cloudAttenuationUpdateMs
+            cloudDeckAmount:
+                typeof metadata.cloudDeckAmount === 'number'
+                    ? metadata.cloudDeckAmount
                     : null,
             cloudProjectedShadowCount:
                 typeof metadata.cloudProjectedShadowCount === 'number'
                     ? metadata.cloudProjectedShadowCount
-                    : null,
-            cloudRealShadowCasterCount:
-                typeof metadata.cloudRealShadowCasterCount === 'number'
-                    ? metadata.cloudRealShadowCasterCount
                     : null,
             cloudVisualCount:
                 typeof metadata.cloudVisualCount === 'number'
@@ -11448,6 +11446,15 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             warmPropCrackleGain: numberOrNull(metadata.warmPropCrackleGain),
             rainRippleCount: numberOrNull(metadata.rainRippleCount),
             rainRippleCapacity: numberOrNull(metadata.rainRippleCapacity),
+            rainSplashCount: numberOrNull(metadata.rainSplashCount),
+            rainPuddleCount: numberOrNull(metadata.rainPuddleCount),
+            snowIconFlakeCount: numberOrNull(metadata.snowIconFlakeCount),
+            snowSparkleCount: numberOrNull(metadata.snowSparkleCount),
+            mistRimRollCount: numberOrNull(metadata.mistRimRollCount),
+            mistSkyRollCount: numberOrNull(metadata.mistSkyRollCount),
+            lightningStrikeCount: numberOrNull(metadata.lightningStrikeCount),
+            windSwooshCount: numberOrNull(metadata.windSwooshCount),
+            windLeafCount: numberOrNull(metadata.windLeafCount),
             autumnLeafCount:
                 typeof metadata.autumnLeafCount === 'number'
                     ? metadata.autumnLeafCount
@@ -15344,13 +15351,6 @@ function evaluateHighTargetAcceptance({
         highTargetStaticSceneCacheComparisonPairs.has(requested.comparisonPair);
     const staticSceneCacheCloudyBenchmarkRequested =
         staticSceneCacheBenchmarkRequested && requested.mode === 'cloudy';
-    const staticSceneCacheExpectedCloudAttenuationUpdates =
-        staticSceneCacheCloudyBenchmarkRequested &&
-        typeof sample.elapsedMs === 'number' &&
-        typeof runtime?.cloudAttenuationUpdateMs === 'number' &&
-        runtime.cloudAttenuationUpdateMs > 0
-            ? sample.elapsedMs / runtime.cloudAttenuationUpdateMs
-            : null;
     const staticSceneCacheOcclusionFixtureRequested =
         requested.staticSceneCacheOcclusionFixture === '1';
     const staticSceneCacheCachedRunRequested =
@@ -15811,47 +15811,22 @@ function evaluateHighTargetAcceptance({
             exact(
                 'highTargetStaticSceneCacheCloudVisuals',
                 runtime?.cloudVisualCount,
-                8,
+                highTargetWeatherExpectation.overcastBandClouds,
+            ),
+            minimum(
+                'highTargetStaticSceneCacheCloudDeck',
+                runtime?.cloudDeckAmount,
+                highTargetWeatherExpectation.overcastDeckMinimum,
             ),
             exact(
                 'highTargetStaticSceneCacheCloudProjectedShadows',
                 runtime?.cloudProjectedShadowCount,
-                8,
-            ),
-            exact(
-                'highTargetStaticSceneCacheCloudRealShadowCasters',
-                runtime?.cloudRealShadowCasterCount,
-                0,
-            ),
-            exact(
-                'highTargetStaticSceneCacheCloudAttenuationResolution',
-                runtime?.cloudAttenuationMaskResolution,
-                192,
-            ),
-            exact(
-                'highTargetStaticSceneCacheCloudAttenuationCadence',
-                runtime?.cloudAttenuationUpdateMs,
-                96,
+                highTargetWeatherExpectation.overcastCloudShadows,
             ),
             minimum(
                 'highTargetStaticSceneCacheCloudAttenuationMaterials',
                 runtime?.cloudAttenuationMaterialCount,
                 1,
-            ),
-            range(
-                'highTargetStaticSceneCacheCloudAttenuationUpdates',
-                sample.cloudAttenuationUpdateCountDelta,
-                Math.max(
-                    2,
-                    Math.floor(
-                        (staticSceneCacheExpectedCloudAttenuationUpdates ?? 0) *
-                            0.65,
-                    ),
-                ),
-                Math.ceil(
-                    (staticSceneCacheExpectedCloudAttenuationUpdates ?? 0) *
-                        1.35,
-                ),
             ),
             exact(
                 'highTargetStaticSceneCacheCloudPrimaryShadowRefreshes',
@@ -16895,7 +16870,7 @@ function evaluateHighTargetAcceptance({
             exact(
                 'highTargetFullQualityRainParticles',
                 runtime?.rainParticleCount,
-                2_000,
+                highTargetWeatherExpectation.rainDrops,
             ),
         );
     }
@@ -16904,12 +16879,12 @@ function evaluateHighTargetAcceptance({
             exact(
                 'highTargetFullQualitySnowParticles',
                 runtime?.snowParticleCount,
-                3_500,
+                highTargetWeatherExpectation.snowFlakes,
             ),
             exact(
                 'highTargetFullQualitySnowCapacity',
                 runtime?.snowParticleCapacity,
-                5_000,
+                highTargetWeatherExpectation.snowFlakeCapacity,
             ),
         );
     }
@@ -16921,11 +16896,13 @@ function evaluateHighTargetAcceptance({
             exact(
                 'highTargetAdaptiveFullCloudVisuals',
                 runtime?.cloudVisualCount,
-                requested.mode === 'windy' ? 7 : 8,
+                requested.mode === 'windy'
+                    ? highTargetWeatherExpectation.partlyBandClouds
+                    : highTargetWeatherExpectation.overcastBandClouds,
             ),
             minimum(
-                'highTargetAdaptiveCloudMovementUpdates',
-                sample.cloudAttenuationUpdateCountDelta,
+                'highTargetAdaptiveCloudShadows',
+                runtime?.cloudProjectedShadowCount,
                 1,
             ),
         );
@@ -19105,7 +19082,7 @@ function buildMarkdown(report) {
         const quality = scenario.runtime?.qualityTier ?? 'n/a';
         const shadow = scenario.runtime
             ? scenario.runtime.shadowsEnabled
-                ? `${scenario.runtime.shadowMapSize}px, ${scenario.runtime.shadowMapAutoUpdate === false ? 'cached' : 'auto'}, refreshes ${scenario.runtime.primaryShadowRefreshCount ?? 'n/a'} (${scenario.runtime.animatedCasterShadowRefreshCount ?? 'n/a'} animated), invalidations ${scenario.runtime.shadowMapInvalidationCount ?? 'n/a'}, cloud ${scenario.runtime.cloudProjectedShadowCount ?? 'n/a'} projected/${scenario.runtime.cloudRealShadowCasterCount ?? 'n/a'} real, attenuation ${scenario.runtime.cloudAttenuationMaskResolution ?? 'n/a'}px/${scenario.runtime.cloudAttenuationUpdateMs ?? 'n/a'}ms/${scenario.runtime.cloudAttenuationUpdateCount ?? 'n/a'} updates/${scenario.runtime.cloudAttenuationMaterialCount ?? 'n/a'} materials`
+                ? `${scenario.runtime.shadowMapSize}px, ${scenario.runtime.shadowMapAutoUpdate === false ? 'cached' : 'auto'}, refreshes ${scenario.runtime.primaryShadowRefreshCount ?? 'n/a'} (${scenario.runtime.animatedCasterShadowRefreshCount ?? 'n/a'} animated), invalidations ${scenario.runtime.shadowMapInvalidationCount ?? 'n/a'}, cloud ${scenario.runtime.cloudVisualCount ?? 'n/a'} band/deck ${scenario.runtime.cloudDeckAmount ?? 'n/a'}/${scenario.runtime.cloudProjectedShadowCount ?? 'n/a'} moving shadows/${scenario.runtime.cloudAttenuationMaterialCount ?? 'n/a'} materials`
                 : 'off'
             : 'n/a';
         const weather = scenario.runtime

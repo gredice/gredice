@@ -14,6 +14,13 @@ export const stemSurfaceVertexShader = /* glsl */ `
     )}
 `;
 
+/**
+ * Thinnest stem on screen, in world units. GAME_ART.md asks that no visible
+ * part is thinner than 0.03 units, so every stem keeps at least this radius
+ * whatever scale the plant is drawn at.
+ */
+export const PLANT_STEM_MIN_WORLD_RADIUS = 0.016;
+
 export const instancedStemSurfaceVertexShader = /* glsl */ `
     attribute vec2 stemRadius;
     varying vec3 vStemSurfacePosition;
@@ -25,6 +32,15 @@ export const instancedStemSurfaceVertexShader = /* glsl */ `
         void main() {
             float stemT = clamp(position.y, 0.0, 1.0);
             float radius = mix(stemRadius.x, stemRadius.y, stemT);
+            // Instance x stays unit length before the plant's own scale, so
+            // this is the world size of one local radius unit.
+            float stemWorldScale = max(
+                length(mat3(modelMatrix) * mat3(instanceMatrix) * vec3(1.0, 0.0, 0.0)),
+                0.0001
+            );
+            radius = radius > 0.0
+                ? max(radius, ${PLANT_STEM_MIN_WORLD_RADIUS.toFixed(4)} / stemWorldScale)
+                : 0.0;
             vec3 taperedPosition = vec3(position.x * radius, position.y, position.z * radius);
             vStemSurfacePosition = (instanceMatrix * vec4(taperedPosition, 1.0)).xyz;
         `,
@@ -32,6 +48,11 @@ export const instancedStemSurfaceVertexShader = /* glsl */ `
         .replace(
             'vec4 localPosition = vec4(position, 1.0);',
             'vec4 localPosition = vec4(taperedPosition, 1.0);',
+        )
+        // Stems breathe in girth only, so leaves stay on their nodes.
+        .replace(
+            'localPosition.xyz *= breathScale;',
+            'localPosition.xz *= breathScale;',
         )}
 `;
 

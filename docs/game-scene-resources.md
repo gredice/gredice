@@ -111,6 +111,8 @@ Each garden switch restarts the timing. The state is written to
 ## Adding an entity
 
 Add the new block to `entityNameMap` and to `blockAssetRequirements`, using
-the GLBs its renderer passes to `useGameGLTF`. If it spawns or attracts a
-fauna family, add the block to that family's habitats in
+the GLBs its renderer passes to `useGameGLTF`. A terrain block that wears the
+terrain rim also lists the GLB its rim lip comes from: a ramp, corner or
+stairs lists its flat block's GLB (`BlockStone` for stone stairs). If it
+spawns or attracts a fauna family, add the block to that family's habitats in
 `faunaFamilyRequirements`.

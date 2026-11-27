@@ -20,13 +20,24 @@ export type ArrowSignConfig = {
     name: string;
 };
 
+// Albedo, not the colour players see: a sunlit face shows about 3.2 times
+// it after tone mapping (GAME_ART.md). The comments give the on-screen colour.
 const arrowSignColorHex = {
-    White: '#f4ead7',
-    Red: '#c9574d',
-    Blue: '#4f83a6',
-    Green: '#548460',
+    // Warm off-white paint, #f6e5c4 by the formula, the same as the white
+    // fences. Authored this warm because the cool sky fill desaturates it.
+    White: '#aa9e86',
+    // Ripe red role, #f23b2c on screen.
+    Red: '#9c241b',
+    // Clear blue, #3d9df0 on screen.
+    Blue: '#2b6498',
+    // Canopy green role, #43b93a on screen.
+    Green: '#30712c',
     Wood: defaultGameWoodColor,
 } satisfies Record<ArrowSignColor, string>;
+
+export const arrowSignFallbackColorHex = arrowSignColorHex.White;
+// Painted plaques sit in the satin band.
+export const arrowSignPaintRoughness = 0.55;
 
 const arrowSignFaceRotation = {
     Left: Math.PI,

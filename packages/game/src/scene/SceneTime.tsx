@@ -62,6 +62,7 @@ type SceneTimeContextValue = {
         callback: (deadline: GameRuntimeDeadline) => void,
     ) => () => void;
     getRuntimeVisible: () => boolean;
+    readContinuousRender: () => boolean;
     subscribeRuntimeVisibility: (
         listener: (visible: boolean) => void,
     ) => () => void;
@@ -371,6 +372,7 @@ export function SceneTimeProvider({
                 return true;
             },
             getRuntimeVisible: () => scheduler.getEffectiveVisibility(),
+            readContinuousRender: () => scheduler.isRenderingContinuously(),
             requestRender: (reason, frames) =>
                 scheduler.requestRender(reason, frames),
             scheduleDeadline: (owner, absoluteTimeMs, callback) =>
@@ -439,6 +441,15 @@ export function useSceneRuntimeVisible() {
         sceneTime.getRuntimeVisible,
         () => false,
     );
+}
+
+/**
+ * Reads, at frame time, whether the scene renders at a steady rate (another
+ * lease or a base frame rate), so an ambient effect can animate on those
+ * frames without holding a lease of its own and hold still otherwise.
+ */
+export function useSceneContinuousRenderReader() {
+    return useSceneTimeContext().readContinuousRender;
 }
 
 export function useSceneTimeInvalidation(

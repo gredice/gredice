@@ -11,12 +11,15 @@ import {
     type PlantDevelopmentStorage,
 } from '../plant-definition-types';
 
+// Proportions for the chunky toy look in GAME_ART.md, Shape: stems about
+// 1.5 times thicker, fuller leaves, and produce and flowers 1.3 and 1.25
+// times larger than the botanical presets they scale.
 const HEIGHT_SCALE = 0.88;
-const STEM_RADIUS_SCALE = 0.82;
-const LEAF_SIZE_SCALE = 0.82;
-const FLOWER_SIZE_SCALE = 0.84;
-const PRODUCE_SIZE_SCALE = 0.82;
-const STEM_MIN_RADIUS_SCALE = 0.82;
+const STEM_RADIUS_SCALE = 1.23;
+const LEAF_SIZE_SCALE = 0.9;
+const FLOWER_SIZE_SCALE = 1.05;
+const PRODUCE_SIZE_SCALE = 1.066;
+const STEM_MIN_RADIUS_SCALE = 1.23;
 const THORN_SIZE_SCALE = 0.82;
 
 function round(value: number) {

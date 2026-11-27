@@ -30,7 +30,7 @@ First-party references inspected before modeling:
 | --- | --- |
 | Catalogue name / label | `GardenScarecrow` / **Vrtno strašilo** |
 | Footprint | 1×1 at all four rotations |
-| Measured width × depth × height | 0.840 × 0.410 × 1.410 tiles |
+| Measured width × depth × height | 0.833 × 0.410 × 1.410 tiles |
 | Declared hitbox | 0.86 × 0.42 × 1.41, swapped horizontally on quarter-turns |
 | Placement | Existing solid supports; not water; cannot support another block |
 | Proposed price | 80 sunflowers; local sandbox is free |
@@ -44,16 +44,18 @@ publication. Runtime registration remains available for already-owned items.
 
 ## Materials and cost
 
-| Role | sRGB albedo | Roughness / metalness |
+| Role | sRGB albedo (on screen) | Roughness / metalness |
 | --- | --- | --- |
-| Timber | `#905935` | 0.86 / 0 |
-| Straw | `#D6B83F` | 0.95 / 0 |
-| Linen | `#EEE3CB` | 0.95 / 0 |
-| Shirt | `#2F5E83` | 0.95 / 0 |
-| Patches / hat band | `#AA563D` | 0.95 / 0 |
-| Face | `#313536` | 0.95 / 0 |
+| Timber | `#905935`, shared wood | 0.55 / 0 |
+| Straw | `#9D833B` (hay `#F2CB5A`) | 0.8 / 0 |
+| Linen | `#9D9380` (cream `#F2E4C6`) | 0.8 / 0 |
+| Shirt | `#2C5B98` (enamel blue `#3F8FF0`) | 0.8 / 0 |
+| Patches / hat band | `#8A3E2C` (textile rust `#E45F3A`) | 0.8 / 0 |
+| Face | `#3C3159` (ink violet `#5C4590`) | 0.55 / 0 |
 
-The lazy GLB is **147,720 bytes, 2,088 triangles, six meshes and six materials**.
+The colours are the seasonal roles in [GAME_ART.md](../GAME_ART.md).
+
+The lazy GLB is **72,380 bytes, 2,896 triangles, six meshes and six materials**.
 It has no textures, animation clips, particles or point lights. Six base-pass
 draws are supplemented by existing shadow/weather passes when active. The
 runtime reuses `WeatheredEntityPart` for rain and snow; it preserves exported

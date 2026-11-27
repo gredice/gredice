@@ -15,6 +15,7 @@ import {
 } from 'react';
 import { Plane, Raycaster, Vector2, Vector3 } from 'three';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
+import type { BlockMovePointer } from '../blockOptions/blockEditingState';
 import {
     type ActiveDragPreviewTarget,
     activeDragPreviewTargetMatches,
@@ -61,7 +62,19 @@ import {
     areBlockInteractionsSuppressed,
     suppressBlockInteractions,
 } from './blockInteractionSuppression';
+import {
+    centeredPickupAnchorOffset,
+    computeMenuMoveAnchorOffset,
+    type PickupAnchorOffset,
+    resolveMenuMoveStartPoint,
+} from './blockMoveAnchor';
+import {
+    type CarryStartRelease,
+    installCarryPointerAdoption,
+    resolveCarryPointerRoot,
+} from './blockMoveCarry';
 import { canRotatePlacedBlock } from './blockRotation';
+import { isDragEdgeAutopanArmed } from './dragEdgeAutopan';
 import {
     getInstancedInteractionMountProfileMetadata,
     getPickupPointerMoveCancelDistance,
@@ -76,6 +89,11 @@ import {
     type PickupPlacementPreviewResolver,
     type ResolvedPlacementPreview,
 } from './PickupPlacementResolver';
+import {
+    arePickupReleaseOptionsEnabled,
+    type PickupSessionOrigin,
+    resolvePickupReleaseIntent,
+} from './pickupReleaseIntent';
 import { resolvePickupHudDropAction } from './pickupRemovalDropAction';
 import {
     createPickupSelectionMoveRequests,
@@ -94,14 +112,14 @@ const placementSnapSearchRadius = 5;
 const animalPickupDisturbanceRadius = 1.8;
 const rotateDragThreshold = 0.1;
 const doubleTapThresholdMs = 320;
-
-type PickupAnchorOffset = {
-    x: number;
-    y: number;
-    z: number;
-};
+/** Pointer id of a move started from the keyboard (no pointer is down). */
+const keyboardMovePointerId = -1;
 
 type PointerSession = {
+    /** A hold on the block, or Pomakni in the options pop-up. */
+    origin: PickupSessionOrigin;
+    /** Carry mode: lifted, waiting for the pointer that picks the cell. */
+    awaitingPointer: boolean;
     target: BlockInteractionLayerTarget;
     activePreviewTarget: ActiveDragPreviewTarget;
     pointerId: number;
@@ -121,6 +139,12 @@ type PointerSession = {
     holdTimer: number | null;
     dragAutopanFrame: number | null;
     dragAutopanPreviousTime: number | null;
+    /**
+     * Edge autopan may run. A hold starts armed; Pomakni and a carry
+     * adoption arm only once the pointer leaves, or pushes further into,
+     * the edge band it started in (`isDragEdgeAutopanArmed`).
+     */
+    dragAutopanArmed: boolean;
     latestPreview: ResolvedPlacementPreview | null;
 };
 
@@ -286,6 +310,7 @@ export function InstancedBlockInteractionController({
     const gameStateStore = useContext(GameStateContext);
     const camera = useThree((state) => state.camera);
     const gl = useThree((state) => state.gl);
+    const getThree = useThree((state) => state.get);
     const { domElement } = gl;
     const dragState = useRef({
         pt: new Vector3(),
@@ -320,6 +345,7 @@ export function InstancedBlockInteractionController({
         (state) => state.clearPickupSelectionTargets,
     );
     const disturbAnimals = useGameState((state) => state.disturbAnimals);
+    const bounceBlock = useGameState((state) => state.bounceBlock);
     const activeDragPreview = useGameState((state) => state.activeDragPreview);
     const setActiveDragPreview = useGameState(
         (state) => state.setActiveDragPreview,
@@ -358,6 +384,13 @@ export function InstancedBlockInteractionController({
     const hoveredTarget = useRef<BlockInteractionLayerTarget | null>(null);
     const refreshPlacementPreviewFromSessionRef = useRef<
         ((session: PointerSession) => void) | null
+    >(null);
+    const startMenuMoveRef = useRef<
+        | ((
+              target: BlockInteractionLayerTarget,
+              pointer: BlockMovePointer | null,
+          ) => boolean)
+        | null
     >(null);
     const controllerHandlersRef =
         useRef<InstancedBlockInteractionControllerApi>({
@@ -552,6 +585,28 @@ export function InstancedBlockInteractionController({
             gameState?.setItemsHudDropTargetActive(false);
         };
     }, [gameStateStore, stopDragAutopan]);
+
+    // Pomakni in the options pop-up hands its pointer to the controller when
+    // the block is one of its targets; the pickup starts synchronously inside
+    // the button's pointerdown (D18).
+    useEffect(() => {
+        if (!gameStateStore) {
+            return;
+        }
+
+        return gameStateStore
+            .getState()
+            .registerBlockMoveReceiver(({ blockId, pointer }) => {
+                for (const target of targetsByKeyRef.current.values()) {
+                    if (target.block.id === blockId) {
+                        return (
+                            startMenuMoveRef.current?.(target, pointer) ?? false
+                        );
+                    }
+                }
+                return false;
+            });
+    }, [gameStateStore]);
 
     const visualPreviewTarget = useMemo(
         () => (visualTarget ? createPreviewTarget(visualTarget) : null),
@@ -895,6 +950,30 @@ export function InstancedBlockInteractionController({
         refreshPlacementPreviewFromSessionRef.current?.(session);
     }, [activeDragPreview?.source, pickupSelectionTargets]);
 
+    /**
+     * Starts the edge autopan once the session is armed for it: at once for
+     * a hold, and for Pomakni or a carry tap only after the pointer leaves,
+     * or pushes further into, the edge band it started in.
+     */
+    function armDragAutopan(session: PointerSession) {
+        if (!session.dragAutopanArmed) {
+            session.dragAutopanArmed = isDragEdgeAutopanArmed({
+                pointer: {
+                    clientX: session.lastClientX,
+                    clientY: session.lastClientY,
+                },
+                start: {
+                    clientX: session.pickupClientX ?? session.startClientX,
+                    clientY: session.pickupClientY ?? session.startClientY,
+                },
+                viewport: domElement.getBoundingClientRect(),
+            });
+        }
+        if (session.dragAutopanArmed) {
+            startDragAutopan(session);
+        }
+    }
+
     function startDragAutopan(session: PointerSession) {
         if (session.dragAutopanFrame !== null || !gameCamera) {
             return;
@@ -987,6 +1066,7 @@ export function InstancedBlockInteractionController({
                 .setY(session.target.stackHeight),
             4,
         );
+        bounceBlock(session.target.block.id, 'pickup');
         applyActivePreview(session, preview);
     }
 
@@ -1187,6 +1267,11 @@ export function InstancedBlockInteractionController({
             previewDropPosition,
             8,
         );
+        for (const segment of movingSegments) {
+            for (const movedBlock of segment.blocks) {
+                bounceBlock(movedBlock.id, 'land');
+            }
+        }
 
         await moveBlock
             .mutateAsync({
@@ -1199,7 +1284,13 @@ export function InstancedBlockInteractionController({
 
     function handleWindowPointerMove(event: PointerEvent) {
         const session = pointerSession.current;
-        if (!session || event.pointerId !== session.pointerId) {
+        if (
+            !session ||
+            event.pointerId !== session.pointerId ||
+            // Carry: mouse hover moves the preview through the carry
+            // listener; it must not count as a drag or start autopan.
+            session.awaitingPointer
+        ) {
             return;
         }
 
@@ -1231,8 +1322,8 @@ export function InstancedBlockInteractionController({
             }
 
             session.hasDraggedAfterPickup = true;
-            startDragAutopan(session);
         }
+        armDragAutopan(session);
 
         setItemsHudDropTargetActive(
             isPointOverItemsHudDropTarget(event.clientX, event.clientY),
@@ -1243,16 +1334,20 @@ export function InstancedBlockInteractionController({
 
     function handleWindowPointerUp(event: PointerEvent) {
         const session = pointerSession.current;
-        if (!session || event.pointerId !== session.pointerId) {
+        if (
+            !session ||
+            event.pointerId !== session.pointerId ||
+            session.awaitingPointer
+        ) {
             return;
         }
 
         clearPointerSessionTimers(session);
         stopDragAutopan(session);
-        cleanupPointerSessionListeners();
-        pointerSession.current = null;
 
         if (!session.activated) {
+            cleanupPointerSessionListeners();
+            pointerSession.current = null;
             if (session.hintVisible) {
                 dragSpringsApi.start({
                     internalPosition: [0, 0, 0],
@@ -1266,23 +1361,70 @@ export function InstancedBlockInteractionController({
 
         event.preventDefault();
         suppressBlockInteractions(suppressClickAfterDragMs);
+        const gameState = gameStateStore?.getState();
+        const hudDropRequested = isPointOverItemsHudDropTarget(
+            session.lastClientX,
+            session.lastClientY,
+        );
+        // Decided from what the pointer did, not from the re-resolved cell
+        // (D1): a still release never moves the block.
+        const intent = resolvePickupReleaseIntent({
+            origin: session.origin,
+            hasDraggedAfterPickup: session.hasDraggedAfterPickup,
+            hudDropRequested,
+            selectionCount: gameState?.pickupSelectionTargets.length ?? 1,
+            optionsEnabled:
+                Boolean(gameState) &&
+                arePickupReleaseOptionsEnabled({
+                    editingMode: gameState?.blockEditing?.mode,
+                    hasBlockData: Boolean(blocksData),
+                    hasGarden: Boolean(getCurrentGarden()),
+                    hasOptionsUi: Boolean(gameState?.isBlockOptionsUiMounted()),
+                }),
+        });
+        if (intent === 'carry') {
+            enterCarryMode(session, {
+                clientX: event.clientX,
+                clientY: event.clientY,
+                timeStamp: event.timeStamp,
+            });
+            return;
+        }
+
+        cleanupPointerSessionListeners();
+        pointerSession.current = null;
+        if (intent === 'options' || intent === 'settle') {
+            resetPickupVisualState();
+            dragSpringsApi.start({ internalPosition: [0, 0, 0], scale: 1 });
+            if (intent === 'options') {
+                gameState?.openBlockOptions({
+                    blockId: session.target.block.id,
+                    blockName: session.target.block.name,
+                    pointerType: session.pointerType,
+                });
+            }
+            return;
+        }
+
         const preview =
             resolvePlacementPreview(
                 session,
                 session.lastClientX,
                 session.lastClientY,
             ) ?? session.latestPreview;
-        void finishPickup(session, preview, {
-            hudDropRequested: isPointOverItemsHudDropTarget(
-                session.lastClientX,
-                session.lastClientY,
-            ),
-        });
+        void finishPickup(session, preview, { hudDropRequested });
+        if (session.origin === 'menu') {
+            gameState?.closeBlockEditing();
+        }
     }
 
     function handleWindowPointerCancel(event: PointerEvent) {
         const session = pointerSession.current;
-        if (!session || event.pointerId !== session.pointerId) {
+        if (
+            !session ||
+            event.pointerId !== session.pointerId ||
+            session.awaitingPointer
+        ) {
             return;
         }
 
@@ -1335,6 +1477,8 @@ export function InstancedBlockInteractionController({
             event.button !== 0 ||
             pointerSession.current ||
             areBlockInteractionsSuppressed() ||
+            // Expand owns canvas presses (corner taps, pans), D6.
+            gameStateStore?.getState().blockEditing?.mode === 'expand' ||
             !getCurrentGarden() ||
             !blocksData ||
             target.blockIndex < 0
@@ -1350,6 +1494,8 @@ export function InstancedBlockInteractionController({
 
         const nativeEvent = event.nativeEvent;
         const session: PointerSession = {
+            origin: 'hold',
+            awaitingPointer: false,
             target,
             activePreviewTarget: createPreviewTarget(target),
             pointerId: nativeEvent.pointerId,
@@ -1373,6 +1519,7 @@ export function InstancedBlockInteractionController({
             holdTimer: null,
             dragAutopanFrame: null,
             dragAutopanPreviousTime: null,
+            dragAutopanArmed: true,
             latestPreview: null,
         };
         pointerSession.current = session;
@@ -1400,6 +1547,10 @@ export function InstancedBlockInteractionController({
             pickupHoldDelayMs,
         );
 
+        addPointerSessionListeners();
+    }
+
+    function addPointerSessionListeners() {
         window.addEventListener('pointermove', handleWindowPointerMove, {
             passive: false,
         });
@@ -1415,9 +1566,193 @@ export function InstancedBlockInteractionController({
         };
     }
 
-    function handleClick(event: ThreeEvent<MouseEvent>) {
-        if (areBlockInteractionsSuppressed()) {
+    /**
+     * Pomakni in the options pop-up: lifts `target` for the pointer that
+     * pressed the button, synchronously, so the button's own pointerup
+     * already reaches this session (D18). Without a pointer (keyboard) the
+     * block goes straight to carry mode. Returns whether it claimed the move.
+     */
+    function startMenuMove(
+        target: BlockInteractionLayerTarget,
+        pointer: BlockMovePointer | null,
+    ) {
+        if (
+            pointerSession.current ||
+            !gameStateStore ||
+            !getCurrentGarden() ||
+            !blocksData ||
+            target.blockIndex < 0
+        ) {
+            return false;
+        }
+
+        setVisualTarget(target);
+        setIsBlocked(false);
+        setIsOverRecycler(false);
+        dragSpringsApi.set({ internalPosition: [0, 0, 0], scale: 1 });
+
+        const rect = domElement.getBoundingClientRect();
+        const planeHeight = target.stackHeight + pickupLift;
+        // A keyboard move starts at the block's own screen point, so the
+        // refresh after activation keeps it on its cell (§2.6 D3).
+        const { clientX, clientY } = resolveMenuMoveStartPoint({
+            camera,
+            planeHeight,
+            pointer,
+            rect,
+            stackPosition: target.stack.position,
+        });
+        const session: PointerSession = {
+            origin: 'menu',
+            awaitingPointer: false,
+            target,
+            activePreviewTarget: createPreviewTarget(target),
+            pointerId: pointer?.pointerId ?? keyboardMovePointerId,
+            pointerType: pointer?.pointerType ?? 'keyboard',
+            startClientX: clientX,
+            startClientY: clientY,
+            lastClientX: clientX,
+            lastClientY: clientY,
+            pickupClientX: null,
+            pickupClientY: null,
+            pickupAnchorOffset: computeMenuMoveAnchorOffset({
+                camera,
+                planeHeight,
+                pointer,
+                rect,
+                stackPosition: target.stack.position,
+            }),
+            hasDraggedAfterPickup: false,
+            activated: false,
+            cancelled: false,
+            hintVisible: false,
+            hintTimer: null,
+            holdTimer: null,
+            dragAutopanFrame: null,
+            dragAutopanPreviousTime: null,
+            dragAutopanArmed: false,
+            latestPreview: null,
+        };
+        pointerSession.current = session;
+        addPointerSessionListeners();
+        activatePickup();
+        if (!session.activated || pointerSession.current !== session) {
+            // No valid preview: activatePickup already ended the session.
+            setVisualTarget(null);
+            return false;
+        }
+
+        if (!pointer) {
+            enterCarryMode(session, null);
+        }
+        track('game_block_move_started', {
+            block_name: target.block.name,
+            mode: pointer ? 'drag' : 'carry',
+        });
+        return true;
+    }
+    startMenuMoveRef.current = startMenuMove;
+
+    /**
+     * Keeps the block lifted after Pomakni was released without dragging,
+     * until a tap or click picks its cell (adopt), a press elsewhere or
+     * Escape cancels, or the controller unmounts.
+     * `start` is the Pomakni release (null from the keyboard): a press
+     * repeating it right away is a double-click on Pomakni, not a cell.
+     */
+    function enterCarryMode(
+        session: PointerSession,
+        start: CarryStartRelease | null,
+    ) {
+        session.awaitingPointer = true;
+        session.hasDraggedAfterPickup = false;
+        // The block goes where the player taps, not under the button.
+        session.pickupAnchorOffset = { ...centeredPickupAnchorOffset };
+        stopDragAutopan(session);
+        setItemsHudDropTargetActive(false);
+
+        const isAwaiting = () =>
+            pointerSession.current === session &&
+            session.awaitingPointer &&
+            !session.cancelled;
+        const uninstallCarry = installCarryPointerAdoption({
+            // drei `Html` overlays (animal bubbles) live in r3f's event
+            // source, beside the canvas's own container.
+            getR3fRoot: () =>
+                resolveCarryPointerRoot(
+                    getThree().events.connected,
+                    domElement,
+                ),
+            isAwaiting,
+            isOverHudDropTarget: isPointOverItemsHudDropTarget,
+            onAdopt: (event) => adoptCarryPointer(session, event),
+            onCancel: () => cancelCarry(session),
+            onEscape: () => cancelCarry(session),
+            onHover: (event) => followCarryHover(session, event),
+            start,
+        });
+        const cleanupSessionListeners = pointerSessionCleanup.current;
+        pointerSessionCleanup.current = () => {
+            cleanupSessionListeners?.();
+            uninstallCarry();
+        };
+        gameStateStore
+            ?.getState()
+            .setBlockEditingCarry({ pointerType: session.pointerType });
+    }
+
+    function adoptCarryPointer(session: PointerSession, event: PointerEvent) {
+        session.pointerId = event.pointerId;
+        session.pointerType = event.pointerType;
+        session.lastClientX = event.clientX;
+        session.lastClientY = event.clientY;
+        session.pickupClientX = event.clientX;
+        session.pickupClientY = event.clientY;
+        // The press itself picks the cell: its release drops there.
+        session.hasDraggedAfterPickup = true;
+        session.awaitingPointer = false;
+        setItemsHudDropTargetActive(
+            isPointOverItemsHudDropTarget(event.clientX, event.clientY),
+        );
+        // A still tap in an edge band must not pan the ground away from
+        // the tapped cell; the pan waits until the pointer arms it.
+        session.dragAutopanArmed = false;
+        refreshPlacementPreviewFromSession(session);
+    }
+
+    function followCarryHover(session: PointerSession, event: PointerEvent) {
+        session.lastClientX = event.clientX;
+        session.lastClientY = event.clientY;
+        setItemsHudDropTargetActive(
+            isPointOverItemsHudDropTarget(event.clientX, event.clientY),
+        );
+        refreshPlacementPreviewFromSession(session);
+    }
+
+    function cancelCarry(session: PointerSession) {
+        if (pointerSession.current !== session) {
+            return;
+        }
+
+        resetPickupVisualState();
+        cancelPointerSession(true);
+        gameStateStore?.getState().closeBlockEditing();
+    }
+
+    function handleClick(
+        target: BlockInteractionLayerTarget,
+        event: ThreeEvent<MouseEvent>,
+    ) {
+        if (
+            areBlockInteractionsSuppressed() ||
+            gameStateStore?.getState().blockEditing?.mode === 'expand'
+        ) {
             event.stopPropagation();
+            return;
+        }
+        // Terrain stays put so the floor keeps reading as one surface.
+        if (!target.block.name.startsWith('Block_')) {
+            bounceBlock(target.block.id, 'tap');
         }
     }
 
@@ -1517,11 +1852,15 @@ export function InstancedBlockInteractionController({
             return false;
         }
 
+        // A tap right after a hold-release (which opened the options pop-up)
+        // is not a double-click, and Expand switches rotation off (D6).
         const gameState = gameStateStore?.getState();
         if (
             gameState?.isDragging ||
             gameState?.pickupBlock ||
-            gameState?.hudPlacementDrag
+            gameState?.hudPlacementDrag ||
+            gameState?.blockEditing?.mode === 'expand' ||
+            areBlockInteractionsSuppressed()
         ) {
             return false;
         }
@@ -1584,7 +1923,7 @@ export function InstancedBlockInteractionController({
     }
 
     controllerHandlersRef.current = {
-        onClick: (_target, event) => handleClick(event),
+        onClick: (target, event) => handleClick(target, event),
         onPickupPointerEnter: handlePickupPointerEnter,
         onPointerDown: (target, event) => {
             handleRotatePointerDown(target, event);

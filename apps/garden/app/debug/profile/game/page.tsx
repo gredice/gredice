@@ -31,7 +31,12 @@ import { resolveMatrixProfileSize } from './profileMatrix';
 import {
     gameProfileClearWeather,
     gameProfileCloudyWeather,
+    gameProfileFogWeather,
+    gameProfileLightRainWeather,
+    gameProfilePartlyCloudyWeather,
     gameProfileSnowSparseWeather,
+    resolveGameProfileCameraZoom,
+    resolveGameProfileWeatherDebug,
 } from './profileWeather';
 
 export const instant = false;
@@ -44,6 +49,9 @@ type GameProfileMode =
     | 'baseline'
     | 'cloudy'
     | 'details'
+    | 'fog'
+    | 'lightrain'
+    | 'partly'
     | 'rain'
     | 'snow'
     | 'snow-onset'
@@ -84,10 +92,18 @@ function resolveMode(value: string | undefined): GameProfileMode {
         return 'autumn';
     }
 
+    // Heavy rain is the rain mode; light rain is its own.
+    if (value === 'heavyrain') {
+        return 'rain';
+    }
+
     if (
         value === 'baseline' ||
         value === 'cloudy' ||
         value === 'details' ||
+        value === 'fog' ||
+        value === 'lightrain' ||
+        value === 'partly' ||
         value === 'rain' ||
         value === 'snow' ||
         value === 'snow-onset' ||
@@ -149,6 +165,18 @@ function resolveWeather(
 
     if (mode === 'cloudy') {
         return gameProfileCloudyWeather;
+    }
+
+    if (mode === 'partly') {
+        return gameProfilePartlyCloudyWeather;
+    }
+
+    if (mode === 'lightrain') {
+        return gameProfileLightRainWeather;
+    }
+
+    if (mode === 'fog') {
+        return gameProfileFogWeather;
     }
 
     if (mode === 'rain') {
@@ -364,6 +392,13 @@ export default async function GameProfilePage({
     const matrixProfileSize = resolveMatrixProfileSize(
         firstValue(params.matrixProfile),
     );
+    const cameraZoom = resolveGameProfileCameraZoom(firstValue(params.zoom));
+    const weatherDebug = resolveGameProfileWeatherDebug({
+        hideWeather: firstValue(params.hideWeather),
+        lightning: firstValue(params.lightning),
+        reducedMotion: firstValue(params.reducedMotion),
+        weatherInspect: firstValue(params.weatherInspect),
+    });
 
     return (
         <main
@@ -412,6 +447,9 @@ export default async function GameProfilePage({
                 process.env.NEXT_PUBLIC_GAME_PROFILE_SOURCE_DIRTY
             }
             data-game-profile-weather-surface={weatherSurfaceMode}
+            data-game-profile-weather-debug={
+                weatherDebug ? JSON.stringify(weatherDebug) : undefined
+            }
             data-game-profile-operation-visual-highlight-raised-bed-id={
                 operationVisuals
                     ? highTargetOperationVisualHighlightTarget.raisedBedId
@@ -435,6 +473,7 @@ export default async function GameProfilePage({
                         ? mode
                         : undefined
                 }
+                cameraZoom={cameraZoom}
                 adaptiveHighQuality={adaptiveHigh}
                 authenticatedGardenQueriesEnabled={false}
                 autumnLaunchSize={autumnLaunchSize ?? undefined}
@@ -476,6 +515,7 @@ export default async function GameProfilePage({
                         ? weather
                         : { ...weather, windSpeed: leafWind }
                 }
+                weatherDebug={weatherDebug}
                 winterMode={mode === 'snow' ? 'winter' : 'summer'}
                 zoom={isOperationRewardDebug ? 'far' : 'normal'}
             />

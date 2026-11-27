@@ -266,28 +266,6 @@ export function useRainSurfaceWetnessState({
     };
 }
 
-export function useRainSurfaceWetnessActive({
-    drySpeed,
-    enabled,
-    intensityMultiplier,
-    minimumWetness = 0.01,
-    wetSpeed,
-}: RainSurfaceUniformOptions & {
-    enabled: boolean;
-    minimumWetness?: number;
-}) {
-    const entry = useRainSurfaceEntry({
-        drySpeed,
-        intensityMultiplier,
-        wetSpeed,
-    });
-    return useRainSurfaceEntryActivity({
-        enabled,
-        entry,
-        minimumWetness,
-    });
-}
-
 export function useRainSurfaceIntensityUniform(): IUniform<number> {
     return useWeatherSurfaceUniformRegistry().rainIntensityUniform;
 }

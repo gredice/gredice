@@ -45,7 +45,11 @@ const timberAssetMaterials = {
     DoubleGardenLightPole: {
         'Material.DoubleGardenLightPole.WarmWood': 'default',
     },
+    // The autumn gate copies FenceGate's posts and leaf, so both gates
+    // keep one wood tone.
+    AutumnFenceGate: { 'Material.Planks': 'default' },
     Fence: { 'Material.Planks': 'default' },
+    FenceGate: { 'Material.Planks': 'default' },
     GardenBox: { 'Material.Planks': 'default' },
     IceCreamCart: { wood: 'default', wood_dark: 'default' },
     LemonadeStand: {
@@ -56,6 +60,7 @@ const timberAssetMaterials = {
     },
     RaisedBed: { 'Material.Planks': 'default' },
     Shade: { 'Material.Planks': 'default' },
+    Stick: { 'Material.Planks': 'default' },
     Stool: { 'Material.Planks': 'default' },
     WaterWell: { 'Material.Planks': 'default' },
     WoodenBench: {
@@ -222,13 +227,14 @@ describe('timber asset palette', () => {
     });
 
     it('restores the doghouse multi-tone wood palette', () => {
+        // The roof is painted with the shared animal-home red in DogHouse.tsx,
+        // so only the three wood tones stay here.
         assert.deepEqual(dogHouseWoodColors, {
             darkWall: '#3f2618',
-            roof: '#5f3a22',
             trim: '#b8793d',
             wall: '#7a4f2b',
         });
-        assert.equal(new Set(Object.values(dogHouseWoodColors)).size, 4);
+        assert.equal(new Set(Object.values(dogHouseWoodColors)).size, 3);
 
         const dogHouseMaterials = readMaterials('DogHouse');
         const expectedProfiles = {

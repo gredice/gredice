@@ -158,10 +158,10 @@ describe('Autumn entrance release', () => {
             assert.equal(
                 triangles,
                 item.name === 'AutumnWreathPost'
-                    ? 920
+                    ? 2584
                     : item.name === 'AutumnGarland'
-                      ? 696
-                      : 1972,
+                      ? 2176
+                      : 2348,
             );
             assert.equal(
                 meshes.length,

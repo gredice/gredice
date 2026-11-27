@@ -1,4 +1,11 @@
-import { Suspense, useEffect, useMemo } from 'react';
+import {
+    Suspense,
+    useEffect,
+    useLayoutEffect,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
 import { useBlockData } from '../../hooks/useBlockData';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useDeliveryRequests } from '../../hooks/useDeliveryRequests';
@@ -9,6 +16,13 @@ import { resolveOperationVisualRewards } from '../../operationVisualRewards';
 import { useGameState } from '../../useGameState';
 import { getRaisedBedBlockIds } from '../../utils/raisedBedBlocks';
 import { useGameGLTF } from '../../utils/useGameGLTF';
+import { BounceGroup } from '../helpers/BounceGroup';
+import {
+    applyHarvestBasketBounces,
+    type HarvestBasketBounce,
+    type HarvestBasketFillSnapshot,
+    resolveHarvestBasketBounces,
+} from './raisedBedHarvestBounce';
 import {
     type RaisedBedHarvestBasketFillLevel,
     resolveRaisedBedHarvestBasketPlacements,
@@ -148,11 +162,13 @@ function HarvestBasketProduce({
 }
 
 function RaisedBedHarvestBasketVisual({
+    bounce,
     fillLevel,
     position,
     produceKinds,
     rotation,
 }: {
+    bounce: HarvestBasketBounce | undefined;
     fillLevel: RaisedBedHarvestBasketFillLevel;
     position: [number, number, number];
     produceKinds: HarvestProduceKind[];
@@ -166,46 +182,53 @@ function RaisedBedHarvestBasketVisual({
 
     return (
         <group position={position} rotation={[0, rotation, 0]}>
-            <mesh
-                castShadow
-                receiveShadow
-                geometry={nodes.HarvestBasket_Weave.geometry}
-                material={materials['Material.BasketWeave']}
-            />
-            <mesh
-                castShadow
-                receiveShadow
-                geometry={nodes.HarvestBasket_Rim.geometry}
-                material={materials['Material.BasketRim']}
-            />
-            <mesh
-                receiveShadow
-                geometry={nodes.HarvestBasket_Inner.geometry}
-                material={materials['Material.BasketInner']}
-            />
-            <mesh
-                castShadow
-                geometry={nodes.HarvestBasket_Handle.geometry}
-                material={materials['Material.BasketRim']}
-            />
-            <mesh
-                castShadow
-                geometry={nodes.HarvestBasket_Pin.geometry}
-                material={materials['Material.BasketPin']}
-            />
-            {harvestBasketProduceSlots
-                .slice(0, produceCount)
-                .map((slot, index) => (
-                    <HarvestBasketProduce
-                        key={`harvest-basket-produce-${slot.id}`}
-                        index={index}
-                        kind={
-                            visibleProduceKinds[
-                                index % visibleProduceKinds.length
-                            ]
-                        }
-                    />
-                ))}
+            {/* A fresh harvest drops in with the placement squash. */}
+            <BounceGroup
+                kind={bounce?.kind ?? 'harvest'}
+                name="Animation:HarvestBasketBounce"
+                playKey={bounce?.playKey ?? 0}
+            >
+                <mesh
+                    castShadow
+                    receiveShadow
+                    geometry={nodes.HarvestBasket_Weave.geometry}
+                    material={materials['Material.BasketWeave']}
+                />
+                <mesh
+                    castShadow
+                    receiveShadow
+                    geometry={nodes.HarvestBasket_Rim.geometry}
+                    material={materials['Material.BasketRim']}
+                />
+                <mesh
+                    receiveShadow
+                    geometry={nodes.HarvestBasket_Inner.geometry}
+                    material={materials['Material.BasketInner']}
+                />
+                <mesh
+                    castShadow
+                    geometry={nodes.HarvestBasket_Handle.geometry}
+                    material={materials['Material.BasketRim']}
+                />
+                <mesh
+                    castShadow
+                    geometry={nodes.HarvestBasket_Pin.geometry}
+                    material={materials['Material.BasketPin']}
+                />
+                {harvestBasketProduceSlots
+                    .slice(0, produceCount)
+                    .map((slot, index) => (
+                        <HarvestBasketProduce
+                            key={`harvest-basket-produce-${slot.id}`}
+                            index={index}
+                            kind={
+                                visibleProduceKinds[
+                                    index % visibleProduceKinds.length
+                                ]
+                            }
+                        />
+                    ))}
+            </BounceGroup>
         </group>
     );
 }
@@ -351,6 +374,35 @@ export function RaisedBedHarvestBaskets() {
         () => new Map((sortData ?? []).map((sort) => [sort.id, sort])),
         [sortData],
     );
+    // A harvest is a basket appearing or filling up once the garden's
+    // operations have settled. The first settled state is only recorded.
+    const harvestDataSettled =
+        Boolean(garden && operations && operationHistory) &&
+        !hasNextPage &&
+        !isFetchingNextPage &&
+        hiddenHarvestOperationIdsResolved;
+    const harvestSnapshotRef = useRef<HarvestBasketFillSnapshot | null>(null);
+    const [harvestBounces, setHarvestBounces] = useState<
+        ReadonlyMap<number, HarvestBasketBounce>
+    >(() => new Map());
+    // Layout timing starts a new basket in the air before its first frame.
+    useLayoutEffect(() => {
+        if (!harvestDataSettled) return;
+        const snapshot: HarvestBasketFillSnapshot = new Map(
+            harvestBaskets.map((basket) => [
+                basket.raisedBed.id,
+                basket.state.fillLevel,
+            ]),
+        );
+        const bounces = resolveHarvestBasketBounces(
+            harvestSnapshotRef.current,
+            snapshot,
+        );
+        harvestSnapshotRef.current = snapshot;
+        setHarvestBounces((current) =>
+            applyHarvestBasketBounces(current, bounces),
+        );
+    }, [harvestBaskets, harvestDataSettled]);
 
     return (
         <Suspense fallback={null}>
@@ -377,6 +429,7 @@ export function RaisedBedHarvestBaskets() {
                 return (
                     <RaisedBedHarvestBasketVisual
                         key={`raised-bed-harvest-basket-${basket.raisedBed.id}`}
+                        bounce={harvestBounces.get(basket.raisedBed.id)}
                         fillLevel={basket.state.fillLevel}
                         position={placement.position}
                         produceKinds={produceKinds}

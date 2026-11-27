@@ -110,12 +110,18 @@ const headBackNodeName = 'Sunflower_Head_Back' satisfies SunflowerNodeName;
 const centerNodeName = 'Sunflower_Center' satisfies SunflowerNodeName;
 const sunflowerScale = 0.656;
 const headPivot = [0, 1.33, 0] satisfies [number, number, number];
+/**
+ * Albedo colours. The comment gives the colour a sunlit face shows on screen
+ * (GAME_ART.md authors colours by what players see).
+ */
 const colors = {
-    leaf: '#6f8544',
-    leafDark: '#324008',
-    petal: '#ffd726',
-    petalShadow: '#f4aa18',
-    stem: '#324008',
+    centre: '#583928', // #8f5530
+    leaf: '#3e7a2c', // crop leaf #5fc93a
+    leafDark: '#30712c', // canopy #43b93a
+    petal: '#957700', // #f0c21d
+    petalShadow: '#91640c', // #eda514
+    seeds: '#673f28', // #a8622f
+    stem: '#30712c', // canopy #43b93a
 };
 
 function nodePosition(node: SunflowerNode): [number, number, number] {
@@ -192,7 +198,7 @@ function SunflowerHeadParts({
                     <meshStandardMaterial
                         color={colors.leafDark}
                         metalness={0}
-                        roughness={0.86}
+                        roughness={0.5}
                         side={DoubleSide}
                     />
                 </SunflowerPart>
@@ -208,16 +214,16 @@ function SunflowerHeadParts({
                             index % 2 === 0 ? colors.petal : colors.petalShadow
                         }
                         metalness={0}
-                        roughness={0.74}
+                        roughness={0.45}
                         side={DoubleSide}
                     />
                 </SunflowerPart>
             ))}
             <SunflowerPart node={nodes[centerNodeName]} relativeToHead>
                 <meshStandardMaterial
-                    color="#7a4a21"
+                    color={colors.centre}
                     metalness={0}
-                    roughness={0.88}
+                    roughness={0.6}
                 />
             </SunflowerPart>
             {centerDotNodeNames.map((nodeName) => (
@@ -227,9 +233,9 @@ function SunflowerHeadParts({
                     relativeToHead
                 >
                     <meshStandardMaterial
-                        color="#2b1609"
+                        color={colors.seeds}
                         metalness={0}
-                        roughness={0.9}
+                        roughness={0.6}
                     />
                 </SunflowerPart>
             ))}
@@ -311,7 +317,7 @@ export function Sunflower({ stack, block, rotation }: EntityInstanceProps) {
                 <meshStandardMaterial
                     color={colors.stem}
                     metalness={0}
-                    roughness={0.82}
+                    roughness={0.5}
                 />
             </SunflowerPart>
             {leafNodeNames.map((nodeName, index) => (
@@ -319,7 +325,7 @@ export function Sunflower({ stack, block, rotation }: EntityInstanceProps) {
                     <meshStandardMaterial
                         color={index % 2 === 0 ? colors.leaf : colors.leafDark}
                         metalness={0}
-                        roughness={0.86}
+                        roughness={0.5}
                     />
                 </SunflowerPart>
             ))}

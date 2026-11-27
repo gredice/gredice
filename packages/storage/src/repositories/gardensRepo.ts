@@ -28,7 +28,7 @@ import {
     type UpdateGardenStack,
     users,
 } from '../schema';
-import { createEvent, knownEvents } from './eventsRepo';
+import { createEvent, createEvents, knownEvents } from './eventsRepo';
 import { getFarms } from './farmsRepo';
 import {
     getGardenPreviewsForGardenIds,
@@ -146,13 +146,16 @@ export async function createDefaultGardenForAccount(
     // Assign a 4x3 grass grid and one 1x2 raised bed near the center.
     // Grid: x = -1..2, y = -1..1
     // The raised bed is anchored at (0,0) and rotated across (1,0).
+    // Starter blocks are free, so recycling them refunds nothing.
     for (let x = -1; x < 3; x++) {
         for (let y = -1; y < 2; y++) {
             // Create base block
             const blockId = await createGardenBlock(
                 gardenId,
                 'Block_Grass',
+                null,
                 db,
+                { paidSunflowers: 0 },
             );
 
             // Create stack if not exists
@@ -163,7 +166,9 @@ export async function createDefaultGardenForAccount(
                 const raisedBedBlockId = await createGardenBlock(
                     gardenId,
                     'Raised_Bed',
+                    null,
                     db,
+                    { paidSunflowers: 0 },
                 );
                 await updateGardenBlock(
                     gardenId,
@@ -1173,11 +1178,92 @@ export async function getGardenBlockForUpdate(
     );
 }
 
+const maximumGardenBlockPaidSunflowers = 2_147_483_647;
+
+function assertGardenBlockPaidSunflowers(paidSunflowers: number | null) {
+    if (
+        paidSunflowers !== null &&
+        (!Number.isSafeInteger(paidSunflowers) ||
+            paidSunflowers < 0 ||
+            paidSunflowers > maximumGardenBlockPaidSunflowers)
+    ) {
+        throw new RangeError(
+            'Garden block paid sunflowers must be a non-negative 32-bit integer',
+        );
+    }
+}
+
+export type CreateGardenBlockOptions = Readonly<{
+    /**
+     * Sunflowers actually paid for the block, stored in
+     * `garden_blocks.paid_sunflowers` and refunded when it is recycled. Pass
+     * the debited price for purchases and 0 for free or sandbox blocks.
+     * Omitting it stores NULL, which recycling treats as a legacy block.
+     */
+    paidSunflowers?: number | null;
+}>;
+
+export type CreateGardenBlocksInput = Readonly<{
+    name: string;
+    /**
+     * Sunflowers actually paid for this block (the per-block price, 0 for
+     * sandbox or free blocks). Required so no paid path can skip it.
+     */
+    paidSunflowers: number;
+    rotation?: number | null;
+    variant?: number | null;
+}>;
+
+/**
+ * Insert several blocks with one multi-row statement, then record one
+ * `blockPlacedV2` event per block in input order (as `createGardenBlock`
+ * does) with one more statement, so automations still see each placement.
+ * Automation definitions are read once for the batch, so with no enabled
+ * `garden.blockPlace` automation this is three statements for any number of
+ * blocks. Returns the new block IDs in input order. Every block records the
+ * sunflowers paid for it.
+ */
+export async function createGardenBlocks(
+    gardenId: number,
+    blocks: readonly CreateGardenBlocksInput[],
+    db: DatabaseClient = storage(),
+) {
+    if (blocks.length === 0) {
+        return [];
+    }
+    const rows = blocks.map((block) => {
+        assertGardenBlockPaidSunflowers(block.paidSunflowers);
+        return {
+            id: uuidV4(),
+            gardenId,
+            name: block.name,
+            paidSunflowers: block.paidSunflowers,
+            rotation: block.rotation ?? null,
+            variant: block.variant ?? null,
+        };
+    });
+
+    await db.insert(gardenBlocks).values(rows);
+    await createEvents(
+        rows.map((row) =>
+            knownEvents.gardens.blockPlacedV2(gardenId.toString(), {
+                id: row.id,
+                name: row.name,
+                variant: row.variant,
+            }),
+        ),
+        db,
+    );
+
+    return rows.map((row) => row.id);
+}
+
 export async function createGardenBlock(
     gardenId: number,
     blockName: string,
     variantOrDb: number | null | DatabaseClient = null,
     db: DatabaseClient = storage(),
+    options: CreateGardenBlockOptions = {},
 ) {
     const blockId = uuidV4();
     const variant =
@@ -1188,12 +1274,15 @@ export async function createGardenBlock(
         typeof variantOrDb === 'number' || variantOrDb === null
             ? db
             : variantOrDb;
+    const paidSunflowers = options.paidSunflowers ?? null;
+    assertGardenBlockPaidSunflowers(paidSunflowers);
 
     await Promise.all([
         database.insert(gardenBlocks).values({
             id: blockId,
             gardenId,
             name: blockName,
+            paidSunflowers,
             variant,
         }),
         createEvent(
@@ -1441,6 +1530,182 @@ export async function updateGardenStack(
                 eq(gardenStacks.isDeleted, false),
             ),
         );
+}
+
+export type AppendBlocksToGardenStacksInput = Readonly<{
+    x: number;
+    y: number;
+    /**
+     * The stack's complete block list after the append: its current blocks
+     * followed by the new ones.
+     */
+    blocks: readonly string[];
+}>;
+
+export type AppendBlocksToGardenStacksResult = Readonly<{
+    inserted: number;
+    revived: number;
+    updated: number;
+}>;
+
+function gardenStackPositionKey(x: number, y: number) {
+    return `${x.toString()}|${y.toString()}`;
+}
+
+function gardenStackBlocksArraySql(blocks: readonly string[]) {
+    return sql`array[${sql.join(
+        blocks.map((blockId) => sql`${blockId}`),
+        sql`, `,
+    )}]::text[]`;
+}
+
+/**
+ * Write the block lists of several stacks with three statements, however many
+ * there are: one read of the active and soft-deleted stacks at the positions,
+ * one `UPDATE … FROM (VALUES …)` for stacks that exist (reviving the newest
+ * soft-deleted row where no active one exists, as `createGardenStack` does)
+ * and one multi-row insert for positions without any row. Where legacy data
+ * has two active stacks at one position, the oldest (lowest ID) is written,
+ * matching the placement rules, which use the first stack.
+ *
+ * The caller must hold the garden placement lock and must already have
+ * checked the current stacks; each entry carries the full new list.
+ */
+export async function appendBlocksToGardenStacks(
+    gardenId: number,
+    stacks: readonly AppendBlocksToGardenStacksInput[],
+    db: DatabaseClient = storage(),
+): Promise<AppendBlocksToGardenStacksResult> {
+    if (!Number.isSafeInteger(gardenId) || gardenId <= 0) {
+        throw new RangeError('Garden stack append requires a positive ID');
+    }
+    if (stacks.length === 0) {
+        return { inserted: 0, revived: 0, updated: 0 };
+    }
+    const requestedPositions = new Set<string>();
+    for (const stack of stacks) {
+        if (!Number.isSafeInteger(stack.x) || !Number.isSafeInteger(stack.y)) {
+            throw new RangeError('Garden stack positions must be integers');
+        }
+        const key = gardenStackPositionKey(stack.x, stack.y);
+        if (requestedPositions.has(key)) {
+            throw new RangeError('Garden stack positions must be unique');
+        }
+        requestedPositions.add(key);
+    }
+
+    const existingRows = await db
+        .select({
+            id: gardenStacks.id,
+            isDeleted: gardenStacks.isDeleted,
+            positionX: gardenStacks.positionX,
+            positionY: gardenStacks.positionY,
+        })
+        .from(gardenStacks)
+        .where(
+            and(
+                eq(gardenStacks.gardenId, gardenId),
+                sql`(${gardenStacks.positionX}, ${gardenStacks.positionY}) in (${sql.join(
+                    stacks.map(
+                        (stack) =>
+                            sql`(${stack.x}::integer, ${stack.y}::integer)`,
+                    ),
+                    sql`, `,
+                )})`,
+            ),
+        );
+    const activeByPosition = new Map<string, number>();
+    const deletedByPosition = new Map<string, number>();
+    for (const row of existingRows) {
+        const key = gardenStackPositionKey(row.positionX, row.positionY);
+        if (row.isDeleted) {
+            const current = deletedByPosition.get(key);
+            if (current === undefined || row.id > current) {
+                deletedByPosition.set(key, row.id);
+            }
+        } else {
+            const current = activeByPosition.get(key);
+            if (current === undefined || row.id < current) {
+                activeByPosition.set(key, row.id);
+            }
+        }
+    }
+
+    const targets: {
+        id: number;
+        wasDeleted: boolean;
+        blocks: readonly string[];
+    }[] = [];
+    const inserts: {
+        blocks: string[];
+        gardenId: number;
+        positionX: number;
+        positionY: number;
+    }[] = [];
+    for (const stack of stacks) {
+        const key = gardenStackPositionKey(stack.x, stack.y);
+        const activeId = activeByPosition.get(key);
+        const deletedId = deletedByPosition.get(key);
+        if (activeId !== undefined) {
+            targets.push({
+                id: activeId,
+                wasDeleted: false,
+                blocks: stack.blocks,
+            });
+        } else if (deletedId !== undefined) {
+            targets.push({
+                id: deletedId,
+                wasDeleted: true,
+                blocks: stack.blocks,
+            });
+        } else {
+            inserts.push({
+                blocks: [...stack.blocks],
+                gardenId,
+                positionX: stack.x,
+                positionY: stack.y,
+            });
+        }
+    }
+
+    if (targets.length > 0) {
+        const updatedRows = await db
+            .update(gardenStacks)
+            .set({
+                blocks: sql`target.blocks`,
+                isDeleted: false,
+            })
+            .from(
+                sql`(values ${sql.join(
+                    targets.map(
+                        (target) =>
+                            sql`(${target.id}::integer, ${target.wasDeleted}::boolean, ${gardenStackBlocksArraySql(target.blocks)})`,
+                    ),
+                    sql`, `,
+                )}) as target(id, was_deleted, blocks)`,
+            )
+            .where(
+                and(
+                    eq(gardenStacks.gardenId, gardenId),
+                    sql`${gardenStacks.id} = target.id`,
+                    sql`${gardenStacks.isDeleted} = target.was_deleted`,
+                ),
+            )
+            .returning({ id: gardenStacks.id });
+        if (updatedRows.length !== targets.length) {
+            throw new Error('Garden stacks changed before the block append.');
+        }
+    }
+    if (inserts.length > 0) {
+        await db.insert(gardenStacks).values(inserts);
+    }
+
+    const revived = targets.filter((target) => target.wasDeleted).length;
+    return {
+        inserted: inserts.length,
+        revived,
+        updated: targets.length - revived,
+    };
 }
 
 export async function deleteGardenStack(

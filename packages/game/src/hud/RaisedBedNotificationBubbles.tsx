@@ -118,12 +118,15 @@ export function RaisedBedNotificationBubbles({
     garden: RaisedBedNotificationGarden | null | undefined;
 }) {
     const view = useGameState((state) => state.view);
+    // Block editing (the options pop-up, Expand, a move or the remove
+    // dialog) hides the bubbles too, so they never cover its controls.
     const hasActivePlacement = useGameState(
         (state) =>
             state.isDragging ||
             state.pickupBlock !== null ||
             state.activeDragPreview !== null ||
-            state.hudPlacementDrag !== null,
+            state.hudPlacementDrag !== null ||
+            state.blockEditing !== null,
     );
     const {
         closeImageViewer,

@@ -8,15 +8,15 @@ Implementation for [#4965](https://github.com/gredice/gredice/issues/4965), rele
 
 Inspected first-party references: [WoodlandMushrooms](../apps/www/public/assets/blocks/WoodlandMushrooms.webp) for broad caps, [ChestnutRoastingCart](../apps/www/public/assets/blocks/ChestnutRoastingCart.webp) for stylized nuts and [AutumnLeafPileMound](../apps/www/public/assets/blocks/AutumnLeafPileMound.webp) for bounded warm ground arrangements. Each model is original: three oversized capped acorns, four round conkers with pale marks and two open husks, or a low basket containing three stylized mushrooms. Broad shapes and a hollow basket handle keep the objects readable at garden zoom. There is no unbounded scatter or real-species identification.
 
-Each asset has one editable Blender source, a joined mesh with named part vertex groups and an `Observation` empty. One shared material role `Material.Woodland.Arrangement` uses matte roughness 0.92 and baked corner colours. The runtime reuses immutable cached geometry/materials and adds shared outdoor snow/rain overlays with global/per-entity disablement. All three stay static and retain their intended appearance year round.
+Each asset has one editable Blender source, a joined mesh with named part vertex groups and an `Observation` empty. One shared material role `Material.Woodland.Arrangement` uses satin roughness 0.55 and baked corner colours in the seasonal roles of [GAME_ART.md](../GAME_ART.md). On screen the leaf beds are autumn gold `#f0c832`, the acorns nut caramel `#dc9a4c` with acorn-cap `#c28a50` caps and trunk-brown `#b56a3c` stems, the conkers conker `#c4683a` with a cream `#f2e4c6` hilum and leaf-green `#a4e352` husks, and the basket hay `#f2cb5a` and hay shade `#dcab48` with acorn-cap mushrooms on cream stems. The runtime reuses immutable cached geometry/materials and adds shared outdoor snow/rain overlays with global/per-entity disablement. All three stay static and retain their intended appearance year round.
 
 | Asset | Bounds (width × depth × height) | Hitbox height | GLB triangles | GLB bytes | Price |
 | --- | --- | --- | --- | --- | --- |
-| WoodlandAcorns | 0.78 × 0.7419 × 0.3347 | 0.35 | 620 | 46,356 | 25 sunflowers |
-| WoodlandConkers | 0.78 × 0.7419 × 0.223 | 0.25 | 486 | 38,444 | 25 sunflowers |
-| WoodlandMushroomBasket | 0.6961 × 0.6961 × 0.6273 | 0.65 | 960 | 69,732 | 45 sunflowers |
+| WoodlandAcorns | 0.7571 × 0.7571 × 0.3345 | 0.35 | 2,400 | 59,628 | 25 sunflowers |
+| WoodlandConkers | 0.7571 × 0.7571 × 0.223 | 0.25 | 1,936 | 51,468 | 25 sunflowers |
+| WoodlandMushroomBasket | 0.703 × 0.703 × 0.6275 | 0.65 | 2,852 | 71,868 | 45 sunflowers |
 
-Each uses one mesh/material/primitive and one base-pass draw, with no textures, animations, particles, lights, sounds or dedicated render leases. The conker source audit counts 492 triangles; export removes six duplicate husk back-face triangles. Recorded runtime costs and assertions use the exported 486. These are structural costs, not device frame-rate measurements. Footprints are 1×1 with 0.9×0.9 horizontal hitboxes; compatible ground/path/display supports are allowed, water and stacking on these props are not.
+Each uses one mesh/material/primitive and one base-pass draw, with no textures, animations, particles, lights, sounds or dedicated render leases. The conker source and its export both count 1,936 triangles, which the recorded runtime costs and assertions use. These are structural costs, not device frame-rate measurements. Footprints are 1×1 with 0.9×0.9 horizontal hitboxes; compatible ground/path/display supports are allowed, water and stacking on these props are not.
 
 ## Catalogue and observation boundary
 

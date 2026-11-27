@@ -1,7 +1,13 @@
 'use client';
 
 import { useFrame, useThree } from '@react-three/fiber';
-import { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
+import {
+    useCallback,
+    useLayoutEffect,
+    useMemo,
+    useRef,
+    useSyncExternalStore,
+} from 'react';
 import {
     Box3,
     DynamicDrawUsage,
@@ -23,6 +29,17 @@ import {
     useSceneTimeInvalidation,
     useSceneTimeUniform,
 } from '../../scene/SceneTime';
+import { useWeatherReducedMotion } from '../../scene/weather/useWeatherReducedMotion';
+import {
+    getPlantWind,
+    plantSwayReducedShare,
+    resolvePlantMotion,
+    subscribePlantWindMotion,
+} from '../../scene/weather/wind/plantWind';
+import {
+    resolveWindClass,
+    resolveWindSway,
+} from '../../scene/weather/windClass';
 import { useCameraFrame } from '../../spatial/useCameraFrame';
 import { resolveSpriteAtlasAssetPaths } from '../../sprites/resolveSpriteAtlasAssetPaths';
 import { getSpriteBrightness } from '../../sprites/spriteLighting';
@@ -96,7 +113,16 @@ type GroundDecorationShaderUniforms = Record<string, { value: unknown }> & {
     uTime?: { value: number };
     uWindDirection?: { value: Vector3 };
     uWindStrength?: { value: number };
+    uWobbleScale?: { value: number };
 };
+
+/**
+ * Grass and decoration wobble on the one wind scale (GAME_ART.md "Weather >
+ * Wind"): the class through `resolveWindSway`, at this share (a class-4
+ * gale bends the sprites as far as the old windSpeed / 16 did), and at the
+ * plants' reduced-motion share under reduced motion.
+ */
+const groundWobbleWindShare = 0.25;
 
 const compassToDirection: Record<string, number> = {
     E: 90,
@@ -255,6 +281,7 @@ function applyGroundDecorationWobbleShader(
         shader.uniforms.uTime = timeUniform;
         shader.uniforms.uWindDirection = { value: new Vector3(0, 0, -1) };
         shader.uniforms.uWindStrength = { value: 0 };
+        shader.uniforms.uWobbleScale = { value: 1 };
         shader.vertexShader = shader.vertexShader.replace(
             '#include <common>',
             `
@@ -267,6 +294,7 @@ varying float vGroundDecorationOpacity;
 uniform float uTime;
 uniform vec3 uWindDirection;
 uniform float uWindStrength;
+uniform float uWobbleScale;
 `,
         );
         shader.vertexShader = shader.vertexShader.replace(
@@ -292,7 +320,8 @@ float directionalWave =
 float crossWave =
     sin(uTime * (1.1 + uWindStrength * 0.6) + instanceWobble.z * 0.7) * 0.75 +
     cos(uTime * (0.58 + uWindStrength * 0.4) + instanceWobble.z) * 0.3;
-float wobbleAmplitude = (0.035 + uWindStrength * 0.2) * instanceWobble.x;
+float wobbleAmplitude =
+    (0.035 + uWindStrength * 0.2) * instanceWobble.x * uWobbleScale;
 vec2 crossDirection = vec2(-uWindDirection.z, uWindDirection.x);
 transformed.xz += (
     uWindDirection.xz * directionalWave +
@@ -627,12 +656,33 @@ function GroundDecorationInstancedBatch({
               : 0;
     const windDirectionX = Math.sin((windDirectionDegrees * Math.PI) / 180);
     const windDirectionZ = -Math.cos((windDirectionDegrees * Math.PI) / 180);
-    const windStrength = Math.max(0, Math.min(1, windSpeed / 16));
+    const windClass = resolveWindClass({ windSpeed });
+    const windStrength =
+        resolveWindSway(windClass, false) * groundWobbleWindShare;
+    // Reduced motion as the weather sees it (the debug override reaches
+    // the plants' wind state), else the OS setting.
+    const osReducedMotion = useWeatherReducedMotion();
+    const weatherReducedMotion = useSyncExternalStore(
+        subscribePlantWindMotion,
+        () => getPlantWind().reducedMotion,
+        () => null,
+    );
+    const wobbleMotion = resolvePlantMotion(
+        { windClass },
+        weatherReducedMotion ?? osReducedMotion,
+    );
+    const wobbleScale =
+        wobbleMotion === 'still'
+            ? 0
+            : wobbleMotion === 'reduced'
+              ? plantSwayReducedShare
+              : 1;
     const fixedTimeSeconds = useSceneFixedTimeSeconds();
     useSceneTimeInvalidation(
         'ground-decoration-wobble',
         batch.instances.length > 0 &&
             windStrength > 0 &&
+            wobbleScale > 0 &&
             fixedTimeSeconds === undefined,
     );
     const brightness = getSpriteBrightness(
@@ -671,7 +721,10 @@ function GroundDecorationInstancedBatch({
         if (uniforms?.uWindStrength) {
             uniforms.uWindStrength.value = windStrength;
         }
-    }, [material, windDirectionX, windDirectionZ, windStrength]);
+        if (uniforms?.uWobbleScale) {
+            uniforms.uWobbleScale.value = wobbleScale;
+        }
+    }, [material, windDirectionX, windDirectionZ, windStrength, wobbleScale]);
 
     useLayoutEffect(() => () => geometry.dispose(), [geometry]);
     useLayoutEffect(() => () => material.dispose(), [material]);

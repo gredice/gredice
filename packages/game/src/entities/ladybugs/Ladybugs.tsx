@@ -563,11 +563,17 @@ function cloneLadybugMaterial(material: Material, objectName: string) {
     if (objectName.includes('Underwing')) {
         clone.depthWrite = false;
         clone.opacity = 0.76;
-        clone.roughness = 0.48;
+        // Gloss band, like the glossy shell (GAME_ART.md roughness bands).
+        clone.roughness = 0.4;
         clone.side = DoubleSide;
         clone.transparent = true;
-    } else if (objectName.includes('Elytra')) {
-        clone.roughness = 0.68;
+    } else if (
+        objectName.includes('Elytra') ||
+        objectName.includes('Eye') ||
+        objectName.includes('PronotumSpot')
+    ) {
+        // Glossy shell and spots, eye whites, glints and ink pupils.
+        clone.roughness = 0.35;
     } else {
         clone.roughness = 0.78;
     }

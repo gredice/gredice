@@ -1,3 +1,4 @@
+import { blockOptionsHelpCopy } from '../../blockOptions/blockOptionsCopy';
 import { DesktopMoveControls } from './DesktopMoveControls';
 import { MouseIcon } from './MouseIcon';
 import { PinchGesture } from './PinchGesture';
@@ -34,14 +35,14 @@ function getAccessibleDescription(
             'Pomak kamere: povucite mišem ili koristite strelice. Zum: kotačić miša. Rotacija vrta: tipke Q i W ili tipke za rotaciju.';
         return mode === 'view'
             ? viewDescription
-            : `${viewDescription} Pokupi i spusti blok: drži klik na bloku, povuci ga i pusti. Rotacija bloka: dvaput klikni blok.`;
+            : `${viewDescription} Pokupi i spusti blok: drži klik na bloku, povuci ga i pusti. Rotacija bloka: dvaput klikni blok. ${blockOptionsHelpCopy.desktopHint}`;
     }
 
     const viewDescription =
         'Pomak kamere: povucite jednim prstom. Zum: stisnite ili raširite dva prsta. Rotacija vrta: koristite tipke za rotaciju dolje lijevo.';
     return mode === 'view'
         ? viewDescription
-        : `${viewDescription} Pokupi i spusti blok: drži prst na bloku, povuci ga i pusti. Rotacija bloka: dvaput dodirni blok.`;
+        : `${viewDescription} Pokupi i spusti blok: drži prst na bloku, povuci ga i pusti. Rotacija bloka: dvaput dodirni blok. ${blockOptionsHelpCopy.touchHint}`;
 }
 
 function PickupDropControls({ isTouchDevice }: { isTouchDevice: boolean }) {
@@ -94,6 +95,8 @@ export function ControlsVisualization({
     const zoomProgress = Math.sin(phase * 0.9 + 0.6) * 0.5 + 0.5;
     const rotatePhase = phase * 0.8;
     const pickupProgress = Math.sin(phase * 1.1) * 0.5 + 0.5;
+    // Hold, then let go: the block rises a little and its actions pop up.
+    const optionsProgress = Math.sin(phase * 1.1 + 1.6) * 0.5 + 0.5;
     const activeRotation: RotateDirection =
         Math.cos(rotatePhase) > 0 ? 'cw' : 'ccw';
 
@@ -102,8 +105,11 @@ export function ControlsVisualization({
             <p className="sr-only">
                 {getAccessibleDescription(deviceType, mode)}
             </p>
+            {/* Six help columns need about 800 px; below `lg` they wrap
+                into rows of three (no divider at a row's start) so the
+                popover never runs off a tablet. */}
             <div
-                className={`grid overflow-hidden rounded-md border border-b-4 border-tertiary bg-card ${showEditingControls ? 'grid-cols-2 sm:grid-cols-5' : 'grid-cols-3'}`}
+                className={`grid overflow-hidden rounded-md border border-b-4 border-tertiary bg-card ${showEditingControls ? 'grid-cols-2 sm:grid-cols-3 sm:max-lg:[&>*:nth-child(3n+1)]:border-l-0 lg:grid-cols-6' : 'grid-cols-3'}`}
                 aria-hidden="true"
             >
                 <VisualizationSection
@@ -157,7 +163,7 @@ export function ControlsVisualization({
                     <>
                         <VisualizationSection
                             title="Pokupi / spusti"
-                            label="Drži i pusti"
+                            label={blockOptionsHelpCopy.pickupGesture}
                             cube={
                                 <WireframeCube
                                     translateY={-2 - pickupProgress * 9}
@@ -187,6 +193,38 @@ export function ControlsVisualization({
                                 <DoubleTapControls
                                     isTouchDevice={isTouchDevice}
                                 />
+                            }
+                            withDivider
+                        />
+                        <VisualizationSection
+                            title={blockOptionsHelpCopy.optionsLabel}
+                            label={blockOptionsHelpCopy.optionsGesture}
+                            cube={
+                                <WireframeCube
+                                    translateY={-2 - optionsProgress * 4}
+                                />
+                            }
+                            controls={
+                                <div className="flex items-center gap-2">
+                                    {isTouchDevice ? (
+                                        <TouchIndicator touchX={0} />
+                                    ) : (
+                                        <MouseIcon />
+                                    )}
+                                    <div className="h-5 w-px bg-border" />
+                                    <div
+                                        className="grid grid-cols-2 gap-0.5"
+                                        style={{
+                                            opacity:
+                                                0.35 + optionsProgress * 0.65,
+                                        }}
+                                    >
+                                        <div className="size-2 rounded-[2px] bg-muted-foreground/55" />
+                                        <div className="size-2 rounded-[2px] bg-muted-foreground/55" />
+                                        <div className="size-2 rounded-[2px] bg-muted-foreground/55" />
+                                        <div className="size-2 rounded-[2px] bg-muted-foreground/55" />
+                                    </div>
+                                </div>
                             }
                             withDivider
                         />

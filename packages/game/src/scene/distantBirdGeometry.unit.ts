@@ -25,10 +25,12 @@ test('real BirdSmall gliding pose extends attached wings with bounded existing g
     baked.geometry.computeBoundingBox();
     const size = baked.geometry.boundingBox?.getSize(new Vector3());
     assert.ok(size);
-    // Inward Z-folding gives width 0.53; reversing Z detaches wings and exceeds 1.3.
-    assert.ok(Math.abs(size.x - 0.99916246) < 0.0001);
-    assert.ok(Math.abs(size.z - 1.21000001) < 0.0001);
-    assert.equal(baked.geometry.getAttribute('position').count / 3, 712);
+    // The outward yaw spreads the party blue tit's wings to 1.14; the reversed
+    // yaw folds them back inside the body's own 0.52 width.
+    assert.ok(Math.abs(size.x - 1.1401) < 0.0001);
+    // Beak tip to tail tip of the party blue tit (assets/scripts/party_animals/birdsmall.py).
+    assert.ok(Math.abs(size.z - 1.1667) < 0.0001);
+    assert.equal(baked.geometry.getAttribute('position').count / 3, 2220);
     assert.equal(
         gltf.scene.getObjectByName('BirdSmall_WingPivot_L')?.rotation.y,
         0,
@@ -62,7 +64,8 @@ test('baked flock geometry/material own their lifetime and preserve cached bird 
     assert.equal(baked.material.roughness, material.roughness);
     assert.equal(baked.material.depthTest, true);
     assert.equal(baked.material.forceSinglePass, true);
-    assert.equal(baked.material.depthWrite, false);
+    // Depth writes hide the bird's own buried parts (legs, eye pads).
+    assert.equal(baked.material.depthWrite, true);
     assert.equal(wing.rotation.z, 0);
     assert.deepEqual(
         Array.from(geometry.getAttribute('position').array),

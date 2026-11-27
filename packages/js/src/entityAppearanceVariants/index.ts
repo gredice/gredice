@@ -43,15 +43,21 @@ export function defineAppearanceVariants<
     };
 }
 
+// Colours are albedo (sRGB hex). In the game a sunlit face shows them about
+// 3.2 times brighter, so each one is chosen by its on-screen colour
+// (GAME_ART.md): no value under 0.55, tinted neutrals instead of grey or
+// black. The black horse is a slate with an ink-violet mane. Every coat shares
+// the warm white markings (#f2ddbe on screen) and the peach muzzle (#f4b48c),
+// which also colours the blush on the cheeks.
 export const horseAppearanceVariants = defineAppearanceVariants('HorseStable', [
     {
         id: 'bay',
         value: 0,
         label: 'Dorat',
-        coatColor: '#6f3f2d',
-        maneColor: '#211715',
-        markingColor: '#eee3cf',
-        muzzleColor: '#4d3832',
+        coatColor: '#7e472c',
+        maneColor: '#693c2f',
+        markingColor: '#9d8f7b',
+        muzzleColor: '#a3775c',
     },
     {
         id: 'chestnut',
@@ -59,44 +65,44 @@ export const horseAppearanceVariants = defineAppearanceVariants('HorseStable', [
         label: 'Kestenjasti',
         coatColor: '#9b4d2f',
         maneColor: '#6d2f22',
-        markingColor: '#f2dfc4',
-        muzzleColor: '#6f453c',
+        markingColor: '#9d8f7b',
+        muzzleColor: '#a3775c',
     },
     {
         id: 'black',
         value: 2,
         label: 'Vranac',
-        coatColor: '#24211f',
-        maneColor: '#11100f',
-        markingColor: '#ddd8ce',
-        muzzleColor: '#393433',
+        coatColor: '#504a58',
+        maneColor: '#3c3159',
+        markingColor: '#9d8f7b',
+        muzzleColor: '#a3775c',
     },
     {
         id: 'dapple-gray',
         value: 3,
         label: 'Sivac',
-        coatColor: '#b9b5ad',
-        maneColor: '#77736d',
-        markingColor: '#e8e3d9',
-        muzzleColor: '#858079',
+        coatColor: '#7c7888',
+        maneColor: '#5f5c6e',
+        markingColor: '#9d8f7b',
+        muzzleColor: '#a3775c',
     },
     {
         id: 'palomino',
         value: 4,
         label: 'Palomino',
-        coatColor: '#c9944f',
-        maneColor: '#ead8ab',
-        markingColor: '#f4e8cd',
-        muzzleColor: '#927052',
+        coatColor: '#9d7445',
+        maneColor: '#aa9d80',
+        markingColor: '#9d8f7b',
+        muzzleColor: '#a3775c',
     },
     {
         id: 'pinto',
         value: 5,
         label: 'Šarac',
         coatColor: '#8b553b',
-        maneColor: '#38251e',
-        markingColor: '#f0e6d5',
-        muzzleColor: '#725449',
+        maneColor: '#6e412f',
+        markingColor: '#9d8f7b',
+        muzzleColor: '#a3775c',
     },
 ]);
 

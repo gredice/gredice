@@ -1,3 +1,8 @@
+import {
+    cropFlowerPalette,
+    cropLeafPalette,
+    cropStemPalette,
+} from '../cropPalette';
 import type { PlantDefinition } from '../plant-definition-types';
 import { createDevelopmentProgram, createPlant } from './helpers';
 
@@ -7,19 +12,19 @@ const leafyBase: Pick<
 > = {
     height: 0.52,
     stem: {
-        color: '#5b7c38',
+        color: cropStemPalette.base,
         radius: 0.018,
         radiusDecay: 0.7,
         minRadius: 0.002,
     },
     leaf: {
-        color: '#74a23f',
+        color: cropLeafPalette.base,
         size: 0.22,
         type: 'oval',
     },
     flower: {
         enabled: false,
-        color: '#ffffff',
+        color: cropFlowerPalette.cream,
         size: 0,
     },
     vegetable: {
@@ -48,12 +53,12 @@ export const leafyPlants = {
         height: 0.6,
         stem: {
             ...leafyBase.stem,
-            color: '#935f42',
+            color: cropStemPalette.chard,
             radius: 0.02,
         },
         leaf: {
             ...leafyBase.leaf,
-            color: '#6ca63c',
+            color: cropLeafPalette.base,
             size: 0.25,
             type: 'heart',
         },
@@ -76,13 +81,13 @@ export const leafyPlants = {
         height: 0.78,
         stem: {
             ...leafyBase.stem,
-            color: '#6f9154',
+            color: cropStemPalette.pale,
             radius: 0.022,
             minRadius: 0.006,
         },
         leaf: {
             ...leafyBase.leaf,
-            color: '#5e8d38',
+            color: cropLeafPalette.base,
             size: 0.16,
             type: 'pinnate',
         },
@@ -109,7 +114,9 @@ export const leafyPlants = {
         },
         leaf: {
             ...leafyBase.leaf,
-            color: '#8abc52',
+            // The light leaf role, not the pale one: a whole head of
+            // highlight-coloured leaves washes out under the noon sun.
+            color: cropLeafPalette.light,
             size: 0.26,
             type: 'ruffled',
         },
@@ -132,7 +139,7 @@ export const leafyPlants = {
         height: 0.38,
         leaf: {
             ...leafyBase.leaf,
-            color: '#5f9436',
+            color: cropLeafPalette.base,
             size: 0.18,
             type: 'oval',
         },
@@ -155,7 +162,7 @@ export const leafyPlants = {
         height: 0.36,
         leaf: {
             ...leafyBase.leaf,
-            color: '#679d3b',
+            color: cropLeafPalette.base,
             size: 0.18,
             type: 'lobed',
         },
@@ -182,7 +189,7 @@ export const leafyPlants = {
         },
         leaf: {
             ...leafyBase.leaf,
-            color: '#7eae49',
+            color: cropLeafPalette.light,
             size: 0.15,
             type: 'round',
         },

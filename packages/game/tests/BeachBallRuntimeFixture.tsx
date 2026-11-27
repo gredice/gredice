@@ -66,9 +66,8 @@ function BeachBallReadback({
     useSceneAfterFrame(
         useCallback(() => {
             counters.current.frames += 1;
-            const hover = actor.current?.getObjectByName(
-                'Interaction:HoverOutlineTarget',
-            );
+            // The hover pop group sits between the outline target and the base.
+            const hover = actor.current?.getObjectByName('Animation:HoverPop');
             const base = hover?.children[0];
             const motion = base?.children[0];
             const rolling = motion?.children[0];

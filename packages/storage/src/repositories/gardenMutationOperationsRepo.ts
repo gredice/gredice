@@ -59,6 +59,7 @@ function assertOperationKind(
 ): asserts kind is GardenMutationOperationKind {
     if (
         kind !== 'block-purchase' &&
+        kind !== 'block-purchase-batch' &&
         kind !== 'garden-box-block-place' &&
         kind !== 'garden-box-block-store' &&
         kind !== 'gift-open'

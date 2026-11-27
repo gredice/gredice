@@ -111,6 +111,8 @@ export function HoverOutlineCacheFixture({
                             >
                                 <HoverOutline
                                     hovered
+                                    // The pop is checked separately; this fixture pins outline compositing and mask caching.
+                                    pop={false}
                                     maskContentKey={
                                         cacheEnabled
                                             ? 'static-box-v1'
@@ -182,6 +184,7 @@ export function HoverOutlineVisualFixture() {
                             color="#f8fafc"
                             hovered
                             opacity={1}
+                            pop={false}
                             priority={0}
                             thickness={7}
                         >
@@ -197,6 +200,7 @@ export function HoverOutlineVisualFixture() {
                             color="#f8fafc"
                             hovered
                             opacity={1}
+                            pop={false}
                             priority={0}
                             thickness={7}
                         >

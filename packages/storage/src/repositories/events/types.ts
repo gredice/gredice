@@ -118,6 +118,12 @@ export type InventoryChangePayload = {
     entityId: string;
     amount: number;
     source?: string | null;
+    /**
+     * Garden box block units only: Sunflowers paid for each unit added or
+     * taken out, so a block placed back from the box keeps its refund value.
+     * Absent or null on older events and on units with no known price.
+     */
+    paidSunflowers?: number | null;
 };
 
 // ============================================================================

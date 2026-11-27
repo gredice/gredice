@@ -4,19 +4,19 @@
   "snapshotDate": "2026-10-22T12:00:00+02:00",
   "source": {
     "path": "assets/game-assets/WoodlandMushrooms.blend",
-    "bytes": 104631,
-    "sha256": "54e12e9d7d7e40d77fd8c9d7a96e2f5e282ccbd7d6f5301652a17d29cdcc5006"
+    "bytes": 116854,
+    "sha256": "5451c459cbc15a465a3051cdfc797b65f42d2e8e41b04c8af40668bc0c030c50"
   },
   "models": [
     {
       "name": "WoodlandMushrooms",
       "path": "apps/garden/public/assets/models/WoodlandMushrooms.glb",
-      "bytes": 85928,
-      "sha256": "a8a6b03f7e3886e395b8c59d7413c2d2f9c54f24b4ab18b69267f6595da2e1f7",
-      "url": "https://vrt.gredice.com/assets/models/WoodlandMushrooms.glb?v=a8a6b03f7e38",
-      "triangles": 1160,
+      "bytes": 44648,
+      "sha256": "ecd773283d46224ff797762e285f5203e1b765172b3600156510db1d352d12b4",
+      "url": "https://vrt.gredice.com/assets/models/WoodlandMushrooms.glb?v=ecd773283d46",
+      "triangles": 1780,
       "trianglesByMesh": {
-        "WoodlandMushrooms_Cluster": 1160
+        "WoodlandMushrooms_Cluster": 1780
       },
       "meshCount": 1,
       "materialCount": 1
@@ -49,53 +49,53 @@
       "images": [
         {
           "path": "apps/www/public/assets/blocks/WoodlandMushrooms.webp",
-          "bytes": 6236,
-          "sha256": "2a992de34ab547c3aa2d0954f6eca21264a1a57003d23c01319911f313ff77a9"
+          "bytes": 8338,
+          "sha256": "d381d356c9f4b47a36b8f4b1da870995a393cef4e94d8e62827d90a2b765e7cd"
         },
         {
           "path": "apps/www/public/assets/blocks/WoodlandMushrooms_1.webp",
-          "bytes": 6236,
-          "sha256": "2a992de34ab547c3aa2d0954f6eca21264a1a57003d23c01319911f313ff77a9"
+          "bytes": 8338,
+          "sha256": "d381d356c9f4b47a36b8f4b1da870995a393cef4e94d8e62827d90a2b765e7cd"
         },
         {
           "path": "apps/www/public/assets/blocks/WoodlandMushrooms_2.webp",
-          "bytes": 5674,
-          "sha256": "4eb265be2fcb6766aa1553d1ca881271d0b7dcfe028c3cdaf3201bc4e8e62a88"
+          "bytes": 7536,
+          "sha256": "f27dc8280eac3340313a9de8effeb34bcf8a1a205a6c748a73a10edd1a9c49f2"
         },
         {
           "path": "apps/www/public/assets/blocks/WoodlandMushrooms_3.webp",
-          "bytes": 5534,
-          "sha256": "23477ab1b33ae8c4c257e2583309e2fdee8ee65645c61c4106411901eebc7514"
+          "bytes": 7836,
+          "sha256": "c451e878b7dac4cfbc47f3ed5805ad94af8871bc76cb2f8ad8f91d2abb3b35b3"
         },
         {
           "path": "apps/www/public/assets/blocks/WoodlandMushrooms_4.webp",
-          "bytes": 5864,
-          "sha256": "8da4162ee75ff1d9c5229b04834b6de0243418e0997da14d5c711bf13bb5f76d"
+          "bytes": 7642,
+          "sha256": "c064e0f9dfa2bb3503cc67527cc9f81f5771f62db335396a0d419cf1ba2f872d"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/WoodlandMushrooms.webp",
-          "bytes": 3696,
-          "sha256": "bb1d6a2e894d386488a9249819448f4a42ed20044fe88eecc8f170f4bbcbac8d"
+          "bytes": 4700,
+          "sha256": "bfbfe006e44ef72647fd21d1cae3c1874ed7b8013f74670725023d305f2a5778"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/WoodlandMushrooms_1.webp",
-          "bytes": 3696,
-          "sha256": "bb1d6a2e894d386488a9249819448f4a42ed20044fe88eecc8f170f4bbcbac8d"
+          "bytes": 4700,
+          "sha256": "bfbfe006e44ef72647fd21d1cae3c1874ed7b8013f74670725023d305f2a5778"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/WoodlandMushrooms_2.webp",
-          "bytes": 3452,
-          "sha256": "c05dcab9b6047a443a6cb1b09ea2117bde4c696eda15c2a7685a94ad44c43681"
+          "bytes": 4542,
+          "sha256": "30438a279f2d772199ef92ef85fc058696c371e91aa7c0f56967ded813ddb7a5"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/WoodlandMushrooms_3.webp",
-          "bytes": 3712,
-          "sha256": "6fb796a7ef48b2ee4162dc5049d1332337c4f18ab954e9eca8036dd48d9e87a6"
+          "bytes": 4512,
+          "sha256": "a9335f958214a92ba347d3c572c9a851ccae666e406698ae12e0bb9896f774d0"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/WoodlandMushrooms_4.webp",
-          "bytes": 3776,
-          "sha256": "74d5c9dc810367f6b760b441f5c297f83e838a5e4fe885da9762a3dcd8cfd943"
+          "bytes": 4804,
+          "sha256": "4173be5ff76f52806a9950ed2129592a13e89fc4f5f7d83c54498d11733ef72a"
         }
       ]
     }

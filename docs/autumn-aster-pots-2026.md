@@ -10,7 +10,7 @@ Deployment and catalogue publication belong to #5000.
 
 ## Design
 
-Five broad, ten-petal flower heads rise above a mound of lance-shaped leaves.
+Five broad, ten-petal flower heads rise above one lobed leaf mound.
 The lower flowers tilt outward to keep the bloom masses visible at every
 quarter-turn. A raised central bloom and contrasting discs read at small sizes.
 The low bowl and soil are copied directly from `PotLowBowl.blend`, at their
@@ -27,14 +27,14 @@ First-party references inspected before modeling:
 - [Autumn dusk scene](autumn-art-direction-2026/mid-dusk.png): keep flower
   colours distinct from green ground and yellow foliage under warm light.
 
-| Catalogue name | Croatian label | Petals / centre | Proposed price |
+| Catalogue name | Croatian label | Petals / centre (on screen) | Proposed price |
 | --- | --- | --- | --- |
-| `AutumnAsterPotMauve` | Ukrasni jesenski asteri – ljubičasti | `#9B709C` / `#D6B83F` | 45 sunflowers |
-| `AutumnAsterPotCream` | Ukrasni jesenski asteri – krem | `#EEE3CB` / `#D6B83F` | 45 sunflowers |
-| `AutumnAsterPotGold` | Ukrasni jesenski asteri – zlatni | `#D6B83F` / `#965D30` | 45 sunflowers |
+| `AutumnAsterPotMauve` | Ukrasni jesenski asteri – ljubičasti | aster violet `#c05ddc` / autumn gold `#f0c832` | 45 sunflowers |
+| `AutumnAsterPotCream` | Ukrasni jesenski asteri – krem | cream `#f2e4c6` / autumn gold `#f0c832` | 45 sunflowers |
+| `AutumnAsterPotGold` | Ukrasni jesenski asteri – zlatni | autumn gold `#f0c832` / conker `#c4683a` | 45 sunflowers |
 
 All variants occupy one tile with a 0.72 × 0.72 × 0.61 hitbox. Actual bounds
-are 0.6469 × 0.6190 × 0.5980 tiles. The origin is at the base centre.
+are 0.6393 × 0.6091 × 0.5947 tiles. The origin is at the base centre.
 The decorations can sit on compatible ground, walkways or display tables;
 they cannot sit on water or support another block. They do not grow, require
 sowing or yield a harvest. Croatian copy makes their decorative role explicit.
@@ -46,10 +46,14 @@ materials, so one colour never changes another or mutates cached GLB materials.
 
 ## Materials, cost and review
 
-The original terracotta colour is `#C56C45`; soil is `#3F2A1C` and foliage
-`#4E7F35`. Flower materials use roughness 0.95; the other roles use 0.86.
-All materials are nonmetallic and nonemissive. Existing shared weather overlays
-provide rain and snow. The lazy GLB is **128,672 bytes**, with **2,152 triangles, five meshes and five
+Colours are the bright seasonal roles from
+[GAME_ART.md](../GAME_ART.md) (decided 2026-11-23), given as the colour a
+sunlit face shows: a terracotta bowl `#e4764a` (roughness 0.4), bed soil
+`#8f5530` (0.85) and crop-leaf foliage `#5fc93a` (0.5). Petals and centres
+use roughness 0.6. `@gredice/js/autumnAsterPots` stores the authored albedo
+of each petal and centre role. All materials are nonmetallic and nonemissive.
+Existing shared weather overlays provide rain and snow. The lazy GLB is
+**48,456 bytes**, with **2,300 triangles, five meshes and five
 material roles**, with no textures, animations, lights, sounds or particles.
 Five base-pass draws are supplemented by the existing shadow/weather passes.
 These are structural costs, not physical-device frame-rate measurements.

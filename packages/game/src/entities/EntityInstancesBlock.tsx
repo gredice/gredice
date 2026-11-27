@@ -10,6 +10,7 @@ import {
     useRef,
 } from 'react';
 import type { BufferGeometry, InstancedMesh, Material } from 'three';
+import { getBlockEditingHighlightBlockId } from '../controls/pickupReleaseIntent';
 import {
     type ActiveDragPreviewTarget,
     activeDragPreviewTargetMatches,
@@ -17,11 +18,7 @@ import {
     getActiveDragPreviewTargetPositionOffset,
 } from '../dragPreviewIdentity';
 import { useGameFlags } from '../GameFlagsContext';
-import {
-    RainWetOverlay,
-    useRainWetOverlayMaterial,
-    useRainWetOverlayVisible,
-} from '../rain/RainWetOverlay';
+import { useRainWetOverlayVisible } from '../rain/RainWetOverlay';
 import { registerCloudShadowAttenuationMaterialCandidate } from '../scene/cloudShadowAttenuation';
 import { meshGeometryLayoutSignature } from '../scene/compiler/meshBuffers';
 import {
@@ -45,6 +42,7 @@ import {
     getGardenPacketMaterialSignature,
     useGardenPacketSource,
 } from '../scene/gardenPacketMaterials';
+import { useIdleBreathingBlockMaterial } from '../scene/IdleBreathingMotion';
 import { useSceneBlockData } from '../scene/SceneBlockDataContext';
 import {
     StaticOpaqueSceneCacheBoundary,
@@ -53,7 +51,6 @@ import {
 import {
     useFrostIntensityUniform,
     useRainSurfacePuddleStrengthUniform,
-    useRainSurfaceWetnessActive,
     useRainSurfaceWetnessUniform,
     useSnowSurfaceIntegrationState,
 } from '../scene/WeatherSurfaceUniformProvider';
@@ -76,6 +73,7 @@ import { createSnowOverlayGeometry } from '../snow/createSnowOverlayGeometry';
 import {
     type SnowMaterialOptions,
     SnowOverlay,
+    snowCoverColor,
     useSnowMaterial,
     useSnowOverlayVisible,
 } from '../snow/SnowOverlay';
@@ -127,6 +125,14 @@ export type EntityInstancesBlockBaseProps = {
     scale?: number | [number, number, number];
     geometry: BufferGeometry;
     snow?: SnowMaterialOptions;
+    /**
+     * The rain wet look, drawn by the weather-integrated material of a
+     * `weatherSurface="base-ground"` block (saturation, gloss and the sky
+     * sheen). No block draws a second wet copy of its mesh any more: the
+     * instanced wet overlay was retired because it cost about 19k triangles
+     * and 24 draws on a full farm in heavy rain for 0.1-0.2% of the pixels.
+     * On other blocks the flag only registers the block as a weather surface.
+     */
     renderRainWetOverlay?: boolean;
     renderStableChunksAsMergedGeometry?: boolean;
     /** Known immutable geometry/PBR sources may join heterogeneous stable packets. */
@@ -356,6 +362,18 @@ export function useEntityBlockInstances({
             ? state.stationaryPickupOutlineTarget
             : null,
     );
+    // The block the options pop-up, remove dialog or Expand is about keeps
+    // its outline (D19); only the component that draws its name subscribes.
+    const editingBlockId = useGameState((state) => {
+        const editingBlockId = getBlockEditingHighlightBlockId(
+            state.blockEditing,
+        );
+        return editingBlockId &&
+            state.blockEditing &&
+            blockNameMatches(state.blockEditing.blockName, name, names)
+            ? editingBlockId
+            : null;
+    });
 
     const indexedBlocks = getIndexedEntityBlocks(
         entityBlockInstanceIndex,
@@ -395,7 +413,8 @@ export function useEntityBlockInstances({
                               id: `${stack.position.x}|${stack.position.z}|${block.id}|${blockIndex}`,
                               pickupOutlineVisible:
                                   Boolean(dragPreviewOffset) ||
-                                  stationaryPickupOutlineVisible,
+                                  stationaryPickupOutlineVisible ||
+                                  block.id === editingBlockId,
                               position: [
                                   stack.position.x +
                                       (dragPreviewOffset?.x ?? 0),
@@ -418,6 +437,7 @@ export function useEntityBlockInstances({
             blockData,
             activeDragPreview,
             stationaryPickupOutlineTarget,
+            editingBlockId,
             yOffset,
         ],
     );
@@ -454,6 +474,12 @@ export function EntityInstancesBlock(
         stacks,
         yOffset,
     });
+    // Living blocks (pine, tulip) breathe about each instance in the shader.
+    const material = useIdleBreathingBlockMaterial(
+        name,
+        geometry,
+        'material' in props ? props.material : undefined,
+    );
 
     const commonProps = {
         castShadow,
@@ -476,13 +502,8 @@ export function EntityInstancesBlock(
         weatherSurface,
     };
 
-    if ('material' in props && props.material !== undefined) {
-        return (
-            <EntityInstancesGeometry
-                {...commonProps}
-                material={props.material}
-            />
-        );
+    if (material !== undefined) {
+        return <EntityInstancesGeometry {...commonProps} material={material} />;
     }
 
     return (
@@ -504,7 +525,6 @@ type EntityInstancesGeometryProps = Omit<
 
 type IntegratedStableWeather = {
     geometry: BufferGeometry;
-    integratesRain: boolean;
     integratesSnow: boolean;
     material: Material;
     pluginVariantKey: string;
@@ -568,9 +588,8 @@ function IntegratedWeatherEntityInstancesGeometry({
     const frostIntensityUniform = useFrostIntensityUniform();
     const frostActive = useGameState((state) => state.frostIntensity > 0);
     const puddleStrengthUniform = useRainSurfacePuddleStrengthUniform();
-    const rainOverlayVisible = useRainWetOverlayVisible();
-    const rainSurfaceActive =
-        renderRainWetOverlay && Boolean(rainOverlayVisible);
+    const rainWetVisible = useRainWetOverlayVisible();
+    const rainSurfaceActive = renderRainWetOverlay && rainWetVisible;
     const snowOverlayVisible = useSnowOverlayVisible({
         coverageMultiplier: snow?.coverageMultiplier,
         minCoverage: snowOverlayMinCoverage,
@@ -636,7 +655,7 @@ function IntegratedWeatherEntityInstancesGeometry({
             },
             snow: {
                 amountUniform: snowAmountUniform,
-                color: snow?.color ?? '#f7f7ff',
+                color: snow?.color ?? snowCoverColor,
                 enabled: integratesSnow,
                 lift: snowLift || 0.003,
                 maxThickness: snow?.maxThickness ?? 0.18,
@@ -666,7 +685,6 @@ function IntegratedWeatherEntityInstancesGeometry({
             integratedMaterial && pluginVariantKey
                 ? {
                       geometry: preparedGeometry,
-                      integratesRain,
                       integratesSnow,
                       material: integratedMaterial,
                       pluginVariantKey,
@@ -674,7 +692,6 @@ function IntegratedWeatherEntityInstancesGeometry({
                 : undefined,
         [
             integratedMaterial,
-            integratesRain,
             integratesSnow,
             pluginVariantKey,
             preparedGeometry,
@@ -857,8 +874,6 @@ function EntityInstancesGeometryRenderer(
     );
     const stableMaterial =
         integratedStableWeather?.material ?? material ?? concreteMaterialNode;
-    const integratesStableRain =
-        integratedStableWeather?.integratesRain === true;
     const integratesStableSnow =
         integratedStableWeather?.integratesSnow === true;
     const stableMaterialNode =
@@ -1061,27 +1076,11 @@ function EntityInstancesGeometryRenderer(
         packetFallbackReason,
     );
     const weatherRegistryId = useId();
-    const rainOverlayVisible = useRainWetOverlayVisible();
-    const rainOverlayEnabled = renderRainWetOverlay;
-    const rainWetnessActive = useRainSurfaceWetnessActive({
-        drySpeed: 1.8,
-        enabled: rainOverlayEnabled,
-        intensityMultiplier: 1,
-        minimumWetness: 0.01,
-        wetSpeed: 5,
-    });
     const snowOverlayVisible = useSnowOverlayVisible({
         coverageMultiplier: snow?.coverageMultiplier,
         minCoverage: snowOverlayMinCoverage,
         overrideSnow: snow?.overrideSnow,
     });
-    const sourceTriangleCount = useMemo(
-        () => countGeometryTriangles(geometry),
-        [geometry],
-    );
-    const activeRainOverlay = rainOverlayEnabled && rainOverlayVisible;
-    const activeAnimatedRainOverlay =
-        rainOverlayEnabled && (rainOverlayVisible || rainWetnessActive);
     const activeSnowOverlay = Boolean(snow) && renderSnow && snowOverlayVisible;
     const snowOverlayTriangleCount = useMemo(() => {
         if (!activeSnowOverlay) {
@@ -1117,28 +1116,21 @@ function EntityInstancesGeometryRenderer(
         () => stableInstanceCount * countGeometryTriangles(stableGeometry),
         [stableGeometry, stableInstanceCount],
     );
-    const stableRainOverlaySubmissionCount = activeRainOverlay
-        ? stableChunks.length
-        : 0;
     const stableSnowOverlaySubmissionCount = activeSnowOverlay
         ? stableChunks.length
-        : 0;
-    const stableRainOverlayTriangleCount = activeRainOverlay
-        ? stableInstanceCount * sourceTriangleCount
         : 0;
     const stableSnowOverlayTriangleCount = activeSnowOverlay
         ? stableInstanceCount * snowOverlayTriangleCount
         : 0;
-    const animatedOverlaySubmissionCount =
-        (activeAnimatedRainOverlay ? animatedInstances.length : 0) +
-        (activeSnowOverlay ? animatedInstances.length : 0);
-    const animatedOverlayTriangleCount =
-        (activeAnimatedRainOverlay
-            ? animatedInstances.length * sourceTriangleCount
-            : 0) +
-        (activeSnowOverlay
-            ? animatedInstances.length * snowOverlayTriangleCount
-            : 0);
+    // Only snow still has an overlay mesh: rain wets base-ground through the
+    // integrated material and draws no copy, so it neither avoids nor falls
+    // back to an overlay.
+    const animatedOverlaySubmissionCount = activeSnowOverlay
+        ? animatedInstances.length
+        : 0;
+    const animatedOverlayTriangleCount = activeSnowOverlay
+        ? animatedInstances.length * snowOverlayTriangleCount
+        : 0;
     const hasWeatherSurface =
         renderRainWetOverlay || Boolean(snow && renderSnow);
 
@@ -1148,18 +1140,18 @@ function EntityInstancesGeometryRenderer(
         }
 
         const integrated = integratedStableWeather !== undefined;
-        const avoidedOverlaySubmissionCount =
-            (integratesStableRain ? stableRainOverlaySubmissionCount : 0) +
-            (integratesStableSnow ? stableSnowOverlaySubmissionCount : 0);
-        const avoidedOverlayTriangleCount =
-            (integratesStableRain ? stableRainOverlayTriangleCount : 0) +
-            (integratesStableSnow ? stableSnowOverlayTriangleCount : 0);
-        const fallbackStableOverlaySubmissionCount =
-            (integratesStableRain ? 0 : stableRainOverlaySubmissionCount) +
-            (integratesStableSnow ? 0 : stableSnowOverlaySubmissionCount);
-        const fallbackStableOverlayTriangleCount =
-            (integratesStableRain ? 0 : stableRainOverlayTriangleCount) +
-            (integratesStableSnow ? 0 : stableSnowOverlayTriangleCount);
+        const avoidedOverlaySubmissionCount = integratesStableSnow
+            ? stableSnowOverlaySubmissionCount
+            : 0;
+        const avoidedOverlayTriangleCount = integratesStableSnow
+            ? stableSnowOverlayTriangleCount
+            : 0;
+        const fallbackStableOverlaySubmissionCount = integratesStableSnow
+            ? 0
+            : stableSnowOverlaySubmissionCount;
+        const fallbackStableOverlayTriangleCount = integratesStableSnow
+            ? 0
+            : stableSnowOverlayTriangleCount;
         return registerWeatherSurfaceRenderEntry(
             `${weatherRegistryId}:${instanceKey}`,
             {
@@ -1185,11 +1177,8 @@ function EntityInstancesGeometryRenderer(
         hasWeatherSurface,
         instanceKey,
         integratedStableWeather,
-        integratesStableRain,
         integratesStableSnow,
         stableInstanceCount,
-        stableRainOverlaySubmissionCount,
-        stableRainOverlayTriangleCount,
         stableSnowOverlaySubmissionCount,
         stableSnowOverlayTriangleCount,
         weatherRegistryId,
@@ -1263,37 +1252,6 @@ function EntityInstancesGeometryRenderer(
                                       minCoverage={snowOverlayMinCoverage}
                                       {...snow}
                                   />
-                              </group>
-                          </group>
-                      </QueuedPlacementDropAnimation>
-                  ),
-              );
-
-    const renderAnimatedRainOverlays = () =>
-        !renderRainWetOverlay
-            ? null
-            : animatedInstances.map(
-                  ({ instance: data, renderId, partIndex }) => (
-                      <QueuedPlacementDropAnimation
-                          key={`block-${instanceKey}-rain-placement:${renderId}:${partIndex}`}
-                          animationRenderId={renderId}
-                          block={data.block}
-                          particlePosition={[
-                              data.position[0],
-                              data.stackHeight,
-                              data.position[2],
-                          ]}
-                          position={data.position}
-                      >
-                          <group
-                              rotation={[0, data.rotation * (Math.PI / 2), 0]}
-                          >
-                              <group
-                                  position={localTransform.position}
-                                  rotation={localTransform.rotation}
-                                  scale={stableScale}
-                              >
-                                  <RainWetOverlay geometry={geometry} />
                               </group>
                           </group>
                       </QueuedPlacementDropAnimation>
@@ -1374,15 +1332,6 @@ function EntityInstancesGeometryRenderer(
                     </HoverOutline>
                 ) : null,
             )}
-            {!integratesStableRain && renderRainWetOverlay && (
-                <InstancedRainWetOverlays
-                    chunks={stableChunks}
-                    geometry={geometry}
-                    localTransform={localTransform}
-                    placementSignatureByChunkKey={placementSignatureByChunkKey}
-                    scale={stableScale}
-                />
-            )}
             {!integratesStableSnow && snow && renderSnow && (
                 <InstancedSnowOverlays
                     chunks={stableChunks}
@@ -1395,7 +1344,6 @@ function EntityInstancesGeometryRenderer(
                     snowOverlayMinCoverage={snowOverlayMinCoverage}
                 />
             )}
-            {renderAnimatedRainOverlays()}
             {renderAnimatedSnowOverlays()}
         </>
     );
@@ -1651,70 +1599,6 @@ function InstancedSnowOverlays({
             debugName={`SnowOverlay:${chunk.key}:count:${chunk.instances.length}`}
             geometry={overlayGeometry}
             localTransform={liftedTransform}
-            material={material}
-            materialNode={null}
-            placementSignature={
-                placementSignatureByChunkKey.get(chunk.key) ?? ''
-            }
-            receiveShadow={false}
-            scale={scale}
-        />
-    ));
-}
-
-function InstancedRainWetOverlays({
-    chunks,
-    geometry,
-    localTransform,
-    placementSignatureByChunkKey,
-    scale,
-}: {
-    chunks: MeshInstanceChunk<EntityBlockInstance>[];
-    geometry: BufferGeometry;
-    localTransform: MeshInstanceLocalTransform;
-    placementSignatureByChunkKey: ReadonlyMap<string, string>;
-    scale: EntityInstancesBlockBaseProps['scale'];
-}) {
-    const visible = useRainWetOverlayVisible();
-
-    if (!visible) {
-        return null;
-    }
-
-    return (
-        <VisibleInstancedRainWetOverlays
-            chunks={chunks}
-            geometry={geometry}
-            localTransform={localTransform}
-            placementSignatureByChunkKey={placementSignatureByChunkKey}
-            scale={scale}
-        />
-    );
-}
-
-function VisibleInstancedRainWetOverlays({
-    chunks,
-    geometry,
-    localTransform,
-    placementSignatureByChunkKey,
-    scale,
-}: {
-    chunks: MeshInstanceChunk<EntityBlockInstance>[];
-    geometry: BufferGeometry;
-    localTransform: MeshInstanceLocalTransform;
-    placementSignatureByChunkKey: ReadonlyMap<string, string>;
-    scale: EntityInstancesBlockBaseProps['scale'];
-}) {
-    const material = useRainWetOverlayMaterial({ geometry });
-
-    return chunks.map((chunk) => (
-        <ChunkedInstancedMesh
-            key={`rain:${chunk.key}`}
-            castShadow={false}
-            chunk={chunk}
-            debugName={`RainWetOverlay:${chunk.key}:count:${chunk.instances.length}`}
-            geometry={geometry}
-            localTransform={localTransform}
             material={material}
             materialNode={null}
             placementSignature={
