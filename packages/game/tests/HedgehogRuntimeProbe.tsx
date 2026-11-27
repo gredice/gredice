@@ -14,7 +14,6 @@ export function HedgehogRuntimeProbe({
 }) {
     const { scene } = useThree();
     const gltf = useGameGLTF('Hedgehog');
-    const last = useRef(0);
     const disposed = useRef(0);
     const lastReport = useRef('');
     const fixed = useSceneFixedTimeSeconds();
@@ -36,10 +35,10 @@ export function HedgehogRuntimeProbe({
                 g.removeEventListener('dispose', listener);
         };
     }, [gltf.nodes]);
+    // Report every frame: a throttled report can hold back the last frame
+    // before a pause, and the next frame then publishes it as if the visit
+    // had advanced while paused. The fixture writes it outside React.
     useFrame(() => {
-        if (fixed === undefined && performance.now() - last.current < 70)
-            return;
-        last.current = performance.now();
         const actors: {
             name: string;
             position: number[];

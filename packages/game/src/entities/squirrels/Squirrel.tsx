@@ -815,20 +815,14 @@ export function Squirrel({
                             candidate === animalDebugCommand.behavior,
                     );
                     if (behavior === 'flee') {
-                        const target = habitat.escapeTargets[0];
-                        const moving = target
-                            ? createMovingState({
-                                  behavior,
-                                  despawnOnArrival: true,
-                                  from: group.position.clone(),
-                                  habitat,
-                                  now,
-                                  target,
-                              })
-                            : null;
-                        if (moving) {
-                            runtime = moving;
-                        }
+                        // The departure route also covers a squirrel still
+                        // standing on its spawn spot (no path to run), so the
+                        // command always ends the visit instead of being lost.
+                        runtime = createScheduledDepartureState({
+                            from: group.position,
+                            habitat,
+                            now,
+                        });
                     } else if (behavior === 'scamper' || behavior === 'bound') {
                         runtime =
                             chooseRoutineMovement({

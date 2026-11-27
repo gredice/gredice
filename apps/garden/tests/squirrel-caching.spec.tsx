@@ -163,33 +163,37 @@ test('a live visit finishes its cache, suspends offscreen and releases the actor
     ).not.toContain('fauna:squirrels');
 });
 
-test('a flee command interrupts carrying and still removes the squirrel on arrival', async ({
-    mount,
-}) => {
-    const fixture = await mount(
-        <RainRippleFixture squirrels live renderLayers={false} rain={0} />,
-    );
-    const sample = async () =>
-        JSON.parse((await fixture.getAttribute('data-sample')) ?? '{}');
-    await expect
-        .poll(async () => (await sample()).squirrel?.phase, {
-            intervals: [100],
-        })
-        .toBe('carry');
-    await fixture.update(
-        <RainRippleFixture
-            squirrels
-            live
-            renderLayers={false}
-            rain={0}
-            startleSquirrel
-        />,
-    );
-    await expect
-        .poll(async () => (await sample()).squirrel?.nut?.visible)
-        .not.toBe(true);
-    await expect.poll(async () => (await sample()).squirrel).toBe(null);
-});
+// Foraging keeps the squirrel on its spawn spot, where a flee has no path to
+// run and must exit straight into the tree. Carrying usually starts there too.
+for (const phase of ['forage', 'carry'] as const) {
+    test(`a flee command interrupts ${phase === 'carry' ? 'carrying' : 'foraging'} and still removes the squirrel on arrival`, async ({
+        mount,
+    }) => {
+        const fixture = await mount(
+            <RainRippleFixture squirrels live renderLayers={false} rain={0} />,
+        );
+        const sample = async () =>
+            JSON.parse((await fixture.getAttribute('data-sample')) ?? '{}');
+        await expect
+            .poll(async () => (await sample()).squirrel?.phase, {
+                intervals: [100],
+            })
+            .toBe(phase);
+        await fixture.update(
+            <RainRippleFixture
+                squirrels
+                live
+                renderLayers={false}
+                rain={0}
+                startleSquirrel
+            />,
+        );
+        await expect
+            .poll(async () => (await sample()).squirrel?.nut?.visible)
+            .not.toBe(true);
+        await expect.poll(async () => (await sample()).squirrel).toBe(null);
+    });
+}
 
 test('close-up frozen carrying pose stays clear of the muzzle and garden interactions', async ({
     mount,

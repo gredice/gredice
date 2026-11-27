@@ -315,6 +315,46 @@ export async function getBlockScreenPosition(
 }
 
 /**
+ * A mouse double-click through CDP whose four events are stamped `gapMs`
+ * apart, the way a real mouse stamps them. `page.mouse.dblclick` stamps each
+ * event when it is sent, after the renderer acknowledged the previous one,
+ * so under load its presses can land further apart than the double-click
+ * window the game checks against `event.timeStamp`.
+ */
+export async function doubleClickWithMouse(
+    page: Page,
+    point: { x: number; y: number },
+    gapMs = 40,
+) {
+    const cdp = await page.context().newCDPSession(page);
+    const startedAt = Date.now();
+    const events = [
+        { type: 'mousePressed', buttons: 1, clickCount: 1 },
+        { type: 'mouseReleased', buttons: 0, clickCount: 1 },
+        { type: 'mousePressed', buttons: 1, clickCount: 2 },
+        { type: 'mouseReleased', buttons: 0, clickCount: 2 },
+    ] as const;
+    try {
+        for (const [index, event] of events.entries()) {
+            const at = startedAt + index * gapMs;
+            // Never stamp an event later than it is sent.
+            const wait = at - Date.now();
+            if (wait > 0) await page.waitForTimeout(wait);
+            await cdp.send('Input.dispatchMouseEvent', {
+                ...event,
+                x: point.x,
+                y: point.y,
+                button: 'left',
+                pointerType: 'mouse',
+                timestamp: at / 1000,
+            });
+        }
+    } finally {
+        await cdp.detach();
+    }
+}
+
+/**
  * Real touch input through CDP (`Input.dispatchTouchEvent`), because
  * `page.touchscreen.tap` cannot hold or drag. Detach when done.
  */

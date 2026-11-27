@@ -90,6 +90,37 @@ describe('squirrel avatar flee response', () => {
         assert.notEqual(flee.pathfinding.status, 'unreachable');
     });
 
+    it('exits straight into the tree when departing from the spawn spot', () => {
+        const from = new Vector3(0, 0.42, 0);
+        const departure = createScheduledDepartureState({
+            from,
+            habitat: habitat({ escapeTargets: [], roamTargets: [] }),
+            now: 12,
+        });
+
+        assert.equal(departure.phase, 'exiting');
+        assert.equal(departure.behavior, 'flee');
+        if (departure.phase === 'exiting') {
+            assert.ok(departure.destination.x > from.x + 0.5);
+            assert.equal(departure.startedAt, 12);
+        }
+    });
+
+    it('runs back to the spawn spot before exiting from anywhere else', () => {
+        const departure = createScheduledDepartureState({
+            from: new Vector3(-1, 0.42, 1),
+            habitat: habitat({ escapeTargets: [], roamTargets: [] }),
+            now: 12,
+        });
+
+        assert.equal(departure.phase, 'moving');
+        if (departure.phase === 'moving') {
+            assert.equal(departure.behavior, 'flee');
+            assert.equal(departure.despawnOnArrival, true);
+            assert.equal(departure.target.id, 'spawn');
+        }
+    });
+
     it('still completes a scheduled exit when the spawn tree is unreachable', () => {
         const from = new Vector3(2, 0.42, 0);
         const departure = createScheduledDepartureState({

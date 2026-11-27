@@ -16,6 +16,7 @@ import {
     captureBlockOptionsReview,
     collectPageErrors,
     createBlockOptionsTouch,
+    doubleClickWithMouse,
     getBlockScreenPosition,
     installBlockOptionsBackend,
     readBlockOptionsProbe,
@@ -1236,8 +1237,9 @@ test.describe('mouse', () => {
         await page.mouse.move(button.x, button.y, { steps: 2 });
         // Players double-click blocks to rotate them, so a double-click on
         // Pomakni is likely; its second press lands on the canvas where
-        // the pop-up was.
-        await page.mouse.dblclick(button.x, button.y, { delay: 40 });
+        // the pop-up was. The events carry real 40 ms gaps (see
+        // `doubleClickWithMouse`), however slowly the renderer takes them.
+        await doubleClickWithMouse(page, button);
 
         await expect
             .poll(() => readEditing(page))
