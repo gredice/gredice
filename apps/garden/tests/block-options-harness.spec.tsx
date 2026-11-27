@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/experimental-ct-react';
+import { expect as baseExpect, test } from '@playwright/experimental-ct-react';
 import type { Page } from '@playwright/test';
 import { BlockOptionsFixture } from '../../../packages/game/tests/BlockOptionsFixture';
 import {
@@ -9,6 +9,7 @@ import {
     createBlockOptionsFixtureStacks,
 } from '../../../packages/game/tests/blockOptionsFixtureData';
 import {
+    captureBlockOptionsReview,
     collectPageErrors,
     createBlockOptionsTouch,
     getBlockScreenPosition,
@@ -23,6 +24,10 @@ import {
 // editing state. Every write is stubbed and recorded by the harness backend.
 
 test.setTimeout(90_000);
+// As in block-options-expand.spec.tsx: one frame of the fixture garden can
+// take a second or more on the CI software renderer, so assertions wait
+// longer than the default 5 s.
+const expect = baseExpect.configure({ timeout: 15_000 });
 
 const { beachBall, bush, gardenBox } = blockOptionsFixtureBlockIds;
 
@@ -88,7 +93,7 @@ test('mounts the garden and opens the options pop-up state through the probe', a
     expect(menu.editingAnchor.x).toBeLessThan(canvas.x + canvas.width);
     expect(menu.editingAnchor.y).toBeGreaterThan(canvas.y);
     expect(menu.editingAnchor.y).toBeLessThan(canvas.y + canvas.height);
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('harness-desktop-menu.png'),
     });
 
@@ -124,7 +129,7 @@ test('probe projects blocks, reports instanced outlines and follows the camera',
                 (await readBlockOptionsProbe(page))?.outline.instancedCells,
         )
         .toEqual([{ x: 3, z: 1 }]);
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('harness-desktop-hover-outline.png'),
     });
     await page.mouse.move(8, 320, { steps: 8 });
@@ -183,7 +188,7 @@ test.describe('touch', () => {
         expect(canvas).toMatchObject(blockOptionsFixtureStageSizes.phone);
         await openBlockOptions(page, bush, 'touch');
         await expect.poll(() => readEditingMode(page)).toBe('menu');
-        await page.screenshot({
+        await captureBlockOptionsReview(page, {
             path: test.info().outputPath('harness-phone-menu.png'),
         });
 
@@ -234,7 +239,7 @@ test.describe('touch', () => {
                 .toBe(groundId);
             const lifted = await readBlockOptionsProbe(page);
             expect(lifted?.camera.placementLocked).toBe(true);
-            await page.screenshot({
+            await captureBlockOptionsReview(page, {
                 path: test.info().outputPath('harness-phone-touch-hold.png'),
             });
             await touch.end();
@@ -294,7 +299,7 @@ for (const variant of [
 
         await openBlockOptions(page, beachBall);
         await expect.poll(() => readEditingMode(page)).toBe('menu');
-        await page.screenshot({
+        await captureBlockOptionsReview(page, {
             path: test
                 .info()
                 .outputPath(

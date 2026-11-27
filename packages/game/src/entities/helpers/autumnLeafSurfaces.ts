@@ -77,18 +77,20 @@ export const autumnLeafSurfaces: Readonly<
         { id: 'Stool:seat-sw', position: [-0.13, 0.357412, 0.12] },
         { id: 'Stool:seat-ne', position: [0.13, 0.357412, -0.12] },
     ],
+    // Stone_Medium is scaled [0.236, 0.269, 0.205] by both render paths;
+    // the anchors sit on the rounded stone's top east and south of its summit.
     StoneMedium: [
         {
             id: 'Stone_Medium:top-east',
-            position: [0.08, 0.2843121, 0.06],
-            gradientX: 0.094414,
-            gradientZ: -0.202455,
+            position: [0.08, 0.3149, 0.06],
+            gradientX: -0.186,
+            gradientZ: -0.0217,
         },
         {
             id: 'Stone_Medium:top-south',
-            position: [0, 0.245439, 0.12],
-            gradientX: 0.189321,
-            gradientZ: -0.523459,
+            position: [0, 0.3146, 0.12],
+            gradientX: 0.0108,
+            gradientZ: -0.2259,
         },
     ],
     // Stone_Large is scaled [0.263, 0.426, 0.291] by both render paths.

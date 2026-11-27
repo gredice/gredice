@@ -157,6 +157,16 @@ function assertFootprint(
     }
 }
 
+test('both cluster variants fit the exported medium-stone top', () => {
+    const stone = exportedTriangles(
+        'StoneMedium',
+        'Stone Medium',
+        new Vector3(0.236, 0.269, 0.205),
+    );
+    for (const surface of autumnLeafSurfaces.StoneMedium)
+        assertFootprint('StoneMedium', 'Stone Medium', surface, stone);
+});
+
 test('both cluster variants fit the exported exposed bench, table, closed-lid and large-stone faces', () => {
     for (const node of [
         'WoodenBench_SeatSlatFront',

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/experimental-ct-react';
+import { expect as baseExpect, test } from '@playwright/experimental-ct-react';
 import type { Locator, Page } from '@playwright/test';
 import { BlockOptionsFixture } from '../../../packages/game/tests/BlockOptionsFixture';
 import {
@@ -10,6 +10,7 @@ import {
     createBlockOptionsFixtureStacks,
 } from '../../../packages/game/tests/blockOptionsFixtureData';
 import {
+    captureBlockOptionsReview,
     collectPageErrors,
     createBlockOptionsTouch,
     installBlockOptionsBackend,
@@ -24,6 +25,10 @@ import {
 // none is expected, because nothing here confirms the batch.
 
 test.setTimeout(120_000);
+// As in block-options-expand.spec.tsx: one frame of the fixture garden can
+// take a second or more on the CI software renderer, so assertions wait
+// longer than the default 5 s.
+const expect = baseExpect.configure({ timeout: 15_000 });
 
 const { beachBall, bush, tulip } = blockOptionsFixtureBlockIds;
 /** `Block_Grass` at (1, −4), beside the 3 × 2 hole at x 2–4, z −4…−3. */
@@ -222,7 +227,7 @@ test('#21 terrain: dragging the handle 3 cells along x and 2 along z marks 4 × 
         'Ručka za proširivanje, 1 × 1',
     );
     await expect(handle).toHaveAttribute('data-block-expand-count', '0');
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('expand-terrain-start.png'),
     });
 
@@ -275,7 +280,7 @@ test('#21 terrain: dragging the handle 3 cells along x and 2 along z marks 4 × 
     expect(
         await page.evaluate(() => document.activeElement === document.body),
     ).toBe(true);
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('expand-terrain-4x3.png'),
     });
 
@@ -332,7 +337,7 @@ test('#22 Block_Grass 10 × 10 draws one instanced mesh per template part, not o
     // The corner is clamped to 10 per side.
     await setCorner(page, { x: 14, z: 9 });
     expect(await readCorner(page)).toEqual({ x: 10, z: 5 });
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('expand-terrain-10x10.png'),
     });
 
@@ -362,7 +367,7 @@ test('#22 Block_Grass 10 × 10 draws one instanced mesh per template part, not o
             await readHandleNumber(next, 'data-block-expand-count'),
             blockId,
         ).toBeGreaterThan(0);
-        await page.screenshot({
+        await captureBlockOptionsReview(page, {
             path: test.info().outputPath(`expand-ghosts-${blockId}.png`),
         });
     }
@@ -402,7 +407,7 @@ test('#23 a non-instanced block clamps the corner at 5 × 5 and shows the cap', 
     );
     await expect(capHint).toHaveText('Najviše 5 × 5 polja odjednom.');
     await expect(handle).toHaveAttribute('data-block-expand-cap', 'true');
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('expand-beach-ball-cap-drag.png'),
     });
 
@@ -427,7 +432,7 @@ test('#23 a non-instanced block clamps the corner at 5 × 5 and shows the cap', 
     await page.keyboard.press('ArrowLeft');
     expect(await readCorner(page)).toEqual({ x: 4, z: 4 });
     await expect(capHint).toHaveText('Najviše 5 × 5 polja odjednom.');
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('expand-beach-ball-5x5-cap.png'),
     });
 
@@ -482,7 +487,7 @@ test('#24 keyboard Proširi focuses the handle and the arrows follow the screen 
     await page.keyboard.press('Enter');
     await expect(handle).toBeVisible();
     await expect.poll(() => isHandleFocused(page)).toBe(true);
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('expand-keyboard-focus.png'),
     });
 
@@ -533,7 +538,7 @@ test('#24 keyboard Proširi focuses the handle and the arrows follow the screen 
     }
     await page.keyboard.press('ArrowUp');
     await page.keyboard.press('ArrowUp');
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('expand-keyboard-rotated.png'),
     });
 
@@ -612,24 +617,37 @@ test('holding the knob at the canvas edge pans the camera and keeps stretching',
     await page.mouse.move(edge.x, edge.y, { steps: 10 });
     const cameraAtEdge = (await readBlockOptionsProbe(page))?.camera.position;
     const cornerAtEdge = await readCorner(page);
-    await page.waitForTimeout(700);
-    const cameraAfterHold = (await readBlockOptionsProbe(page))?.camera
-        .position;
+    // Held at the edge, the camera pans and the rectangle keeps growing
+    // towards the edge (+x here). The pan advances once per drawn frame, and
+    // a software-rendered frame on CI can take longer than a fixed wait, so
+    // wait for both while the button is still down.
+    await expect
+        .poll(async () => (await readBlockOptionsProbe(page))?.camera.position)
+        .not.toEqual(cameraAtEdge);
+    await expect
+        .poll(async () => (await readCorner(page)).x)
+        .toBeGreaterThan(cornerAtEdge.x);
     const cornerAfterHold = await readCorner(page);
     await page.mouse.up();
 
-    expect(cameraAfterHold).not.toEqual(cameraAtEdge);
-    expect(cornerAfterHold).not.toEqual(cornerAtEdge);
-    // The rectangle grows towards the edge (+x here) and stays capped.
-    expect(cornerAfterHold.x).toBeGreaterThan(cornerAtEdge.x);
+    // The rectangle stays capped.
     expect(cornerAfterHold.x - 1).toBeLessThanOrEqual(9);
-    // Released, the camera stops.
-    await page.waitForTimeout(200);
-    const cameraReleased = (await readBlockOptionsProbe(page))?.camera.position;
-    await page.waitForTimeout(400);
-    expect((await readBlockOptionsProbe(page))?.camera.position).toEqual(
-        cameraReleased,
-    );
+    // Released, the camera stops: once the frame in flight has drawn, two
+    // reads 400 ms apart agree.
+    let cameraReleased = '';
+    await expect
+        .poll(
+            async () => {
+                const camera = JSON.stringify(
+                    (await readBlockOptionsProbe(page))?.camera.position,
+                );
+                const settled = camera === cameraReleased;
+                cameraReleased = camera;
+                return settled;
+            },
+            { intervals: [400] },
+        )
+        .toBe(true);
 
     expectCleanRun(errors, backend);
 });
@@ -712,7 +730,7 @@ test('edge blocks: ramp and stairs copies wear the rim of a placed block', async
         const top = Math.max(0, Math.min(...points.map((p) => p.y)) - margin);
         const right = Math.max(...points.map((p) => p.x)) + margin;
         const bottom = Math.max(...points.map((p) => p.y)) + margin;
-        await page.screenshot({
+        await captureBlockOptionsReview(page, {
             path: test.info().outputPath(`expand-edge-${blockId}.png`),
             clip: {
                 x: left,
@@ -786,7 +804,7 @@ test('terrain copies share one rim: a 3 × 3 of sand gets a single outer lip', a
         viewport.height,
         Math.max(...points.map((p) => p.y)) + margin,
     );
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('expand-sand-3x3.png'),
         clip: { x: left, y: top, width: right - left, height: bottom - top },
     });
@@ -845,7 +863,7 @@ test('fence and water copies take the shape they will have once placed', async (
             viewport.height,
             Math.max(...points.map((p) => p.y)) + margin,
         );
-        await page.screenshot({
+        await captureBlockOptionsReview(page, {
             path: test.info().outputPath(name),
             clip: {
                 x: left,
@@ -961,7 +979,7 @@ test.describe('touch', () => {
         );
         await expect(handle).toHaveAttribute('data-block-expand-count', '3');
         expect(await isHandleFocused(page)).toBe(false);
-        await page.screenshot({
+        await captureBlockOptionsReview(page, {
             path: test.info().outputPath('expand-phone-touch-drag.png'),
         });
 
@@ -983,7 +1001,7 @@ test('the preview draws with the fixture at night time', async ({
     await setCorner(page, { x: 4, z: -2 });
     await expect(handle).toHaveAttribute('data-block-expand-count', '6');
     await expect(handle).toHaveAttribute('data-block-expand-ghosts', 'parts');
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('expand-terrain-night.png'),
     });
 
@@ -1012,12 +1030,31 @@ function readRenderResources(page: Page) {
     );
 }
 
-/** Moves the corner through `corners`, asking for a frame at each. */
+/**
+ * Asks for frames until `count` more have been drawn. A fixed wait is not
+ * enough on the CI software renderer, where one frame of the fixture garden
+ * can take longer than the wait, so a corner could be skipped undrawn.
+ */
+async function waitForDrawnFrames(page: Page, count = 2) {
+    const start = await page.evaluate(
+        () => window.__blockOptionsProbe?.frames ?? 0,
+    );
+    await expect
+        .poll(async () => {
+            await page.evaluate(() =>
+                window.__blockOptionsProbe?.requestRender(),
+            );
+            return page.evaluate(() => window.__blockOptionsProbe?.frames ?? 0);
+        })
+        .toBeGreaterThanOrEqual(start + count);
+}
+
+/** Moves the corner through `corners`, drawing frames at each. */
 async function visitCorners(page: Page, corners: readonly Cell[]) {
     for (const corner of corners) {
         await setCorner(page, corner);
         await expect.poll(() => readCorner(page)).toEqual(corner);
-        await page.evaluate(() => window.__blockOptionsProbe?.requestRender());
+        await waitForDrawnFrames(page);
         await page.waitForTimeout(400);
     }
 }
@@ -1147,6 +1184,7 @@ test('#25 the preview holds no extra lease once settled, builds no shader or geo
         await expect
             .poll(() => readRuntimeLeases(page), { timeout: 20_000 })
             .toEqual(baselineLeases);
+        await waitForDrawnFrames(page);
         await page.waitForTimeout(600);
         const closedResources = await readRenderResources(page);
 
@@ -1173,9 +1211,7 @@ test('#25 the preview holds no extra lease once settled, builds no shader or geo
             .poll(
                 async () => {
                     const previous = settled;
-                    await page.evaluate(() =>
-                        window.__blockOptionsProbe?.requestRender(),
-                    );
+                    await waitForDrawnFrames(page);
                     await page.waitForTimeout(500);
                     settled = await readRenderResources(page);
                     return JSON.stringify(settled) === JSON.stringify(previous);
@@ -1196,6 +1232,7 @@ test('#25 the preview holds no extra lease once settled, builds no shader or geo
         for (const corner of rest) {
             await setCorner(page, corner);
             await expect.poll(() => readCorner(page)).toEqual(corner);
+            await waitForDrawnFrames(page);
             await page.waitForTimeout(400);
             expect(
                 await readRenderResources(page),

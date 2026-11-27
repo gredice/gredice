@@ -44,7 +44,14 @@ test('cold autumn is repeatable, thin, bounded and releases resources on remount
     await expect
         .poll(async () => first.triangles - (await sample()).triangles)
         .toBe(16);
-    await expect.poll(async () => first.calls - (await sample()).calls).toBe(1);
+    // Breath is 1 draw. Frost adds 20 draws, no triangles: it swaps the terrain
+    // rim and verge pieces to per-piece integrated weather-surface materials,
+    // so their shared stock packets split (grass 8 to 24, sand 4 to 8; 314
+    // against 293 draws). The owner accepted this cost of the frost look; see
+    // docs/game-party-style.md.
+    await expect
+        .poll(async () => first.calls - (await sample()).calls)
+        .toBe(21);
     const baseline = await sample();
     console.log(
         'Cold autumn rendering budget',

@@ -705,9 +705,11 @@ Validation:
 - `pnpm --filter garden exec playwright test --config playwright.season.config.ts tests/cold-weather.spec.tsx --workers=1`
 
 The WebGL fixture combines 99 ground tiles, ten actors, a tree, autumn leaves,
-a stool, and optional rain/snow. At high quality the cold layer adds exactly one
-draw and 16 triangles over the same scene with cold effects unmounted; frost adds
-no geometry. Captures and matrix/opacity readbacks cover frozen late autumn and
+a stool, and optional rain/snow. At high quality the cold layer adds exactly 21
+draws and 16 triangles over the same scene with cold effects unmounted: one
+breath draw, and 20 from frost splitting the terrain rim and verge packets
+(accepted; see [game-party-style.md](game-party-style.md)). Frost adds no
+geometry. Captures and matrix/opacity readbacks cover frozen late autumn and
 winter, warm/missing/stale inputs, quality, reduced motion, precipitation,
 repeatability, offscreen suspension and unmount. This is a rendering-work budget,
 not a hardware frame-rate claim.

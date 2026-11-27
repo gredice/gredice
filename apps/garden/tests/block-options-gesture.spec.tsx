@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/experimental-ct-react';
+import { expect as baseExpect, test } from '@playwright/experimental-ct-react';
 import type { Page } from '@playwright/test';
 import type { JSX } from 'react';
 import type { GameStateStore } from '../../../packages/game/src/useGameState';
@@ -13,6 +13,7 @@ import {
 } from '../../../packages/game/tests/blockOptionsFixtureData';
 import {
     type BlockOptionsRecordedWrite,
+    captureBlockOptionsReview,
     collectPageErrors,
     createBlockOptionsTouch,
     getBlockScreenPosition,
@@ -31,6 +32,10 @@ import {
 // `requestBlockMove` synchronously in its `pointerdown` (D18).
 
 test.setTimeout(90_000);
+// As in block-options-expand.spec.tsx: one frame of the fixture garden can
+// take a second or more on the CI software renderer, so assertions wait
+// longer than the default 5 s.
+const expect = baseExpect.configure({ timeout: 15_000 });
 
 const { beachBall, bush, gardenBox, snowman } = blockOptionsFixtureBlockIds;
 const sheepFold = 'sheep-fold';
@@ -474,7 +479,7 @@ test.describe('mouse', () => {
         await parkMouse(page);
         await page.waitForTimeout(700);
         expect(await readMode(page)).toBe('menu');
-        await page.screenshot({
+        await captureBlockOptionsReview(page, {
             path: screenshotPath('gesture-10-entity-menu'),
         });
         expect(backend.writes).toEqual([]);
@@ -524,7 +529,7 @@ test.describe('mouse', () => {
                 );
             })
             .toBe(true);
-        await page.screenshot({
+        await captureBlockOptionsReview(page, {
             path: screenshotPath('gesture-10-instanced-menu'),
         });
 
@@ -757,7 +762,7 @@ test.describe('mouse', () => {
                     (await readBlockOptionsProbe(page))?.outline.instancedCells,
             )
             .toEqual([{ x: 0, z: 3 }]);
-        await page.screenshot({
+        await captureBlockOptionsReview(page, {
             path: screenshotPath('gesture-15-grass-outline-after-refetch'),
         });
         expect(backend.writes).toEqual([]);
@@ -828,7 +833,7 @@ test.describe('mouse', () => {
                 button.y + delta.y / 2,
                 { steps: 8 },
             );
-            await page.screenshot({
+            await captureBlockOptionsReview(page, {
                 path: screenshotPath(`gesture-17-${target.name}-dragging`),
             });
             await page.mouse.move(button.x + delta.x, button.y + delta.y, {
@@ -884,7 +889,7 @@ test.describe('mouse', () => {
         );
         await page.mouse.move(destination.x, destination.y, { steps: 10 });
         await page.waitForTimeout(300);
-        await page.screenshot({
+        await captureBlockOptionsReview(page, {
             path: screenshotPath('gesture-18-mouse-carry'),
         });
         expect(backend.writes).toEqual([]);
@@ -996,7 +1001,7 @@ test.describe('mouse', () => {
                 .toBe(true);
             // Swiftshader can hold the hint's fade-in for a moment.
             await page.waitForTimeout(600);
-            await page.screenshot({
+            await captureBlockOptionsReview(page, {
                 path: screenshotPath(`gesture-18-keyboard-carry-${blockId}`),
             });
 
@@ -1103,7 +1108,7 @@ test.describe('mouse', () => {
             )
             .toBeGreaterThan(0.05);
         expect(await readActiveDragRelative(page)).toEqual({ x: 0, z: 0 });
-        await page.screenshot({
+        await captureBlockOptionsReview(page, {
             path: screenshotPath('gesture-18-sheep-fold-carry'),
         });
 
@@ -1288,7 +1293,7 @@ test.describe('mouse', () => {
                 blockId,
             ).toEqual([]);
         }
-        await page.screenshot({
+        await captureBlockOptionsReview(page, {
             path: screenshotPath('gesture-10b-hidden-hud-settled'),
         });
         expect(backend.writes).toEqual([]);
@@ -1345,7 +1350,7 @@ test.describe('mouse', () => {
         expect(await readMode(page)).toBe('expand');
         expect(backend.writes).toEqual([]);
         expect(await readOpenGardenBoxBlockId(page)).toBeNull();
-        await page.screenshot({
+        await captureBlockOptionsReview(page, {
             path: screenshotPath('gesture-22-expand-gate-tap'),
         });
 
@@ -1403,7 +1408,7 @@ test.describe('touch', () => {
                     (await readBlockOptionsProbe(page))?.outline.instancedCells,
             )
             .toEqual([{ x: 0, z: 3 }]);
-        await page.screenshot({
+        await captureBlockOptionsReview(page, {
             path: screenshotPath('gesture-11-touch-grass-menu'),
         });
         await page.waitForTimeout(700);
@@ -1468,7 +1473,7 @@ test.describe('touch', () => {
                 page.locator('[data-block-move-carry-bubble]'),
             ).toBeVisible();
             await page.waitForTimeout(400);
-            await page.screenshot({
+            await captureBlockOptionsReview(page, {
                 path: screenshotPath('gesture-18-touch-carry'),
             });
             expect(backend.writes).toEqual([]);
@@ -1500,7 +1505,7 @@ test.describe('touch', () => {
             )
             .toMatchObject({ x: 0, z: 2 });
         await page.waitForTimeout(600);
-        await page.screenshot({
+        await captureBlockOptionsReview(page, {
             path: screenshotPath('gesture-18-touch-dropped'),
         });
         expect(errors).toEqual([]);
@@ -1542,7 +1547,7 @@ test.describe('touch', () => {
                 await expect(bubble).toBeVisible();
                 // The hint fades in; capture it once it is opaque.
                 await page.waitForTimeout(400);
-                await page.screenshot({
+                await captureBlockOptionsReview(page, {
                     path: screenshotPath('gesture-19-touch-carry-bubble'),
                 });
                 const box = await bubble.boundingBox();

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/experimental-ct-react';
+import { expect as baseExpect, test } from '@playwright/experimental-ct-react';
 import type { Page } from '@playwright/test';
 import {
     blockMoveCopy,
@@ -16,6 +16,7 @@ import {
     createBlockOptionsFixtureStacks,
 } from '../../../packages/game/tests/blockOptionsFixtureData';
 import {
+    captureBlockOptionsReview,
     collectPageErrors,
     createBlockOptionsTouch,
     installBlockOptionsBackend,
@@ -28,6 +29,10 @@ import {
 // hold-release would; every write is stubbed and recorded by the harness.
 
 test.setTimeout(90_000);
+// As in block-options-expand.spec.tsx: one frame of the fixture garden can
+// take a second or more on the CI software renderer, so assertions wait
+// longer than the default 5 s.
+const expect = baseExpect.configure({ timeout: 15_000 });
 
 const { beachBall, bush, gardenBox, raisedBed } = blockOptionsFixtureBlockIds;
 const { actions, disabledReasons } = blockOptionsToolbarCopy;
@@ -245,7 +250,7 @@ test('opens four labelled tiles next to the block without taking focus, and arro
     expect(tip.side).toBe('above');
     expect(Math.abs(tip.x - anchor.x)).toBeLessThan(1.5);
     expect(Math.abs(tip.y - anchor.y)).toBeLessThan(1.5);
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('popup-desktop-beach-ball.png'),
     });
 
@@ -322,7 +327,7 @@ test('Okreni sends the next normalized rotation, waits for the save and keeps th
     await expect(page.locator('[data-block-options-status]')).toHaveText(
         disabledReasons.rotatePending,
     );
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('popup-rotate-pending.png'),
     });
     expect(backend.writesTo(/\/blocks\//, 'PUT')).toHaveLength(1);
@@ -366,7 +371,7 @@ test('unavailable tiles explain themselves and send nothing', async ({
         'aria-disabled',
         'true',
     );
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('popup-disabled-reason.png'),
     });
 
@@ -432,7 +437,7 @@ test('Recikliraj confirms first, shows the refund, stays put while saving and re
         `${blockRemoveCopy.body({ label: labelOf('Bush') })} ${blockRemoveCopy.refund(25)}`,
     );
     await expect(popup(page)).toHaveCount(0);
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('remove-dialog-recycle.png'),
     });
     await dialog.getByRole('button', { name: blockRemoveCopy.cancel }).click();
@@ -470,7 +475,7 @@ test('Recikliraj confirms first, shows the refund, stays put while saving and re
         mode: 'confirm-remove',
         pending: true,
     });
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('remove-dialog-pending.png'),
     });
     saved.resolve();
@@ -501,7 +506,7 @@ test('Recikliraj confirms first, shows the refund, stays put while saving and re
         mode: 'confirm-remove',
         pending: false,
     });
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('remove-dialog-error.png'),
     });
     await dialog.getByRole('button', { name: blockRemoveCopy.cancel }).click();
@@ -545,7 +550,7 @@ test('removing a block with things on it deletes them all, bottom first', async 
             stackedCount: 1,
         })} ${blockRemoveCopy.refundUnknown}`,
     );
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('remove-dialog-stacked.png'),
     });
     await dialog
@@ -582,7 +587,7 @@ test('sandbox gardens offer Obriši and delete without a refund line', async ({
     await expect(page.getByRole('dialog', { name: header })).toBeVisible();
     await expect(dialog).toContainText(header);
     await expect(dialog.locator('[data-block-remove-refund]')).toHaveCount(0);
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('remove-dialog-sandbox.png'),
     });
     await dialog
@@ -660,7 +665,7 @@ test('recycling a new raised bed names its cart items and removes them too', asy
     await expect(dialog.locator('[data-block-remove-refund]')).toHaveText(
         blockRemoveCopy.refund(100),
     );
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('remove-dialog-raised-bed-cart.png'),
     });
     await dialog
@@ -762,7 +767,7 @@ test('the pop-up steers clear of the HUD near the top-left corner', async ({
     expect(placed.left).toBeGreaterThanOrEqual(canvas.x + 7.5);
     expect(placed.top).toBeGreaterThanOrEqual(canvas.y + 7.5);
     expect(await popup(page).getAttribute('data-side')).not.toBe('above');
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('popup-avoids-top-left-hud.png'),
     });
 
@@ -823,7 +828,7 @@ test('Escape and a canvas press close the pop-up; wheel zoom keeps it on the blo
     expect(tip.side).toBe('above');
     expect(Math.abs(tip.x - anchor.x)).toBeLessThan(1.5);
     expect(Math.abs(tip.y - anchor.y)).toBeLessThan(1.5);
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('popup-after-wheel-zoom.png'),
     });
 
@@ -855,7 +860,7 @@ test('unsaved blocks and a pending Expand batch disable every tile with the reas
     }
     await tile(page, 'rotate').click({ force: true });
     await expect(status).toHaveText(disabledReasons.unsaved);
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('popup-unsaved-block.png'),
     });
     await page.keyboard.press('Escape');
@@ -882,7 +887,7 @@ test('unsaved blocks and a pending Expand batch disable every tile with the reas
     await tile(page, 'remove').click({ force: true });
     await expect(status).toHaveText(disabledReasons.expandPending);
     expect(await readEditingMode(page)).toBe('menu');
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('popup-batch-pending.png'),
     });
     await page.evaluate('window.__blockOptionsReleaseBatch()');
@@ -949,7 +954,7 @@ test('Pomakni hands the press to the move, hides the toolbar until it ends and s
         ).toBeLessThan(2);
         expect(hintBox.y + hintBox.height).toBeLessThan(bushAnchor.y);
     }
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('carry-hint-mouse.png'),
     });
     // Escape puts the block back; the hint goes with the move.
@@ -1037,12 +1042,12 @@ test.describe('reduced motion', () => {
      * every 5 ms of it, so the curve does not depend on the frame rate.
      */
     async function sampleOpeningScale(page: Page, blockId: string) {
-        await page.evaluate(
-            (id) => window.__blockOptionsProbe?.openBlockOptions(id),
-            blockId,
-        );
+        // Opens the pop-up and samples its `enter` animation in one page
+        // task: the sampler is armed before the pop-up renders, so a slow
+        // software-rendered frame cannot let the 450 ms animation finish
+        // (and leave `getAnimations()`) before it is found.
         return page.evaluate(
-            () =>
+            (id) =>
                 new Promise<{
                     scales: number[];
                     animation: string;
@@ -1095,8 +1100,10 @@ test.describe('reduced motion', () => {
                             duration,
                         });
                     };
+                    window.__blockOptionsProbe?.openBlockOptions(id);
                     find();
                 }),
+            blockId,
         );
     }
 
@@ -1197,7 +1204,7 @@ test.describe('phone', () => {
             disabledReasons.notRotatable,
         );
         expect(await readEditingMode(page)).toBe('menu');
-        await page.screenshot({
+        await captureBlockOptionsReview(page, {
             path: test.info().outputPath('popup-phone-raised-bed.png'),
         });
 
@@ -1277,7 +1284,7 @@ test.describe('phone', () => {
         await expect(hint).toHaveText(blockMoveCopy.carryTouch);
         await expect(popup(page)).toHaveCount(0);
         await expect(hint).toHaveCSS('opacity', '1');
-        await page.screenshot({
+        await captureBlockOptionsReview(page, {
             path: test.info().outputPath('carry-hint-touch.png'),
         });
         await page.keyboard.press('Escape');
@@ -1307,7 +1314,7 @@ test.describe('phone', () => {
                 name: blockRemoveCopy.recycle.confirm,
             }),
         ).toBeVisible();
-        await page.screenshot({
+        await captureBlockOptionsReview(page, {
             path: test.info().outputPath('remove-dialog-phone.png'),
         });
         await dialog

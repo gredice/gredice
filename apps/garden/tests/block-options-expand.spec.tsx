@@ -20,6 +20,7 @@ import {
 } from '../../../packages/game/tests/blockOptionsFixtureData';
 import {
     type BlockOptionsRecordedWrite,
+    captureBlockOptionsReview,
     collectPageErrors,
     installBlockOptionsBackend,
     readBlockOptionsProbe,
@@ -226,7 +227,7 @@ test('#25 confirms terrain with one batch, keeps the plan frozen while pending a
     expect(
         await page.evaluate(() => document.activeElement?.tagName ?? null),
     ).toBe('BODY');
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('expand-desktop-editing.png'),
     });
 
@@ -266,7 +267,7 @@ test('#25 confirms terrain with one batch, keeps the plan frozen while pending a
         'data-block-expand-balance',
         '940',
     );
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('expand-desktop-pending.png'),
     });
 
@@ -299,7 +300,7 @@ test('#25 confirms terrain with one batch, keeps the plan frozen while pending a
 
     await expectReceipt(page, bar, 'Postavljeno: 6 blokova.');
     await expect(bar).toContainText('Proširivanje: Block Grass');
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('expand-desktop-receipt-shown.png'),
     });
     await expect(bar.locator('[data-block-expand-total]')).toHaveAttribute(
@@ -332,7 +333,7 @@ test('#25 confirms terrain with one batch, keeps the plan frozen while pending a
                 : false;
         })
         .toBe(true);
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('expand-desktop-receipt.png'),
     });
 
@@ -416,7 +417,7 @@ test('#27 sandbox gardens send expectedUnitPrice 0 and show 🌻 0', async ({
         '0',
     );
     await expect(bar.locator('[data-block-expand-balance]')).toHaveCount(0);
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('expand-desktop-sandbox.png'),
     });
 
@@ -469,7 +470,7 @@ test('#28 disables Potvrdi with how many the HUD balance covers, and for night-o
     await expect(
         bar.getByRole('button', { name: 'Potvrdi postavljanje' }),
     ).toBeDisabled();
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('expand-desktop-short.png'),
     });
 
@@ -499,7 +500,7 @@ test('#28 disables Potvrdi with how many the HUD balance covers, and for night-o
     await expect(
         region(page).getByRole('button', { name: 'Potvrdi postavljanje' }),
     ).toBeDisabled();
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('expand-desktop-night-only.png'),
     });
     await component.unmount();
@@ -592,7 +593,7 @@ test('#29 a 409 rolls back and re-plans; a 429 shows the limit and clears the pe
         page.locator('[data-block-options-fixture-balance]'),
     ).toHaveAttribute('data-block-options-fixture-balance', '1000');
     expect(await readPendingCommand(page)).toBeNull();
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('expand-desktop-conflict.png'),
     });
 
@@ -607,7 +608,7 @@ test('#29 a 409 rolls back and re-plans; a 429 shows the limit and clears the pe
     await expect(
         bar.getByRole('button', { name: 'Provjeri isti zahtjev' }),
     ).toHaveCount(0);
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('expand-desktop-rate-limited.png'),
     });
 
@@ -786,7 +787,7 @@ test('#30 a lost response keeps the command; the same request is sent again, als
         gardenId: 951,
         body: JSON.parse(rawBodies[0] ?? 'null'),
     });
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('expand-desktop-uncertain.png'),
     });
 
@@ -809,7 +810,7 @@ test('#30 a lost response keeps the command; the same request is sent again, als
     await expect(recovered.getByRole('alert')).toHaveText(
         'Potvrda nije stigla. Provjeri isti zahtjev; suncokreti se neće naplatiti dvaput.',
     );
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('expand-desktop-recovery.png'),
     });
     await recovered
@@ -903,7 +904,7 @@ test('#30c a definitive answer to the same request unlocks Expand and says why',
     expect(batchBody(batches[1]).operationId).toBe(
         batchBody(batches[0]).operationId,
     );
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('expand-desktop-retry-conflict.png'),
     });
     expect(errors).toEqual([]);
@@ -981,7 +982,7 @@ test('#30d a new Expand opened while a lost request is stored shows its own bar 
     await expect(bar.getByRole('status').last()).toHaveText(
         'Prvo provjeri ili odbaci prethodno proširivanje.',
     );
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('expand-desktop-new-with-stored.png'),
     });
 
@@ -1006,7 +1007,7 @@ test('#30d a new Expand opened while a lost request is stored shows its own bar 
     const editing = await readEditing(page);
     expect(editing?.mode).toBe('expand');
     expect(editing?.blockId).toBe(bush);
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('expand-desktop-new-with-receipt.png'),
     });
     // The receipt closes itself (3 s); the bush's Expand stays open.
@@ -1058,7 +1059,7 @@ test('#30e a definitive answer with no Expand open says nothing was placed', asy
     await expect(bar.locator('[data-block-expand-count]')).toHaveCount(0);
     await expect(bar.locator('[data-block-expand-total]')).toHaveCount(0);
     expect(await readPendingCommand(page)).toBeNull();
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('expand-desktop-not-placed.png'),
     });
     await bar.getByRole('button', { name: 'Zatvori' }).click();
@@ -1129,7 +1130,7 @@ test('phone: with no Expand open the bar sits above the live controls row', asyn
     expect(await readCoveredBottomControls(page)).toBe(0);
     expect(await readBarClearance(page)).toBeGreaterThanOrEqual(0);
     expect((await bar.boundingBox())?.y).toBeGreaterThanOrEqual(0);
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('expand-phone-recovery.png'),
     });
 
@@ -1161,7 +1162,7 @@ test('phone: with no Expand open the bar sits above the live controls row', asyn
                 ).length,
         ),
     ).toBe(0);
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('expand-phone-new-with-stored.png'),
     });
 
@@ -1174,7 +1175,7 @@ test('phone: with no Expand open the bar sits above the live controls row', asyn
     await expectReceipt(page, bar, 'Postavljeno: 6 blokova.');
     expect(await readCoveredBottomControls(page)).toBe(0);
     expect(await readBarClearance(page)).toBeGreaterThanOrEqual(0);
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('expand-phone-receipt.png'),
     });
     expect(backend.writesTo(batchPath)).toHaveLength(2);
@@ -1286,7 +1287,7 @@ test('phone: the bar fits 360 px and keeps its buttons 44 px tall', async ({
                 ).length,
         ),
     ).toBe(0);
-    await page.screenshot({
+    await captureBlockOptionsReview(page, {
         path: test.info().outputPath('expand-phone-editing.png'),
     });
     expect(backend.writes).toEqual([]);

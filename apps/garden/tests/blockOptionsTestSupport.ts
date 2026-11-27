@@ -235,6 +235,22 @@ export async function installBlockOptionsBackend(
     };
 }
 
+/**
+ * Saves a review capture of the page (a PNG in the test's output folder,
+ * never compared). On the CI software renderer one capture of the 3D stage
+ * costs several seconds, so captures are taken only when
+ * `GREDICE_BLOCK_OPTIONS_CAPTURES=1` is set, e.g. for a visual review run.
+ */
+export async function captureBlockOptionsReview(
+    page: Page,
+    options: NonNullable<Parameters<Page['screenshot']>[0]>,
+) {
+    if (process.env.GREDICE_BLOCK_OPTIONS_CAPTURES !== '1') {
+        return;
+    }
+    await page.screenshot(options);
+}
+
 /** Collects uncaught page errors; assert it stays empty. */
 export function collectPageErrors(page: Page) {
     const errors: string[] = [];

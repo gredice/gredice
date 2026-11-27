@@ -36,9 +36,11 @@ for (const small of [false, true])
             .poll(async () => (await report(fixture)).actors[0]?.elapsed)
             .toBe(8);
         const a = await report(fixture);
+        // The party-toy Hedgehog.glb (hedgehogModel.unit.ts) stays inside
+        // the GAME_ART.md small-critter budget of about 2,000 triangles.
         expect(a.actors[0]).toMatchObject({
             meshes: 6,
-            triangles: 444,
+            triangles: 1876,
             shadowCasters: 0,
             pickable: 0,
             elapsed: 8,

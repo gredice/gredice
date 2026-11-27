@@ -634,13 +634,16 @@ Weather (see [GAME_ART.md "Weather"](../GAME_ART.md#weather)):
 - Partial snow (setting in or melting) draws the overlays in the transparent
   pass, so their blocks leave the static cache until the cover is opaque
   again. Tile joints show faintly through a 3 cm dusting on paths.
-- `apps/garden/tests/cold-weather.spec.tsx` "cold autumn ... remount" still
-  fails on its draw count (21 against 1): frost switches the terrain to its
-  integrated weather-surface materials, whose palette packets batch
-  differently (69 against 57 grass and 8 against 12 sand meshes in the
-  fixture, same triangles). It is the packet batching of the frost
-  variants, not a weather layer; either the batching or the expectation
-  needs its owner's decision.
+- Frost costs 20 more draws in the `apps/garden/tests/cold-weather.spec.tsx`
+  fixture (314 against 293 at high and medium quality, no extra triangles).
+  The owner accepted this as the cost of the frost look, and the spec now
+  expects 21 fewer draws on unmount (frost plus the breath draw) and still
+  16 fewer triangles. Frost swaps the terrain rim and verge pieces to
+  per-piece integrated weather-surface materials (the rain-only variant), so
+  the stock packets they shared split by material: grass from 8 to 24 draws
+  (6 materials) and sand from 4 to 8 (2 materials) over the fixture's four
+  packet cells, with the same 37,308 triangles. It is the packet batching of
+  the frost variants, not a weather layer.
 - Ground mist is measured from one ground height (the most common terrain
   top). On a terrain step more than 0.42 above it the mist is gone, and the
   walls of sunken areas get full mist.

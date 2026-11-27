@@ -77,7 +77,19 @@ export function AutumnPropWindFixture({
     }, [rotation]);
     const client = useMemo(() => {
         const queryClient = new QueryClient({
-            defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+            defaultOptions: {
+                queries: {
+                    retry: false,
+                    staleTime: Infinity,
+                    // `useCurrentGarden` sets its own one-minute staleTime, so
+                    // on a slow runner a prop remounted after a minute would
+                    // refetch the default mock garden over the seeded stacks
+                    // and rebuild the rain puddles, splashes and mist.
+                    refetchOnMount: false,
+                    refetchOnWindowFocus: false,
+                    refetchOnReconnect: false,
+                },
+            },
         });
         queryClient.setQueryData(
             ['blocks', 'local'],

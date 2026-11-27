@@ -39,7 +39,7 @@ import {
 import { updateGameProfileMetadata } from '../../scene/gameProfileMetadata';
 import { usePrefersReducedMotion } from '../../scene/IdleBreathingMotion';
 import { useSceneRenderRequest, useSceneResume } from '../../scene/SceneTime';
-import { animated, useSpring } from '../../scene/sceneSpring';
+import { useSpring } from '../../scene/sceneSpring';
 import { useSceneAfterFrame } from '../../scene/useSceneAfterFrame';
 import {
     type BouncePivot,
@@ -640,89 +640,138 @@ type HoverOutlineProps = PropsWithChildren<{
     thickness?: number;
 }>;
 
+function hasVisibleMaterial(object: Object3D) {
+    if (!hasMaterial(object) || !object.material) return false;
+    if (!Array.isArray(object.material)) return object.material.visible;
+    for (const material of object.material) if (material.visible) return true;
+    return false;
+}
+
 function hasVisibleHoverContent(root: Object3D) {
     let visible = false;
     root.traverseVisible((child) => {
-        if (!visible)
-            visible = getObjectMaterials(child).some(
-                (material) => material.visible,
-            );
+        if (!visible) visible = hasVisibleMaterial(child);
     });
     return visible;
 }
 
 const hoverPopBounds = new Box3();
 const hoverPopPartBounds = new Box3();
-const hoverPopInverse = new Matrix4();
-const hoverPopPartMatrix = new Matrix4();
+/** Transforms from the pop group to each depth of its content, reused. */
+const hoverPopDepthMatrices: Matrix4[] = [];
+
+/**
+ * Grows `hoverPopBounds` by the drawn content below `parent`, in the pop
+ * group's own space. It composes local matrices only, so it neither reads
+ * nor writes world matrices and allocates nothing once warm.
+ */
+function addHoverPopBounds(
+    parent: Object3D,
+    parentMatrix: Matrix4 | null,
+    depth: number,
+) {
+    let matrix = hoverPopDepthMatrices[depth];
+    if (!matrix) {
+        matrix = new Matrix4();
+        hoverPopDepthMatrices[depth] = matrix;
+    }
+    for (const child of parent.children) {
+        if (!child.visible) continue;
+        if (child.matrixAutoUpdate) child.updateMatrix();
+        if (parentMatrix) matrix.multiplyMatrices(parentMatrix, child.matrix);
+        else matrix.copy(child.matrix);
+        const geometry: unknown = Reflect.get(child, 'geometry');
+        if (geometry instanceof BufferGeometry && hasVisibleMaterial(child)) {
+            if (!geometry.boundingBox) geometry.computeBoundingBox();
+            if (geometry.boundingBox)
+                hoverPopBounds.union(
+                    hoverPopPartBounds
+                        .copy(geometry.boundingBox)
+                        .applyMatrix4(matrix),
+                );
+        }
+        addHoverPopBounds(child, matrix, depth + 1);
+    }
+}
 
 /**
  * Centre of the footprint of the drawn content at rest, in the pop group's
- * own space. That is the point the pop keeps fixed: the group scales about
- * it, so it reads the same at any point of the pop. Hidden helpers such as
- * unused weather overlays are skipped.
+ * own space, written to `pivot`. That is the point the pop keeps fixed: the
+ * group scales about it, so it reads the same at any point of the pop.
+ * Hidden helpers such as unused weather overlays are skipped. With nothing
+ * drawn, `pivot` keeps its last value.
  */
-function resolveHoverPopPivot(group: Group): [number, number, number] | null {
-    group.updateWorldMatrix(true, true);
-    hoverPopInverse.copy(group.matrixWorld).invert();
+function resolveHoverPopPivot(group: Group, pivot: [number, number, number]) {
     hoverPopBounds.makeEmpty();
-    group.traverseVisible((child) => {
-        const geometry: unknown = Reflect.get(child, 'geometry');
-        if (
-            !(geometry instanceof BufferGeometry) ||
-            !getObjectMaterials(child).some((material) => material.visible)
-        )
-            return;
-        if (!geometry.boundingBox) geometry.computeBoundingBox();
-        if (!geometry.boundingBox) return;
-        hoverPopPartMatrix.multiplyMatrices(hoverPopInverse, child.matrixWorld);
-        hoverPopPartBounds
-            .copy(geometry.boundingBox)
-            .applyMatrix4(hoverPopPartMatrix);
-        hoverPopBounds.union(hoverPopPartBounds);
-    });
-    if (hoverPopBounds.isEmpty()) return null;
-    return [
-        (hoverPopBounds.min.x + hoverPopBounds.max.x) / 2,
-        hoverPopBounds.min.y,
-        (hoverPopBounds.min.z + hoverPopBounds.max.z) / 2,
-    ];
+    if (group.visible) addHoverPopBounds(group, null, 0);
+    if (hoverPopBounds.isEmpty()) return;
+    pivot[0] = (hoverPopBounds.min.x + hoverPopBounds.max.x) / 2;
+    pivot[1] = hoverPopBounds.min.y;
+    pivot[2] = (hoverPopBounds.min.z + hoverPopBounds.max.z) / 2;
 }
 
-/** Below this the pivot of a popped toy counts as unmoved. */
-const hoverPopPivotTolerance = 1e-5;
+function applyHoverPop(group: Group, scale: number, pivot: BouncePivot) {
+    const transform = popTransform(scale, pivot);
+    group.position.set(
+        transform.positionX,
+        transform.positionY,
+        transform.positionZ,
+    );
+    group.scale.setScalar(transform.scale);
+}
 
 /**
- * Follows a popped toy that moves itself, such as a rolling beach ball, so it
- * keeps growing about the point it stands on now. Mounted only while the
- * pop is up; it runs on frames the scene renders anyway.
+ * Runs one hover pop. A single scene spring scales the toy, and on every
+ * frame the scene renders the group shifts by `(1 - scale) * pivot`, so the
+ * toy grows about the point it stands on now, even when it moves itself,
+ * such as a rolling beach ball. Mounted from a pop until the toy is back at
+ * rest: a toy that is not popped holds no springs and does no frame work.
  */
-function HoverPopPivotFollower({
+function HoverPopMotion({
     groupRef,
-    onMove,
-    pivotRef,
+    onSettle,
+    popped,
 }: {
     groupRef: { readonly current: Group | null };
-    onMove: (pivot: BouncePivot) => void;
-    pivotRef: { readonly current: BouncePivot };
+    onSettle: () => void;
+    popped: boolean;
 }) {
+    const requestRender = useSceneRenderRequest();
+    const requestRenderRef = useRef(requestRender);
+    requestRenderRef.current = requestRender;
+    const pivotRef = useRef<[number, number, number]>([0, 0, 0]);
+    const [{ scale }, api] = useSpring(() => ({
+        from: { scale: 1 },
+        config: hoverPopConfig,
+    }));
+
+    useLayoutEffect(() => {
+        void api.start({ scale: popped ? hoverPopScale : 1 });
+    }, [api, popped]);
+
+    // A pop cut short, as by reduced motion, puts the toy back at once.
+    useLayoutEffect(
+        () => () => {
+            const group = groupRef.current;
+            if (!group || group.scale.x === 1) return;
+            applyHoverPop(group, 1, pivotRef.current);
+            requestRenderRef.current('hover-pop');
+        },
+        [groupRef],
+    );
+
     useFrame(() => {
         const group = groupRef.current;
         if (!group) return;
-        const pivot = resolveHoverPopPivot(group);
-        if (!pivot) return;
-        const [x, y, z] = pivotRef.current;
-        if (
-            Math.abs(pivot[0] - x) +
-                Math.abs(pivot[1] - y) +
-                Math.abs(pivot[2] - z) <
-            hoverPopPivotTolerance
-        )
-            return;
-        onMove(pivot);
+        resolveHoverPopPivot(group, pivotRef.current);
+        const value = scale.get();
+        applyHoverPop(group, value, pivotRef.current);
+        if (!popped && value === 1 && scale.idle) onSettle();
     });
     return null;
 }
+
+type HoverPopState = 'popped' | 'rest' | 'settling';
 
 /**
  * Hover pop: the outlined toy grows to `hoverPopScale` about the point it
@@ -735,71 +784,38 @@ function HoverPop({
     children,
 }: PropsWithChildren<{ active: boolean }>) {
     const groupRef = useRef<Group>(null);
-    const pivotRef = useRef<BouncePivot>([0, 0, 0]);
     const reducedMotion = usePrefersReducedMotion();
-    // Scale and shift are separate scene springs with one config, so the
-    // pivot stays put on every frame (see `popTransform`).
-    const [values, api] = useSpring(() => ({
-        from: popTransform(1, [0, 0, 0]),
-        config: hoverPopConfig,
-    }));
-    const [popped, setPopped] = useState(false);
+    const [state, setState] = useState<HoverPopState>('rest');
+    const settle = useCallback(
+        () =>
+            setState((current) => (current === 'settling' ? 'rest' : current)),
+        [],
+    );
 
     useLayoutEffect(() => {
         const group = groupRef.current;
-        const pivot =
-            active && !reducedMotion && group && hasVisibleHoverContent(group)
-                ? resolveHoverPopPivot(group)
-                : null;
-        if (pivot) pivotRef.current = pivot;
-        setPopped(pivot !== null);
-        if (reducedMotion) {
-            api.set(popTransform(1, pivotRef.current));
-            return;
-        }
-        api.start(popTransform(pivot ? hoverPopScale : 1, pivotRef.current));
-    }, [active, api, reducedMotion]);
-
-    const followPivot = useCallback(
-        (pivot: BouncePivot) => {
-            pivotRef.current = pivot;
-            // Shift to the new pivot at the current scale at once, then let
-            // the shift springs carry on with the scale toward the pop.
-            const now = popTransform(values.scale.get(), pivot);
-            const target = popTransform(hoverPopScale, pivot);
-            api.set({
-                positionX: now.positionX,
-                positionY: now.positionY,
-                positionZ: now.positionZ,
-            });
-            if (Math.abs(target.scale - now.scale) > hoverPopPivotTolerance)
-                api.start({
-                    positionX: target.positionX,
-                    positionY: target.positionY,
-                    positionZ: target.positionZ,
-                });
-        },
-        [api, values],
-    );
+        const pop =
+            active &&
+            !reducedMotion &&
+            group !== null &&
+            hasVisibleHoverContent(group);
+        setState((current) => {
+            if (pop) return 'popped';
+            return current === 'rest' || reducedMotion ? 'rest' : 'settling';
+        });
+    }, [active, reducedMotion]);
 
     return (
-        <animated.group
-            ref={groupRef}
-            name="Animation:HoverPop"
-            position-x={values.positionX}
-            position-y={values.positionY}
-            position-z={values.positionZ}
-            scale={values.scale}
-        >
+        <group ref={groupRef} name="Animation:HoverPop">
             {children}
-            {popped && !reducedMotion ? (
-                <HoverPopPivotFollower
+            {state === 'rest' ? null : (
+                <HoverPopMotion
                     groupRef={groupRef}
-                    onMove={followPivot}
-                    pivotRef={pivotRef}
+                    onSettle={settle}
+                    popped={state === 'popped'}
                 />
-            ) : null}
-        </animated.group>
+            )}
+        </group>
     );
 }
 
