@@ -1,7 +1,11 @@
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useRef } from 'react';
 import { Mesh } from 'three';
-import { useSceneTimeInvalidation } from '../src/scene/SceneTime';
+import {
+    useSceneFixedTimeSeconds,
+    useSceneRenderRequest,
+    useSceneTimeInvalidation,
+} from '../src/scene/SceneTime';
 import { useGameGLTF } from '../src/utils/useGameGLTF';
 export function HedgehogRuntimeProbe({
     onReport,
@@ -12,7 +16,13 @@ export function HedgehogRuntimeProbe({
     const gltf = useGameGLTF('Hedgehog');
     const last = useRef(0);
     const disposed = useRef(0);
-    useSceneTimeInvalidation('test:hedgehog-runtime', true, 15);
+    const lastReport = useRef('');
+    const fixed = useSceneFixedTimeSeconds();
+    const requestRender = useSceneRenderRequest();
+    // A live visit needs steady frames to report its progress. A frozen pose
+    // lets the scene go idle instead: a permanent lease keeps software WebGL
+    // rendering, and the queued frames delay every CI screenshot.
+    useSceneTimeInvalidation('test:hedgehog-runtime', fixed === undefined, 15);
     useEffect(() => {
         const listener = () => disposed.current++;
         const geometries = new Set(
@@ -27,7 +37,8 @@ export function HedgehogRuntimeProbe({
         };
     }, [gltf.nodes]);
     useFrame(() => {
-        if (performance.now() - last.current < 70) return;
+        if (fixed === undefined && performance.now() - last.current < 70)
+            return;
         last.current = performance.now();
         const actors: {
             name: string;
@@ -68,15 +79,21 @@ export function HedgehogRuntimeProbe({
                 pickable,
             });
         });
-        onReport(
-            JSON.stringify({
-                actors,
-                cachedDisposals: disposed.current,
-                sourceHeadRotation: gltf.scene
-                    .getObjectByName('Hedgehog_HeadPivot')
-                    ?.rotation.toArray(),
-            }),
-        );
+        const report = JSON.stringify({
+            actors,
+            cachedDisposals: disposed.current,
+            sourceHeadRotation: gltf.scene
+                .getObjectByName('Hedgehog_HeadPivot')
+                ?.rotation.toArray(),
+        });
+        if (report === lastReport.current) return;
+        lastReport.current = report;
+        onReport(report);
+        // A frozen pose renders two more frames after each change, so work
+        // that lands a frame later (the contact shadow batch) settles before
+        // the scene goes idle.
+        if (fixed !== undefined)
+            requestRender('test:hedgehog-runtime-settle', 2);
     });
     return null;
 }

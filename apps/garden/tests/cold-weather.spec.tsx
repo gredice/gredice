@@ -1,5 +1,6 @@
 import { expect as baseExpect, test } from '@playwright/experimental-ct-react';
 import { ColdWeatherFixture } from '../../../packages/game/tests/ColdWeatherFixture';
+import { settleWebglScene } from './webglCapture';
 
 const expect = baseExpect.configure({ timeout: 15_000 });
 test.setTimeout(90_000);
@@ -18,12 +19,6 @@ test('cold autumn is repeatable, thin, bounded and releases resources on remount
         JSON.parse((await fixture.getAttribute('data-sample')) ?? '{}');
     await expect.poll(async () => (await sample()).count).toBe(8);
     await expect.poll(async () => (await sample()).frost).toBe(1);
-    await expect(page.locator('canvas')).toHaveScreenshot(
-        'cold-autumn-high.png',
-        { maxDiffPixelRatio: 0.005, timeout: 45_000 },
-    );
-    const first = await sample();
-    expect(first.alpha.some((n: number) => n > 0)).toBe(true);
     expect(
         await page.evaluate(
             () =>
@@ -31,6 +26,14 @@ test('cold autumn is repeatable, thin, bounded and releases resources on remount
                     ?.renderLeaseOwners,
         ),
     ).not.toContain('cold-breath');
+    await fixture.update(<ColdWeatherFixture capture />);
+    await settleWebglScene(page);
+    await expect(page.locator('canvas')).toHaveScreenshot(
+        'cold-autumn-high.png',
+        { maxDiffPixelRatio: 0.005, timeout: 45_000 },
+    );
+    const first = await sample();
+    expect(first.alpha.some((n: number) => n > 0)).toBe(true);
     await fixture.update(<ColdWeatherFixture mounted={false} />);
     await expect.poll(async () => (await sample()).count).toBe(0);
     await expect.poll(async () => (await sample()).frost).toBe(0);
@@ -64,6 +67,8 @@ test('cold autumn is repeatable, thin, bounded and releases resources on remount
     await expect.poll(async () => (await sample()).count).toBe(8);
     expect((await sample()).matrices).toEqual(first.matrices);
     expect((await sample()).alpha).toEqual(first.alpha);
+    await fixture.update(<ColdWeatherFixture capture />);
+    await settleWebglScene(page);
     await expect(page.locator('canvas')).toHaveScreenshot(
         'cold-autumn-high.png',
         { maxDiffPixelRatio: 0.005, timeout: 45_000 },
@@ -114,6 +119,9 @@ test('rain and snow replace frost while autumn leaves and breath remain repeatab
     mount,
     page,
 }) => {
+    // The snow easing below and the capture after it both wait on
+    // software-rendered frames, which CI runners produce about once a second.
+    test.setTimeout(150_000);
     const fixture = await mount(<ColdWeatherFixture rain={1} precipitation />);
     const sample = async () =>
         JSON.parse((await fixture.getAttribute('data-sample')) ?? '{}');
@@ -122,9 +130,16 @@ test('rain and snow replace frost while autumn leaves and breath remain repeatab
     await fixture.update(<ColdWeatherFixture snow={0.4} />);
     await expect.poll(async () => (await sample()).snow).toBe(0.4);
     expect((await sample()).frost).toBe(0);
+    // Snow eases per rendered frame (deltas are capped at 64 ms), so it
+    // needs at least 18 frames; software WebGL on CI renders about one a
+    // second here.
     await expect
-        .poll(async () => (await sample()).snowAmount)
+        .poll(async () => (await sample()).snowAmount, { timeout: 45_000 })
         .toBeCloseTo(0.4, 3);
+    // Hold the settled snow still: the drying rain would otherwise keep the
+    // scene rendering, and its queued frames delay the capture.
+    await fixture.update(<ColdWeatherFixture snow={0.4} capture />);
+    await settleWebglScene(page);
     await expect(page.locator('canvas')).toHaveScreenshot(
         'cold-autumn-snow.png',
         { maxDiffPixelRatio: 0.005, timeout: 45_000 },

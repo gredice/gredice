@@ -1,5 +1,6 @@
 import { expect as baseExpect, test } from '@playwright/experimental-ct-react';
 import { RainRippleFixture } from '../../../packages/game/tests/RainRippleFixture';
+import { settleWebglScene } from './webglCapture';
 
 // Software WebGL runners settle shared weather over fewer rendered frames.
 const expect = baseExpect.configure({ timeout: 15_000 });
@@ -34,6 +35,11 @@ test('frozen ripples repeat across remounts and change with the shared clock', a
                     ?.renderLeaseOwners,
         ),
     ).not.toContain('rain-ripples');
+    // Screenshots hold a still scene: the probe's render lease and the last
+    // of the wetness easing would otherwise queue software-rendered frames
+    // ahead of the capture.
+    await fixture.update(<RainRippleFixture capture />);
+    await settleWebglScene(page);
     await expect(page.locator('canvas')).toHaveScreenshot(
         'rain-ripples-high.png',
         { maxDiffPixelRatio: 0.005 },
@@ -59,6 +65,8 @@ test('frozen ripples repeat across remounts and change with the shared clock', a
     );
     expect(remounted.matrices).toEqual(first.matrices);
     expect(remounted.seeds).toEqual(first.seeds);
+    await fixture.update(<RainRippleFixture capture />);
+    await settleWebglScene(page);
     await expect(page.locator('canvas')).toHaveScreenshot(
         'rain-ripples-high.png',
         { maxDiffPixelRatio: 0.005 },
@@ -324,6 +332,8 @@ test('mixed water and ground keep one capped batch across rain transitions', asy
     const kinds = active.surfaces.filter((_: number, i: number) => i % 2 === 0);
     expect(kinds).toContain(0);
     expect(kinds).toContain(1);
+    await fixture.update(<RainRippleFixture mixedSurfaces capture />);
+    await settleWebglScene(page);
     await expect(page.locator('canvas')).toHaveScreenshot(
         'rain-ripples-mixed.png',
         { maxDiffPixelRatio: 0.005 },
@@ -358,6 +368,10 @@ test('water rings sit inside exposed rotated shorelines', async ({
     await expect
         .poll(async () => (await sample()).wetness)
         .toBeGreaterThanOrEqual(0.995);
+    await fixture.update(
+        <RainRippleFixture surface="Block_Water" waterOnSlopes capture />,
+    );
+    await settleWebglScene(page);
     await expect(page.locator('canvas')).toHaveScreenshot(
         'rain-ripples-shore.png',
         { maxDiffPixelRatio: 0.005 },

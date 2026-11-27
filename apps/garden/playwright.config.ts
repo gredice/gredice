@@ -100,6 +100,10 @@ export const config: PlaywrightTestConfig = {
         {
             name: 'chromium-webgl',
             grepInvert: /@profile/,
+            // Software WebGL can still be finishing the previous test's
+            // frames when the next one sets up its (reused) context, which
+            // has taken over 10 s on CI runners.
+            timeout: 30_000,
             testMatch: [
                 squirrelCachingComponentTestPattern,
                 webglComponentTestPattern,
@@ -126,6 +130,7 @@ export const config: PlaywrightTestConfig = {
         {
             name: 'chromium-webgl-block-options',
             grepInvert: /@profile/,
+            timeout: 30_000,
             testMatch: blockOptionsComponentTestPattern,
             snapshotPathTemplate:
                 '{snapshotDir}/{testFilePath}-snapshots/{arg}{ext}',

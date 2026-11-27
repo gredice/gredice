@@ -39,6 +39,7 @@ export function RainRippleFixture({
     precipitation = false,
     date = 'lateAutumn',
     fixedTime = 12,
+    capture = false,
 }: {
     surface?: string;
     mixedSurfaces?: boolean;
@@ -58,6 +59,12 @@ export function RainRippleFixture({
     precipitation?: boolean;
     date?: 'summer' | 'lateAutumn' | 'winter';
     fixedTime?: number;
+    /**
+     * Drops every continuous render lease (the probe's and the weather
+     * easing's), so the scene renders its pending frames and then holds a
+     * still canvas for a screenshot. See `apps/garden/tests/webglCapture.ts`.
+     */
+    capture?: boolean;
 }) {
     const sampleElement = useRef<HTMLDivElement>(null);
     const reportSample = useCallback((sample: string) => {
@@ -176,6 +183,7 @@ export function RainRippleFixture({
                             zoom={focusSquirrel ? 500 : surface ? 75 : 45}
                             quality={gameQualityProfiles.low}
                             fixedTimeSeconds={live ? undefined : fixedTime}
+                            continuousRenderLeasesEnabled={!capture}
                             profileStats
                         >
                             <color attach="background" args={['#d1dbe0']} />

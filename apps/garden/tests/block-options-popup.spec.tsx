@@ -67,6 +67,19 @@ async function openBlockOptions(
     blockId: string,
     pointerType = 'mouse',
 ) {
+    // Opening over an open pop-up keeps its layer, still marked placed, and
+    // the bubble moves to the new block only on the next rendered frame (a
+    // second or more on the CI software renderer), so tile boxes read before
+    // then belong to the previous block. Close it first, as the canvas press
+    // that starts a hold on another block does.
+    if ((await readEditingMode(page)) === 'menu') {
+        await page.evaluate(() =>
+            window.__blockOptionsProbe?.closeBlockEditing(),
+        );
+        await expect(
+            page.locator('[data-block-options-popup-layer]'),
+        ).toHaveCount(0);
+    }
     const opened = await page.evaluate(
         ([id, pointer]) =>
             window.__blockOptionsProbe?.openBlockOptions(id, pointer) ?? null,
