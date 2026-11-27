@@ -18,6 +18,7 @@ import {
     type TerrainColumnBlock,
     type TerrainRimBlockName,
     type TerrainRimSurface,
+    type TerrainSideGrooves,
     type TerrainSideProfile,
     terrainBlockSideHeights,
     terrainColumnCornerHeight,
@@ -26,6 +27,7 @@ import {
     terrainNeighbourSideHeights,
     terrainRimBlockShapes,
     terrainSideGradient,
+    terrainSideGrooves,
     terrainSideHasNosing,
     terrainSideProfile,
     terrainStairNosingWidth,
@@ -242,7 +244,98 @@ function isBareUnder(
 /** The lip size at a point of a side, from its height and its neighbour's. */
 type LipScale = (height: number, neighbour: number) => number;
 
+/**
+ * How far into a groove a slab's rounded edge has dropped, at shares of
+ * its radius across it: a quarter circle, steepest at the groove's floor.
+ */
+const grooveSamples = [0, 0.55, 0.85, 1].map((share) => ({
+    across: share,
+    drop: 1 - Math.sqrt(1 - share * share),
+}));
+
+/**
+ * The nodes a side's slab grooves add to a strip from `from` to `to`, in
+ * order along the side: each groove the run holds whole dips the lip from
+ * the slabs' level down its rounded edges to the groove's floor and up
+ * again. Heights and lip sizes follow the side between its profile points.
+ */
+function grooveNodes(
+    grooves: TerrainSideGrooves | undefined,
+    from: number,
+    to: number,
+    node: (t: number, d: number) => TerrainRimStripNode,
+): TerrainRimStripNode[] {
+    if (!grooves) return [];
+    const { floor, radius } = grooves;
+    const reach = floor + radius;
+    const nodes: TerrainRimStripNode[] = [];
+    for (const centre of grooves.at) {
+        if (centre - reach < from - heightEpsilon) continue;
+        if (centre + reach > to + heightEpsilon) continue;
+        // Down the slab before the groove to the floor's near edge, then up
+        // from its far edge; with no floor, the two edges meet at the centre.
+        const into = grooveSamples.map(({ across, drop }) => ({
+            offset: reach - across * radius,
+            d: drop * radius,
+        }));
+        const outOf = into.slice(0, floor > 0 ? into.length : -1).reverse();
+        for (const { offset, d } of into) nodes.push(node(centre - offset, d));
+        for (const { offset, d } of outOf) nodes.push(node(centre + offset, d));
+    }
+    return nodes;
+}
+
+/** A side's height and its neighbour's at `t`, straight along each half. */
+function sideAt(
+    heights: TerrainSideProfile,
+    neighbour: TerrainSideProfile,
+    t: number,
+) {
+    const lerp = (a: number, b: number, share: number) =>
+        a === b ? a : a + (b - a) * share;
+    const [a, b] = t <= 0.5 ? [0, 1] : [2, 3];
+    const share = t <= 0.5 ? t / 0.5 : (t - 0.5) / 0.5;
+    return {
+        height: lerp(heights[a], heights[b], share),
+        beside: lerp(neighbour[a], neighbour[b], share),
+    };
+}
+
 function stripNodes(
+    heights: TerrainSideProfile,
+    neighbour: TerrainSideProfile,
+    from: 0 | 0.5,
+    to: 0.5 | 1,
+    top: number,
+    lipScale: LipScale,
+    grooves?: TerrainSideGrooves,
+): TerrainRimStripNode[] {
+    const edgeNodes = shapeStripNodes(
+        heights,
+        neighbour,
+        from,
+        to,
+        top,
+        lipScale,
+    );
+    const dips = grooveNodes(grooves, from, to, (t, d) => {
+        const { height, beside } = sideAt(heights, neighbour, t);
+        return {
+            t: round(t),
+            y: round(height - top),
+            k: round(lipScale(height, beside)),
+            ...(round(d) > 0 ? { d: round(d) } : {}),
+        };
+    });
+    if (dips.length === 0) return edgeNodes;
+    // A groove node takes the place of a profile node at its point.
+    const kept = edgeNodes.filter(
+        (edge) => !dips.some((dip) => Math.abs(dip.t - edge.t) < heightEpsilon),
+    );
+    return [...kept, ...dips].sort((left, right) => left.t - right.t);
+}
+
+function shapeStripNodes(
     heights: TerrainSideProfile,
     neighbour: TerrainSideProfile,
     from: 0 | 0.5,
@@ -465,6 +558,9 @@ export function resolveTerrainRimPlacements<TStack extends GardenStack>(
                           mitreEnd: nosing(side - 1),
                       }
                     : undefined;
+                // Only a lip shows the slabs' grooves; a block standing on
+                // this one covers them.
+                const grooves = terrainSideGrooves(name, entry.rotation, side);
                 for (const [from, to] of ranges) {
                     const hasLip = isBareUnder(above, side, from, to);
                     const nodes = stripNodes(
@@ -474,6 +570,7 @@ export function resolveTerrainRimPlacements<TStack extends GardenStack>(
                         to,
                         top,
                         lipScale,
+                        hasLip ? grooves : undefined,
                     );
                     const startIndex = from === 0 ? 0 : 2;
                     const endIndex = to === 1 ? 3 : 1;
@@ -488,7 +585,7 @@ export function resolveTerrainRimPlacements<TStack extends GardenStack>(
                         from === 0 &&
                         to === 1 &&
                         tilt === 0 &&
-                        nodes.every((node) => node.k === 1) &&
+                        nodes.every((node) => node.k === 1 && !node.d) &&
                         heights.every(
                             (height) => Math.abs(height - top) < heightEpsilon,
                         );

@@ -434,22 +434,27 @@ describe('resolveWaterfallColumns', () => {
     });
 
     it('stands water that fills a ramp or corner on the block under it', () => {
-        // Sides whose own bank rises to the water at each rotation: a
-        // ramp's crest, a reverse corner's two high sides, none of a corner.
-        const held: Record<string, readonly (readonly number[])[]> = {
-            [RAMP]: [[1], [2], [0], [3]],
-            Block_Grass_Corner: [[], [], [], []],
-            Block_Grass_Reverse_Corner: [
-                [1, 2],
-                [0, 2],
+        // The low sides, where the block's top stays at its base, at each
+        // rotation: a ramp's toe, a corner's two low sides, none of a
+        // reverse corner. Only those fall; the bank holds the water on its
+        // crest and its sloping sides.
+        const fallsAt: Record<string, readonly (readonly number[])[]> = {
+            [RAMP]: [[0], [3], [1], [2]],
+            Block_Grass_Corner: [
                 [0, 3],
                 [1, 3],
+                [1, 2],
+                [0, 2],
             ],
+            Block_Grass_Reverse_Corner: [[], [], [], []],
         };
-        for (const [filled, heldAt] of Object.entries(held)) {
+        for (const [filled, fallingAt] of Object.entries(fallsAt)) {
             for (let turns = 0; turns < 4; turns++) {
                 const shaped = `${filled}@${turns}`;
-                const heldSides = heldAt[turns] ?? [];
+                const falling = fallingAt[turns] ?? [];
+                const heldSides = [0, 1, 2, 3].filter(
+                    (side) => !falling.includes(side),
+                );
                 // In a lawn it falls from its surface (0.74) to the lawn,
                 // which is as high as the block it stands on: no spill.
                 const inLawn = columnAt(
@@ -499,8 +504,8 @@ describe('resolveWaterfallColumns', () => {
                 assert.equal(atEdge.sides[3].landing, 'none', edgeLabel);
             }
         }
-        // On a plinth under the ramp it spills over the plinth's lip,
-        // except over the ramp's crest.
+        // On a plinth under the ramp it spills over the plinth's lip from
+        // the ramp's toe only.
         const onPlinth = columnAt(
             columns(lawn(-1, 1, -1, 1).set(0, 0, [G, G, RAMP, W]).stacks()),
             0,
@@ -510,9 +515,12 @@ describe('resolveWaterfallColumns', () => {
         close(onPlinth.supportTopY ?? Number.NaN, 0.8, 'plinth top');
         assert.deepEqual(
             onPlinth.sides.map((side) => side.spill),
-            [true, false, true, true],
+            [true, false, false, false],
         );
-        assert.equal(onPlinth.sides[1].landing, 'none');
+        assert.deepEqual(
+            onPlinth.sides.map((side) => side.landing),
+            ['terrain', 'none', 'none', 'none'],
+        );
     });
 
     it('pours water stacked over the ramp or corner it fills over that block', () => {

@@ -276,6 +276,17 @@ describe('terrain rim geometry', () => {
                 { t: 1, y: -0.2, k: 1 },
             ],
         };
+        /** A stair front dipping into the groove between its two slabs. */
+        const groovedFront: TerrainRimStripShape = {
+            ...stairFront,
+            nodes: [
+                { t: 0, y: -0.2, k: 1 },
+                { t: 0.48, y: -0.2, k: 1, d: 0.02 },
+                { t: 0.5, y: -0.2, k: 1, d: 0.045 },
+                { t: 0.52, y: -0.2, k: 1, d: 0.02 },
+                { t: 1, y: -0.2, k: 1 },
+            ],
+        };
         const strips = [
             rise,
             backWall,
@@ -283,6 +294,7 @@ describe('terrain rim geometry', () => {
             upperStep,
             lowerStep,
             stairFront,
+            groovedFront,
         ];
         const parts = ['lip', 'body', 'fullBody'] as const;
 
@@ -361,6 +373,68 @@ describe('terrain rim geometry', () => {
                     assert.ok(flat.distanceTo(sloped) < 1e-6, part);
                 }
             }
+        });
+
+        it("dips the lip's top into a slab groove and keeps its underside", () => {
+            const plain = createTerrainRimStripGeometry(stairFront, 'lip');
+            const dipped = createTerrainRimStripGeometry(groovedFront, 'lip');
+            const plainPosition = plain.getAttribute('position');
+            const dippedPosition = dipped.getAttribute('position');
+            // The inset's row runs in over the nosing ahead of the profile.
+            const rows = createTerrainRimLipProfile().length + 1;
+            const column = 2;
+            const top = vector(dippedPosition, column * rows);
+            const underside = vector(dippedPosition, column * rows + rows - 1);
+            // The top row (and the inset row before it) sits 0.045 lower at
+            // the groove; the lip's underside does not move.
+            assert.ok(Math.abs(top.y - (-0.2 - 0.045)) < 1e-6);
+            assert.ok(
+                Math.abs(vector(dippedPosition, column * rows + 1).y - top.y) <
+                    1e-6,
+            );
+            assert.ok(
+                Math.abs(underside.y - (-0.2 - terrainRimDimensions.lipDepth)) <
+                    1e-6,
+            );
+            // Away from the groove the lip is the plain one.
+            for (let row = 0; row < rows; row++) {
+                assert.ok(
+                    vector(dippedPosition, row).distanceTo(
+                        vector(plainPosition, row),
+                    ) < 1e-6,
+                );
+            }
+            // The groove's walls face along the side, into the groove.
+            const normal = dipped.getAttribute('normal');
+            const before = vector(normal, 1 * rows + 1);
+            const after = vector(normal, 3 * rows + 1);
+            assert.ok(before.z > 0.2, `before ${before.z}`);
+            assert.ok(after.z < -0.2, `after ${after.z}`);
+            // Only the lip dips: the body under it keeps one section all
+            // along the side.
+            const body = createTerrainRimStripGeometry(groovedFront, 'body');
+            const bodyPosition = body.getAttribute('position');
+            const bodyRows = createTerrainRimBodyProfile().length;
+            for (let node = 1; node < groovedFront.nodes.length; node++) {
+                for (let row = 0; row < bodyRows; row++) {
+                    const at = vector(bodyPosition, node * bodyRows + row);
+                    const start = vector(bodyPosition, row);
+                    assert.ok(Math.abs(at.y - start.y) < 1e-6);
+                    assert.ok(Math.abs(at.x - start.x) < 1e-6);
+                }
+            }
+            // A dip is part of the piece's geometry key.
+            assert.notEqual(
+                terrainRimPieceShapeKey(groovedFront),
+                terrainRimPieceShapeKey({
+                    ...groovedFront,
+                    nodes: groovedFront.nodes.map(({ t, y, k }) => ({
+                        t,
+                        y,
+                        k,
+                    })),
+                }),
+            );
         });
 
         it('keeps the body on the block and the toe nose small', () => {

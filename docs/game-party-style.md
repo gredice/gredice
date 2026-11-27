@@ -187,9 +187,13 @@ What changed in the renderer:
   the support block's grass lip, falls past the island base and fades into
   mist. Water on a ramp or corner fills it down to its base, so it stands
   on the block under the ramp (or on nothing at ground level), and its
-  spill or run-out starts from that block's top, below the water; a side
-  where the block's own bank rises to the water, as a ramp's crest, holds
-  it and shows no fall. Water stacked above the ramp or corner it fills
+  spill or run-out starts from that block's top, below the water. It falls
+  only over the block's low sides, where its top stays at its base all
+  along (a ramp's toe, a corner's two low sides; none of an inner corner).
+  The bank holds it on its crest and its sloping sides, which show a plain
+  water wall above the slope: a fall there poured over the bank's soil
+  face, as if through the block (2026-11-27). Water stacked above the ramp
+  or corner it fills
   stands taller than that bank, so each side pours over the block's top
   along it instead (`WaterfallColumn.lips`): its crest, a slope or a low
   side, and the sheet covers the ramp's soil rather than falling behind it.
@@ -225,7 +229,13 @@ What changed in the renderer:
   toe as a small nose, and stairs get a lip on each step: the upper step's
   ends flush with the riser in a flat face, the lower step's curls into the
   riser's foot; on the lower step's front the lip runs in over the GLB's own
-  rounded nosing, so no groove shows between them. A side shows wherever the
+  rounded nosing, so no groove shows between them. The stone blocks pave
+  their tops with separate rounded slabs, and where the groove between two
+  slabs reaches a side, the stone lip dips with it, its top rounding down
+  into the groove and the dip fading out toward the lip's underside
+  (`terrainSideGrooves` in `terrainShapes.ts`, measured from the GLBs:
+  nine slabs 0.03 deep on stone blocks and ramps, two per step 0.045 deep
+  on the stairs, 2026-11-27). A side shows wherever the
   block stands above its neighbour's top along the shared edge, so a flat
   block beside a ramp's low end is rimmed too. There a grass, soil or sand
   lip shrinks to the height it shows and tapers away where the slope reaches

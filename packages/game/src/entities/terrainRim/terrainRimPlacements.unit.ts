@@ -470,17 +470,26 @@ describe('terrain rim placements', () => {
                 `rotation ${rotation}`,
             );
         }
-        // A flat stone block beside a stone ramp's side keeps a flat edge,
-        // sunk into the slope, and no cap where the slope reaches its top.
+        // A flat stone block beside a stone ramp's side keeps a level edge
+        // at full size, sunk into the slope, and no cap where the slope
+        // reaches its top.
         const flat = resolveTerrainRimPlacements(blocks, [
             stack(0, 0, 'Block_Stone'),
             turned(0, 1, 0, 'Block_Stone_Angle'),
         ]).filter((placement) => placement.stack.position.z === 0);
+        const besideSlope = flat.find(
+            (placement) => placement.kind === 'strip' && placement.turn === 3,
+        );
+        assert.ok(besideSlope);
+        const besideSlopeShape = strip(besideSlope);
         assert.ok(
-            flat.some(
-                (placement) =>
-                    placement.kind === 'edge' && placement.turn === 3,
+            besideSlopeShape.nodes.every(
+                (node) => node.y === 0 && node.k === 1,
             ),
+        );
+        assert.equal(
+            besideSlopeShape.capStart || besideSlopeShape.capEnd,
+            false,
         );
         assert.equal(
             flat.some((placement) => placement.kind.startsWith('cap')),
@@ -559,12 +568,17 @@ describe('terrain rim placements', () => {
         ]);
         // The upper step's lip ends flush with the riser (`cut`); the lower
         // step's curls into the riser's foot (`cap`), toward the upper half.
+        // The back and the front dip where their two slabs meet (see the
+        // groove test); here only the edge itself counts.
         assert.deepEqual(
             placements
                 .filter((placement) => placement.kind === 'strip')
                 .map((placement) => {
                     const shape = strip(placement);
                     const nodes = shape.nodes
+                        .filter(
+                            (node) => !node.d && [0, 0.5, 1].includes(node.t),
+                        )
                         .map((node) => `${node.t}@${node.y}`)
                         .join(',');
                     const ends = [
@@ -577,6 +591,7 @@ describe('terrain rim placements', () => {
                 })
                 .sort(),
             [
+                '0:0@0,1@0',
                 '1:0.5@0,1@0:cut-start',
                 '1:0@-0.2,0.5@-0.2:cap-end',
                 '2:0@-0.2,1@-0.2',
@@ -594,13 +609,92 @@ describe('terrain rim placements', () => {
                 placement.stack.position.z === 0 && placement.turn === 1,
         );
         assert.deepEqual(walled, []);
-        // The upper step's back keeps the flat pieces.
+        // The upper step's back keeps the flat corners; its grooved edge
+        // is a strip.
         assert.deepEqual(
             describePlacements([stack(0, 0, 'Block_Stone_Stairs')]).filter(
                 (placement) =>
                     placement.includes('edge') || placement.includes(':corner'),
             ),
-            ['0,0:corner0', '0,0:corner1', '0,0:edge0'],
+            ['0,0:corner0', '0,0:corner1'],
+        );
+    });
+
+    it('dips a stone lip where the slabs it edges meet', () => {
+        /** The deepest dips of each side's strip, as `t@d`. */
+        const dipsBySide = (stacks: GardenStack[]) =>
+            resolveTerrainRimPlacements(blocks, stacks)
+                .filter((placement) => placement.shape?.kind === 'strip')
+                .map((placement) => {
+                    const { nodes } = strip(placement);
+                    const deepest = Math.max(0, ...nodes.map((n) => n.d ?? 0));
+                    const at = nodes
+                        .filter((node) => deepest > 0 && node.d === deepest)
+                        .map((node) => `${node.t}@${node.d}`);
+                    return `${placement.turn}:${at.join(',')}`;
+                })
+                .sort();
+        // Nine slabs: two grooves along every side, 0.016 apart, rounded
+        // 0.03 deep (`BlockStone.glb`).
+        const paving = ['0.242@0.03', '0.258@0.03', '0.742@0.03', '0.758@0.03'];
+        assert.deepEqual(
+            dipsBySide([stack(0, 0, 'Block_Stone')]),
+            [0, 1, 2, 3].map((side) => `${side}:${paving.join(',')}`),
+        );
+        // Each strip runs level from corner to corner around its dips.
+        const paved = resolveTerrainRimPlacements(blocks, [
+            stack(0, 0, 'Block_Stone'),
+        ]).filter((placement) => placement.kind === 'strip');
+        for (const placement of paved) {
+            const { nodes } = strip(placement);
+            assert.deepEqual(
+                [nodes[0], nodes[nodes.length - 1]],
+                [
+                    { t: 0, y: 0, k: 1 },
+                    { t: 1, y: 0, k: 1 },
+                ],
+            );
+            for (const [index, node] of nodes.entries()) {
+                assert.equal(node.y, 0);
+                if (index > 0) assert.ok(node.t > nodes[index - 1].t);
+            }
+        }
+        // The corner stairs' two lower fronts each meet in the middle, the
+        // two slabs rounding 0.045 into the groove; they turn with it.
+        for (let rotation = 0; rotation < 4; rotation++) {
+            const fronts = [2, 3].map((side) => (side + rotation) % 4);
+            assert.deepEqual(
+                dipsBySide([
+                    turned(0, 0, rotation, 'Block_Stone_Stairs_Corner'),
+                ]).filter((dips) => dips.includes('@')),
+                fronts.sort().map((side) => `${side}:0.5@0.045`),
+                `rotation ${rotation}`,
+            );
+        }
+        // Soil, sand and polished stone have no slabs.
+        for (const name of [
+            'Block_Grass',
+            'Block_Sand_Angle',
+            'Block_Polished_Stone_Stairs',
+        ]) {
+            assert.ok(
+                dipsBySide([stack(0, 0, name)]).every(
+                    (dips) => !dips.includes('@'),
+                ),
+                name,
+            );
+        }
+        // A block standing on the stone covers its grooves: no lip, no dip.
+        const covered = resolveTerrainRimPlacements(blocks, [
+            stack(0, 0, 'Block_Stone', 'Block_Stone'),
+        ]).filter((placement) => placement.blockIndex === 0);
+        assert.ok(covered.length > 0);
+        assert.ok(
+            covered.every(
+                (placement) =>
+                    placement.shape?.kind !== 'strip' ||
+                    placement.shape.nodes.every((node) => !node.d),
+            ),
         );
     });
 

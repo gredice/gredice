@@ -253,6 +253,84 @@ export function terrainSideHasNosing(
     );
 }
 
+/**
+ * Where the gaps between a stone block's paving slabs reach its tile sides.
+ * The stone GLBs pave their top with separate slabs, each rounded off along
+ * the edges it shares with another, so a groove runs between them right out
+ * to the tile side. The rim's lip dips with it there
+ * (`TerrainRimStripNode.d`), so the groove runs on through the edge.
+ */
+export type TerrainSlabGrooves = {
+    /** How far each slab's edge rounds down into a groove, and across. */
+    radius: number;
+    /** Half the width of the flat floor between two slabs. */
+    floor: number;
+    /** Groove centres along each side (`t`), in the block's own frame. */
+    sides: readonly [
+        readonly number[],
+        readonly number[],
+        readonly number[],
+        readonly number[],
+    ];
+};
+
+/** The groove centres of a side's slabs, and their shape. */
+export type TerrainSideGrooves = Pick<
+    TerrainSlabGrooves,
+    'floor' | 'radius'
+> & {
+    at: readonly number[];
+};
+
+const quarterGrooves = [0.25, 0.75] as const;
+const middleGroove = [0.5] as const;
+/** Nine slabs, 0.016 apart, rounded over 0.03 (`BlockStone`). */
+const stonePavingGrooves = {
+    radius: 0.03,
+    floor: 0.008,
+    sides: [quarterGrooves, quarterGrooves, quarterGrooves, quarterGrooves],
+} as const satisfies TerrainSlabGrooves;
+/**
+ * The stairs pave each step with two slabs that meet in the middle, rounded
+ * over 0.045 (`BlockStoneStairs*`). Grooves cross the full and half sides;
+ * on a stepped side the riser stands where the groove would.
+ */
+const stoneStairsGrooves = {
+    radius: 0.045,
+    floor: 0,
+    sides: [middleGroove, [], middleGroove, []],
+} as const satisfies TerrainSlabGrooves;
+const stoneCornerStairsGrooves = {
+    ...stoneStairsGrooves,
+    sides: [[], [], middleGroove, middleGroove],
+} as const satisfies TerrainSlabGrooves;
+
+const terrainSlabGrooves: Partial<
+    Record<TerrainRimBlockName, TerrainSlabGrooves>
+> = {
+    Block_Stone: stonePavingGrooves,
+    // The ramp's slabs follow its slope; its toe meets the ground flat.
+    Block_Stone_Angle: {
+        ...stonePavingGrooves,
+        sides: [quarterGrooves, quarterGrooves, [], quarterGrooves],
+    },
+    Block_Stone_Stairs: stoneStairsGrooves,
+    Block_Stone_Stairs_Corner: stoneCornerStairsGrooves,
+    Block_Stone_Stairs_Half: stoneCornerStairsGrooves,
+};
+
+/** The slab grooves that reach world side `side` of a block, if any. */
+export function terrainSideGrooves(
+    name: TerrainRimBlockName,
+    rotation: number,
+    side: number,
+): TerrainSideGrooves | undefined {
+    const grooves = terrainSlabGrooves[name];
+    const at = grooves?.sides[mod4(side - rotation)];
+    if (!grooves || !at?.length) return undefined;
+    return { at, floor: grooves.floor, radius: grooves.radius };
+}
+
 /** Height share of world corner `corner` of a shape turned by `rotation`. */
 export function terrainCornerHeight(
     shape: TerrainShape,

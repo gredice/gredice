@@ -376,9 +376,16 @@ export function createTerrainRimCapGeometry(
 /**
  * A point of a shaped block's top edge: `t` along the side (0 at its start,
  * 1 at its end), the edge height `y` below the block top, and the size `k`
- * of the lip and body there.
+ * of the lip and body there. `d` dips the lip's top that far below `y`,
+ * into a groove between the block's paving slabs (`TerrainSlabGrooves`);
+ * the dip fades out down the lip, so its underside runs on straight.
  */
-export type TerrainRimStripNode = { t: number; y: number; k: number };
+export type TerrainRimStripNode = {
+    t: number;
+    y: number;
+    k: number;
+    d?: number;
+};
 
 /**
  * A rim piece along all or half of one side of a ramp, corner or stairs, in
@@ -446,7 +453,9 @@ export function terrainRimPieceShapeKey(shape: TerrainRimPieceShape) {
         const [[ax, az], [bx, bz]] = shape.gradients;
         return `shaped-corner:${shape.y}/${shape.k}/${shape.bottom}/${ax},${az}/${bx},${bz}`;
     }
-    const nodes = shape.nodes.map(({ t, y, k }) => `${t},${y},${k}`).join('/');
+    const nodes = shape.nodes
+        .map(({ t, y, k, d }) => `${t},${y},${k}${d ? `,${d}` : ''}`)
+        .join('/');
     const caps = `${shape.capStart ? 's' : ''}${shape.capEnd ? 'e' : ''}`;
     const cuts =
         shape.cutStart || shape.cutEnd
@@ -502,27 +511,47 @@ function topRowWeight(normal: { reach: number; height: number }) {
     return Math.min(1, Math.max(0, share));
 }
 
+/** A dip never squeezes the lip to less than this share of its depth. */
+const minimumDippedLipShare = 0.2;
+
 /**
  * The profile at one point of a shaped top: the lip scaled by `k` under the
  * edge at `y`, and the body from under the lip down to `bottom`, squeezed
- * to fit and flat where no room is left.
+ * to fit and flat where no room is left. A lip dipped by `dip` is squeezed
+ * down from its top, so its underside stays where it was.
  */
 function placeSection(
     part: TerrainRimPart,
     y: number,
     k: number,
     bottom: number,
+    dip = 0,
 ): SectionPoint[] {
     const profile = createTerrainRimPartProfile(part);
     const normals = profileNormals(profile);
     if (part === 'lip') {
-        return profile.map((point, row) => ({
-            reach: point.reach * k,
-            height: y + point.height * k,
-            normal: normals[row],
-            profileNormal: normals[row],
-            snowLayer: point.snowLayer,
-        }));
+        const depth = terrainRimDimensions.lipDepth * k;
+        const squeeze =
+            depth > 0 ? Math.min(dip / depth, 1 - minimumDippedLipShare) : 0;
+        return profile.map((point, row) => {
+            const normal = normals[row];
+            // Squeezing the profile upright tips its normals up.
+            const reach = normal.reach * (1 - squeeze);
+            const length = Math.hypot(reach, normal.height) || 1;
+            return {
+                reach: point.reach * k,
+                height: y + point.height * k * (1 - squeeze) - squeeze * depth,
+                normal:
+                    squeeze > 0
+                        ? {
+                              reach: reach / length,
+                              height: normal.height / length,
+                          }
+                        : normal,
+                profileNormal: normal,
+                snowLayer: point.snowLayer,
+            };
+        });
     }
     const from = profile[0].height;
     const to = Math.min(...profile.map((point) => point.height));
@@ -718,7 +747,13 @@ export function createTerrainRimStripGeometry(
 ) {
     const inset = part === 'lip' ? (shape.inset?.width ?? 0) : 0;
     const sections = shape.nodes.map((node) => {
-        const section = placeSection(part, node.y, node.k, shape.bottom);
+        const section = placeSection(
+            part,
+            node.y,
+            node.k,
+            shape.bottom,
+            part === 'lip' ? (node.d ?? 0) : 0,
+        );
         const [top] = section;
         if (inset <= 0 || !top) return section;
         // The lip's top row runs on, flat, in over the nosing.
@@ -784,8 +819,13 @@ export function createTerrainRimStripGeometry(
                 -point.height * textureRepeatsPerMetre,
             );
             mesh.snowLayers?.push(point.snowLayer ?? 1);
+            // Measured from the lip's own top, which a groove dips.
             mesh.snowTopDistances?.push(
-                Math.max(0, (shape.nodes[column]?.y ?? 0) - point.height),
+                Math.max(
+                    0,
+                    (section[0]?.height ?? shape.nodes[column]?.y ?? 0) -
+                        point.height,
+                ),
             );
         });
     });

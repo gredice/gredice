@@ -578,9 +578,10 @@ describe('createWaterfallExtrasGeometry', () => {
         assert.ok(checked > 0);
     });
 
-    it('fills a ramp with water that falls from it like water on a block', () => {
-        // Water on a corner on a block stands where water on two blocks
-        // would, so it falls the same way: down its wall onto the lawn.
+    it('fills a ramp with water that falls only from its low sides', () => {
+        // Water on a corner on a block falls down its wall onto the lawn
+        // over the corner's two low sides (-x and +z at rotation 0); the
+        // bank's sloping sides hold it.
         const kinds = (geometry: BufferGeometry) =>
             new Set(vertices(geometry).map((vertex) => vertex.kind));
         const onCorner = extrasFor(
@@ -595,12 +596,21 @@ describe('createWaterfallExtrasGeometry', () => {
             kinds(onCorner),
             new Set([waterfallExtrasKind.terrainSkirt]),
         );
-        assert.equal(triangleCount(onCorner), triangleCount(onBlock));
+        assert.ok(triangleCount(onCorner) < triangleCount(onBlock));
+        const cornerSkirts = vertices(onCorner).filter(isSkirt);
+        assert.ok(cornerSkirts.length > 0);
+        assert.ok(
+            cornerSkirts.every(
+                (vertex) =>
+                    vertex.position[0] < -0.5 + 1e-6 ||
+                    vertex.position[2] > 0.5 - 1e-6,
+            ),
+            'foam only below the low sides',
+        );
         onCorner.dispose();
         onBlock.dispose();
-        // A ramp's crest (+x at rotation 0) holds its water: no foam lies
-        // at the foot of the crest, and the slope sides' foam tapers off
-        // towards it.
+        // A ramp (rising to +x at rotation 0) holds its water on its crest
+        // and both slopes: foam lies only at the foot of its toe.
         const onRamp = extrasFor(
             lawnWith(1, {
                 '0|0': ['Block_Grass', 'Block_Grass_Angle', 'Block_Water'],
@@ -613,21 +623,34 @@ describe('createWaterfallExtrasGeometry', () => {
             new Set([waterfallExtrasKind.terrainSkirt]),
         );
         assert.ok(
-            skirts.every((vertex) => vertex.position[0] < 0.5 + 1e-6),
-            'no foam past the crest',
+            skirts.every((vertex) => vertex.position[0] < -0.5 + 1e-6),
+            'foam only below the toe',
         );
         onRamp.dispose();
-        // At ground level on the island edge, it runs off from its bottom
-        // (the ramp's base), hugging the wall, with no lip to pour over.
+        // At ground level with its toe on the island edge, it runs off from
+        // its bottom (the ramp's base), hugging the wall, with no lip to
+        // pour over.
         const atEdge = extrasFor(
             lawnWith(1, { '0|0': ['Block_Grass_Angle', 'Block_Water'] }).filter(
-                (candidate) => candidate.position.z >= 0,
+                (candidate) => candidate.position.x >= 0,
             ),
         );
         const runout = vertices(atEdge).filter(
             (vertex) => vertex.kind === waterfallExtrasKind.runout,
         );
         assert.ok(runout.length > 0);
+        assert.ok(
+            runout.every((vertex) => vertex.position[0] < -0.5 + 1e-6),
+            'runs off the toe only',
+        );
+        // A sloping side on the island edge holds its water.
+        const slopeAtEdge = extrasFor(
+            lawnWith(1, { '0|0': ['Block_Grass_Angle', 'Block_Water'] }).filter(
+                (candidate) => candidate.position.z >= 0,
+            ),
+        );
+        assert.equal(vertices(slopeAtEdge).length, 0);
+        slopeAtEdge.dispose();
         const top = Math.max(...runout.map((vertex) => vertex.position[1]));
         assert.ok(top > 0 && top < 0.05, `run-out top ${top}`);
         for (const vertex of runout) {

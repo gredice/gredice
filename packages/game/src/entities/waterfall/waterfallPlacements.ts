@@ -38,7 +38,8 @@ import {
  * or a lower water top. With no neighbouring column (the island's outer edge)
  * the water falls past the island base and fades out. Water that fills a
  * ramp or corner (`waterBlockHeight`) stands on the block under it, and
- * shows no fall where the block's own bank rises to its surface. Water
+ * falls only over the block's low sides: none where the block's own bank
+ * rises to its surface or slopes up along the side. Water
  * stacked above the ramp or corner it fills pours over that block's top
  * instead: its crest, its slopes and its low sides.
  *
@@ -330,9 +331,12 @@ function columnBase(
 }
 
 /**
- * Whether the ramp or corner a column fills rises to the water's surface
- * all along side `side`, as a ramp's crest: its own bank holds the water
- * there and hides the wall, so that side shows no fall.
+ * Whether the ramp or corner a column fills holds the water on side `side`,
+ * so that side shows no fall. A ramp's crest rises to the surface all along
+ * the side and hides the wall. Water that fills the block, rather than
+ * standing above it, falls only over the block's low sides, where its top
+ * stays at its base all along the side: a fall down a sloping side would
+ * pour over the bank's soil face, as if through the block.
  */
 function heldByFilledBlock(
     filled: TerrainColumnBlock | undefined,
@@ -341,7 +345,9 @@ function heldByFilledBlock(
 ) {
     if (!filled) return false;
     const heights = terrainBlockSideHeights(filled, terrainSideFacing(side));
-    return Math.min(...heights) >= surfaceY - heightEpsilon;
+    if (Math.min(...heights) >= surfaceY - heightEpsilon) return true;
+    const fills = surfaceY <= filled.base + filled.height + heightEpsilon;
+    return fills && Math.max(...heights) > filled.base + heightEpsilon;
 }
 
 /** Top of a terrain block along side `side`, from the side's start. */
