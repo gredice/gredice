@@ -36,8 +36,9 @@ medallion in a role colour holding generated HUD artwork
 the blocks with a plus (Proširi), the turning arrow (Okreni), the compost crate
 (Recikliraj) or the red bin (Obriši), and the glove (Pomakni). The pop-up grows
 out of its tail with a confetti burst at the block while the medallions bounce
-in one after another; the carry hint, the Expand bar and the Expand knob pop in
-the same way. Confirming buttons are candy buttons, green to go ahead and red
+in one after another; the carry hint and the Expand knob pop in the same way,
+and the Expand bar rises with a small bounce (never scaled, so its measured
+lift and 44 px buttons hold while it enters). Confirming buttons are candy buttons, green to go ahead and red
 to delete. Pops overshoot by at most 8% and settle within 450 ms; under
 reduced motion nothing moves and the burst is not drawn.
 

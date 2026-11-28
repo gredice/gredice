@@ -108,5 +108,8 @@ export const blockOptionsPopClassName = styles.pop;
 /** The carry hint grows out of its tail with a small overshoot. */
 export const blockOptionsBubblePopClassName = styles.bubble;
 
-/** The Expand bar rises with a small overshoot, never from transparent. */
+/**
+ * The Expand bar rises with a small bounce, never from transparent and never
+ * scaled (its lift and 44 px buttons are measured while it enters).
+ */
 export const blockOptionsBarPopClassName = styles.barPop;

@@ -40,7 +40,7 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'The Expand bar above the bottom HUD: how many see-through copies the marked area places, their total sunflower cost, the balance the sunflower HUD shows (balance minus the shopping cart) and the actions for the current step. `BlockExpandHud` decides the step: review, placing (the confirmed plan stays frozen), a lost response that can be checked again, and the receipt. It is a HUD game card with the Proširi medallion, a sunflower price chip and candy buttons, and it rises with a small overshoot.',
+                    'The Expand bar above the bottom HUD: how many see-through copies the marked area places, their total sunflower cost, the balance the sunflower HUD shows (balance minus the shopping cart) and the actions for the current step. `BlockExpandHud` decides the step: review, placing (the confirmed plan stays frozen), a lost response that can be checked again, and the receipt. It is a HUD game card with the Proširi medallion, a sunflower price chip and candy buttons, and it rises with a small bounce.',
             },
         },
     },

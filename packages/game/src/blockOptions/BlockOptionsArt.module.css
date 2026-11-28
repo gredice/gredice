@@ -336,14 +336,20 @@
     }
 }
 
-/* Never transparent: the bar must show even before the page draws frames. */
+/*
+ * Never transparent: the bar must show even before the page draws frames.
+ * Never scaled either: the bar's lift above the live HUD is measured from
+ * its height when it mounts, and its buttons keep their 44 px. It starts
+ * at most the 8 px HUD gap low, so even its first frame never covers the
+ * live controls row under it.
+ */
 @keyframes bar-pop {
     0% {
-        transform: translateY(0.75rem) scale(0.9);
+        transform: translateY(0.5rem);
     }
 
     60% {
-        transform: translateY(-0.125rem) scale(1.06);
+        transform: translateY(-0.1875rem);
     }
 
     100% {

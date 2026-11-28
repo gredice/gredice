@@ -214,7 +214,7 @@ function BlockExpandSecondaryActions({
  * only state is the measured lift above a live bottom HUD.
  *
  * It is a HUD game card: the Proširi medallion, the total on a sunflower
- * chip and candy buttons. It rises with a small overshoot.
+ * chip and candy buttons. It rises with a small bounce.
  */
 export function BlockExpandPanel({
     actions,
@@ -266,14 +266,15 @@ export function BlockExpandPanel({
             ref={sectionRef}
             aria-label={blockExpandCopy.region}
             data-block-expand-hud={actions.kind}
-            // The entrance only rises and pops: a fade would start fully
-            // transparent and the bar would stay invisible until the page
-            // draws frames again (a busy device, an idle headless
-            // renderer). No transitions: the measured lift must apply
+            // The entrance only rises, with a small bounce: a fade would
+            // start fully transparent and the bar would stay invisible until
+            // the page draws frames again (a busy device, an idle headless
+            // renderer), and a scale would shrink the height the lift is
+            // measured from. No transitions: the measured lift must apply
             // before the first paint, not glide up from the default offset
             // over the live HUD.
             className={cx(
-                'pointer-events-auto absolute bottom-[calc(var(--game-safe-area-bottom,0px)+5rem)] left-1/2 z-30 w-80 max-w-[calc(100vw-1rem)] -translate-x-1/2 origin-bottom space-y-2 rounded-2xl border-2 border-b-4 border-tertiary bg-background p-3 text-sm shadow-[0_6px_16px_rgb(15_23_42/0.18)] outline-hidden transition-none',
+                'pointer-events-auto absolute bottom-[calc(var(--game-safe-area-bottom,0px)+5rem)] left-1/2 z-30 w-80 max-w-[calc(100vw-1rem)] -translate-x-1/2 space-y-2 rounded-2xl border-2 border-b-4 border-tertiary bg-background p-3 text-sm shadow-[0_6px_16px_rgb(15_23_42/0.18)] outline-hidden transition-none',
                 blockOptionsBarPopClassName,
             )}
             style={liftedBottom !== null ? { bottom: liftedBottom } : undefined}
