@@ -1,5 +1,6 @@
 'use client';
 
+import { cx } from '@gredice/ui/utils';
 import { Html } from '@react-three/drei';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type Camera, type Object3D, Vector3 } from 'three';
@@ -8,6 +9,10 @@ import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useSceneRenderRequest } from '../scene/SceneTime';
 import { useGameState } from '../useGameState';
 import { getBlockMoveCarryMessage } from './BlockMoveCarryAnnouncer';
+import {
+    BlockOptionsMedallion,
+    blockOptionsBubblePopClassName,
+} from './BlockOptionsArt';
 import {
     findBlockEditingTarget,
     getBlockEditingAnchor,
@@ -26,6 +31,9 @@ const tailShiftProperty = '--block-move-carry-tail';
  * inside the canvas and its tail keeps pointing at the block. Screen
  * readers get the same text from `BlockMoveCarryAnnouncer` in the HUD,
  * whose live region exists before the text arrives.
+ *
+ * It is a small HUD game card with the glove from Pomakni's tile, and it
+ * grows out of its tail (only fades under reduced motion).
  */
 export function BlockMoveCarryBubble() {
     const carry = useGameState((state) =>
@@ -145,12 +153,23 @@ export function BlockMoveCarryBubble() {
             <div
                 ref={handleBubble}
                 aria-hidden="true"
-                className="pointer-events-none relative w-max max-w-[min(16rem,75vw)] -translate-x-1/2 -translate-y-[calc(100%+0.75rem)] rounded-xl border border-emerald-200 bg-white/95 px-3 py-1.5 text-center text-sm font-semibold leading-snug text-emerald-900 shadow-lg backdrop-blur-sm animate-in fade-in-0 duration-200 dark:border-emerald-800/80 dark:bg-neutral-950/95 dark:text-emerald-100"
+                className="pointer-events-none relative w-max max-w-[min(17rem,75vw)] -translate-x-1/2 -translate-y-[calc(100%+0.875rem)]"
                 data-block-move-carry-bubble
                 data-block-options-control
             >
-                {getBlockMoveCarryMessage(carry.pointerType)}
-                <span className="absolute top-full left-[calc(50%+var(--block-move-carry-tail,0px))] size-2.5 -translate-x-1/2 -translate-y-1/2 rotate-45 border-r border-b border-emerald-200 bg-white/95 dark:border-emerald-800/80 dark:bg-neutral-950/95" />
+                {/* The pop scales this inner card, so the measured width
+                    and the clamped position above never see it. */}
+                <div
+                    className={cx(
+                        'flex items-center gap-2 rounded-2xl border-2 border-b-4 border-tertiary bg-background py-1 pr-3 pl-1 text-left text-sm font-bold leading-snug text-foreground shadow-[0_6px_16px_rgb(15_23_42/0.18)] animate-in fade-in-0 duration-200',
+                        blockOptionsBubblePopClassName,
+                        'origin-[calc(50%+var(--block-move-carry-tail,0px))_100%]',
+                    )}
+                >
+                    <BlockOptionsMedallion art="move" size="sm" />
+                    {getBlockMoveCarryMessage(carry.pointerType)}
+                </div>
+                <span className="absolute top-full left-[calc(50%+var(--block-move-carry-tail,0px))] size-3 -translate-x-1/2 -translate-y-[60%] rotate-45 border-r-2 border-b-[3px] border-tertiary bg-background" />
             </div>
         </Html>
     );

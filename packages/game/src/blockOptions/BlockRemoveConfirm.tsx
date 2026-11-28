@@ -5,6 +5,7 @@ import { Button } from '@gredice/ui/Button';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import { useId, useMemo, useRef, useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useBlockData } from '../hooks/useBlockData';
@@ -15,6 +16,11 @@ import { useShoppingCart } from '../hooks/useShoppingCart';
 import { GameModal } from '../shared-ui/game-modal';
 import { useGameState, useGameStateStore } from '../useGameState';
 import { triggerPlaceHaptic } from '../utils/haptics';
+import {
+    BlockOptionsMedallion,
+    blockOptionsCandyClassName,
+    blockOptionsChipClassName,
+} from './BlockOptionsArt';
 import { getBlockOptionsBlockLabel } from './blockOptionsActions';
 import { blockRemoveCopy } from './blockOptionsCopy';
 import {
@@ -55,6 +61,10 @@ type RemoveDialogView = {
  * While the request is in flight the dialog stays open and cannot be
  * dismissed; it closes on success and shows the error otherwise (the hooks
  * restore the garden then).
+ *
+ * It reads as a game card: the compost crate (or the sandbox's red bin)
+ * bounces in on a candy medallion, a refund sits on a sunflower chip, and
+ * the answers are candy buttons, green to recycle and red to delete.
  */
 export function BlockRemoveConfirm() {
     const store = useGameStateStore();
@@ -187,11 +197,11 @@ export function BlockRemoveConfirm() {
 
     // Sandbox gardens delete; everywhere else the block is recycled, even
     // when a stacked segment is removed block by block.
-    const copy = garden?.isSandbox
-        ? blockRemoveCopy.delete
-        : blockRemoveCopy.recycle;
+    const isDelete = Boolean(garden?.isSandbox);
+    const copy = isDelete ? blockRemoveCopy.delete : blockRemoveCopy.recycle;
     const header = copy.header(shown.label);
     const refund = refundMessage(shown.plan.refund);
+    const confirmTone = isDelete ? 'ripe' : 'grass';
 
     return (
         <GameModal
@@ -206,11 +216,24 @@ export function BlockRemoveConfirm() {
             title={header}
         >
             <Stack spacing={4} data-block-remove-confirm={shown.plan.action}>
-                {/* The dialog's title (read by screen readers) is the same
-                    text; this is its visible copy. */}
-                <Typography aria-hidden level="h5" component="p">
-                    {header}
-                </Typography>
+                <Row spacing={3}>
+                    <BlockOptionsMedallion
+                        art={isDelete ? 'delete' : 'recycle'}
+                        pop
+                        popIndex="late"
+                        size="lg"
+                    />
+                    {/* The dialog's title (read by screen readers) is the
+                        same text; this is its visible copy. */}
+                    <Typography
+                        aria-hidden
+                        className="min-w-0 font-extrabold"
+                        component="p"
+                        level="h5"
+                    >
+                        {header}
+                    </Typography>
+                </Row>
                 <Typography id={bodyId} level="body1" data-block-remove-body>
                     {blockRemoveCopy.body({
                         label: shown.label,
@@ -222,7 +245,15 @@ export function BlockRemoveConfirm() {
                     <Typography
                         id={refundId}
                         level="body2"
-                        secondary
+                        className={
+                            shown.plan.refund?.kind === 'amount'
+                                ? cx(
+                                      blockOptionsChipClassName,
+                                      'self-start px-3 py-1',
+                                  )
+                                : undefined
+                        }
+                        secondary={shown.plan.refund?.kind !== 'amount'}
                         data-block-remove-refund={
                             shown.plan.refund?.kind ?? 'none'
                         }
@@ -235,6 +266,8 @@ export function BlockRemoveConfirm() {
                 ) : null}
                 <Row justifyContent="end" spacing={2}>
                     <Button
+                        className={blockOptionsCandyClassName('h-11 px-4')}
+                        data-tone="cream"
                         disabled={pending}
                         onClick={() => handleOpenChange(false)}
                         type="button"
@@ -243,9 +276,12 @@ export function BlockRemoveConfirm() {
                         {blockRemoveCopy.cancel}
                     </Button>
                     <Button
+                        className={blockOptionsCandyClassName('h-11 px-5')}
+                        data-tone={confirmTone}
                         loading={pending}
                         onClick={() => void handleConfirm()}
                         type="button"
+                        variant="plain"
                     >
                         {copy.confirm}
                     </Button>

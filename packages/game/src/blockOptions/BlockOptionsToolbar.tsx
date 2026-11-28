@@ -1,7 +1,6 @@
 'use client';
 
 import { Button } from '@gredice/ui/Button';
-import { Delete, LayoutGrid, Move, Redo } from '@gredice/ui/icons';
 import { cx } from '@gredice/ui/utils';
 import {
     type CSSProperties,
@@ -14,10 +13,16 @@ import {
     useRef,
     useState,
 } from 'react';
+import {
+    BlockOptionsBurst,
+    BlockOptionsMedallion,
+    blockOptionsTileClassName,
+} from './BlockOptionsArt';
 import type {
     BlockOptionsAction,
     BlockOptionsActionId,
 } from './blockOptionsActions';
+import { getBlockOptionsActionArt } from './blockOptionsArtwork';
 import { blockOptionsToolbarCopy } from './blockOptionsCopy';
 import type { BlockOptionsPopupSide } from './popupPosition';
 
@@ -48,12 +53,7 @@ export type BlockOptionsToolbarProps = {
     ref?: Ref<HTMLDivElement>;
 };
 
-const actionIcons = {
-    expand: LayoutGrid,
-    rotate: Redo,
-    remove: Delete,
-    move: Move,
-} satisfies Record<BlockOptionsActionId, unknown>;
+const popIndices = [0, 1, 2, 3] as const;
 
 /** CSS variable with the tail's offset along the facing side. */
 export const blockOptionsTailOffsetProperty = '--block-options-tail';
@@ -67,11 +67,13 @@ const toolbarNavigationKeys = new Set([
     'End',
 ]);
 
-// Compact tiles (spec D17): an icon above a short label, at least 44 px
-// tall. `aria-disabled` tiles stay pressable so a tap can show the reason;
-// the override wins over the shared Button's `pointer-events-none`.
+// Compact tiles (spec D17): a candy medallion with the action's game
+// artwork above a short label, at least 44 px tall. The medallion bounces
+// on hover and presses down, so the tile itself has no hover fill.
+// `aria-disabled` tiles stay pressable so a tap can show the reason; the
+// override wins over the shared Button's `pointer-events-none`.
 const tileClassName =
-    'h-auto min-h-11 min-w-16 flex-col gap-0.5 rounded-lg px-1.5 py-1 text-xs font-semibold text-emerald-950 hover:bg-emerald-50 aria-disabled:pointer-events-auto aria-disabled:opacity-50 dark:text-emerald-50 dark:hover:bg-emerald-900/40';
+    'h-auto min-h-11 min-w-16 flex-col gap-1 rounded-xl px-1 pt-1 pb-0.5 text-xs font-bold text-foreground hover:bg-transparent active:bg-transparent aria-disabled:pointer-events-auto aria-disabled:opacity-60';
 
 function stopPropagation(event: SyntheticEvent) {
     event.stopPropagation();
@@ -108,6 +110,11 @@ function stopUnlessFromMoveTile(event: SyntheticEvent) {
  * line for the reason a tile is unavailable or an action failed. It only
  * renders what it is given; `BlockOptionsPopupLayer` places it next to the
  * block and runs the actions.
+ *
+ * It is a HUD game card: cream with a chunky rim, its tiles candy
+ * medallions with the generated artwork. It pops out of its tail with a
+ * confetti burst at the block, and the medallions bounce in one after
+ * another; under reduced motion it only fades in.
  */
 export function BlockOptionsToolbar({
     actions,
@@ -203,7 +210,7 @@ export function BlockOptionsToolbar({
         <div
             ref={setRootRef}
             className={cx(
-                'group/block-options relative w-max rounded-xl border border-emerald-200 bg-white/95 p-1.5 text-emerald-950 shadow-lg backdrop-blur-sm dark:border-emerald-800/80 dark:bg-neutral-950/95 dark:text-emerald-50',
+                'group/block-options relative w-max rounded-2xl border-2 border-b-4 border-tertiary bg-background p-1.5 text-foreground shadow-[0_6px_16px_rgb(15_23_42/0.18)]',
                 // A playful pop with a small overshoot; a plain fade when
                 // the player prefers reduced motion.
                 'animate-in fade-in-0 duration-200 motion-safe:zoom-in-50 motion-safe:duration-[350ms] motion-safe:ease-[cubic-bezier(0.34,1.8,0.64,1)]',
@@ -229,7 +236,6 @@ export function BlockOptionsToolbar({
                 role="toolbar"
             >
                 {actions.map((action, index) => {
-                    const Icon = actionIcons[action.id];
                     const disabled = action.disabledReason !== null;
                     const isMove = action.id === 'move';
                     return (
@@ -238,6 +244,7 @@ export function BlockOptionsToolbar({
                             aria-disabled={disabled || undefined}
                             className={cx(
                                 tileClassName,
+                                blockOptionsTileClassName,
                                 isMove && 'touch-none',
                             )}
                             data-block-options-action={action.id}
@@ -256,8 +263,15 @@ export function BlockOptionsToolbar({
                             type="button"
                             variant="plain"
                         >
-                            <Icon aria-hidden className="size-5 shrink-0" />
-                            <span className="whitespace-nowrap leading-4">
+                            <BlockOptionsMedallion
+                                art={getBlockOptionsActionArt(action)}
+                                pop
+                                popIndex={popIndices[index] ?? 3}
+                            />
+                            <span
+                                className="whitespace-nowrap leading-4"
+                                data-block-options-label
+                            >
                                 {action.label}
                             </span>
                             {disabled ? (
@@ -271,14 +285,14 @@ export function BlockOptionsToolbar({
             </div>
             <div className="mt-0.5 min-h-4 w-0 min-w-full px-1 text-center text-xs leading-4">
                 <p
-                    className="text-emerald-900/80 dark:text-emerald-100/80"
+                    className="text-muted-foreground"
                     data-block-options-status
                     role="status"
                 >
                     {status?.kind === 'status' ? status.message : null}
                 </p>
                 <p
-                    className="font-semibold text-red-700 dark:text-red-300"
+                    className="font-bold text-red-700 dark:text-red-300"
                     data-block-options-alert
                     role="alert"
                 >
@@ -298,11 +312,20 @@ export function BlockOptionsToolbar({
                 viewBox="0 0 20 10"
             >
                 <path
-                    className="fill-white/95 stroke-emerald-200 dark:fill-neutral-950/95 dark:stroke-emerald-800/80"
+                    className="fill-background stroke-tertiary"
                     d="M1 0.5h18L10 9.5Z"
                     strokeLinejoin="round"
+                    strokeWidth={2}
                 />
             </svg>
+            <BlockOptionsBurst
+                className={cx(
+                    'group-data-[side=above]/block-options:top-[calc(100%+0.625rem)] group-data-[side=above]/block-options:left-[var(--block-options-tail,50%)]',
+                    'group-data-[side=below]/block-options:bottom-[calc(100%+0.625rem)] group-data-[side=below]/block-options:left-[var(--block-options-tail,50%)]',
+                    'group-data-[side=right]/block-options:-left-2.5 group-data-[side=right]/block-options:top-[var(--block-options-tail,50%)]',
+                    'group-data-[side=left]/block-options:-right-2.5 group-data-[side=left]/block-options:top-[var(--block-options-tail,50%)]',
+                )}
+            />
         </div>
     );
 }

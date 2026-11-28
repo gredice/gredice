@@ -29,6 +29,18 @@ view.
 An unavailable tile stays focusable and shows its reason in the status line.
 Unsaved blocks and a pending Expand disable every tile.
 
+The pop-up, the remove confirmation, the carry hint and the Expand bar are HUD
+game cards: cream with a chunky `border-tertiary` rim. Each tile is a candy
+medallion in a role colour holding generated HUD artwork
+(`apps/garden/public/assets/hud/block-*.webp`, with a `.prompt.json` each):
+the blocks with a plus (Proširi), the turning arrow (Okreni), the compost crate
+(Recikliraj) or the red bin (Obriši), and the glove (Pomakni). The pop-up grows
+out of its tail with a confetti burst at the block while the medallions bounce
+in one after another; the carry hint, the Expand bar and the Expand knob pop in
+the same way. Confirming buttons are candy buttons, green to go ahead and red
+to delete. Pops overshoot by at most 8% and settle within 450 ms; under
+reduced motion nothing moves and the burst is not drawn.
+
 ## Proširi
 
 Expand works for 1×1 blocks. It is not offered for multi-cell blocks, raised

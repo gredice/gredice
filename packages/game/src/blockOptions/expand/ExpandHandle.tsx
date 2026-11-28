@@ -18,6 +18,10 @@ import {
 import { Vector3 } from 'three';
 import { useSceneRenderRequest } from '../../scene/SceneTime';
 import { useGameState, useGameStateStore } from '../../useGameState';
+import {
+    BlockOptionsBurst,
+    blockOptionsPopClassName,
+} from '../BlockOptionsArt';
 import type { BlockExpandEditingState } from '../blockEditingState';
 import { blockExpandCopy } from '../blockOptionsCopy';
 import { resolveExpandHandleClearance } from './blockExpandBarPosition';
@@ -725,17 +729,24 @@ export function ExpandHandle({
                     onPointerUp={handlePointerEnd}
                     onWheel={handleWheel}
                 >
+                    {/* A sunflower candy knob that pops in with a confetti
+                        burst, bounces up on hover and grows while dragged. */}
                     <span
                         aria-hidden
-                        className="flex size-7 items-center justify-center rounded-full border-2 border-white bg-emerald-600 text-white shadow-md ring-emerald-700 ring-offset-2 ring-offset-white motion-safe:transition-transform group-focus-visible:ring-2 group-data-[dragging=true]:scale-110 dark:border-emerald-50 dark:bg-emerald-500 dark:ring-emerald-300 dark:ring-offset-neutral-950"
+                        className={cx(
+                            'relative flex size-8 items-center justify-center rounded-full border-[2.5px] border-white bg-[radial-gradient(circle_at_32%_26%,#fff7cf_0_14%,#ffd31c_52%,#ffb300_100%)] text-[#4a3300] shadow-[0_3px_0_#c98500,0_4px_10px_rgb(15_23_42/0.3)] ring-[#c98500] ring-offset-2 ring-offset-white motion-safe:transition-transform group-hover:scale-[1.08] group-focus-visible:ring-2 group-data-[dragging=true]:scale-110 dark:ring-offset-neutral-950',
+                            blockOptionsPopClassName,
+                        )}
+                        data-pop-index="late"
                     >
-                        <FullWidth className="size-4" />
+                        <FullWidth className="size-4" strokeWidth={2.75} />
                     </span>
+                    <BlockOptionsBurst className="top-1/2 left-1/2" />
                 </button>
                 {capHintVisible && maxSide > 0 ? (
                     <span
                         aria-hidden
-                        className="pointer-events-none absolute bottom-full left-1/2 mb-1 -translate-x-1/2 whitespace-nowrap rounded-lg border border-amber-200 bg-white/95 px-2 py-1 text-xs font-semibold text-amber-900 shadow-md dark:border-amber-800/80 dark:bg-neutral-950/95 dark:text-amber-100"
+                        className="pointer-events-none absolute bottom-full left-1/2 mb-1 -translate-x-1/2 whitespace-nowrap rounded-xl border-2 border-b-4 border-tertiary bg-background px-2 py-1 text-xs font-bold text-foreground shadow-md"
                         data-block-expand-cap-hint
                     >
                         {blockExpandCopy.cap(maxSide)}

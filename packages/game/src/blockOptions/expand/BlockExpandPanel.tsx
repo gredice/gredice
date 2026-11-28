@@ -1,6 +1,13 @@
 import { Button } from '@gredice/ui/Button';
 import { SunflowerText } from '@gredice/ui/SunflowerVisuals';
+import { cx } from '@gredice/ui/utils';
 import { type MouseEvent, useLayoutEffect, useRef } from 'react';
+import {
+    BlockOptionsMedallion,
+    blockOptionsBarPopClassName,
+    blockOptionsCandyClassName,
+    blockOptionsChipClassName,
+} from '../BlockOptionsArt';
 import { blockExpandCopy, formatSunflowerChip } from '../blockOptionsCopy';
 import {
     type BlockExpandBarRect,
@@ -141,6 +148,20 @@ function runKeepingKeyboardFocus(
 
 const actionButtonClassName = 'h-11 px-4';
 
+/** A cream candy button: Odustani, Odbaci, Zatvori. */
+const secondaryButtonProps = {
+    className: blockOptionsCandyClassName(actionButtonClassName),
+    'data-tone': 'cream',
+    variant: 'plain',
+} as const;
+
+/** The green candy button that goes ahead: Potvrdi, Provjeri. */
+const primaryButtonProps = {
+    className: blockOptionsCandyClassName(actionButtonClassName),
+    'data-tone': 'grass',
+    variant: 'plain',
+} as const;
+
 function BlockExpandSecondaryActions({
     actions,
 }: {
@@ -150,8 +171,7 @@ function BlockExpandSecondaryActions({
         return (
             <div className="grid">
                 <Button
-                    variant="outlined"
-                    className={actionButtonClassName}
+                    {...secondaryButtonProps}
                     data-block-expand-action="close"
                     onClick={actions.onClose}
                 >
@@ -164,8 +184,7 @@ function BlockExpandSecondaryActions({
     return (
         <div className="grid grid-cols-[auto_1fr] gap-2">
             <Button
-                variant="outlined"
-                className={actionButtonClassName}
+                {...secondaryButtonProps}
                 disabled={actions.pending}
                 onClick={(event) =>
                     runKeepingKeyboardFocus(event, actions.onDiscard)
@@ -174,7 +193,7 @@ function BlockExpandSecondaryActions({
                 {blockExpandCopy.discard}
             </Button>
             <Button
-                className={actionButtonClassName}
+                {...primaryButtonProps}
                 disabled={actions.pending}
                 onClick={(event) =>
                     runKeepingKeyboardFocus(event, actions.onRetry)
@@ -193,6 +212,9 @@ function BlockExpandSecondaryActions({
  * places, what it costs, the HUD balance it is compared with, and the
  * actions for the current step. `BlockExpandHud` decides what it shows; its
  * only state is the measured lift above a live bottom HUD.
+ *
+ * It is a HUD game card: the Proširi medallion, the total on a sunflower
+ * chip and candy buttons. It rises with a small overshoot.
  */
 export function BlockExpandPanel({
     actions,
@@ -225,6 +247,13 @@ export function BlockExpandPanel({
     }, [autoFocusClose]);
     const receipt = actions.kind === 'close';
     const statusInSummary = receipt && count !== null;
+    // The receipt swaps Proširi's medallion for a green check (placed) or a
+    // red cross (nothing placed); the key pops the new one in.
+    const headerArt = receipt
+        ? count !== null
+            ? 'confirm'
+            : 'cancel'
+        : 'expand';
     const details = [
         area ? blockExpandCopy.area(area.width, area.depth) : null,
         !receipt && skippedCount > 0
@@ -237,13 +266,16 @@ export function BlockExpandPanel({
             ref={sectionRef}
             aria-label={blockExpandCopy.region}
             data-block-expand-hud={actions.kind}
-            // The entrance only slides: a fade would start fully transparent
-            // and the bar would stay invisible until the page draws frames
-            // again (a busy device, an idle headless renderer). No
-            // transitions: `duration-200` also sets `transition-duration`,
-            // and the measured lift must apply before the first paint, not
-            // glide up from the default offset over the live HUD.
-            className="pointer-events-auto absolute bottom-[calc(var(--game-safe-area-bottom,0px)+5rem)] left-1/2 z-30 w-80 max-w-[calc(100vw-1rem)] -translate-x-1/2 space-y-2 rounded-xl border bg-background/95 p-3 text-sm shadow-lg outline-hidden transition-none motion-safe:animate-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-200"
+            // The entrance only rises and pops: a fade would start fully
+            // transparent and the bar would stay invisible until the page
+            // draws frames again (a busy device, an idle headless
+            // renderer). No transitions: the measured lift must apply
+            // before the first paint, not glide up from the default offset
+            // over the live HUD.
+            className={cx(
+                'pointer-events-auto absolute bottom-[calc(var(--game-safe-area-bottom,0px)+5rem)] left-1/2 z-30 w-80 max-w-[calc(100vw-1rem)] -translate-x-1/2 origin-bottom space-y-2 rounded-2xl border-2 border-b-4 border-tertiary bg-background p-3 text-sm shadow-[0_6px_16px_rgb(15_23_42/0.18)] outline-hidden transition-none',
+                blockOptionsBarPopClassName,
+            )}
             style={liftedBottom !== null ? { bottom: liftedBottom } : undefined}
             // Keeps keyboard focus while a button it pressed is disabled.
             tabIndex={-1}
@@ -252,7 +284,7 @@ export function BlockExpandPanel({
                 <fieldset
                     aria-label={blockExpandCopy.earlierRegion}
                     data-block-expand-earlier={earlier.actions.kind}
-                    className="min-w-0 space-y-2 rounded-lg border bg-muted/60 p-2 text-xs"
+                    className="min-w-0 space-y-2 rounded-xl border-2 border-tertiary border-dashed bg-muted/60 p-2 text-xs"
                 >
                     <p className="truncate font-medium">
                         {blockExpandCopy.earlierTitle(
@@ -273,27 +305,35 @@ export function BlockExpandPanel({
                     <BlockExpandSecondaryActions actions={earlier.actions} />
                 </fieldset>
             ) : null}
-            <div className="space-y-0.5">
-                <p className="truncate font-semibold">
-                    {title ?? blockExpandCopy.title(label)}
-                </p>
-                {details.length > 0 ? (
-                    <p className="text-muted-foreground text-xs tabular-nums">
-                        {details.join(' · ')}
+            <div className="flex items-center gap-2.5">
+                <BlockOptionsMedallion
+                    key={headerArt}
+                    art={headerArt}
+                    pop
+                    popIndex="late"
+                />
+                <div className="min-w-0 space-y-0.5">
+                    <p className="truncate font-extrabold">
+                        {title ?? blockExpandCopy.title(label)}
                     </p>
-                ) : null}
+                    {details.length > 0 ? (
+                        <p className="text-muted-foreground text-xs tabular-nums">
+                            {details.join(' · ')}
+                        </p>
+                    ) : null}
+                </div>
             </div>
             {count !== null ? (
                 <div className="flex items-center justify-between gap-3">
                     {statusInSummary && status ? (
                         // The receipt; `BlockExpandHud` announces it.
-                        <p className="font-medium">{status}</p>
+                        <p className="font-bold">{status}</p>
                     ) : (
                         <p
                             aria-live="polite"
                             aria-atomic="true"
                             data-block-expand-count={count}
-                            className="min-w-36 font-medium tabular-nums"
+                            className="min-w-36 font-bold tabular-nums"
                         >
                             {blockExpandCopy.count(count)}
                         </p>
@@ -305,7 +345,10 @@ export function BlockExpandPanel({
                             </span>
                             <span
                                 data-block-expand-total={total}
-                                className="inline-flex items-center rounded-full border border-primary/15 bg-primary/15 px-2 py-0.5 font-medium text-primary tabular-nums"
+                                className={cx(
+                                    blockOptionsChipClassName,
+                                    'inline-flex items-center px-2.5 py-0.5 tabular-nums',
+                                )}
                             >
                                 <SunflowerText>
                                     {formatSunflowerChip(total)}
@@ -336,15 +379,14 @@ export function BlockExpandPanel({
             {actions.kind === 'confirm' ? (
                 <div className="grid grid-cols-[auto_1fr] gap-2">
                     <Button
-                        variant="outlined"
-                        className={actionButtonClassName}
+                        {...secondaryButtonProps}
                         disabled={actions.pending}
                         onClick={actions.onCancel}
                     >
                         {blockExpandCopy.cancel}
                     </Button>
                     <Button
-                        className={actionButtonClassName}
+                        {...primaryButtonProps}
                         disabled={!actions.canConfirm || actions.pending}
                         onClick={(event) =>
                             runKeepingKeyboardFocus(event, actions.onConfirm)

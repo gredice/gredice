@@ -1188,7 +1188,9 @@ test.describe('phone', () => {
                             '[data-block-options-action]',
                         ),
                     ).filter((button) => {
-                        const label = button.querySelector('span');
+                        const label = button.querySelector(
+                            '[data-block-options-label]',
+                        );
                         const buttonRect = button.getBoundingClientRect();
                         const labelRect = label?.getBoundingClientRect();
                         return (

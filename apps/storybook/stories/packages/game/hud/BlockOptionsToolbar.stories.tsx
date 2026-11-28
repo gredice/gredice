@@ -36,7 +36,7 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'The pop-up that opens next to a placed block when the player holds it and lets go without moving: Proširi, Okreni, Recikliraj (Obriši in sandbox gardens) and Pomakni. Unavailable tiles stay pressable (`aria-disabled`); a tap writes the reason to the status line under the tiles. In the game, `BlockOptionsPopupLayer` places the bubble beside the block, clear of the HUD, and points the tail at it.',
+                    'The pop-up that opens next to a placed block when the player holds it and lets go without moving: Proširi, Okreni, Recikliraj (Obriši in sandbox gardens) and Pomakni. Each tile is a candy medallion with generated HUD artwork (`apps/garden/public/assets/hud/block-*.webp`); the bubble pops out of its tail with a confetti burst and the medallions bounce in one after another (only a fade under reduced motion). Unavailable tiles stay pressable (`aria-disabled`); a tap writes the reason to the status line under the tiles. In the game, `BlockOptionsPopupLayer` places the bubble beside the block, clear of the HUD, and points the tail at it.',
             },
         },
     },
