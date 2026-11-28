@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
@@ -317,6 +317,8 @@ describe('terrain block Blender assets', () => {
             allGameAssetNames.map(String).includes('BlockStoneStairsHalf'),
             false,
         );
+        // The model and its Blender source were removed; nothing loads them.
+        assert.equal(existsSync(getModelPath('BlockStoneStairsHalf')), false);
     });
 
     for (const spec of assetSpecs) {

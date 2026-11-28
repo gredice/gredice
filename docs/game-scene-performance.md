@@ -26,10 +26,11 @@ without claiming a native-driver explanation for the historical measurements.
 The 2026-04-29 analysis did not find the scene asset-bound. Game models are now
 split into one runtime GLB per asset under `apps/garden/public/assets/models`,
 generated from one Blender source file per asset under `assets/game-assets`.
-The current runtime inventory contains 146 GLBs totaling 14,648,032 compressed
-bytes (13.97 MiB), while the generated manifest exposes 145 asset names. The
-extra file is the intentionally obsolete `BlockStoneStairsHalf` compatibility
-asset, which the runtime manifest excludes. Mesh, primitive, vertex, material,
+At that refresh the runtime inventory contained 146 GLBs totaling 14,648,032
+compressed bytes (13.97 MiB), while the generated manifest exposed 145 asset
+names. The extra file was the obsolete `BlockStoneStairsHalf` compatibility
+asset, which the runtime manifest excluded; it has since been removed, so the
+inventory now matches the manifest. Mesh, primitive, vertex, material,
 texture, and animation totals have not been remeasured against this expanded
 asset set, so the static refresh alone does not reconfirm the earlier
 asset-bound conclusion.

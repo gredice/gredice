@@ -752,8 +752,6 @@ Weather (see [GAME_ART.md "Weather"](../GAME_ART.md#weather)):
 Catalogue:
 
 - Animals: see [Animal redesign](#animal-redesign), "Open decisions".
-- `BlockStoneStairsHalf.glb` is the only unchanged GLB. It keeps the old grey
-  stone and is not in `assets/game-assets.json`.
 - Palette roles are missing for insect legs and stripes (`#604c90`), a
   doorway interior, the shared red roof, desert sand and pebble, and rose
   reds. Four base role targets cannot be reached through the tone mapper:
