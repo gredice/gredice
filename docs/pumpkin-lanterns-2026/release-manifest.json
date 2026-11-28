@@ -5,33 +5,33 @@
   "sources": [
     {
       "path": "assets/game-assets/PumpkinLanternSmile.blend",
-      "bytes": 116325,
-      "sha256": "4bf2ed865db5f640289fb1790c71a6f0a749cab179c539780bf3fa2a711d1959"
+      "bytes": 133557,
+      "sha256": "bad3bbb92fdab19069018b06debd8ab40ece00934310ba035cb8e58c25c7c9a4"
     },
     {
       "path": "assets/game-assets/PumpkinLanternWink.blend",
-      "bytes": 116725,
-      "sha256": "f7ede8f3e50db376eeb23032ab002c72cd7ef94058db8f78c5cb9ced337356ac"
+      "bytes": 133534,
+      "sha256": "dea30ca381454787b0899dfcfa4e3b6166b4f79941bb642f8e5608edae9dc9ee"
     }
   ],
   "models": [
     {
       "name": "PumpkinLanternSmile",
       "path": "apps/garden/public/assets/models/PumpkinLanternSmile.glb",
-      "bytes": 105528,
-      "sha256": "0daf694271bb40bf38b9a10bdd0316d3dbfd6232c9e14cc837e6a0df02fa7c13",
-      "url": "https://vrt.gredice.com/assets/models/PumpkinLanternSmile.glb?v=0daf694271bb",
-      "triangles": 1560,
+      "bytes": 71796,
+      "sha256": "dc049b5925e94515b893fa3fb74c15273cda48e83f4cb5772cd4f12838135d45",
+      "url": "https://vrt.gredice.com/assets/models/PumpkinLanternSmile.glb?v=dc049b5925e9",
+      "triangles": 2688,
       "meshCount": 3,
       "materialCount": 3
     },
     {
       "name": "PumpkinLanternWink",
       "path": "apps/garden/public/assets/models/PumpkinLanternWink.glb",
-      "bytes": 106400,
-      "sha256": "5d9efb1da02b40f5d1b69b51357f38acf88848584d66bbd87ffba1432f54f41e",
-      "url": "https://vrt.gredice.com/assets/models/PumpkinLanternWink.glb?v=5d9efb1da02b",
-      "triangles": 1578,
+      "bytes": 73248,
+      "sha256": "f1ccddfd35e600e2af742008f13d80c449c127d001c5bf6569e013ef6c43581c",
+      "url": "https://vrt.gredice.com/assets/models/PumpkinLanternWink.glb?v=f1ccddfd35e6",
+      "triangles": 2712,
       "meshCount": 3,
       "materialCount": 3
     }
@@ -63,53 +63,53 @@
       "images": [
         {
           "path": "apps/www/public/assets/blocks/PumpkinLanternSmile.webp",
-          "bytes": 7576,
-          "sha256": "67b50fc6e1b2d5f5552374c7aabb8ca428535ebe35dc1bd2890f8b343125e197"
+          "bytes": 8514,
+          "sha256": "e0d18822a54110031a13d2e40471d57b777b819a35d1267cdcfb6bdaff33c95d"
         },
         {
           "path": "apps/www/public/assets/blocks/PumpkinLanternSmile_1.webp",
-          "bytes": 5728,
-          "sha256": "6efd1dbfbcec261a2aaa1b31400e43f1facfbdb9ffd0237a4944999e1ab24ff5"
+          "bytes": 7748,
+          "sha256": "2f7c56494e720de843e829df3c06717fbfd456e441b44c3643d0f76c43826269"
         },
         {
           "path": "apps/www/public/assets/blocks/PumpkinLanternSmile_2.webp",
-          "bytes": 6220,
-          "sha256": "616bf5efa627dd1e342ec147bb35ab5c6e5be86ba42879cff9b3439e50b8448c"
+          "bytes": 8162,
+          "sha256": "1362da39bbb2b2a6c71a42cb8481ae65197f6a8944739e36405db74540a64fc9"
         },
         {
           "path": "apps/www/public/assets/blocks/PumpkinLanternSmile_3.webp",
-          "bytes": 7576,
-          "sha256": "67b50fc6e1b2d5f5552374c7aabb8ca428535ebe35dc1bd2890f8b343125e197"
+          "bytes": 8514,
+          "sha256": "e0d18822a54110031a13d2e40471d57b777b819a35d1267cdcfb6bdaff33c95d"
         },
         {
           "path": "apps/www/public/assets/blocks/PumpkinLanternSmile_4.webp",
-          "bytes": 5804,
-          "sha256": "fcee76ca5495f73990ad2185769f7ad4163ac5111543a35e4960ca1a66098f8a"
+          "bytes": 7904,
+          "sha256": "8e69a18bdce02deddaeec5434ab8f55679ea682955ab03f2a10ad586ae5a1808"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/PumpkinLanternSmile.webp",
-          "bytes": 3146,
-          "sha256": "d5b02b33f5042d309af36eed5f418a5cdf293b7281bd3cc4d9742d03191c9e9f"
+          "bytes": 4510,
+          "sha256": "ad47d32620dbaf8c07e0924d2c3b5b6f7686432900e5442c622365fbf9b460c2"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/PumpkinLanternSmile_1.webp",
-          "bytes": 3146,
-          "sha256": "d5b02b33f5042d309af36eed5f418a5cdf293b7281bd3cc4d9742d03191c9e9f"
+          "bytes": 4510,
+          "sha256": "ad47d32620dbaf8c07e0924d2c3b5b6f7686432900e5442c622365fbf9b460c2"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/PumpkinLanternSmile_2.webp",
-          "bytes": 3272,
-          "sha256": "057da2018c0ddb037c8f117125954c799842edabcf5b95353b5ca057bb6dc007"
+          "bytes": 4484,
+          "sha256": "166913b35f0c30d7df5c723eb596da4a8060c1cd0d0fd3c31b9a5ae0b2636024"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/PumpkinLanternSmile_3.webp",
-          "bytes": 3256,
-          "sha256": "b4efd959a0bd825c59da602d0ae8ed010163e8c3901e0006b9f0239f726a4490"
+          "bytes": 4458,
+          "sha256": "3ab5b50400fb80d25aaaa85082578af1c5093026885c8d35f13188b46cc351fd"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/PumpkinLanternSmile_4.webp",
-          "bytes": 3078,
-          "sha256": "d5e57b51b9cb7fceb6e1c7b3004810c3357e38cb9b75f89478d25dfc6a8fc9f1"
+          "bytes": 4332,
+          "sha256": "560580c00d6afeb61677d7daa9a562f58c0affc829640e9415ac87d9e0b55ded"
         }
       ]
     },
@@ -139,53 +139,53 @@
       "images": [
         {
           "path": "apps/www/public/assets/blocks/PumpkinLanternWink.webp",
-          "bytes": 7722,
-          "sha256": "26688eaa5cdb1b3b0f35122e1637d6de2d0aa855f20f7dcc7748c74a7a7d6d24"
+          "bytes": 8568,
+          "sha256": "0f57d382272fe691f3fc1124d0478d85add904aee8a3d471e4e9ea4cd43994dc"
         },
         {
           "path": "apps/www/public/assets/blocks/PumpkinLanternWink_1.webp",
-          "bytes": 5728,
-          "sha256": "6efd1dbfbcec261a2aaa1b31400e43f1facfbdb9ffd0237a4944999e1ab24ff5"
+          "bytes": 7748,
+          "sha256": "2f7c56494e720de843e829df3c06717fbfd456e441b44c3643d0f76c43826269"
         },
         {
           "path": "apps/www/public/assets/blocks/PumpkinLanternWink_2.webp",
-          "bytes": 6188,
-          "sha256": "ae035f9437040dee0ac7ce91385a15d25ddf8d915ea6a3c84fe2e09c7040a5f0"
+          "bytes": 8354,
+          "sha256": "81dbed08b33dd78bcb5b975f1bc572517c9dccef384dc8ab29b8968029aa1fe5"
         },
         {
           "path": "apps/www/public/assets/blocks/PumpkinLanternWink_3.webp",
-          "bytes": 7722,
-          "sha256": "26688eaa5cdb1b3b0f35122e1637d6de2d0aa855f20f7dcc7748c74a7a7d6d24"
+          "bytes": 8568,
+          "sha256": "0f57d382272fe691f3fc1124d0478d85add904aee8a3d471e4e9ea4cd43994dc"
         },
         {
           "path": "apps/www/public/assets/blocks/PumpkinLanternWink_4.webp",
-          "bytes": 5732,
-          "sha256": "c56627702621c63762f7573e11f1740eeaee1c840538cdeacf8714e33cf9baef"
+          "bytes": 7942,
+          "sha256": "a3eb494f88d7808080c467b2ae46e504c1ab4621ff659309c0623f3d4f49ce52"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/PumpkinLanternWink.webp",
-          "bytes": 3182,
-          "sha256": "4a243e514d059f3553c6fc34dcc27fdc25ae99b800243bafb3fe80d1582d2651"
+          "bytes": 4368,
+          "sha256": "88cdafbd5271c2e70fc1e4ebb887b16a612c3565c48c24edeba550adb825814e"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/PumpkinLanternWink_1.webp",
-          "bytes": 3182,
-          "sha256": "4a243e514d059f3553c6fc34dcc27fdc25ae99b800243bafb3fe80d1582d2651"
+          "bytes": 4368,
+          "sha256": "88cdafbd5271c2e70fc1e4ebb887b16a612c3565c48c24edeba550adb825814e"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/PumpkinLanternWink_2.webp",
-          "bytes": 3292,
-          "sha256": "4b119eb3342d67494bdb629e70643af25d64ab5e1501514d9469ed767c9fbd9a"
+          "bytes": 4468,
+          "sha256": "f5e7bfb585d73117c4ba92b8836f116c0fccf2a3290e94e5fcd5d629a75b8184"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/PumpkinLanternWink_3.webp",
-          "bytes": 3232,
-          "sha256": "5a3723bbe0e129cf469cf31b93557222ff809954de8cfb2281dc931112b89d19"
+          "bytes": 4430,
+          "sha256": "532d38bef9078cead88cc7efc9d5d9cb948eee139f3496dd7ad12713d4aa47e9"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/PumpkinLanternWink_4.webp",
-          "bytes": 3102,
-          "sha256": "8497d592f7598a703df72b516ff13d4077d7f28f4baefbc4de06fbc7bc3b5911"
+          "bytes": 4512,
+          "sha256": "94e484f8193e68e2b5124d98c56f7ea3aec174e51da5c79bd0d64804b59e1671"
         }
       ]
     }

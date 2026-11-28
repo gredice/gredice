@@ -1,0 +1,358 @@
+/*
+ * Game pieces for block editing: candy medallions that hold the generated
+ * HUD artwork, chunky candy buttons, and the one-shot sparkle burst a
+ * pop-up opens with. Colours come from the GAME_ART.md role table. Pops
+ * overshoot by 6-10 % and settle within 450 ms; under reduced motion
+ * nothing moves and the burst is not drawn.
+ */
+
+.toned[data-tone="sunflower"] {
+    --tone: #ffb300;
+    --tone-tint: #fff1b8;
+    --tone-rim: #c98500;
+    --tone-face: #ffd31c;
+    --tone-ink: #4a3300;
+}
+
+.toned[data-tone="water"] {
+    --tone: #35b4ff;
+    --tone-tint: #dcf2ff;
+    --tone-rim: #1b86c9;
+    --tone-face: #35b4ff;
+    --tone-ink: #062b44;
+}
+
+.toned[data-tone="grass"] {
+    --tone: #7bd03a;
+    --tone-tint: #e5f7d2;
+    --tone-rim: #4c9a1d;
+    --tone-face: #7bd03a;
+    --tone-ink: #163b06;
+}
+
+.toned[data-tone="ripe"] {
+    --tone: #f23b2c;
+    --tone-tint: #ffe2dd;
+    --tone-rim: #9d1f15;
+    /* Darker than the role colour so white text keeps 4.5:1. */
+    --tone-face: #d93224;
+    --tone-ink: #ffffff;
+}
+
+.toned[data-tone="carrot"] {
+    --tone: #ff8a1c;
+    --tone-tint: #ffe8d1;
+    --tone-rim: #c8620a;
+    --tone-face: #ff8a1c;
+    --tone-ink: #3f1d00;
+}
+
+.toned[data-tone="cream"] {
+    --tone: hsl(var(--tertiary));
+    --tone-tint: hsl(var(--background));
+    --tone-rim: hsl(var(--tertiary));
+    --tone-face: hsl(var(--background));
+    --tone-ink: hsl(var(--foreground));
+}
+
+/* A round candy token with the artwork standing on it. */
+.medallion {
+    position: relative;
+    display: grid;
+    flex-shrink: 0;
+    place-items: center;
+    border: 2px solid var(--tone);
+    border-radius: 9999px;
+    background: radial-gradient(
+        circle at 32% 26%,
+        #ffffff 0 14%,
+        var(--tone-tint) 50%,
+        color-mix(in srgb, var(--tone) 38%, var(--tone-tint)) 100%
+    );
+    box-shadow:
+        0 3px 0 var(--tone-rim),
+        inset 0 -4px 6px rgb(0 0 0 / 0.08);
+    transition:
+        transform 160ms ease-out,
+        box-shadow 160ms ease-out,
+        filter 160ms ease-out;
+}
+
+.medallion > img {
+    pointer-events: none;
+    filter: drop-shadow(0 2px 2px rgb(15 23 42 / 0.3));
+    user-select: none;
+}
+
+/* A pop-up tile: the medallion bounces up on hover and presses down. */
+.tile[aria-disabled="true"] .medallion {
+    filter: grayscale(0.9);
+}
+
+.tile:hover:not([aria-disabled="true"]) .medallion {
+    transform: translateY(-2px) scale(1.07);
+}
+
+.tile:active:not([aria-disabled="true"]) .medallion {
+    transform: translateY(2px) scale(0.97);
+    box-shadow:
+        0 1px 0 var(--tone-rim),
+        inset 0 -2px 4px rgb(0 0 0 / 0.08);
+}
+
+/* A chunky candy button that presses into its rim. */
+.candy {
+    border: 2px solid var(--tone-rim);
+    border-bottom-width: 4px;
+    border-radius: 0.875rem;
+    background: linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--tone-face) 70%, #ffffff) 0%,
+        var(--tone-face) 55%
+    );
+    color: var(--tone-ink);
+    font-weight: 800;
+    box-shadow: inset 0 2px 0 rgb(255 255 255 / 0.45);
+    transition:
+        transform 120ms ease-out,
+        border-bottom-width 120ms ease-out,
+        filter 120ms ease-out;
+}
+
+.candy:hover:not(:disabled) {
+    filter: brightness(1.05);
+    transform: translateY(-1px);
+}
+
+.candy:active:not(:disabled) {
+    border-bottom-width: 2px;
+    transform: translateY(2px);
+}
+
+.candy:disabled {
+    filter: grayscale(0.7);
+    opacity: 0.6;
+}
+
+/* A sunflower price chip. */
+.chip {
+    border: 2px solid #ffb300;
+    border-radius: 9999px;
+    background: #fff4c2;
+    color: #4a3300;
+    font-weight: 800;
+    box-shadow: 0 2px 0 #c98500;
+}
+
+.burst {
+    position: absolute;
+    display: none;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+
+.burstRing {
+    position: absolute;
+    top: -1.75rem;
+    left: -1.75rem;
+    width: 3.5rem;
+    height: 3.5rem;
+    border: 3px solid #ffd31c;
+    border-radius: 9999px;
+    opacity: 0;
+}
+
+.burstSparkle {
+    --sparkle-angle: 0deg;
+    --sparkle-distance: 2rem;
+
+    position: absolute;
+    top: -0.3125rem;
+    left: -0.3125rem;
+    width: 0.625rem;
+    height: 0.625rem;
+    background: #ffd31c;
+    opacity: 0;
+    clip-path: polygon(
+        50% 0,
+        63% 37%,
+        100% 50%,
+        63% 63%,
+        50% 100%,
+        37% 63%,
+        0 50%,
+        37% 37%
+    );
+}
+
+.burstSparkle:nth-child(2) {
+    --sparkle-angle: 51deg;
+    --sparkle-distance: 1.75rem;
+
+    background: #7bd03a;
+}
+
+.burstSparkle:nth-child(3) {
+    --sparkle-angle: 103deg;
+
+    background: #ff8a1c;
+}
+
+.burstSparkle:nth-child(4) {
+    --sparkle-angle: 154deg;
+    --sparkle-distance: 1.5rem;
+
+    background: #35b4ff;
+}
+
+.burstSparkle:nth-child(5) {
+    --sparkle-angle: 206deg;
+
+    background: #f23b2c;
+}
+
+.burstSparkle:nth-child(6) {
+    --sparkle-angle: 257deg;
+    --sparkle-distance: 1.75rem;
+
+    background: #7bd03a;
+}
+
+.burstSparkle:nth-child(7) {
+    --sparkle-angle: 309deg;
+    --sparkle-distance: 2.25rem;
+}
+
+/* The carry hint grows out of its tail. */
+.bubble {
+    transform-origin: 50% 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .pop {
+        animation: medallion-pop 300ms ease-out backwards;
+    }
+
+    .pop[data-pop-index="1"] {
+        animation-delay: 45ms;
+    }
+
+    .pop[data-pop-index="2"] {
+        animation-delay: 90ms;
+    }
+
+    .pop[data-pop-index="3"] {
+        animation-delay: 135ms;
+    }
+
+    .pop[data-pop-index="late"] {
+        animation-delay: 120ms;
+    }
+
+    .burst {
+        display: block;
+    }
+
+    .burstRing {
+        animation: burst-ring 420ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+    }
+
+    .burstSparkle {
+        animation: burst-sparkle 440ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+    }
+
+    .bubble {
+        animation: bubble-pop 340ms ease-out both;
+    }
+
+    .barPop {
+        animation: bar-pop 360ms ease-out both;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .medallion,
+    .candy {
+        transition: none;
+    }
+}
+
+@keyframes medallion-pop {
+    0% {
+        transform: scale(0.3) rotate(-14deg);
+    }
+
+    60% {
+        transform: scale(1.08) rotate(3deg);
+    }
+
+    100% {
+        transform: none;
+    }
+}
+
+@keyframes burst-ring {
+    0% {
+        opacity: 0.95;
+        transform: scale(0.2);
+    }
+
+    100% {
+        opacity: 0;
+        transform: scale(1.15);
+    }
+}
+
+@keyframes burst-sparkle {
+    0% {
+        opacity: 1;
+        transform: rotate(var(--sparkle-angle)) translateY(0) scale(0.3);
+    }
+
+    70% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+        transform: rotate(var(--sparkle-angle))
+            translateY(calc(-1 * var(--sparkle-distance))) scale(1)
+            rotate(45deg);
+    }
+}
+
+@keyframes bubble-pop {
+    0% {
+        transform: scale(0.5);
+    }
+
+    60% {
+        transform: scale(1.08);
+    }
+
+    100% {
+        transform: none;
+    }
+}
+
+/*
+ * Never transparent: the bar must show even before the page draws frames.
+ * Never scaled either: the bar's lift above the live HUD is measured from
+ * its height when it mounts, and its buttons keep their 44 px. It starts
+ * at most the 8 px HUD gap low, so even its first frame never covers the
+ * live controls row under it.
+ */
+@keyframes bar-pop {
+    0% {
+        transform: translateY(0.5rem);
+    }
+
+    60% {
+        transform: translateY(-0.1875rem);
+    }
+
+    100% {
+        transform: none;
+    }
+}

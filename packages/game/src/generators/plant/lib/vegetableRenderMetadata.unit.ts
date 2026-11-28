@@ -5,15 +5,15 @@ import {
     vegetableMaterialProps,
 } from './vegetableRenderMetadata';
 
-test('keeps tomatoes green before ripening and deep red at maturity', () => {
-    assert.equal(resolveVegetableColor('tomato', 0), '#6f8135');
-    assert.equal(resolveVegetableColor('tomato', 0.55), '#6f8135');
-    assert.equal(resolveVegetableColor('tomato', 1), '#d62828');
-    assert.equal(vegetableMaterialProps.tomato.color, '#d62828');
+test('keeps tomatoes green before ripening and ripe red at maturity', () => {
+    assert.equal(resolveVegetableColor('tomato', 0), '#708a3b');
+    assert.equal(resolveVegetableColor('tomato', 0.55), '#708a3b');
+    assert.equal(resolveVegetableColor('tomato', 1), '#9c241b');
+    assert.equal(vegetableMaterialProps.tomato.color, '#9c241b');
 
     const turningColor = resolveVegetableColor('tomato', 0.8);
-    assert.notEqual(turningColor, '#6f8135');
-    assert.notEqual(turningColor, '#d62828');
+    assert.notEqual(turningColor, '#708a3b');
+    assert.notEqual(turningColor, '#9c241b');
 });
 
 test('ripens color-changing produce while preserving fixed-color produce', () => {
@@ -35,9 +35,9 @@ test('ripens color-changing produce while preserving fixed-color produce', () =>
         );
     }
 
-    assert.equal(resolveVegetableColor('cucumber', 0), '#2e591a');
-    assert.equal(resolveVegetableColor('cucumber', 0.5), '#2e591a');
-    assert.equal(resolveVegetableColor('cucumber', 1), '#2e591a');
+    assert.equal(resolveVegetableColor('cucumber', 0), '#367032');
+    assert.equal(resolveVegetableColor('cucumber', 0.5), '#367032');
+    assert.equal(resolveVegetableColor('cucumber', 1), '#367032');
 });
 
 test('clamps produce maturity outside the lifecycle range', () => {

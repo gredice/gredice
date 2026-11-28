@@ -2,6 +2,7 @@ import {
     type PropsWithChildren,
     useEffect,
     useLayoutEffect,
+    useMemo,
     useRef,
 } from 'react';
 import { type Group, Vector3 } from 'three';
@@ -9,7 +10,8 @@ import {
     resolveBlockParticleType,
     useParticles,
 } from '../../particles/ParticleSystem';
-import { animated, useSpring } from '../../scene/sceneSpring';
+import { IdleBreathingGroup } from '../../scene/IdleBreathingMotion';
+import { getIdleBreathingEntity } from '../../scene/idleBreathing';
 import type { Block } from '../../types/Block';
 import {
     type BlockPlacementDropAnimation,
@@ -17,9 +19,15 @@ import {
     getBlockPlacementDropAnimationForBlockId,
     useGameState,
 } from '../../useGameState';
+import {
+    BounceTransformGroup,
+    getBounceStartPose,
+    playBounceMotion,
+    useBounceSpring,
+} from './BounceGroup';
+import { type BouncePivot, bounceMotions } from './bounceMotion';
 import { suppressPlacementShadowCasters } from './placementShadowCasters';
 
-const placementDropLift = 0.1;
 const reducedMotionQuery = '(prefers-reduced-motion: reduce)';
 
 function prefersReducedMotion() {
@@ -59,18 +67,33 @@ export function PlacementDropAnimation({
         (state) => state.markBlockPlacementDropVisualComplete,
     );
     const placementRootRef = useRef<Group | null>(null);
-    const startedSequence = useRef<number | null>(null);
-    const [{ dropOffsetY }, api] = useSpring(() => ({
-        from: {
-            dropOffsetY:
-                animation && !prefersReducedMotion() ? placementDropLift : 0,
-        },
-        config: {
-            mass: 0.1,
-            tension: 200,
-            friction: 10,
-        },
-    }));
+    // The render id is new for every bounce, so a block that stays mounted
+    // replays each tap, pickup and landing; a per-block sequence restarts
+    // once the previous entry clears.
+    const startedRenderId = useRef<number | null>(null);
+    const motion = bounceMotions[animation?.kind ?? 'drop'];
+    // The block squashes toward the point it stands on, not the scene origin.
+    const [positionX, positionY, positionZ] = position;
+    const landing = useMemo(
+        () => toVector3(particlePosition),
+        [particlePosition],
+    );
+    const pivot = useMemo(
+        (): BouncePivot => [
+            landing.x - positionX,
+            landing.y - positionY,
+            landing.z - positionZ,
+        ],
+        [landing, positionX, positionY, positionZ],
+    );
+    const { driver, values } = useBounceSpring(
+        pivot,
+        animation && !prefersReducedMotion()
+            ? getBounceStartPose(motion)
+            : undefined,
+    );
+    // Living entities breathe about the same point they squash toward.
+    const breathing = getIdleBreathingEntity(block.name);
     const animationRenderId = animation?.renderId;
     const visualStarted = animation?.visualStarted === true;
 
@@ -92,13 +115,13 @@ export function PlacementDropAnimation({
     useEffect(() => {
         if (
             !animation?.visualStarted ||
-            startedSequence.current === animation.sequence
+            startedRenderId.current === animation.renderId
         ) {
             return;
         }
 
-        startedSequence.current = animation.sequence;
         const animationRenderId = animation.renderId;
+        startedRenderId.current = animationRenderId;
         const spawnLandingParticles = () => {
             if (!markParticlesSpawned(animationRenderId)) {
                 return;
@@ -111,30 +134,43 @@ export function PlacementDropAnimation({
             );
         };
         const finish = () => {
-            spawnLandingParticles();
+            if (motion.particles) spawnLandingParticles();
             markVisualComplete(animationRenderId);
         };
 
         if (prefersReducedMotion()) {
-            api.set({ dropOffsetY: 0 });
+            driver.set([0, 0]);
             finish();
             return;
         }
 
-        api.set({ dropOffsetY: placementDropLift });
-        void api.start({
-            dropOffsetY: 0,
-            onRest: finish,
+        const isCurrent = () => startedRenderId.current === animationRenderId;
+        void playBounceMotion({
+            driver,
+            isCurrent,
+            motion,
+            onImpact: motion.particles ? spawnLandingParticles : undefined,
+        }).then((completed) => {
+            if (completed) markVisualComplete(animationRenderId);
         });
     }, [
         animation,
-        api,
         block.name,
+        driver,
         markVisualComplete,
         markParticlesSpawned,
+        motion,
         particlePosition,
         spawn,
     ]);
+
+    useEffect(
+        () => () => {
+            // Stops a sequence that is still awaiting a spring after unmount.
+            startedRenderId.current = null;
+        },
+        [],
+    );
 
     return (
         <group
@@ -142,12 +178,22 @@ export function PlacementDropAnimation({
             name={`Animation:PlacementDrop:${block.name}:${block.id}`}
             position={position}
         >
-            <animated.group
+            <BounceTransformGroup
                 name={`Animation:PlacementDropOffset:${block.name}:${block.id}`}
-                position-y={dropOffsetY}
+                values={values}
             >
-                {children}
-            </animated.group>
+                {breathing ? (
+                    <IdleBreathingGroup
+                        parts={breathing.parts}
+                        pivot={pivot}
+                        role={breathing.role}
+                    >
+                        {children}
+                    </IdleBreathingGroup>
+                ) : (
+                    children
+                )}
+            </BounceTransformGroup>
         </group>
     );
 }

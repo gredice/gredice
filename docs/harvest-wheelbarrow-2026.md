@@ -32,7 +32,7 @@ First-party references inspected before modeling:
 | --- | --- |
 | Name / Croatian label | `HarvestWheelbarrow` / **Ukrasna kolica s bundevama** |
 | Footprint | 2×1; 1×2 on odd quarter-turns |
-| Measured width × depth × height | 1.8531 × 0.7770 × 0.8831 tiles |
+| Measured width × depth × height | 1.8512 × 0.7770 × 0.8817 tiles |
 | Declared hitbox | 1.88 × 0.80 × 0.89 |
 | Placement | Two compatible, level cells; no water; cannot support another block |
 | Proposed price | 120 sunflowers; local sandbox is free |
@@ -55,15 +55,17 @@ existing behaviour; the API's authoritative rotation validator is unchanged.
 
 ## Materials and cost
 
-| Role | sRGB albedo |
+| Role | sRGB albedo (on screen) |
 | --- | --- |
-| Timber / frame | `#905935` / `#764024` |
-| Wheel band and axle | `#313536` |
-| Pumpkins / cream pumpkin | `#E08A3C` / `#EEE3CB` |
-| Stems | `#4E7F35` |
+| Timber / frame | `#905935` / `#764024`, shared wood |
+| Wheel band and axle | `#555C6E` (iron `#8A95B5`) |
+| Pumpkins / cream pumpkin | `#98522A` / `#9D9380` (pumpkin `#F0803A` / cream `#F2E4C6`) |
+| Stems | `#3E7A2C` (crop leaf `#5FC93A`) |
 
-All six materials have roughness 0.86, metalness 0 and no emission. The lazy
-GLB is **248,256 bytes, 3,984 triangles, six meshes and six materials**, with no
+The colours are the seasonal and base roles in [GAME_ART.md](../GAME_ART.md).
+Timber, frame and stems use satin roughness 0.55, the pumpkins gloss 0.4 and
+the hardware 0.35; metalness is 0 and there is no emission. The lazy
+GLB is **104,908 bytes, 4,824 triangles, six meshes and six materials**, with no
 textures, animation clips, particles, sounds or lights. Six base-pass draws
 are supplemented by existing shadow and weather passes. `WeatheredEntityPart`
 provides rain and snow without mutating cached geometry/materials. These are

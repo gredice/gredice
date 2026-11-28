@@ -72,6 +72,13 @@ export {
     resolveSkyBackgroundColor,
     resolveSkyGradientColors,
 } from './scene/skyGradient';
+export {
+    isWeatherHiddenLayer,
+    type WeatherDebugOptions,
+    type WeatherHiddenLayer,
+    type WeatherLightningDebug,
+    weatherHiddenLayerNames,
+} from './scene/weather/weatherDebug';
 export { resolveSpriteAtlasAssetPaths } from './sprites/resolveSpriteAtlasAssetPaths';
 export { SpriteAtlasBillboard } from './sprites/SpriteAtlasBillboard';
 export type {

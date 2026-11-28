@@ -7,7 +7,7 @@ import {
     type Group,
     InstancedMesh,
     Mesh,
-    MeshBasicMaterial,
+    MeshStandardMaterial,
     Object3D,
     RingGeometry,
     Vector3,
@@ -18,7 +18,7 @@ import {
 } from '../hooks/useCurrentAccount';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { createAutumnLeafGeometry } from '../scene/autumnLeafGeometry';
-import { getAutumnLeafColor } from '../scene/autumnPalette';
+import { createAutumnLeafMaterial } from '../scene/autumnLeafMaterial';
 import {
     useSceneDeadline,
     useSceneFixedTimeSeconds,
@@ -27,6 +27,7 @@ import {
     useSceneTimeInvalidation,
     useSceneTimeUniform,
 } from '../scene/SceneTime';
+import { autumnCanopyStops, seasonalRoles } from '../scene/seasonalRoles';
 import { useGameState, useGameStateStore } from '../useGameState';
 import {
     getLeafRakingTargets,
@@ -80,9 +81,10 @@ export function CosmeticLeafRaking({ noSound = false }: { noSound?: boolean }) {
     const pendingSound = useRef<AbortController | null>(null);
     const group = useRef<Group>(null);
     const meshes = useMemo(() => {
+        // Lit and satin like the falling leaves, in the four canopy roles.
         const leaves = new InstancedMesh(
             createAutumnLeafGeometry(),
-            new MeshBasicMaterial({ side: DoubleSide }),
+            createAutumnLeafMaterial(),
             leafRakingParticleCount,
         );
         leaves.name = 'CosmeticLeafRaking:Leaves';
@@ -92,16 +94,13 @@ export function CosmeticLeafRaking({ noSound = false }: { noSound?: boolean }) {
         for (let index = 0; index < leafRakingParticleCount; index++)
             leaves.setColorAt(
                 index,
-                getAutumnLeafColor(
-                    new Color('#d6b83f'),
-                    0.6,
-                    `rake-leaf-${index}`,
-                ),
+                new Color(autumnCanopyStops[index % autumnCanopyStops.length]),
             );
         const sweep = new Mesh(
             new RingGeometry(0.32, 0.35, 16, 1, 0, Math.PI * 0.8),
-            new MeshBasicMaterial({
-                color: '#d78335',
+            new MeshStandardMaterial({
+                color: seasonalRoles.autumnAmber.albedo,
+                roughness: seasonalRoles.autumnAmber.roughness,
                 transparent: true,
                 opacity: 0.5,
                 side: DoubleSide,

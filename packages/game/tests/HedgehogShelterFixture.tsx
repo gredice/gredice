@@ -1,7 +1,7 @@
 import { Html } from '@react-three/drei';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NuqsAdapter } from 'nuqs/adapters/react';
-import { Suspense, useMemo, useState } from 'react';
+import { Suspense, useCallback, useMemo, useRef, useState } from 'react';
 import { Vector3 } from 'three';
 import { EntityFactory } from '../src/entities/EntityFactory';
 import { EntityInstances } from '../src/entities/EntityInstances';
@@ -53,7 +53,13 @@ export function HedgehogShelterFixture({
     blockedEntrance?: boolean;
 }) {
     const [ready, setReady] = useState('');
-    const [report, setReport] = useState('');
+    const runtimeElement = useRef<HTMLDivElement>(null);
+    const reportRuntime = useCallback((report: string) => {
+        // Per-frame telemetry stays out of React, so reporting neither
+        // rebuilds the scene nor reaches the DOM later than its frame.
+        if (runtimeElement.current)
+            runtimeElement.current.dataset.runtime = report;
+    }, []);
     const [hit, setHit] = useState('');
     const [plantClicks, setPlantClicks] = useState(0);
     const stacks = useMemo(
@@ -179,9 +185,9 @@ export function HedgehogShelterFixture({
             <QueryClientProvider client={client}>
                 <GameStateContext.Provider value={store}>
                     <div
+                        ref={runtimeElement}
                         data-testid="hedgehog-shelter"
                         data-ready={ready}
-                        data-runtime={report}
                         data-hit={hit}
                         data-plant-clicks={plantClicks}
                         style={{
@@ -284,7 +290,7 @@ export function HedgehogShelterFixture({
                                 )}
                                 {runtime && (
                                     <HedgehogRuntimeProbe
-                                        onReport={setReport}
+                                        onReport={reportRuntime}
                                     />
                                 )}
                                 <HedgehogShelterProbe

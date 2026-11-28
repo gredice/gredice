@@ -6,7 +6,7 @@
             "name": "Hedgehog",
             "source": "Hedgehog.blend",
             "output": "Hedgehog.glb",
-            "version": "cde12d271bb2",
+            "version": "519d037cee1b",
             "preload": "lazy",
             "objects": [
                 "Hedgehog_Root",
@@ -28,7 +28,7 @@
             "name": "HedgehogShelter",
             "source": "HedgehogShelter.blend",
             "output": "HedgehogShelter.glb",
-            "version": "c2116bf92e35",
+            "version": "803583fcbcfc",
             "preload": "lazy",
             "objects": [
                 "HedgehogShelter_Arrangement"
@@ -38,7 +38,7 @@
             "name": "FriendlyGhost",
             "source": "FriendlyGhost.blend",
             "output": "FriendlyGhost.glb",
-            "version": "533808c57054",
+            "version": "12673452e9a0",
             "preload": "lazy",
             "objects": [
                 "FriendlyGhost_Arrangement"
@@ -48,7 +48,7 @@
             "name": "SupportedCobweb",
             "source": "SupportedCobweb.blend",
             "output": "SupportedCobweb.glb",
-            "version": "db82dafef4be",
+            "version": "f423245e268a",
             "preload": "lazy",
             "objects": [
                 "SupportedCobweb_Arrangement"
@@ -58,7 +58,7 @@
             "name": "PumpkinLanternSmile",
             "source": "PumpkinLanternSmile.blend",
             "output": "PumpkinLanternSmile.glb",
-            "version": "0daf694271bb",
+            "version": "dc049b5925e9",
             "preload": "lazy",
             "objects": [
                 "PumpkinLanternSmile_Body",
@@ -70,7 +70,7 @@
             "name": "PumpkinLanternWink",
             "source": "PumpkinLanternWink.blend",
             "output": "PumpkinLanternWink.glb",
-            "version": "5d9efb1da02b",
+            "version": "f1ccddfd35e6",
             "preload": "lazy",
             "objects": [
                 "PumpkinLanternWink_Body",
@@ -82,7 +82,7 @@
             "name": "BirdFeeder",
             "source": "BirdFeeder.blend",
             "output": "BirdFeeder.glb",
-            "version": "2669061f01f9",
+            "version": "367351b404d3",
             "preload": "lazy",
             "objects": [
                 "BirdFeeder_Arrangement"
@@ -92,7 +92,7 @@
             "name": "SeasonalMaple",
             "source": "SeasonalMaple.blend",
             "output": "SeasonalMaple.glb",
-            "version": "ee04fd1802d0",
+            "version": "6f76ef8a1aae",
             "preload": "lazy",
             "objects": [
                 "SeasonalMaple_Wood",
@@ -105,7 +105,7 @@
             "name": "AutumnWreathPost",
             "source": "AutumnWreathPost.blend",
             "output": "AutumnWreathPost.glb",
-            "version": "3f647ea3a7e4",
+            "version": "1a54ebb4017b",
             "preload": "lazy",
             "objects": [
                 "AutumnWreathPost_Support",
@@ -116,7 +116,7 @@
             "name": "AutumnGarland",
             "source": "AutumnGarland.blend",
             "output": "AutumnGarland.glb",
-            "version": "a8563cbfee9a",
+            "version": "523ff6c89285",
             "preload": "lazy",
             "objects": [
                 "AutumnGarland_Support",
@@ -127,7 +127,7 @@
             "name": "AutumnFenceGate",
             "source": "AutumnFenceGate.blend",
             "output": "AutumnFenceGate.glb",
-            "version": "71388daaed2d",
+            "version": "a788947e18e7",
             "preload": "lazy",
             "objects": [
                 "AutumnFenceGate_Posts",
@@ -139,7 +139,7 @@
             "name": "WoodlandAcorns",
             "source": "WoodlandAcorns.blend",
             "output": "WoodlandAcorns.glb",
-            "version": "5605282113fa",
+            "version": "c14ae09b7867",
             "preload": "lazy",
             "objects": [
                 "WoodlandAcorns_Arrangement"
@@ -149,7 +149,7 @@
             "name": "WoodlandConkers",
             "source": "WoodlandConkers.blend",
             "output": "WoodlandConkers.glb",
-            "version": "0a6640399bf3",
+            "version": "603818a16166",
             "preload": "lazy",
             "objects": [
                 "WoodlandConkers_Arrangement"
@@ -159,7 +159,7 @@
             "name": "WoodlandMushroomBasket",
             "source": "WoodlandMushroomBasket.blend",
             "output": "WoodlandMushroomBasket.glb",
-            "version": "9e12d7b0f61f",
+            "version": "9292e124e9f2",
             "preload": "lazy",
             "objects": [
                 "WoodlandMushroomBasket_Arrangement"
@@ -169,7 +169,7 @@
             "name": "SeedDryingRack",
             "source": "SeedDryingRack.blend",
             "output": "SeedDryingRack.glb",
-            "version": "87d42acc7817",
+            "version": "8aae2f281282",
             "preload": "lazy",
             "objects": [
                 "SeedDryingRack_Arrangement"
@@ -179,7 +179,7 @@
             "name": "AutumnGrassTuft",
             "source": "AutumnGrassTuft.blend",
             "output": "AutumnGrassTuft.glb",
-            "version": "f7689621d760",
+            "version": "bcab3aaee9da",
             "preload": "lazy",
             "objects": [
                 "AutumnGrassTuft_Base",
@@ -190,7 +190,7 @@
             "name": "AutumnSeedHeads",
             "source": "AutumnSeedHeads.blend",
             "output": "AutumnSeedHeads.glb",
-            "version": "ce09d670c42c",
+            "version": "262662c3fe8b",
             "preload": "lazy",
             "objects": [
                 "AutumnSeedHeads_Base",
@@ -201,7 +201,7 @@
             "name": "GardenBrazier",
             "source": "GardenBrazier.blend",
             "output": "GardenBrazier.glb",
-            "version": "1e7f678336c5",
+            "version": "76b54faf0aa7",
             "preload": "lazy",
             "objects": [
                 "GardenBrazier_Metal",
@@ -212,7 +212,7 @@
             "name": "StackedFirewood",
             "source": "StackedFirewood.blend",
             "output": "StackedFirewood.glb",
-            "version": "8e3be71b6f23",
+            "version": "e6eaf7f929c6",
             "preload": "lazy",
             "objects": [
                 "StackedFirewood_Timber"
@@ -222,7 +222,7 @@
             "name": "ChestnutRoastingCart",
             "source": "ChestnutRoastingCart.blend",
             "output": "ChestnutRoastingCart.glb",
-            "version": "16c0c2064987",
+            "version": "d702158b838c",
             "preload": "lazy",
             "objects": [
                 "ChestnutRoastingCart_Cart",
@@ -233,7 +233,7 @@
             "name": "GardenTeaTable",
             "source": "GardenTeaTable.blend",
             "output": "GardenTeaTable.glb",
-            "version": "36d8a3e3ed2d",
+            "version": "8a123dc11ca9",
             "preload": "lazy",
             "objects": [
                 "GardenTeaTable_Timber",
@@ -244,7 +244,7 @@
             "name": "AutumnBlanketBench",
             "source": "AutumnBlanketBench.blend",
             "output": "AutumnBlanketBench.glb",
-            "version": "6bc5acbeff92",
+            "version": "3dccc7577a52",
             "preload": "lazy",
             "objects": [
                 "AutumnBlanketBench_Timber",
@@ -255,7 +255,7 @@
             "name": "LeafRake",
             "source": "LeafRake.blend",
             "output": "LeafRake.glb",
-            "version": "bb43d60ed1ff",
+            "version": "e31c988238e0",
             "preload": "lazy",
             "objects": [
                 "LeafRake_Arrangement"
@@ -265,7 +265,7 @@
             "name": "AutumnLeafPileMound",
             "source": "AutumnLeafPileMound.blend",
             "output": "AutumnLeafPileMound.glb",
-            "version": "d2133ce5768a",
+            "version": "02cd0fcbdd26",
             "preload": "lazy",
             "objects": [
                 "AutumnLeafPileMound_Leaves"
@@ -275,7 +275,7 @@
             "name": "AutumnLeafPileCrescent",
             "source": "AutumnLeafPileCrescent.blend",
             "output": "AutumnLeafPileCrescent.glb",
-            "version": "b99b88c2b61a",
+            "version": "efbdb61d1cff",
             "preload": "lazy",
             "objects": [
                 "AutumnLeafPileCrescent_Leaves"
@@ -285,7 +285,7 @@
             "name": "FallenLog",
             "source": "FallenLog.blend",
             "output": "FallenLog.glb",
-            "version": "dd66f61eb3e5",
+            "version": "19a362ca265a",
             "preload": "lazy",
             "objects": [
                 "FallenLog_Timber"
@@ -295,7 +295,7 @@
             "name": "WoodlandMushrooms",
             "source": "WoodlandMushrooms.blend",
             "output": "WoodlandMushrooms.glb",
-            "version": "a8a6b03f7e38",
+            "version": "ecd773283d46",
             "preload": "lazy",
             "objects": [
                 "WoodlandMushrooms_Cluster"
@@ -305,7 +305,7 @@
             "name": "AutumnShrub",
             "source": "AutumnShrub.blend",
             "output": "AutumnShrub.glb",
-            "version": "a02e38e13da7",
+            "version": "d0b5776d2084",
             "preload": "lazy",
             "objects": [
                 "AutumnShrub_Wood",
@@ -321,7 +321,7 @@
             "name": "AutumnAsterPot",
             "source": "AutumnAsterPot.blend",
             "output": "AutumnAsterPot.glb",
-            "version": "f6a6dc858dbb",
+            "version": "1d67a82c21a7",
             "preload": "lazy",
             "objects": [
                 "AutumnAsterPot_Pot",
@@ -335,7 +335,7 @@
             "name": "HarvestWheelbarrow",
             "source": "HarvestWheelbarrow.blend",
             "output": "HarvestWheelbarrow.glb",
-            "version": "85ff185c5486",
+            "version": "7a83ade03246",
             "preload": "lazy",
             "objects": [
                 "HarvestWheelbarrow_Timber",
@@ -350,7 +350,7 @@
             "name": "HarvestCrate",
             "source": "HarvestCrate.blend",
             "output": "HarvestCrate.glb",
-            "version": "ff4ae49fa93b",
+            "version": "3195ac77e52b",
             "preload": "lazy",
             "objects": [
                 "HarvestCrate_Timber",
@@ -364,7 +364,7 @@
             "name": "HarvestCrateOrchard",
             "source": "HarvestCrateOrchard.blend",
             "output": "HarvestCrateOrchard.glb",
-            "version": "715049a6ea13",
+            "version": "ea8d6ff9b0b2",
             "preload": "lazy",
             "objects": [
                 "HarvestCrateOrchard_Timber",
@@ -378,7 +378,7 @@
             "name": "GardenScarecrow",
             "source": "GardenScarecrow.blend",
             "output": "GardenScarecrow.glb",
-            "version": "0992b65228bd",
+            "version": "67d63104339a",
             "preload": "lazy",
             "objects": [
                 "GardenScarecrow_Timber",
@@ -393,7 +393,7 @@
             "name": "BlockGround",
             "source": "BlockGround.blend",
             "output": "BlockGround.glb",
-            "version": "3dd48c3aaded",
+            "version": "92b777c03fcc",
             "preload": "ground",
             "objects": ["Block Ground 1", "Block Ground 2"]
         },
@@ -401,7 +401,7 @@
             "name": "BlockGroundAngle",
             "source": "BlockGroundAngle.blend",
             "output": "BlockGroundAngle.glb",
-            "version": "e19d38467a87",
+            "version": "3f97c0ed502b",
             "preload": "ground",
             "objects": ["Block Ground Angle 1"]
         },
@@ -409,6 +409,7 @@
             "name": "BlockGrass",
             "source": "BlockGrass.blend",
             "output": "BlockGrass.glb",
+            "version": "806501a9803d",
             "preload": "ground",
             "objects": ["Block Grass 1"]
         },
@@ -416,6 +417,7 @@
             "name": "BlockGrassAngle",
             "source": "BlockGrassAngle.blend",
             "output": "BlockGrassAngle.glb",
+            "version": "10a09dcd1bf8",
             "preload": "ground",
             "objects": ["Block Grass Angle 1"]
         },
@@ -423,6 +425,7 @@
             "name": "BlockSand",
             "source": "BlockSand.blend",
             "output": "BlockSand.glb",
+            "version": "1fe950f9107f",
             "preload": "ground",
             "objects": ["Block Sand 1"]
         },
@@ -430,6 +433,7 @@
             "name": "BlockSandAngle",
             "source": "BlockSandAngle.blend",
             "output": "BlockSandAngle.glb",
+            "version": "546936f51007",
             "preload": "ground",
             "objects": ["Block Sand Angle 1"]
         },
@@ -437,7 +441,7 @@
             "name": "BlockStone",
             "source": "BlockStone.blend",
             "output": "BlockStone.glb",
-            "version": "e0e17e7af407",
+            "version": "dcdc3738463b",
             "preload": "ground",
             "objects": [
                 "Block_Stone_Large",
@@ -449,7 +453,7 @@
             "name": "BlockStoneAngle",
             "source": "BlockStoneAngle.blend",
             "output": "BlockStoneAngle.glb",
-            "version": "998e0f9fb62b",
+            "version": "76e53964d052",
             "preload": "ground",
             "objects": [
                 "Block_Stone_Angle_Large",
@@ -461,7 +465,7 @@
             "name": "BlockGravel",
             "source": "BlockGravel.blend",
             "output": "BlockGravel.glb",
-            "version": "41cc7c79a13c",
+            "version": "aaaeabd86683",
             "preload": "ground",
             "objects": [
                 "Block_Gravel_Base",
@@ -473,7 +477,7 @@
             "name": "BlockGravelAngle",
             "source": "BlockGravelAngle.blend",
             "output": "BlockGravelAngle.glb",
-            "version": "3dec8432e1b9",
+            "version": "02b886f745dc",
             "preload": "ground",
             "objects": [
                 "Block_Gravel_Angle_Base",
@@ -485,7 +489,7 @@
             "name": "BlockStoneStairs",
             "source": "BlockStoneStairs.blend",
             "output": "BlockStoneStairs.glb",
-            "version": "0590228ac5fe",
+            "version": "57e561f54dec",
             "preload": "ground",
             "objects": [
                 "Block_Stone_Stairs_Large",
@@ -497,7 +501,7 @@
             "name": "BlockStoneStairsCorner",
             "source": "BlockStoneStairsCorner.blend",
             "output": "BlockStoneStairsCorner.glb",
-            "version": "527837b09df4",
+            "version": "1536193b94bb",
             "preload": "ground",
             "objects": [
                 "Block_Stone_Stairs_Corner_Large",
@@ -509,7 +513,7 @@
             "name": "BlockPolishedStone",
             "source": "BlockPolishedStone.blend",
             "output": "BlockPolishedStone.glb",
-            "version": "37f822173ab1",
+            "version": "22387e340861",
             "preload": "ground",
             "objects": ["Block_Polished_Stone"]
         },
@@ -517,7 +521,7 @@
             "name": "BlockPolishedStoneAngle",
             "source": "BlockPolishedStoneAngle.blend",
             "output": "BlockPolishedStoneAngle.glb",
-            "version": "87a23acfaaa7",
+            "version": "e0f1a19ffee0",
             "preload": "ground",
             "objects": ["Block_Polished_Stone_Angle"]
         },
@@ -525,7 +529,7 @@
             "name": "BlockPolishedStoneStairs",
             "source": "BlockPolishedStoneStairs.blend",
             "output": "BlockPolishedStoneStairs.glb",
-            "version": "1ff582010dd2",
+            "version": "020f5e18a808",
             "preload": "ground",
             "objects": ["Block_Polished_Stone_Stairs"]
         },
@@ -533,7 +537,7 @@
             "name": "BlockPolishedStoneStairsCorner",
             "source": "BlockPolishedStoneStairsCorner.blend",
             "output": "BlockPolishedStoneStairsCorner.glb",
-            "version": "21d38a9e4b67",
+            "version": "67ee92a0fa03",
             "preload": "ground",
             "objects": ["Block_Polished_Stone_Stairs_Corner"]
         },
@@ -541,7 +545,7 @@
             "name": "BlockTerrainCorner",
             "source": "BlockTerrainCorner.blend",
             "output": "BlockTerrainCorner.glb",
-            "version": "b0d3454df2fa",
+            "version": "b500e076f1be",
             "preload": "ground",
             "objects": [
                 "Block Ground Corner 1",
@@ -553,7 +557,7 @@
             "name": "BlockTerrainReverseCorner",
             "source": "BlockTerrainReverseCorner.blend",
             "output": "BlockTerrainReverseCorner.glb",
-            "version": "d89106d29f33",
+            "version": "489db8ab923f",
             "preload": "ground",
             "objects": [
                 "Block Ground Reverse Corner 1",
@@ -565,7 +569,7 @@
             "name": "RaisedBed",
             "source": "RaisedBed.blend",
             "output": "RaisedBed.glb",
-            "version": "3e80f049ce04",
+            "version": "f47aa5034a41",
             "preload": "primary",
             "objects": [
                 "Raised Bed O",
@@ -579,7 +583,7 @@
             "name": "GardenBox",
             "source": "GardenBox.blend",
             "output": "GardenBox.glb",
-            "version": "c007d6f4b671",
+            "version": "0f334e7a3b37",
             "preload": "primary",
             "objects": ["GardenBox_Body_Planks", "GardenBox_Lid_HingeOrigin"]
         },
@@ -587,6 +591,7 @@
             "name": "GiftBox",
             "source": "GiftBox.blend",
             "output": "GiftBox.glb",
+            "version": "7bd9d8cca30f",
             "preload": "primary",
             "objects": ["GiftBox_Bow", "GiftBox_Strip", "GiftBox_Box"]
         },
@@ -594,6 +599,7 @@
             "name": "Seed",
             "source": "Seed.blend",
             "output": "Seed.glb",
+            "version": "f393ebc386df",
             "preload": "primary",
             "objects": ["Seed"]
         },
@@ -601,6 +607,7 @@
             "name": "Stick",
             "source": "Stick.blend",
             "output": "Stick.glb",
+            "version": "73c6d8687388",
             "preload": "primary",
             "objects": ["Stick"]
         },
@@ -609,13 +616,14 @@
             "source": "Tree.blend",
             "output": "Tree.glb",
             "preload": "primary",
-            "version": "autumn-canopy-v1",
+            "version": "274f898867fc",
             "objects": ["Tree 1", "Tree_AutumnThinning", "Tree_AutumnSparse", "Tree_AutumnBranches"]
         },
         {
             "name": "Pine",
             "source": "Pine.blend",
             "output": "Pine.glb",
+            "version": "c949b835c458",
             "preload": "primary",
             "objects": ["Tree 2"]
         },
@@ -623,6 +631,7 @@
             "name": "DeadTreeTall",
             "source": "DeadTreeTall.blend",
             "output": "DeadTreeTall.glb",
+            "version": "0b71291626bd",
             "preload": "lazy",
             "objects": [
                 "DeadTreeTall_Trunk",
@@ -638,6 +647,7 @@
             "name": "DeadTreeStump",
             "source": "DeadTreeStump.blend",
             "output": "DeadTreeStump.glb",
+            "version": "b098c665b118",
             "preload": "lazy",
             "objects": [
                 "DeadTreeStump_Trunk",
@@ -650,7 +660,7 @@
             "name": "Bush",
             "source": "Bush.blend",
             "output": "Bush.glb",
-            "version": "56b79aabe4f3",
+            "version": "e6b29f381f56",
             "preload": "primary",
             "objects": [
                 "Bush 1",
@@ -663,6 +673,7 @@
             "name": "StoneSmall",
             "source": "StoneSmall.blend",
             "output": "StoneSmall.glb",
+            "version": "5ba5ea4b9122",
             "preload": "primary",
             "objects": ["Stone Small"]
         },
@@ -670,6 +681,7 @@
             "name": "MulchHey",
             "source": "MulchHey.blend",
             "output": "MulchHey.glb",
+            "version": "5184be515b38",
             "preload": "primary",
             "objects": ["Mulch Hey"]
         },
@@ -677,6 +689,7 @@
             "name": "MulchCoconut",
             "source": "MulchCoconut.blend",
             "output": "MulchCoconut.glb",
+            "version": "e7546302a528",
             "preload": "primary",
             "objects": ["Mulch Coconut"]
         },
@@ -684,6 +697,7 @@
             "name": "MulchWood",
             "source": "MulchWood.blend",
             "output": "MulchWood.glb",
+            "version": "66afe9879305",
             "preload": "primary",
             "objects": ["Mulch Wood"]
         },
@@ -691,6 +705,7 @@
             "name": "BaleHey",
             "source": "BaleHey.blend",
             "output": "BaleHey.glb",
+            "version": "07ba87a4da15",
             "preload": "lazy",
             "objects": ["BaleHey"]
         },
@@ -698,7 +713,7 @@
             "name": "BirdSmall",
             "source": "BirdSmall.blend",
             "output": "BirdSmall.glb",
-            "version": "9f3f492cf895",
+            "version": "b2a632df5741",
             "preload": "lazy",
             "objects": [
                 "BirdSmall_Root",
@@ -730,7 +745,7 @@
             "name": "Bat",
             "source": "Bat.blend",
             "output": "Bat.glb",
-            "version": "a7b11d2cd352",
+            "version": "ffe3c2cef9dc",
             "preload": "lazy",
             "objects": [
                 "Bat_Root",
@@ -785,6 +800,7 @@
             "name": "Bee",
             "source": "Bee.blend",
             "output": "Bee.glb",
+            "version": "b0fdec8a989c",
             "preload": "lazy",
             "objects": [
                 "Bee_Root",
@@ -823,6 +839,7 @@
             "name": "Ladybug",
             "source": "Ladybug.blend",
             "output": "Ladybug.glb",
+            "version": "040327b51392",
             "preload": "lazy",
             "objects": [
                 "Ladybug_Root",
@@ -873,7 +890,7 @@
             "name": "Slug",
             "source": "Slug.blend",
             "output": "Slug.glb",
-            "version": "7c067dc49ffa",
+            "version": "db1fa432dc31",
             "preload": "lazy",
             "objects": [
                 "Slug_Root",
@@ -912,7 +929,7 @@
             "name": "Butterfly",
             "source": "Butterfly.blend",
             "output": "Butterfly.glb",
-            "version": "008559d0077f",
+            "version": "fb72ec3f16a9",
             "preload": "lazy",
             "objects": [
                 "Butterfly_Root",
@@ -956,6 +973,7 @@
             "name": "Cat",
             "source": "Cat.blend",
             "output": "Cat.glb",
+            "version": "6a2cb5ddaa62",
             "preload": "lazy",
             "objects": [
                 "Cat_Root",
@@ -1007,6 +1025,7 @@
             "name": "Dog",
             "source": "Dog.blend",
             "output": "Dog.glb",
+            "version": "1663c5ac39e2",
             "preload": "lazy",
             "objects": [
                 "Dog_Root",
@@ -1040,7 +1059,7 @@
             "name": "Squirrel",
             "source": "Squirrel.blend",
             "output": "Squirrel.glb",
-            "version": "859112d8590d",
+            "version": "86422e704fee",
             "preload": "lazy",
             "objects": [
                 "Squirrel_Root",
@@ -1092,7 +1111,7 @@
             "name": "Chicken",
             "source": "Chicken.blend",
             "output": "Chicken.glb",
-            "version": "d515764a6eab",
+            "version": "6b71bb7d4ad7",
             "preload": "lazy",
             "objects": [
                 "Chicken_Root",
@@ -1126,7 +1145,7 @@
             "name": "Piglet",
             "source": "Piglet.blend",
             "output": "Piglet.glb",
-            "version": "082e8d52aaed",
+            "version": "9d8e87e57a0a",
             "preload": "lazy",
             "objects": [
                 "Piglet_Root",
@@ -1169,7 +1188,7 @@
             "name": "Cow",
             "source": "Cow.blend",
             "output": "Cow.glb",
-            "version": "75060ced5288",
+            "version": "24b6a9295a89",
             "preload": "lazy",
             "objects": [
                 "Cow_Root",
@@ -1223,7 +1242,7 @@
             "name": "Goat",
             "source": "Goat.blend",
             "output": "Goat.glb",
-            "version": "c489a03d0c6b",
+            "version": "95f20564953f",
             "preload": "lazy",
             "objects": [
                 "Goat_Root",
@@ -1271,7 +1290,7 @@
             "name": "Rabbit",
             "source": "Rabbit.blend",
             "output": "Rabbit.glb",
-            "version": "e5d926614f6c",
+            "version": "b355cf338659",
             "preload": "lazy",
             "objects": [
                 "Rabbit_Root",
@@ -1316,7 +1335,7 @@
             "name": "Sheep",
             "source": "Sheep.blend",
             "output": "Sheep.glb",
-            "version": "9f76d330d4e4",
+            "version": "408de69c9a72",
             "preload": "lazy",
             "objects": [
                 "Sheep_Root",
@@ -1360,7 +1379,7 @@
             "name": "Frog",
             "source": "Frog.blend",
             "output": "Frog.glb",
-            "version": "4fa1fd0a9c7c",
+            "version": "31455baa58dd",
             "preload": "lazy",
             "objects": [
                 "Frog_Root",
@@ -1400,7 +1419,7 @@
             "source": "Horse.blend",
             "output": "Horse.glb",
             "preload": "lazy",
-            "version": "fc1b5ae150f8",
+            "version": "e4d929a41350",
             "objects": [
                 "Horse_Root",
                 "Horse_BodyPivot",
@@ -1462,7 +1481,7 @@
             "name": "FarmerAvatar",
             "source": "FarmerAvatar.blend",
             "output": "FarmerAvatar.glb",
-            "version": "e59d91f50c94",
+            "version": "e7e8102834af",
             "preload": "lazy",
             "objects": [
                 "FarmerAvatar_Root",
@@ -1534,7 +1553,7 @@
             "name": "Bucket",
             "source": "Bucket.blend",
             "output": "Bucket.glb",
-            "version": "651d759c9d56",
+            "version": "da06a91d6954",
             "preload": "lazy",
             "objects": ["Bucket", "Bucket - Handle"]
         },
@@ -1542,7 +1561,7 @@
             "name": "WateringCan",
             "source": "WateringCan.blend",
             "output": "WateringCan.glb",
-            "version": "8b128e30b990",
+            "version": "6e4a908aaaa1",
             "preload": "lazy",
             "objects": [
                 "WateringCan_Base_Ring",
@@ -1559,6 +1578,7 @@
             "name": "LiquidPreparationBottlePestControl",
             "source": "LiquidPreparationBottlePestControl.blend",
             "output": "LiquidPreparationBottlePestControl.glb",
+            "version": "d6391394a595",
             "preload": "lazy",
             "objects": [
                 "LiquidPreparationBottlePestControl_Base_Rim",
@@ -1573,6 +1593,7 @@
             "name": "LiquidPreparationBottleAphidControl",
             "source": "LiquidPreparationBottleAphidControl.blend",
             "output": "LiquidPreparationBottleAphidControl.glb",
+            "version": "9d07648e6f18",
             "preload": "lazy",
             "objects": [
                 "LiquidPreparationBottleAphidControl_Base_Rim",
@@ -1587,6 +1608,7 @@
             "name": "LiquidPreparationBottleSlugControl",
             "source": "LiquidPreparationBottleSlugControl.blend",
             "output": "LiquidPreparationBottleSlugControl.glb",
+            "version": "38e73f996327",
             "preload": "lazy",
             "objects": [
                 "LiquidPreparationBottleSlugControl_Base_Rim",
@@ -1601,6 +1623,7 @@
             "name": "LiquidPreparationBottleTomatoEggplantResistance",
             "source": "LiquidPreparationBottleTomatoEggplantResistance.blend",
             "output": "LiquidPreparationBottleTomatoEggplantResistance.glb",
+            "version": "5abe45521649",
             "preload": "lazy",
             "objects": [
                 "LiquidPreparationBottleTomatoEggplantResistance_Base_Rim",
@@ -1615,6 +1638,7 @@
             "name": "LiquidPreparationBottleFertilizer",
             "source": "LiquidPreparationBottleFertilizer.blend",
             "output": "LiquidPreparationBottleFertilizer.glb",
+            "version": "ce918961394c",
             "preload": "lazy",
             "objects": [
                 "LiquidPreparationBottleFertilizer_Base_Rim",
@@ -1629,6 +1653,7 @@
             "name": "LiquidPreparationBottleDiseaseControl",
             "source": "LiquidPreparationBottleDiseaseControl.blend",
             "output": "LiquidPreparationBottleDiseaseControl.glb",
+            "version": "d6ae78661fea",
             "preload": "lazy",
             "objects": [
                 "LiquidPreparationBottleDiseaseControl_Base_Rim",
@@ -1643,6 +1668,7 @@
             "name": "LiquidPreparationBottleWeevilControl",
             "source": "LiquidPreparationBottleWeevilControl.blend",
             "output": "LiquidPreparationBottleWeevilControl.glb",
+            "version": "b1bb87c31194",
             "preload": "lazy",
             "objects": [
                 "LiquidPreparationBottleWeevilControl_Base_Rim",
@@ -1657,6 +1683,7 @@
             "name": "LiquidPreparationBottleVoleControl",
             "source": "LiquidPreparationBottleVoleControl.blend",
             "output": "LiquidPreparationBottleVoleControl.glb",
+            "version": "e9c99c3eb256",
             "preload": "lazy",
             "objects": [
                 "LiquidPreparationBottleVoleControl_Base_Rim",
@@ -1671,6 +1698,7 @@
             "name": "LiquidPreparationBottleBeetleControl",
             "source": "LiquidPreparationBottleBeetleControl.blend",
             "output": "LiquidPreparationBottleBeetleControl.glb",
+            "version": "a34665c30492",
             "preload": "lazy",
             "objects": [
                 "LiquidPreparationBottleBeetleControl_Base_Rim",
@@ -1685,6 +1713,7 @@
             "name": "PaintRoller",
             "source": "PaintRoller.blend",
             "output": "PaintRoller.glb",
+            "version": "5b6121688fcf",
             "preload": "lazy",
             "objects": [
                 "PaintRoller_Sleeve",
@@ -1702,6 +1731,7 @@
             "name": "FieldworkClipboard",
             "source": "FieldworkClipboard.blend",
             "output": "FieldworkClipboard.glb",
+            "version": "2d95bb660be2",
             "preload": "lazy",
             "objects": [
                 "FieldworkClipboard_Board",
@@ -1729,7 +1759,7 @@
             "name": "WaterWell",
             "source": "WaterWell.blend",
             "output": "WaterWell.glb",
-            "version": "1f8ed0929e90",
+            "version": "58dc49337198",
             "preload": "lazy",
             "objects": [
                 "WaterWell_Stone_Mid",
@@ -1744,7 +1774,7 @@
             "name": "LemonadeStand",
             "source": "LemonadeStand.blend",
             "output": "LemonadeStand.glb",
-            "version": "a0e8b3867598",
+            "version": "d47dc28a232b",
             "preload": "lazy",
             "objects": [
                 "LemonadeStand_cart_body_cream",
@@ -1902,7 +1932,7 @@
             "name": "IceCreamCart",
             "source": "IceCreamCart.blend",
             "output": "IceCreamCart.glb",
-            "version": "edae45a22248",
+            "version": "5b782b371f8f",
             "preload": "lazy",
             "objects": [
                 "IceCreamCart_cart_body_cream",
@@ -2019,6 +2049,7 @@
             "name": "SummerHat",
             "source": "SummerHat.blend",
             "output": "SummerHat.glb",
+            "version": "4f6b659bd080",
             "preload": "lazy",
             "objects": [
                 "SummerHat_wide_brim_flat_faceted",
@@ -2043,6 +2074,7 @@
             "name": "BeachTowelStriped",
             "source": "BeachTowelStriped.blend",
             "output": "BeachTowelStriped.glb",
+            "version": "96888b3e9e71",
             "preload": "lazy",
             "objects": [
                 "BeachTowelStriped_Base",
@@ -2097,6 +2129,7 @@
             "name": "InflatablePoolSmall",
             "source": "InflatablePoolSmall.blend",
             "output": "InflatablePoolSmall.glb",
+            "version": "29f7e8dce38b",
             "preload": "lazy",
             "objects": [
                 "InflatablePoolSmall_OuterRingBottom",
@@ -2110,7 +2143,7 @@
             "name": "BeachChair",
             "source": "BeachChair.blend",
             "output": "BeachChair.glb",
-            "version": "284262a8ca74",
+            "version": "bfd3038c1073",
             "preload": "lazy",
             "objects": [
                 "BeachChair_FrameLeft",
@@ -2133,7 +2166,7 @@
             "name": "WoodenBench",
             "source": "WoodenBench.blend",
             "output": "WoodenBench.glb",
-            "version": "238606505a28",
+            "version": "4d07e3affe72",
             "preload": "lazy",
             "objects": [
                 "WoodenBench_SeatSlatFront",
@@ -2157,7 +2190,7 @@
             "name": "OutletDisplayTable",
             "source": "OutletDisplayTable.blend",
             "output": "OutletDisplayTable.glb",
-            "version": "88f3aa524c7f",
+            "version": "3b6b67f46111",
             "preload": "lazy",
             "objects": [
                 "OutletDisplayTable_TopPlanks",
@@ -2169,6 +2202,7 @@
             "name": "PalmTree",
             "source": "PalmTree.blend",
             "output": "PalmTree.glb",
+            "version": "2cd925892989",
             "preload": "lazy",
             "objects": [
                 "PalmTree_FrondBackTop",
@@ -2206,6 +2240,7 @@
             "name": "BeachBall",
             "source": "BeachBall.blend",
             "output": "BeachBall.glb",
+            "version": "d2911336d3fd",
             "preload": "lazy",
             "objects": [
                 "BeachBall_Cap",
@@ -2224,6 +2259,7 @@
             "name": "SandcastleSmallA",
             "source": "SandcastleSmallA.blend",
             "output": "SandcastleSmallA.glb",
+            "version": "4d0b7baed047",
             "preload": "lazy",
             "objects": [
                 "SandcastleSmallA_CentralCrenel01",
@@ -2272,7 +2308,7 @@
             "name": "Composter",
             "source": "Composter.blend",
             "output": "Composter.glb",
-            "version": "932e7624a5c1",
+            "version": "f25cf216dc1f",
             "preload": "lazy",
             "objects": ["Composter"]
         },
@@ -2280,7 +2316,7 @@
             "name": "BirdHouse",
             "source": "BirdHouse.blend",
             "output": "BirdHouse.glb",
-            "version": "c0de27e5a733",
+            "version": "980eab6d61de",
             "preload": "lazy",
             "objects": [
                 "Birdhouse_Angled_Supports",
@@ -2296,6 +2332,7 @@
             "name": "FireflyJar",
             "source": "FireflyJar.blend",
             "output": "FireflyJar.glb",
+            "version": "f03d227802f1",
             "preload": "lazy",
             "objects": [
                 "FireflyJar_Glass_Jar",
@@ -2311,6 +2348,7 @@
             "name": "CatPillow",
             "source": "CatPillow.blend",
             "output": "CatPillow.glb",
+            "version": "b93310c7d89e",
             "preload": "lazy",
             "objects": ["CatPillow_Cushion", "CatPillow_Seam"]
         },
@@ -2318,7 +2356,7 @@
             "name": "DogHouse",
             "source": "DogHouse.blend",
             "output": "DogHouse.glb",
-            "version": "bb8e47c2ddc8",
+            "version": "ce862f3a1904",
             "preload": "lazy",
             "objects": [
                 "DogHouse_Root",
@@ -2342,7 +2380,7 @@
             "name": "ChickenCoop",
             "source": "ChickenCoop.blend",
             "output": "ChickenCoop.glb",
-            "version": "be5b3d6eab59",
+            "version": "e6530ab941d5",
             "preload": "lazy",
             "objects": [
                 "ChickenCoop_WoodDark",
@@ -2359,7 +2397,7 @@
             "name": "PigletPen",
             "source": "PigletPen.blend",
             "output": "PigletPen.glb",
-            "version": "6391ab49beb5",
+            "version": "a25c5ae93017",
             "preload": "lazy",
             "objects": [
                 "PigletPen_Wood",
@@ -2376,7 +2414,7 @@
             "name": "RabbitHutch",
             "source": "RabbitHutch.blend",
             "output": "RabbitHutch.glb",
-            "version": "7d1e5f8b7ed0",
+            "version": "6b9c39b6596c",
             "preload": "lazy",
             "objects": [
                 "RabbitHutch_Oak",
@@ -2390,7 +2428,7 @@
             "name": "HorseStable",
             "source": "HorseStable.blend",
             "output": "HorseStable.glb",
-            "version": "7d1293980e9d",
+            "version": "1d8966060d9c",
             "preload": "lazy",
             "objects": [
                 "HorseStable_Stone",
@@ -2405,7 +2443,7 @@
             "name": "CowShelter",
             "source": "CowShelter.blend",
             "output": "CowShelter.glb",
-            "version": "013f2d369dc8",
+            "version": "930b9321db4e",
             "preload": "lazy",
             "objects": [
                 "CowShelter_Stone",
@@ -2419,7 +2457,7 @@
             "name": "GoatShelter",
             "source": "GoatShelter.blend",
             "output": "GoatShelter.glb",
-            "version": "270d59461852",
+            "version": "014fb7061462",
             "preload": "lazy",
             "objects": [
                 "GoatShelter_Stone",
@@ -2433,7 +2471,7 @@
             "name": "SheepFold",
             "source": "SheepFold.blend",
             "output": "SheepFold.glb",
-            "version": "f482286e92d5",
+            "version": "67ba86205ebc",
             "preload": "lazy",
             "objects": [
                 "SheepFold_Stone",
@@ -2448,7 +2486,7 @@
             "name": "SmallWoodenBridge",
             "source": "SmallWoodenBridge.blend",
             "output": "SmallWoodenBridge.glb",
-            "version": "3f5e5e39b5e4",
+            "version": "88e0f1cd811d",
             "preload": "lazy",
             "objects": [
                 "SmallWoodenBridge_PlanksLight",
@@ -2461,7 +2499,7 @@
             "name": "WoodenWalkway",
             "source": "WoodenWalkway.blend",
             "output": "WoodenWalkway.glb",
-            "version": "b4345a9a9ca1",
+            "version": "4f6313398387",
             "preload": "lazy",
             "objects": [
                 "WoodenWalkway_PlanksLight",
@@ -2473,7 +2511,7 @@
             "name": "StoneWalkway",
             "source": "StoneWalkway.blend",
             "output": "StoneWalkway.glb",
-            "version": "075166e14408",
+            "version": "3fd49e054239",
             "preload": "lazy",
             "objects": [
                 "StoneWalkway_StonesLight",
@@ -2485,7 +2523,7 @@
             "name": "EnamelGardenLamp",
             "source": "EnamelGardenLamp.blend",
             "output": "EnamelGardenLamp.glb",
-            "version": "c945af2c0198",
+            "version": "478b7455a56d",
             "preload": "lazy",
             "objects": [
                 "EnamelGardenLamp_WoodPost",
@@ -2499,7 +2537,7 @@
             "name": "DoubleGardenLightPole",
             "source": "DoubleGardenLightPole.blend",
             "output": "DoubleGardenLightPole.glb",
-            "version": "fe31962c9b22",
+            "version": "189204d75d57",
             "preload": "lazy",
             "objects": [
                 "DoubleGardenLightPole_LimestoneBase",
@@ -2514,7 +2552,7 @@
             "name": "HazelLightArch",
             "source": "HazelLightArch.blend",
             "output": "HazelLightArch.glb",
-            "version": "6718c29e0a75",
+            "version": "1e98e8a83b65",
             "preload": "lazy",
             "objects": [
                 "HazelLightArch_Poles",
@@ -2527,7 +2565,7 @@
             "name": "RoofTileLantern",
             "source": "RoofTileLantern.blend",
             "output": "RoofTileLantern.glb",
-            "version": "0a51dad18321",
+            "version": "73e97eadc79a",
             "preload": "lazy",
             "objects": [
                 "RoofTileLantern_Tiles",
@@ -2539,7 +2577,7 @@
             "name": "WickerGardenLantern",
             "source": "WickerGardenLantern.blend",
             "output": "WickerGardenLantern.glb",
-            "version": "b7a3c7c8a4fe",
+            "version": "93bb8ab53fe8",
             "preload": "lazy",
             "objects": [
                 "WickerGardenLantern_Wicker",
@@ -2552,7 +2590,7 @@
             "name": "WoodenHandLantern",
             "source": "WoodenHandLantern.blend",
             "output": "WoodenHandLantern.glb",
-            "version": "583d3ee52834",
+            "version": "48f99984961f",
             "preload": "lazy",
             "objects": [
                 "WoodenHandLantern_Frame",
@@ -2566,7 +2604,7 @@
             "name": "MoonRainBarrel",
             "source": "MoonRainBarrel.blend",
             "output": "MoonRainBarrel.glb",
-            "version": "7425319b60fc",
+            "version": "0a3d8f87793e",
             "preload": "lazy",
             "objects": [
                 "MoonRainBarrel_Staves",
@@ -2583,7 +2621,7 @@
             "name": "FishingBoat",
             "source": "FishingBoat.blend",
             "output": "FishingBoat.glb",
-            "version": "ed251d920c48",
+            "version": "10186fe0c761",
             "preload": "lazy",
             "objects": [
                 "FishingBoat_HullWoodDark",
@@ -2602,7 +2640,7 @@
             "name": "Fence",
             "source": "Fence.blend",
             "output": "Fence.glb",
-            "version": "dbd149ee3e7b",
+            "version": "f7794501aeac",
             "preload": "lazy",
             "objects": [
                 "Fence Corner",
@@ -2618,7 +2656,7 @@
             "name": "WhiteFence",
             "source": "WhiteFence.blend",
             "output": "WhiteFence.glb",
-            "version": "6da3db488a19",
+            "version": "288b9ef1bc37",
             "preload": "lazy",
             "objects": [
                 "WhiteFence_Solo",
@@ -2635,7 +2673,7 @@
             "name": "StoneFence",
             "source": "StoneFence.blend",
             "output": "StoneFence.glb",
-            "version": "e8bb66423669",
+            "version": "fd6350ffa136",
             "preload": "lazy",
             "objects": [
                 "StoneFence_Solo",
@@ -2651,7 +2689,7 @@
             "name": "PolishedStoneFence",
             "source": "PolishedStoneFence.blend",
             "output": "PolishedStoneFence.glb",
-            "version": "2c5f40e1afc5",
+            "version": "16a6c24d2b6b",
             "preload": "lazy",
             "objects": [
                 "PolishedStoneFence_Solo",
@@ -2667,7 +2705,7 @@
             "name": "FenceGate",
             "source": "FenceGate.blend",
             "output": "FenceGate.glb",
-            "version": "ce707c4e9253",
+            "version": "546d1923e0fd",
             "preload": "lazy",
             "objects": ["FenceGate_Posts", "FenceGate_Leaf"]
         },
@@ -2675,7 +2713,7 @@
             "name": "WhiteFenceGate",
             "source": "WhiteFenceGate.blend",
             "output": "WhiteFenceGate.glb",
-            "version": "7b2247eff49b",
+            "version": "084147ed5097",
             "preload": "lazy",
             "objects": ["WhiteFenceGate_Posts", "WhiteFenceGate_Leaf"]
         },
@@ -2683,7 +2721,7 @@
             "name": "StoneFenceGate",
             "source": "StoneFenceGate.blend",
             "output": "StoneFenceGate.glb",
-            "version": "1e715ef5972d",
+            "version": "fc781c095b4c",
             "preload": "lazy",
             "objects": ["StoneFenceGate_Posts", "StoneFenceGate_Leaf"]
         },
@@ -2691,7 +2729,7 @@
             "name": "PolishedStoneFenceGate",
             "source": "PolishedStoneFenceGate.blend",
             "output": "PolishedStoneFenceGate.glb",
-            "version": "6a06de6cfa10",
+            "version": "82f92a9d59fd",
             "preload": "lazy",
             "objects": [
                 "PolishedStoneFenceGate_Posts",
@@ -2702,6 +2740,7 @@
             "name": "GroundEnvironment",
             "source": "GroundEnvironment.blend",
             "output": "GroundEnvironment.glb",
+            "version": "c38d965ec2c0",
             "preload": "lazy",
             "objects": ["Gound Cube", "Grass 1"]
         },
@@ -2709,7 +2748,7 @@
             "name": "Shade",
             "source": "Shade.blend",
             "output": "Shade.glb",
-            "version": "25d42a7ac385",
+            "version": "760ac363c6d6",
             "preload": "lazy",
             "objects": [
                 "Shade E",
@@ -2726,6 +2765,7 @@
             "name": "BeachUmbrella",
             "source": "BeachUmbrella.blend",
             "output": "BeachUmbrella.glb",
+            "version": "d094775021c6",
             "preload": "lazy",
             "objects": [
                 "BeachUmbrella_Pole",
@@ -2739,6 +2779,7 @@
             "name": "ShovelSmall",
             "source": "ShovelSmall.blend",
             "output": "ShovelSmall.glb",
+            "version": "16f067a259b9",
             "preload": "lazy",
             "objects": ["Shovel Small"]
         },
@@ -2746,6 +2787,7 @@
             "name": "Snowman",
             "source": "Snowman.blend",
             "output": "Snowman.glb",
+            "version": "a2a9cf0a24e0",
             "preload": "lazy",
             "objects": ["Snowman"]
         },
@@ -2753,6 +2795,7 @@
             "name": "StoneMedium",
             "source": "StoneMedium.blend",
             "output": "StoneMedium.glb",
+            "version": "7fb239c52fa7",
             "preload": "lazy",
             "objects": ["Stone Medium"]
         },
@@ -2760,6 +2803,7 @@
             "name": "StoneLarge",
             "source": "StoneLarge.blend",
             "output": "StoneLarge.glb",
+            "version": "7e50b081ea99",
             "preload": "lazy",
             "objects": ["Stone Large"]
         },
@@ -2767,6 +2811,7 @@
             "name": "DesertStoneSmall",
             "source": "DesertStoneSmall.blend",
             "output": "DesertStoneSmall.glb",
+            "version": "fabb487360f4",
             "preload": "lazy",
             "objects": ["DesertStoneSmall_Body", "DesertStoneSmall_Crevices"]
         },
@@ -2774,6 +2819,7 @@
             "name": "DesertStoneMedium",
             "source": "DesertStoneMedium.blend",
             "output": "DesertStoneMedium.glb",
+            "version": "7b021b7f03c4",
             "preload": "lazy",
             "objects": ["DesertStoneMedium_Body", "DesertStoneMedium_Crevices"]
         },
@@ -2781,6 +2827,7 @@
             "name": "DesertStoneLarge",
             "source": "DesertStoneLarge.blend",
             "output": "DesertStoneLarge.glb",
+            "version": "459dba734cef",
             "preload": "lazy",
             "objects": ["DesertStoneLarge_Body", "DesertStoneLarge_Crevices"]
         },
@@ -2788,7 +2835,7 @@
             "name": "Stool",
             "source": "Stool.blend",
             "output": "Stool.glb",
-            "version": "499ef9ac9d7b",
+            "version": "2f49e872868e",
             "preload": "lazy",
             "objects": ["Stool"]
         },
@@ -2796,7 +2843,7 @@
             "name": "Tulip",
             "source": "Tulip.blend",
             "output": "Tulip.glb",
-            "version": "64901b969f37",
+            "version": "433ce2cb0711",
             "preload": "lazy",
             "objects": ["Tulip", "Tulip_Leaves"]
         },
@@ -2804,6 +2851,7 @@
             "name": "GardenFlower",
             "source": "GardenFlower.blend",
             "output": "GardenFlower.glb",
+            "version": "cf8033269bad",
             "preload": "ground",
             "objects": [
                 "GardenFlower_Stem",
@@ -2816,6 +2864,7 @@
             "name": "Sunflower",
             "source": "Sunflower.blend",
             "output": "Sunflower.glb",
+            "version": "012cb19cf7a1",
             "preload": "lazy",
             "objects": [
                 "Sunflower_Stem",
@@ -2897,6 +2946,7 @@
             "name": "Rose",
             "source": "Rose.blend",
             "output": "Rose.glb",
+            "version": "758251b67771",
             "preload": "lazy",
             "objects": [
                 "Rose_Stems",
@@ -2910,7 +2960,7 @@
             "name": "CactusBarrel",
             "source": "CactusBarrel.blend",
             "output": "CactusBarrel.glb",
-            "version": "13eb69f97166",
+            "version": "07a9e7e30083",
             "preload": "lazy",
             "objects": ["Cactus_Barrel_Body", "Cactus_Barrel_Spines"]
         },
@@ -2918,6 +2968,7 @@
             "name": "CactusColumnCluster",
             "source": "CactusColumnCluster.blend",
             "output": "CactusColumnCluster.glb",
+            "version": "b05270b754ee",
             "preload": "lazy",
             "objects": [
                 "Cactus_ColumnCluster_Body",
@@ -2928,7 +2979,7 @@
             "name": "CactusPricklyPear",
             "source": "CactusPricklyPear.blend",
             "output": "CactusPricklyPear.glb",
-            "version": "20b55dc5e922",
+            "version": "1c86f9dd4d37",
             "preload": "lazy",
             "objects": ["Cactus_PricklyPear_Body", "Cactus_PricklyPear_Spines"]
         },
@@ -2936,6 +2987,7 @@
             "name": "PotLowBowl",
             "source": "PotLowBowl.blend",
             "output": "PotLowBowl.glb",
+            "version": "7e09ec514f9a",
             "preload": "lazy",
             "objects": ["PotVariant_01_Low_Bowl", "PotVariant_Soil_01"]
         },
@@ -2943,6 +2995,7 @@
             "name": "PotRoundedBowl",
             "source": "PotRoundedBowl.blend",
             "output": "PotRoundedBowl.glb",
+            "version": "1b281fef4091",
             "preload": "lazy",
             "objects": ["PotVariant_02_Rounded_Bowl", "PotVariant_Soil_02"]
         },
@@ -2950,6 +3003,7 @@
             "name": "PotBulbousNeck",
             "source": "PotBulbousNeck.blend",
             "output": "PotBulbousNeck.glb",
+            "version": "477d000b2f0d",
             "preload": "lazy",
             "objects": ["PotVariant_03_Bulbous_Neck", "PotVariant_Soil_03"]
         },
@@ -2957,6 +3011,7 @@
             "name": "PotTallTapered",
             "source": "PotTallTapered.blend",
             "output": "PotTallTapered.glb",
+            "version": "d328ef4d5a38",
             "preload": "lazy",
             "objects": ["PotVariant_04_Tall_Tapered", "PotVariant_Soil_04"]
         },
@@ -2964,6 +3019,7 @@
             "name": "PotHourglass",
             "source": "PotHourglass.blend",
             "output": "PotHourglass.glb",
+            "version": "ee77aa2a1e55",
             "preload": "lazy",
             "objects": ["PotVariant_05_Hourglass", "PotVariant_Soil_05"]
         },
@@ -2971,6 +3027,7 @@
             "name": "PotStraightShortTub",
             "source": "PotStraightShortTub.blend",
             "output": "PotStraightShortTub.glb",
+            "version": "8ca59c3b256c",
             "preload": "lazy",
             "objects": [
                 "PotVariant_06_Straight_Short_Tub",
@@ -2981,6 +3038,7 @@
             "name": "PotNarrowFootBowl",
             "source": "PotNarrowFootBowl.blend",
             "output": "PotNarrowFootBowl.glb",
+            "version": "c6b10152288c",
             "preload": "lazy",
             "objects": ["PotVariant_07_Narrow_Foot_Bowl", "PotVariant_Soil_07"]
         },
@@ -2988,6 +3046,7 @@
             "name": "PotSquatRidged",
             "source": "PotSquatRidged.blend",
             "output": "PotSquatRidged.glb",
+            "version": "3465a0d49ab8",
             "preload": "lazy",
             "objects": ["PotVariant_08_Squat_Ridged_Pot", "PotVariant_Soil_08"]
         },
@@ -2995,6 +3054,7 @@
             "name": "PotTallSlenderCone",
             "source": "PotTallSlenderCone.blend",
             "output": "PotTallSlenderCone.glb",
+            "version": "7430cb13cbbd",
             "preload": "lazy",
             "objects": ["PotVariant_09_Tall_Slender_Cone", "PotVariant_Soil_09"]
         },
@@ -3002,6 +3062,7 @@
             "name": "PotWideLippedCup",
             "source": "PotWideLippedCup.blend",
             "output": "PotWideLippedCup.glb",
+            "version": "ab13ae8a0abd",
             "preload": "lazy",
             "objects": ["PotVariant_10_Wide_Lipped_Cup", "PotVariant_Soil_10"]
         },
@@ -3009,7 +3070,7 @@
             "name": "HarvestPumpkinSquat",
             "source": "HarvestPumpkinSquat.blend",
             "output": "HarvestPumpkinSquat.glb",
-            "version": "0f247954af35",
+            "version": "46ec1da35973",
             "preload": "lazy",
             "objects": [
                 "HarvestPumpkinSquat_Body",
@@ -3020,7 +3081,7 @@
             "name": "HarvestPumpkinGourd",
             "source": "HarvestPumpkinGourd.blend",
             "output": "HarvestPumpkinGourd.glb",
-            "version": "15948c584b77",
+            "version": "44158ee78493",
             "preload": "lazy",
             "objects": [
                 "HarvestPumpkinGourd_Body",
@@ -3031,7 +3092,7 @@
             "name": "HarvestPumpkinGroup",
             "source": "HarvestPumpkinGroup.blend",
             "output": "HarvestPumpkinGroup.glb",
-            "version": "bdeb4f10688c",
+            "version": "4eaf64cec5d7",
             "preload": "lazy",
             "objects": [
                 "HarvestPumpkinGroup_Body",
@@ -3042,7 +3103,7 @@
             "name": "HarvestBasket",
             "source": "HarvestBasket.blend",
             "output": "HarvestBasket.glb",
-            "version": "5361f192e361",
+            "version": "c124a20fcfb4",
             "preload": "lazy",
             "objects": [
                 "HarvestBasket_Weave",
@@ -3066,7 +3127,7 @@
             "name": "ArrowSign",
             "source": "ArrowSign.blend",
             "output": "ArrowSign.glb",
-            "version": "a7af022e88ee",
+            "version": "48adac4de443",
             "preload": "lazy",
             "objects": [
                 "ArrowSign_Post",
@@ -3078,7 +3139,7 @@
             "name": "WoodenSign",
             "source": "WoodenSign.blend",
             "output": "WoodenSign.glb",
-            "version": "970d78ef2f60",
+            "version": "f7b024df9fde",
             "preload": "lazy",
             "objects": [
                 "WoodenSign_Post",

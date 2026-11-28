@@ -3,7 +3,6 @@ import { createHash } from 'node:crypto';
 import { open, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { expect, test } from '@playwright/experimental-ct-react';
 import { FaunaTrajectoryFixture } from '../../../packages/game/tests/FaunaTrajectoryFixture';
 import type {
     FaunaTrajectoryFrame,
@@ -15,6 +14,7 @@ import {
     compareFaunaRenderCadences,
     validateFaunaTrajectoryReport,
 } from '../scripts/fauna-trajectory-contract.mjs';
+import { expect, test } from './webglComponentTest';
 
 const durationSeconds = 24;
 const scenarios: FaunaTrajectoryScenario[] = [

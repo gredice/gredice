@@ -10,6 +10,7 @@ Gredice is a Next.js/Turborepo monorepo with apps, shared packages, docs, and as
   - [WORKSPACE.md](./WORKSPACE.md): layout, setup, commands, dev servers.
   - [FRONTEND.md](./FRONTEND.md): Next.js, React, TypeScript, UI structure.
   - [DESIGN.md](./DESIGN.md): visual standards.
+  - [GAME_ART.md](./GAME_ART.md): 3D garden models, materials, lighting, motion.
   - [PRODUCT_SENSE.md](./PRODUCT_SENSE.md): product language and roles.
   - [QUALITY_SCORE.md](./QUALITY_SCORE.md): validation and review expectations.
   - [RELIABILITY.md](./RELIABILITY.md): data, migrations, background work.

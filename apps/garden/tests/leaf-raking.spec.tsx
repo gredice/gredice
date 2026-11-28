@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/experimental-ct-react';
 import { LeafRakingFixture } from '../../../packages/game/tests/LeafRakingFixture';
+import { expect, test } from './webglComponentTest';
 
 test.use({ hasTouch: true });
 test.setTimeout(60000);

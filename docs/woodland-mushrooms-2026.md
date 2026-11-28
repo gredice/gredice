@@ -27,7 +27,7 @@ First-party references inspected before modeling:
 One editable `WoodlandMushrooms.blend` contains a joined mesh with ten named
 vertex groups, `Cap_1..5` and `Stem_1..5`, so individual parts remain selectable.
 Every stem touches the support plane. The base-centred model measures about
-**0.7385 × 0.7500 × 0.3800 tiles** and fits the declared **0.9 × 0.9 × 0.4**
+**0.7248 × 0.7385 × 0.3840 tiles** and fits the declared **0.9 × 0.9 × 0.4**
 hitbox at all four rotations. Its footprint is one tile.
 
 ## Catalogue and behavior
@@ -47,15 +47,16 @@ specification from `@gredice/js/woodlandMushrooms`.
 
 ## Palette and rendering cost
 
-Cap colours range from chestnut `#895735` and russet `#965D30` to muted cream
-`#BCA578`, with lighter rims. Stems use warm cream `#EEE3CB` and darker bases.
+Caps use the seasonal roles in [GAME_ART.md](../GAME_ART.md): conker `#C4683A`,
+acorn cap `#C28A50` or cream `#F2E4C6` on screen, one colour per cap, over cream
+gills. Stems are cream.
 The palette is baked into the mesh's `Color` attribute and exported as `COLOR_0`.
 All five mushrooms share **one mesh, one primitive and one material** at
-roughness 0.92, metallic 0 and zero emission. Colour variation adds no material
+roughness 0.55, metallic 0 and zero emission. Colour variation adds no material
 slots or draw calls. Runtime instances share the immutable cached geometry and
 material; no per-instance recolouring is performed.
 
-The lazy GLB is **85,928 bytes** with **1,160 triangles** and **one base-pass draw**
+The lazy GLB is **44,648 bytes** with **1,780 triangles** and **one base-pass draw**
 per cluster. Shared shadow/rain/snow passes add their usual cost. There are no
 textures, imported animations, embedded lights or dedicated idle render leases.
 These are structural costs, not physical-device frame-rate measurements.

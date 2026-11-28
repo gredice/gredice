@@ -1,0 +1,1305 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gredice party style: example scene</title>
+<!--
+    Design mock for docs/game-party-style.md. Standalone three.js page, not game
+    runtime code. The "Today" mode rebuilds the exported BlockGrass, BlockGround,
+    RaisedBed, Tree, Bush, StoneMedium, Fence, Sunflower and Bucket GLBs from
+    their bounds and material factors, lit with the midday values from
+    packages/game/src/scene/Environment.tsx. Textures in the party mode are
+    embedded copies of assets/game-textures. Add ?mode=current|code|party to
+    open a specific mode.
+-->
+<style>
+    .gps {
+        display: grid;
+        gap: 12px;
+        font-family: var(--font-sans, system-ui, -apple-system, 'Segoe UI', sans-serif);
+        color: var(--foreground, #1d2420);
+        font-size: 14px;
+        line-height: 1.45;
+    }
+    .gps-modes {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+    .gps-modes button {
+        font: inherit;
+        font-weight: 600;
+        padding: 7px 14px;
+        border-radius: 999px;
+        border: 1px solid var(--border, #cfd6cc);
+        background: transparent;
+        color: inherit;
+        cursor: pointer;
+    }
+    .gps-modes button[aria-pressed='true'] {
+        background: var(--primary, #2f7d32);
+        border-color: var(--primary, #2f7d32);
+        color: var(--primary-foreground, #ffffff);
+    }
+    .gps-modes button:focus-visible {
+        outline: 2px solid var(--ring, #2f7d32);
+        outline-offset: 2px;
+    }
+    .gps-stage {
+        position: relative;
+        height: 480px;
+        border-radius: var(--radius, 12px);
+        overflow: hidden;
+        background: #f7f1dd;
+        transition: background 0.25s ease;
+    }
+    .gps-stage[data-mode='code'],
+    .gps-stage[data-mode='party'] {
+        background: linear-gradient(180deg, #4fbcff 0%, #8fd8ff 48%, #d9f5ff 100%);
+    }
+    .gps-stage canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        cursor: grab;
+    }
+    .gps-stage canvas:active {
+        cursor: grabbing;
+    }
+    .gps-fallback {
+        position: absolute;
+        inset: 0;
+        display: none;
+        place-items: center;
+        padding: 24px;
+        text-align: center;
+        color: #1d2420;
+    }
+    .gps-summary {
+        margin: 0;
+        /* Three lines, so switching modes does not shift the layout. */
+        min-height: 4.35em;
+    }
+    .gps-specs {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 8px 16px;
+        margin: 0;
+    }
+    .gps-specs div {
+        border-top: 1px solid var(--border, #cfd6cc);
+        padding-top: 6px;
+    }
+    .gps-specs dt {
+        font-size: 12px;
+        color: var(--muted-foreground, #5d6a60);
+    }
+    .gps-specs dd {
+        margin: 0;
+        font-weight: 600;
+    }
+</style>
+<script type="importmap">
+{
+    "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.min.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"
+    }
+}
+</script>
+</head>
+<body>
+<div class="gps">
+    <div class="gps-modes" role="group" aria-label="Rendering style">
+        <button type="button" data-mode="current" aria-pressed="false">Today</button>
+        <button type="button" data-mode="code" aria-pressed="false">Renderer only</button>
+        <button type="button" data-mode="party" aria-pressed="true">Full party style</button>
+    </div>
+    <div class="gps-stage" data-mode="party">
+        <canvas aria-label="Example garden scene: grass and soil blocks, a raised bed, a tree, a bush, stones, a fence, sunflowers and a bucket"></canvas>
+        <div class="gps-fallback">This example needs WebGL, which is unavailable here.</div>
+    </div>
+    <p class="gps-summary"></p>
+    <dl class="gps-specs"></dl>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
+
+const stage = document.querySelector('.gps-stage');
+const canvas = stage.querySelector('canvas');
+const summary = document.querySelector('.gps-summary');
+const specs = document.querySelector('.gps-specs');
+const buttons = [...document.querySelectorAll('.gps-modes button')];
+
+const modeCopy = {
+    current: {
+        summary:
+            'How these blocks render today. Dark olive colours are lit about three times too bright, then flattened by filmic tone mapping. Every face is one flat colour because the edges are sharp.',
+        specs: [
+            ['Tone mapping', 'ACES filmic'],
+            ['Light on a sunlit top', '≈ 3× albedo'],
+            ['Edges', 'Sharp, 24-vertex boxes'],
+            ['Surface', 'Flat colour, matte'],
+        ],
+    },
+    code: {
+        summary:
+            'The same models with renderer changes only: a warm key and cool fill light, neutral tone mapping, a saturated colour remap, a height gradient and soft contact shadows.',
+        specs: [
+            ['Tone mapping', 'Khronos neutral'],
+            ['Light on a sunlit top', '≈ 1× albedo'],
+            ['Edges', 'Unchanged'],
+            ['Surface', 'Flat colour, semi-gloss'],
+        ],
+    },
+    party: {
+        summary:
+            'Reshaped assets on top of the renderer changes: one continuous floor with a bevelled soil rim, soft painted textures on soil, wood, bark and stone, rounded chunky shapes and idle motion. Hover a block, or click it to make it hop.',
+        specs: [
+            ['Tone mapping', 'Khronos neutral'],
+            ['Light on a sunlit top', '≈ 1× albedo'],
+            ['Edges', 'Bevel radius 0.04 to 0.07'],
+            ['Surface', 'Painted, semi-gloss'],
+        ],
+    },
+};
+
+// Albedo and PBR factors per material role. `current` values are read from the
+// exported GLBs; `party` values are the proposed sRGB albedo targets.
+const palettes = {
+    current: {
+        grass: ['#687529', 1, 0.4],
+        dirt: ['#462e22', 1, 0.6],
+        islandSoil: ['#462e22', 1, 0.6],
+        soil: ['#553929', 1, 0.6],
+        wood: ['#7d4422', 0.78, 0],
+        woodDark: ['#7d4422', 0.78, 0],
+        trunk: ['#956247', 0.9, 0.5],
+        leaves: ['#7a8930', 1, 0.2],
+        leavesLight: ['#7a8930', 1, 0.2],
+        bush: ['#7a8930', 1, 0.3],
+        stone: ['#5d5d5d', 1, 0],
+        metal: ['#555555', 0.5, 0],
+        water: ['#3598e7', 0.2, 0.8],
+        petal: ['#ffea50', 0.86, 0],
+        petalShade: ['#fdce45', 0.86, 0],
+        flowerCenter: ['#a27c4d', 0.86, 0],
+        stem: ['#7a8930', 1, 0],
+        cropLeaf: ['#7a8930', 1, 0],
+        cropLeafLight: ['#b0bf8d', 1, 0],
+        tomato: ['#b23a2a', 0.9, 0],
+        carrot: ['#c8742c', 0.9, 0],
+        blossom: ['#f4f2ea', 1, 0],
+        pebble: ['#5d5d5d', 1, 0],
+    },
+    party: {
+        grass: ['#7bd03a', 0.7, 0],
+        dirt: ['#e0a765', 0.8, 0],
+        islandSoil: ['#b9693a', 0.8, 0],
+        soil: ['#8f5530', 0.85, 0],
+        wood: ['#f2a53a', 0.55, 0],
+        woodDark: ['#dc8427', 0.55, 0],
+        trunk: ['#b56a3c', 0.6, 0],
+        leaves: ['#43b93a', 0.55, 0],
+        leavesLight: ['#6fd040', 0.55, 0],
+        bush: ['#54c43a', 0.55, 0],
+        stone: ['#b3bdd3', 0.6, 0],
+        metal: ['#8fc0ee', 0.3, 0],
+        water: ['#35b4ff', 0.12, 0],
+        petal: ['#ffd31c', 0.45, 0],
+        petalShade: ['#ffb300', 0.45, 0],
+        flowerCenter: ['#8a4a1d', 0.7, 0],
+        stem: ['#4cb234', 0.55, 0],
+        cropLeaf: ['#5fc93a', 0.5, 0],
+        cropLeafLight: ['#a4e352', 0.5, 0],
+        tomato: ['#f23b2c', 0.25, 0],
+        carrot: ['#ff8a1c', 0.4, 0],
+        blossom: ['#ffffff', 0.5, 0],
+        pebble: ['#f0d9b0', 0.6, 0],
+    },
+};
+
+let renderer;
+try {
+    renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+} catch {
+    stage.querySelector('.gps-fallback').style.display = 'grid';
+}
+
+if (renderer) {
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setClearColor(0x000000, 0);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.OrthographicCamera(-4, 4, 3, -3, 0.1, 200);
+    const cameraTarget = new THREE.Vector3(0, 0.42, 0);
+    // Same isometric direction as defaultGameCameraPosition [-100, 100, -100].
+    camera.position.set(-40, 40.42, -40);
+    camera.lookAt(cameraTarget);
+
+    const controls = new OrbitControls(camera, canvas);
+    controls.target.copy(cameraTarget);
+    controls.enablePan = false;
+    controls.enableZoom = false;
+    controls.minPolarAngle = THREE.MathUtils.degToRad(38);
+    controls.maxPolarAngle = THREE.MathUtils.degToRad(66);
+    controls.update();
+
+    const environmentMap = createSkyEnvironment(renderer);
+
+    let mode = 'party';
+    let world = null;
+    let needsRender = true;
+    let hovered = null;
+    let visible = true;
+    let elapsed = 0;
+    let lastFrame = performance.now();
+
+    controls.addEventListener('change', () => {
+        needsRender = true;
+    });
+
+    // ---------------------------------------------------------------- lights
+    function createSkyEnvironment(gl) {
+        // A tiny gradient sky with one soft light source. It only has to give
+        // semi-gloss surfaces something to reflect.
+        const envScene = new THREE.Scene();
+        const dome = new THREE.SphereGeometry(10, 32, 16);
+        const top = new THREE.Color('#7cc8ff');
+        const horizon = new THREE.Color('#fff3da');
+        const ground = new THREE.Color('#8fcb62');
+        const color = new THREE.Color();
+        const colors = [];
+        const position = dome.attributes.position;
+        for (let i = 0; i < position.count; i++) {
+            const height = position.getY(i) / 10;
+            if (height >= 0) color.copy(horizon).lerp(top, height ** 0.6);
+            else color.copy(horizon).lerp(ground, (-height) ** 0.5);
+            colors.push(color.r, color.g, color.b);
+        }
+        dome.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+        envScene.add(
+            new THREE.Mesh(
+                dome,
+                new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide }),
+            ),
+        );
+        const softbox = new THREE.Mesh(
+            new THREE.SphereGeometry(2.4, 16, 12),
+            new THREE.MeshBasicMaterial({ color: new THREE.Color(7, 6.6, 6) }),
+        );
+        softbox.position.set(-3, 7.5, -5);
+        envScene.add(softbox);
+        const generator = new THREE.PMREMGenerator(gl);
+        const texture = generator.fromScene(envScene, 0.035).texture;
+        generator.dispose();
+        return texture;
+    }
+
+    function addLights(root, style) {
+        if (style === 'current') {
+            // Midday values from useEnvironmentElements in Environment.tsx.
+            root.add(new THREE.AmbientLight('#ffffff', 3));
+            const hemisphere = new THREE.HemisphereLight(
+                new THREE.Color().setRGB(0, 197 / 255, 1, THREE.SRGBColorSpace),
+                new THREE.Color(0.002, 0.002, 0.002),
+                5,
+            );
+            root.add(hemisphere);
+            const sun = new THREE.DirectionalLight(
+                new THREE.Color().setRGB(1, 246 / 255, 237 / 255, THREE.SRGBColorSpace),
+                5,
+            );
+            sun.position.set(-5, 20, 2);
+            configureShadow(sun, 2.2, 1);
+            root.add(sun);
+            return;
+        }
+
+        // Warm key from the upper left, a hemisphere fill (cool sky, warm
+        // ground bounce) and a cool fill from the opposite side so shaded
+        // faces stay blue instead of grey. No flat ambient light.
+        root.add(new THREE.HemisphereLight('#c4e4ff', '#ffdcae', 1.55));
+        const key = new THREE.DirectionalLight('#fff0d2', 2.55);
+        key.position.set(5, 10, -6);
+        configureShadow(key, 4.5, 0.82);
+        root.add(key);
+        const fill = new THREE.DirectionalLight('#a8d0ff', 0.75);
+        fill.position.set(-6, 5, 3);
+        root.add(fill);
+    }
+
+    function configureShadow(light, radius, intensity) {
+        light.castShadow = true;
+        light.shadow.mapSize.set(2048, 2048);
+        light.shadow.radius = radius;
+        light.shadow.intensity = intensity;
+        light.shadow.normalBias = 0.03;
+        light.shadow.bias = -0.0004;
+        const shadowCamera = light.shadow.camera;
+        shadowCamera.left = -6;
+        shadowCamera.right = 6;
+        shadowCamera.top = 6;
+        shadowCamera.bottom = -6;
+        shadowCamera.near = 0.5;
+        shadowCamera.far = 50;
+    }
+
+    // -------------------------------------------------------------- textures
+    // Painted textures generated for this look. These are copies of the WebP
+    // files in assets/game-textures, embedded so the page works from disk.
+    // Only natural, matte materials are textured, and only softly. Tree
+    // canopies, crops, steel, fruit and water stay flat colour.
+    const textureSources = {
+        'grass':
+            'data:image/webp;base64,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',
+        'path':
+            'data:image/webp;base64,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',
+        'soil':
+            'data:image/webp;base64,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',
+        'terrain-soil':
+            'data:image/webp;base64,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',
+        'wood':
+            'data:image/webp;base64,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',
+        'bark':
+            'data:image/webp;base64,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',
+        'stone':
+            'data:image/webp;base64,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',
+    };
+
+    async function loadPaintedTextures() {
+        const loader = new THREE.TextureLoader();
+        const entries = await Promise.all(
+            Object.entries(textureSources).map(async ([name, source]) => {
+                const texture = await loader.loadAsync(source);
+                texture.colorSpace = THREE.SRGBColorSpace;
+                texture.wrapS = THREE.RepeatWrapping;
+                texture.wrapT = THREE.RepeatWrapping;
+                texture.anisotropy = 8;
+                return [name, texture];
+            }),
+        );
+        return Object.fromEntries(entries);
+    }
+
+    // Which ground type covers each point of the 5 x 5 island: white is path,
+    // black is grass. The edge wobbles so the path does not follow the grid.
+    function pathMaskTexture() {
+        const size = 256;
+        const surface = document.createElement('canvas');
+        surface.width = size;
+        surface.height = size;
+        const context = surface.getContext('2d');
+        context.fillStyle = '#000000';
+        context.fillRect(0, 0, size, size);
+        const toPixelX = (x) => ((x + 2.5) / 5) * size;
+        const toPixelY = (z) => ((2.5 - z) / 5) * size;
+        const leftEdge = (z) => -1.46 - 0.045 * Math.sin(z * 2.3 + 1) - 0.03 * Math.sin(z * 5.1 + 2.4);
+        const rightEdge = (z) => -0.54 + 0.045 * Math.sin(z * 2.7 + 4) + 0.03 * Math.sin(z * 4.6 + 0.7);
+        context.globalCompositeOperation = 'lighter';
+        context.fillStyle = '#ffffff';
+        for (const [grow, alpha] of [[0.07, 0.34], [0.035, 0.33], [0, 0.33]]) {
+            context.globalAlpha = alpha;
+            context.beginPath();
+            for (let z = -2.7; z <= 2.7; z += 0.1) context.lineTo(toPixelX(leftEdge(z) - grow), toPixelY(z));
+            for (let z = 2.7; z >= -2.7; z -= 0.1) context.lineTo(toPixelX(rightEdge(z) + grow), toPixelY(z));
+            context.closePath();
+            context.fill();
+        }
+        return new THREE.CanvasTexture(surface);
+    }
+
+    const textures = await loadPaintedTextures();
+    textures.pathMask = pathMaskTexture();
+
+    // Texture, repeats per world unit and tint for each textured role in the
+    // party style. A tint darkens the shared wood texture for posts.
+    const partyTextures = {
+        wood: ['wood', 1.4, [1, 1, 1]],
+        woodDark: ['wood', 1.4, [0.81, 0.61, 0.48]],
+        trunk: ['bark', 1.6, [1, 1, 1]],
+        stone: ['stone', 1.2, [1, 1, 1]],
+        soil: ['soil', 1.2, [1, 1, 1]],
+        islandSoil: ['terrain-soil', 0.6, [1, 1, 1]],
+    };
+
+    // ------------------------------------------------------------- materials
+    // Three things flat colour cannot give under an orthographic camera:
+    // a vertical gradient (cool and darker at the base, warm and lighter at
+    // the top), a sky-coloured rim, and an optional painted texture. The
+    // texture is projected from world axes, so it needs no UVs and stays
+    // continuous across separate meshes such as terrain blocks.
+    function applyToySurface(material, options) {
+        const { base, height, rim, map = null, mapScale = 1, vertical = false, anchored = true, blend = null } = options;
+        material.defines = { ...material.defines };
+        if (map) material.defines.USE_TOY_MAP = '';
+        if (vertical) material.defines.TOY_MAP_VERTICAL = '';
+        if (blend) material.defines.USE_TOY_BLEND = '';
+        material.onBeforeCompile = (shader) => {
+            Object.assign(shader.uniforms, {
+                uToyGradient: { value: new THREE.Vector2(base, height) },
+                uToyShade: { value: new THREE.Vector3(0.66, 0.74, 0.98) },
+                uToyTint: { value: new THREE.Vector3(1.06, 1.03, 0.93) },
+                uToyRim: { value: rim },
+                // 1 keeps the texture attached to a moving object, 0 leaves it
+                // in world space so neighbouring terrain lines up.
+                uToyAnchor: { value: anchored ? 1 : 0 },
+                uToyMap: { value: map },
+                uToyMapScale: { value: mapScale },
+                uToyMap2: { value: blend?.map ?? null },
+                uToyMask: { value: blend?.mask ?? null },
+                uToyMaskRect: { value: new THREE.Vector4(...(blend?.rect ?? [0, 0, 1, 1])) },
+            });
+            shader.vertexShader = shader.vertexShader
+                .replace(
+                    '#include <common>',
+                    [
+                        '#include <common>',
+                        'varying float vToyHeight;',
+                        'varying vec3 vToyPosition;',
+                        'varying vec3 vToyNormal;',
+                        'uniform float uToyAnchor;',
+                    ].join('\n'),
+                )
+                .replace(
+                    '#include <begin_vertex>',
+                    [
+                        '#include <begin_vertex>',
+                        'vec4 toyWorld = modelMatrix * vec4(transformed, 1.0);',
+                        'vToyHeight = toyWorld.y;',
+                        'vToyPosition = toyWorld.xyz - modelMatrix[3].xyz * uToyAnchor;',
+                        'vToyNormal = mat3(modelMatrix) * objectNormal;',
+                    ].join('\n'),
+                );
+            shader.fragmentShader = shader.fragmentShader
+                .replace(
+                    '#include <common>',
+                    [
+                        '#include <common>',
+                        'varying float vToyHeight;',
+                        'varying vec3 vToyPosition;',
+                        'varying vec3 vToyNormal;',
+                        'uniform vec2 uToyGradient;',
+                        'uniform vec3 uToyShade;',
+                        'uniform vec3 uToyTint;',
+                        'uniform float uToyRim;',
+                        '#ifdef USE_TOY_MAP',
+                        'uniform sampler2D uToyMap;',
+                        'uniform sampler2D uToyMap2;',
+                        'uniform sampler2D uToyMask;',
+                        'uniform float uToyMapScale;',
+                        'uniform vec4 uToyMaskRect;',
+                        'vec3 toyTriplanar(sampler2D source, vec3 position, vec3 weights) {',
+                        '    #ifdef TOY_MAP_VERTICAL',
+                        '        return texture2D(source, position.yz).rgb * weights.x',
+                        '            + texture2D(source, position.zx).rgb * weights.y',
+                        '            + texture2D(source, position.yx).rgb * weights.z;',
+                        '    #else',
+                        '        return texture2D(source, position.zy).rgb * weights.x',
+                        '            + texture2D(source, position.xz).rgb * weights.y',
+                        '            + texture2D(source, position.xy).rgb * weights.z;',
+                        '    #endif',
+                        '}',
+                        '#endif',
+                    ].join('\n'),
+                )
+                .replace(
+                    '#include <color_fragment>',
+                    [
+                        '#include <color_fragment>',
+                        '#ifdef USE_TOY_MAP',
+                        '    vec3 toyWeights = pow(abs(normalize(vToyNormal)), vec3(4.0));',
+                        '    toyWeights /= toyWeights.x + toyWeights.y + toyWeights.z;',
+                        '    vec3 toyTexel = toyTriplanar(uToyMap, vToyPosition * uToyMapScale, toyWeights);',
+                        '    #ifdef USE_TOY_BLEND',
+                        '        vec3 toySecond = toyTriplanar(uToyMap2, vToyPosition * uToyMapScale, toyWeights);',
+                        '        float toyMask = texture2D(uToyMask, (vToyPosition.xz - uToyMaskRect.xy) / uToyMaskRect.zw).r;',
+                        '        toyTexel = mix(toyTexel, toySecond, smoothstep(0.3, 0.7, toyMask));',
+                        '        // A slightly darker band where the two grounds meet.',
+                        '        toyTexel *= 1.0 - 0.14 * (1.0 - abs(toyMask * 2.0 - 1.0));',
+                        '    #endif',
+                        '    diffuseColor.rgb *= toyTexel;',
+                        '#endif',
+                        'float toyRamp = clamp((vToyHeight - uToyGradient.x) / uToyGradient.y, 0.0, 1.0);',
+                        'toyRamp = toyRamp * toyRamp * (3.0 - 2.0 * toyRamp);',
+                        'diffuseColor.rgb *= mix(uToyShade, uToyTint, toyRamp);',
+                    ].join('\n'),
+                )
+                .replace(
+                    '#include <opaque_fragment>',
+                    [
+                        'float toyFacing = clamp(dot(normal, geometryViewDir), 0.0, 1.0);',
+                        'float toyRim = pow(1.0 - toyFacing, 2.5) * smoothstep(-0.1, 0.7, normal.y);',
+                        'outgoingLight += vec3(0.72, 0.9, 1.0) * (uToyRim * toyRim);',
+                        '#include <opaque_fragment>',
+                    ].join('\n'),
+                );
+        };
+        const variant = [map ? 'map' : '', vertical ? 'vertical' : '', blend ? 'blend' : ''].join('-');
+        material.customProgramCacheKey = () => `toy-surface-${variant}`;
+    }
+
+    function createMaterialFactory(style, disposables) {
+        const palette = style === 'current' ? palettes.current : palettes.party;
+        const cache = new Map();
+        return (role, options = {}) => {
+            const { base = 0, height = 1, flat = false, side = THREE.FrontSide, vertical = false } = options;
+            const key = [role, base, height, flat, side, vertical].join('|');
+            if (cache.has(key)) return cache.get(key);
+            const [color, roughness, metalness] = palette[role];
+            const painted = style === 'party' ? partyTextures[role] : undefined;
+            const material = new THREE.MeshStandardMaterial({
+                // A painted texture carries the colour itself; the material
+                // colour is left as a tint.
+                color: painted ? new THREE.Color().setRGB(...painted[2]) : color,
+                roughness,
+                metalness,
+                flatShading: flat,
+                side,
+            });
+            if (style !== 'current') {
+                material.envMapIntensity = 1;
+                applyToySurface(material, {
+                    base,
+                    height,
+                    rim: style === 'party' ? 0.5 : 0.3,
+                    map: painted ? textures[painted[0]] : null,
+                    mapScale: painted ? painted[1] : 1,
+                    vertical,
+                });
+            }
+            cache.set(key, material);
+            disposables.push(material);
+            return material;
+        };
+    }
+
+    function createBlobTexture() {
+        const size = 128;
+        const blob = document.createElement('canvas');
+        blob.width = size;
+        blob.height = size;
+        const context = blob.getContext('2d');
+        const gradient = context.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+        gradient.addColorStop(0, 'rgba(255,255,255,1)');
+        gradient.addColorStop(0.55, 'rgba(255,255,255,0.55)');
+        gradient.addColorStop(1, 'rgba(255,255,255,0)');
+        context.fillStyle = gradient;
+        context.fillRect(0, 0, size, size);
+        const texture = new THREE.CanvasTexture(blob);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        return texture;
+    }
+
+    // ----------------------------------------------------------------- world
+    function buildWorld(style) {
+        const root = new THREE.Group();
+        const disposables = [];
+        const entities = [];
+        const material = createMaterialFactory(style, disposables);
+        const rounded = style === 'party';
+        const styled = style !== 'current';
+
+        const track = (geometry) => {
+            disposables.push(geometry);
+            return geometry;
+        };
+        const box = (w, h, d) => track(new THREE.BoxGeometry(w, h, d));
+        const roundedBox = (w, h, d, radius, segments = 4) =>
+            track(new RoundedBoxGeometry(w, h, d, segments, radius));
+        const sphere = (radius, w = 24, h = 16) => track(new THREE.SphereGeometry(radius, w, h));
+        const cylinder = (top, bottom, h, segments = 20, open = false) =>
+            track(new THREE.CylinderGeometry(top, bottom, h, segments, 1, open));
+
+        function mesh(parent, geometry, mat, position = [0, 0, 0], options = {}) {
+            const item = new THREE.Mesh(geometry, mat);
+            item.position.set(position[0], position[1], position[2]);
+            if (options.scale) item.scale.set(...options.scale);
+            if (options.rotation) item.rotation.set(...options.rotation);
+            item.castShadow = options.cast ?? true;
+            item.receiveShadow = options.receive ?? true;
+            parent.add(item);
+            return item;
+        }
+
+        function entity(x, z, build, options = {}) {
+            const group = new THREE.Group();
+            group.position.set(x, 0, z);
+            root.add(group);
+            const state = {
+                group,
+                breatheNode: null,
+                breathe: options.breathe ?? 0,
+                sway: options.sway ?? 0,
+                phase: (x * 1.7 + z * 2.3) % 6.28,
+                pop: 1,
+                popVelocity: 0,
+                popTarget: 1,
+                squash: 0,
+                squashVelocity: 0,
+                lift: 0,
+                liftVelocity: 0,
+                delay: 0,
+            };
+            group.userData.entity = state;
+            build(group, state);
+            entities.push(state);
+            return state;
+        }
+
+        let blobMaterial = null;
+        function contactShadow(parent, radiusX, radiusZ, y = 0.012, opacity = 0.34) {
+            if (!styled) return;
+            if (!blobMaterial) {
+                const texture = createBlobTexture();
+                disposables.push(texture);
+                blobMaterial = new THREE.MeshBasicMaterial({
+                    map: texture,
+                    color: '#12402e',
+                    transparent: true,
+                    opacity: 1,
+                    depthWrite: false,
+                    toneMapped: false,
+                });
+                disposables.push(blobMaterial);
+            }
+            const mat = blobMaterial.clone();
+            mat.opacity = opacity;
+            disposables.push(mat);
+            const plane = new THREE.Mesh(track(new THREE.PlaneGeometry(1, 1)), mat);
+            plane.rotation.x = -Math.PI / 2;
+            plane.position.y = y;
+            plane.scale.set(radiusX * 2, radiusZ * 2, 1);
+            plane.renderOrder = 1;
+            parent.add(plane);
+        }
+
+        addLights(root, style);
+
+        // ---- terrain: 5 x 5 tiles, one soil path row at x = -1
+        if (rounded) {
+            // One continuous cap over a soil body. Only the outer rim is
+            // bevelled, and the path is painted into the surface through a
+            // mask, so no tile seams show. In the game, blocks stay separate
+            // meshes: world-projected textures line up across them and only
+            // exposed edges get the rounded rim.
+            mesh(
+                root,
+                roundedBox(4.92, 0.46, 4.92, 0.15, 6),
+                material('islandSoil', { base: -0.62, height: 0.5 }),
+                [0, -0.37, 0],
+            );
+            const ground = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.74, metalness: 0 });
+            ground.envMapIntensity = 1;
+            applyToySurface(ground, {
+                base: -0.3,
+                height: 0.3,
+                rim: 0.5,
+                map: textures.grass,
+                mapScale: 0.5,
+                anchored: false,
+                blend: { map: textures.path, mask: textures.pathMask, rect: [-2.5, -2.5, 5, 5] },
+            });
+            disposables.push(ground);
+            mesh(root, roundedBox(5, 0.2, 5, 0.07, 6), ground, [0, -0.1, 0]);
+        } else {
+            // BlockGrass.glb and BlockGround.glb: 1 x 0.4 x 1 boxes, 24 vertices.
+            const block = box(1, 0.4, 1);
+            for (let x = -2; x <= 2; x++) {
+                for (let z = -2; z <= 2; z++) {
+                    const role = x === -1 ? 'dirt' : 'grass';
+                    mesh(root, block, material(role, { base: -0.5, height: 0.5 }), [x, -0.2, z]);
+                }
+            }
+        }
+
+        // ---- raised bed: 1 x 2 tiles at x = 0, z = -1..0
+        entity(0, -0.5, (group) => {
+            if (rounded) {
+                const board = material('wood', { base: -0.05, height: 0.5 });
+                const post = material('woodDark', { base: -0.05, height: 0.6, vertical: true });
+                const longPlank = roundedBox(0.12, 0.17, 1.74, 0.035);
+                const shortPlank = roundedBox(0.74, 0.17, 0.12, 0.035);
+                for (const level of [0.095, 0.285]) {
+                    mesh(group, longPlank, board, [-0.41, level, 0]);
+                    mesh(group, longPlank, board, [0.41, level, 0]);
+                    mesh(group, shortPlank, board, [0, level, -0.91]);
+                    mesh(group, shortPlank, board, [0, level, 0.91]);
+                }
+                const corner = roundedBox(0.19, 0.5, 0.19, 0.055);
+                for (const [x, z] of [[-0.41, -0.91], [0.41, -0.91], [-0.41, 0.91], [0.41, 0.91]]) {
+                    mesh(group, corner, post, [x, 0.25, z]);
+                }
+                mesh(
+                    group,
+                    roundedBox(0.72, 0.12, 1.72, 0.04),
+                    material('soil', { base: -0.1, height: 0.4 }),
+                    [0, 0.25, 0],
+                );
+                contactShadow(group, 0.78, 1.3, 0.012, 0.3);
+            } else {
+                // RaisedBed.glb: 0.08 thick planks, 0.3 tall, soil at 0.25.
+                const planks = material('wood', { base: -0.05, height: 0.45 });
+                mesh(group, box(0.08, 0.3, 2), planks, [-0.46, 0.15, 0]);
+                mesh(group, box(0.08, 0.3, 2), planks, [0.46, 0.15, 0]);
+                mesh(group, box(0.84, 0.3, 0.08), planks, [0, 0.15, -0.96]);
+                mesh(group, box(0.84, 0.3, 0.08), planks, [0, 0.15, 0.96]);
+                mesh(group, box(0.84, 0.25, 1.84), material('soil', { base: 0, height: 0.3 }), [0, 0.125, 0]);
+                contactShadow(group, 0.7, 1.2, 0.012, 0.26);
+            }
+        });
+
+        const soilTop = rounded ? 0.31 : 0.25;
+        const cropSlots = [
+            ['lettuce', 0.17, -1.17],
+            ['carrot', -0.17, -1.2],
+            ['tomato', 0.17, -0.7],
+            ['lettuce', -0.17, -0.66],
+            ['carrot', 0.17, -0.22],
+            ['tomato', -0.17, -0.16],
+            ['lettuce', 0.17, 0.24],
+            ['sprout', -0.17, 0.28],
+        ];
+        for (const [kind, x, z] of cropSlots) {
+            entity(x, z, (group, state) => {
+                const plant = new THREE.Group();
+                plant.position.y = soilTop;
+                group.add(plant);
+                state.breatheNode = plant;
+                if (rounded) {
+                    plant.scale.setScalar(1.3);
+                    buildPartyCrop(plant, kind);
+                } else {
+                    buildCurrentCrop(plant, kind);
+                }
+            }, { breathe: 0.035 });
+        }
+
+        function buildPartyCrop(plant, kind) {
+            const leaf = material('cropLeaf', { base: soilTop, height: 0.4 });
+            const leafLight = material('cropLeafLight', { base: soilTop, height: 0.4 });
+            const blob = sphere(1, 16, 12);
+            if (kind === 'lettuce') {
+                mesh(plant, blob, leafLight, [0, 0.07, 0], { scale: [0.075, 0.08, 0.075] });
+                for (let i = 0; i < 7; i++) {
+                    const angle = (i / 7) * Math.PI * 2;
+                    const petal = mesh(plant, blob, i % 2 ? leaf : leafLight, [
+                        Math.cos(angle) * 0.085,
+                        0.05,
+                        Math.sin(angle) * 0.085,
+                    ], { scale: [0.085, 0.03, 0.065] });
+                    petal.rotation.set(0, -angle, 0.5, 'YXZ');
+                }
+            } else if (kind === 'carrot') {
+                mesh(plant, blob, material('carrot', { base: soilTop, height: 0.2 }), [0, 0.012, 0], {
+                    scale: [0.05, 0.035, 0.05],
+                });
+                for (let i = 0; i < 6; i++) {
+                    const angle = (i / 6) * Math.PI * 2;
+                    const frond = mesh(plant, blob, i % 2 ? leaf : leafLight, [
+                        Math.cos(angle) * 0.045,
+                        0.12,
+                        Math.sin(angle) * 0.045,
+                    ], { scale: [0.028, 0.11, 0.028] });
+                    frond.rotation.set(0, -angle, -0.38, 'YXZ');
+                }
+            } else if (kind === 'tomato') {
+                mesh(plant, cylinder(0.014, 0.014, 0.5, 10), material('woodDark', { base: soilTop, height: 0.5, vertical: true }), [0.05, 0.25, 0.03]);
+                mesh(plant, blob, leaf, [0, 0.12, 0], { scale: [0.11, 0.1, 0.11] });
+                mesh(plant, blob, leafLight, [0.02, 0.25, -0.01], { scale: [0.095, 0.09, 0.095] });
+                mesh(plant, blob, leaf, [-0.01, 0.36, 0.01], { scale: [0.075, 0.075, 0.075] });
+                const fruit = material('tomato', { base: soilTop, height: 0.5 });
+                for (const [x, y, z, size] of [[-0.09, 0.13, -0.05, 0.052], [-0.05, 0.25, -0.09, 0.046], [-0.1, 0.3, 0.02, 0.04]]) {
+                    mesh(plant, blob, fruit, [x, y, z], { scale: [size, size, size] });
+                }
+            } else {
+                mesh(plant, cylinder(0.014, 0.018, 0.1, 10), leaf, [0, 0.05, 0]);
+                for (const direction of [-1, 1]) {
+                    const seedLeaf = mesh(plant, blob, leafLight, [direction * 0.05, 0.11, 0], {
+                        scale: [0.055, 0.016, 0.036],
+                    });
+                    seedLeaf.rotation.z = direction * 0.45;
+                }
+            }
+        }
+
+        function buildCurrentCrop(plant, kind) {
+            const leaf = material('cropLeaf', { base: soilTop, height: 0.4, side: THREE.DoubleSide });
+            const leafLight = material('cropLeafLight', { base: soilTop, height: 0.4, side: THREE.DoubleSide });
+            const stalkHeight = kind === 'tomato' ? 0.36 : kind === 'sprout' ? 0.08 : 0.16;
+            mesh(plant, cylinder(0.008, 0.01, stalkHeight, 5), material('stem', { base: soilTop, height: 0.4 }), [0, stalkHeight / 2, 0]);
+            const blade = track(new THREE.PlaneGeometry(0.1, 0.05));
+            const count = kind === 'sprout' ? 2 : kind === 'tomato' ? 7 : 5;
+            for (let i = 0; i < count; i++) {
+                const angle = (i / count) * Math.PI * 2 + 0.4;
+                const y = stalkHeight * (0.35 + (0.65 * i) / count);
+                const item = mesh(plant, blade, i % 2 ? leaf : leafLight, [
+                    Math.cos(angle) * 0.05,
+                    y,
+                    Math.sin(angle) * 0.05,
+                ]);
+                item.rotation.set(-0.5, -angle, 0, 'YXZ');
+            }
+            if (kind === 'tomato') {
+                const fruit = track(new THREE.IcosahedronGeometry(0.028, 0));
+                mesh(plant, fruit, material('tomato', { base: soilTop, height: 0.4, flat: true }), [-0.04, 0.17, -0.03]);
+                mesh(plant, fruit, material('tomato', { base: soilTop, height: 0.4, flat: true }), [-0.03, 0.26, 0.03]);
+            }
+        }
+
+        // ---- tree
+        entity(2, 2, (group, state) => {
+            if (rounded) {
+                mesh(group, cylinder(0.12, 0.19, 0.72, 20), material('trunk', { base: 0, height: 0.8, vertical: true }), [0, 0.36, 0]);
+                const canopy = new THREE.Group();
+                canopy.position.y = 0.6;
+                group.add(canopy);
+                state.breatheNode = canopy;
+                // One soft dome with a flat underside and a lighter cap on
+                // the side facing the camera, instead of a cluster of spheres.
+                const leaves = material('leaves', { base: 0.55, height: 1.25 });
+                const leavesLight = material('leavesLight', { base: 0.55, height: 1.25 });
+                const dome = track(new THREE.SphereGeometry(1, 40, 28));
+                const domePosition = dome.attributes.position;
+                for (let i = 0; i < domePosition.count; i++) {
+                    // The canopy sits on the trunk like a cap.
+                    if (domePosition.getY(i) < -0.69) domePosition.setY(i, -0.69);
+                }
+                dome.computeVertexNormals();
+                mesh(canopy, dome, leaves, [0, 0.7, 0], { scale: [0.66, 0.58, 0.66] });
+                const puff = sphere(1, 28, 20);
+                mesh(canopy, puff, leavesLight, [-0.14, 1.04, -0.1], { scale: [0.4, 0.24, 0.4] });
+                const apple = material('tomato', { base: 0.6, height: 1.2 });
+                for (const [x, y, z] of [[-0.53, 0.7, -0.39], [-0.23, 0.56, -0.6], [-0.64, 0.61, 0.13], [-0.41, 0.97, -0.41], [0.13, 0.76, -0.64]]) {
+                    mesh(canopy, puff, apple, [x, y, z], { scale: [0.07, 0.07, 0.07] });
+                }
+                contactShadow(group, 0.62, 0.62, 0.012, 0.36);
+            } else {
+                // Tree.glb: 1.0 tall six-sided trunk, 1.4 wide faceted canopy.
+                mesh(group, cylinder(0.07, 0.1, 1, 6), material('trunk', { base: 0, height: 1, flat: true }), [0, 0.5, 0]);
+                mesh(
+                    group,
+                    track(new THREE.IcosahedronGeometry(0.7, 1)),
+                    material('leaves', { base: 0.45, height: 1.45, flat: true }),
+                    [0, 1.15, 0],
+                );
+                contactShadow(group, 0.5, 0.5, 0.012, 0.3);
+            }
+        }, { breathe: 0.022 });
+
+        // ---- bush
+        entity(2, 0.1, (group, state) => {
+            if (rounded) {
+                const shrub = new THREE.Group();
+                group.add(shrub);
+                state.breatheNode = shrub;
+                const leaves = material('bush', { base: 0, height: 0.6 });
+                const leavesLight = material('leavesLight', { base: 0, height: 0.6 });
+                const puff = sphere(1, 24, 16);
+                mesh(shrub, puff, leaves, [0, 0.24, 0], { scale: [0.33, 0.29, 0.33] });
+                mesh(shrub, puff, leavesLight, [-0.2, 0.19, -0.15], { scale: [0.23, 0.2, 0.23] });
+                mesh(shrub, puff, leaves, [0.19, 0.17, 0.17], { scale: [0.22, 0.19, 0.22] });
+                const blossom = material('blossom', { base: 0, height: 0.6 });
+                const heart = material('petal', { base: 0, height: 0.6 });
+                for (const [x, y, z] of [[-0.3, 0.33, -0.25], [-0.12, 0.47, -0.2], [-0.33, 0.24, 0.02], [0.02, 0.4, -0.3]]) {
+                    mesh(shrub, puff, blossom, [x, y, z], { scale: [0.045, 0.045, 0.045] });
+                    mesh(shrub, puff, heart, [x - 0.025, y + 0.02, z - 0.025], { scale: [0.022, 0.022, 0.022] });
+                }
+                contactShadow(group, 0.45, 0.45, 0.012, 0.34);
+            } else {
+                // Bush.glb: 0.5 wide, 0.25 tall low-poly mound.
+                mesh(
+                    group,
+                    track(new THREE.IcosahedronGeometry(0.27, 0)),
+                    material('bush', { base: 0, height: 0.3, flat: true }),
+                    [0, 0.12, 0],
+                    { scale: [1, 0.55, 1] },
+                );
+                contactShadow(group, 0.33, 0.33, 0.012, 0.26);
+            }
+        }, { breathe: 0.03 });
+
+        // ---- stones
+        function pebbleGeometry(radius, seed) {
+            let geometry = new THREE.IcosahedronGeometry(radius, 4);
+            geometry.deleteAttribute('normal');
+            geometry.deleteAttribute('uv');
+            geometry = mergeVertices(geometry);
+            const position = geometry.attributes.position;
+            const point = new THREE.Vector3();
+            for (let i = 0; i < position.count; i++) {
+                point.fromBufferAttribute(position, i).normalize();
+                const bump =
+                    1 +
+                    0.1 * Math.sin(point.x * 3.1 + seed) * Math.sin(point.y * 2.7 + seed * 1.7) +
+                    0.07 * Math.sin(point.z * 4.3 + seed * 0.6);
+                point.multiplyScalar(radius * bump);
+                position.setXYZ(i, point.x, point.y, point.z);
+            }
+            geometry.computeVertexNormals();
+            return track(geometry);
+        }
+        for (const [x, z, size, seed] of [[2, -1.95, 1, 1.3], [1.5, -2.15, 0.55, 4.1]]) {
+            entity(x, z, (group) => {
+                if (rounded) {
+                    mesh(group, pebbleGeometry(0.3 * size, seed), material('stone', { base: 0, height: 0.4 * size }), [0, 0.15 * size, 0], {
+                        scale: [1.15, 0.72, 1],
+                    });
+                    contactShadow(group, 0.42 * size, 0.38 * size, 0.012, 0.36);
+                } else {
+                    // StoneMedium.glb: 0.65 x 0.32 x 0.62 faceted rock.
+                    mesh(
+                        group,
+                        track(new THREE.DodecahedronGeometry(0.32 * size, 0)),
+                        material('stone', { base: 0, height: 0.35 * size, flat: true }),
+                        [0, 0.13 * size, 0],
+                        { scale: [1.02, 0.52, 0.97] },
+                    );
+                    contactShadow(group, 0.36 * size, 0.34 * size, 0.012, 0.26);
+                }
+            });
+        }
+
+        // ---- fence along the back-right edge
+        entity(-1, 2.38, (group) => {
+            const span = 0.95;
+            const posts = [-1.425, -0.475, 0.475, 1.425];
+            if (rounded) {
+                const postMaterial = material('woodDark', { base: 0, height: 0.75, vertical: true });
+                const railMaterial = material('wood', { base: 0, height: 0.75 });
+                const post = roundedBox(0.19, 0.66, 0.19, 0.075, 5);
+                const rail = roundedBox(span, 0.1, 0.085, 0.035);
+                for (const x of posts) mesh(group, post, postMaterial, [x, 0.33, 0]);
+                for (let i = 0; i < posts.length - 1; i++) {
+                    const x = (posts[i] + posts[i + 1]) / 2;
+                    mesh(group, rail, railMaterial, [x, 0.21, 0]);
+                    mesh(group, rail, railMaterial, [x, 0.45, 0]);
+                }
+            } else {
+                // Fence.glb: 0.16 square posts, 0.55 tall, thin rails.
+                const planks = material('wood', { base: 0, height: 0.6 });
+                const post = box(0.16, 0.55, 0.16);
+                const rail = box(span, 0.08, 0.05);
+                for (const x of posts) mesh(group, post, planks, [x, 0.275, 0]);
+                for (let i = 0; i < posts.length - 1; i++) {
+                    const x = (posts[i] + posts[i + 1]) / 2;
+                    mesh(group, rail, planks, [x, 0.2, 0]);
+                    mesh(group, rail, planks, [x, 0.4, 0]);
+                }
+            }
+        });
+
+        // ---- sunflowers
+        for (const [x, z, scale] of [[-2, 1.55, 1], [-2.05, 0.6, 0.78]]) {
+            entity(x, z, (group, state) => {
+                const flower = new THREE.Group();
+                flower.scale.setScalar(scale);
+                group.add(flower);
+                state.breatheNode = flower;
+                const head = new THREE.Group();
+                head.rotation.set(-0.32, -Math.PI * 0.75, 0, 'YXZ');
+                flower.add(head);
+                if (rounded) {
+                    head.position.y = 0.86;
+                    const stem = material('stem', { base: 0, height: 0.9 });
+                    mesh(flower, cylinder(0.04, 0.05, 0.84, 14), stem, [0, 0.42, 0]);
+                    const blob = sphere(1, 16, 12);
+                    const leafMaterial = material('cropLeaf', { base: 0, height: 0.9 });
+                    for (const [direction, y] of [[-1, 0.3], [1, 0.47]]) {
+                        const leaf = mesh(flower, blob, leafMaterial, [direction * 0.14, y + 0.05, direction * 0.05], {
+                            scale: [0.15, 0.028, 0.09],
+                        });
+                        leaf.rotation.set(0, 0.5, direction * 0.42, 'YXZ');
+                    }
+                    const petal = material('petal', { base: 0.4, height: 0.8 });
+                    const petalShade = material('petalShade', { base: 0.4, height: 0.8 });
+                    for (let i = 0; i < 14; i++) {
+                        const angle = (i / 14) * Math.PI * 2;
+                        const item = mesh(head, blob, i % 2 ? petalShade : petal, [
+                            Math.cos(angle) * 0.2,
+                            Math.sin(angle) * 0.2,
+                            i % 2 ? -0.012 : 0.008,
+                        ], { scale: [0.062, 0.125, 0.026] });
+                        item.rotation.z = angle - Math.PI / 2;
+                    }
+                    mesh(head, blob, material('flowerCenter', { base: 0.4, height: 0.8 }), [0, 0, 0.02], {
+                        scale: [0.155, 0.155, 0.07],
+                    });
+                    mesh(head, blob, stem, [0, 0, -0.04], { scale: [0.17, 0.17, 0.05] });
+                    contactShadow(group, 0.2 * scale, 0.2 * scale, 0.012, 0.3);
+                } else {
+                    // Sunflower.glb: thin stem, flat petals around a flat disc.
+                    head.position.y = 0.8;
+                    const stem = material('stem', { base: 0, height: 0.9 });
+                    mesh(flower, cylinder(0.02, 0.02, 0.8, 6), stem, [0, 0.4, 0]);
+                    const leafMaterial = material('cropLeafLight', { base: 0, height: 0.9, side: THREE.DoubleSide });
+                    const leafShape = track(new THREE.PlaneGeometry(0.26, 0.11));
+                    for (const [direction, y] of [[-1, 0.32], [1, 0.48]]) {
+                        const leaf = mesh(flower, leafShape, leafMaterial, [direction * 0.13, y, 0]);
+                        leaf.rotation.set(-1.2, 0.5, 0, 'YXZ');
+                    }
+                    const petalShape = box(0.07, 0.17, 0.012);
+                    const petal = material('petal', { base: 0.4, height: 0.8 });
+                    const petalShade = material('petalShade', { base: 0.4, height: 0.8 });
+                    for (let i = 0; i < 14; i++) {
+                        const angle = (i / 14) * Math.PI * 2;
+                        const item = mesh(head, petalShape, i % 2 ? petalShade : petal, [
+                            Math.cos(angle) * 0.19,
+                            Math.sin(angle) * 0.19,
+                            0,
+                        ]);
+                        item.rotation.z = angle - Math.PI / 2;
+                    }
+                    const disc = mesh(head, cylinder(0.13, 0.13, 0.03, 12), material('flowerCenter', { base: 0.4, height: 0.8 }), [0, 0, 0.012]);
+                    disc.rotation.x = Math.PI / 2;
+                    contactShadow(group, 0.14 * scale, 0.14 * scale, 0.012, 0.22);
+                }
+            }, { breathe: 0.02, sway: 0.05 });
+        }
+
+        // ---- bucket
+        entity(1, -1.05, (group) => {
+            if (rounded) {
+                const steel = material('metal', { base: 0, height: 0.42, side: THREE.DoubleSide });
+                mesh(group, cylinder(0.245, 0.185, 0.36, 32, true), steel, [0, 0.18, 0]);
+                mesh(group, track(new THREE.CircleGeometry(0.185, 32)), steel, [0, 0.004, 0], {
+                    rotation: [Math.PI / 2, 0, 0],
+                    cast: false,
+                });
+                mesh(group, track(new THREE.TorusGeometry(0.245, 0.03, 12, 36)), steel, [0, 0.36, 0], {
+                    rotation: [Math.PI / 2, 0, 0],
+                });
+                mesh(group, track(new THREE.CircleGeometry(0.225, 32)), material('water', { base: 0, height: 0.4 }), [0, 0.3, 0], {
+                    rotation: [-Math.PI / 2, 0, 0],
+                    cast: false,
+                });
+                const handle = mesh(group, track(new THREE.TorusGeometry(0.245, 0.017, 10, 28, Math.PI)), steel, [0, 0.36, 0]);
+                handle.rotation.set(0.5, 0.6, 0, 'YXZ');
+                const grip = mesh(group, track(new THREE.CapsuleGeometry(0.03, 0.09, 6, 12)), material('wood', { base: 0.3, height: 0.4 }), [0, 0.215, 0]);
+                grip.rotation.z = Math.PI / 2;
+                handle.add(grip);
+                grip.position.set(0, 0.245, 0);
+                contactShadow(group, 0.34, 0.34, 0.012, 0.36);
+            } else {
+                // Bucket.glb: grey ten-sided pail with a thin handle.
+                const steel = material('metal', { base: 0, height: 0.35, side: THREE.DoubleSide });
+                mesh(group, cylinder(0.2, 0.16, 0.3, 10, true), steel, [0, 0.15, 0]);
+                mesh(group, track(new THREE.CircleGeometry(0.19, 10)), material('water', { base: 0, height: 0.4 }), [0, 0.26, 0], {
+                    rotation: [-Math.PI / 2, 0, 0],
+                    cast: false,
+                });
+                const handle = mesh(group, track(new THREE.TorusGeometry(0.2, 0.008, 4, 10, Math.PI)), steel, [0, 0.3, 0]);
+                handle.rotation.set(0.5, 0.6, 0, 'YXZ');
+                contactShadow(group, 0.27, 0.27, 0.012, 0.26);
+            }
+        });
+
+        // ---- small ground detail, party style only
+        if (rounded) {
+            const blob = sphere(1, 12, 8);
+            const tuftMaterial = material('leavesLight', { base: 0, height: 0.2 });
+            for (const [x, z] of [[1.25, 0.9], [0.75, 1.75], [1.6, -0.55], [-2.3, -1.4], [-0.1, 1.5], [0.8, -2.1], [-1.9, -0.45]]) {
+                for (const [dx, dz, tilt, size] of [[0, 0, 0, 1], [0.05, 0.02, 0.5, 0.8], [-0.05, 0.02, -0.5, 0.75]]) {
+                    const tuft = mesh(root, blob, tuftMaterial, [x + dx, 0.07 * size, z + dz], {
+                        scale: [0.026, 0.08 * size, 0.026],
+                        cast: false,
+                    });
+                    tuft.rotation.z = tilt;
+                }
+            }
+            const pebble = material('pebble', { base: 0, height: 0.1 });
+            for (const [x, z, size] of [[-1.2, -1.7, 0.07], [-0.78, -0.9, 0.05], [-1.22, 0.35, 0.06], [-0.8, 1.3, 0.075], [-1.15, 1.95, 0.045]]) {
+                mesh(root, blob, pebble, [x, 0.012, z], { scale: [size, size * 0.45, size * 0.85] });
+            }
+        }
+
+        return {
+            root,
+            entities,
+            dispose() {
+                for (const item of disposables) item.dispose();
+            },
+        };
+    }
+
+    // ----------------------------------------------------------- mode switch
+    function setMode(next, animate) {
+        mode = next;
+        if (world) {
+            scene.remove(world.root);
+            world.dispose();
+        }
+        world = buildWorld(mode);
+        scene.add(world.root);
+        hovered = null;
+
+        const styled = mode !== 'current';
+        renderer.toneMapping = styled ? THREE.NeutralToneMapping : THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1;
+        scene.environment = styled ? environmentMap : null;
+        scene.environmentIntensity = mode === 'party' ? 0.42 : 0.3;
+
+        if (animate && mode === 'party') {
+            for (const item of world.entities) {
+                item.pop = 0.4;
+                item.delay =
+                    0.03 * (Math.abs(item.group.position.x + 2.5) + Math.abs(item.group.position.z + 2.5));
+            }
+        }
+
+        stage.dataset.mode = mode;
+        for (const button of buttons) {
+            button.setAttribute('aria-pressed', String(button.dataset.mode === mode));
+        }
+        const copy = modeCopy[mode];
+        summary.textContent = copy.summary;
+        specs.replaceChildren(
+            ...copy.specs.map(([term, value]) => {
+                const row = document.createElement('div');
+                const dt = document.createElement('dt');
+                const dd = document.createElement('dd');
+                dt.textContent = term;
+                dd.textContent = value;
+                row.append(dt, dd);
+                return row;
+            }),
+        );
+        needsRender = true;
+    }
+
+    // ------------------------------------------------------------ interaction
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    let pointerDown = null;
+
+    function entityAt(event) {
+        const bounds = canvas.getBoundingClientRect();
+        pointer.set(
+            ((event.clientX - bounds.left) / bounds.width) * 2 - 1,
+            -((event.clientY - bounds.top) / bounds.height) * 2 + 1,
+        );
+        raycaster.setFromCamera(pointer, camera);
+        const hit = raycaster.intersectObjects(world.entities.map((item) => item.group), true)[0];
+        let node = hit?.object ?? null;
+        while (node && !node.userData.entity) node = node.parent;
+        return node?.userData.entity ?? null;
+    }
+
+    canvas.addEventListener('pointermove', (event) => {
+        if (mode !== 'party' || pointerDown) return;
+        const next = entityAt(event);
+        if (next === hovered) return;
+        if (hovered) hovered.popTarget = 1;
+        hovered = next;
+        if (hovered) hovered.popTarget = 1.09;
+    });
+    canvas.addEventListener('pointerleave', () => {
+        if (hovered) hovered.popTarget = 1;
+        hovered = null;
+    });
+    canvas.addEventListener('pointerdown', (event) => {
+        pointerDown = { x: event.clientX, y: event.clientY };
+    });
+    canvas.addEventListener('pointerup', (event) => {
+        const start = pointerDown;
+        pointerDown = null;
+        if (mode !== 'party' || !start) return;
+        if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 5) return;
+        const target = entityAt(event);
+        if (!target || target.lift > 0.001) return;
+        target.liftVelocity = 2.4;
+        target.squashVelocity = 3.2;
+    });
+
+    // ---------------------------------------------------------------- frame
+    function animate(time, delta) {
+        let moving = false;
+        for (const item of world.entities) {
+            if (item.delay > 0) {
+                item.delay -= delta;
+                item.group.scale.setScalar(0.4);
+                moving = true;
+                continue;
+            }
+            item.popVelocity += (-210 * (item.pop - item.popTarget) - 13 * item.popVelocity) * delta;
+            item.pop += item.popVelocity * delta;
+            item.squashVelocity += (-260 * item.squash - 11 * item.squashVelocity) * delta;
+            item.squash += item.squashVelocity * delta;
+            if (item.lift > 0 || item.liftVelocity > 0) {
+                item.liftVelocity -= 11 * delta;
+                item.lift += item.liftVelocity * delta;
+                if (item.lift <= 0) {
+                    item.lift = 0;
+                    item.liftVelocity = 0;
+                    item.squashVelocity = -3.4;
+                }
+            }
+            item.group.position.y = item.lift;
+            item.group.scale.set(
+                item.pop * (1 - item.squash * 0.5),
+                item.pop * (1 + item.squash),
+                item.pop * (1 - item.squash * 0.5),
+            );
+            if (item.breatheNode) {
+                const breath = item.breathe * Math.sin(time * 1.7 + item.phase);
+                item.breatheNode.scale.set(1 - breath * 0.5, 1 + breath, 1 - breath * 0.5);
+                item.breatheNode.rotation.z = item.sway * Math.sin(time * 1.1 + item.phase);
+            }
+            moving = true;
+        }
+        return moving;
+    }
+
+    function resize() {
+        const width = stage.clientWidth;
+        const height = stage.clientHeight;
+        if (!width || !height) return;
+        renderer.setSize(width, height, false);
+        const zoom = Math.min(width / 7.9, height / 6.3);
+        camera.left = -width / 2 / zoom;
+        camera.right = width / 2 / zoom;
+        camera.top = height / 2 / zoom;
+        camera.bottom = -height / 2 / zoom;
+        camera.updateProjectionMatrix();
+        needsRender = true;
+    }
+
+    function frame() {
+        requestAnimationFrame(frame);
+        const now = performance.now();
+        const delta = Math.min((now - lastFrame) / 1000, 0.05);
+        lastFrame = now;
+        if (!visible) return;
+        elapsed += delta;
+        const moving = mode === 'party' && animate(elapsed, delta);
+        if (!moving && !needsRender) return;
+        needsRender = false;
+        renderer.render(scene, camera);
+        window.__gpsReady = true;
+    }
+
+    new ResizeObserver(resize).observe(stage);
+    new IntersectionObserver((entries) => {
+        visible = entries.some((entry) => entry.isIntersecting);
+        needsRender = true;
+    }).observe(stage);
+
+    for (const button of buttons) {
+        button.addEventListener('click', () => setMode(button.dataset.mode, true));
+    }
+
+    const requested = new URLSearchParams(window.location.search).get('mode');
+    setMode(requested in modeCopy ? requested : 'party', false);
+    resize();
+    frame();
+}
+</script>
+</body>
+</html>

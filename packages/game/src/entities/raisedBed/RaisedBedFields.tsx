@@ -11,8 +11,8 @@ import {
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
 import type { RaisedBedOrientation } from '../../utils/raisedBedOrientation';
 import { resolveEntityNeighbors } from '../helpers/useEntityNeighbors';
-import { defaultGameWoodColor } from '../woodPalette';
 import { RaisedBedPlantField } from './RaisedBedPlantField';
+import { raisedBedAccessoryPalette } from './raisedBedAccessoryPalette';
 import {
     hasActiveRaisedBedProtectiveCover,
     resolveRaisedBedProtectiveCoverPositions,
@@ -333,7 +333,9 @@ function RaisedBedFieldWeeds({
                         ]}
                     >
                         <coneGeometry args={[radius, height, 4]} />
-                        <meshStandardMaterial color="#4b7f3b" roughness={1} />
+                        <meshStandardMaterial
+                            {...raisedBedAccessoryPalette.weed}
+                        />
                     </mesh>
                 );
             })}
@@ -366,38 +368,38 @@ function RaisedBedFieldAgrotextileCover({
             >
                 <planeGeometry args={[0.25, 0.25]} />
                 <meshStandardMaterial
-                    color="#dcd7c6"
+                    color={raisedBedAccessoryPalette.fabric.color}
                     depthWrite={false}
                     opacity={0.76}
                     polygonOffset
                     polygonOffsetFactor={-4}
-                    roughness={1}
+                    roughness={raisedBedAccessoryPalette.fabric.roughness}
                     transparent
                 />
             </mesh>
             <mesh position={[0, 0.012, -0.118]} renderOrder={5}>
                 <boxGeometry args={[0.255, 0.008, 0.012]} />
-                <meshStandardMaterial color="#eee9d8" roughness={1} />
+                <meshStandardMaterial {...raisedBedAccessoryPalette.fabric} />
             </mesh>
             <mesh position={[0, 0.012, 0.118]} renderOrder={5}>
                 <boxGeometry args={[0.255, 0.008, 0.012]} />
-                <meshStandardMaterial color="#eee9d8" roughness={1} />
+                <meshStandardMaterial {...raisedBedAccessoryPalette.fabric} />
             </mesh>
             <mesh position={[-0.118, 0.012, 0]} renderOrder={5}>
                 <boxGeometry args={[0.012, 0.008, 0.255]} />
-                <meshStandardMaterial color="#eee9d8" roughness={1} />
+                <meshStandardMaterial {...raisedBedAccessoryPalette.fabric} />
             </mesh>
             <mesh position={[0.118, 0.012, 0]} renderOrder={5}>
                 <boxGeometry args={[0.012, 0.008, 0.255]} />
-                <meshStandardMaterial color="#eee9d8" roughness={1} />
+                <meshStandardMaterial {...raisedBedAccessoryPalette.fabric} />
             </mesh>
             <mesh position={[0, 0.014, 0]} renderOrder={6}>
                 <boxGeometry args={[0.22, 0.006, 0.008]} />
-                <meshStandardMaterial color="#c9c2ad" roughness={1} />
+                <meshStandardMaterial {...raisedBedAccessoryPalette.fabric} />
             </mesh>
             <mesh position={[0, 0.015, 0]} renderOrder={6}>
                 <boxGeometry args={[0.008, 0.006, 0.22]} />
-                <meshStandardMaterial color="#c9c2ad" roughness={1} />
+                <meshStandardMaterial {...raisedBedAccessoryPalette.fabric} />
             </mesh>
         </group>
     );
@@ -420,12 +422,12 @@ function RaisedBedWholeAgrotextileCover({
             >
                 <planeGeometry args={[layout.width, layout.depth]} />
                 <meshStandardMaterial
-                    color="#dcd7c6"
+                    color={raisedBedAccessoryPalette.fabric.color}
                     depthWrite={false}
                     opacity={0.76}
                     polygonOffset
                     polygonOffsetFactor={-4}
-                    roughness={1}
+                    roughness={raisedBedAccessoryPalette.fabric.roughness}
                     transparent
                 />
             </mesh>
@@ -437,7 +439,7 @@ function RaisedBedWholeAgrotextileCover({
                         wholeBedAgrotextileHemThickness,
                     ]}
                 />
-                <meshStandardMaterial color="#eee9d8" roughness={1} />
+                <meshStandardMaterial {...raisedBedAccessoryPalette.fabric} />
             </mesh>
             <mesh position={[0, 0.012, halfDepth]} renderOrder={5}>
                 <boxGeometry
@@ -447,7 +449,7 @@ function RaisedBedWholeAgrotextileCover({
                         wholeBedAgrotextileHemThickness,
                     ]}
                 />
-                <meshStandardMaterial color="#eee9d8" roughness={1} />
+                <meshStandardMaterial {...raisedBedAccessoryPalette.fabric} />
             </mesh>
             <mesh position={[-halfWidth, 0.012, 0]} renderOrder={5}>
                 <boxGeometry
@@ -457,7 +459,7 @@ function RaisedBedWholeAgrotextileCover({
                         layout.depth + wholeBedAgrotextileHemThickness,
                     ]}
                 />
-                <meshStandardMaterial color="#eee9d8" roughness={1} />
+                <meshStandardMaterial {...raisedBedAccessoryPalette.fabric} />
             </mesh>
             <mesh position={[halfWidth, 0.012, 0]} renderOrder={5}>
                 <boxGeometry
@@ -467,7 +469,7 @@ function RaisedBedWholeAgrotextileCover({
                         layout.depth + wholeBedAgrotextileHemThickness,
                     ]}
                 />
-                <meshStandardMaterial color="#eee9d8" roughness={1} />
+                <meshStandardMaterial {...raisedBedAccessoryPalette.fabric} />
             </mesh>
         </group>
     );
@@ -493,10 +495,7 @@ function RaisedBedFieldSupportVisual({
         <group position={position}>
             <mesh castShadow position={[0, 0.39, 0]} renderOrder={8}>
                 <cylinderGeometry args={[0.018, 0.022, 0.78, 6]} />
-                <meshStandardMaterial
-                    color={defaultGameWoodColor}
-                    roughness={0.9}
-                />
+                <meshStandardMaterial {...raisedBedAccessoryPalette.wood} />
             </mesh>
         </group>
     );

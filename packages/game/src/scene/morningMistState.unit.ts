@@ -98,6 +98,44 @@ test('paths, slopes, occupied tiles, props and pickup targets stay clear', () =>
     );
 });
 
+test('wisps lie on grass next to props; occupied tiles stay clear', () => {
+    const near = instance('near', 'Block_Grass', 1);
+    const wisps = createMorningMistAnchors({
+        instances: [near],
+        gardenId: 7,
+        tier: 'high',
+        blockData,
+    });
+    assert.equal(wisps.length, 1, 'grass beside a bed takes a wisp');
+    // A tile with something on it never takes a wisp.
+    const occupied = instance('occupied');
+    occupied.stack.blocks.push({ id: 'stool', name: 'Stool', rotation: 0 });
+    assert.equal(
+        createMorningMistAnchors({
+            instances: [occupied],
+            gardenId: 7,
+            tier: 'high',
+            blockData,
+        }).length,
+        0,
+    );
+});
+
+test('wisps take the mist colour and can stand still', () => {
+    const mesh = createMorningMistMesh(anchors(), { value: 0 });
+    const uniforms = mesh.material.uniforms;
+    assert.ok(uniforms.uColor?.value);
+    assert.equal(uniforms.uMotion?.value, 1);
+    assert.match(mesh.material.fragmentShader, /uTime \* 0\.12 \* uMotion/);
+    assert.match(
+        mesh.material.fragmentShader,
+        /gl_FragColor = vec4\(uColor, alpha\)/,
+    );
+    mesh.geometry.dispose();
+    mesh.material.dispose();
+    mesh.dispose();
+});
+
 test('caps and seeded placement are stable across order, quality and remounts', () => {
     const sites = Array.from({ length: 200 }, (_, i) =>
         instance(`site:${i}`, 'Block_Grass', i),

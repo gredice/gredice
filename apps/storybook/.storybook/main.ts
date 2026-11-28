@@ -12,6 +12,9 @@ const config: StorybookConfig = {
     stories: ['../stories/**/*.mdx', '../stories/**/*.stories.@(ts|tsx)'],
     staticDirs: [
         '../public',
+        // Generated HUD artwork the game components load by URL (the
+        // backpack, the basket, the block options medallions).
+        { from: '../../garden/public/assets/hud', to: '/assets/hud' },
         { from: '../../www/public/assets/plants', to: '/assets/plants' },
         {
             from: '../../www/public/assets/faq-categories',

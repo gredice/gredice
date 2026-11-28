@@ -119,6 +119,27 @@ Each tree selects one canopy with a bounded ID-seeded retention offset. Sprigs
 belonging to the original full canopy disappear with that canopy; the same selected
 geometry receives snow. Seasonal stage changes also invalidate cached shadows.
 
+The round `Tree` also has a runtime bare stage (no re-export; Tree.glb is
+unchanged). `getAutumnTreeCanopyStage` returns `bare` when leaf retention is
+at or below `autumnBareRetention` (0.1) plus a per-tree offset of up to
+±0.015 (`autumnBareRetentionSpread`, seeded like the other stage offsets, so
+the lowest threshold of 0.085 stays above the 0.08 winter floor). Trees
+therefore lose their crowns between about 30 November and 5 December and
+regrow them between about 23 and 27 March. A bare tree draws only its trunk
+and `Tree_AutumnBranches` (named `Autumn:Branches:<id>` on the single-entity
+path), and the crown batches skip it. Snow on the branches of thinning,
+sparse and bare trees is a `snowPresets.treeBranches` overlay. Its up range
+is converted for the tree's scale (`entities/treeEntityScale.ts`, 0.125 ×
+0.5) by `overlaySlopeRangeForScale`, because the overlay measures slopes
+through the model matrix without the inverse transpose. The late-autumn
+thinning and sparse stages are unchanged (25 November is still sparse). The
+crown comes back as the sparse stage and is fresh green from its first day
+(`resolveTreeFoliageColorProgress`, as on the seasonal maple and the autumn
+shrub). The canopy shadow key reads `tree:bare`. A bare tree's static
+contact keeps only its trunk blob: the crown pool uses
+`staticContactShadowFoliageScale.bare` (0), through the `tree` foliage kind
+in `staticContactShadowProfiles.ts`.
+
 Blender 5.1.2 export counts: full tree 1,170 triangles (124 trunk, 80 canopy,
 966 sprigs), thinning 284 (124 trunk, 80 canopy, 80 branches), sparse 244
 (124 trunk, 40 canopy, 80 branches). All stages use three opaque meshes plus
@@ -684,9 +705,11 @@ Validation:
 - `pnpm --filter garden exec playwright test --config playwright.season.config.ts tests/cold-weather.spec.tsx --workers=1`
 
 The WebGL fixture combines 99 ground tiles, ten actors, a tree, autumn leaves,
-a stool, and optional rain/snow. At high quality the cold layer adds exactly one
-draw and 16 triangles over the same scene with cold effects unmounted; frost adds
-no geometry. Captures and matrix/opacity readbacks cover frozen late autumn and
+a stool, and optional rain/snow. At high quality the cold layer adds exactly 21
+draws and 16 triangles over the same scene with cold effects unmounted: one
+breath draw, and 20 from frost splitting the terrain rim and verge packets
+(accepted; see [game-party-style.md](game-party-style.md)). Frost adds no
+geometry. Captures and matrix/opacity readbacks cover frozen late autumn and
 winter, warm/missing/stale inputs, quality, reduced motion, precipitation,
 repeatability, offscreen suspension and unmount. This is a rendering-work budget,
 not a hardware frame-rate claim.

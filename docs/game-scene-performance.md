@@ -26,10 +26,11 @@ without claiming a native-driver explanation for the historical measurements.
 The 2026-04-29 analysis did not find the scene asset-bound. Game models are now
 split into one runtime GLB per asset under `apps/garden/public/assets/models`,
 generated from one Blender source file per asset under `assets/game-assets`.
-The current runtime inventory contains 146 GLBs totaling 14,648,032 compressed
-bytes (13.97 MiB), while the generated manifest exposes 145 asset names. The
-extra file is the intentionally obsolete `BlockStoneStairsHalf` compatibility
-asset, which the runtime manifest excludes. Mesh, primitive, vertex, material,
+At that refresh the runtime inventory contained 146 GLBs totaling 14,648,032
+compressed bytes (13.97 MiB), while the generated manifest exposed 145 asset
+names. The extra file was the obsolete `BlockStoneStairsHalf` compatibility
+asset, which the runtime manifest excluded; it has since been removed, so the
+inventory now matches the manifest. Mesh, primitive, vertex, material,
 texture, and animation totals have not been remeasured against this expanded
 asset set, so the static refresh alone does not reconfirm the earlier
 asset-bound conclusion.
@@ -43,7 +44,8 @@ unrelated scene re-renders.
 The earlier analysis attributed the remaining cost to render policy and
 auxiliary systems rather than raw model complexity: continuous frame loops,
 high-resolution shadows, many shadow casters/receivers, per-instance snow
-overlays, CPU-updated weather particles, per-sprite billboard callbacks, and
+overlays, CPU-updated weather particles (since moved to the vertex shader),
+per-sprite billboard callbacks, and
 detailed plant/decoration layers. The cross-tier matrix below exercises one
 deterministic garden, not the full asset catalog; current before/after profiles
 must establish which of these costs still dominate.
@@ -107,10 +109,24 @@ not accidentally based on `next dev`.
   packets and geometry buffers during garden edits. Large terrain merges use
   transferable worker buffers; small patches use a measured synchronous budget.
   Water-side rebuilds retain the existing cardinal-neighbor occlusion rules.
+- Waterfalls (2026-11-26, `entities/waterfall/`) turn exposed water walls into
+  falling sheets in the water shader and add one merged extras mesh (landing
+  foam, spills, island-edge run-outs) per water side chunk that has a fall,
+  drawn in a single pass without depth writes. Side walls no longer merge
+  across columns that land at different heights. On the nine-island water lab
+  at low quality that measured +9 draws (86 to 95) and about +1,100 triangles;
+  the fauna-heavy farm has no water and stayed at 599 draws / 96,859 triangles
+  on high. The waterfall adds no lease: its streaks and foam animate on the
+  existing `water-surface-animation` owner, so fixed time and reduced motion
+  still let the scene idle. Winter changes to the extras read the shared grass
+  snow uniform, and only while the quality tier draws grass snow.
 - Snow and rain overlays are optimized for repeated instanced blocks, but many
-  non-instanced entities can still mount per-block `SnowOverlay` or
-  `RainWetOverlay` meshes when weather makes them visible, so snow/rain profiles
-  can remain overlay-bound outside the repeated instanced block path.
+  non-instanced entities can still mount per-block `SnowOverlay` meshes when
+  snow makes them visible, so snow profiles can remain overlay-bound outside
+  the repeated instanced block path. Since 2026-11-24 rain mounts no
+  per-entity `RainWetOverlay` copies, and since 2026-11-25 no instanced
+  block wet overlays either: the wet look lives in the base-ground
+  material.
 - The remaining expensive areas are continuous `useFrame` systems, snow overlays
   outside the repeated instanced block path, CPU weather loops, plant/detail LOD,
   and profiling noise from app-level providers.
@@ -133,7 +149,8 @@ figures explicitly marked as historical retain the 2026-04-29 evidence boundary:
 | `castShadow` / `receiveShadow` occurrences | historical: 109 | not remeasured; coarse 2026-04-29 source count in `packages/game/src` |
 | Directional shadow map | low: off, medium: 2048, high: 4096 | legacy default was 8192 |
 | Canvas DPR policy | low: cap 1, medium: cap 1.5, high: cap 2 | set as a DPR cap, not a forced upscale |
-| Weather particle policy | low: 35% rain / 30% snow, medium: 70% / 60%, high: 100% | rain fades through shader intensity and unmounts below the visible threshold; profiler reports active rain/snow counts |
+| Weather particle policy | rain: 840 × tier (high 1, medium 0.7, low 0.35) × rainy^1.3 × view area over 1280 × 800; snow: 520 × tier (1, 0.6, 0.3) × snowy × view area | one instanced draw each, animated in the vertex shader; counts are continuous (2026-11-24 weather restyle, `scene/weather/weatherTierCaps.ts`); profiler reports active rain/snow counts |
+| Weather prop policy | top-band clouds 10 / 7 / 4 plus the overcast deck (two draws), cloud shadows 6 / 4 / 0, splash rings 29 / 14 / 0, swooshes 4 / 2 / 1 (high / medium / low) | caps derive from the tier, no fields in saved custom profiles; every layer holds a render lease only while it moves |
 | Ground decoration policy | low: off, medium: 50%, high: 100% | skipped in far zoom and reported in profile metadata |
 | Snow overlay policy | low: min coverage 0.35, medium: 0.08, high: 0.02 | overlays are not mounted below the tier threshold |
 
@@ -143,6 +160,92 @@ These measurements were taken against the running `apps/garden` dev server on
 port 3001. They are useful for direction, not as final product benchmarks. Dev
 mode includes Next.js compilation/HMR, auth fetches, PostHog/session tooling, and
 warnings that will not exactly match production.
+
+### Weather restyle (2026-11-24)
+
+Measured on the shared dev server at
+`/debug/profile/game?profile=fauna-heavy&quality=high&date=2026-06-15`,
+1280 × 800, DSF 1, midday, live time: the median of about 20 renderer stats
+receipts over 10 s (`rendererRenderCalls`, `rendererTriangles`, including the
+shadow pass). Draw counts and triangles do not depend on the dev build;
+timings were not measured. The first column is the farm before the restyle
+(WEATHER-MAP, same method).
+
+| Weather | Before: calls / triangles | Now: calls / triangles | Weather pieces now |
+| --- | ---: | ---: | --- |
+| Clear | 599 / 96,859 | 599 / 96,859 | none, no weather lease |
+| Overcast | 520 / 105,930 | 474 / 83,679 | 10 band clouds and the deck, 6 shadows |
+| Heavy rain | 618 / 148,234 | 510 / 107,780 | 840 drops, 29 rings, 1 puddle, deck, 6 shadows |
+| Storm | 618 / 148,234 | 512 / 107,876 | as rain plus 12 rim and 1 sky mist roll (one draw), 3 swooshes, 7 leaves |
+| Snow | 629 / 195,626 | 613 / 186,980 | 364 discs, 44 icon flakes, 13 sparkles, 9 clouds, 5 shadows |
+| Fog | 491 / 83,719 (08:00 mist) | 476 / 83,771 | 12 rim rolls and 2 sky rolls (one draw, 28 triangles), 7 clouds |
+| Heavy rain, low tier | 604 / 144,024 | 508 / 105,834 | 294 drops, no rings, 4 clouds, no shadows |
+| Heavy rain, medium tier | - | 510 / 106,936 | 588 drops, 14 rings, 7 clouds, 4 shadows |
+
+Rain, storm, snow and fog were re-measured on 2026-11-25 after round 2:
+the instanced block wet overlays are retired, the mist rolls draw as one
+instanced draw of 2-triangle quads (they were 648 triangles a roll), and the
+winter round tree is bare.
+
+- The plan's rain budget is at most 600 draws and about 110,000 triangles,
+  and since 2026-11-25 rain meets both. The instanced block wet overlays
+  (`InstancedRainWetOverlays` in `EntityInstancesBlock.tsx`) are retired. On
+  the farm they were exactly 24 draws and 19,044 triangles: heavy rain on
+  high went from 534 / 126,824 to 510 / 107,780, medium from 534 / 125,980
+  to 510 / 106,936, and low from 532 / 124,878 to 508 / 105,834. At zoom 170
+  in full rain they changed only 0.1 to 0.2% of pixels by more than 30 in
+  RGB. Storm went from 537 / 135,966 to 512 / 107,876: 24 draws and 19,044
+  triangles are the overlays, and 1 draw and 9,046 triangles are the mist
+  rolls, now one instanced draw. The wet look comes only from the
+  weather-integrated base-ground material: flat ground blocks (grass, sand,
+  dirt, dry and swamp ground, stone, gravel, polished stone, snow) and the
+  terrain rim and verge, plus puddles and splash rings. Angles, corners,
+  stairs and props show no wet look. The farm reports 0 avoided and 0
+  fallback `weatherSurface` overlays in rain (24 / 19,044 fallback and
+  18 / 3,972 avoided before). The profiler's rain expectations are 0 and 0
+  in both modes, and the rain legacy and integrated scenarios run once each
+  and are no longer a pair, because no overlay is left for the integrated
+  surface to save.
+- With clear and still weather no weather layer holds a render lease. The
+  default island still renders through its own `fauna:*` and `plant-sway`
+  leases, and the farm through its fauna leases and
+  `time-driven-materials`. Lying snow on a clear, still day adds no lease
+  either. The snow sparkles have no lease of their own: they twinkle only
+  on frames that another lease (or a base frame rate) already renders
+  (`useSceneContinuousRenderReader` in `SceneTime.tsx`, backed by
+  `GameRuntimeScheduler.isRenderingContinuously()`). One-off frames do not
+  move them, and when nothing else renders they hold still. On the default
+  island with lying snow (`staticIdle=1`, `date=2026-01-15`, weather
+  `{cloudy: 0, snowy: 0, snowAccumulation: 30}`) the leases went from
+  `fauna:*`, `plant-sway`, `snow-sparkles` (10 fps) to `fauna:*` and
+  `plant-sway`, and the 14 sparkles redraw with the scene at 30 fps. Under
+  reduced motion only `fauna:*` is left and no sparkles draw. In the
+  static-idle profile (`fixedTimeSeconds`, no fauna or plants) lying snow
+  holds no lease and renders no frames. The default profile publishes
+  `runtimeFrameLoop` data only while the profile controller is on
+  (`staticIdle=1`, `profile=fauna-heavy` or another controller flag), so
+  check leases there.
+- Weather changes no longer recompile the lit programs. A clear sky keeps
+  an inert fog attached (it starts far behind the camera), so the `FOG`
+  variant never toggles, and the cloud shadow code is patched into every lit
+  material when the shadow layer mounts on a tier that has shadows (the
+  shader skips it while no shadow shows, and the static cache takes its
+  second, shadowed capture only while one does). On the default island at
+  1280 × 800 on the dev server (2026-11-25), clear to overcast linked 1
+  program with no long task (31 programs and two long tasks of about 135 ms
+  before), and overcast to clear linked none (13 to 15 and a 140 to 158 ms
+  task before). Re-checked after round 2 the same day: still 1 program and
+  no long task for clear to overcast, none for overcast to clear. The
+  `weather-transitions` profiler scenarios were not re-run on a production
+  build.
+- Snow that is setting in or melting draws its overlays as a translucent
+  dusting in the transparent pass (`snowCoverRules` in
+  `snow/snowShader.ts`), so the blocks they cover leave the static cache
+  until the cover is opaque again.
+- Not run: `pnpm --filter garden run profile:game` with the weather
+  scenarios. It builds and starts a production server, which the shared
+  worktree's dev server makes unsafe. The `game-rain-mobile` and
+  `game-snow-mobile` smoke budgets are therefore not re-measured.
 
 ### Repeatable profiling reports
 
@@ -1915,6 +2018,11 @@ Expected impact: high for normal gardens with many blocks; low in scenes where
 snow is disabled and overlays are absent.
 
 ### 5. Weather particles are CPU-updated every frame
+
+Status (2026-11-24): resolved. Rain and snow animate in the vertex shader
+from seeded instance attributes, counts follow the tier and the view's pixel
+area, and each layer releases its render lease when nothing moves. The text
+below is the original finding.
 
 Rain loops over up to 2,000 drops and repeatedly reads/decomposes/writes instance
 matrices. Snow can mount `snowParticles * 5000` flakes and updates each particle

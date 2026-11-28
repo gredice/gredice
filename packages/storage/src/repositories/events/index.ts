@@ -16,6 +16,7 @@ export {
     countEventsSince,
     createDeliveryLifecycleNotificationDecisionOnce,
     createEvent,
+    createEvents,
     deleteEventById,
     getAiAnalysisEvents,
     getAiAnalysisTotals,

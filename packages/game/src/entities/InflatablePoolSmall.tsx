@@ -85,12 +85,12 @@ export function InflatablePoolSmall({
                 scale={nodes.InflatablePoolSmall_Water.scale}
             >
                 <MeshDistortMaterial
-                    color="#14a7d3"
+                    color="#2c678d"
                     depthWrite={false}
                     distort={0.1}
-                    metalness={0.28}
+                    metalness={0}
                     opacity={0.72}
-                    roughness={0.2}
+                    roughness={0.15}
                     side={DoubleSide}
                     speed={resolveTimeDrivenMaterialSpeed(
                         1.2,

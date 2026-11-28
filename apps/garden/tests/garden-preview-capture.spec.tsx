@@ -3,9 +3,9 @@ import {
     gardenPreviewMaxSizeBytes,
     gardenPreviewWidth,
 } from '@gredice/js/gardenPreviews';
-import { expect, test } from '@playwright/experimental-ct-react';
 import { getLocalSandboxBlockData } from '../../../packages/game/src/localSandboxBlockData';
 import { GardenPreviewCaptureStory } from './GardenPreviewCaptureStory';
+import { expect, test } from './webglComponentTest';
 
 const capturePlantSorts = [
     {

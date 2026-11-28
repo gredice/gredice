@@ -1,4 +1,5 @@
 import {
+    Color,
     DoubleSide,
     InstancedBufferAttribute,
     InstancedMesh,
@@ -36,6 +37,11 @@ export function createMorningMistMesh(
             ...UniformsUtils.clone(UniformsLib.fog),
             uTime: time,
             uDensity: { value: 0 },
+            // The component copies the mist role in.
+            uColor: { value: new Color(0.78, 0.83, 0.85) },
+            uAlpha: { value: 0.16 },
+            // 0 under reduced motion: wisps stand still.
+            uMotion: { value: 1 },
         },
         vertexShader: `
             attribute float mistPhase;
@@ -53,15 +59,18 @@ export function createMorningMistMesh(
         fragmentShader: `
             uniform float uTime;
             uniform float uDensity;
+            uniform vec3 uColor;
+            uniform float uAlpha;
+            uniform float uMotion;
             varying vec2 vUv;
             varying float vPhase;
             #include <fog_pars_fragment>
             void main() {
                 float edge = 1.0 - smoothstep(0.2, 1.0, length(vUv));
-                float wisps = 0.7 + 0.3 * sin(vUv.x * 5.0 + vUv.y * 3.0 + vPhase + uTime * 0.12);
-                float alpha = edge * edge * wisps * uDensity * 0.12;
+                float wisps = 0.7 + 0.3 * sin(vUv.x * 5.0 + vUv.y * 3.0 + vPhase + uTime * 0.12 * uMotion);
+                float alpha = edge * edge * wisps * uDensity * uAlpha;
                 if (alpha < 0.001) discard;
-                gl_FragColor = vec4(0.78, 0.83, 0.85, alpha);
+                gl_FragColor = vec4(uColor, alpha);
                 #include <fog_fragment>
                 #include <colorspace_fragment>
             }

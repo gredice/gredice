@@ -41,12 +41,22 @@ export function RainRipples({
     gardenId,
     tier,
     enabled = true,
+    groundRings = true,
+    reducedMotion: reducedMotionOverride,
     snow = 0,
 }: {
     stacks: Stack[] | undefined;
     gardenId?: number;
     tier: GameQualityProfileTier;
     enabled?: boolean;
+    /**
+     * Rings on exposed ground blocks. The party style turns them off: its
+     * splash rings (`RainSplashes`) land on every ground and bed cell, and
+     * these keep only the water ripples.
+     */
+    groundRings?: boolean;
+    /** The shared weather reduced-motion value, when the caller has it. */
+    reducedMotion?: boolean;
     snow?: number;
 }) {
     const { data: blockData } = useBlockData();
@@ -61,11 +71,12 @@ export function RainRipples({
     );
     const rain = useRainSurfaceIntensityUniform();
     const dragging = useGameState((state) => state.activeDragPreview !== null);
-    const reducedMotion = useSyncExternalStore(
+    const systemReducedMotion = useSyncExternalStore(
         subscribeReducedMotion,
         getReducedMotion,
         () => false,
     );
+    const reducedMotion = reducedMotionOverride ?? systemReducedMotion;
     const visible = useSceneRuntimeVisible();
     const fixedTime = useSceneFixedTimeSeconds();
     const time = useSceneTimeUniform();
@@ -86,7 +97,7 @@ export function RainRipples({
         () => getRainCoveredCells(stacks ?? [], blockData ?? []),
         [stacks, blockData],
     );
-    const groundActive = raining && active;
+    const groundActive = groundRings && raining && active;
     const anchors = useMemo(
         () =>
             createRainRippleAnchors({

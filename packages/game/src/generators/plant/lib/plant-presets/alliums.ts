@@ -1,3 +1,4 @@
+import { cropFlowerPalette, cropLeafPalette } from '../cropPalette';
 import type { PlantDefinition } from '../plant-definition-types';
 import { createDevelopmentProgram, createPlant } from './helpers';
 
@@ -5,19 +6,19 @@ const alliumBase: Pick<PlantDefinition, 'flower' | 'height' | 'leaf' | 'stem'> =
     {
         height: 1.02,
         stem: {
-            color: '#5d9540',
+            color: cropLeafPalette.light,
             radius: 0.015,
             radiusDecay: 0.24,
             minRadius: 0.008,
         },
         leaf: {
-            color: '#5d9540',
+            color: cropLeafPalette.light,
             size: 0.3,
             type: 'tubular',
         },
         flower: {
             enabled: false,
-            color: '#ffffff',
+            color: cropFlowerPalette.cream,
             size: 0,
         },
     };
@@ -72,11 +73,11 @@ export const alliumPlants = {
         height: 0.92,
         stem: {
             ...alliumBase.stem,
-            color: '#719f52',
+            color: cropLeafPalette.light,
         },
         leaf: {
             ...alliumBase.leaf,
-            color: '#719f52',
+            color: cropLeafPalette.light,
             size: 0.28,
             type: 'strap',
         },
@@ -109,13 +110,13 @@ export const alliumPlants = {
         height: 1.1,
         stem: {
             ...alliumBase.stem,
-            color: '#648f42',
+            color: cropLeafPalette.brassica,
             radius: 0.018,
             minRadius: 0.01,
         },
         leaf: {
             ...alliumBase.leaf,
-            color: '#648f42',
+            color: cropLeafPalette.brassica,
             size: 0.34,
             type: 'strap',
         },
@@ -150,18 +151,18 @@ export const alliumPlants = {
         height: 0.74,
         stem: {
             ...alliumBase.stem,
-            color: '#5c9c49',
+            color: cropLeafPalette.base,
             radius: 0.01,
             minRadius: 0.004,
         },
         leaf: {
             ...alliumBase.leaf,
-            color: '#5c9c49',
+            color: cropLeafPalette.base,
             size: 0.22,
         },
         flower: {
             enabled: true,
-            color: '#bf9cff',
+            color: cropFlowerPalette.lilac,
             size: 0.065,
         },
         vegetable: {

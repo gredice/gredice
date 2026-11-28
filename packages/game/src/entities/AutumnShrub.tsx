@@ -68,7 +68,7 @@ export function AutumnShrub({
                     {/* Per-instance owned materials: no cached GLTF colour or geometry mutation. */}
                     <meshStandardMaterial
                         color={index === 0 ? gold : russet}
-                        roughness={0.95}
+                        roughness={0.55}
                         metalness={0}
                     />
                 </WeatheredEntityPart>

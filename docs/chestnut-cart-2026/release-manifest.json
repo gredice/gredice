@@ -4,20 +4,20 @@
   "snapshotDate": "2026-10-22T12:00:00+02:00",
   "source": {
     "path": "assets/game-assets/ChestnutRoastingCart.blend",
-    "bytes": 126788,
-    "sha256": "13f81475b998ce0163d90006c9d693c433b1c63a54e4cc3109cd3a24d478a59e"
+    "bytes": 170990,
+    "sha256": "6b74c4e5c697ea034b280ae6bfeaae7c5f5ed5c1cb516d7f9a80f64b8895a602"
   },
   "models": [
     {
       "name": "ChestnutRoastingCart",
       "path": "apps/garden/public/assets/models/ChestnutRoastingCart.glb",
-      "bytes": 184624,
-      "sha256": "16c0c20649872c4af3b9c4278e70d93e14aecdfd8cdfaedbaa19d2925276a2de",
-      "url": "https://vrt.gredice.com/assets/models/ChestnutRoastingCart.glb?v=16c0c2064987",
-      "triangles": 2016,
+      "bytes": 184420,
+      "sha256": "d702158b838c3e3a48cff554b24d63264c666432cd1907a02aa0b23731af30e5",
+      "url": "https://vrt.gredice.com/assets/models/ChestnutRoastingCart.glb?v=d702158b838c",
+      "triangles": 5388,
       "trianglesByMesh": {
-        "ChestnutRoastingCart_Cart": 1452,
-        "ChestnutRoastingCart_Roaster": 564
+        "ChestnutRoastingCart_Cart": 3016,
+        "ChestnutRoastingCart_Roaster": 2372
       },
       "meshCount": 2,
       "materialCount": 2
@@ -50,53 +50,53 @@
       "images": [
         {
           "path": "apps/www/public/assets/blocks/ChestnutRoastingCart.webp",
-          "bytes": 39124,
-          "sha256": "d7fbdbf9b19efdb5b925355d87677e3f31fb86cc1d7819a8d88ec9316af88cd5"
+          "bytes": 24146,
+          "sha256": "fe93e269c167230e9cda24a3e9cc4caa7403896d2a922c6c8dda979bdce1ab97"
         },
         {
           "path": "apps/www/public/assets/blocks/ChestnutRoastingCart_1.webp",
-          "bytes": 39124,
-          "sha256": "d7fbdbf9b19efdb5b925355d87677e3f31fb86cc1d7819a8d88ec9316af88cd5"
+          "bytes": 24146,
+          "sha256": "fe93e269c167230e9cda24a3e9cc4caa7403896d2a922c6c8dda979bdce1ab97"
         },
         {
           "path": "apps/www/public/assets/blocks/ChestnutRoastingCart_2.webp",
-          "bytes": 41594,
-          "sha256": "9d5f6b74e9d08f827f8afaca4f6d6421c35c3e264eddc2e7bb856d7f457bdea0"
+          "bytes": 26714,
+          "sha256": "c122bf356acc4cb903fc3e0c6450dd91188a5acd2903396737904c96a21e693d"
         },
         {
           "path": "apps/www/public/assets/blocks/ChestnutRoastingCart_3.webp",
-          "bytes": 23282,
-          "sha256": "65c6ff11d6411717fac071ad715315ef2b4e17749eef861768a65a61532711e9"
+          "bytes": 21490,
+          "sha256": "04d9de96d1da23907e6ef41ce8ec5d9f5761ae2e3500cf824ceb518b427918ce"
         },
         {
           "path": "apps/www/public/assets/blocks/ChestnutRoastingCart_4.webp",
-          "bytes": 24684,
-          "sha256": "8e3f09cc84674b2b54d5abbe3a15ad8645238cee1fd3d9a36c6e4d5a310d3821"
+          "bytes": 22948,
+          "sha256": "ede44fcc98009e5ea6b0c68441d0f3d13a7c24fdb6574adff224acf07300d568"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/ChestnutRoastingCart.webp",
-          "bytes": 3870,
-          "sha256": "157c0d07102547f8cc14623fb789ae22a8d5a8dc08789bfd3090c52f5d2efb80"
+          "bytes": 4544,
+          "sha256": "635b7aab1b553b62d3b10706871c2f40f9a509458321658495fad77fbcfcd8fe"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/ChestnutRoastingCart_1.webp",
-          "bytes": 3870,
-          "sha256": "157c0d07102547f8cc14623fb789ae22a8d5a8dc08789bfd3090c52f5d2efb80"
+          "bytes": 4544,
+          "sha256": "635b7aab1b553b62d3b10706871c2f40f9a509458321658495fad77fbcfcd8fe"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/ChestnutRoastingCart_2.webp",
-          "bytes": 3180,
-          "sha256": "0aca63a2ce30242db53fc64f0a7566c5f5a074dbb3bd1d4c73251411b7f5bc19"
+          "bytes": 4114,
+          "sha256": "9d7a3e331e3a400e03ad05d97ad7944fbf49920ef1ac46c7f7f6aee2b745a484"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/ChestnutRoastingCart_3.webp",
-          "bytes": 3460,
-          "sha256": "2f692e19e800d514fb0933827b9a7acef6d76ae3ea1bfb735f85eec87fd630f7"
+          "bytes": 4168,
+          "sha256": "6cbc63ce485484ff34eaa4aa7fc4f6dec6b8a5da900cbf6b5f160ce889c45c51"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/ChestnutRoastingCart_4.webp",
-          "bytes": 3328,
-          "sha256": "309fa5e7ddf7cf8c3c7790b06dd7237e0394d9606c6faf05e758400c57190f1e"
+          "bytes": 3958,
+          "sha256": "a9cf01d9ec9f461b19b05f60d63ec41c43924adc6f9eec4b478c5477b45a6d10"
         }
       ]
     }

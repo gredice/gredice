@@ -175,16 +175,22 @@ describe('Stacked firewood release', () => {
                             object.geometry.getAttribute('position').count) / 3;
                 }
             });
-            assert.equal(triangles, 408);
+            assert.equal(triangles, 1704);
             assert.ok(
-                palette.size >= 8,
+                // One colour per part from the GAME_ART roles: trunk bark plus
+                // light and dark timber on the split faces and end grain.
+                palette.size >= 3,
                 'Bark, cut ends and split face colours share one material',
             );
             assert.ok(bytes.length < 250_000);
             for (const material of document.materials) {
                 assert.equal(material.pbrMetallicRoughness.metallicFactor, 0);
+                // GAME_ART satin band for wood, leaves and stone (float32 factors).
                 assert.ok(
-                    material.pbrMetallicRoughness.roughnessFactor >= 0.82,
+                    material.pbrMetallicRoughness.roughnessFactor >=
+                        0.5 - 1e-6 &&
+                        material.pbrMetallicRoughness.roughnessFactor <=
+                            0.6 + 1e-6,
                 );
                 assert.equal(material.emissiveFactor, undefined);
             }

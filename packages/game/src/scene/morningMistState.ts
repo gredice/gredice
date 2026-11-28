@@ -58,15 +58,22 @@ export function resolveMorningMistDensity(
     );
 }
 
+const noCoveredCells: ReadonlySet<string> = new Set<string>();
+
+/**
+ * Wisps lie on exposed grass, swamp and water tops. A wisp fits inside its
+ * own tile, so only occupied tiles stay clear and grass next to props takes
+ * wisps too; `coveredCells` can clear more tiles.
+ */
 export function createMorningMistAnchors({
     instances,
-    coveredCells,
+    coveredCells = noCoveredCells,
     blockData,
     gardenId,
     tier,
 }: {
     instances: readonly EntityBlockInstance[];
-    coveredCells: ReadonlySet<string>;
+    coveredCells?: ReadonlySet<string>;
     blockData: BlockData[];
     gardenId: number | undefined;
     tier: GameQualityProfileTier;

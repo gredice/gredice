@@ -40,6 +40,7 @@ import {
 } from './adaptiveHighQuality';
 import { BreathSourcesProvider } from './cold/BreathSources';
 import { GardenLightProvider } from './GardenLightProvider';
+import { gameToneMapping } from './gameArtStyle';
 import {
     createRuntimeFrameLoopProfileTelemetry,
     readGameProfileMetadata,
@@ -61,7 +62,11 @@ import {
 import { StaticOpaqueSceneCacheProvider } from './StaticOpaqueSceneCache';
 import { SteamSourcesProvider } from './SteamSources';
 import { getSceneRootRuntime } from './sceneRootRuntime';
+import { installSkyRimShaderChunk } from './skyRimShaderChunk';
 import { WeatherSurfaceUniformProvider } from './WeatherSurfaceUniformProvider';
+
+// Shared shader chunks must change before any garden material compiles.
+installSkyRimShaderChunk();
 
 export type SceneProps = HTMLAttributes<HTMLDivElement> &
     PropsWithChildren<{
@@ -354,6 +359,11 @@ export function Scene({
         contextLossCallbackRef.current = onContextLost;
     }, [onContextLost]);
 
+    // Passing toneMapping stops react-three-fiber from applying ACES filmic.
+    const glProps = useMemo(
+        () => ({ ...rendererOptions, toneMapping: gameToneMapping }),
+        [rendererOptions],
+    );
     const qualityProfile = quality ?? resolveGameQualityProfile();
     const adaptiveHighActive =
         adaptiveHighEnabled && qualityProfile.tier === 'high';
@@ -412,7 +422,7 @@ export function Scene({
         <Canvas
             orthographic
             dpr={pixelRatio ?? [1, effectiveDprCap]}
-            gl={rendererOptions}
+            gl={glProps}
             shadows={
                 qualityProfile.shadows
                     ? {
@@ -468,9 +478,9 @@ export function Scene({
                                 debugStats && wireframeDebugVisible,
                             )}
                         >
-                            <ActorGroundingShadowProvider
-                                enabled={qualityProfile.shadows}
-                            >
+                            {/* Contact blobs ground animals on every tier,
+                                including the one without shadow maps. */}
+                            <ActorGroundingShadowProvider enabled>
                                 <FaunaRuntimeProvider>
                                     <HoverOutlineProvider>
                                         <SceneDebugName />

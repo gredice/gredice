@@ -141,12 +141,14 @@ describe('butterfly asset', () => {
         const foreWingWidth = span(foreWing, 0);
         const foreWingLength = span(foreWing, 2);
 
-        assert.ok(abdomenWidth <= 0.12, `Abdomen width ${abdomenWidth}`);
-        assert.ok(thoraxWidth <= 0.19, `Thorax width ${thoraxWidth}`);
+        // The plush redesign keeps the body at least 0.03 game units wide
+        // (GAME_ART.md "Animals"): 0.28 model units at butterflyActorScale.
+        assert.ok(abdomenWidth <= 0.32, `Abdomen width ${abdomenWidth}`);
+        assert.ok(thoraxWidth <= 0.36, `Thorax width ${thoraxWidth}`);
         assert.ok(foreWingWidth >= 0.94, `Forewing width ${foreWingWidth}`);
         assert.ok(foreWingLength >= 0.86, `Forewing length ${foreWingLength}`);
         assert.ok(
-            foreWingWidth / abdomenWidth >= 8,
+            foreWingWidth / abdomenWidth >= 3,
             `Wing/body ratio ${foreWingWidth / abdomenWidth}`,
         );
     });

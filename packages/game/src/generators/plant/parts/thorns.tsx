@@ -19,7 +19,10 @@ import {
     finalizeStaticInstanceMatrixUpload,
     markStaticInstancedAttributeForUpload,
 } from '../lib/plantInstanceBuffers';
-import { resolvePlantPartCastShadow } from '../lib/plantPartRendering';
+import {
+    PLANT_STEM_ROUGHNESS,
+    resolvePlantPartCastShadow,
+} from '../lib/plantPartRendering';
 
 interface ThornsProps {
     bounds?: PackedPlantBounds;
@@ -54,6 +57,7 @@ export function Thorns({
         [instanceCapacity],
     );
     const swayUniforms = usePlantSway(`${seed}-thorns`, {
+        breathSeed: seed,
         amplitude: 0.045,
         enabled: animate,
         speed: 1.1,
@@ -118,7 +122,8 @@ export function Thorns({
                 vertexShader={plantSwayVertexShader}
                 uniforms={swayUniforms}
                 color={color}
-                roughness={0.78}
+                roughness={PLANT_STEM_ROUGHNESS}
+                metalness={0}
             />
         </instancedMesh>
     );

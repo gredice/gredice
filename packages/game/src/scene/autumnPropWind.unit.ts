@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { BoxGeometry, MeshStandardMaterial, ShaderLib, Vector2 } from 'three';
 import { createSnowOverlayGeometry } from '../snow/createSnowOverlayGeometry';
@@ -13,6 +12,7 @@ import {
     patchAutumnPropWindShader,
     resolveAutumnPropWindStrength,
 } from './autumnPropWind';
+import { resolveWindSway } from './weather/windClass';
 
 test('wind remains bounded across quality, invalid weather and accessibility settings', () => {
     const defaults = {
@@ -35,10 +35,23 @@ test('wind remains bounded across quality, invalid weather and accessibility set
             assert.ok(strength >= 0 && strength <= 1);
         }
     }
+    // One wind scale: in proportion to the class 0 to 4, like plant sway.
     assert.equal(resolveAutumnPropWindStrength({ ...defaults, speed: 100 }), 1);
+    assert.equal(resolveAutumnPropWindStrength({ ...defaults, speed: 4 }), 1);
+    assert.equal(resolveAutumnPropWindStrength(defaults), 0.75);
     assert.equal(
-        resolveAutumnPropWindStrength({ ...defaults, reducedMotion: true }),
-        0,
+        resolveAutumnPropWindStrength({ ...defaults, speed: 2 }),
+        resolveWindSway(2),
+    );
+    // Reduced motion keeps 30% of the sway (GAME_ART "Weather > Reduced motion").
+    assert.ok(
+        Math.abs(
+            resolveAutumnPropWindStrength({
+                ...defaults,
+                reducedMotion: true,
+            }) -
+                0.75 * 0.3,
+        ) < 1e-12,
     );
     assert.equal(
         resolveAutumnPropWindStrength({ ...defaults, enabled: false }),
@@ -47,7 +60,7 @@ test('wind remains bounded across quality, invalid weather and accessibility set
     assert.equal(resolveAutumnPropWindStrength({ ...defaults, snow: 0.25 }), 0);
     assert.equal(
         resolveAutumnPropWindStrength({ ...defaults, snow: 0.125 }),
-        0.5,
+        0.375,
     );
 });
 
@@ -91,20 +104,13 @@ test('seeded uniforms share the scene clock and weather without altering cached 
     owned.dispose();
 });
 
-test('base, shadow, rain and snow shaders all move the same position exactly once', () => {
-    const rainSource = readFileSync(
-        new URL('../rain/RainWetOverlay.tsx', import.meta.url),
-        'utf8',
-    );
-    const rain = rainSource.match(
-        /const rainOverlayVertexShader = `([\s\S]*?)`;/,
-    )?.[1];
-    assert.ok(rain);
+// The rain wet overlay shader left this list when the overlay was retired
+// (the wet look is in the base-ground material, which is not an overlay).
+test('base, shadow and snow shaders all move the same position exactly once', () => {
     for (const source of [
         ShaderLib.standard.vertexShader,
         ShaderLib.depth.vertexShader,
         ShaderLib.distance.vertexShader,
-        rain,
         snowOverlayVertexShader,
     ]) {
         for (const role of [

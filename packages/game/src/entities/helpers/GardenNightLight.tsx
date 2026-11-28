@@ -1,19 +1,23 @@
 'use client';
 
-import { useContext, useEffect, useRef } from 'react';
-import type { PointLight } from 'three';
+import { useContext, useEffect, useMemo, useRef } from 'react';
+import { AdditiveBlending, type PointLight, type Sprite } from 'three';
 import {
     type GardenEmissiveMaterialRef,
     useGardenLightRegistry,
 } from '../../scene/GardenLightProvider';
 import { useSceneRenderRequest } from '../../scene/SceneTime';
 import { EntityPreviewContext } from './EntityPreviewContext';
+import { getGardenLightHaloTexture } from './gardenLightHalo';
 import {
     resolveGardenNightLightEmissivePeakIntensity,
     resolveGardenNightLightIntensity,
 } from './nightGardenLight';
 
 const emptyEmissiveMaterialRefs: readonly GardenEmissiveMaterialRef[] = [];
+
+/** Default glow sprite: about a third of a tile across at full night. */
+const defaultHalo = { opacity: 0.55, size: 0.6 } as const;
 
 export function GardenNightLight({
     color,
@@ -23,6 +27,7 @@ export function GardenNightLight({
     emissiveBaseIntensity = 0.2,
     emissiveMaterialRefs = emptyEmissiveMaterialRefs,
     emissivePeakIntensity,
+    halo = defaultHalo,
     lightIntensity,
     lightKey,
     position,
@@ -34,6 +39,11 @@ export function GardenNightLight({
     emissiveBaseIntensity?: number;
     emissiveMaterialRefs?: readonly GardenEmissiveMaterialRef[];
     emissivePeakIntensity: number;
+    /**
+     * Soft additive glow around the source at night, or false for none.
+     * `size` is its width in tiles, `opacity` its strength at full night.
+     */
+    halo?: false | { opacity: number; size: number };
     lightIntensity: number;
     lightKey: string;
     position: readonly [number, number, number];
@@ -42,6 +52,15 @@ export function GardenNightLight({
     const preview = useContext(EntityPreviewContext);
     const registry = useGardenLightRegistry();
     const lightRef = useRef<PointLight>(null);
+    const haloRef = useRef<Sprite>(null);
+    const haloOpacity = halo ? halo.opacity : 0;
+    const haloRegistration = useMemo(
+        () =>
+            haloOpacity > 0
+                ? { opacity: haloOpacity, ref: haloRef }
+                : undefined,
+        [haloOpacity],
+    );
 
     useEffect(() => {
         if (preview) return;
@@ -52,6 +71,7 @@ export function GardenNightLight({
             emissivePeakIntensity: resolveGardenNightLightEmissivePeakIntensity(
                 emissivePeakIntensity,
             ),
+            halo: haloRegistration,
             key: lightKey,
             lightIntensity: resolveGardenNightLightIntensity(lightIntensity),
             lightRef,
@@ -66,6 +86,7 @@ export function GardenNightLight({
         emissiveBaseIntensity,
         emissiveMaterialRefs,
         emissivePeakIntensity,
+        haloRegistration,
         lightIntensity,
         lightKey,
         registry,
@@ -73,16 +94,38 @@ export function GardenNightLight({
 
     if (preview) return null;
     return (
-        <pointLight
-            castShadow={false}
-            color={color}
-            decay={decay}
-            distance={distance}
-            intensity={0}
-            name={`GardenLight:${lightKey}`}
-            position={position}
-            ref={lightRef}
-            visible={false}
-        />
+        <>
+            {halo ? (
+                <sprite
+                    name={`GardenLightHalo:${lightKey}`}
+                    position={position}
+                    ref={haloRef}
+                    renderOrder={2}
+                    scale={halo.size}
+                    visible={false}
+                >
+                    <spriteMaterial
+                        blending={AdditiveBlending}
+                        color={color}
+                        depthWrite={false}
+                        fog={false}
+                        map={getGardenLightHaloTexture()}
+                        opacity={0}
+                        transparent
+                    />
+                </sprite>
+            ) : null}
+            <pointLight
+                castShadow={false}
+                color={color}
+                decay={decay}
+                distance={distance}
+                intensity={0}
+                name={`GardenLight:${lightKey}`}
+                position={position}
+                ref={lightRef}
+                visible={false}
+            />
+        </>
     );
 }

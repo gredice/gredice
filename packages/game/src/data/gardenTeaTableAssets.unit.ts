@@ -201,16 +201,26 @@ describe('Tea table release', () => {
                             object.geometry.getAttribute('position').count) / 3;
                 }
             });
-            assert.equal(triangles, 1280);
+            assert.equal(triangles, 2944);
             assert.ok(
-                palette.size >= 8,
+                // One colour per part from the GAME_ART roles: light and dark
+                // timber, cream, enamel blue, textile rust, evergreen and tea.
+                palette.size >= 7,
                 'Timber, enamel and tea colours survive export',
             );
             assert.ok(bytes.length < 250_000);
             for (const material of document.materials) {
                 assert.equal(material.pbrMetallicRoughness.metallicFactor, 0);
+                // GAME_ART bands: gloss enamel, satin timber.
+                const [low, high] =
+                    material.name === 'Material.GardenTeaTable.Enamel'
+                        ? [0.25, 0.45]
+                        : [0.5, 0.6];
                 assert.ok(
-                    material.pbrMetallicRoughness.roughnessFactor >= 0.82,
+                    material.pbrMetallicRoughness.roughnessFactor >=
+                        low - 1e-6 &&
+                        material.pbrMetallicRoughness.roughnessFactor <=
+                            high + 1e-6,
                 );
                 assert.equal(material.emissiveFactor, undefined);
             }

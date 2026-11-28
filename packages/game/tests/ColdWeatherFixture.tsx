@@ -10,7 +10,6 @@ import {
     type GameQualityTier,
     gameQualityProfiles,
 } from '../src/scene/gameQuality';
-import { Drops } from '../src/scene/Rain/Drops';
 import { Scene } from '../src/scene/Scene';
 import { SceneBlockDataBoundary } from '../src/scene/SceneBlockDataBoundary';
 import { getSeasonDebugDates } from '../src/scene/seasonDebugDates';
@@ -21,6 +20,7 @@ import {
 } from '../src/useGameState';
 import { ColdWeatherActor } from './ColdWeatherActor';
 import { ColdWeatherProbe } from './ColdWeatherProbe';
+import { FixtureRainField } from './FixtureRainField';
 
 const actorIds = Array.from({ length: 10 }, (_, index) => ({
     id: `cold-actor:${index}`,
@@ -39,6 +39,7 @@ export function ColdWeatherFixture({
     date = 'lateAutumn',
     fixedTime = 12,
     weather = { temperature: -4 },
+    capture = false,
 }: {
     tier?: GameQualityTier;
     rain?: number;
@@ -51,6 +52,12 @@ export function ColdWeatherFixture({
     date?: 'summer' | 'lateAutumn' | 'winter';
     fixedTime?: number;
     weather?: ColdWeatherInput;
+    /**
+     * Drops every continuous render lease (the probe's and the weather
+     * easing's), so the scene renders its pending frames and then holds a
+     * still canvas for a screenshot. See `apps/garden/tests/webglCapture.ts`.
+     */
+    capture?: boolean;
 }) {
     const sampleElement = useRef<HTMLDivElement>(null);
     const reportSample = useCallback((sample: string) => {
@@ -136,6 +143,7 @@ export function ColdWeatherFixture({
                             zoom={45}
                             quality={gameQualityProfiles.low}
                             fixedTimeSeconds={live ? undefined : fixedTime}
+                            continuousRenderLeasesEnabled={!capture}
                             profileStats
                         >
                             <color attach="background" args={['#d1dbe0']} />
@@ -164,7 +172,10 @@ export function ColdWeatherFixture({
                                     enabled={!disabled}
                                 />
                                 {precipitation && rain > 0 && (
-                                    <Drops intensity={rain} count={700} />
+                                    <FixtureRainField
+                                        rainy={rain}
+                                        count={700}
+                                    />
                                 )}
                                 <RainRipples
                                     stacks={stacks}

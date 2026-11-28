@@ -89,3 +89,73 @@ export function hasDragEdgeAutopanDelta(delta: DragEdgeAutopanDelta) {
         Math.abs(delta.x) > autopanEpsilon || Math.abs(delta.y) > autopanEpsilon
     );
 }
+
+/** Pixels a drag must push further into its start edge band to pan. */
+export const dragEdgeAutopanPushPx = 16;
+
+/**
+ * How deep a point sits in each edge band, from -1 to 1 per axis (positive:
+ * left or top band, negative: right or bottom, 0: outside).
+ */
+function getEdgeBandDepth(
+    pointer: DragEdgeAutopanPointer,
+    viewport: DragEdgeAutopanViewport,
+) {
+    return getDragEdgeAutopanDelta({
+        frameDeltaSeconds: 1,
+        maxFrameDeltaSeconds: 1,
+        maxSpeedPxPerSecond: 1,
+        pointer,
+        viewport,
+    });
+}
+
+/**
+ * Whether a drag that started at `start` may run the edge autopan. A drag
+ * that starts inside an edge band (a block or button near the screen edge,
+ * common on phones where the bands cover half the width) would pan the
+ * camera at once, whichever way the pointer moves. So autopan arms only
+ * once the pointer pushes at least `pushPx` further toward an edge it
+ * started near, or leaves every band it started in. A drag that starts
+ * outside the bands is armed at once.
+ */
+export function isDragEdgeAutopanArmed({
+    pointer,
+    pushPx = dragEdgeAutopanPushPx,
+    start,
+    viewport,
+}: {
+    pointer: DragEdgeAutopanPointer;
+    pushPx?: number;
+    start: DragEdgeAutopanPointer;
+    viewport: DragEdgeAutopanViewport;
+}) {
+    const startDepth = getEdgeBandDepth(start, viewport);
+    if (startDepth.x === 0 && startDepth.y === 0) {
+        return true;
+    }
+
+    const pointerDepth = getEdgeBandDepth(pointer, viewport);
+    const axes = [
+        {
+            depth: startDepth.x,
+            current: pointerDepth.x,
+            towardEdge:
+                Math.sign(startDepth.x) * (start.clientX - pointer.clientX),
+        },
+        {
+            depth: startDepth.y,
+            current: pointerDepth.y,
+            towardEdge:
+                Math.sign(startDepth.y) * (start.clientY - pointer.clientY),
+        },
+    ].filter((axis) => axis.depth !== 0);
+
+    if (axes.some((axis) => axis.towardEdge >= pushPx)) {
+        return true;
+    }
+
+    return axes.every(
+        (axis) => Math.sign(axis.current) !== Math.sign(axis.depth),
+    );
+}

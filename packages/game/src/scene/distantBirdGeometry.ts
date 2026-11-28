@@ -55,6 +55,9 @@ export function createDistantBirdGeometry(source: Object3D) {
     material.vertexColors = true;
     material.transparent = true;
     material.forceSinglePass = true;
-    material.depthWrite = false;
+    // The merged parts draw in node order (eyes before the head, legs after
+    // the body, their tops buried in it), so the bird needs depth writes to
+    // hide its own buried and covered parts; transparency is only the fade.
+    material.depthWrite = true;
     return { geometry, material };
 }

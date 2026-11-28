@@ -1,11 +1,11 @@
-import { expect as baseExpect, test } from '@playwright/experimental-ct-react';
 import { RainRippleFixture } from '../../../packages/game/tests/RainRippleFixture';
+import { expect as baseExpect, test } from './webglComponentTest';
 
 const expect = baseExpect.configure({ timeout: 15_000 });
 test.setTimeout(60_000);
 
 for (const tier of ['low', 'high'] as const) {
-    test(`${tier}: the frozen nut follows the head, repeats and costs one draw / 20 triangles with autumn layers`, async ({
+    test(`${tier}: the frozen nut follows the head, repeats and costs one draw / 180 triangles with autumn layers`, async ({
         mount,
         page,
     }) => {
@@ -20,10 +20,10 @@ for (const tier of ['low', 'high'] as const) {
         let active = await sample();
         expect(active.squirrel.phase).toBe('carry');
         expect(active.squirrel.nut.head).toBe('Squirrel_HeadPivot');
-        expect(active.squirrel.nut.triangles).toBe(20);
+        expect(active.squirrel.nut.triangles).toBe(180);
         active.squirrel.nut.localPosition.forEach(
             (coordinate: number, index: number) => {
-                expect(coordinate).toBeCloseTo([0, -0.14, -0.39][index], 5);
+                expect(coordinate).toBeCloseTo([0, -0.2, -0.44][index], 5);
             },
         );
         expect(
@@ -51,7 +51,7 @@ for (const tier of ['low', 'high'] as const) {
             .toBe(false);
         const baseline = await sample();
         expect(active.calls - baseline.calls).toBe(1);
-        expect(active.triangles - baseline.triangles).toBe(20);
+        expect(active.triangles - baseline.triangles).toBe(180);
         await fixture.update(
             <RainRippleFixture tier={tier} rain={0} fixedTime={3} />,
         );
@@ -163,33 +163,37 @@ test('a live visit finishes its cache, suspends offscreen and releases the actor
     ).not.toContain('fauna:squirrels');
 });
 
-test('a flee command interrupts carrying and still removes the squirrel on arrival', async ({
-    mount,
-}) => {
-    const fixture = await mount(
-        <RainRippleFixture squirrels live renderLayers={false} rain={0} />,
-    );
-    const sample = async () =>
-        JSON.parse((await fixture.getAttribute('data-sample')) ?? '{}');
-    await expect
-        .poll(async () => (await sample()).squirrel?.phase, {
-            intervals: [100],
-        })
-        .toBe('carry');
-    await fixture.update(
-        <RainRippleFixture
-            squirrels
-            live
-            renderLayers={false}
-            rain={0}
-            startleSquirrel
-        />,
-    );
-    await expect
-        .poll(async () => (await sample()).squirrel?.nut?.visible)
-        .not.toBe(true);
-    await expect.poll(async () => (await sample()).squirrel).toBe(null);
-});
+// Foraging keeps the squirrel on its spawn spot, where a flee has no path to
+// run and must exit straight into the tree. Carrying usually starts there too.
+for (const phase of ['forage', 'carry'] as const) {
+    test(`a flee command interrupts ${phase === 'carry' ? 'carrying' : 'foraging'} and still removes the squirrel on arrival`, async ({
+        mount,
+    }) => {
+        const fixture = await mount(
+            <RainRippleFixture squirrels live renderLayers={false} rain={0} />,
+        );
+        const sample = async () =>
+            JSON.parse((await fixture.getAttribute('data-sample')) ?? '{}');
+        await expect
+            .poll(async () => (await sample()).squirrel?.phase, {
+                intervals: [100],
+            })
+            .toBe(phase);
+        await fixture.update(
+            <RainRippleFixture
+                squirrels
+                live
+                renderLayers={false}
+                rain={0}
+                startleSquirrel
+            />,
+        );
+        await expect
+            .poll(async () => (await sample()).squirrel?.nut?.visible)
+            .not.toBe(true);
+        await expect.poll(async () => (await sample()).squirrel).toBe(null);
+    });
+}
 
 test('close-up frozen carrying pose stays clear of the muzzle and garden interactions', async ({
     mount,

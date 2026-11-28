@@ -7,6 +7,7 @@ import {
     useSceneTimeInvalidation,
     useSceneTimeUniform,
 } from '../SceneTime';
+import { seasonalRoles } from '../seasonalRoles';
 import { usePrecipitationFieldPosition } from '../usePrecipitationFieldPosition';
 import {
     advanceSnowMotionOffset,
@@ -14,6 +15,18 @@ import {
     createSnowParticleAttributes,
     resolveSnowWeatherMotion,
 } from './snowParticles';
+
+// Flakes are unlit and written straight to the screen, so they take the snow
+// role's on-screen colour (sRGB), raised to full value so they still read
+// against snow cover: a tinted blue-white, never pure white.
+const snowFlakeRgb = new THREE.Color(seasonalRoles.snow.screen).getRGB(
+    { r: 0, g: 0, b: 0 },
+    THREE.SRGBColorSpace,
+);
+const snowFlakePeak = Math.max(snowFlakeRgb.r, snowFlakeRgb.g, snowFlakeRgb.b);
+const snowFlakeColor = [snowFlakeRgb.r, snowFlakeRgb.g, snowFlakeRgb.b]
+    .map((channel) => (channel / snowFlakePeak).toFixed(4))
+    .join(', ');
 
 const DEFAULT_FLAKE_SIZE = 0.07;
 const DEFAULT_SIZE = 30;
@@ -114,11 +127,7 @@ const snowFragmentShader = /* glsl */ `
             discard;
         }
 
-        vec3 snowColor = vec3(
-            vSnowBrightness * 0.95,
-            vSnowBrightness * 0.98,
-            vSnowBrightness
-        );
+        vec3 snowColor = vec3(${snowFlakeColor}) * vSnowBrightness;
 
         gl_FragColor = vec4(snowColor, alpha * 0.96);
     }

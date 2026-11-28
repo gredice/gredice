@@ -7,6 +7,10 @@ import {
 } from 'react';
 import { createStore, useStore } from 'zustand';
 import { createGameAudio, type GameAudio } from './audio/audioMixer';
+import {
+    type BlockEditingSlice,
+    createBlockEditingSlice,
+} from './blockOptions/blockEditingState';
 import type {
     GameCameraRigApi,
     GameCameraSnapshot,
@@ -43,7 +47,6 @@ import {
     setGameQualitySetting as persistGameQualitySetting,
 } from './scene/gameQuality';
 import { resolveSeasonState, type SeasonState } from './scene/seasonState';
-import { defaultWaterColors, type WaterColors } from './scene/waterColorState';
 import type { Block } from './types/Block';
 import type { Stack } from './types/Stack';
 import { getAudioConfig } from './utils/audioConfig';
@@ -191,8 +194,16 @@ export type PlacedBlockEffect = {
     amount: number;
 };
 
+/**
+ * What a block's bounce plays. `drop` is a newly placed block falling in,
+ * `land` a moved block settling, `pickup` a block being grabbed and `tap` a
+ * block being clicked. Missing means `drop`.
+ */
+export type BlockPlacementAnimationKind = 'drop' | 'land' | 'pickup' | 'tap';
+
 export type BlockPlacementDropAnimation = {
     createdAt: number;
+    kind?: BlockPlacementAnimationKind;
     mutationConfirmed: boolean;
     particlesSpawned: boolean;
     renderId: number;
@@ -249,15 +260,35 @@ export function getBlockPlacementDropAnimationRenderIdForBlockId(
         ?.renderId;
 }
 
+/**
+ * Whether an animation bounces a block that is already in the garden, as a
+ * tap, pickup or landing does. Only a drop brings a new block in.
+ */
+export function isInPlaceBlockAnimation(
+    animation: Pick<BlockPlacementDropAnimation, 'kind'>,
+) {
+    return animation.kind !== undefined && animation.kind !== 'drop';
+}
+
+/**
+ * The key an entity mounts under. A drop remounts it so it starts in the
+ * air; an in-place bounce keeps it, because a remount would end the drag or
+ * double tap that the bounce answers.
+ */
 export function resolveBlockPlacementDropAnimationRenderIdentity(
     blockId: string,
     animations: Readonly<Record<string, BlockPlacementDropAnimation>>,
 ) {
-    const renderId = getBlockPlacementDropAnimationRenderIdForBlockId(
+    const animation = getBlockPlacementDropAnimationForBlockId(
         animations,
         blockId,
     );
-    return formatBlockPlacementDropAnimationRenderIdentity(blockId, renderId);
+    return formatBlockPlacementDropAnimationRenderIdentity(
+        blockId,
+        animation && !isInPlaceBlockAnimation(animation)
+            ? animation.renderId
+            : undefined,
+    );
 }
 
 export function formatBlockPlacementDropAnimationRenderIdentity(
@@ -532,7 +563,18 @@ export type GameState = {
     blockPlacementDropAnimations: Record<string, BlockPlacementDropAnimation>;
     queueBlockPlacementDropAnimation: (
         blockId: string,
-        options?: { mutationConfirmed?: boolean },
+        options?: {
+            kind?: BlockPlacementAnimationKind;
+            mutationConfirmed?: boolean;
+        },
+    ) => void;
+    /**
+     * Plays a bounce on a block that is already in the garden. It never
+     * replaces a running animation, so a placement in flight stays intact.
+     */
+    bounceBlock: (
+        blockId: string,
+        kind: Exclude<BlockPlacementAnimationKind, 'drop'>,
     ) => void;
     confirmBlockPlacementDropAnimation: (
         sourceBlockId: string,
@@ -628,8 +670,6 @@ export type GameState = {
     setRainSurfaceIntensity: (rainSurfaceIntensity: number) => void;
     snowCoverage: number;
     setSnowCoverage: (snowCoverage: number) => void;
-    waterColors: WaterColors;
-    setWaterColors: (waterColors: WaterColors) => void;
 
     // World
     gameCamera: GameCameraRigApi | null;
@@ -641,7 +681,7 @@ export type GameState = {
     setWorldRotation: (worldRotation: number) => void;
     isDragging: boolean;
     setIsDragging: (isDragging: boolean) => void;
-};
+} & BlockEditingSlice; // Block options pop-up, move, remove and Expand
 
 export function createGameState({
     appBaseUrl,
@@ -982,6 +1022,7 @@ export function createGameState({
                 };
             }),
         clearHudPlacementDrag: () => set({ hudPlacementDrag: null }),
+        ...createBlockEditingSlice(set, get),
         openGardenBoxBlockId: null,
         setOpenGardenBoxBlockId: (openGardenBoxBlockId) =>
             set({ openGardenBoxBlockId }),
@@ -1034,6 +1075,7 @@ export function createGameState({
                         ...state.blockPlacementDropAnimations,
                         [blockId]: {
                             createdAt: Date.now(),
+                            kind: options?.kind,
                             mutationConfirmed:
                                 options?.mutationConfirmed === true,
                             particlesSpawned: false,
@@ -1049,7 +1091,26 @@ export function createGameState({
                 };
             });
         },
-        confirmBlockPlacementDropAnimation: (sourceBlockId, targetBlockId) =>
+        bounceBlock: (blockId, kind) => {
+            if (
+                getBlockPlacementDropAnimationForBlockId(
+                    get().blockPlacementDropAnimations,
+                    blockId,
+                )
+            ) {
+                return;
+            }
+            // Nothing is waiting on a server, so the entry clears itself
+            // when the bounce finishes.
+            get().queueBlockPlacementDropAnimation(blockId, {
+                kind,
+                mutationConfirmed: true,
+            });
+        },
+        confirmBlockPlacementDropAnimation: (sourceBlockId, targetBlockId) => {
+            // Every saved placement passes here, so an open pop-up or Expand
+            // follows its block from the optimistic id to the saved one.
+            get().remapBlockEditingBlockIds([[sourceBlockId, targetBlockId]]);
             set((state) => {
                 const animation = getBlockPlacementDropAnimationForBlockId(
                     state.blockPlacementDropAnimations,
@@ -1078,7 +1139,8 @@ export function createGameState({
                 }
 
                 return { blockPlacementDropAnimations };
-            }),
+            });
+        },
         cancelBlockPlacementDropAnimation: (blockId) =>
             set((state) => {
                 const animation = getBlockPlacementDropAnimationForBlockId(
@@ -1404,15 +1466,6 @@ export function createGameState({
             set({ rainSurfaceIntensity }),
         snowCoverage: 0,
         setSnowCoverage: (snowCoverage) => set({ snowCoverage }),
-        waterColors: defaultWaterColors,
-        setWaterColors: (waterColors) =>
-            set((state) =>
-                state.waterColors.deep === waterColors.deep &&
-                state.waterColors.shallow === waterColors.shallow &&
-                state.waterColors.foam === waterColors.foam
-                    ? state
-                    : { waterColors },
-            ),
     }));
 }
 

@@ -9,10 +9,13 @@ of date-derived ground foliage. Publication remains gated by #5000.
 
 ## Design and editable sources
 
-The low mound uses a broad rounded mass with fifteen folded leaves. The swept
-crescent uses a tapered open arc with fifteen leaves arranged along its crest.
-Broad lobes and folded centre ridges carry the shape at normal zoom. Copper,
-gold and russet colours are baked into one material per model; no texture or
+The low mound uses a broad rounded mass with eight thick leaves. The swept
+crescent uses a tapered open arc with six leaves arranged along its crest.
+Broad lobes and folded centre ridges carry the shape at normal zoom. A
+leaf-pile body `#D9733A` with leaves in autumn gold `#F0C832`, amber `#F09A38`,
+orange `#EE6C2B` and red `#E44A2E` (on-screen seasonal roles, 2026-11-23
+party-style pass by `assets/scripts/party-pass-autumn.py`, which runs after the
+generator) is baked into one material per model; no texture or
 transparency is needed. Both fit one tile and remain below nearby mushrooms.
 
 First-party references inspected before modeling:
@@ -26,14 +29,14 @@ First-party references inspected before modeling:
   shapes, simple facets and readable pale/dark value differences.
 
 Each asset has its own `.blend`, one joined mesh, a `PileBase` vertex group and
-fifteen independently selectable `Leaf_*` groups. The generator audits the saved
+eight (mound) or six (crescent) independently selectable `Leaf_*` groups. The generator audits the saved
 sources. Corner `Color` attributes export as `COLOR_0`; runtime instances share
-immutable cached geometry/materials. Roughness is 0.94, metallic and emission 0.
+immutable cached geometry/materials. Roughness is 0.55, metallic and emission 0.
 
 | Model | Bounds in tiles (width × depth × height) | Triangles | GLB bytes |
 | --- | --- | ---: | ---: |
-| Mound | 0.800 × 0.740 × 0.138 | 198 | 20,536 |
-| Crescent | 0.6464 × 0.7474 × 0.1224 | 248 | 24,864 |
+| Mound | 0.775 × 0.720 × 0.172 | 2,174 | 54,040 |
+| Crescent | 0.620 × 0.725 × 0.172 | 2,302 | 56,976 |
 
 Each has one mesh, primitive and material, so one base-pass draw per instance.
 Shared rain, snow and shadow passes add their usual costs. No embedded lights,

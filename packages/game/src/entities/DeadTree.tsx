@@ -49,12 +49,6 @@ const deadTreeVariantByName = new Map<string, DeadTreeVariantConfig>(
     Object.entries(deadTreeVariants),
 );
 
-const deadTreeMaterial = {
-    color: '#70401f',
-    roughness: 0.86,
-    metalness: 0,
-};
-
 function DeadTreeMeshes({
     nodes,
     nodeNames,
@@ -71,11 +65,12 @@ function DeadTreeMeshes({
                 castShadow
                 receiveShadow
                 geometry={geometry}
+                // Bark-textured Material.DeadTree.Bark from the model.
+                material={node.material}
                 position={[node.position.x, node.position.y, node.position.z]}
                 rotation={[node.rotation.x, node.rotation.y, node.rotation.z]}
                 scale={[node.scale.x, node.scale.y, node.scale.z]}
             >
-                <meshStandardMaterial {...deadTreeMaterial} />
                 <SnowOverlay
                     geometry={geometry}
                     maxThickness={0.035}

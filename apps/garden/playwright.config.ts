@@ -23,6 +23,10 @@ const reporter: PlaywrightTestConfig['reporter'] = [
 ];
 const webglComponentTestPattern =
     /(pumpkin-trail|kestenijada|pack-layouts|distant-bird-flocks|chestnut-steam|leaf-raking|autumn-photo-prompts|warm-props|localized-steam|hedgehog-lifecycle|autumn-prop-wind|cold-weather|rain-ripples|autumn-season|actor-speech-bubble|cursor-anchored-zoom|detailed-inspection-farmer|fauna-runtime|fauna-trajectory|rigid-fauna-batches|garden-palette-packets|garden-preview-capture|hover-outline|instanced-mesh-material-swap|ladybug-suspense-visibility|precipitation-camera-follow|public-garden-switch|r3f-root-isolation|raised-bed-notification-bubble|scene-query-data|scene-root-isolation|solar-eclipse|spatial-interaction|stars-depth)\.spec\.tsx/;
+// Block options specs drive the full garden scene through long gestures, so
+// they run as their own WebGL project and CI shards them separately.
+const blockOptionsComponentTestPattern =
+    /block-options(?:-[a-z-]+)?\.spec\.tsx/;
 const morningMistComponentTestPattern = /morning-mist\.spec\.tsx/;
 const leafStepsComponentTestPattern = /leaf-steps\.spec\.tsx/;
 const outletGardenRouteTestPattern = /outlet-garden-route\.spec\.ts/;
@@ -84,6 +88,7 @@ export const config: PlaywrightTestConfig = {
             testIgnore: [
                 squirrelCachingComponentTestPattern,
                 webglComponentTestPattern,
+                blockOptionsComponentTestPattern,
                 leafStepsComponentTestPattern,
                 morningMistComponentTestPattern,
                 outletGardenRouteTestPattern,
@@ -95,6 +100,11 @@ export const config: PlaywrightTestConfig = {
         {
             name: 'chromium-webgl',
             grepInvert: /@profile/,
+            // Specs in the WebGL projects import `test` from
+            // tests/webglComponentTest.ts, so a test's queued GPU work does
+            // not stall the next test's setup. Software WebGL is still slow,
+            // hence the longer timeout.
+            timeout: 30_000,
             testMatch: [
                 squirrelCachingComponentTestPattern,
                 webglComponentTestPattern,
@@ -109,6 +119,25 @@ export const config: PlaywrightTestConfig = {
                     // GPU-less CI runners must explicitly opt in to Chromium's
                     // software WebGL fallback. Keep the lower-security switch
                     // isolated to our trusted 3D capture fixture.
+                    args: [
+                        ...blobGuardLaunchArgs(),
+                        '--use-gl=angle',
+                        '--use-angle=swiftshader',
+                        '--enable-unsafe-swiftshader',
+                    ],
+                },
+            },
+        },
+        {
+            name: 'chromium-webgl-block-options',
+            grepInvert: /@profile/,
+            timeout: 30_000,
+            testMatch: blockOptionsComponentTestPattern,
+            snapshotPathTemplate:
+                '{snapshotDir}/{testFilePath}-snapshots/{arg}{ext}',
+            use: {
+                ...devices['Desktop Chrome'],
+                launchOptions: {
                     args: [
                         ...blobGuardLaunchArgs(),
                         '--use-gl=angle',

@@ -2,7 +2,11 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { harvestPumpkins } from '@gredice/js/harvestPumpkins';
 import { Vector3 } from 'three';
-import { gameAssetModels } from '../../data/models';
+import { type GameAssetName, gameAssetModels } from '../../data/models';
+import {
+    type TerrainRimSurface,
+    terrainRimBlockShapes,
+} from '../../entities/terrainRim/terrainShapes';
 import type { Stack } from '../../types/Stack';
 import {
     blockAssetRequirements,
@@ -220,5 +224,54 @@ describe('garden scene manifest', () => {
             'generated-plants',
             'water-surface',
         ]);
+    });
+
+    it('loads the flat block GLB each terrain rim takes its lip from', () => {
+        // Mirrors the lip and body sources in TerrainRimInstances.tsx; snow,
+        // dry and swamp ground lips use code materials and load no GLB.
+        const rimSourceAsset = {
+            dirt: 'BlockGround',
+            dryDirt: null,
+            grass: 'BlockGrass',
+            gravel: 'BlockGravel',
+            polishedStone: 'BlockPolishedStone',
+            sand: 'BlockSand',
+            snow: null,
+            stone: 'BlockStone',
+            swampDirt: null,
+        } satisfies Record<TerrainRimSurface, GameAssetName | null>;
+
+        for (const [blockName, { surface }] of Object.entries(
+            terrainRimBlockShapes,
+        )) {
+            const source = rimSourceAsset[surface];
+            if (!source) continue;
+            const manifest = createGardenSceneManifest({
+                blockNames: [blockName],
+            });
+            assert.ok(
+                assetNames(manifest).includes(source),
+                `${blockName} -> ${source}`,
+            );
+        }
+    });
+
+    it('loads what dirt ramps and stone stairs draw on a grass island', () => {
+        assert.deepEqual(
+            assetNames(
+                createGardenSceneManifest({
+                    blockNames: ['Block_Grass', 'Block_Ground_Angle'],
+                }),
+            ).filter((name) => name.startsWith('Block')),
+            ['BlockGrass', 'BlockGround', 'BlockSandAngle'],
+        );
+        assert.deepEqual(
+            assetNames(
+                createGardenSceneManifest({
+                    blockNames: ['Block_Grass', 'Block_Stone_Stairs'],
+                }),
+            ).filter((name) => name.startsWith('Block')),
+            ['BlockGrass', 'BlockStone', 'BlockStoneStairs'],
+        );
     });
 });

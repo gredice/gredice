@@ -30,7 +30,7 @@ First-party references inspected before modeling:
 | --- | --- | --- |
 | Name | `HarvestCrate` | `HarvestCrateOrchard` |
 | Croatian label | Ukrasni sanduk s bundevama | Ukrasni sanduk s jabukama i kruškama |
-| Measured width × depth × height | 0.841 × 0.715 × 0.4362 | 0.841 × 0.715 × 0.4943 |
+| Measured width × depth × height | 0.841 × 0.715 × 0.4362 | 0.841 × 0.715 × 0.4959 |
 | Declared hitbox | 0.86 × 0.74 × 0.44 | 0.86 × 0.74 × 0.50 |
 | Proposed price | 60 sunflowers | 60 sunflowers |
 | Catalogue state / ID | Unpublished / null | Unpublished / null |
@@ -47,17 +47,19 @@ registration also supports already-owned instances.
 
 ## Materials and cost
 
-| Role | sRGB albedo |
+| Role | sRGB albedo (on screen) |
 | --- | --- |
-| Timber / frame | `#905935` / `#764024` |
-| Orange / cream pumpkins | `#E08A3C` / `#EEE3CB` |
-| Apples / pears | `#AA563D` / `#7D8F68` |
-| Stems and leaves | `#4E7F35` |
+| Timber / frame | `#905935` / `#764024`, shared wood |
+| Orange / cream pumpkins | `#98522A` / `#9D9380` (pumpkin `#F0803A` / cream `#F2E4C6`) |
+| Apples / pears | `#922D2C` / `#477E2F` (apple red `#EC3C3A` / leaf green `#6FD040`) |
+| Stems and leaves | `#3E7A2C` (crop leaf `#5FC93A`) |
 
-All materials use roughness 0.86, metalness 0 and no emission. Each lazy GLB
+The colours are the seasonal and base roles in [GAME_ART.md](../GAME_ART.md).
+Timber, frame and stems use satin roughness 0.55 and the fruit gloss 0.4;
+metalness is 0 and there is no emission. Each lazy GLB
 contains five meshes and five materials, with no textures or animation clips.
-The pumpkin crate is **192,772 bytes / 3,204 triangles**; the orchard crate is
-**146,048 bytes / 2,132 triangles**. Five base-pass draws are supplemented by
+The pumpkin crate is **63,296 bytes / 2,940 triangles**; the orchard crate is
+**65,656 bytes / 2,904 triangles**. Five base-pass draws are supplemented by
 existing shadow and weather passes. `WeatheredEntityPart` provides rain and
 snow without mutating cached geometry or materials. These are structural
 costs, not physical-device frame-rate measurements.

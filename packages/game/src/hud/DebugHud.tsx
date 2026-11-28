@@ -874,13 +874,18 @@ export function DebugHud() {
                                 />
                                 <InfoRow
                                     icon={Cloud}
-                                    label="Cloud shadows"
-                                    value={`${profileSnapshot?.cloudProjectedShadowCount ?? 0} projected · ${profileSnapshot?.cloudRealShadowCasterCount ?? 0} real · ${profileSnapshot?.cloudAttenuationMaskResolution ?? 0}px/${profileSnapshot?.cloudAttenuationUpdateMs ?? 0}ms · ${profileSnapshot?.cloudAttenuationUpdateCount ?? 0} updates · ${profileSnapshot?.cloudAttenuationMaterialCount ?? 0} materials`}
+                                    label="Clouds"
+                                    value={`${profileSnapshot?.cloudVisualCount ?? 0} band · deck ${profileSnapshot?.cloudDeckAmount ?? 0} · ${profileSnapshot?.cloudProjectedShadowCount ?? 0} shadows · ${profileSnapshot?.cloudAttenuationMaterialCount ?? 0} materials`}
                                 />
                                 <InfoRow
                                     icon={Droplets}
                                     label="Particles"
-                                    value={`rain ${profileSnapshot?.rainParticleCount ?? 0} · snow ${profileSnapshot?.snowParticleCount ?? 0}`}
+                                    value={`rain ${profileSnapshot?.rainParticleCount ?? 0} (${profileSnapshot?.rainSplashCount ?? 0} rings, ${profileSnapshot?.rainPuddleCount ?? 0} puddles) · snow ${profileSnapshot?.snowParticleCount ?? 0} (${profileSnapshot?.snowIconFlakeCount ?? 0} icons, ${profileSnapshot?.snowSparkleCount ?? 0} sparkles)`}
+                                />
+                                <InfoRow
+                                    icon={Wind}
+                                    label="Mist and wind"
+                                    value={`mist rolls ${profileSnapshot?.mistRimRollCount ?? 0} rim · ${profileSnapshot?.mistSkyRollCount ?? 0} sky · swooshes ${profileSnapshot?.windSwooshCount ?? 0} · leaves ${profileSnapshot?.windLeafCount ?? 0} · strikes ${profileSnapshot?.lightningStrikeCount ?? 0}`}
                                 />
                                 <InfoRow
                                     icon={Layers}

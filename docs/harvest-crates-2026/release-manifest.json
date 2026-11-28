@@ -4,33 +4,33 @@
   "sources": [
     {
       "path": "assets/game-assets/HarvestCrate.blend",
-      "bytes": 126886,
-      "sha256": "47b3150fb4df06e5f62307d7f45991a395b8a95df31b23bb1ba7cb170bb24b3b"
+      "bytes": 131502,
+      "sha256": "7923833a672a863f94279fdaa70923d042dbb62140813e30a16bad355f533132"
     },
     {
       "path": "assets/game-assets/HarvestCrateOrchard.blend",
-      "bytes": 121360,
-      "sha256": "49e138e1f0a8dedd21fc1ca30895ea728598324807f850e689c947c0ca81d066"
+      "bytes": 129591,
+      "sha256": "3ce6b4190a306b24c8f8f5c2672b3d8e7c59a772735ad56b9118e203d4cf0d32"
     }
   ],
   "models": [
     {
       "name": "HarvestCrate",
       "path": "apps/garden/public/assets/models/HarvestCrate.glb",
-      "bytes": 192772,
-      "sha256": "ff4ae49fa93bc99ea4bf1b48a0abb7272edca3283a59bc78eac7d9060ffb9a5d",
-      "url": "https://vrt.gredice.com/assets/models/HarvestCrate.glb?v=ff4ae49fa93b",
-      "triangles": 3204,
+      "bytes": 63296,
+      "sha256": "3195ac77e52bdaa91c20d392c1269f6678ba652281efc86b1d6ba990f0d7cfcb",
+      "url": "https://vrt.gredice.com/assets/models/HarvestCrate.glb?v=3195ac77e52b",
+      "triangles": 2940,
       "meshCount": 5,
       "materialCount": 5
     },
     {
       "name": "HarvestCrateOrchard",
       "path": "apps/garden/public/assets/models/HarvestCrateOrchard.glb",
-      "bytes": 146048,
-      "sha256": "715049a6ea1338c9a5fdabfee8cda99b0e67d769d62ca7794e62ffba5f60e4ae",
-      "url": "https://vrt.gredice.com/assets/models/HarvestCrateOrchard.glb?v=715049a6ea13",
-      "triangles": 2132,
+      "bytes": 65656,
+      "sha256": "ea8d6ff9b0b2af344d955aab73229f577755c10b405b8bf7ee5727f6a1ce9519",
+      "url": "https://vrt.gredice.com/assets/models/HarvestCrateOrchard.glb?v=ea8d6ff9b0b2",
+      "triangles": 2904,
       "meshCount": 5,
       "materialCount": 5
     }
@@ -62,53 +62,53 @@
       "images": [
         {
           "path": "apps/www/public/assets/blocks/HarvestCrate.webp",
-          "bytes": 14102,
-          "sha256": "08dccb2cea294f0870ba33255e1358657e531e55030cc1aece0f66257fd43ae0"
+          "bytes": 17428,
+          "sha256": "f32fcae68100acab06b01fc62ad1c510f7775ebe35ccaf7ab8238fa4510b1f40"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestCrate_1.webp",
-          "bytes": 14102,
-          "sha256": "08dccb2cea294f0870ba33255e1358657e531e55030cc1aece0f66257fd43ae0"
+          "bytes": 17428,
+          "sha256": "f32fcae68100acab06b01fc62ad1c510f7775ebe35ccaf7ab8238fa4510b1f40"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestCrate_2.webp",
-          "bytes": 13564,
-          "sha256": "718822c4c388c22791716f72531e1a1e078e43861768d341b4af4a295ac78224"
+          "bytes": 17382,
+          "sha256": "7a4335d4fb2f0d25a19656148edf7b9a21c29155c62e8d7b42b63a8d4ab75656"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestCrate_3.webp",
-          "bytes": 13798,
-          "sha256": "3d6f601821794513df976c5d74de0fbb41f22d40f0b0772e9d4e7361dc62f42b"
+          "bytes": 17732,
+          "sha256": "94fc662847f1900396ccd298ceca24eea8c48a832cc3574012f5f16cd3a8d29f"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestCrate_4.webp",
-          "bytes": 13262,
-          "sha256": "3bcaa966e096ad4e8f4989abe5b904729a6610c5eda33ca6e24a5767f4bbf5b2"
+          "bytes": 17344,
+          "sha256": "ea6641296da136c9c3d796df7378d6e0fcfc5d5ec4ee23a27d75902a5d1e4d01"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestCrate.webp",
-          "bytes": 5396,
-          "sha256": "bde7386aa2e97d4a3c6c71f852646721d7bffcc59aea136d89e6cf7f8be887c8"
+          "bytes": 7028,
+          "sha256": "6bbf965edc3422c961f6c51afe3e0b3230f80cee7e77003cc4712ac0efbf197c"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestCrate_1.webp",
-          "bytes": 5396,
-          "sha256": "bde7386aa2e97d4a3c6c71f852646721d7bffcc59aea136d89e6cf7f8be887c8"
+          "bytes": 7028,
+          "sha256": "6bbf965edc3422c961f6c51afe3e0b3230f80cee7e77003cc4712ac0efbf197c"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestCrate_2.webp",
-          "bytes": 5750,
-          "sha256": "87de410c23301b211bcfb1963806dd0f430dcd3df0a875f62494645fa8563751"
+          "bytes": 6648,
+          "sha256": "71b5813c799a153d767da07e9bcb6581c7f647727f422ac6fa4b107eee0caf89"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestCrate_3.webp",
-          "bytes": 5542,
-          "sha256": "a3225ab2afdf43389686b5269772de03be2d0710342d02ae0b1c6d0ba6f5d4e0"
+          "bytes": 6962,
+          "sha256": "04d06972cbfa25f92cce66711686c93dbff521014342da12e18ec59e19901fdd"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestCrate_4.webp",
-          "bytes": 5888,
-          "sha256": "0a6c83265f4481c1d6b61dcd74a62dc28c7832f26de0f0f8bc120e5fa3f4a656"
+          "bytes": 6730,
+          "sha256": "7989377c389c8899c9813d90f02f387d2a274c642c942370f975ad21b64e4f3a"
         }
       ]
     },
@@ -138,53 +138,53 @@
       "images": [
         {
           "path": "apps/www/public/assets/blocks/HarvestCrateOrchard.webp",
-          "bytes": 14172,
-          "sha256": "1723bf3b535ce091cb244f502f2ec4f49fdb6609ca9f2750e7eb03a0da0a4e4e"
+          "bytes": 18106,
+          "sha256": "599bb4a3b5dbdb6f49a68c64cd68f46f5faf378fcb4e29e802fcff5c9f3a93cd"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestCrateOrchard_1.webp",
-          "bytes": 14172,
-          "sha256": "1723bf3b535ce091cb244f502f2ec4f49fdb6609ca9f2750e7eb03a0da0a4e4e"
+          "bytes": 18106,
+          "sha256": "599bb4a3b5dbdb6f49a68c64cd68f46f5faf378fcb4e29e802fcff5c9f3a93cd"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestCrateOrchard_2.webp",
-          "bytes": 14246,
-          "sha256": "90bc30f548e93d30a1606c66060f74611485442059412da7eddffef3a08b7186"
+          "bytes": 18572,
+          "sha256": "6b5651b66aa9512132a36a983d3f427124025cc649a4280fd2fcf1f966904c2b"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestCrateOrchard_3.webp",
-          "bytes": 14122,
-          "sha256": "b4f01371b5d4e04eeac192e3f4d0b2eea65e723a3ac266629b3c4352f447b094"
+          "bytes": 18526,
+          "sha256": "57b82bd0062b517766791265c0d7ff54aaeaf68adb055a5f768d8e1fde5d740b"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestCrateOrchard_4.webp",
-          "bytes": 13838,
-          "sha256": "d3c7851737c1d2822f977fa2a7a96a44e72031566a6bdcf6f07617d26a2bb6ff"
+          "bytes": 19416,
+          "sha256": "9399b9d053adeb849ea2aa4ebc25209e3de699a8d26cf198e798e695200a3b66"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestCrateOrchard.webp",
-          "bytes": 5730,
-          "sha256": "4aec03d6a21eaa2224d138bcbd814251fb4f85196428cd5bdc81c6563be1c191"
+          "bytes": 6786,
+          "sha256": "dfe73e06a96f93e1cef1b8114fe404a6c2e74915a421da2043d6029430f9ef9b"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestCrateOrchard_1.webp",
-          "bytes": 5730,
-          "sha256": "4aec03d6a21eaa2224d138bcbd814251fb4f85196428cd5bdc81c6563be1c191"
+          "bytes": 6786,
+          "sha256": "dfe73e06a96f93e1cef1b8114fe404a6c2e74915a421da2043d6029430f9ef9b"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestCrateOrchard_2.webp",
-          "bytes": 5474,
-          "sha256": "d5a70ae5a22f2c55b642c0932020921602d3079b5f1aed5805503a0d12d6e11f"
+          "bytes": 7230,
+          "sha256": "e666522a33d54353e25e5267ae58c9d78e0d50ef39daa2fe3b7763f74d86447c"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestCrateOrchard_3.webp",
-          "bytes": 5264,
-          "sha256": "2dfe4d2cb848ab294289f756650fe3dd833641b5aeb987b20d31ecbaba644bf2"
+          "bytes": 7276,
+          "sha256": "e6f813fa049acdf3dc397f35ea6af8c7fc008ed804c8a2fe64787998d2fab41a"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestCrateOrchard_4.webp",
-          "bytes": 5530,
-          "sha256": "47122d2ad02a7621c2eb6a30e47167633c5901f056ef0cb94c9ff509533466fd"
+          "bytes": 6954,
+          "sha256": "e5d72cccc189ffc11191cf85c072aa287c159f3ef18e84f74faa12d4b9604f66"
         }
       ]
     }

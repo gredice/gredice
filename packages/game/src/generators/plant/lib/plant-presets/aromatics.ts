@@ -1,3 +1,8 @@
+import {
+    cropFlowerPalette,
+    cropLeafPalette,
+    cropStemPalette,
+} from '../cropPalette';
 import { createDevelopmentProgram, createPlant } from './helpers';
 
 export const aromaticPlants = {
@@ -43,19 +48,19 @@ export const aromaticPlants = {
         }),
         height: 0.86,
         stem: {
-            color: '#7aa24d',
+            color: cropStemPalette.pale,
             radius: 0.018,
             radiusDecay: 0.55,
             minRadius: 0.006,
         },
         leaf: {
-            color: '#92b95d',
+            color: cropLeafPalette.light,
             size: 0.14,
             type: 'feathery',
         },
         flower: {
             enabled: false,
-            color: '#ffffff',
+            color: cropFlowerPalette.yellow,
             size: 0,
         },
         vegetable: {

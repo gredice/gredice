@@ -2470,7 +2470,11 @@ function FarmAnimal({
     );
     const controllableActor =
         habitat.species === 'Sheep' ? (
-            <PickableGroup block={habitat.homeBlock} stack={habitat.homeStack}>
+            <PickableGroup
+                block={habitat.homeBlock}
+                blockProxy
+                stack={habitat.homeStack}
+            >
                 <RotatableGroup block={habitat.homeBlock}>
                     {actor}
                 </RotatableGroup>

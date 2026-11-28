@@ -1,8 +1,9 @@
 import { useMemo } from 'react';
 import { useAutumnState } from '../hooks/useAutumnState';
-import { getAutumnCanopyStage } from '../scene/autumnCanopy';
+import { getAutumnTreeCanopyStage } from '../scene/autumnCanopy';
 import { autumnPaletteSeeds } from '../scene/autumnPalette';
 import { useAutumnInstanceSources } from '../scene/useAutumnInstanceSources';
+import { snowPresets } from '../snow/snowPresets';
 import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
 import { useGameGLTF } from '../utils/useGameGLTF';
@@ -11,6 +12,7 @@ import {
     useEntityBlockInstances,
 } from './EntityInstancesBlock';
 import { TreeCanopyBatch } from './TreeCanopyBatch';
+import { treeEntityScale } from './treeEntityScale';
 
 export function TreeCanopyInstances({
     stacks,
@@ -32,11 +34,12 @@ export function TreeCanopyInstances({
     const disabled = useGameState(
         (state) => state.weatherVisualizationDisabled,
     );
+    // Thinning, sparse and bare trees show their branches.
     const sparse = useMemo(
         () =>
             instances?.filter(
                 (instance) =>
-                    getAutumnCanopyStage(
+                    getAutumnTreeCanopyStage(
                         disabled ? 1 : autumn.leafRetention,
                         instance.block.id,
                     ) !== 'full',
@@ -63,9 +66,13 @@ export function TreeCanopyInstances({
                 instances={sparse}
                 geometry={nodes.Tree_AutumnBranches.geometry}
                 material={materials['Material.Planks']}
-                scale={[0.125, 0.5, 0.125]}
+                scale={treeEntityScale}
                 castShadow
                 receiveShadow
+                renderSnow={renderSnow}
+                snow={snowPresets.treeBranches}
+                snowLift={0.002}
+                snowOverlayMinCoverage={snowOverlayMinCoverage}
             />
         </>
     );

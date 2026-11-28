@@ -5,9 +5,11 @@ import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
-import { getArrowSignConfig } from './signageConfig';
-
-const arrowSignFallbackColor = '#f4ead7';
+import {
+    arrowSignFallbackColorHex,
+    arrowSignPaintRoughness,
+    getArrowSignConfig,
+} from './signageConfig';
 
 export function ArrowSign({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes } = useGameGLTF('ArrowSign');
@@ -52,8 +54,8 @@ export function ArrowSign({ stack, block, rotation }: EntityInstanceProps) {
                 scale={nodes.ArrowSign_Arrow.scale}
             >
                 <meshStandardMaterial
-                    color={config?.colorHex ?? arrowSignFallbackColor}
-                    roughness={0.88}
+                    color={config?.colorHex ?? arrowSignFallbackColorHex}
+                    roughness={arrowSignPaintRoughness}
                     metalness={0}
                 />
                 <SnowOverlay

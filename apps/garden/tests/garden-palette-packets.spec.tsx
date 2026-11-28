@@ -1,4 +1,3 @@
-import { expect, test } from '@playwright/experimental-ct-react';
 import sharp from 'sharp';
 import { ActorShadowMembershipFixture } from '../../../packages/game/tests/ActorShadowMembershipFixture';
 import { GardenPacketLifetimeFixture } from '../../../packages/game/tests/GardenPacketLifetimeFixture';
@@ -11,6 +10,7 @@ import {
     type GardenPaletteFrameInputSnapshot,
     installGardenPaletteFrameInput,
 } from '../../../packages/game/tests/gardenPaletteFrameInput';
+import { expect, test } from './webglComponentTest';
 
 async function pixels(png: Buffer) {
     return sharp(png).ensureAlpha().raw().toBuffer();
@@ -1687,7 +1687,8 @@ for (const [entityName, rain, sameChunk] of [
                     .toBe(batch);
                 // A clock wait alone is not proof of owned weather frames.
                 // With wetSpeed5, 3.5s actual positive update delta converges
-                // 0→1 beyond half a Float32 ULP; still require the actual value.
+                // the rain surface 0→1 beyond half a Float32 ULP. Rain draws no
+                // wet overlay copy since 2026-11-25, so require none to render.
                 if (rain) {
                     let settled = false;
                     for (let step = 0; step < 100; step++) {
@@ -1708,15 +1709,8 @@ for (const [entityName, rain, sameChunk] of [
                             value &&
                             value.weatherEvolution.deltaSeconds >= 3.5 &&
                             value.weatherEvolution.frames > 0 &&
-                            value.rainOverlayDrawCount === 2 &&
-                            overlays?.length === 2 &&
-                            overlays.every((mesh) =>
-                                mesh.materials.every(
-                                    (uniforms) =>
-                                        typeof uniforms.uWetness === 'number' &&
-                                        Math.fround(uniforms.uWetness) === 1,
-                                ),
-                            )
+                            value.rainOverlayDrawCount === 0 &&
+                            overlays?.length === 0
                         ) {
                             settled = true;
                             break;
@@ -1758,16 +1752,9 @@ for (const [entityName, rain, sameChunk] of [
                                 (uniforms) => 'uWetness' in uniforms,
                             ),
                     );
-                    expect(rainOverlays).toHaveLength(rain ? 2 : 0);
-                    expect(readback.rainOverlayDrawCount).toBe(rain ? 2 : 0);
-                    for (const mesh of rainOverlays) {
-                        for (const uniforms of mesh.materials) {
-                            if (typeof uniforms.uWetness === 'number')
-                                expect(Math.fround(uniforms.uWetness)).toBe(
-                                    rain ? 1 : 0,
-                                );
-                        }
-                    }
+                    // Rain draws no wet overlay copy since 2026-11-25.
+                    expect(rainOverlays).toHaveLength(0);
+                    expect(readback.rainOverlayDrawCount).toBe(0);
                     if (!activeDrop) {
                         expect(readback.compiler.pendingJobs).toBe(0);
                         expect(readback.pendingMeshes).toBe(0);
@@ -1842,24 +1829,22 @@ for (const [entityName, rain, sameChunk] of [
                         expect(readback.singletonMeshes).toBeGreaterThan(0);
                     }
                     if (activeDrop) {
-                        expect(deltaSequence).toEqual(
-                            entityName === 'Stool' ? [16, 16] : [16],
-                        );
+                        // One drop spring per block; the rain overlay drop
+                        // wrapper was retired with the wet overlays.
+                        expect(deltaSequence).toEqual([16]);
                         expect(readback.springStarted).toBe(true);
-                        expect(readback.dropSpringAdvances).toHaveLength(
-                            entityName === 'Stool' ? 2 : 1,
-                        );
+                        expect(readback.dropSpringAdvances).toHaveLength(1);
                         expect(
                             new Set(
                                 readback.dropSpringAdvances.map(
                                     (advance) => advance.springIdentity,
                                 ),
                             ).size,
-                        ).toBe(entityName === 'Stool' ? 2 : 1);
+                        ).toBe(1);
                         for (const advance of readback.dropSpringAdvances)
                             expect(advance).toMatchObject({
                                 deltaMs: 16,
-                                before: 0.1,
+                                before: readback.dropStartOffsetY,
                                 after: readback.dropOffsetY,
                             });
                         expect(readback.renderedTiming.delta).toBeCloseTo(
@@ -1875,7 +1860,10 @@ for (const [entityName, rain, sameChunk] of [
                             expect(draw.originalGeometry).toBe(true);
                         }
                         expect(readback.dropOffsetY).toBeGreaterThan(0.001);
-                        expect(readback.dropOffsetY).toBeLessThan(0.1);
+                        expect(readback.dropStartOffsetY).not.toBeNull();
+                        expect(readback.dropOffsetY).toBeLessThan(
+                            readback.dropStartOffsetY ?? 0,
+                        );
                         expect(readback.animatedMeshes).toBeGreaterThan(0);
                         expect(readback.animatedOriginalGeometry).toBe(
                             readback.animatedMeshes,
@@ -2063,7 +2051,8 @@ for (const [entityName, rain, sameChunk] of [
                         return (
                             value?.dropAnimation?.visualStarted === true &&
                             value.springStarted &&
-                            value.dropOffsetY === 0.1 &&
+                            value.dropStartOffsetY !== null &&
+                            value.dropOffsetY === value.dropStartOffsetY &&
                             value.animatedMeshes > 0 &&
                             value.animatedOriginalGeometry ===
                                 value.animatedMeshes
@@ -2242,10 +2231,9 @@ function lifetimeReadback(value: unknown) {
                 wet,
                 cacheKey,
                 material,
-                bounds: Reflect.get(draw, 'bounds'),
+                ellipse: Reflect.get(draw, 'ellipse'),
                 projection: Reflect.get(draw, 'projection'),
-                hardness: Reflect.get(draw, 'hardness'),
-                mapMatches: Reflect.get(draw, 'mapMatches'),
+                amount: Reflect.get(draw, 'amount'),
             };
         }),
     };
@@ -2259,10 +2247,9 @@ function expectCurrentCloudGpu(
     for (const draw of readback.firstMainUniforms) {
         expect(draw.cloud).toBe(Math.fround(strength));
         expect(draw.wet).toBe(Math.fround(0.4));
-        expect(draw.bounds).toEqual([-10, -10, 0.04, 0.04].map(Math.fround));
+        expect(draw.ellipse).toEqual([3, 0, 2, 1.5].map(Math.fround));
         expect(draw.projection).toEqual([0.15, -0.2].map(Math.fround));
-        expect(draw.hardness).toBe(Math.fround(0.6));
-        expect(draw.mapMatches).toBe(true);
+        expect(draw.amount).toBe(Math.fround(0.6));
     }
 }
 
@@ -2610,10 +2597,9 @@ test('resident stock cloud uniforms remain isolated between live Canvas roots an
     expect(first.firstMainUniforms.length).toBeGreaterThan(0);
     for (const draw of first.firstMainUniforms) {
         expect(draw.cloud).toBe(Math.fround(0.2));
-        expect(draw.bounds).toEqual([-20, -20, 0.025, 0.025].map(Math.fround));
+        expect(draw.ellipse).toEqual([-20, -20, 1.75, 1.25].map(Math.fround));
         expect(draw.projection).toEqual([0, 0]);
-        expect(draw.hardness).toBe(0);
-        expect(draw.mapMatches).toBe(true);
+        expect(draw.amount).toBe(0);
     }
     expectCurrentCloudGpu(second, 0.8);
     await fixture.update(

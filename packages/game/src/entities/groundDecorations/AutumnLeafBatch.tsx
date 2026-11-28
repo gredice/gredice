@@ -5,6 +5,9 @@ import { createAutumnLeafClusterGeometry } from '../../scene/autumnLeafClusterGe
 import { useGameState } from '../../useGameState';
 import { EntityInstancesGeometry } from '../EntityInstancesBlock';
 
+// Satin like the canopies; rain takes it into the wet band.
+const settledLeafRoughness = 0.55;
+
 export function AutumnLeafBatch({
     batch,
     kind = 'ground',
@@ -57,7 +60,7 @@ export function useAutumnLeafBatchResources(
             new MeshStandardMaterial({
                 vertexColors: true,
                 side: DoubleSide,
-                roughness: 0.9,
+                roughness: settledLeafRoughness,
                 polygonOffset: true,
                 polygonOffsetFactor: -1,
                 polygonOffsetUnits: -1,
@@ -65,7 +68,7 @@ export function useAutumnLeafBatchResources(
         [],
     );
     useEffect(() => {
-        material.roughness = 0.9 - rain * 0.4;
+        material.roughness = settledLeafRoughness - rain * 0.4;
         material.color.setScalar(1 - rain * 0.2);
     }, [material, rain]);
     useEffect(() => () => geometry.dispose(), [geometry]);

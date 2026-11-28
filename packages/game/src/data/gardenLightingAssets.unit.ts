@@ -481,7 +481,7 @@ describe('generated garden decoration assets', () => {
         assert.deepEqual(left.maximum.slice(1), right.maximum.slice(1));
     });
 
-    it('keeps the StoneWalkway palette in one warm limestone family', () => {
+    it('keeps the StoneWalkway palette on the cool stone role with one warm accent', () => {
         const walkwayModelPath = fileURLToPath(
             new URL(
                 '../../../../apps/garden/public/assets/models/StoneWalkway.glb',
@@ -489,20 +489,25 @@ describe('generated garden decoration assets', () => {
             ),
         );
         const walkway = readGlbDocument(readFileSync(walkwayModelPath));
+        const baseColor = (materialName: string) =>
+            getMaterialBaseColor(walkway, materialName).slice(0, 3);
 
-        for (const materialName of [
-            'Material.StoneWalkway.LightStone',
-            'Material.StoneWalkway.MidStone',
-            'Material.StoneWalkway.WarmStone',
-        ]) {
-            const color = getMaterialBaseColor(walkway, materialName).slice(
-                0,
-                3,
-            );
-            assert.ok(color[0] > color[1]);
-            assert.ok(color[1] > color[2]);
-            assert.ok(color[0] - color[2] >= 0.2);
+        // GAME_ART.md "Stone" role (#b3bdd3) is a cool neutral: blue leads.
+        const light = baseColor('Material.StoneWalkway.LightStone');
+        const middle = baseColor('Material.StoneWalkway.MidStone');
+        for (const color of [light, middle]) {
+            assert.ok(color[2] > color[1]);
+            assert.ok(color[1] > color[0]);
         }
+        assert.ok(
+            light.reduce((sum, channel) => sum + channel, 0) >
+                middle.reduce((sum, channel) => sum + channel, 0),
+        );
+
+        // The accent stone stays a warm neutral so the path is not one tone.
+        const warm = baseColor('Material.StoneWalkway.WarmStone');
+        assert.ok(warm[0] > warm[1]);
+        assert.ok(warm[1] > warm[2]);
     });
 
     it('HazelLightArch remains one thin free-standing one-tile gateway', () => {
@@ -523,8 +528,9 @@ describe('generated garden decoration assets', () => {
         const depth = poles.maximum[2] - poles.minimum[2];
         const shadeDepth = shades.maximum[2] - shades.minimum[2];
 
-        // A square shoe or under-block would widen the 0.104-unit round posts.
-        assert.ok(width <= 0.11);
+        // The round posts are 0.12 thick, the structural timber minimum in
+        // GAME_ART.md; a square shoe or under-block would widen them.
+        assert.ok(width <= 0.125);
         assert.ok(depth >= 0.98);
         assert.ok(depth <= 1.01);
         assert.ok(poles.minimum[2] >= -0.5);

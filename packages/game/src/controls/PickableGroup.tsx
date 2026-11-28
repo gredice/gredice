@@ -14,6 +14,8 @@ import {
     useState,
 } from 'react';
 import { Plane, Raycaster, Vector2, Vector3 } from 'three';
+import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
+import type { BlockMovePointer } from '../blockOptions/blockEditingState';
 import {
     type ActiveDragPreviewTarget,
     activeDragPreviewTargetMatches,
@@ -56,12 +58,30 @@ import {
     suppressBlockInteractions,
 } from './blockInteractionSuppression';
 import {
+    centeredPickupAnchorOffset,
+    computeMenuMoveAnchorOffset,
+    type PickupAnchorOffset,
+    resolveMenuMoveStartPoint,
+} from './blockMoveAnchor';
+import {
+    type CarryStartRelease,
+    installCarryPointerAdoption,
+    resolveCarryPointerRoot,
+} from './blockMoveCarry';
+import { isDragEdgeAutopanArmed } from './dragEdgeAutopan';
+import {
     createPickupPlacementPreviewResolver,
     type MovingSegment,
     type PickupPlacementPreviewResolver,
     type ResolvedPlacementPreview,
 } from './PickupPlacementResolver';
 import { PlacementFootprintIndicator } from './PlacementFootprintIndicator';
+import {
+    arePickupReleaseOptionsEnabled,
+    getBlockEditingHighlightBlockId,
+    type PickupSessionOrigin,
+    resolvePickupReleaseIntent,
+} from './pickupReleaseIntent';
 import { resolvePickupHudDropAction } from './pickupRemovalDropAction';
 import {
     createPickupSelectionMoveRequests,
@@ -79,22 +99,31 @@ const pickupLift = 0.1;
 const suppressClickAfterDragMs = 450;
 const placementSnapSearchRadius = 5;
 const animalPickupDisturbanceRadius = 1.8;
+/** Pointer id of a move started from the keyboard (no pointer is down). */
+const keyboardMovePointerId = -1;
+/** Names the group of the block the options pop-up is about (browser specs). */
+const editingOutlineObjectName = 'BlockOptions:EditingOutline:entity';
 
 type PickableGroupProps = PropsWithChildren<
     Pick<EntityInstanceProps, 'stack' | 'block'> & {
+        /**
+         * A handle for a block that another entity renders (a sheep for its
+         * fold): a hold still lifts and moves the block, but only the
+         * block's own group takes Pomakni from the options pop-up and shows
+         * its editing outline.
+         */
+        blockProxy?: boolean;
         interactionTargetKey?: string;
         noControl?: boolean;
         renderPickupOutline?: boolean;
     }
 >;
 
-type PickupAnchorOffset = {
-    x: number;
-    y: number;
-    z: number;
-};
-
 type PointerSession = {
+    /** A hold on the block, or Pomakni in the options pop-up. */
+    origin: PickupSessionOrigin;
+    /** Carry mode: lifted, waiting for the pointer that picks the cell. */
+    awaitingPointer: boolean;
     pointerId: number;
     pointerType: string;
     startClientX: number;
@@ -112,6 +141,12 @@ type PointerSession = {
     holdTimer: number | null;
     dragAutopanFrame: number | null;
     dragAutopanPreviousTime: number | null;
+    /**
+     * Edge autopan may run. A hold starts armed; Pomakni and a carry
+     * adoption arm only once the pointer leaves, or pushes further into,
+     * the edge band it started in (`isDragEdgeAutopanArmed`).
+     */
+    dragAutopanArmed: boolean;
     latestPreview: ResolvedPlacementPreview | null;
 };
 
@@ -208,6 +243,7 @@ function resolvedPlacementPreviewsEqual(
 }
 
 export function PickableGroup({
+    blockProxy = false,
     children,
     interactionTargetKey,
     stack,
@@ -229,6 +265,7 @@ export function PickableGroup({
     const gameStateStore = useContext(GameStateContext);
     const camera = useThree((state) => state.camera);
     const gl = useThree((state) => state.gl);
+    const getThree = useThree((state) => state.get);
     const { domElement } = gl;
     const dragState = useRef({
         pt: new Vector3(),
@@ -258,6 +295,7 @@ export function PickableGroup({
         (state) => state.clearPickupSelectionTargets,
     );
     const disturbAnimals = useGameState((state) => state.disturbAnimals);
+    const bounceBlock = useGameState((state) => state.bounceBlock);
     const setActiveDragPreview = useGameState(
         (state) => state.setActiveDragPreview,
     );
@@ -270,6 +308,13 @@ export function PickableGroup({
     const localSandboxStorageKey = useGameState(
         (state) => state.localSandboxStorageKey,
     );
+    // The options pop-up, remove dialog or Expand is about this block (D19).
+    const isEditingTarget = useGameState(
+        (state) =>
+            !blockProxy &&
+            getBlockEditingHighlightBlockId(state.blockEditing) === block.id,
+    );
+    const { track } = useGameAnalytics();
 
     const [isBlocked, setIsBlocked] = useState(false);
     const [isOverRecycler, setIsOverRecycler] = useState(false);
@@ -322,6 +367,9 @@ export function PickableGroup({
     const pointerSessionCleanup = useRef<(() => void) | null>(null);
     const refreshPlacementPreviewFromSessionRef = useRef<
         ((session: PointerSession) => void) | null
+    >(null);
+    const startMenuMoveRef = useRef<
+        ((blockId: string, pointer: BlockMovePointer | null) => boolean) | null
     >(null);
 
     const stopDragAutopan = useCallback((session: PointerSession) => {
@@ -414,8 +462,38 @@ export function PickableGroup({
             stopDragAutopan(session);
             pointerSessionCleanup.current?.();
             pointerSessionCleanup.current = null;
+            if (!session.activated) {
+                return;
+            }
+
+            // The drag cannot finish without this group, so let go of the
+            // block: a pickup left in the store blocks hover, rotation and
+            // every later pickup.
+            suppressBlockInteractions(suppressClickAfterDragMs);
+            const gameState = gameStateStore?.getState();
+            gameState?.setActiveDragPreview(null);
+            gameState?.setPickupBlock(null);
+            gameState?.clearPickupSelectionTargets();
+            gameState?.setItemsHudDropTargetActive(false);
         };
-    }, [stopDragAutopan]);
+    }, [gameStateStore, stopDragAutopan]);
+
+    // Pomakni in the options pop-up hands its pointer to this group, which
+    // starts the pickup synchronously inside the button's pointerdown (D18).
+    // Proxies stay out: the first receiver for a block id wins, and a sheep
+    // would lift instead of its fold.
+    useEffect(() => {
+        if (!gameStateStore || noControl || blockProxy) {
+            return;
+        }
+
+        return gameStateStore
+            .getState()
+            .registerBlockMoveReceiver(
+                ({ blockId, pointer }) =>
+                    startMenuMoveRef.current?.(blockId, pointer) ?? false,
+            );
+    }, [blockProxy, gameStateStore, noControl]);
 
     function getMovingSegments(
         garden: CurrentGarden | null | undefined = getCurrentGarden(),
@@ -736,6 +814,30 @@ export function PickableGroup({
         refreshPlacementPreviewFromSessionRef.current?.(session);
     }, [isPreviewSource, sourcePickupSelectionTargets]);
 
+    /**
+     * Starts the edge autopan once the session is armed for it: at once for
+     * a hold, and for Pomakni or a carry tap only after the pointer leaves,
+     * or pushes further into, the edge band it started in.
+     */
+    function armDragAutopan(session: PointerSession) {
+        if (!session.dragAutopanArmed) {
+            session.dragAutopanArmed = isDragEdgeAutopanArmed({
+                pointer: {
+                    clientX: session.lastClientX,
+                    clientY: session.lastClientY,
+                },
+                start: {
+                    clientX: session.pickupClientX ?? session.startClientX,
+                    clientY: session.pickupClientY ?? session.startClientY,
+                },
+                viewport: domElement.getBoundingClientRect(),
+            });
+        }
+        if (session.dragAutopanArmed) {
+            startDragAutopan(session);
+        }
+    }
+
     function startDragAutopan(session: PointerSession) {
         if (session.dragAutopanFrame !== null || !gameCamera) {
             return;
@@ -856,6 +958,7 @@ export function PickableGroup({
             stack.position.clone().setY(currentStackHeight),
             4,
         );
+        bounceBlock(block.id, 'pickup');
         applyActivePreview(preview);
     }
 
@@ -1041,6 +1144,11 @@ export function PickableGroup({
         dropSound.play();
         triggerPlaceHaptic();
         spawn(resolveBlockParticleType(block.name), previewDropPosition, 8);
+        for (const segment of movingSegments) {
+            for (const movedBlock of segment.blocks) {
+                bounceBlock(movedBlock.id, 'land');
+            }
+        }
 
         await moveBlock
             .mutateAsync({
@@ -1053,7 +1161,13 @@ export function PickableGroup({
 
     function handleWindowPointerMove(event: PointerEvent) {
         const session = pointerSession.current;
-        if (!session || event.pointerId !== session.pointerId) {
+        if (
+            !session ||
+            event.pointerId !== session.pointerId ||
+            // Carry: mouse hover moves the preview through the carry
+            // listener; it must not count as a drag or start autopan.
+            session.awaitingPointer
+        ) {
             return;
         }
 
@@ -1085,8 +1199,8 @@ export function PickableGroup({
             }
 
             session.hasDraggedAfterPickup = true;
-            startDragAutopan(session);
         }
+        armDragAutopan(session);
 
         setItemsHudDropTargetActive(
             isPointOverItemsHudDropTarget(event.clientX, event.clientY),
@@ -1097,16 +1211,20 @@ export function PickableGroup({
 
     function handleWindowPointerUp(event: PointerEvent) {
         const session = pointerSession.current;
-        if (!session || event.pointerId !== session.pointerId) {
+        if (
+            !session ||
+            event.pointerId !== session.pointerId ||
+            session.awaitingPointer
+        ) {
             return;
         }
 
         clearSessionTimers(session);
         stopDragAutopan(session);
-        cleanupPointerSessionListeners();
-        pointerSession.current = null;
 
         if (!session.activated) {
+            cleanupPointerSessionListeners();
+            pointerSession.current = null;
             if (session.hintVisible) {
                 dragSpringsApi.start({
                     internalPosition: [0, 0, 0],
@@ -1119,23 +1237,70 @@ export function PickableGroup({
 
         event.preventDefault();
         suppressBlockInteractions(suppressClickAfterDragMs);
+        const gameState = gameStateStore?.getState();
+        const hudDropRequested = isPointOverItemsHudDropTarget(
+            session.lastClientX,
+            session.lastClientY,
+        );
+        // Decided from what the pointer did, not from the re-resolved cell
+        // (D1): a still release never moves the block.
+        const intent = resolvePickupReleaseIntent({
+            origin: session.origin,
+            hasDraggedAfterPickup: session.hasDraggedAfterPickup,
+            hudDropRequested,
+            selectionCount: gameState?.pickupSelectionTargets.length ?? 1,
+            optionsEnabled:
+                Boolean(gameState) &&
+                arePickupReleaseOptionsEnabled({
+                    editingMode: gameState?.blockEditing?.mode,
+                    hasBlockData: Boolean(blocksData),
+                    hasGarden: Boolean(getCurrentGarden()),
+                    hasOptionsUi: Boolean(gameState?.isBlockOptionsUiMounted()),
+                }),
+        });
+        if (intent === 'carry') {
+            enterCarryMode(session, {
+                clientX: event.clientX,
+                clientY: event.clientY,
+                timeStamp: event.timeStamp,
+            });
+            return;
+        }
+
+        cleanupPointerSessionListeners();
+        pointerSession.current = null;
+        if (intent === 'options' || intent === 'settle') {
+            resetPickupVisualState();
+            dragSpringsApi.start({ internalPosition: [0, 0, 0], scale: 1 });
+            if (intent === 'options') {
+                gameState?.openBlockOptions({
+                    blockId: block.id,
+                    blockName: block.name,
+                    pointerType: session.pointerType,
+                });
+            }
+            return;
+        }
+
         const preview =
             resolvePlacementPreview(
                 session.lastClientX,
                 session.lastClientY,
                 session.pickupAnchorOffset,
             ) ?? session.latestPreview;
-        void finishPickup(preview, {
-            hudDropRequested: isPointOverItemsHudDropTarget(
-                session.lastClientX,
-                session.lastClientY,
-            ),
-        });
+        void finishPickup(preview, { hudDropRequested });
+        if (session.origin === 'menu') {
+            gameState?.closeBlockEditing();
+        }
     }
 
     function handleWindowPointerCancel(event: PointerEvent) {
         const session = pointerSession.current;
-        if (!session || event.pointerId !== session.pointerId) {
+        if (
+            !session ||
+            event.pointerId !== session.pointerId ||
+            session.awaitingPointer
+        ) {
             return;
         }
 
@@ -1177,6 +1342,8 @@ export function PickableGroup({
             event.button !== 0 ||
             pointerSession.current ||
             areBlockInteractionsSuppressed() ||
+            // Expand owns canvas presses (corner taps, pans), D6.
+            gameStateStore?.getState().blockEditing?.mode === 'expand' ||
             !getCurrentGarden() ||
             !blocksData ||
             blockIndex < 0
@@ -1193,6 +1360,8 @@ export function PickableGroup({
             z: event.point.z - stack.position.z,
         };
         const session: PointerSession = {
+            origin: 'hold',
+            awaitingPointer: false,
             pointerId: nativeEvent.pointerId,
             pointerType: nativeEvent.pointerType,
             startClientX: nativeEvent.clientX,
@@ -1210,6 +1379,7 @@ export function PickableGroup({
             holdTimer: null,
             dragAutopanFrame: null,
             dragAutopanPreviousTime: null,
+            dragAutopanArmed: true,
             latestPreview: null,
         };
         pointerSession.current = session;
@@ -1237,6 +1407,10 @@ export function PickableGroup({
             pickupHoldDelayMs,
         );
 
+        addPointerSessionListeners();
+    }
+
+    function addPointerSessionListeners() {
         window.addEventListener('pointermove', handleWindowPointerMove, {
             passive: false,
         });
@@ -1252,9 +1426,181 @@ export function PickableGroup({
         };
     }
 
+    /**
+     * Pomakni in the options pop-up: lifts this block for the pointer that
+     * pressed the button, synchronously, so the button's own pointerup
+     * already reaches this session (D18). Without a pointer (keyboard) the
+     * block goes straight to carry mode. Returns whether it claimed the move.
+     */
+    function startMenuMove(blockId: string, pointer: BlockMovePointer | null) {
+        if (
+            blockId !== block.id ||
+            pointerSession.current ||
+            !gameStateStore ||
+            !getCurrentGarden() ||
+            !blocksData ||
+            blockIndex < 0
+        ) {
+            return false;
+        }
+
+        const rect = domElement.getBoundingClientRect();
+        const planeHeight = (currentStackHeight ?? 0) + pickupLift;
+        const pickupAnchorOffset = computeMenuMoveAnchorOffset({
+            camera,
+            planeHeight,
+            pointer,
+            rect,
+            stackPosition: stack.position,
+        });
+        // A keyboard move starts at the block's own screen point, so the
+        // refresh after activation keeps it on its cell (§2.6 D3).
+        const { clientX, clientY } = resolveMenuMoveStartPoint({
+            camera,
+            planeHeight,
+            pointer,
+            rect,
+            stackPosition: stack.position,
+        });
+        const session: PointerSession = {
+            origin: 'menu',
+            awaitingPointer: false,
+            pointerId: pointer?.pointerId ?? keyboardMovePointerId,
+            pointerType: pointer?.pointerType ?? 'keyboard',
+            startClientX: clientX,
+            startClientY: clientY,
+            lastClientX: clientX,
+            lastClientY: clientY,
+            pickupClientX: null,
+            pickupClientY: null,
+            pickupAnchorOffset,
+            hasDraggedAfterPickup: false,
+            activated: false,
+            cancelled: false,
+            hintVisible: false,
+            hintTimer: null,
+            holdTimer: null,
+            dragAutopanFrame: null,
+            dragAutopanPreviousTime: null,
+            dragAutopanArmed: false,
+            latestPreview: null,
+        };
+        pointerSession.current = session;
+        addPointerSessionListeners();
+        activatePickup();
+        if (!session.activated || pointerSession.current !== session) {
+            // No valid preview: activatePickup already ended the session.
+            return false;
+        }
+
+        if (!pointer) {
+            enterCarryMode(session, null);
+        }
+        track('game_block_move_started', {
+            block_name: block.name,
+            mode: pointer ? 'drag' : 'carry',
+        });
+        return true;
+    }
+    startMenuMoveRef.current = startMenuMove;
+
+    /**
+     * Keeps the block lifted after Pomakni was released without dragging,
+     * until a tap or click picks its cell (adopt), a press elsewhere or
+     * Escape cancels, or the group unmounts.
+     * `start` is the Pomakni release (null from the keyboard): a press
+     * repeating it right away is a double-click on Pomakni, not a cell.
+     */
+    function enterCarryMode(
+        session: PointerSession,
+        start: CarryStartRelease | null,
+    ) {
+        session.awaitingPointer = true;
+        session.hasDraggedAfterPickup = false;
+        // The block goes where the player taps, not under the button.
+        session.pickupAnchorOffset = { ...centeredPickupAnchorOffset };
+        stopDragAutopan(session);
+        setItemsHudDropTargetActive(false);
+
+        const isAwaiting = () =>
+            pointerSession.current === session &&
+            session.awaitingPointer &&
+            !session.cancelled;
+        const uninstallCarry = installCarryPointerAdoption({
+            // drei `Html` overlays (animal bubbles) live in r3f's event
+            // source, beside the canvas's own container.
+            getR3fRoot: () =>
+                resolveCarryPointerRoot(
+                    getThree().events.connected,
+                    domElement,
+                ),
+            isAwaiting,
+            isOverHudDropTarget: isPointOverItemsHudDropTarget,
+            onAdopt: (event) => adoptCarryPointer(session, event),
+            onCancel: () => cancelCarry(session),
+            onEscape: () => cancelCarry(session),
+            onHover: (event) => followCarryHover(session, event),
+            start,
+        });
+        const cleanupSessionListeners = pointerSessionCleanup.current;
+        pointerSessionCleanup.current = () => {
+            cleanupSessionListeners?.();
+            uninstallCarry();
+        };
+        gameStateStore
+            ?.getState()
+            .setBlockEditingCarry({ pointerType: session.pointerType });
+    }
+
+    function adoptCarryPointer(session: PointerSession, event: PointerEvent) {
+        session.pointerId = event.pointerId;
+        session.pointerType = event.pointerType;
+        session.lastClientX = event.clientX;
+        session.lastClientY = event.clientY;
+        session.pickupClientX = event.clientX;
+        session.pickupClientY = event.clientY;
+        // The press itself picks the cell: its release drops there.
+        session.hasDraggedAfterPickup = true;
+        session.awaitingPointer = false;
+        setItemsHudDropTargetActive(
+            isPointOverItemsHudDropTarget(event.clientX, event.clientY),
+        );
+        // A still tap in an edge band must not pan the ground away from
+        // the tapped cell; the pan waits until the pointer arms it.
+        session.dragAutopanArmed = false;
+        refreshPlacementPreviewFromSession(session);
+    }
+
+    function followCarryHover(session: PointerSession, event: PointerEvent) {
+        session.lastClientX = event.clientX;
+        session.lastClientY = event.clientY;
+        setItemsHudDropTargetActive(
+            isPointOverItemsHudDropTarget(event.clientX, event.clientY),
+        );
+        refreshPlacementPreviewFromSession(session);
+    }
+
+    function cancelCarry(session: PointerSession) {
+        if (pointerSession.current !== session) {
+            return;
+        }
+
+        resetPickupVisualState();
+        cancelPointerSession(true);
+        gameStateStore?.getState().closeBlockEditing();
+    }
+
     function handleClick(event: ThreeEvent<MouseEvent>) {
-        if (areBlockInteractionsSuppressed()) {
+        if (
+            areBlockInteractionsSuppressed() ||
+            gameStateStore?.getState().blockEditing?.mode === 'expand'
+        ) {
             event.stopPropagation();
+            return;
+        }
+        // Terrain stays put so the floor keeps reading as one surface.
+        if (!block.name.startsWith('Block_')) {
+            bounceBlock(block.id, 'tap');
         }
     }
 
@@ -1286,7 +1632,8 @@ export function PickableGroup({
             tension: 350,
         },
     });
-    const showPickupOutline = pickupOutlineVisible || isPreviewTarget;
+    const showPickupOutline =
+        pickupOutlineVisible || isPreviewTarget || isEditingTarget;
     const blockEntity = getBlockDataByName(blocksData, block.name);
     const indicatorPosition: [number, number, number] = [
         stack.position.x,
@@ -1355,6 +1702,7 @@ export function PickableGroup({
 
     return (
         <animated.group
+            name={isEditingTarget ? editingOutlineObjectName : ''}
             position={dragPosition}
             scale={dragSprings.scale}
             onPointerEnter={handlePickupPointerEnter}

@@ -1,5 +1,5 @@
-import { expect as baseExpect, test } from '@playwright/experimental-ct-react';
 import { WarmPropsFixture } from '../../../packages/game/tests/WarmPropsFixture';
+import { expect as baseExpect, test } from './webglComponentTest';
 
 test.setTimeout(120_000);
 const expect = baseExpect.configure({ timeout: 30_000 });

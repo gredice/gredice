@@ -14,6 +14,12 @@ import {
     type Vector3,
 } from 'three';
 import { useBlockData } from '../../hooks/useBlockData';
+import { useAnimalIdleBreathingAmplitude } from '../../scene/IdleBreathingMotion';
+import {
+    idleBreathingScale,
+    idleBreathingSeed,
+    idleBreathingWave,
+} from '../../scene/idleBreathing';
 import {
     sceneFrameRates,
     useSceneTimeInvalidation,
@@ -105,14 +111,14 @@ const fullTurn = Math.PI * 2;
 
 const rabbitCoatPalettes = {
     0: {
-        innerEar: '#bd6f71',
+        innerEar: '#a65f65',
         primary: '#87532f',
-        secondary: '#d0ac7c',
+        secondary: '#aa9c83',
     },
     1: {
-        innerEar: '#cf8d87',
-        primary: '#b89462',
-        secondary: '#ddc28f',
+        innerEar: '#a66661',
+        primary: '#9d7445',
+        secondary: '#aa9f89',
     },
 } as const;
 
@@ -298,11 +304,15 @@ function dampPart(
 }
 
 function animateRabbitRig({
+    breathAmplitude,
+    breathSeed,
     delta,
     rig,
     runtime,
     time,
 }: {
+    breathAmplitude: number;
+    breathSeed: number;
     delta: number;
     rig: RabbitRig;
     runtime: RabbitRuntimeState;
@@ -330,6 +340,17 @@ function animateRabbitRig({
         positionY: moving ? hop * 0.12 : sitting ? -0.025 : 0,
         rotationX: moving ? stride * 0.12 : nibbling ? 0.12 : 0,
     });
+    // Idle breathing (GAME_ART.md, "Motion"): the body scale is not posed
+    // above, so a slow volume-preserving stretch replaces its rest scale.
+    const breath = idleBreathingScale(
+        breathAmplitude,
+        idleBreathingWave(time, breathSeed),
+    );
+    rig.body.object.scale.set(
+        rig.body.baseScale.x * breath.side,
+        rig.body.baseScale.y * breath.up,
+        rig.body.baseScale.z * breath.side,
+    );
     dampPart(rig.head, delta, {
         positionY: grooming ? -0.08 : nibbling ? -0.055 : 0,
         rotationX: grooming ? 0.72 : nibbling ? 0.5 : sniffing ? 0.08 : 0,
@@ -465,6 +486,9 @@ export function Rabbit({
         };
     }, [gltf.scene, palette]);
     const shouldPoseRabbit = useFaunaActorCulling(rabbitModel.scene);
+    const breathAmplitude = useAnimalIdleBreathingAmplitude();
+    // Each rabbit breathes in its own phase, keyed to its home tile.
+    const breathSeed = idleBreathingSeed(stack.position.x, stack.position.z);
     const habitat = useMemo(() => {
         const surfaces = createAnimalMovementSurfaces({
             blockData,
@@ -703,6 +727,8 @@ export function Rabbit({
         const now = clock.elapsedTime;
         if (shouldPoseRabbit() && rabbitModel.rig) {
             animateRabbitRig({
+                breathAmplitude,
+                breathSeed,
                 delta,
                 rig: rabbitModel.rig,
                 runtime,

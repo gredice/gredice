@@ -1,0 +1,21 @@
+{
+    "mode": "Built-in image_gen",
+    "useCase": "stylized-concept",
+    "file": "block-recycle.webp",
+    "prompt": "Create an original chunky 3D low-poly farming-game HUD icon. The FIRST, SECOND and THIRD images are exact rendering STYLE REFERENCES: match the backpack, shopping basket and tutorial clipboard's thick beveled polygonal geometry, forest greens, warm golden-orange wood, dark contact shadows, matte material shading and soft upper-left highlights. Subject: One chunky open-top wooden compost crate with dark cocoa soil plainly visible inside. Thick bevels, broad warm golden-orange wood boards, a raised flat timber rim, and a few large plank seams. One bold C-shaped, three-dimensional grass-green arrow in a steeply tilted loop around the outside of the crate. The arrow starts low and right at a squared-off tail, sweeps across the front below the wooden rim, rises along the left edge and curves over the upper-left corner, ending in one large arrowhead aimed down into the open compost crate. Keep the soil clearly visible. The entire arrow is a single continuous curved piece of molded toy plastic, with one clear open space between the tail and tip, no seams, no detached arcs, no standard triangular recycling logo, no leaves, and no extra objects. Slightly elevated three-quarter front view that clearly shows the object's right-edge thickness and physical depth. Compact centered silhouette readable at 36px, like an actual Blender toy-prop render. Rich coherent shadows, not flat vector art or a pale technical model screenshot. Use broad bevels and restrained low-poly detail, with the full silhouette filling a square frame evenly. Complete icon on a genuinely transparent background with a small transparent margin. No ground plane, backdrop graphics, shadows beyond the object, letters, numbers, words or extra props.",
+    "inputs": [
+        {
+            "role": "Style reference",
+            "file": "inventory-backpack.webp"
+        },
+        {
+            "role": "Style reference",
+            "file": "shopping-basket.webp"
+        },
+        {
+            "role": "Style reference",
+            "file": "tutorial-task-list.png"
+        }
+    ],
+    "processing": "Clear alpha values below 4 of 255, trim empty alpha margins, fit within 320x320 with transparent padding, add an 8px transparent border, and save as a 336x336 WebP with real alpha using cwebp -q 90 -alpha_q 100."
+}

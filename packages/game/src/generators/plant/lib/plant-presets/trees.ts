@@ -1,3 +1,8 @@
+import {
+    cropFlowerPalette,
+    cropLeafPalette,
+    cropStemPalette,
+} from '../cropPalette';
 import type { PlantDefinition } from '../plant-definition-types';
 import { createDevelopmentProgram, createPlant } from './helpers';
 
@@ -31,23 +36,23 @@ export const treePlants = {
         }),
         height: 1.42,
         stem: {
-            color: '#7c5b35',
+            color: cropStemPalette.wood,
             radius: 0.09,
             radiusDecay: 0.34,
             minRadius: 0.008,
             surface: 'bark',
-            detailColor: '#5a4022',
+            detailColor: cropStemPalette.woodDetail,
             detailStrength: 0.38,
             detailScale: 18,
         },
         leaf: {
-            color: '#5b7f37',
+            color: cropLeafPalette.base,
             size: 0.3,
             type: 'palmate',
         },
         flower: {
             enabled: false,
-            color: '#ffffff',
+            color: cropFlowerPalette.cream,
             size: 0,
         },
         vegetable: treeVegetable,
@@ -77,23 +82,23 @@ export const treePlants = {
         }),
         height: 1.2,
         stem: {
-            color: '#84705a',
+            color: cropStemPalette.wood,
             radius: 0.09,
             radiusDecay: 0.34,
             minRadius: 0.008,
             surface: 'bark',
-            detailColor: '#665542',
+            detailColor: cropStemPalette.woodDetail,
             detailStrength: 0.38,
             detailScale: 22,
         },
         leaf: {
-            color: '#7b9360',
+            color: cropLeafPalette.silver,
             size: 0.16,
             type: 'lanceolate',
         },
         flower: {
             enabled: false,
-            color: '#ffffff',
+            color: cropFlowerPalette.cream,
             size: 0,
         },
         vegetable: treeVegetable,
@@ -129,23 +134,23 @@ export const treePlants = {
         }),
         height: 1.34,
         stem: {
-            color: '#7c5b35',
+            color: cropStemPalette.wood,
             radius: 0.09,
             radiusDecay: 0.34,
             minRadius: 0.008,
             surface: 'bark',
-            detailColor: '#5a4022',
+            detailColor: cropStemPalette.woodDetail,
             detailStrength: 0.38,
             detailScale: 18,
         },
         leaf: {
-            color: '#6b8f3a',
+            color: cropLeafPalette.base,
             size: 0.22,
             type: 'serrated',
         },
         flower: {
             enabled: true,
-            color: '#f7e6ef',
+            color: cropFlowerPalette.blush,
             size: 0.06,
         },
         vegetable: treeVegetable,

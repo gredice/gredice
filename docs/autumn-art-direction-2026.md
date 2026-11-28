@@ -11,9 +11,37 @@ targets; it does not add models, publish catalogue items, or change customer sta
 
 ## Palette and material roles
 
+> **Superseded 2026-11-23.** Autumn, harvest and Halloween now use the bright
+> party look: take colours from the seasonal roles in the Colour section of
+> [GAME_ART.md](../GAME_ART.md) (`SEASONAL_ROLES` in
+> `assets/scripts/party_style.py`, `packages/game/src/scene/seasonalRoles.ts`
+> for code), with the roughness bands and metalness 0 that GAME_ART.md sets.
+> The muted palette, the 0.82 to 1 roughness and the enamel metalness below
+> are kept as a record only. `AUTUMN_REMAP` and `SEASONAL_REMAP` in
+> `party_style.py` list every old colour found in the generators and code.
+> The composition, footprint and camera guidance in the rest of this brief
+> still applies.
+>
+> | Old role | Old albedo | New role, on screen |
+> | --- | --- | --- |
+> | Timber, crates, tool handles | `#764024`, `#905935` | Shared wood profile, unchanged |
+> | Limestone, linen, mushroom stems | `#D5C6A3`, `#EEE3CB` | Cream `#f2e4c6` |
+> | Pumpkin | `#E08A3C` | Pumpkin `#f0803a`, with light `#f2a640` and shade `#e2662a` |
+> | Pumpkin stem | `#4E7F35` | Crop leaf `#5fc93a` |
+> | Leaf gold | `#D6B83F` | Autumn gold `#f0c832` (straw: hay `#f2cb5a`) |
+> | Leaf amber | `#D78335` | Autumn amber `#f09a38` |
+> | Leaf copper | `#B94E32` | Autumn orange `#ee6c2b` |
+> | Leaf russet | `#79563C` | Autumn red `#e44a2e` (bark: trunk `#b56a3c`) |
+> | Leaf pile body | `#A15B30`, `#986037` | Leaf pile `#d9733a` |
+> | Cool enamel | `#2F5E83` | Enamel blue `#3f8ff0` |
+> | Hardware | `#313536` | Iron `#8a95b5` (faces: ink violet `#5c4590`) |
+> | Mauve flowers | `#9B709C` | Aster violet `#c05ddc` |
+> | Rust textile | `#AA563D` | Textile rust `#e45f3a` (orchard apples: apple red `#ec3c3a`) |
+> | Lamp or contained flame | `#FFCE53` | Lantern glow, emissive `#ffb43a`; warm lamp, emissive `#ffd36b` |
+
 ![Fifteen labeled autumn material swatches](autumn-art-direction-2026/palette.svg)
 
-These are **sRGB albedo targets**, not colors sampled from lit screenshots. The
+These were **sRGB albedo targets**, not colors sampled from lit screenshots. The
 existing anchors come from exported `WoodenBench`, `EnamelGardenLamp` and
 `HarvestBasket` GLB materials, converted from linear RGB. Leaf stops come from
 [`autumnPalette.ts`](../packages/game/src/scene/autumnPalette.ts). The warm glow
@@ -170,7 +198,9 @@ the sparse-canopy threshold at slightly different times. The unchanged winter
 boundary is `(color 1, retention 0.08, falling 0, settled 0.85)`; winter settles
 to 0.1 ground-leaf amount at the spring boundary. Spring starts from that same
 brown/sparse state and regrows smoothly, finishing green/full with no settled
-leaves before summer. The existing boundary, leap-year, palette and canopy tests
+leaves before summer. (Since 2026-11-25 the round Tree is bare, with no
+crown, at this winter boundary; each tree regrows from the sparse stage
+between about 23 and 27 March.) The existing boundary, leap-year, palette and canopy tests
 passed (17 tests).
 
 Revisit only after the six core props are shown together at September 23 noon

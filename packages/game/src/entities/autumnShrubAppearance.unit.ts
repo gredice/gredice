@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { Color } from 'three';
 import {
     getAutumnCanopyShadowKey,
     getAutumnShrubCanopyStage,
 } from '../scene/autumnCanopy';
 import { getAutumnState } from '../scene/autumnState';
+import { seasonalRoles } from '../scene/seasonalRoles';
 import {
     getSeasonLengthDays,
     getSeasonStartDate,
@@ -46,8 +48,8 @@ test('summer greens change to distinct gold and russet, then bare branches in wi
     const summer = appearance('summer', 0);
     const autumn = appearance('autumn', 0.35);
     assert.equal(summer.stage, 'full');
-    assert.equal(summer.gold.getHexString(), '6d913f');
-    assert.equal(summer.russet.getHexString(), '4e7f35');
+    assert.equal(summer.gold.getHexString(), '30712c');
+    assert.equal(summer.russet.getHexString(), '30712c');
     assert.equal(autumn.stage, 'full');
     assert.notEqual(autumn.gold.getHexString(), summer.gold.getHexString());
     assert.notEqual(autumn.russet.getHexString(), summer.russet.getHexString());
@@ -62,11 +64,20 @@ test('spring starts bare and regrows green buds, thinning foliage and a full sum
     assert.equal(appearance('spring', 0.1).stage, 'sparse');
     assert.equal(appearance('spring', 0.3).stage, 'thinning');
     assert.equal(appearance('spring', 0.65).stage, 'full');
+    const summerGreen = new Color('#30712c');
+    const springGreen = new Color(seasonalRoles.springGreen.albedo);
     for (const progress of [0.1, 0.3, 0.65, 0.99]) {
         const state = appearance('spring', progress);
-        assert.equal(state.gold.getHexString(), '6d913f');
-        assert.equal(state.russet.getHexString(), '4e7f35');
+        // Both masses share one fresh green between the summer canopy
+        // and the spring green role, never an autumn colour.
+        assert.equal(state.gold.getHexString(), state.russet.getHexString());
+        assert.ok(state.gold.g > state.gold.r && state.gold.g > state.gold.b);
+        assert.ok(state.gold.g >= summerGreen.g - 1e-6);
+        assert.ok(state.gold.g <= springGreen.g + 1e-6);
     }
+    // Fresh and lighter in mid-spring, back to the summer canopy at its end.
+    assert.ok(appearance('spring', 0.3).gold.g > summerGreen.g + 0.01);
+    assert.equal(appearance('spring', 0.99).gold.getHexString(), '30712c');
 });
 
 test('weather disablement restores the full green crown in every season without sharing mutable colours', () => {
@@ -78,12 +89,12 @@ test('weather disablement restores the full green crown in every season without 
     ] satisfies Parameters<typeof getSeasonStartDate>[0][]) {
         const state = appearance(season, 0.5, true);
         assert.equal(state.stage, 'full');
-        assert.equal(state.gold.getHexString(), '6d913f');
-        assert.equal(state.russet.getHexString(), '4e7f35');
+        assert.equal(state.gold.getHexString(), '30712c');
+        assert.equal(state.russet.getHexString(), '30712c');
         state.gold.set('red');
         assert.equal(
             appearance(season, 0.5, true).gold.getHexString(),
-            '6d913f',
+            '30712c',
         );
     }
 });
@@ -106,8 +117,10 @@ test('shrub canopy stages invalidate cached shadows and include the seasonal bus
         getAutumnCanopyShadowKey(stacks, 0.45),
         'tree:thinning|shrub:thinning|bush:thinning',
     );
+    // The round tree is bare in winter too since 2026-11-25 (was sparse: a
+    // leftover crown ball on the bare branches).
     assert.equal(
         getAutumnCanopyShadowKey(stacks, 0.08),
-        'tree:sparse|shrub:bare|bush:sparse',
+        'tree:bare|shrub:bare|bush:sparse',
     );
 });

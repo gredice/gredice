@@ -9,7 +9,13 @@ import {
     useMemo,
     useRef,
 } from 'react';
-import { type Material, type PointLight, Sphere, Vector3 } from 'three';
+import {
+    type Material,
+    type PointLight,
+    Sphere,
+    type Sprite,
+    Vector3,
+} from 'three';
 import {
     getNightGardenGlowAmount,
     resolveNightGardenLightFrame,
@@ -36,6 +42,11 @@ export type GardenLightRegistration = {
     emissiveBaseIntensity: number;
     emissiveMaterialRefs: readonly GardenEmissiveMaterialRef[];
     emissivePeakIntensity: number;
+    /**
+     * Soft glow sprite around the source, faded in with the night glow so a
+     * lamp reads as lit against the light night garden (GAME_ART.md).
+     */
+    halo?: { opacity: number; ref: RefObject<Sprite | null> };
     key: string;
     lightIntensity: number;
     lightRef: RefObject<PointLight | null>;
@@ -153,6 +164,13 @@ export function GardenLightProvider({
                     materialRef.current.emissiveIntensity =
                         frame.emissiveIntensity;
                 }
+            }
+
+            const halo = registration.halo?.ref.current;
+            if (halo && registration.halo) {
+                const glow = registration.glowAmountOverride ?? nightAmount;
+                halo.visible = glow > 0.001;
+                halo.material.opacity = glow * registration.halo.opacity;
             }
 
             const light = registration.lightRef.current;

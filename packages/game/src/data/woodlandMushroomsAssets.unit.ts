@@ -175,16 +175,21 @@ describe('Woodland mushrooms release', () => {
                             object.geometry.getAttribute('position').count) / 3;
                 }
             });
-            assert.equal(triangles, 1160);
+            assert.equal(triangles, 1780);
+            // One colour per part from the seasonal roles: cream stems and
+            // gills, conker, acorn-cap and cream caps.
             assert.ok(
-                palette.size >= 8,
+                palette.size >= 3,
                 'Cap, rim and stem colours share one material',
             );
             assert.ok(bytes.length < 250_000);
             for (const material of document.materials) {
                 assert.equal(material.pbrMetallicRoughness.metallicFactor, 0);
+                // Roughness follows the GAME_ART.md bands.
                 assert.ok(
-                    material.pbrMetallicRoughness.roughnessFactor >= 0.82,
+                    Math.abs(
+                        material.pbrMetallicRoughness.roughnessFactor - 0.55,
+                    ) < 1e-6,
                 );
                 assert.equal(material.emissiveFactor, undefined);
             }

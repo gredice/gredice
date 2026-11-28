@@ -1,4 +1,5 @@
 import {
+    Color,
     ConeGeometry,
     DynamicDrawUsage,
     InstancedBufferAttribute,
@@ -7,6 +8,14 @@ import {
     PlaneGeometry,
     ShaderMaterial,
 } from 'three';
+import { seasonalRoles } from '../scene/seasonalRoles';
+
+// Unlit smoke in a tinted neutral, never plain grey: the ghost lilac role as
+// linear RGB, which colorspace_fragment turns back into that on-screen colour.
+const smokeColor = new Color(seasonalRoles.ghostLilac.screen)
+    .toArray()
+    .map((channel) => channel.toFixed(4))
+    .join(', ');
 
 export function createWarmPropMeshes(capacity: number) {
     const fireGeometry = new ConeGeometry(0.045, 0.14, 5);
@@ -53,7 +62,7 @@ export function createWarmPropMeshes(capacity: number) {
             void main() {
                 float alpha = (1.0 - smoothstep(0.1, 1.0, length(vUv))) * vOpacity;
                 if (alpha < 0.002) discard;
-                gl_FragColor = vec4(0.42, 0.40, 0.38, alpha);
+                gl_FragColor = vec4(${smokeColor}, alpha);
                 #include <colorspace_fragment>
             }
         `,

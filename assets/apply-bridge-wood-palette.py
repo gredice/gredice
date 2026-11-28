@@ -95,7 +95,9 @@ TARGET_MATERIALS = {
         "Material.DogHouse.RedWood": "doghouse_wall",
         "Material.DogHouse.DarkRedWood": "doghouse_dark",
     },
+    "AutumnFenceGate.blend": {"Material.Planks": DEFAULT_WOOD_ROLE},
     "Fence.blend": {"Material.Planks": DEFAULT_WOOD_ROLE},
+    "FenceGate.blend": {"Material.Planks": DEFAULT_WOOD_ROLE},
     "GardenBox.blend": {"Material.Planks": DEFAULT_WOOD_ROLE},
     "IceCreamCart.blend": {
         "wood": DEFAULT_WOOD_ROLE,
@@ -109,6 +111,7 @@ TARGET_MATERIALS = {
     },
     "RaisedBed.blend": {"Material.Planks": DEFAULT_WOOD_ROLE},
     "Shade.blend": {"Material.Planks": DEFAULT_WOOD_ROLE},
+    "Stick.blend": {"Material.Planks": DEFAULT_WOOD_ROLE},
     "Stool.blend": {"Material.Planks": DEFAULT_WOOD_ROLE},
     "WaterWell.blend": {"Material.Planks": DEFAULT_WOOD_ROLE},
     "WoodenBench.blend": {

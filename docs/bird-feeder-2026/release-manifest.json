@@ -4,19 +4,19 @@
   "snapshotDate": "2026-10-22T12:00:00+02:00",
   "source": {
     "path": "assets/game-assets/BirdFeeder.blend",
-    "bytes": 98309,
-    "sha256": "774881f7c350e33537abdf7b1b491d65fc01eb38ff66ede04ab0e40ad5effd87"
+    "bytes": 115656,
+    "sha256": "b01bc11c007a826abd53642dc5113372acb4a6eaa96b239852dad7bfe5b65928"
   },
   "models": [
     {
       "name": "BirdFeeder",
       "path": "apps/garden/public/assets/models/BirdFeeder.glb",
-      "bytes": 47608,
-      "sha256": "2669061f01f9542289048127eeed39ccd85d4b74e108decca7ef58a6153c462a",
-      "url": "https://vrt.gredice.com/assets/models/BirdFeeder.glb?v=2669061f01f9",
-      "triangles": 496,
+      "bytes": 46864,
+      "sha256": "367351b404d38f5f46d2a5c92ccd8336c944ee8ec25ba83d71fb891c6601018b",
+      "url": "https://vrt.gredice.com/assets/models/BirdFeeder.glb?v=367351b404d3",
+      "triangles": 1828,
       "trianglesByMesh": {
-        "BirdFeeder_Arrangement": 496
+        "BirdFeeder_Arrangement": 1828
       },
       "meshCount": 1,
       "materialCount": 1
@@ -49,53 +49,53 @@
       "images": [
         {
           "path": "apps/www/public/assets/blocks/BirdFeeder.webp",
-          "bytes": 8012,
-          "sha256": "25126d9311b499d11f7622041338a4bef1c53cabbba4143e3407cad81cad091e"
+          "bytes": 13204,
+          "sha256": "411d7e1fcd9115b8934e8f80dbc5467a3b6fa7dfd7970dac2c6f224071b8f096"
         },
         {
           "path": "apps/www/public/assets/blocks/BirdFeeder_1.webp",
-          "bytes": 8012,
-          "sha256": "25126d9311b499d11f7622041338a4bef1c53cabbba4143e3407cad81cad091e"
+          "bytes": 13204,
+          "sha256": "411d7e1fcd9115b8934e8f80dbc5467a3b6fa7dfd7970dac2c6f224071b8f096"
         },
         {
           "path": "apps/www/public/assets/blocks/BirdFeeder_2.webp",
-          "bytes": 8082,
-          "sha256": "896fb27aa9c1bb73a4fdb0982b3cc0ebe1c374108c6b15f238810b7b41333f75"
+          "bytes": 13278,
+          "sha256": "54bebc99541122e326d037c90724824dabf76a664b62d43cab37f47bd19600e6"
         },
         {
           "path": "apps/www/public/assets/blocks/BirdFeeder_3.webp",
-          "bytes": 7990,
-          "sha256": "4b751bfb94368d0598abf99741a120f220e75520d37e57d94832799e90f25f26"
+          "bytes": 13194,
+          "sha256": "c8e19719cc3f72332f21dc0353fc22969ff8b028a931c73d5de7598a7f03be93"
         },
         {
           "path": "apps/www/public/assets/blocks/BirdFeeder_4.webp",
-          "bytes": 8058,
-          "sha256": "cb22245f45874cb11868cbd00c7770497a3d6c2b796a7f5a6dcfe5490d77d39c"
+          "bytes": 13298,
+          "sha256": "9f78af47b127313203355d2169019a8ace4923e42af3151f25201d5834e61d02"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/BirdFeeder.webp",
-          "bytes": 3278,
-          "sha256": "0255821e1f35e7ee31cbd476507ed588f8ba6e1865e4dad77e01c11c86193e43"
+          "bytes": 6638,
+          "sha256": "366721ef21adc2130a2eb96304a15e701986159384906e3d43064c573917e5d8"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/BirdFeeder_1.webp",
-          "bytes": 3278,
-          "sha256": "0255821e1f35e7ee31cbd476507ed588f8ba6e1865e4dad77e01c11c86193e43"
+          "bytes": 6638,
+          "sha256": "366721ef21adc2130a2eb96304a15e701986159384906e3d43064c573917e5d8"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/BirdFeeder_2.webp",
-          "bytes": 3250,
-          "sha256": "d8b135a45cb2e5a7c9065e8bb60f8efa30f165f68a3f865a1183e1e760065c7f"
+          "bytes": 6312,
+          "sha256": "d9ec48aea108511e5925ef54330591d44f463625a06d430f3f2116faeb0e9d05"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/BirdFeeder_3.webp",
-          "bytes": 3266,
-          "sha256": "4df7fa700929d39be0bab8f48ff85ccd733c1864396861e6c3f4bb44e8f41258"
+          "bytes": 6298,
+          "sha256": "299b156e984d018a10c5bf6d88d3d5ecaa50394bb986e687b6260f59faedc56c"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/BirdFeeder_4.webp",
-          "bytes": 3284,
-          "sha256": "32ba9f001d7611b61c4eb4c56d247dc1f43f755158497fafa96e41ca617a7853"
+          "bytes": 6302,
+          "sha256": "13bddec1a38ab276a709bce84436698b5493f8199080d9bbe5ff57760aecedb5"
         }
       ]
     }

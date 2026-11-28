@@ -149,7 +149,7 @@ describe('HarvestWheelbarrow release', () => {
                             object.geometry.getAttribute('position').count) / 3;
                 }
             });
-            assert.equal(triangles, 3984);
+            assert.equal(triangles, 4824);
             assert.ok(bytes.length < 300_000);
             for (const item of wheelbarrows) {
                 const hitbox = getBlockHitboxSize(

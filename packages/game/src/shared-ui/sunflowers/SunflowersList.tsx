@@ -4,6 +4,7 @@ import { BlockImage } from '@gredice/ui/BlockImage';
 import {
     GameBasketIcon,
     GameBirthdayIcon,
+    GameBlocksIcon,
     GameCalendarIcon,
     GameCommunityIcon,
     GameGiftIcon,
@@ -23,6 +24,13 @@ import Image from 'next/image';
 import { useCurrentAccount } from '../../hooks/useCurrentAccount';
 import { formatSunflowers } from '../../utils/sunflowerPricing';
 import { NoSunflowersPlaceholder } from './NoSunflowersPlaceholder';
+import {
+    gardenBlockReasonLabels,
+    getGardenBlockReasonKind,
+    getSunflowerHistoryReasonGroup,
+} from './sunflowerReasonKind';
+
+const recycleBadgeSrc = 'https://vrt.gredice.com/assets/textures/recycle.png';
 
 function sunflowerRefundToLabel(reason: string) {
     switch (reason.split(':')[1]) {
@@ -93,9 +101,7 @@ function sunflowerReasonToDescription(reason: string) {
                         height={40}
                     />
                     <Image
-                        src={
-                            'https://vrt.gredice.com/assets/textures/recycle.png'
-                        }
+                        src={recycleBadgeSrc}
                         alt="Recikliranje"
                         width={20}
                         height={20}
@@ -104,6 +110,35 @@ function sunflowerReasonToDescription(reason: string) {
                 </div>
             ),
             label: 'Recikliranje bloka',
+        };
+    }
+    // `gardenBlock:<gardenId>:<kind>:<id>`: the second segment is a garden
+    // id, not a block name, so these use the generic block icon.
+    const gardenBlockKind = getGardenBlockReasonKind(reason);
+    if (gardenBlockKind === 'recycle') {
+        return {
+            icon: (
+                <div className="relative size-10 shrink-0">
+                    <GameBlocksIcon
+                        className="absolute inset-0 size-10"
+                        aria-hidden
+                    />
+                    <Image
+                        src={recycleBadgeSrc}
+                        alt=""
+                        width={20}
+                        height={20}
+                        className="absolute top-0 right-0 size-5 opacity-50"
+                    />
+                </div>
+            ),
+            label: gardenBlockReasonLabels.recycle,
+        };
+    }
+    if (gardenBlockKind) {
+        return {
+            icon: <GameBlocksIcon className="size-10 shrink-0" aria-hidden />,
+            label: gardenBlockReasonLabels[gardenBlockKind],
         };
     }
     if (reason === 'gift') {
@@ -211,12 +246,7 @@ export function SunflowersList({
     // Group similar items on a daily basis
     const historyGrouped = history.reduce((acc, event) => {
         const eventDate = new Date(event.createdAt).toLocaleDateString('hr-HR');
-        const eventReasonParts =
-            typeof event.reason === 'string' ? event.reason.split(':') : [];
-        const eventReasonGroup =
-            eventReasonParts[0] === 'refund'
-                ? eventReasonParts.slice(0, 2).join(':')
-                : (eventReasonParts[0] ?? 'unknown');
+        const eventReasonGroup = getSunflowerHistoryReasonGroup(event.reason);
         const key = `${eventDate}-${eventReasonGroup}-${event.amount}`;
 
         if (!acc.has(key)) {

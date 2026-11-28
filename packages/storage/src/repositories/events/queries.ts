@@ -24,7 +24,10 @@ import { signalAutomationEventWrite, signalDueWork } from '../../dueWork';
 import { getTimeZoneDateKey } from '../../helpers/timezoneUtils';
 import { automationRunSteps, automationRuns, events } from '../../schema';
 import { storage } from '../../storage';
-import { enqueueAutomationRunsForEvent } from '../automationsRepo';
+import {
+    enqueueAutomationRunsForEvent,
+    enqueueAutomationRunsForEvents,
+} from '../automationsRepo';
 import { knownEventTypes } from './knownEventTypes';
 import type {
     AiRequestKind,
@@ -505,12 +508,8 @@ export async function countAiRequestEventsSince({
     return result[0]?.count ?? 0;
 }
 
-export async function createEvent(
-    input: Event,
-    database?: DatabaseClient,
-): Promise<typeof events.$inferSelect> {
-    const { type, version, aggregateId, data, createdAt } = input;
-    const settlesNotSprouted =
+function settlesNotSproutedPlanting({ type, version, data }: Event) {
+    return (
         version === 1 &&
         (type === knownEventTypes.raisedBedFields.plantUpdate ||
             type ===
@@ -518,7 +517,25 @@ export async function createEvent(
         typeof data === 'object' &&
         data !== null &&
         'status' in data &&
-        data.status === 'notSprouted';
+        data.status === 'notSprouted'
+    );
+}
+
+function signalsDeliveryLifecycleReconciliation(type: string) {
+    return (
+        type.startsWith('delivery.') &&
+        type !==
+            knownEventTypes.delivery.requestLifecycleNotificationProcessed &&
+        type !== knownEventTypes.delivery.requestLifecycleNotificationDecision
+    );
+}
+
+export async function createEvent(
+    input: Event,
+    database?: DatabaseClient,
+): Promise<typeof events.$inferSelect> {
+    const { type, version, aggregateId, data, createdAt } = input;
+    const settlesNotSprouted = settlesNotSproutedPlanting(input);
     const db = database ?? storage();
     if (settlesNotSprouted && !('rollback' in db)) {
         return db.transaction((tx) => createEvent(input, tx));
@@ -552,17 +569,78 @@ export async function createEvent(
     }
 
     await enqueueAutomationRunsForEvent(event, { db });
-    if (
-        type.startsWith('delivery.') &&
-        type !==
-            knownEventTypes.delivery.requestLifecycleNotificationProcessed &&
-        type !== knownEventTypes.delivery.requestLifecycleNotificationDecision
-    ) {
+    if (signalsDeliveryLifecycleReconciliation(type)) {
         await signalDueWork('delivery-lifecycle-reconciliation');
     }
     await bustReadModelCachesForEvent({ type, version, aggregateId, data });
 
     return event;
+}
+
+/**
+ * Bulk form of `createEvent` for several events written together: one
+ * multi-row insert, automations enqueued with one definition lookup per
+ * event type, and each read-model cache busted once per event type. The
+ * effects match calling `createEvent` for each input in order, with a
+ * statement count that does not grow with the number of events (unless
+ * enabled automations create runs). Returns the rows in insert order, which
+ * is input order. Events that settle a not-sprouted planting need a lock and
+ * a settlement each, so they must use `createEvent`.
+ */
+export async function createEvents(
+    inputs: readonly Event[],
+    database?: DatabaseClient,
+): Promise<(typeof events.$inferSelect)[]> {
+    if (inputs.length === 0) {
+        return [];
+    }
+    if (inputs.some(settlesNotSproutedPlanting)) {
+        throw new Error(
+            'Events that settle a not-sprouted planting must use createEvent.',
+        );
+    }
+
+    const db = database ?? storage();
+    const created = await signalAutomationEventWrite(
+        db
+            .insert(events)
+            .values(
+                inputs.map(
+                    ({ type, version, aggregateId, data, createdAt }) => ({
+                        type,
+                        version,
+                        aggregateId,
+                        data,
+                        ...(createdAt && { createdAt }),
+                    }),
+                ),
+            )
+            .returning(),
+    );
+    if (created.length !== inputs.length) {
+        throw new Error('Failed to create events.');
+    }
+    // Serial IDs follow the VALUES order, so this is input order.
+    const createdInOrder = [...created].sort((a, b) => a.id - b.id);
+
+    await enqueueAutomationRunsForEvents(createdInOrder, { db });
+    if (
+        inputs.some((input) =>
+            signalsDeliveryLifecycleReconciliation(input.type),
+        )
+    ) {
+        await signalDueWork('delivery-lifecycle-reconciliation');
+    }
+    const bustedEventTypes = new Set<string>();
+    for (const input of inputs) {
+        if (bustedEventTypes.has(input.type)) {
+            continue;
+        }
+        bustedEventTypes.add(input.type);
+        await bustReadModelCachesForEvent(input);
+    }
+
+    return createdInOrder;
 }
 
 export async function createDeliveryLifecycleNotificationDecisionOnce(event: {

@@ -1,0 +1,2 @@
+ALTER TABLE "garden_mutation_operations" DROP CONSTRAINT "garden_mutation_operations_kind_check";--> statement-breakpoint
+ALTER TABLE "garden_mutation_operations" ADD CONSTRAINT "garden_mutation_operations_kind_check" CHECK ("garden_mutation_operations"."kind" in ('block-purchase', 'block-purchase-batch', 'garden-box-block-place', 'garden-box-block-store', 'gift-open'));

@@ -17,21 +17,21 @@ export const autumnStarterPackRecipes = [
         productId: 'autumn-harvest',
         name: 'Jesenski kutak',
         previewSha256:
-            'ed1b245678a3613a093026ecdfadd3a416a3332972f926ab9aa3a552bb95c2e2',
+            '5b9831b74b19e8619f277c9d2203d3db740cec0e12f752b90bd8a14099b2206a',
     },
     {
         arrangementId: 'woodland-path',
         productId: 'autumn-woodland',
         name: 'Šumski kutak',
         previewSha256:
-            '2f21c98172611d2e3d37d71d4fd5c5c7685c044239f406a271a09d5e775c5e55',
+            '8a480c230ce22204419339d9941ee6f863b63430c3edc87158341ad5889b6f89',
     },
     {
         arrangementId: 'evening-seat',
         productId: 'autumn-evening',
         name: 'Topla večer',
         previewSha256:
-            'e3eccaa634461ae5f76792283c481e253ba43b964389c26fc7c71a6cb4942cd0',
+            '5ff4f80f45e659b9a85c828d18263c08616de38b8fc43a464d222ca57594d225',
     },
 ];
 const identitySchema = z

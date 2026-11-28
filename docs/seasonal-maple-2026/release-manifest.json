@@ -4,22 +4,22 @@
   "snapshotDate": "2026-10-22T12:00:00+02:00",
   "source": {
     "path": "assets/game-assets/SeasonalMaple.blend",
-    "bytes": 110465,
-    "sha256": "2f3d374d503134078da4daa784e6bad9f036b4194f6987f70942e0f2a5080f75"
+    "bytes": 148578,
+    "sha256": "913b4368a14fc0f980a65708fc8a47a1b01f0eb1ba6efbac8a02c5f9c9515706"
   },
   "models": [
     {
       "name": "SeasonalMaple",
       "path": "apps/garden/public/assets/models/SeasonalMaple.glb",
-      "bytes": 122024,
-      "sha256": "ee04fd1802d02bd23d6cf158581352b8e0d8fb53dfcafc4371f9ba09a3079ddb",
-      "url": "https://vrt.gredice.com/assets/models/SeasonalMaple.glb?v=ee04fd1802d0",
-      "triangles": 1240,
+      "bytes": 64476,
+      "sha256": "6f76ef8a1aaeeb4755daf49450a81f73ac48c9e779fa522093948e38b43ab5ea",
+      "url": "https://vrt.gredice.com/assets/models/SeasonalMaple.glb?v=6f76ef8a1aae",
+      "triangles": 3364,
       "trianglesByMesh": {
-        "SeasonalMaple_Full": 460,
-        "SeasonalMaple_Sparse": 220,
-        "SeasonalMaple_Thinning": 340,
-        "SeasonalMaple_Wood": 220
+        "SeasonalMaple_Full": 1512,
+        "SeasonalMaple_Sparse": 484,
+        "SeasonalMaple_Thinning": 768,
+        "SeasonalMaple_Wood": 600
       },
       "meshCount": 4,
       "materialCount": 2
@@ -52,53 +52,53 @@
       "images": [
         {
           "path": "apps/www/public/assets/blocks/SeasonalMaple.webp",
-          "bytes": 6196,
-          "sha256": "6c458964b26d32a9eeda92cce0732a6b18077290ad2447d26ddae49cf679aacb"
+          "bytes": 5676,
+          "sha256": "a99dafdb9df383a2c5735aa64d5dbb9343ee17f749995f002190e3f5a33bdfef"
         },
         {
           "path": "apps/www/public/assets/blocks/SeasonalMaple_1.webp",
-          "bytes": 6196,
-          "sha256": "6c458964b26d32a9eeda92cce0732a6b18077290ad2447d26ddae49cf679aacb"
+          "bytes": 5676,
+          "sha256": "a99dafdb9df383a2c5735aa64d5dbb9343ee17f749995f002190e3f5a33bdfef"
         },
         {
           "path": "apps/www/public/assets/blocks/SeasonalMaple_2.webp",
-          "bytes": 6510,
-          "sha256": "694c0cabb4f1d806cd830f66aad81eca9e4dc6af36ac20be255d7e8ad8632739"
+          "bytes": 5598,
+          "sha256": "dfb8ee55f6bdc91831eefc982a144b0e9a9f218f10e27c3d2e38866c791047cb"
         },
         {
           "path": "apps/www/public/assets/blocks/SeasonalMaple_3.webp",
-          "bytes": 5986,
-          "sha256": "b9df8c13fd6a30bab0b9070f6598168b985364d592b1a758aab9c52b2213df07"
+          "bytes": 5570,
+          "sha256": "73435cb8d95a64eb72a3092f474426ff5256b745d12e6d522f47dd36ae457728"
         },
         {
           "path": "apps/www/public/assets/blocks/SeasonalMaple_4.webp",
-          "bytes": 6264,
-          "sha256": "e74bf58965b91b079d74f5b57e862a0b58b5bdd6cd26988c46c9dd31ccfa4f6b"
+          "bytes": 5612,
+          "sha256": "e8e518ed084ff71a124acb9f132f43ebc29a2988d786855c16dd3e9781699fe8"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/SeasonalMaple.webp",
-          "bytes": 4760,
-          "sha256": "91fafa68e9688fa21d36af51d379dce937a5a6c23e7276953a786b1efc91f7ef"
+          "bytes": 3198,
+          "sha256": "4cf8754c92ef7433b5be35cce59045d02b78f99bb544015ab8b1e80425861098"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/SeasonalMaple_1.webp",
-          "bytes": 4760,
-          "sha256": "91fafa68e9688fa21d36af51d379dce937a5a6c23e7276953a786b1efc91f7ef"
+          "bytes": 3198,
+          "sha256": "4cf8754c92ef7433b5be35cce59045d02b78f99bb544015ab8b1e80425861098"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/SeasonalMaple_2.webp",
-          "bytes": 4374,
-          "sha256": "a8be5417bf752307e2be6ff4bad7eda22c1d138685a0b076eb66f809330f21cd"
+          "bytes": 3090,
+          "sha256": "d904d9dce839105dcfd0a8bf9c87a1c147901a3f594f1be76983fef773da92e2"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/SeasonalMaple_3.webp",
-          "bytes": 4296,
-          "sha256": "bd6d66c9e737b03626b5dcc3af9151ab45017773baed413f9f355bd66ddd652f"
+          "bytes": 3162,
+          "sha256": "a77f8af620ce2eb793ae451893bab6180a7bb7653ec09838705c0765381f5033"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/SeasonalMaple_4.webp",
-          "bytes": 4534,
-          "sha256": "21e3f87998874023bb8b0f71a8d064938c284fedfd04583b02f7cfb1347e429a"
+          "bytes": 3314,
+          "sha256": "dd6ede50d5c03303a5ae6d96ce9759f6047531241a08fb649d7555058a4297a5"
         }
       ]
     }

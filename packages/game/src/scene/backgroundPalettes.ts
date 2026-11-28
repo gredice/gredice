@@ -36,7 +36,7 @@ export const gameBackgroundPalettes: GameBackgroundPalette[] = [
         key: 'light-blue',
         label: 'Svijetloplava',
         lightColor: '#e7f8ff',
-        nightColor: '#213b63',
+        nightColor: '#4a78bf',
     },
     {
         dayColor: '#cab8ff',
@@ -44,7 +44,7 @@ export const gameBackgroundPalettes: GameBackgroundPalette[] = [
         key: 'purple',
         label: 'Ljubicasta',
         lightColor: '#f1eaff',
-        nightColor: '#35265a',
+        nightColor: '#7155b4',
     },
     {
         dayColor: '#ff9a8a',
@@ -52,7 +52,7 @@ export const gameBackgroundPalettes: GameBackgroundPalette[] = [
         key: 'sunset-red',
         label: 'Zalazak',
         lightColor: '#ffe0bd',
-        nightColor: '#57283b',
+        nightColor: '#b05a7c',
     },
     {
         dayColor: '#bfeecf',
@@ -60,7 +60,7 @@ export const gameBackgroundPalettes: GameBackgroundPalette[] = [
         key: 'mint',
         label: 'Menta',
         lightColor: '#edfff3',
-        nightColor: '#1e4a3f',
+        nightColor: '#53b69d',
     },
     {
         dayColor: '#f8d77a',
@@ -68,7 +68,7 @@ export const gameBackgroundPalettes: GameBackgroundPalette[] = [
         key: 'golden',
         label: 'Zlatna',
         lightColor: '#fff5c8',
-        nightColor: '#4c3a22',
+        nightColor: '#b18b58',
     },
     {
         dayColor: '#f8b8cf',
@@ -76,7 +76,7 @@ export const gameBackgroundPalettes: GameBackgroundPalette[] = [
         key: 'rose',
         label: 'Ruzicasta',
         lightColor: '#fff0f6',
-        nightColor: '#4c2541',
+        nightColor: '#ad5c96',
     },
 ];
 

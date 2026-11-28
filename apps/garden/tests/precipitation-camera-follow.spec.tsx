@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/experimental-ct-react';
 import { PrecipitationCameraFollowFixture } from '../../../packages/game/tests/PrecipitationCameraFollowFixture';
+import { expect, test } from './webglComponentTest';
 
 test('keeps global precipitation on the character camera and local magic snow on its block', async ({
     mount,

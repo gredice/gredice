@@ -1,6 +1,6 @@
-import { expect, test } from '@playwright/experimental-ct-react';
 import { AutumnGustLeaseFixture } from '../../../packages/game/tests/AutumnGustLeaseFixture';
 import { AutumnVisualFixture } from '../../../packages/game/tests/AutumnVisualFixture';
+import { expect, test } from './webglComponentTest';
 
 for (const stage of [
     'summer',
@@ -47,22 +47,35 @@ for (const instanced of [false, true]) {
             const [bottom, top] = pair.split('-');
             expect(top).toBe(bottom);
         }
+        const summerCanopies = await fixture.getAttribute('data-canopies');
         await fixture.update(
             <AutumnVisualFixture
                 instanced={instanced}
                 calendarDate={[2024, 8, 29]}
             />,
         );
-        await expect(fixture).not.toHaveAttribute('data-sprigs', summer ?? '');
-        for (const attribute of ['data-canopies', 'data-sprigs']) {
-            const colors = await fixture.getAttribute(attribute);
-            for (const entry of (colors ?? '').split(',')) {
-                const [bottom, top] = entry.split(':')[0].split('-');
-                const redToGreen = (color: string) =>
-                    Number.parseInt(color.slice(0, 2), 16) /
-                    Number.parseInt(color.slice(2, 4), 16);
-                expect(redToGreen(top)).toBeGreaterThan(redToGreen(bottom));
-            }
+        // The crown is one dome; the sprig slot is only a small core hidden
+        // mid-crown (`generate-party-core.py`), so in late August the visible
+        // crown has started to turn from the top while the core, lower in
+        // the crown, has not turned yet. It may never turn the wrong way.
+        await expect(fixture).not.toHaveAttribute(
+            'data-canopies',
+            summerCanopies ?? '',
+        );
+        const redToGreen = (color: string) =>
+            Number.parseInt(color.slice(0, 2), 16) /
+            Number.parseInt(color.slice(2, 4), 16);
+        for (const entry of (
+            (await fixture.getAttribute('data-canopies')) ?? ''
+        ).split(',')) {
+            const [bottom, top] = entry.split(':')[0].split('-');
+            expect(redToGreen(top)).toBeGreaterThan(redToGreen(bottom));
+        }
+        for (const entry of (
+            (await fixture.getAttribute('data-sprigs')) ?? ''
+        ).split(',')) {
+            const [bottom, top] = entry.split('-');
+            expect(redToGreen(top)).toBeGreaterThanOrEqual(redToGreen(bottom));
         }
         const augustColors = await fixture.getAttribute('data-canopies');
         await fixture.update(
@@ -677,12 +690,15 @@ for (const instanced of [false, true]) {
                 />,
             );
             await expect(fixture).toHaveAttribute('data-canopies', /.+/);
+            // Index counts of the restyled Bush.glb: the full mound
+            // (`Bush_1_1`) has 960, the winter sparse stage
+            // (`Bush_AutumnSparse`) 240.
             if (stage === 'summer') {
                 await expect(fixture).toHaveAttribute('data-sprigs', /.+/);
                 expect(
                     (await fixture.getAttribute('data-canopies'))
                         ?.split(',')
-                        .every((entry) => entry.endsWith(':144')),
+                        .every((entry) => entry.endsWith(':960')),
                 ).toBe(true);
             }
             if (stage === 'winter') {
@@ -690,7 +706,7 @@ for (const instanced of [false, true]) {
                 expect(
                     (await fixture.getAttribute('data-canopies'))
                         ?.split(',')
-                        .every((entry) => entry.endsWith(':120')),
+                        .every((entry) => entry.endsWith(':240')),
                 ).toBe(true);
             }
             await expect(page.locator('canvas')).toHaveScreenshot(
@@ -726,17 +742,23 @@ for (const instanced of [false, true]) {
             'data-canopies',
             summer ?? '',
         );
-        await expect(fixture).not.toHaveAttribute(
-            'data-sprigs',
-            summerSprigs ?? '',
-        );
-        for (const attribute of ['data-canopies', 'data-sprigs']) {
-            for (const entry of (
-                (await fixture.getAttribute(attribute)) ?? ''
-            ).split(',')) {
-                const [bottom, top] = entry.split(':')[0].split('-');
-                expect(top).not.toBe(bottom);
-            }
+        // The mound turns from the top down. The sprig slot is only a small
+        // core hidden low in the mound (`generate-party-core.py`), so it has
+        // not turned yet in late August and must not turn the wrong way.
+        for (const entry of (
+            (await fixture.getAttribute('data-canopies')) ?? ''
+        ).split(',')) {
+            const [bottom, top] = entry.split(':')[0].split('-');
+            expect(top).not.toBe(bottom);
+        }
+        const redToGreen = (color: string) =>
+            Number.parseInt(color.slice(0, 2), 16) /
+            Number.parseInt(color.slice(2, 4), 16);
+        for (const entry of (
+            (await fixture.getAttribute('data-sprigs')) ?? ''
+        ).split(',')) {
+            const [bottom, top] = entry.split('-');
+            expect(redToGreen(top)).toBeGreaterThanOrEqual(redToGreen(bottom));
         }
         await fixture.update(
             <AutumnVisualFixture

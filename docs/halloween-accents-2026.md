@@ -6,10 +6,10 @@ First-party references inspected: GardenScarecrow for its friendly readable face
 
 | Model | Triangles | GLB bytes | Meshes / materials |
 | --- | ---: | ---: | ---: |
-| FriendlyGhost | 468 | 47,100 | 1 / 1 |
-| SupportedCobweb | 596 | 55,884 | 1 / 1 |
+| FriendlyGhost | 1,656 | 51,224 | 1 / 1 |
+| SupportedCobweb | 1,780 | 53,736 | 1 / 1 |
 
-Both are lazy-loaded, opaque, nonmetallic and untextured, with baked vertex colors and one base mesh draw per item. There are no new lights, animation loops or fauna registrations. Existing snow and rain overlays follow weather visualization switches. Empty cells between web strands pass raycasts through; there is no invisible picking surface or transparent overdraw.
+Both are lazy-loaded, opaque, nonmetallic and untextured, with baked vertex colors and one base mesh draw per item. The ghost sheet and the web strands use the ghost lilac role (`#e2d4f2` on screen), the ghost's eyes and smile ink violet `#5c4590`, and both stands keep the shared wood tones (seasonal roles in [GAME_ART.md](../GAME_ART.md)). Roughness is 0.75 for the ghost (fabric) and 0.55 for the cobweb. There are no new lights, animation loops or fauna registrations. Existing snow and rain overlays follow weather visualization switches. Empty cells between web strands pass raycasts through; there is no invisible picking surface or transparent overdraw.
 
 The 4×4 review fixture reuses DeadTreeTall, WhiteFence and the production Bats component, plus a bench, lantern and real crop bed. Night readiness checks visible bat meshes; live bat motion and weather particles are recorded as review captures rather than static pixel assertions. Ground and raised-support rotations verify real geometry picking, neighboring controls and crop interaction. The raised fixture moves the bench aside to keep its tested surface visible above the taller supported props.
 

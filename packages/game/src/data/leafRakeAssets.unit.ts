@@ -178,7 +178,7 @@ describe('Leaf rake release', () => {
                             object.geometry.getAttribute('position').count) / 3;
                 }
             });
-            assert.equal(triangles, 590);
+            assert.equal(triangles, 2658);
             assert.ok(
                 palette.size >= 8,
                 'Leaf, wood and metal colours share one material',
@@ -186,8 +186,12 @@ describe('Leaf rake release', () => {
             assert.ok(bytes.length < 250_000);
             for (const material of document.materials) {
                 assert.equal(material.pbrMetallicRoughness.metallicFactor, 0);
+                // GAME_ART satin band for wood, leaves and stone (float32 factors).
                 assert.ok(
-                    material.pbrMetallicRoughness.roughnessFactor >= 0.82,
+                    material.pbrMetallicRoughness.roughnessFactor >=
+                        0.5 - 1e-6 &&
+                        material.pbrMetallicRoughness.roughnessFactor <=
+                            0.6 + 1e-6,
                 );
                 assert.equal(material.emissiveFactor, undefined);
             }

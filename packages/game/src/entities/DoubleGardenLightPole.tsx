@@ -1,6 +1,7 @@
 import { useMemo, useRef } from 'react';
 import type { MeshStandardMaterial } from 'three';
 import { animated } from '../scene/sceneSpring';
+import { seasonalEmissive, seasonalRoles } from '../scene/seasonalRoles';
 import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
@@ -9,9 +10,12 @@ import { GardenNightLight } from './helpers/GardenNightLight';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 import { WeatheredEntityPart } from './helpers/WeatheredEntityPart';
 
-const lightColor = '#ffb93b';
-const bulbColor = '#000000';
-const lightPosition = [0, 1.82, 0] as const;
+// The warm lamp glow role: its day colour on the bulbs, its emissive at night.
+const lightColor = seasonalEmissive.lampWarm;
+const bulb = seasonalRoles.lampWarm;
+// Inside the pole, below the shades, so the light reaches the ground and the
+// pole without a hotspot on the inner side of a shade.
+const lightPosition = [0, 1.45, 0] as const;
 const poleRain = {
     darkness: 0.7,
     glossiness: 0.78,
@@ -70,12 +74,12 @@ export function DoubleGardenLightPole({
                 receiveShadow={false}
             >
                 <meshStandardMaterial
-                    color={bulbColor}
+                    color={bulb.albedo}
                     emissive={lightColor}
                     emissiveIntensity={0.28}
                     metalness={0}
                     ref={leftGlowMaterialRef}
-                    roughness={0.28}
+                    roughness={bulb.roughness}
                 />
             </WeatheredEntityPart>
             <WeatheredEntityPart
@@ -84,21 +88,22 @@ export function DoubleGardenLightPole({
                 receiveShadow={false}
             >
                 <meshStandardMaterial
-                    color={bulbColor}
+                    color={bulb.albedo}
                     emissive={lightColor}
                     emissiveIntensity={0.28}
                     metalness={0}
                     ref={rightGlowMaterialRef}
-                    roughness={0.28}
+                    roughness={bulb.roughness}
                 />
             </WeatheredEntityPart>
             <GardenNightLight
                 color={lightColor}
-                distance={12}
+                decay={2}
+                distance={7}
                 emissiveBaseIntensity={0.28}
                 emissiveMaterialRefs={emissiveMaterialRefs}
-                emissivePeakIntensity={3.2}
-                lightIntensity={4.6}
+                emissivePeakIntensity={4.6}
+                lightIntensity={3}
                 lightKey={`DoubleGardenLightPole:${block.id}`}
                 position={lightPosition}
             />

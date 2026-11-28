@@ -2,6 +2,7 @@ import {
     BufferGeometry,
     Float32BufferAttribute,
     Uint16BufferAttribute,
+    Uint32BufferAttribute,
     type Vector4,
 } from 'three';
 import {
@@ -10,18 +11,26 @@ import {
     type MeshInstanceChunk,
 } from './chunkedMeshGeometry';
 import type { WaterBlockDepthSamples } from './waterBlockDepth';
+import {
+    createWaterRimTopQuads,
+    waterRimCornersFromFlags,
+    waterRimQuadTriangles,
+    waterRimSidesFromFlags,
+} from './waterBlockRim';
 
 export type WaterTopChunkInstance = ChunkedMeshInstance & {
     depthSamples: WaterBlockDepthSamples;
     foamCorners: Vector4;
     foamEdges: Vector4;
+    /** Inner corners the neighbours' rounded lips turn inside this tile. */
+    rimCorners?: Vector4;
+    /** Exposed sides, which round over into the side wall. */
+    rimEdges?: Vector4;
     shoreDepth: number;
     shoreDepthSamples?: WaterBlockDepthSamples;
     surfaceY: number;
     waterHeight: number;
 };
-
-const waterBlockHalfSize = 0.5;
 
 export function chunkWaterTopInstances<TInstance extends WaterTopChunkInstance>(
     instances: TInstance[],
@@ -29,6 +38,42 @@ export function chunkWaterTopInstances<TInstance extends WaterTopChunkInstance>(
     return chunkMeshInstances(instances);
 }
 
+/**
+ * Value at a local point of a tile from its four corner samples, in the
+ * order of `WaterBlockDepthSamples`: (-x,-z), (-x,+z), (+x,+z), (+x,-z).
+ */
+export function sampleWaterTileCorners(
+    samples: readonly number[],
+    localX: number,
+    localZ: number,
+) {
+    const u = Math.min(1, Math.max(0, localX + 0.5));
+    const v = Math.min(1, Math.max(0, localZ + 0.5));
+    return (
+        (1 - u) * (1 - v) * (samples[0] ?? 0) +
+        (1 - u) * v * (samples[1] ?? 0) +
+        u * v * (samples[2] ?? 0) +
+        u * (1 - v) * (samples[3] ?? 0)
+    );
+}
+
+/** A bank only where the side is not exposed: the rim is not a shore. */
+function bankFlags(foam: Vector4, rim: Vector4 | undefined) {
+    return [
+        rim && rim.x > 0.5 ? 0 : foam.x,
+        rim && rim.y > 0.5 ? 0 : foam.y,
+        rim && rim.z > 0.5 ? 0 : foam.z,
+        rim && rim.w > 0.5 ? 0 : foam.w,
+    ];
+}
+
+/**
+ * The visible water tops of a chunk in one mesh. A tile is one flat quad,
+ * or, with exposed sides, a flat top pulled in by the rim radius with
+ * rounded lips and corners around it. Depth and shore samples are
+ * interpolated across the tile so neighbouring tiles still meet without a
+ * seam.
+ */
 export function createWaterTopChunkGeometry(
     instances: WaterTopChunkInstance[],
 ) {
@@ -42,62 +87,68 @@ export function createWaterTopChunkGeometry(
     const surfaceYs: number[] = [];
     const indices: number[] = [];
 
-    instances.forEach((instance, instanceIndex) => {
+    for (const instance of instances) {
         const [x, y, z] = instance.position;
-        const topY = y + instance.waterHeight / 2;
         const localY = instance.waterHeight / 2;
-        const vertexOffset = instanceIndex * 4;
-        const worldVertices = [
-            [x - waterBlockHalfSize, topY, z - waterBlockHalfSize],
-            [x - waterBlockHalfSize, topY, z + waterBlockHalfSize],
-            [x + waterBlockHalfSize, topY, z + waterBlockHalfSize],
-            [x + waterBlockHalfSize, topY, z - waterBlockHalfSize],
-        ];
-        const localVertices = [
-            [-waterBlockHalfSize, localY, -waterBlockHalfSize],
-            [-waterBlockHalfSize, localY, waterBlockHalfSize],
-            [waterBlockHalfSize, localY, waterBlockHalfSize],
-            [waterBlockHalfSize, localY, -waterBlockHalfSize],
+        const sides = waterRimSidesFromFlags(instance.rimEdges);
+        const foamSides = waterRimSidesFromFlags(instance.foamEdges);
+        const quads = createWaterRimTopQuads({
+            corners: waterRimCornersFromFlags(instance.rimCorners),
+            sides: [
+                sides[0] && foamSides[0],
+                sides[1] && foamSides[1],
+                sides[2] && foamSides[2],
+                sides[3] && foamSides[3],
+            ],
+            topY: localY,
+        });
+        const bankEdges = bankFlags(instance.foamEdges, instance.rimEdges);
+        const bankCorners = bankFlags(
+            instance.foamCorners,
+            instance.rimCorners,
+        );
+        const shoreSamples = instance.shoreDepthSamples ?? [
+            instance.shoreDepth,
+            instance.shoreDepth,
+            instance.shoreDepth,
+            instance.shoreDepth,
         ];
 
-        for (let vertexIndex = 0; vertexIndex < 4; vertexIndex += 1) {
-            const worldVertex = worldVertices[vertexIndex];
-            const localVertex = localVertices[vertexIndex];
+        for (const quad of quads) {
+            const vertexOffset = positions.length / 3;
+            const quadPositions = quad.map((vertex) => vertex.position);
+            const quadNormals = quad.map((vertex) => vertex.normal);
 
-            if (worldVertex && localVertex) {
-                positions.push(...worldVertex);
-                normals.push(0, 1, 0);
-                localPositions.push(...localVertex);
-                foamEdges.push(
-                    instance.foamEdges.x,
-                    instance.foamEdges.y,
-                    instance.foamEdges.z,
-                    instance.foamEdges.w,
+            for (const vertex of quad) {
+                const [localX, vertexY, localZ] = vertex.position;
+                positions.push(x + localX, y + vertexY, z + localZ);
+                normals.push(...vertex.normal);
+                localPositions.push(localX, vertexY, localZ);
+                foamEdges.push(...bankEdges);
+                foamCorners.push(...bankCorners);
+                depths.push(
+                    sampleWaterTileCorners(
+                        instance.depthSamples,
+                        localX,
+                        localZ,
+                    ),
                 );
-                foamCorners.push(
-                    instance.foamCorners.x,
-                    instance.foamCorners.y,
-                    instance.foamCorners.z,
-                    instance.foamCorners.w,
-                );
-                depths.push(instance.depthSamples[vertexIndex] ?? 0);
                 shoreDepths.push(
-                    instance.shoreDepthSamples?.[vertexIndex] ??
-                        instance.shoreDepth,
+                    sampleWaterTileCorners(shoreSamples, localX, localZ),
                 );
                 surfaceYs.push(instance.surfaceY);
             }
-        }
 
-        indices.push(
-            vertexOffset,
-            vertexOffset + 1,
-            vertexOffset + 2,
-            vertexOffset,
-            vertexOffset + 2,
-            vertexOffset + 3,
-        );
-    });
+            for (const triangle of waterRimQuadTriangles(
+                quadPositions,
+                quadNormals,
+            )) {
+                indices.push(
+                    ...triangle.map((corner) => vertexOffset + corner),
+                );
+            }
+        }
+    }
 
     const geometry = new BufferGeometry();
     geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
@@ -123,7 +174,11 @@ export function createWaterTopChunkGeometry(
         'waterSurfaceY',
         new Float32BufferAttribute(surfaceYs, 1),
     );
-    geometry.setIndex(new Uint16BufferAttribute(indices, 1));
+    geometry.setIndex(
+        positions.length / 3 > 65535
+            ? new Uint32BufferAttribute(indices, 1)
+            : new Uint16BufferAttribute(indices, 1),
+    );
     geometry.computeBoundingBox();
     geometry.computeBoundingSphere();
 

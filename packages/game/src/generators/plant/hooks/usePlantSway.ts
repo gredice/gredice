@@ -1,60 +1,58 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useSyncExternalStore } from 'react';
+import {
+    idleBreathingAmplitudes,
+    idleBreathingPeriod,
+    idleBreathingPeriodSeconds,
+    plantInstanceBreathSpeedJitterGlsl,
+} from '../../../scene/idleBreathing';
 import {
     useSceneFixedTimeSeconds,
     useSceneTimeInvalidation,
     useSceneTimeUniform,
 } from '../../../scene/SceneTime';
-import { useGameState } from '../../../useGameState';
+import { useWeatherReducedMotion } from '../../../scene/weather/useWeatherReducedMotion';
+import {
+    getPlantWind,
+    registerPlantSwayTarget,
+    resolvePlantMotion,
+    resolvePlantSwayUniformValues,
+    subscribePlantWindMotion,
+} from '../../../scene/weather/wind/plantWind';
 import { SeededRNG } from '../lib/rng';
 
 interface PlantSwayOptions {
     amplitude: number;
+    /** Idle breathing scale amplitude; defaults to `PLANT_BREATH_AMPLITUDE`. */
+    breathAmplitude?: number;
+    /**
+     * Seed of the breathing phase. Every part of one plant passes the plant's
+     * own seed, so leaves, stems and produce swell together.
+     */
+    breathSeed?: string;
     enabled?: boolean;
     speed: number;
 }
 
-const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
+/**
+ * Living things breathe at rest (GAME_ART.md, Motion): each part swells by
+ * about 3% once every four seconds, with the shared timing and the shrub
+ * amplitude from `scene/idleBreathing.ts`. All parts of one plant share one
+ * breath phase, and batched plants add their own per-plant phase, so a plant
+ * breathes as one and neighbours stay out of step.
+ */
+export const PLANT_BREATH_AMPLITUDE = idleBreathingAmplitudes.shrub;
+export const PLANT_BREATH_SPEED = (Math.PI * 2) / idleBreathingPeriodSeconds;
 
-function getPrefersReducedMotion() {
-    if (
-        typeof window === 'undefined' ||
-        typeof window.matchMedia !== 'function'
-    ) {
-        return false;
-    }
-
-    return window.matchMedia(REDUCED_MOTION_QUERY).matches;
-}
-
-function usePrefersReducedMotion() {
-    const [prefersReducedMotion, setPrefersReducedMotion] = useState(
-        getPrefersReducedMotion,
-    );
-
-    useEffect(() => {
-        if (
-            typeof window === 'undefined' ||
-            typeof window.matchMedia !== 'function'
-        ) {
-            return;
-        }
-
-        const mediaQueryList = window.matchMedia(REDUCED_MOTION_QUERY);
-        const handleChange = () => {
-            setPrefersReducedMotion(mediaQueryList.matches);
-        };
-
-        handleChange();
-        mediaQueryList.addEventListener('change', handleChange);
-
-        return () => {
-            mediaQueryList.removeEventListener('change', handleChange);
-        };
-    }, []);
-
-    return prefersReducedMotion;
+/**
+ * Breath speed of one plant: the shared four-second breath with the same
+ * per-instance period jitter as `scene/idleBreathing.ts`, so neighbouring
+ * plants drift apart instead of breathing in lockstep.
+ */
+export function getPlantBreathSpeed(breathSeed: string) {
+    const seed = new SeededRNG(`${breathSeed}:breath-period`).nextRange(0, 1);
+    return (Math.PI * 2) / idleBreathingPeriod(seed);
 }
 
 function defaultWindDirection(): [number, number] {
@@ -68,6 +66,9 @@ export const plantSwayVertexShader = /* glsl */ `
     uniform float uSwayPhase;
     uniform float uWindStrength;
     uniform vec2 uWindDirection;
+    uniform float uBreathAmplitude;
+    uniform float uBreathSpeed;
+    uniform float uBreathPhase;
 
     #ifdef USE_INSTANCING
         attribute float instanceSwayPhase;
@@ -77,11 +78,21 @@ export const plantSwayVertexShader = /* glsl */ `
         vec4 localPosition = vec4(position, 1.0);
         vec4 swayReferencePosition = localPosition;
         float swayPhase = uSwayPhase;
+        float breathPhase = uBreathPhase;
+        float breathSpeed = uBreathSpeed;
 
         #ifdef USE_INSTANCING
             swayReferencePosition = instanceMatrix * localPosition;
             swayPhase += instanceSwayPhase;
+            breathPhase += instanceSwayPhase;
+            breathSpeed *= ${plantInstanceBreathSpeedJitterGlsl};
         #endif
+
+        // Each part swells about its own attachment point.
+        float breathScale = 1.0 + uBreathAmplitude * sin(
+            uTime * breathSpeed + breathPhase
+        );
+        localPosition.xyz *= breathScale;
 
         float heightFactor = smoothstep(0.0, 1.5, max(swayReferencePosition.y, 0.0));
         float primaryWave = sin(
@@ -118,61 +129,108 @@ export const plantSwayVertexShader = /* glsl */ `
     }
 `;
 
+/**
+ * How this plant part moves now: fully, gently in wind under reduced
+ * motion, or still. Re-renders only when that changes; the wind itself
+ * reaches the uniforms through `scene/weather/wind/plantWind.ts`.
+ */
+function usePlantMotion() {
+    const osReducedMotion = useWeatherReducedMotion();
+    const motion = useSyncExternalStore(
+        subscribePlantWindMotion,
+        () => {
+            const wind = getPlantWind();
+            return resolvePlantMotion(
+                wind,
+                wind.reducedMotion ?? osReducedMotion,
+            );
+        },
+        () => resolvePlantMotion(getPlantWind(), osReducedMotion),
+    );
+    return { motion, osReducedMotion };
+}
+
+/**
+ * Plant sway and breathing uniforms. Live wind sways plants through the one
+ * wind scale (`scene/weather/windClass.ts`): the weather's wind layer
+ * publishes the blended class and each part's uniforms follow without a
+ * re-render. Under reduced motion plants do not breathe, keep still in calm
+ * air and sway at 30% in wind.
+ */
 export function usePlantSway(seed: string, options: PlantSwayOptions) {
-    const weather = useGameState((state) => state.weather);
     const fixedTimeSeconds = useSceneFixedTimeSeconds();
     const timeUniform = useSceneTimeUniform();
-    const prefersReducedMotion = usePrefersReducedMotion();
-    const swayDisabled = options.enabled === false || prefersReducedMotion;
+    const { motion, osReducedMotion } = usePlantMotion();
+    const swayDisabled = options.enabled === false || motion === 'still';
+    const breathAmplitude = options.breathAmplitude ?? PLANT_BREATH_AMPLITUDE;
+    const breathSeed = options.breathSeed ?? seed;
+    const breathSpeed = getPlantBreathSpeed(breathSeed);
     useSceneTimeInvalidation(
         'plant-sway',
         !swayDisabled && fixedTimeSeconds === undefined,
     );
     const uniforms = useMemo(() => {
         const rng = new SeededRNG(seed);
+        // Start from the current wind, so the first frame already sways.
+        const initial = swayDisabled
+            ? null
+            : resolvePlantSwayUniformValues(getPlantWind(), {
+                  amplitude: options.amplitude,
+                  speed: options.speed,
+                  breathAmplitude,
+                  breathSpeed,
+                  reducedMotion: osReducedMotion,
+              });
         return {
             uTime: timeUniform,
-            uSwayAmplitude: {
-                value: swayDisabled ? 0 : options.amplitude,
-            },
-            uSwaySpeed: { value: swayDisabled ? 0 : options.speed },
+            uSwayAmplitude: { value: initial?.swayAmplitude ?? 0 },
+            uSwaySpeed: { value: initial?.swaySpeed ?? 0 },
             uSwayPhase: { value: rng.nextRange(0, Math.PI * 2) },
-            uWindStrength: { value: 0 },
-            uWindDirection: { value: defaultWindDirection() },
+            uWindStrength: { value: initial?.windStrength ?? 0 },
+            uWindDirection: {
+                value: initial?.windDirection ?? defaultWindDirection(),
+            },
+            uBreathAmplitude: { value: initial?.breathAmplitude ?? 0 },
+            uBreathSpeed: { value: initial?.breathSpeed ?? 0 },
+            uBreathPhase: {
+                value: new SeededRNG(`${breathSeed}:breath`).nextRange(
+                    0,
+                    Math.PI * 2,
+                ),
+            },
         };
-    }, [options.amplitude, options.speed, seed, swayDisabled, timeUniform]);
+    }, [
+        breathAmplitude,
+        breathSeed,
+        breathSpeed,
+        options.amplitude,
+        options.speed,
+        osReducedMotion,
+        seed,
+        swayDisabled,
+        timeUniform,
+    ]);
 
     useEffect(() => {
         if (swayDisabled) {
-            uniforms.uSwayAmplitude.value = 0;
-            uniforms.uSwaySpeed.value = 0;
-            uniforms.uWindStrength.value = 0;
-            uniforms.uWindDirection.value = defaultWindDirection();
             return;
         }
-
-        const windStrength = Math.max(
-            0,
-            Math.min(1, (weather?.windSpeed ?? 0) / 25),
-        );
-        const windDirectionRadians =
-            ((weather?.windDirection ?? 0) * Math.PI) / 180;
-
-        uniforms.uSwayAmplitude.value =
-            options.amplitude * (1 + windStrength * 0.28);
-        uniforms.uSwaySpeed.value = options.speed * (1 + windStrength * 0.18);
-        uniforms.uWindStrength.value = windStrength;
-        uniforms.uWindDirection.value = [
-            Math.sin(windDirectionRadians),
-            -Math.cos(windDirectionRadians),
-        ];
+        return registerPlantSwayTarget({
+            uniforms,
+            amplitude: options.amplitude,
+            speed: options.speed,
+            breathAmplitude,
+            breathSpeed,
+            reducedMotion: osReducedMotion,
+        });
     }, [
+        breathAmplitude,
+        breathSpeed,
         options.amplitude,
         options.speed,
+        osReducedMotion,
         swayDisabled,
         uniforms,
-        weather?.windDirection,
-        weather?.windSpeed,
     ]);
 
     return uniforms;

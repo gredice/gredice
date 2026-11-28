@@ -312,7 +312,12 @@ policies make the 60 Hz target and phase boundary auditable. Cow/Farm poses use
 the coherent delayed time/state/gait sample; other manual poses and GLTF mixers
 use render time and render delta. The Butterfly nullable initial-flight adapter
 is the sole intentional manual body change; its independent calculation is the
-original nonnullable flight body. World transforms come from each authoritative
+original nonnullable flight body. The `design/party-game-style` branch also
+changes three manual poses on purpose: the butterfly flaps its wings about
+`rotation.z` instead of `rotation.y` (the redesigned wing panels hinge along
+the body), and the cow and rabbit breathe with the shared volume-preserving
+stretch from `scene/idleBreathing.ts`. A reference replay against the commit
+above should flag those poses; it has not been run on that branch. World transforms come from each authoritative
 actor group, with fixed wrappers recorded separately as `@visual` and all GLTF
 roots as `@model`.
 It does not alter canonical profiler thresholds or report production FPS.

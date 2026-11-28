@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/experimental-ct-react';
 import { CursorAnchoredZoomFixture } from '../../../packages/game/tests/CursorAnchoredZoomFixture';
+import { expect, test } from './webglComponentTest';
 import '../../../packages/game/tests/cameraRenderedState';
 import type { CameraRenderedWitness } from '../../../packages/game/tests/cameraRenderedState';
 

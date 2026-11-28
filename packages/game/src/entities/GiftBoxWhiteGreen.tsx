@@ -1,6 +1,6 @@
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
-import { GiftBox } from './helpers/GiftBox';
+import { GiftBox, giftBoxPalettes } from './helpers/GiftBox';
 
 export function GiftBoxWhiteGreen(props: EntityInstanceProps) {
-    return <GiftBox {...props} boxColor="#FFFFFF" ribbonColor="#006400" />;
+    return <GiftBox {...props} {...giftBoxPalettes.GiftBox_WhiteGreen} />;
 }

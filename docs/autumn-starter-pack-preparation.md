@@ -72,6 +72,43 @@ pins the previous evidence, the removed models, and the updated asset
 registry and generated model inventory inputs. The original mobile/low-static
 captures retain their original provenance.
 
+The party-toy art restyle (#5874) changes every rendered pixel, so all six
+cases were captured again on 2026-11-27 from clean
+`3c86ede47de0ae181db0ce5e22c422078f6e8e44` (tree
+`44e609d1588601d0d6b365517f0cd1464251c076`), in a fresh clone with no
+Playwright component-test cache: 36 desktop/high images, the
+three public previews and, this time, the 36 mobile/low-static images, since
+the old ones no longer showed the current art. A second run after deleting the
+cache again, and a separate verification clone, reproduced them byte for byte.
+Object identities, mesh counts,
+layout and camera are unchanged; the art, lighting and projected bounds differ.
+**These images are awaiting the owner's visual review. No review or approval
+has been recorded yet.** The [recapture record](autumn-starter-pack-review-2026/party-toy-restyle-recapture.json)
+lists every before/after hash and the refreshed model, renderer and
+publication pins, including the twelve family manifests, the three pumpkin
+sources and the now-versioned StoneMedium URL. It also pins 16 renderer files
+that the restyle added as direct imports of already pinned files.
+`pre-party-toy-restyle/` keeps the previous manifests and all six capture
+records. The new evidence changes every prepared product version; purchased
+snapshots keep theirs.
+
+**Capture caveat until the shader order is fixed.** These images depend on
+`apps/garden/playwright/.cache`, not only on the commit. `Scene.tsx` (sky rim)
+and `Environment.tsx` (surface gradient and shade veil) each append a patch to
+three.js `ShaderChunk.lights_fragment_end` when their module loads, and the
+two do not commute. Playwright keeps every component it has built in that
+cache. When the cache also holds the regular component-test suite, the build
+evaluates `Scene.tsx` first and 0.4–3.3% of each image's pixels differ. With
+an empty cache the surface gradient goes first, which matches plain ESM
+evaluation of `GameScene.tsx` and the package entry points. Delete
+`apps/garden/playwright/.cache` before running this capture; a capture from a
+cache that also holds other components is not reproducible evidence. Installing
+both patches from one fixed-order function removes the dependence. That change
+edits pinned renderer inputs, so it needs its own commit, clean recapture and
+pin refresh; if it keeps the surface gradient first, the images should not
+change. An earlier capture of the same commit made with a full cache was
+discarded before commit; the recapture record lists its preview hashes.
+
 The read-only public export observed **2026-10-02T18:28:09Z**, SHA256 `8c4fff1ebe0a5ac9f90f9ba52436d263c70b16f9cb5a85f1cc018b4674c88cde`, contained 144 rows. It was a CDN-cached public response (`X-Vercel-Cache: HIT`, `Age: 108`, `Cache-Control: public, max-age=3600`), not a direct database audit. Among the twelve included models, only StoneMedium (140, 5 sunflowers) and EnamelGardenLamp (758, 80 sunflowers) were present. Preparation is blocked for all three products by the other ten missing models. These observations are dated evidence, not configured production prices or IDs.
 
 Tests use an explicitly synthetic directory and published fixture versions solely inside isolated PGlite service/repository tests and browser mocks. They cover all three derived products: four-unit grants, partial exact placement, readback, independent repeat purchases, placement after catalogue withdrawal without extra charge and original-value idempotent refund. Three actual storefront card reviews cover mobile/keyboard input, precise pieces, excluded scenery, individual prices without invented savings and no automatic purchase/placement.

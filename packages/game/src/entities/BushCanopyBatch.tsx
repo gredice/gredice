@@ -4,6 +4,9 @@ import { useAutumnState } from '../hooks/useAutumnState';
 import { getAutumnCanopyStage } from '../scene/autumnCanopy';
 import { getAutumnPaletteSeed } from '../scene/autumnPalette';
 import { bushTextureColor } from '../scene/bushFoliage';
+import { useIdleBreathingUniforms } from '../scene/IdleBreathingMotion';
+import { bindIdleBreathingMaterial } from '../scene/idleBreathing';
+import { useSnowOverlayVisible } from '../snow/SnowOverlay';
 import { snowPresets } from '../snow/snowPresets';
 import { useGameState } from '../useGameState';
 import { useGameGLTF } from '../utils/useGameGLTF';
@@ -43,20 +46,37 @@ export function BushCanopyBatch({
             ),
         [instances, palette, stage, disabled, autumn.leafRetention],
     );
+    // Sprigs collect snow before the mound does.
+    const snowLoaded = useSnowOverlayVisible({
+        coverageMultiplier: Math.max(
+            snowPresets.bushCore.coverageMultiplier,
+            snowPresets.bushFoliage.coverageMultiplier,
+        ),
+        minCoverage: snowOverlayMinCoverage,
+    });
+    // Mound and sprigs share one pivot and phase so they breathe together.
+    // Snow overlays do not breathe, so a snowy bush holds still.
+    const breathing = useIdleBreathingUniforms(
+        'shrub',
+        nodes.Bush_1_1.geometry,
+        !(renderSnow && snowLoaded),
+    );
     const material = useMemo(() => {
         const value = materials['Material.ColorPaletteMain'].clone();
         value.color.set('white');
         value.vertexColors = true;
+        bindIdleBreathingMaterial(value, breathing);
         return value;
-    }, [materials]);
+    }, [materials, breathing]);
     useEffect(() => () => material.dispose(), [material]);
     const sprigMaterial = useMemo(() => {
         if (stage !== 'full') return null;
         const value = materials['Material.GrassPart'].clone();
         value.color.set('white');
         value.vertexColors = true;
+        bindIdleBreathingMaterial(value, breathing);
         return value;
-    }, [materials, stage]);
+    }, [materials, stage, breathing]);
     useEffect(() => () => sprigMaterial?.dispose(), [sprigMaterial]);
     const geometry = useAutumnFoliageGeometry(
         stage === 'full'

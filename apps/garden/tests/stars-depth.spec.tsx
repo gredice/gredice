@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/experimental-ct-react';
 import { StarsDepthFixture } from '../../../packages/game/tests/StarsDepthFixture';
+import { expect, test } from './webglComponentTest';
 
 for (const view of ['overview', 'third-person', 'first-person'] as const) {
     test(`stars stay behind opaque blocks in ${view}`, async ({

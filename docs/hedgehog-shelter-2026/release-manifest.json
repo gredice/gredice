@@ -5,33 +5,33 @@
   "sources": [
     {
       "path": "assets/game-assets/Hedgehog.blend",
-      "bytes": 110186,
-      "sha256": "288ffc0c00caac68aca983708292a477c71bda4679e2391f53544b05accac4f2"
+      "bytes": 123055,
+      "sha256": "089a399e4789e75cb06e64d40ee0e549b6b3cbf43777fa95b5a58fcc80c7d305"
     },
     {
       "path": "assets/game-assets/HedgehogShelter.blend",
-      "bytes": 93548,
-      "sha256": "fde9b6b6ab54b770cb766afba94525606340fa51968f4c355abfd0a222454f87"
+      "bytes": 102586,
+      "sha256": "ea6af6f94c2856e2d35e3e69fc297a92f7d0ae1b69459996e78426faac93aec0"
     }
   ],
   "models": [
     {
       "name": "Hedgehog",
       "path": "apps/garden/public/assets/models/Hedgehog.glb",
-      "bytes": 70104,
-      "sha256": "cde12d271bb2d9a028cf25af5d7b27abd1198e806394bf371ba7a142673d1201",
-      "url": "https://vrt.gredice.com/assets/models/Hedgehog.glb?v=cde12d271bb2",
-      "triangles": 444,
+      "bytes": 63252,
+      "sha256": "519d037cee1bff6122b2af5860d25deb6749cce8e4d98771baa2cb49a2b4bcd3",
+      "url": "https://vrt.gredice.com/assets/models/Hedgehog.glb?v=519d037cee1b",
+      "triangles": 1876,
       "meshCount": 6,
       "materialCount": 1
     },
     {
       "name": "HedgehogShelter",
       "path": "apps/garden/public/assets/models/HedgehogShelter.glb",
-      "bytes": 24732,
-      "sha256": "c2116bf92e35cc514767193e021b46a9c4aac761495b0b1f002c65dfbcf5c611",
-      "url": "https://vrt.gredice.com/assets/models/HedgehogShelter.glb?v=c2116bf92e35",
-      "triangles": 260,
+      "bytes": 36068,
+      "sha256": "803583fcbcfc8f40cbbe65c7d7c06b4a92e655a1b777e771d62317be6b855d02",
+      "url": "https://vrt.gredice.com/assets/models/HedgehogShelter.glb?v=803583fcbcfc",
+      "triangles": 888,
       "meshCount": 1,
       "materialCount": 1
     }
@@ -63,53 +63,53 @@
       "images": [
         {
           "path": "apps/www/public/assets/blocks/HedgehogShelter.webp",
-          "bytes": 12336,
-          "sha256": "1d81e8bb41186f26349a3dc5b2f2fa094f49c9df11ae96115224df5a69a2fdf0"
+          "bytes": 11718,
+          "sha256": "b7a06e432a1235730992efd8deb7e00df328001eacb983719cb62777538dfea8"
         },
         {
           "path": "apps/www/public/assets/blocks/HedgehogShelter_1.webp",
-          "bytes": 11782,
-          "sha256": "c0f907d7c4aac75827bf50a5b9235611060545bf03c1002ec490d71620511a8b"
+          "bytes": 10620,
+          "sha256": "f62c285cba4f3994e08ff5384fd60e2b2d287fb18c8130fc387401f38917a409"
         },
         {
           "path": "apps/www/public/assets/blocks/HedgehogShelter_2.webp",
-          "bytes": 10924,
-          "sha256": "d1238141220608f74440005a1c274b9aa91537cc8b45eb5f5e19f38e86737cdc"
+          "bytes": 10794,
+          "sha256": "fb306e29b55412308f4abaf81c3e4700f58493a92801e5fab29baeb277847ff7"
         },
         {
           "path": "apps/www/public/assets/blocks/HedgehogShelter_3.webp",
-          "bytes": 12336,
-          "sha256": "1d81e8bb41186f26349a3dc5b2f2fa094f49c9df11ae96115224df5a69a2fdf0"
+          "bytes": 11718,
+          "sha256": "b7a06e432a1235730992efd8deb7e00df328001eacb983719cb62777538dfea8"
         },
         {
           "path": "apps/www/public/assets/blocks/HedgehogShelter_4.webp",
-          "bytes": 11206,
-          "sha256": "48898c23fe7afaceb432c1fef401280dd6d95376e20625ca00464ad6dc6176df"
+          "bytes": 11072,
+          "sha256": "e45b90187e888c2d9a9f2fbd274d6d0d79179bf0b935c98affbc1a8b7df76ba1"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HedgehogShelter.webp",
-          "bytes": 4530,
-          "sha256": "0297c1a1ae201e77ebf1bde3513d48727ecd8060f736caf1410d5aa0deab7102"
+          "bytes": 3330,
+          "sha256": "3fdeca54100bd3481e48a611ef3a3ce6297afd946cba692f77b32c69c385ff46"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HedgehogShelter_1.webp",
-          "bytes": 4530,
-          "sha256": "0297c1a1ae201e77ebf1bde3513d48727ecd8060f736caf1410d5aa0deab7102"
+          "bytes": 3330,
+          "sha256": "3fdeca54100bd3481e48a611ef3a3ce6297afd946cba692f77b32c69c385ff46"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HedgehogShelter_2.webp",
-          "bytes": 3816,
-          "sha256": "9357fb202e5e2e799b2c7aac87e584d117ab7720020bff26128d76fee97c943b"
+          "bytes": 2114,
+          "sha256": "5fcc079042aa882c1d34c2ee8721fda70a331c59249316aac046bda89a5c8d4b"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HedgehogShelter_3.webp",
-          "bytes": 5418,
-          "sha256": "8433e30c364878c945f7485cfb0b35b9809406fa2f25945792a64b8f4e35b009"
+          "bytes": 3124,
+          "sha256": "db942091c01c4042f22fb2775cf339a0e0e5798462a9630cf77ee00f7c65810b"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HedgehogShelter_4.webp",
-          "bytes": 4218,
-          "sha256": "a74845f9fe151d0160dd503a56848728dad4922956712dd1ed5b1dea5b308f9b"
+          "bytes": 2038,
+          "sha256": "47d49bf4eb504adcac1bdd79be40ed3f5980f54caa4f475e41cca0ee77675cb1"
         }
       ]
     }

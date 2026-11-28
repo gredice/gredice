@@ -198,32 +198,46 @@ describe('farm animal assets', () => {
     });
 
     it('stores authored display colors as linear GLB factors', () => {
-        assertLinearMaterial(
-            'Chicken',
-            'Material.Chicken.Cream',
-            [0.92, 0.79, 0.52],
-        );
-        assertLinearMaterial('Goat', 'Material.Goat.Cream', [0.86, 0.79, 0.63]);
-        assertLinearMaterial(
-            'Piglet',
-            'Material.Piglet.Pink',
-            [0.94, 0.52, 0.55],
-        );
-        assertLinearMaterial(
-            'ChickenCoop',
-            'Material.ChickenCoop.Oak',
-            [0.42, 0.23, 0.1],
-        );
-        assertLinearMaterial(
-            'PigletPen',
-            'Material.PigletPen.Oak',
-            [0.43, 0.25, 0.12],
-        );
-        assertLinearMaterial(
-            'Sheep',
-            'Material.Sheep.Wool',
-            [0.91, 0.84, 0.68],
-        );
+        // Chicken golden: screen_to_albedo('#f4b84a') as 8-bit sRGB
+        // (assets/scripts/party_animals/chicken.py).
+        assertLinearMaterial('Chicken', 'Material.Chicken.Cream', [
+            0xa3 / 255,
+            0x7a / 255,
+            0x2f / 255,
+        ]);
+        // Goat cream: screen_to_albedo('#eddab8') as 8-bit sRGB
+        // (assets/scripts/party_animals/goat.py).
+        assertLinearMaterial('Goat', 'Material.Goat.Cream', [
+            0x93 / 255,
+            0x87 / 255,
+            0x73 / 255,
+        ]);
+        // Piglet pink: screen_to_albedo('#f6929a') as 8-bit sRGB
+        // (assets/scripts/party_animals/piglet.py).
+        assertLinearMaterial('Piglet', 'Material.Piglet.Pink', [
+            0xaa / 255,
+            0x62 / 255,
+            0x68 / 255,
+        ]);
+        // Home timber uses the shared walkway wood, defaultGameWoodColor
+        // (assets/scripts/party-pass-homes.py).
+        assertLinearMaterial('ChickenCoop', 'Material.ChickenCoop.Oak', [
+            0x87 / 255,
+            0x56 / 255,
+            0x27 / 255,
+        ]);
+        assertLinearMaterial('PigletPen', 'Material.PigletPen.Oak', [
+            0x87 / 255,
+            0x56 / 255,
+            0x27 / 255,
+        ]);
+        // Sheep wool: screen_to_albedo('#f2ddbe') as 8-bit sRGB
+        // (assets/scripts/party_animals/sheep.py).
+        assertLinearMaterial('Sheep', 'Material.Sheep.Wool', [
+            0x9d / 255,
+            0x8f / 255,
+            0x7b / 255,
+        ]);
     });
 
     it('exports the sheep with stable animal-specific animation pivots', () => {

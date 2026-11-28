@@ -4,13 +4,22 @@ import { Matrix4, Raycaster, Vector3 } from 'three';
 import type { EntityBlockInstance } from '../entities/EntityInstancesBlock';
 import { getWaterBlockDepthAtLocalPosition } from '../entities/waterBlockDepth';
 import { getLocalSandboxBlockData } from '../localSandboxBlockData';
+import { rainSplashLook } from '../scene/Rain/rainParticles';
 import { getStackHeight } from '../utils/stackHeightCore';
-import { createRainRippleMesh } from './rainRippleMesh';
+import {
+    createRainRippleMesh,
+    createRainSplashCellTexture,
+    createRainSplashMesh,
+    createRainSplashUniforms,
+} from './rainRippleMesh';
 import {
     createRainRippleAnchors,
+    createRainSplashCells,
     getRainCoveredCells,
     rainRippleCaps,
     rainRipplesEnabled,
+    rainSplashCellRules,
+    rainTerrainTopOffset,
 } from './rainRippleState';
 
 function instance(id: string, name = 'Block_Sand', x = 0): EntityBlockInstance {
@@ -311,4 +320,101 @@ test('mixed surfaces share stable quality caps and cover rules', () => {
     const raised = instance('raised', 'Block_Ground');
     raised.stackHeight = 2;
     assert.equal(anchors([raised])[0].position[1], 2.404);
+});
+
+function stack(x: number, z: number, ...names: string[]) {
+    return {
+        position: new Vector3(x, 0, z),
+        blocks: names.map((name, index) => ({
+            id: `${x}:${z}:${index}`,
+            name,
+            rotation: 0,
+        })),
+    };
+}
+
+test('splash rings land on open ground and bed soil, never where props stand', () => {
+    const cells = createRainSplashCells(
+        [
+            stack(0, 0, 'Block_Grass'),
+            stack(1, 0, 'Block_Ground'),
+            stack(2, 0, 'Block_Grass', 'Raised_Bed'),
+            stack(3, 0, 'Block_Grass', 'Tree'),
+            stack(4, 0, 'Block_Grass', 'Fence'),
+            stack(5, 0, 'Block_Water'),
+            stack(6, 0, 'Block_Grass_Angle'),
+            stack(7, 0, 'Block_Snow'),
+            stack(8, 0, 'Block_Ground', 'Block_Sand'),
+        ],
+        getLocalSandboxBlockData(),
+    );
+    assert.deepEqual(
+        cells.map(({ kind, x }) => `${kind}:${x}`),
+        ['ground:0', 'ground:1', 'bed:2', 'ground:8'],
+    );
+    const [grass, , bed, raised] = cells;
+    // Flat terrain tops render 0.4 above the stack base; bed soil sits
+    // inside the planks, a quarter unit above the terrain.
+    assert.equal(grass?.y, rainTerrainTopOffset);
+    assert.equal(
+        bed?.y,
+        rainTerrainTopOffset + rainSplashCellRules.bedSoilHeight,
+    );
+    assert.ok((bed?.halfExtent ?? 1) < (grass?.halfExtent ?? 0));
+    assert.equal(raised?.y, 0.4 + rainTerrainTopOffset);
+    assert.equal(
+        createRainSplashCells([], getLocalSandboxBlockData()).length,
+        0,
+    );
+});
+
+test('splash rings are one depth-tested instanced draw placed in the shader', () => {
+    const cells = createRainSplashCells(
+        [stack(0, 0, 'Block_Grass'), stack(1, 0, 'Block_Ground')],
+        getLocalSandboxBlockData(),
+    );
+    const texture = createRainSplashCellTexture(cells);
+    assert.equal(texture.count, 2);
+    assert.deepEqual(
+        Array.from(texture.texture.image.data ?? []).slice(0, 4),
+        [0, rainTerrainTopOffset, 0, rainSplashCellRules.terrainHalfExtent].map(
+            Math.fround,
+        ),
+    );
+    const time = { value: 0 };
+    const mesh = createRainSplashMesh({
+        capacity: 29,
+        cells: texture,
+        lifeSeconds: rainSplashLook.lifeSeconds,
+        radius: rainSplashLook.radius,
+        time,
+        uniforms: createRainSplashUniforms(),
+    });
+    assert.equal(mesh.geometry.instanceCount, 0);
+    assert.equal(mesh.geometry.getAttribute('aSeed').count, 29);
+    // Small, thin, short rings: radius 0.12 for 0.45 s, a ring about 2 px
+    // wide at the default zoom, and a full ring stays inside its own tile.
+    assert.equal(mesh.material.uniforms.uRadius.value, 0.12);
+    assert.equal(mesh.material.uniforms.uLife.value, 0.45);
+    assert.match(
+        mesh.material.fragmentShader,
+        /smoothstep\(0\.16, 0\.04, abs\(r - 0\.8\)\)/,
+    );
+    assert.ok(
+        rainSplashCellRules.terrainHalfExtent + rainSplashLook.radius <=
+            0.47 + 1e-9,
+    );
+    assert.equal(mesh.material.depthTest, true);
+    assert.equal(mesh.material.depthWrite, false);
+    assert.equal(mesh.material.uniforms.uTime, time);
+    assert.match(mesh.material.vertexShader, /texelFetch\(uCells/);
+    assert.match(
+        mesh.material.fragmentShader,
+        /#include <colorspace_fragment>/,
+    );
+    assert.equal(mesh.frustumCulled, false);
+    assert.equal(mesh.raycast(new Raycaster(), []), undefined);
+    mesh.geometry.dispose();
+    mesh.material.dispose();
+    texture.texture.dispose();
 });

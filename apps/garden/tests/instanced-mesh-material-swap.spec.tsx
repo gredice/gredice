@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/experimental-ct-react';
 import { InstancedMeshMaterialSwapFixture } from '../../../packages/game/tests/InstancedMeshMaterialSwapFixture';
+import { expect, test } from './webglComponentTest';
 
 test('preserves instance transforms when the material constructor argument changes', async ({
     mount,

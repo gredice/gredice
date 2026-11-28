@@ -6,10 +6,10 @@ First-party references inspected: Rabbit for the small faceted animal and restra
 
 | Model | Triangles | GLB bytes | Meshes / materials |
 | --- | ---: | ---: | ---: |
-| Hedgehog | 444 | 70,104 | 6 / 1 |
-| HedgehogShelter | 260 | 24,732 | 1 / 1 |
+| Hedgehog | 1,876 | 63,252 | 6 / 1 |
+| HedgehogShelter | 888 | 36,068 | 1 / 1 |
 
-Both are lazy, opaque, untextured and share their own rough vertex-color palette. The shelter bounds are 0.8 × 0.74 × 0.48. Actor animation samples stay within 0.25 wide, 0.46 long and 0.27 high. The shelter uses the existing snow/wet-surface helpers; the actor uses a cloned hierarchy with cached geometry/materials, a private mixer, no picking surfaces and no shadow-casting meshes. Its grounding shadow uses the shared bounded shadow registry. Teardown stops/uncaches the mixer without disposing shared GLTF resources.
+Both are lazy, opaque and untextured, each with its own vertex-color palette in the seasonal roles of [GAME_ART.md](../GAME_ART.md). On screen the hedgehog shows a conker body `#c4683a`, acorn-cap spines `#c28a50`, a cream face `#f2e4c6`, nut caramel ears `#dc9a4c` and ink violet eyes and nose `#5c4590`, at roughness 0.75. The shelter keeps the shared wood tones with hay bedding `#f2cb5a`, at roughness 0.55. The shelter bounds are 0.8 × 0.74 × 0.48. Actor animation samples stay within 0.25 wide, 0.46 long and 0.27 high. The shelter uses the existing snow/wet-surface helpers; the actor uses a cloned hierarchy with cached geometry/materials, a private mixer, no picking surfaces and no shadow-casting meshes. Its grounding shadow uses the shared bounded shadow registry. Teardown stops/uncaches the mixer without disposing shared GLTF resources.
 
 ## Habitat and lifecycle
 
@@ -23,7 +23,7 @@ The shared scene clock supports repeatable frozen poses; live visit duration tra
 
 ## Verification and release
 
-Eleven focused tests cover source/model/preview hashes, catalogue/placement rules, all exported clips, corridor geometry, four shelter rotations, water/occupied/raised entrances, deterministic routes and the single-visitor cap. The browser suite covers 29 cases: day/night rotations, weather, small canvas, raised supports, picking/crop controls, picker publication/price/drag, low/high frozen remounts, cached-resource cleanup, entrance mutation, winter gating, offscreen pause/resume, full return/cooldown/reappearance, reduced motion and three close-up poses. Both quality captures measured one actor with six meshes, 444 triangles and zero shadow casters; this is geometry cost, not a GPU timing benchmark.
+Eleven focused tests cover source/model/preview hashes, catalogue/placement rules, all exported clips, corridor geometry, four shelter rotations, water/occupied/raised entrances, deterministic routes and the single-visitor cap. The browser suite covers 29 cases: day/night rotations, weather, small canvas, raised supports, picking/crop controls, picker publication/price/drag, low/high frozen remounts, cached-resource cleanup, entrance mutation, winter gating, offscreen pause/resume, full return/cooldown/reappearance, reduced motion and three close-up poses. Both quality captures measure one actor with six meshes, 1,876 triangles (the party-toy re-export; it was 444 before) and zero shadow casters; this is geometry cost, not a GPU timing benchmark.
 
 Eight preview renders generated four cover and top-down orientations; all ten published-image candidates have transparent backgrounds. The thirteen garden captures and three close-ups were visually inspected. Game/Garden/WWW typechecks, scoped importer types and offline plan, lint, the 1,985-test full game suite and the Garden production build passed. Release hashes and catalogue draft data are in `docs/hedgehog-shelter-2026/release-manifest.json`.
 

@@ -193,8 +193,8 @@ const groundForageRadius = 0.34;
 const groundForageSpeedBlocksPerSecond = 0.28;
 const groundPeckDamping = 18;
 const fullTurn = Math.PI * 2;
-const birdBeakColor = '#d76516';
-const birdLegColor = '#c65f17';
+const birdBeakColor = '#985721';
+const birdLegColor = '#92572c';
 const animalDisturbanceReactionWindowMs = 2500;
 
 const treeBlockNames = new Set(['Tree', 'Pine', 'PineAdvent']);
@@ -1307,7 +1307,8 @@ function cloneBirdPartMaterial(material: Material, color: string) {
     if (clone instanceof MeshStandardMaterial) {
         clone.color.set(color);
         clone.metalness = 0;
-        clone.roughness = 0.72;
+        // Satin band for beak and legs (GAME_ART.md roughness bands).
+        clone.roughness = 0.55;
     }
 
     return clone;

@@ -150,12 +150,16 @@ describe('Harvest crate release', () => {
                             object.geometry.getAttribute('position').count) / 3;
                 }
             });
-            assert.equal(triangles, asset === 'HarvestCrate' ? 3204 : 2132);
+            assert.equal(triangles, asset === 'HarvestCrate' ? 2940 : 2904);
             assert.ok(bytes.length < 250_000);
             for (const material of document.materials) {
                 assert.equal(material.pbrMetallicRoughness.metallicFactor, 0);
+                // Roughness follows the GAME_ART.md bands.
                 assert.ok(
-                    material.pbrMetallicRoughness.roughnessFactor >= 0.82,
+                    Math.abs(
+                        material.pbrMetallicRoughness.roughnessFactor -
+                            (material.name.includes('.Produce') ? 0.4 : 0.55),
+                    ) < 1e-6,
                 );
                 assert.equal(material.emissiveFactor, undefined);
             }

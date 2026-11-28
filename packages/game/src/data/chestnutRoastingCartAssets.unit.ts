@@ -157,7 +157,7 @@ describe('ChestnutRoastingCart release', () => {
                             object.geometry.getAttribute('position').count) / 3;
                 }
             });
-            assert.equal(triangles, 2016);
+            assert.equal(triangles, 5388);
             assert.ok(bytes.length < 300_000);
             gltf.scene.updateMatrixWorld(true);
             for (const anchor of chestnutRoastingCartEffectAnchors) {

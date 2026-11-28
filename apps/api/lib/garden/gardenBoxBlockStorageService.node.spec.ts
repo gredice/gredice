@@ -55,6 +55,10 @@ type HarnessOptions = Readonly<{
     directoryPending?: () => boolean;
     directoryUnavailable?: () => boolean;
     failInventoryAdd?: boolean;
+    /** Exact paid price recovered for a legacy source block. */
+    recoveredPaidSunflowers?: number | null;
+    /** Stored paid price of the source block; null = legacy. */
+    sourcePaidSunflowers?: number | null;
 }>;
 
 function makeHarness(options: HarnessOptions = {}) {
@@ -73,6 +77,10 @@ function makeHarness(options: HarnessOptions = {}) {
                 id: command.blockId,
                 message: options.blockMessage ?? null,
                 name: blockName,
+                paidSunflowers:
+                    options.sourcePaidSunflowers === undefined
+                        ? 30
+                        : options.sourcePaidSunflowers,
                 rotation: 0,
             },
             {
@@ -89,6 +97,7 @@ function makeHarness(options: HarnessOptions = {}) {
             },
         ],
         inventoryAdds: 0,
+        storedPaidSunflowers: [] as (number | null)[],
         stacks: [
             {
                 blocks: [command.blockId],
@@ -141,6 +150,7 @@ function makeHarness(options: HarnessOptions = {}) {
                 entityTypeName: 'block',
                 entityId: '101',
                 amount: 1,
+                paidSunflowers: payload.paidSunflowers,
                 source: `gardenBox:store:${getGardenBoxBlockStorageOperationId(command.blockId)}`,
             });
             calls.push('inventory-add');
@@ -148,6 +158,7 @@ function makeHarness(options: HarnessOptions = {}) {
                 throw new GardenBoxInventoryLimitError('Vrtna kutija je puna.');
             }
             state.inventoryAdds += 1;
+            state.storedPaidSunflowers.push(payload.paidSunflowers);
         },
         deleteGardenBlock: async (gardenId, blockId, receivedTransaction) => {
             assert.equal(receivedTransaction, transaction);
@@ -225,6 +236,19 @@ function makeHarness(options: HarnessOptions = {}) {
                 blocks: structuredClone(state.blocks),
                 stacks: structuredClone(state.stacks),
             };
+        },
+        getLegacyGardenBlockPaidSunflowers: async (
+            input,
+            receivedTransaction,
+        ) => {
+            assert.equal(receivedTransaction, transaction);
+            assert.deepEqual(input, {
+                accountId: command.accountId,
+                blockId: command.blockId,
+                gardenId: command.gardenId,
+            });
+            calls.push('legacy-paid-price');
+            return options.recoveredPaidSunflowers ?? null;
         },
         getGardenStackForUpdate: async (
             gardenId,
@@ -408,6 +432,7 @@ describe('storeGardenBlockInGardenBox', () => {
         );
         assert.deepEqual(harness.state.stacks[0]?.blocks, []);
         assert.equal(harness.state.inventoryAdds, 1);
+        assert.deepEqual(harness.state.storedPaidSunflowers, [30]);
 
         harness.calls.length = 0;
         assert.deepEqual(await harness.service(command), {
@@ -435,6 +460,24 @@ describe('storeGardenBlockInGardenBox', () => {
         });
         assert.equal(!conflict.ok && conflict.code, 'OPERATION_CONFLICT');
         assert.equal(harness.state.inventoryAdds, 1);
+    });
+
+    test('stores a legacy block with its recovered purchase price, or no price', async () => {
+        const recovered = makeHarness({
+            recoveredPaidSunflowers: 22,
+            sourcePaidSunflowers: null,
+        });
+        const unrecorded = makeHarness({ sourcePaidSunflowers: null });
+
+        assert.equal((await recovered.service(command)).ok, true);
+        assert.equal((await unrecorded.service(command)).ok, true);
+
+        assert.deepEqual(recovered.state.storedPaidSunflowers, [22]);
+        assert.deepEqual(unrecorded.state.storedPaidSunflowers, [null]);
+        assert.ok(
+            recovered.calls.indexOf('legacy-paid-price') <
+                recovered.calls.indexOf('receipt'),
+        );
     });
 
     test('replays a committed storage operation when the cold directory read fails', async () => {

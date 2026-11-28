@@ -1,6 +1,7 @@
 import { useMemo, useRef } from 'react';
 import { DoubleSide, type MeshStandardMaterial } from 'three';
 import { animated } from '../scene/sceneSpring';
+import { seasonalEmissive, seasonalRoles } from '../scene/seasonalRoles';
 import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
@@ -9,8 +10,9 @@ import { GardenNightLight } from './helpers/GardenNightLight';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 import { WeatheredEntityPart } from './helpers/WeatheredEntityPart';
 
-const handLanternGlowColor = '#ffb733';
-const handLanternSourceColor = '#000000';
+// The lantern glow role: its day colour on the candle, its emissive at night.
+const handLanternGlowColor = seasonalEmissive.lanternGlow;
+const handLanternSource = seasonalRoles.lanternGlow;
 const handLanternLightPosition = [0, 0.2475, 0] as const;
 const handLanternRain = {
     darkness: 0.72,
@@ -62,7 +64,7 @@ export function WoodenHandLantern({
                     depthWrite={false}
                     metalness={0}
                     opacity={0.68}
-                    roughness={0.48}
+                    roughness={0.15}
                     side={DoubleSide}
                     transparent
                 />
@@ -73,21 +75,22 @@ export function WoodenHandLantern({
                 receiveShadow={false}
             >
                 <meshStandardMaterial
-                    color={handLanternSourceColor}
+                    color={handLanternSource.albedo}
                     emissive={handLanternGlowColor}
                     emissiveIntensity={0.3}
                     metalness={0}
                     ref={glowMaterialRef}
-                    roughness={0.3}
+                    roughness={handLanternSource.roughness}
                 />
             </WeatheredEntityPart>
             <GardenNightLight
                 color={handLanternGlowColor}
-                distance={3.8}
+                decay={2}
+                distance={3}
                 emissiveBaseIntensity={0.3}
                 emissiveMaterialRefs={emissiveMaterialRefs}
-                emissivePeakIntensity={3.25}
-                lightIntensity={1.75}
+                emissivePeakIntensity={4.6}
+                lightIntensity={1}
                 lightKey={`WoodenHandLantern:${block.id}`}
                 position={handLanternLightPosition}
             />

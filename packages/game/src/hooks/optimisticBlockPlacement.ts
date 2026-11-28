@@ -39,7 +39,7 @@ export function getPreferredBlockPlacementPosition(
     return { x, y: z };
 }
 
-function createBlockDataByName(blockData: PlacementBlockData[]) {
+export function createBlockDataByName(blockData: PlacementBlockData[]) {
     const blockDataByName = new Map<string, GardenBlockDataLike>();
     for (const block of blockData) {
         const name = block.information?.name;
@@ -50,7 +50,7 @@ function createBlockDataByName(blockData: PlacementBlockData[]) {
     return blockDataByName;
 }
 
-function createBlockNameById(stacks: GardenStack[]) {
+export function createBlockNameById(stacks: GardenStack[]) {
     const blockNameById = new Map<string, string>();
     for (const stack of stacks) {
         for (const block of stack.blocks) {
@@ -60,7 +60,7 @@ function createBlockNameById(stacks: GardenStack[]) {
     return blockNameById;
 }
 
-function createBlockRotationById(stacks: GardenStack[]) {
+export function createBlockRotationById(stacks: GardenStack[]) {
     const blockRotationById = new Map<string, number>();
     for (const stack of stacks) {
         for (const block of stack.blocks) {
@@ -70,7 +70,9 @@ function createBlockRotationById(stacks: GardenStack[]) {
     return blockRotationById;
 }
 
-function createPlacementStacks(stacks: GardenStack[]): GardenBlockStack[] {
+export function createPlacementStacks(
+    stacks: GardenStack[],
+): GardenBlockStack[] {
     return stacks.map((stack) => ({
         positionX: stack.position.x,
         positionY: stack.position.z,

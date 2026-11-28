@@ -5,78 +5,78 @@
     {
       "issue": 4948,
       "manifest": "docs/harvest-pumpkins-2026/release-manifest.json",
-      "sha256": "8a3dd634f0f876637a804f0eb1edb2a3ae16f4154911ca5b45dd85c5c1f989c3"
+      "sha256": "9cf5b5b2258fb29f6a40d4eaa6487cee72f1af87b0e5d14b21842839777943d7"
     },
     {
       "issue": 4949,
       "manifest": "docs/garden-scarecrow-2026/release-manifest.json",
-      "sha256": "b0775695d0f651ac3c3468ac37611a224dec862ee5df078e14ef10ceb886bafb"
+      "sha256": "dd15cfb74b843a928ab35402b5d7ba48780e9856e41d2abe3676b95655380bf2"
     },
     {
       "issue": 4950,
       "manifest": "docs/harvest-crates-2026/release-manifest.json",
-      "sha256": "3cff1964ada145c250bed9ad68a101c978eeca9b623e63e6a7eac24efa6b4e1c"
+      "sha256": "16995d7b8b068dcc05794d3d5b0b3ed836773ea79f0f745f0d5f444f1c4a1f8a"
     },
     {
       "issue": 4951,
       "manifest": "docs/harvest-wheelbarrow-2026/release-manifest.json",
-      "sha256": "d3522bc9a63abbb30edfa4ae86515a7c8f7639e5e396320fe71c47d9b4b3e851"
+      "sha256": "1e7d5103e91385f134457d61f817ed88669da63e18b1364a0f7a02c543901210"
     },
     {
       "issue": 4952,
       "manifest": "docs/autumn-aster-pots-2026/release-manifest.json",
-      "sha256": "83b8167838b4a3d9f0dac4c890287b12421a95ad604066b5cbd26838b22eebd7"
+      "sha256": "c103f17540cb0e1bb0bb545618830295d81ad84fbfdf3fa2a48e5a5bbb3b9565"
     },
     {
       "issue": 4953,
       "manifest": "docs/autumn-shrub-2026/release-manifest.json",
-      "sha256": "ee42e6028e6a4b5a7f4fa3aa785c994a0353a377e2f8dc6cc013398db341679f"
+      "sha256": "3127577cb69d1f652b54d248dd1da5ca1cbb7f758a8fb67c11790d4b60dcfff5"
     },
     {
       "issue": 4954,
       "manifest": "docs/woodland-mushrooms-2026/release-manifest.json",
-      "sha256": "25c0c0c2a32f27bc7d682e6133549c518666c6a45ae242de5ecbb96a5c2873a1"
+      "sha256": "c68f7947632f4565319645e7b276cbe9bd6dc93ed9de7bb51e85a49b5ba37518"
     },
     {
       "issue": 4955,
       "manifest": "docs/fallen-log-2026/release-manifest.json",
-      "sha256": "89428e1e3b79607547e34322f837948a1bf002a2d3893f8df7c2c9e4d58a8914"
+      "sha256": "420bdab1afc839c65a8aedf406f1f8de27c6af2c98d928e1f0ad88c86e20d81d"
     },
     {
       "issue": 4956,
       "manifest": "docs/autumn-leaf-piles-2026/release-manifest.json",
-      "sha256": "b272f5ce845f43579c009fd89ab83f702dcb2ce723246fd7b021f2f859683c0e"
+      "sha256": "f2b9b7a5c972b06014dfa20457f969aa6f80da51b4a16102f9059f95c480c3c0"
     },
     {
       "issue": 4957,
       "manifest": "docs/leaf-rake-2026/release-manifest.json",
-      "sha256": "4089aacd493b68d8b857bb4a376d98c8e9918e7482dea0255d86897268db877a"
+      "sha256": "1198fbf8f005bf5809353e760ce45a036880d8e10c1f61a3c77f789f7ba220dc"
     },
     {
       "issue": 4958,
       "manifest": "docs/autumn-blanket-bench-2026/release-manifest.json",
-      "sha256": "ee1bbb819b39fccbe86ef25f557d92a0eb704a6584b563d8b73ca9289071bcdd"
+      "sha256": "b3b6b96802a11220fed82c939d7e82fb6b66a1636e5c128316c3d741c954d7ab"
     },
     {
       "issue": 4959,
       "manifest": "docs/garden-tea-table-2026/release-manifest.json",
-      "sha256": "24da94b6ee6e841730a38332b8a298ca5dc29230beeada8bb65e99523a760f42"
+      "sha256": "24072f3a321635a75a6bf7b8ac8fbfacef17c03674f01ffd1f79ba0c2a471458"
     }
   ],
   "additionalSources": [
     {
       "path": "assets/game-assets/HarvestPumpkinSquat.blend",
-      "sha256": "daba6c9b2da6396ad97807da72f7907caa9c665dca6f75b79e5823bb49730357",
+      "sha256": "163661b5db620ce543b3df7dd20fbed05d11780fac35a70589877907519c99e2",
       "reason": "Existing pumpkin source absent from family manifest; resolved through assets/game-assets.json. Byte identity only; not a new art approval."
     },
     {
       "path": "assets/game-assets/HarvestPumpkinGourd.blend",
-      "sha256": "de4f4055b9dd512ba888129dc3da796424fcbe433722d4fabd86073dd97e09de",
+      "sha256": "19858d94a7f63f71912c06a7718121a3f98ded6146d98c347f7e5d3e9db25d90",
       "reason": "Existing pumpkin source absent from family manifest; resolved through assets/game-assets.json. Byte identity only; not a new art approval."
     },
     {
       "path": "assets/game-assets/HarvestPumpkinGroup.blend",
-      "sha256": "bf515e1c80e12450c36386f69ce00768cf417f2696d08187f6b50a61b749b835",
+      "sha256": "aee84f9ee583a4bd4a3f63b5b03d0bf2981a89ed2d8aa7fd9e961fd649442628",
       "reason": "Existing pumpkin source absent from family manifest; resolved through assets/game-assets.json. Byte identity only; not a new art approval."
     }
   ],
@@ -116,113 +116,113 @@
   "legacyDependencies": [
     {
       "name": "StoneMedium",
-      "modelUrl": "/assets/models/StoneMedium.glb",
+      "modelUrl": "/assets/models/StoneMedium.glb?v=7fb239c52fa7",
       "catalogueId": null,
       "files": [
         {
           "path": "assets/game-assets/StoneMedium.blend",
-          "sha256": "cc5eea0841783f9d2f08026711639b5a6d574d7b951421fca15c4a68307b0e4a"
+          "sha256": "bb89c9b623c90fa640e3e6ab242fcd0a6404b03a8b73d6078fe2045d5b80c7d7"
         },
         {
           "path": "apps/garden/public/assets/models/StoneMedium.glb",
-          "sha256": "8fe24b65423aa4fb217869b2ec7de575614eac4f9f29035050034616f4e5b00e"
+          "sha256": "7fb239c52fa7b44d29aa7159574f97bf24bbf03318a0a8ecc8ff5ab0ffe69e44"
         },
         {
           "path": "apps/www/public/assets/blocks/StoneMedium.webp",
-          "sha256": "eeb3dd930aabda52c037726f36c8e6bff372a7407ec15bb5bd9d091daea9a539"
+          "sha256": "ec33431842604288ccfaab61c8477663ee76445f4445383bdacca536fcb16fc3"
         },
         {
           "path": "apps/www/public/assets/blocks/StoneMedium_1.webp",
-          "sha256": "eeb3dd930aabda52c037726f36c8e6bff372a7407ec15bb5bd9d091daea9a539"
+          "sha256": "ec33431842604288ccfaab61c8477663ee76445f4445383bdacca536fcb16fc3"
         },
         {
           "path": "apps/www/public/assets/blocks/StoneMedium_2.webp",
-          "sha256": "b8dd368e7ed8d18b143d33b1af0c5c2987ef2e25cdc8172da34d23990634e397"
+          "sha256": "524d5f1edb845c531713639652e1e2ece9a7aebac45c80b8f5089e13cc8492fa"
         },
         {
           "path": "apps/www/public/assets/blocks/StoneMedium_3.webp",
-          "sha256": "37b89e83af8618774cb1a0e5fe3ca7ee2489b4836529e205130f084e5f1825a8"
+          "sha256": "9610e92faf86bc28db475b04d5dad4316c8be518968e7411e7e495070e2abf24"
         },
         {
           "path": "apps/www/public/assets/blocks/StoneMedium_4.webp",
-          "sha256": "7baa193339c75ce2f55313a47b477b0dbaa72754b5852102cce58445883ff23b"
+          "sha256": "8c49191fa8d282da9a98208a9f9957346dcf850b81413c1f683bea10b0a5322f"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/StoneMedium_1.webp",
-          "sha256": "c70ec9a44516f49707100ff4a3d73a417652a55954e41ff93e75e8efc6584c1c"
+          "sha256": "e84b1f50d4956c5bb63704b01ff6ae0f6a66273bfab8c3af0dc616f3bac5ff3f"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/StoneMedium_2.webp",
-          "sha256": "a5a799a822e67a65527307cd7533cd8eb9113f00ab3710a734cda7d1371e641f"
+          "sha256": "5edce2490d29f218ee90ab01c2b0ac59beccf2684017b152f3abaecfd9ce17eb"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/StoneMedium_3.webp",
-          "sha256": "2014d99484ecd59f989f88cc5326f283f96b1867c8c6ae60902881d2d5893ad1"
+          "sha256": "316bbb3e6663e13abe6810961067939f94e884b7c905a9daed6b344e00974484"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/StoneMedium_4.webp",
-          "sha256": "806fe355ac43fa3a0fbebf88646466a6f8d8cbd53eead77075f7839c0df59506"
+          "sha256": "7483b3999005a3e99c9b49968d25c738e6428c238bdc4469463fade5aa1ebcfc"
         }
       ],
-      "note": "Existing included dependency. Unversioned StoneMedium is intentional. Only numbered top-down images exist; do not invent base filenames."
+      "note": "Existing included dependency. StoneMedium was unversioned until the party-toy re-export added its content version; both URLs now match the generated model URLs. Only numbered top-down images exist; do not invent base filenames."
     },
     {
       "name": "EnamelGardenLamp",
-      "modelUrl": "/assets/models/EnamelGardenLamp.glb?v=c945af2c0198",
+      "modelUrl": "/assets/models/EnamelGardenLamp.glb?v=478b7455a56d",
       "catalogueId": null,
       "files": [
         {
           "path": "assets/game-assets/EnamelGardenLamp.blend",
-          "sha256": "27081a50ee24907d1096375774bde2e09cfd01e78be79e219f05f6c699855d9f"
+          "sha256": "d7dbd16950b15f1814f9d418c9d88aad89547d5bce04f96d660452a9af251b08"
         },
         {
           "path": "apps/garden/public/assets/models/EnamelGardenLamp.glb",
-          "sha256": "c945af2c019864ee8644d6bcee80bbb0a8c428c321f8f26b71f251d23fabd7c3"
+          "sha256": "478b7455a56df435a8b6faff5af6e61a509dfe2544f995ae68a26004bd8b18e8"
         },
         {
           "path": "apps/www/public/assets/blocks/EnamelGardenLamp.webp",
-          "sha256": "c92c5cfa53eac2c10e1400ca6a5e552e5fe652ce71e89c1e76df4f803d074b00"
+          "sha256": "e96feedb04d08dee0af36dd024de1886f9be390b8ab71253bc818126637f11fd"
         },
         {
           "path": "apps/www/public/assets/blocks/EnamelGardenLamp_1.webp",
-          "sha256": "c92c5cfa53eac2c10e1400ca6a5e552e5fe652ce71e89c1e76df4f803d074b00"
+          "sha256": "e96feedb04d08dee0af36dd024de1886f9be390b8ab71253bc818126637f11fd"
         },
         {
           "path": "apps/www/public/assets/blocks/EnamelGardenLamp_2.webp",
-          "sha256": "660b5f18ca72c3f79a114ff9799c9e665af0725f96a1c349ef9cea7c17b1e2d2"
+          "sha256": "4de6538bb697072c18a7da841509569e5f0f3e794c76aee2b8b1c8346026899f"
         },
         {
           "path": "apps/www/public/assets/blocks/EnamelGardenLamp_3.webp",
-          "sha256": "e9f13caf4ac4cb0e275b4e410689d2fdc20e8828361d2e18361789f38e43e4e5"
+          "sha256": "dfc8e7585175e6c792e1a13a0b0c2304e051a965a963c50d406aed641626ec61"
         },
         {
           "path": "apps/www/public/assets/blocks/EnamelGardenLamp_4.webp",
-          "sha256": "52c3c879fcae11b91de295414e90f89ca5ada1965836665e4e4cdb6b2b797f0b"
+          "sha256": "9d18fec48fde3657a2ca5397bb37086f89d797699485b9464741b10390c5360a"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/EnamelGardenLamp_1.webp",
-          "sha256": "b31f11dd6aab53417f9bc2da70a439e2911f44f95626fc209b1cbbc11b6a6069"
+          "sha256": "bd674b94dcccf5ab25e74432ce3202c318bf9c032929ced9b11ece3524883c5f"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/EnamelGardenLamp_2.webp",
-          "sha256": "79fc130efd3563b6467c832d38dd6edbd3477c168f698c649fcc4294170cad38"
+          "sha256": "6d442ed094e2b7469e16fb8d750ea24230abbef1731d32decefc465913b8107c"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/EnamelGardenLamp_3.webp",
-          "sha256": "990c3a8ef932b2c8a39ff5a5fe03ae1b6b82cd80cbcb3647534886fd8349b80e"
+          "sha256": "b3e39089c6bb9b8dd003018b82a72089f88a41d17df43b7d53208e5e5addefce"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/EnamelGardenLamp_4.webp",
-          "sha256": "4138fd846da242ff9c7fc52b873f4691c21e6416f0b8ad5065a3809e9b8dd42b"
+          "sha256": "72a8e02e7680b5fa0aa5e87fc2e2eb3f7bb3f1e707f274b33925dfae9fb9960b"
         }
       ],
-      "note": "Existing included dependency. Unversioned StoneMedium is intentional. Only numbered top-down images exist; do not invent base filenames."
+      "note": "Existing included dependency. StoneMedium was unversioned until the party-toy re-export added its content version; both URLs now match the generated model URLs. Only numbered top-down images exist; do not invent base filenames."
     }
   ],
   "sourceInputs": [
     {
       "path": "apps/api/lib/garden/autumnStarterPackEvidence.reviewed.json",
-      "sha256": "398566fe53367d05f8491dd44058a4c09561765006ab85a5705edd30320e3e15"
+      "sha256": "29f3a109b78fb9bdb205fd6dda9c8c98331ffbc5436b3bd14a97fd6d7ccf7320"
     },
     {
       "path": "apps/api/lib/garden/autumnStarterPackEvidence.ts",
@@ -230,7 +230,7 @@
     },
     {
       "path": "apps/api/lib/garden/autumnStarterPackPreparation.ts",
-      "sha256": "c4d7863774edd4aa5cafd900b9aead8e0b05e276b08fa107f719d800b3738061"
+      "sha256": "f8f1955eadd1a6e833f1bd3484761cac905f27ab0ac84f8727f31b67ae937978"
     },
     {
       "path": "apps/api/lib/garden/gardenPackCatalogue.ts",
@@ -242,67 +242,67 @@
     },
     {
       "path": "assets/game-assets.json",
-      "sha256": "fe8745d9a7fc08678750f7c25ded5e90ff3c37b568d279deb9d389b2bdc68219"
+      "sha256": "b4b7e2c125c47d5a6171cd457591ee2c04236473b3c05253492a874a26486c87"
     },
     {
       "path": "docs/autumn-arrangements-2026/evening-seat.json",
-      "sha256": "f82cdea3638dac31aae20965176f2eece4bd7d2ff9be3b17d3cbd3b885a101b0"
+      "sha256": "ab1ee26fc9bb6b2d9a2c554bd465f3a98e26ec6cba8a7914be9fcf38dbb13630"
     },
     {
       "path": "docs/autumn-arrangements-2026/harvest-corner.json",
-      "sha256": "267fd1643bb0e9dd7a0305c0f61056dfc50c4f03440321ec11f259b4a81026ce"
+      "sha256": "788f6ef4978f61e784a0617aa4321fba8eb6ddbe8b492c5be5792a66a193732f"
     },
     {
       "path": "docs/autumn-arrangements-2026/woodland-path.json",
-      "sha256": "ce36ea34046628580a20be5f4e9fff121339631634c311a153b9a7902a87a2db"
+      "sha256": "353b3bd3cb76b3c2338573fe3f62d7e0728678342358c8417e5761be5c7af72a"
     },
     {
       "path": "docs/autumn-aster-pots-2026/release-manifest.json",
-      "sha256": "83b8167838b4a3d9f0dac4c890287b12421a95ad604066b5cbd26838b22eebd7"
+      "sha256": "c103f17540cb0e1bb0bb545618830295d81ad84fbfdf3fa2a48e5a5bbb3b9565"
     },
     {
       "path": "docs/autumn-blanket-bench-2026/release-manifest.json",
-      "sha256": "ee1bbb819b39fccbe86ef25f557d92a0eb704a6584b563d8b73ca9289071bcdd"
+      "sha256": "b3b6b96802a11220fed82c939d7e82fb6b66a1636e5c128316c3d741c954d7ab"
     },
     {
       "path": "docs/autumn-leaf-piles-2026/release-manifest.json",
-      "sha256": "b272f5ce845f43579c009fd89ab83f702dcb2ce723246fd7b021f2f859683c0e"
+      "sha256": "f2b9b7a5c972b06014dfa20457f969aa6f80da51b4a16102f9059f95c480c3c0"
     },
     {
       "path": "docs/autumn-shrub-2026/release-manifest.json",
-      "sha256": "ee42e6028e6a4b5a7f4fa3aa785c994a0353a377e2f8dc6cc013398db341679f"
+      "sha256": "3127577cb69d1f652b54d248dd1da5ca1cbb7f758a8fb67c11790d4b60dcfff5"
     },
     {
       "path": "docs/fallen-log-2026/release-manifest.json",
-      "sha256": "89428e1e3b79607547e34322f837948a1bf002a2d3893f8df7c2c9e4d58a8914"
+      "sha256": "420bdab1afc839c65a8aedf406f1f8de27c6af2c98d928e1f0ad88c86e20d81d"
     },
     {
       "path": "docs/garden-scarecrow-2026/release-manifest.json",
-      "sha256": "b0775695d0f651ac3c3468ac37611a224dec862ee5df078e14ef10ceb886bafb"
+      "sha256": "dd15cfb74b843a928ab35402b5d7ba48780e9856e41d2abe3676b95655380bf2"
     },
     {
       "path": "docs/garden-tea-table-2026/release-manifest.json",
-      "sha256": "24da94b6ee6e841730a38332b8a298ca5dc29230beeada8bb65e99523a760f42"
+      "sha256": "24072f3a321635a75a6bf7b8ac8fbfacef17c03674f01ffd1f79ba0c2a471458"
     },
     {
       "path": "docs/harvest-crates-2026/release-manifest.json",
-      "sha256": "3cff1964ada145c250bed9ad68a101c978eeca9b623e63e6a7eac24efa6b4e1c"
+      "sha256": "16995d7b8b068dcc05794d3d5b0b3ed836773ea79f0f745f0d5f444f1c4a1f8a"
     },
     {
       "path": "docs/harvest-pumpkins-2026/release-manifest.json",
-      "sha256": "8a3dd634f0f876637a804f0eb1edb2a3ae16f4154911ca5b45dd85c5c1f989c3"
+      "sha256": "9cf5b5b2258fb29f6a40d4eaa6487cee72f1af87b0e5d14b21842839777943d7"
     },
     {
       "path": "docs/harvest-wheelbarrow-2026/release-manifest.json",
-      "sha256": "d3522bc9a63abbb30edfa4ae86515a7c8f7639e5e396320fe71c47d9b4b3e851"
+      "sha256": "1e7d5103e91385f134457d61f817ed88669da63e18b1364a0f7a02c543901210"
     },
     {
       "path": "docs/leaf-rake-2026/release-manifest.json",
-      "sha256": "4089aacd493b68d8b857bb4a376d98c8e9918e7482dea0255d86897268db877a"
+      "sha256": "1198fbf8f005bf5809353e760ce45a036880d8e10c1f61a3c77f789f7ba220dc"
     },
     {
       "path": "docs/woodland-mushrooms-2026/release-manifest.json",
-      "sha256": "25c0c0c2a32f27bc7d682e6133549c518666c6a45ae242de5ecbb96a5c2873a1"
+      "sha256": "c68f7947632f4565319645e7b276cbe9bd6dc93ed9de7bb51e85a49b5ba37518"
     },
     {
       "path": "packages/game/src/arrangements/autumnArrangements.ts",
@@ -310,11 +310,11 @@
     },
     {
       "path": "packages/game/src/data/gameAssetModels.generated.ts",
-      "sha256": "52f1bd356f5008ac9b0fca272d4e719ebe3577815ceae0c0fb53031418f6526e"
+      "sha256": "8635d3bfd80291afd533d2a6a72c1e4db98e993835eee67800595731aafbfd3b"
     },
     {
       "path": "packages/game/src/entities/AutumnAsterPot.tsx",
-      "sha256": "3de529a909c3d83fa7ae46ceeb87ec7fb0f0765e5dee2ec4f1518b8a3699a2ba"
+      "sha256": "f14b6fd1610ae2aa2891d3df0608bdc1425cff3a527fe8ef3dcf25b74fdd1e1e"
     },
     {
       "path": "packages/game/src/entities/AutumnBlanketBench.tsx",
@@ -322,11 +322,11 @@
     },
     {
       "path": "packages/game/src/entities/AutumnLeafPile.tsx",
-      "sha256": "3a1e95f816d3c2960c5f7126af7347617993324c706df3a0c4bbd5acb88bf6bc"
+      "sha256": "3c64eebbf2e1a974dda35bd25a58a27bbd660f4ef34c5010a0aeb7c932ed551f"
     },
     {
       "path": "packages/game/src/entities/AutumnShrub.tsx",
-      "sha256": "e4ee19cc78f2e1ce778da7bb3ebe8c96e61afaaef545dc518701a9dc9bbdb990"
+      "sha256": "42985c298d696c8ce2dffb2579c954f87ed74a2a93ade3ec1b852a7902b455ef"
     },
     {
       "path": "packages/game/src/entities/BlockGrass.tsx",
@@ -334,7 +334,7 @@
     },
     {
       "path": "packages/game/src/entities/EnamelGardenLamp.tsx",
-      "sha256": "445218fd7221acfe5f560bf3f118f3cc88bc20767e1ab73858017cc056a5df1e"
+      "sha256": "dbab87150356ce60c1c25c87fd134a2552910504000eb323428f460111dc4192"
     },
     {
       "path": "packages/game/src/entities/EntityFactory.tsx",
@@ -346,7 +346,7 @@
     },
     {
       "path": "packages/game/src/entities/FallenLog.tsx",
-      "sha256": "977d33e5808d6f5cc77c7b05875d9a9cf06324332972b9e5fd693fe725b639ac"
+      "sha256": "b67a35b47ffbeae494ed4e14f12e78a528a7b2a74d43e6f1fedf700d850ab615"
     },
     {
       "path": "packages/game/src/entities/GardenScarecrow.tsx",
@@ -362,7 +362,7 @@
     },
     {
       "path": "packages/game/src/entities/HarvestPumpkin.tsx",
-      "sha256": "20c14c629db9b8cab249c95f057dcb99235f760eaed144fe2eda4a7902c6a1c4"
+      "sha256": "02c0f0218c61a3978de93f811d1ef728a0716ab4ae506e526a4f611706d7ee81"
     },
     {
       "path": "packages/game/src/entities/HarvestWheelbarrow.tsx",
@@ -374,7 +374,7 @@
     },
     {
       "path": "packages/game/src/entities/helpers/GardenNightLight.tsx",
-      "sha256": "9295ed5f3d020de021902d48956517d865bb009f69f3e4956ed483c0f7a7fc9a"
+      "sha256": "bc4b781836b1e084f5a0ecd91e04b9102feb8f541506bf8d80709771e104f5ec"
     },
     {
       "path": "packages/game/src/entities/helpers/nightGardenLight.ts",
@@ -418,7 +418,7 @@
     },
     {
       "path": "packages/game/src/entities/Tree.tsx",
-      "sha256": "a75781a8c5ea86ef1114d6e8818fa18dcfe91d1e43715fd214676761da858283"
+      "sha256": "158823d35f42f6f626f9791b5379da6a03bede655de3d0733f70e467c3be8b28"
     },
     {
       "path": "packages/game/src/entities/walkwayPlacement.ts",
@@ -426,11 +426,11 @@
     },
     {
       "path": "packages/game/src/entities/WoodlandMushrooms.tsx",
-      "sha256": "89161b0de9afc4b080e8788f5e7b00e382d9df4788464841cc222a3d796fb53e"
+      "sha256": "ce137b2d88bc58835051bd172dbcaadb1c434cdbe58c83bfc8c4628f64a5405f"
     },
     {
       "path": "packages/game/src/hooks/useAutumnFoliageGeometry.ts",
-      "sha256": "b9974e3aef35fb8ae8080225c824826ccadfd0b28f27103bee44e1476cb5de7a"
+      "sha256": "1fb1f1c39318aa3bae34b7e16efb57cfdbcd4ff6a5c1b77aa12904c72f63c1b7"
     },
     {
       "path": "packages/game/src/hooks/useAutumnState.ts",
@@ -454,19 +454,19 @@
     },
     {
       "path": "packages/game/src/rain/RainWetOverlay.tsx",
-      "sha256": "5936bd2ac52183b4cb2a0c6ac7b494beddfc30add8ed1dabc2c606179e81cd5a"
+      "sha256": "9a667f2b96d5f0aa38c459c4cda5b3b2dce4150d7d658370dc29b997a4a05b91"
     },
     {
       "path": "packages/game/src/scene/autumnCanopy.ts",
-      "sha256": "ba9db903f45aafd5f585c682d9bf0c2897a400c01489be67da73d37616145154"
+      "sha256": "a404ed493832e01946d34aae26b3174f64e0f6599a88db8e0fb11ca001183969"
     },
     {
       "path": "packages/game/src/scene/autumnPalette.ts",
-      "sha256": "4cee69fb04ac8ea7191d12b7c8ebed05b10d9a5808a59ff4b82b71cf69080dce"
+      "sha256": "d6ff1ab55a7a485039bae48f2566b57e6ea169e9844435f7b35df502d87aad60"
     },
     {
       "path": "packages/game/src/scene/Environment.tsx",
-      "sha256": "e45f224b836ba55dad371255bae7bc67f8bf38df2148b861de927f084318e6ec"
+      "sha256": "7fa4ccead5816432f081f188a9bf1e93eb740c310308f0119776b9ea40b92181"
     },
     {
       "path": "packages/game/src/scene/gameQuality.ts",
@@ -478,7 +478,7 @@
     },
     {
       "path": "packages/game/src/scene/GardenLightProvider.tsx",
-      "sha256": "ccadf96a8a911d490e59f9a40e6ba8fdd6f931c70a752b515a0b6c35a3fef2d3"
+      "sha256": "124385e5d171ed4c36c06c900c418ab64c82d1f377de12fb42fce363c0c17447"
     },
     {
       "path": "packages/game/src/scene/gardenLightRegistry.ts",
@@ -486,7 +486,7 @@
     },
     {
       "path": "packages/game/src/scene/Scene.tsx",
-      "sha256": "c00e91080bc9b42e85da783626a95febcd81e1b2e3190777baf02f0143a400c2"
+      "sha256": "45acc98694c4694e9dafc0f36f523445735098e699510aaca07bbd7595d820d0"
     },
     {
       "path": "packages/game/src/scene/SteamEmitter.tsx",
@@ -494,11 +494,11 @@
     },
     {
       "path": "packages/game/src/snow/SnowOverlay.tsx",
-      "sha256": "c2a09eda9067fa8373afd9ed093469fa533e459791732328edb45822d43623de"
+      "sha256": "7ef730a5801c1911fb6c90711cc675897cb11f93e916a7cb1c82210a882e44d2"
     },
     {
       "path": "packages/game/src/snow/snowPresets.ts",
-      "sha256": "1ffc976a1ab7c77479a00ff59630c613faaff88933c54a90b303770185eda9e0"
+      "sha256": "5d7904cfad6db898e3ef350b3e349be3de78065a9a232f3bf0eac16aa956f6d2"
     },
     {
       "path": "packages/game/src/spatial/useCameraFrame.ts",
@@ -506,11 +506,11 @@
     },
     {
       "path": "packages/game/src/useGameState.ts",
-      "sha256": "2197a8ef0ea7fda327faba5be442b9c5cb52614ba11fcc2114cbbc0af6ecbed4"
+      "sha256": "0598d612881290ecc40506f7f29490bdf21926641a51ab5d57deb45220b8be6e"
     },
     {
       "path": "packages/game/src/utils/configureGameGLTFMaterials.ts",
-      "sha256": "cf25f07c1978d81c033faefad74edd605ed989183bd7056e5efa51c0f74f3347"
+      "sha256": "6c2d5284790a11ac3b5ea4e82749f0eaf7ebab4c96194f1c4e86c986b0c9adf8"
     },
     {
       "path": "packages/game/src/utils/getStackHeight.ts",
@@ -518,7 +518,7 @@
     },
     {
       "path": "packages/game/src/utils/useGameGLTF.ts",
-      "sha256": "0a950d810e5af14de7f6ad6dd005b793eab52690b348e36245911067fe8be57a"
+      "sha256": "fe3b92ce5369e1c13c0c0e6f60f0f8f9fa5cde4a0bc6078a4cb74f130b2211ad"
     },
     {
       "path": "packages/game/tests/AutumnArrangementFixture.tsx",
@@ -534,7 +534,7 @@
     },
     {
       "path": "packages/js/src/autumnAsterPots/index.ts",
-      "sha256": "89931a56cfe4b66a96ed0ad141143a0ac5413e4cc6b9e6da436207fdf3d1ad67"
+      "sha256": "2b3917f08106b8d2524c6581077b02f64cf7a2f0ba658d68a19ed029afc59757"
     },
     {
       "path": "packages/js/src/autumnBlanketBench/index.ts",
@@ -550,7 +550,7 @@
     },
     {
       "path": "packages/js/src/gardenBlocks/index.ts",
-      "sha256": "48716a80b03d5242ab31ba48f75db6a2ee9b69774ebde1b1e21f8efe3d561a73"
+      "sha256": "02cc4fbd14122869a50507b12c524653a19f8d971e4db9d30e077134c5473525"
     },
     {
       "path": "packages/js/src/gardenTeaTable/index.ts",
@@ -583,6 +583,70 @@
     {
       "path": "packages/game/src/scene/sceneGeometryUpdates.ts",
       "sha256": "4487bd39e8ece01632f6a4b5f36b89cf255b679f1bb25d5ada4bb5a0416e364b"
+    },
+    {
+      "path": "packages/game/src/blockOptions/blockEditingState.ts",
+      "sha256": "a49ff2ffdc626f7cb1365d19cab6764b655a82f6f4d964372f828892eac34402"
+    },
+    {
+      "path": "packages/game/src/entities/helpers/gardenLightHalo.ts",
+      "sha256": "a939cb03cc91db8e703a1b588812f92b021448ea8e5d09e801a64e5a894ccce7"
+    },
+    {
+      "path": "packages/game/src/entities/treeEntityScale.ts",
+      "sha256": "9ab078ee8358858300b20550db969d75c233e02ba2be271a202fac8da4aa3a60"
+    },
+    {
+      "path": "packages/game/src/hooks/useSeasonState.ts",
+      "sha256": "236db8bb9dd38dfd8d5184edfff127583fd6a69df58d465d5f546112cf58a922"
+    },
+    {
+      "path": "packages/game/src/scene/atmosphereLighting.ts",
+      "sha256": "91887fdd1d444954b690c598dda9bf73b352f92d767ca5b46a2f6b38adaa92f7"
+    },
+    {
+      "path": "packages/game/src/scene/gameArtStyle.ts",
+      "sha256": "356d236bdbe6bd748458617e53eb8a5abf50224c0d76f2fd8d6997df3709d8a8"
+    },
+    {
+      "path": "packages/game/src/scene/seasonalRoles.ts",
+      "sha256": "295ae62408874ca9ecd7a28238b2ab43dbb984691878f8c54868824ee9d55bd9"
+    },
+    {
+      "path": "packages/game/src/scene/skyRimShaderChunk.ts",
+      "sha256": "0ff6162306c076bd13b6b1d49458e6f8381f3d92fb1328a6af5cb2173342769a"
+    },
+    {
+      "path": "packages/game/src/scene/surfaceGradientShaderChunk.ts",
+      "sha256": "a0f9cf47a05be460385bbd3a251ada8f8a276a7a38ccd0835c70b60d2b526219"
+    },
+    {
+      "path": "packages/game/src/scene/useSceneAfterFrame.ts",
+      "sha256": "e471df37b5724e68ba049ac31363cfcd5c778d8dfd77d75f0372a0781ff65279"
+    },
+    {
+      "path": "packages/game/src/scene/weather/WeatherFrameContext.tsx",
+      "sha256": "781ab1f628146de902eeaa584484d41ac8c1a4404dcce69d2fda8239afb11fa7"
+    },
+    {
+      "path": "packages/game/src/scene/weather/WeatherLayers.tsx",
+      "sha256": "bfd8b4d234aa9d691e0d18f43394980b25d590f725cb6f6b421266f201cbefad"
+    },
+    {
+      "path": "packages/game/src/scene/weather/sky/cloudBand.ts",
+      "sha256": "8a4f2066ada2c720bb554dc120e5250a1aaf8e36ebb6acb245a953325011ce99"
+    },
+    {
+      "path": "packages/game/src/scene/weather/sky/skyBodyVisibility.ts",
+      "sha256": "b60dcc20a79d26c09696ea333ea4e4d82e0239f5c9c4db0f5855d85ed474a322"
+    },
+    {
+      "path": "packages/game/src/scene/weather/weatherDebug.ts",
+      "sha256": "0cdcd45cac84bf2a1934ebf9ad84399ee4e004c5acc499b9aac81af2af32c04c"
+    },
+    {
+      "path": "packages/game/src/scene/weatherSurfaceMaterial.ts",
+      "sha256": "9e794c7fba540868241a9302f12fcaac6b967eb9657adcb24252245b980cb514"
     }
   ],
   "pickerMembers": [

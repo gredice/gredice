@@ -5,7 +5,7 @@ import { createGameState } from '../useGameState';
 import { getAutumnLeafColor } from './autumnPalette';
 import { autumnSeed, getAutumnState } from './autumnState';
 import { getSeasonDebugDates } from './seasonDebugDates';
-import { getSeasonState } from './seasonState';
+import { defaultSeasonState, getSeasonState } from './seasonState';
 
 test('yellowing starts on August 22 in leap and common years, before leaf fall', () => {
     for (const year of [2024, 2025, 2026]) {
@@ -93,4 +93,22 @@ test('autumn state follows scene date changes, frozen sync and reset', () => {
         getAutumnState(store.getState().seasonState),
     );
     store.getState().audio.dispose();
+});
+
+test('spring canopies lean fresh green, then mature to summer green', () => {
+    const spring = (progress: number) =>
+        getAutumnState({ ...defaultSeasonState, season: 'spring', progress })
+            .springFreshness;
+    assert.equal(spring(0), 0);
+    assert.ok(spring(0.3) > 0.3);
+    assert.ok(spring(0.3) <= 0.35);
+    assert.ok(spring(0.8) < spring(0.3));
+    assert.equal(spring(1), 0);
+    for (const season of ['summer', 'autumn', 'winter'] as const)
+        for (const progress of [0, 0.5, 1])
+            assert.equal(
+                getAutumnState({ ...defaultSeasonState, season, progress })
+                    .springFreshness,
+                0,
+            );
 });

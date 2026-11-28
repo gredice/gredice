@@ -28,7 +28,11 @@ import {
     leafColorFragmentShader,
     leafColorVertexShader,
 } from '../lib/plantLeafMaterial';
-import { resolvePlantPartCastShadow } from '../lib/plantPartRendering';
+import {
+    PLANT_LEAF_ROUGHNESS,
+    PLANT_LEAF_SPECULAR_INTENSITY,
+    resolvePlantPartCastShadow,
+} from '../lib/plantPartRendering';
 
 interface LeavesProps {
     bounds?: PackedPlantBounds;
@@ -63,6 +67,7 @@ export function Leaves({
     const instanceCapacity = instanceCount;
     const shouldCastShadow = resolvePlantPartCastShadow(castShadow);
     const swayUniforms = usePlantSway(`${seed}-leaves`, {
+        breathSeed: seed,
         amplitude: 0.11,
         enabled: animate,
         speed: 1.45,
@@ -173,13 +178,15 @@ export function Leaves({
             castShadow={shouldCastShadow}
         >
             <CSM
-                baseMaterial={THREE.MeshStandardMaterial}
+                baseMaterial={THREE.MeshPhysicalMaterial}
                 vertexShader={leafColorVertexShader}
                 fragmentShader={leafColorFragmentShader}
                 uniforms={swayUniforms}
                 color="#ffffff"
                 side={THREE.DoubleSide}
-                roughness={0.6}
+                roughness={PLANT_LEAF_ROUGHNESS}
+                metalness={0}
+                specularIntensity={PLANT_LEAF_SPECULAR_INTENSITY}
             />
         </instancedMesh>
     );

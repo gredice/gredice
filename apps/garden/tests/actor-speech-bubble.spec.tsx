@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/experimental-ct-react';
 import { ActorSpeechBubbleFixture } from './ActorSpeechBubbleFixture';
+import { expect, test } from './webglComponentTest';
 
 test('keeps one speech bubble attached to the actor and refreshes its lifetime', async ({
     mount,

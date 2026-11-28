@@ -1,6 +1,7 @@
 import { useMemo, useRef } from 'react';
 import type { MeshStandardMaterial } from 'three';
 import { animated } from '../scene/sceneSpring';
+import { seasonalEmissive, seasonalRoles } from '../scene/seasonalRoles';
 import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
@@ -9,8 +10,9 @@ import { GardenNightLight } from './helpers/GardenNightLight';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 import { WeatheredEntityPart } from './helpers/WeatheredEntityPart';
 
-const wickerGlowColor = '#ffa824';
-const wickerSourceColor = '#000000';
+// The lantern glow role: its day colour on the core, its emissive at night.
+const wickerGlowColor = seasonalEmissive.lanternGlow;
+const wickerSource = seasonalRoles.lanternGlow;
 const wickerLightPosition = [0, 0.38, 0] as const;
 const wickerRain = {
     darkness: 0.75,
@@ -58,21 +60,22 @@ export function WickerGardenLantern({
                 receiveShadow={false}
             >
                 <meshStandardMaterial
-                    color={wickerSourceColor}
+                    color={wickerSource.albedo}
                     emissive={wickerGlowColor}
                     emissiveIntensity={0.28}
                     metalness={0}
                     ref={glowMaterialRef}
-                    roughness={0.34}
+                    roughness={wickerSource.roughness}
                 />
             </WeatheredEntityPart>
             <GardenNightLight
                 color={wickerGlowColor}
-                distance={4.1}
+                decay={2}
+                distance={3.2}
                 emissiveBaseIntensity={0.28}
                 emissiveMaterialRefs={emissiveMaterialRefs}
-                emissivePeakIntensity={3.05}
-                lightIntensity={1.9}
+                emissivePeakIntensity={4.6}
+                lightIntensity={1.1}
                 lightKey={`WickerGardenLantern:${block.id}`}
                 position={wickerLightPosition}
             />

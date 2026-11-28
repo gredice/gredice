@@ -111,28 +111,29 @@ describe('white fence asset', () => {
         const cross = meshBounds(document, 'WhiteFence_Cross_Mesh');
         const pole = meshBounds(document, 'WhiteFence_Pole_Mesh');
         const extension = meshBounds(document, 'WhiteFence_Extension_Mesh');
-        close(solo.minimum[0], -0.3575);
-        close(solo.maximum[0], 0.3575);
+        // Chunky 0.19 x 0.07 pickets with rounded tips, 0.72 tall.
+        close(solo.minimum[0], -0.345);
+        close(solo.maximum[0], 0.345);
         close(solo.minimum[1], -1);
         close(solo.maximum[1], -0.28);
-        close(solo.minimum[2], -0.0225);
-        close(solo.maximum[2], 0.0225);
-        close(middle.minimum[2], -0.6075);
-        close(middle.maximum[2], 0.6075);
-        close(cross.minimum[0], -0.6075);
-        close(cross.maximum[0], 0.6075);
-        close(cross.minimum[2], -0.6075);
-        close(cross.maximum[2], 0.6075);
-        close(pole.minimum[2], -0.0225);
-        close(pole.maximum[2], 0.0225);
+        close(solo.minimum[2], -0.035);
+        close(solo.maximum[2], 0.035);
+        close(middle.minimum[2], -0.595);
+        close(middle.maximum[2], 0.595);
+        close(cross.minimum[0], -0.595);
+        close(cross.maximum[0], 0.595);
+        close(cross.minimum[2], -0.595);
+        close(cross.maximum[2], 0.595);
+        close(pole.minimum[2], -0.035);
+        close(pole.maximum[2], 0.035);
         close(extension.minimum[2], -1);
         close(extension.maximum[2], -0.5);
-        assert.equal(solo.vertexCount, 282);
-        assert.equal(middle.vertexCount, 534);
-        assert.equal(cross.vertexCount, 1038);
+        assert.equal(solo.vertexCount, 384);
+        assert.equal(middle.vertexCount, 672);
+        assert.equal(cross.vertexCount, 1248);
     });
 
-    it('uses matte warm-white paint', () => {
+    it('uses satin warm off-white paint', () => {
         const document = readWhiteFenceDocument();
         const material = document.materials.find(
             (item) => item.name === 'Material.WhitePaint',
@@ -141,11 +142,13 @@ describe('white fence asset', () => {
         assert.ok(isRecord(material.pbrMetallicRoughness));
         const profile = material.pbrMetallicRoughness;
         assert.equal(profile.metallicFactor, 0);
-        close(numberValue(profile.roughnessFactor, 'roughness'), 0.82);
+        close(numberValue(profile.roughnessFactor, 'roughness'), 0.55);
         assert.ok(Array.isArray(profile.baseColorFactor));
-        close(numberValue(profile.baseColorFactor[0], 'red'), 0.904661);
-        close(numberValue(profile.baseColorFactor[1], 'green'), 0.887923);
-        close(numberValue(profile.baseColorFactor[2], 'blue'), 0.822786);
+        // #f6e5c4 by the formula: warm, never pure white. The cool sky fill
+        // takes some saturation out of it on a sunlit face in the game.
+        close(numberValue(profile.baseColorFactor[0], 'red'), 0.4045);
+        close(numberValue(profile.baseColorFactor[1], 'green'), 0.3429);
+        close(numberValue(profile.baseColorFactor[2], 'blue'), 0.2395);
     });
 
     it('uses a cache version matching the exported GLB', () => {

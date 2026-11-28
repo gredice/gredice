@@ -1,22 +1,27 @@
+import {
+    cropFlowerPalette,
+    cropLeafPalette,
+    cropStemPalette,
+} from '../cropPalette';
 import type { PlantDefinition } from '../plant-definition-types';
 import { createDevelopmentProgram, createPlant } from './helpers';
 
 const rootBase: Pick<PlantDefinition, 'flower' | 'height' | 'leaf' | 'stem'> = {
     height: 0.68,
     stem: {
-        color: '#426d1b',
+        color: cropStemPalette.base,
         radius: 0.022,
         radiusDecay: 0.8,
         minRadius: 0.002,
     },
     leaf: {
-        color: '#4f8b29',
+        color: cropLeafPalette.base,
         size: 0.18,
         type: 'pinnate',
     },
     flower: {
         enabled: false,
-        color: '#ffffff',
+        color: cropFlowerPalette.cream,
         size: 0,
     },
 };
@@ -45,13 +50,13 @@ export const rootPlants = {
         height: 0.82,
         stem: {
             ...rootBase.stem,
-            color: '#3f6a1c',
+            color: cropStemPalette.base,
             radius: 0.028,
             minRadius: 0.01,
         },
         leaf: {
             ...rootBase.leaf,
-            color: '#4a7d28',
+            color: cropLeafPalette.base,
             size: 0.22,
             type: 'feathery',
         },
@@ -84,13 +89,13 @@ export const rootPlants = {
         height: 0.68,
         stem: {
             ...rootBase.stem,
-            color: '#7d3c47',
+            color: cropStemPalette.beet,
             radius: 0.026,
             minRadius: 0.008,
         },
         leaf: {
             ...rootBase.leaf,
-            color: '#5b8a34',
+            color: cropLeafPalette.base,
             size: 0.24,
             type: 'heart',
         },
@@ -124,7 +129,7 @@ export const rootPlants = {
         height: 0.5,
         stem: {
             ...rootBase.stem,
-            color: '#4b6f20',
+            color: cropStemPalette.base,
             radius: 0.02,
             minRadius: 0.007,
         },

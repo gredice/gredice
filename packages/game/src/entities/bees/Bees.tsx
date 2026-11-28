@@ -694,14 +694,24 @@ function cloneBeeMaterial(material: Material, objectName: string) {
             clone.roughness = 0.34;
             clone.side = DoubleSide;
             clone.transparent = true;
+        } else if (
+            objectName.includes('Bee_Eye') ||
+            objectName.includes('Bee_BodyHighlight') ||
+            objectName.includes('Bee_Mouth')
+        ) {
+            // Glossy eye ink, glints (on BodyHighlight) and smile, like
+            // every animal face (GAME_ART.md "Animals").
+            clone.roughness = 0.35;
         } else if (clone.name === 'Material.Bee.Yellow') {
-            clone.color.set('#f4c400');
-            clone.roughness = 0.7;
+            clone.color.set('#977812');
+            // Matte fur band (GAME_ART.md roughness bands).
+            clone.roughness = 0.8;
         } else if (clone.name === 'Material.Bee.Gold') {
-            clone.color.set('#d68a00');
-            clone.roughness = 0.74;
+            clone.color.set('#976312');
+            clone.roughness = 0.8;
         } else {
-            clone.roughness = 0.72;
+            // Satin band for stripes, cheeks, legs and antennae.
+            clone.roughness = 0.55;
         }
     }
 

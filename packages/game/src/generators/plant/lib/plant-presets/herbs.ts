@@ -1,3 +1,8 @@
+import {
+    cropFlowerPalette,
+    cropLeafPalette,
+    cropStemPalette,
+} from '../cropPalette';
 import type { PlantDefinition } from '../plant-definition-types';
 import { createDevelopmentProgram, createPlant } from './helpers';
 
@@ -40,19 +45,19 @@ export const herbPlants = {
         }),
         height: 0.56,
         stem: {
-            color: '#688741',
+            color: cropStemPalette.base,
             radius: 0.017,
             radiusDecay: 0.55,
             minRadius: 0.002,
         },
         leaf: {
-            color: '#72a13d',
+            color: cropLeafPalette.light,
             size: 0.18,
             type: 'oval',
         },
         flower: {
             enabled: true,
-            color: '#f6f2df',
+            color: cropFlowerPalette.cream,
             size: 0.05,
         },
         vegetable: herbVegetable,
@@ -90,19 +95,19 @@ export const herbPlants = {
         }),
         height: 0.82,
         stem: {
-            color: '#769b49',
+            color: cropStemPalette.base,
             radius: 0.017,
             radiusDecay: 0.55,
             minRadius: 0.006,
         },
         leaf: {
-            color: '#89b658',
+            color: cropLeafPalette.light,
             size: 0.14,
             type: 'feathery',
         },
         flower: {
             enabled: true,
-            color: '#ecd75b',
+            color: cropFlowerPalette.yellow,
             size: 0.05,
         },
         vegetable: herbVegetable,
@@ -138,19 +143,19 @@ export const herbPlants = {
         }),
         height: 0.58,
         stem: {
-            color: '#688741',
+            color: cropStemPalette.base,
             radius: 0.017,
             radiusDecay: 0.55,
             minRadius: 0.005,
         },
         leaf: {
-            color: '#5f8a2f',
+            color: cropLeafPalette.base,
             size: 0.16,
             type: 'pinnate',
         },
         flower: {
             enabled: true,
-            color: '#ffffff',
+            color: cropFlowerPalette.cream,
             size: 0.05,
         },
         vegetable: herbVegetable,
@@ -179,19 +184,19 @@ export const herbPlants = {
         }),
         height: 0.92,
         stem: {
-            color: '#688741',
+            color: cropStemPalette.base,
             radius: 0.019,
             radiusDecay: 0.55,
             minRadius: 0.005,
         },
         leaf: {
-            color: '#5f8a2f',
+            color: cropLeafPalette.base,
             size: 0.17,
             type: 'pinnate',
         },
         flower: {
             enabled: false,
-            color: '#f2ecd1',
+            color: cropFlowerPalette.cream,
             size: 0,
         },
         vegetable: herbVegetable,
@@ -229,19 +234,19 @@ export const herbPlants = {
         }),
         height: 0.42,
         stem: {
-            color: '#688741',
+            color: cropStemPalette.base,
             radius: 0.017,
             radiusDecay: 0.55,
             minRadius: 0.002,
         },
         leaf: {
-            color: '#5f8a2f',
+            color: cropLeafPalette.base,
             size: 0.1,
             type: 'oval',
         },
         flower: {
             enabled: true,
-            color: '#c6a2da',
+            color: cropFlowerPalette.lilac,
             size: 0.05,
         },
         vegetable: herbVegetable,
@@ -273,19 +278,19 @@ export const herbPlants = {
         }),
         height: 0.5,
         stem: {
-            color: '#688741',
+            color: cropStemPalette.base,
             radius: 0.017,
             radiusDecay: 0.55,
             minRadius: 0.006,
         },
         leaf: {
-            color: '#5f8a2f',
+            color: cropLeafPalette.base,
             size: 0.17,
             type: 'pinnate',
         },
         flower: {
             enabled: false,
-            color: '#f2ecd1',
+            color: cropFlowerPalette.cream,
             size: 0,
         },
         vegetable: herbVegetable,
@@ -324,19 +329,19 @@ export const herbPlants = {
         }),
         height: 0.26,
         stem: {
-            color: '#688741',
+            color: cropStemPalette.base,
             radius: 0.012,
             radiusDecay: 0.55,
             minRadius: 0.002,
         },
         leaf: {
-            color: '#5f8a2f',
+            color: cropLeafPalette.silver,
             size: 0.08,
             type: 'lanceolate',
         },
         flower: {
             enabled: true,
-            color: '#b997de',
+            color: cropFlowerPalette.lilac,
             size: 0.04,
         },
         vegetable: herbVegetable,

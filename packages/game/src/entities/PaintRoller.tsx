@@ -1,5 +1,6 @@
 import type { ThreeEvent } from '@react-three/fiber';
 import { type ReactNode, useState } from 'react';
+import { areBlockInteractionsSuppressed } from '../controls/blockInteractionSuppression';
 import { useCycleGardenBackgroundPalette } from '../hooks/useCycleGardenBackgroundPalette';
 import type { GLTFResult } from '../models/GameAssets';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
@@ -74,6 +75,10 @@ export function PaintRoller({ stack, block, rotation }: EntityInstanceProps) {
 
     function handleClick(event: ThreeEvent<MouseEvent>) {
         event.stopPropagation();
+        // Not after a hold-release, and not while Expand owns taps.
+        if (areBlockInteractionsSuppressed()) {
+            return;
+        }
         cycleBackgroundPalette();
     }
 

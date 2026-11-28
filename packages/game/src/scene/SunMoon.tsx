@@ -57,10 +57,11 @@ const HORIZON_FADE_END = 0.18;
 // mesh by (REFERENCE_ZOOM / camera.zoom). REFERENCE_ZOOM matches the default
 // game camera zoom so on-screen size matches the plane size at default zoom.
 const SIZE_MULTIPLIER = 1.5;
-const SUN_SIZE_MULTIPLIER = 0.8;
+const SUN_SIZE_MULTIPLIER = 0.62;
 const SUN_DISC_RADIUS = 0.32;
 
-const MOON_NIGHT_COLOR = new Color('#c8d8f2');
+// Near white, so the moon still glows against the light blue-violet night.
+const MOON_NIGHT_COLOR = new Color('#f4f2ff');
 const MOON_DAY_COLOR = new Color('#f4f2ec');
 
 const sunColorScale = chroma
@@ -110,7 +111,7 @@ const sunFragment = /* glsl */ `
         vec2 p = vUv * 2.0 - 1.0;
         float d = length(p);
         float disc = smoothstep(DISC_R + 0.02, DISC_R - 0.02, d);
-        float glow = smoothstep(GLOW_R, DISC_R, d) * 0.22 * uGlowScale;
+        float glow = smoothstep(GLOW_R, DISC_R, d) * 0.1 * uGlowScale;
         float alpha = clamp(disc + glow, 0.0, 1.0) * uOpacity;
         if (alpha < 0.001) discard;
         gl_FragColor = vec4(uColor, alpha);
@@ -193,6 +194,9 @@ export function SunMoon({
     solarEclipse,
     visibility = 1,
 }: SunMoonProps) {
+    // `Environment` decides how much cloud, fog and falling snow hide the
+    // disc (`weather/sky/skyBodyVisibility.ts`: gone at cloudy 0.85, no
+    // residual ghost disc); the close-up camera passes 0.
     const currentTime = useSnapshotTime();
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const dayNightCycleDisabled = useGameState(
@@ -248,7 +252,7 @@ export function SunMoon({
                 uniforms: {
                     uPhase: { value: 0 },
                     uBrightLimbAngle: { value: 0 },
-                    uColor: { value: new Color('#c8d8f2') },
+                    uColor: { value: MOON_NIGHT_COLOR.clone() },
                     uOpacity: { value: 0 },
                 },
             }),

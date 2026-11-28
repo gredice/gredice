@@ -10,6 +10,10 @@ function blockMessagesEqual(left: Block, right: Block) {
     return (left.message ?? null) === (right.message ?? null);
 }
 
+function blockPaidSunflowersEqual(left: Block, right: Block) {
+    return (left.paidSunflowers ?? null) === (right.paidSunflowers ?? null);
+}
+
 function blocksEqual(left: Block, right: Block) {
     return (
         left === right ||
@@ -17,7 +21,8 @@ function blocksEqual(left: Block, right: Block) {
             left.name === right.name &&
             left.rotation === right.rotation &&
             blockVariantsEqual(left, right) &&
-            blockMessagesEqual(left, right))
+            blockMessagesEqual(left, right) &&
+            blockPaidSunflowersEqual(left, right))
     );
 }
 

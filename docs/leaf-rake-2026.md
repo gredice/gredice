@@ -9,8 +9,8 @@ The later cosmetic raking action remains #4995; publication remains #5000.
 
 ## Design and source
 
-A thick wooden handle leans into a small leaf mound, with a dark blue-grey metal
-ferrule, a broad head brace and seven spread tines. The hooked tine tips and pale
+A thick wooden handle leans into a small leaf mound, with a blue-grey iron
+ferrule, a broad head brace and five spread tines. The hooked tine tips and pale
 handle end retain the tool silhouette at normal zoom. No thin texture-dependent
 veins or reflective-metal effects are used.
 
@@ -26,15 +26,19 @@ First-party references inspected before modeling:
 
 `LeafRake.blend` appends the local mound source without editing or resaving it.
 The source contains one mesh with the original `PileBase`/`Leaf_*` vertex groups
-plus editable `Handle`, `HandleTip`, `Ferrule`, `HeadBrace`, seven `Tine_*` and
-seven `TineTip_*` groups. All geometry is base-centred with identity transforms.
-Bounds are **0.656 × 0.6334 × 1.0557 tiles**, inside the declared
+plus editable `Handle`, `HandleTip`, `Ferrule`, `HeadBrace` and five `Tine_*`
+groups. All geometry is base-centred with identity transforms.
+Bounds are **0.636 × 0.626 × 1.089 tiles**, inside the declared
 **0.9 × 0.9 × 1.1** hitbox in all rotations.
 
-The baked corner palette combines wood `#AF814E`/`#C49A65`, metal `#536367`/
-`#45575D` and the leaf pile's copper/gold tones. One roughness-0.92, nonmetallic,
-nonemissive material renders the whole arrangement. The lazy GLB is **47,928
-bytes**, **590 triangles**, one mesh/primitive/material and one base-pass draw.
+Shapes and colours come from `assets/scripts/party-pass-autumn.py`, which runs
+after the generator (2026-11-23 party-style pass with the bright seasonal roles
+in GAME_ART.md). The baked corner palette combines light and dark timber
+`#F2A53A`/`#DC8427`, iron `#8A95B5` for the ferrule, brace and tines, and the leaf
+pile's `#D9733A` body with gold, amber, orange and red leaves, all as seen on
+screen. One roughness-0.55, nonmetallic,
+nonemissive material renders the whole arrangement. The lazy GLB is **66,280
+bytes**, **2,658 triangles**, one mesh/primitive/material and one base-pass draw.
 Shared snow/rain/shadow passes add normal costs; no textures, embedded lights,
 animations, sounds, particles or dedicated idle render leases are added.
 Runtime instances reuse immutable cached material and geometry. These costs

@@ -1,10 +1,10 @@
-import { expect, test } from '@playwright/experimental-ct-react';
 import sharp from 'sharp';
 import { RigidFaunaBatchFixture } from '../../../packages/game/tests/RigidFaunaBatchFixture';
 import {
     getAppByName,
     getPlaywrightBaseUrl,
 } from '../../../scripts/app-registry';
+import { expect, test } from './webglComponentTest';
 
 const appBaseUrl = getPlaywrightBaseUrl(getAppByName('garden'));
 
@@ -97,10 +97,12 @@ for (const quality of qualities) {
             const after = readReceipt(
                 await receipt.getAttribute('data-result'),
             );
-            expect(after.batchCount).toBe(7);
+            expect(after.batchCount).toBe(8);
             expect(after.calls).toBeLessThan(before.calls);
             expect(after.shadowCount).toBe(before.shadowCount);
-            expect(after.shadowCount).toBe(quality === 'low' ? 0 : 2);
+            // Every tier draws actor contact shadows, low included (GAME_ART.md
+            // "Lighting and rendering"; Scene.tsx enables the provider).
+            expect(after.shadowCount).toBe(2);
             const a = await sharp(original).ensureAlpha().raw().toBuffer();
             const b = await sharp(compiled).ensureAlpha().raw().toBuffer();
             expect(b.length).toBe(a.length);

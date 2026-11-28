@@ -18,6 +18,7 @@
         "./operationTaskAdministration": "./src/operationTaskAdministration.ts",
         "./testing/gardenPackTestSchema": "./tests/helpers/gardenPackTestSchema.ts",
         "./gardenPackGroupPlacementContract": "./src/gardenPackGroupPlacementContract.ts",
+        "./gardenBlockBatchPurchaseContract": "./src/gardenBlockBatchPurchaseContract.ts",
         "./autumnActivityContract": "./src/autumnActivityContract.ts"
     },
     "scripts": {

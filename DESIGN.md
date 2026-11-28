@@ -5,7 +5,7 @@ Use this guide for visual and interaction design decisions.
 ## Product surfaces
 
 - `www`: polished public marketing and commerce pages. The product, offer, plant, operation, or place should be visible and inspectable early.
-- `garden`: immersive customer experience. Favor tactile interaction, clear garden state, readable HUDs, and smooth responsive behavior.
+- `garden`: immersive customer experience. Favor tactile interaction, clear garden state, readable HUDs, and smooth responsive behavior. The 3D scene follows [GAME_ART.md](./GAME_ART.md).
 - `farm`: operational interface. Favor dense, calm layouts for repeated farm work.
 - `app`: internal admin interface. Favor scannable tables, filters, forms, status indicators, and predictable navigation.
 - `storybook`: documentation surface. Favor isolated examples, states, variants, and clear component names.

@@ -94,6 +94,7 @@ export function AutumnSceneProbe({
         }
         onGustCount?.(readGameProfileMetadata()?.autumnGustCount ?? 0);
         const canopies: string[] = [];
+        const bareBranches: string[] = [];
         const sprigs: string[] = [];
         let groundCount = 0;
         let entityCount = 0;
@@ -157,6 +158,23 @@ export function AutumnSceneProbe({
                         `${foliageColors(object, object.material)}:${object.geometry.index?.count ?? object.geometry.attributes.position.count}`,
                     );
             }
+            // A bare winter Tree draws only its branches, no crown
+            // (`getAutumnTreeCanopyStage` in scene/autumnCanopy.ts).
+            if (
+                (object.name.startsWith('Autumn:Branches:') ||
+                    object.name.startsWith('BlockInstances:Tree:branches:')) &&
+                object instanceof Mesh
+            ) {
+                for (
+                    let index = 0;
+                    index <
+                    (object instanceof InstancedMesh ? object.count : 1);
+                    index++
+                )
+                    bareBranches.push(
+                        `branches:${object.geometry.index?.count ?? object.geometry.attributes.position.count}`,
+                    );
+            }
             if (
                 (object.name.startsWith('Autumn:Sprigs:') ||
                     object.name.startsWith('Autumn:BushSprigs:') ||
@@ -213,6 +231,8 @@ export function AutumnSceneProbe({
         if (drop && drop.position.y > 0.005) dropMotionSamples.current++;
         onDropMotionSamples?.(dropMotionSamples.current);
         if (canopies.length >= 3) onReady(canopies.join(','));
+        else if (canopies.length === 0 && bareBranches.length >= 3)
+            onReady(bareBranches.join(','));
         onSprigColors?.(sprigs.join(','));
     });
     return null;

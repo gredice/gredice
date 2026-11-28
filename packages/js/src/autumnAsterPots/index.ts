@@ -1,7 +1,10 @@
+// Albedo of the bright seasonal roles in GAME_ART.md (packages/game
+// seasonalRoles.ts): petals aster violet, cream or autumn gold; centres autumn
+// gold or conker.
 const colors = [
-    { suffix: 'Mauve', label: 'ljubičasti', hex: '#9B709C', center: '#D6B83F' },
-    { suffix: 'Cream', label: 'krem', hex: '#EEE3CB', center: '#D6B83F' },
-    { suffix: 'Gold', label: 'zlatni', hex: '#D6B83F', center: '#965D30' },
+    { suffix: 'Mauve', label: 'ljubičasti', hex: '#753d85', center: '#987f25' },
+    { suffix: 'Cream', label: 'krem', hex: '#9d9380', center: '#987f25' },
+    { suffix: 'Gold', label: 'zlatni', hex: '#987f25', center: '#77432c' },
 ] satisfies {
     suffix: 'Mauve' | 'Cream' | 'Gold';
     label: string;

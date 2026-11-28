@@ -3,9 +3,34 @@ import type { createMergedWaterSideGeometry } from './waterBlockGeometry';
 
 type WaterSideInstance = Parameters<
     typeof createMergedWaterSideGeometry
->[0][number];
+>[0][number] & {
+    /** The column's waterfall pieces, carried by its top block. */
+    waterfall?: { readonly key: string };
+};
 
 import type { WaterTopChunkInstance } from './waterChunkGeometry';
+
+type RimFlags = {
+    readonly w: number;
+    readonly x: number;
+    readonly y: number;
+    readonly z: number;
+};
+
+function rimFlagsEqual(
+    left: RimFlags | undefined,
+    right: RimFlags | undefined,
+) {
+    return (
+        left === right ||
+        (left !== undefined &&
+            right !== undefined &&
+            left.x === right.x &&
+            left.y === right.y &&
+            left.z === right.z &&
+            left.w === right.w)
+    );
+}
 
 function numbersEqual(
     left: readonly number[] | undefined,
@@ -15,6 +40,21 @@ function numbersEqual(
         left === right ||
         (left?.length === right?.length &&
             Boolean(left?.every((value, index) => value === right?.[index])))
+    );
+}
+
+function floorProfilesEqual(
+    left: readonly (readonly number[])[] | undefined,
+    right: readonly (readonly number[])[] | undefined,
+) {
+    return (
+        left === right ||
+        (left?.length === right?.length &&
+            Boolean(
+                left?.every((profile, side) =>
+                    numbersEqual(profile, right?.[side]),
+                ),
+            ))
     );
 }
 
@@ -30,6 +70,8 @@ export function waterTopInstancesEqual(
         left.shoreDepth === right.shoreDepth &&
         left.foamEdges.equals(right.foamEdges) &&
         left.foamCorners.equals(right.foamCorners) &&
+        rimFlagsEqual(left.rimEdges, right.rimEdges) &&
+        rimFlagsEqual(left.rimCorners, right.rimCorners) &&
         numbersEqual(left.depthSamples, right.depthSamples) &&
         numbersEqual(left.shoreDepthSamples, right.shoreDepthSamples)
     );
@@ -44,6 +86,9 @@ export function waterSideInstancesEqual(
         left.waterHeight === right.waterHeight &&
         left.surfaceY === right.surfaceY &&
         left.depth === right.depth &&
+        floorProfilesEqual(left.fallFloors, right.fallFloors) &&
+        left.waterfall?.key === right.waterfall?.key &&
+        rimFlagsEqual(left.rimEdges, right.rimEdges) &&
         numbersEqual(left.depthSamples, right.depthSamples) &&
         numbersEqual(left.shoreDepthSamples, right.shoreDepthSamples)
     );

@@ -7,6 +7,7 @@ import {
     activeDragPreviewsEqual,
     createGameState,
     getBlockPlacementDropAnimationRenderIdForBlockId,
+    isInPlaceBlockAnimation,
     resolveBlockPlacementDropAnimationRenderIdentity,
 } from './useGameState';
 import {
@@ -1074,6 +1075,98 @@ test('garden target highlights can be replaced and cleared', () => {
 
         store.getState().clearGardenTargetHighlight();
         assert.equal(store.getState().gardenTargetHighlight, null);
+    } finally {
+        store.getState().audio.dispose();
+    }
+});
+
+test('a block bounce clears itself and never replaces a placement in flight', () => {
+    const store = createGameState({
+        appBaseUrl: '',
+        freezeTime: new Date('2026-01-01T12:00:00.000Z'),
+        isMock: true,
+    });
+
+    try {
+        const state = store.getState();
+        state.bounceBlock('tree', 'tap');
+        const bounce = store.getState().blockPlacementDropAnimations.tree;
+        assert.equal(bounce?.kind, 'tap');
+        // A second click while the hop plays is ignored.
+        state.bounceBlock('tree', 'tap');
+        assert.equal(
+            store.getState().blockPlacementDropAnimations.tree?.renderId,
+            bounce?.renderId,
+        );
+        state.markBlockPlacementDropVisualStarted(bounce.renderId);
+        state.markBlockPlacementDropVisualComplete(bounce.renderId);
+        assert.equal(
+            store.getState().blockPlacementDropAnimations.tree,
+            undefined,
+        );
+
+        // A newly placed block waiting on its mutation keeps its drop.
+        state.queueBlockPlacementDropAnimation('bed');
+        state.bounceBlock('bed', 'tap');
+        assert.equal(
+            store.getState().blockPlacementDropAnimations.bed?.kind,
+            undefined,
+        );
+    } finally {
+        store.getState().audio.dispose();
+    }
+});
+
+test('in-place bounces keep the entity mounted while a drop remounts it', () => {
+    const store = createGameState({
+        appBaseUrl: '',
+        freezeTime: new Date('2026-01-01T12:00:00.000Z'),
+        isMock: true,
+    });
+
+    try {
+        const identity = (blockId: string) =>
+            resolveBlockPlacementDropAnimationRenderIdentity(
+                blockId,
+                store.getState().blockPlacementDropAnimations,
+            );
+        const renderIds: number[] = [];
+        // A remount mid-gesture ends the drag a pickup starts and forgets the
+        // first tap of a double tap, so none of these may change the key.
+        for (const kind of ['pickup', 'land', 'tap', 'tap'] as const) {
+            store.getState().bounceBlock('doghouse', kind);
+            const bounce =
+                store.getState().blockPlacementDropAnimations.doghouse;
+            assert.ok(bounce);
+            assert.equal(isInPlaceBlockAnimation(bounce), true);
+            assert.equal(identity('doghouse'), 'block:doghouse');
+            store
+                .getState()
+                .markBlockPlacementDropVisualStarted(bounce.renderId);
+            assert.equal(identity('doghouse'), 'block:doghouse');
+            store
+                .getState()
+                .markBlockPlacementDropVisualComplete(bounce.renderId);
+            assert.equal(identity('doghouse'), 'block:doghouse');
+            renderIds.push(bounce.renderId);
+        }
+        // The entity stays mounted, so it tells bounces apart by render id:
+        // each one is new even after the previous entry cleared.
+        assert.equal(new Set(renderIds).size, renderIds.length);
+
+        store.getState().queueBlockPlacementDropAnimation('placed');
+        const drop = store.getState().blockPlacementDropAnimations.placed;
+        assert.ok(drop);
+        assert.equal(isInPlaceBlockAnimation(drop), false);
+        assert.equal(identity('placed'), `placement:${drop.renderId}`);
+
+        store
+            .getState()
+            .queueBlockPlacementDropAnimation('explicit', { kind: 'drop' });
+        assert.equal(
+            identity('explicit'),
+            `placement:${store.getState().blockPlacementDropAnimations.explicit?.renderId}`,
+        );
     } finally {
         store.getState().audio.dispose();
     }

@@ -5,48 +5,48 @@
   "sources": [
     {
       "path": "assets/game-assets/WoodlandAcorns.blend",
-      "bytes": 98100,
-      "sha256": "5893da40256b67527ad58709ee23d361c651f0be855f1beecc195777998a80cc"
+      "bytes": 125771,
+      "sha256": "709b56e6d3046f6e74dc7ac151825024b41297873082009d9d43569a865bebc4"
     },
     {
       "path": "assets/game-assets/WoodlandConkers.blend",
-      "bytes": 96533,
-      "sha256": "955d8a48340a4b91ebbde92a34bba4069759671a89f05a7da70063bada0f4117"
+      "bytes": 118464,
+      "sha256": "a8dfa0536994fb8158d8886841c4110b9861250eccea2a4a09287090b0843a7c"
     },
     {
       "path": "assets/game-assets/WoodlandMushroomBasket.blend",
-      "bytes": 102877,
-      "sha256": "9a3c41c2c8f3243d50448b7b1513b233f97097014c0dcd68dc17f6dd60f95a4b"
+      "bytes": 130958,
+      "sha256": "183f22003a917f8ec2eb24f3246b7ff7fd185644fdc95e5a9214f15f3acc7747"
     }
   ],
   "models": [
     {
       "name": "WoodlandAcorns",
       "path": "apps/garden/public/assets/models/WoodlandAcorns.glb",
-      "bytes": 46356,
-      "sha256": "5605282113fada563ebc0934390774b3917d4dbabf477a06a5d0ec96d3d91c40",
-      "url": "https://vrt.gredice.com/assets/models/WoodlandAcorns.glb?v=5605282113fa",
-      "triangles": 620,
+      "bytes": 59628,
+      "sha256": "c14ae09b7867cd52830d220391ccb20b5e013cae8938ebaae109214e73ea6c20",
+      "url": "https://vrt.gredice.com/assets/models/WoodlandAcorns.glb?v=c14ae09b7867",
+      "triangles": 2400,
       "meshCount": 1,
       "materialCount": 1
     },
     {
       "name": "WoodlandConkers",
       "path": "apps/garden/public/assets/models/WoodlandConkers.glb",
-      "bytes": 38444,
-      "sha256": "0a6640399bf3af4cf5b312d35006b092be5376cc66e7b9164fe4e325eca3ce85",
-      "url": "https://vrt.gredice.com/assets/models/WoodlandConkers.glb?v=0a6640399bf3",
-      "triangles": 486,
+      "bytes": 51468,
+      "sha256": "603818a16166e7ecce213e557fb16353442168c948cd8da2cc2077a11a8ea834",
+      "url": "https://vrt.gredice.com/assets/models/WoodlandConkers.glb?v=603818a16166",
+      "triangles": 1936,
       "meshCount": 1,
       "materialCount": 1
     },
     {
       "name": "WoodlandMushroomBasket",
       "path": "apps/garden/public/assets/models/WoodlandMushroomBasket.glb",
-      "bytes": 69732,
-      "sha256": "9e12d7b0f61fa2a7079dfd55f15c4c9e16d10bef98484c15d0e65f91190301fd",
-      "url": "https://vrt.gredice.com/assets/models/WoodlandMushroomBasket.glb?v=9e12d7b0f61f",
-      "triangles": 960,
+      "bytes": 71868,
+      "sha256": "9292e124e9f22dc7d5353023a3bf29954c9d4e01558016f96790a56615b4829f",
+      "url": "https://vrt.gredice.com/assets/models/WoodlandMushroomBasket.glb?v=9292e124e9f2",
+      "triangles": 2852,
       "meshCount": 1,
       "materialCount": 1
     }
@@ -78,53 +78,53 @@
       "images": [
         {
           "path": "apps/www/public/assets/blocks/WoodlandAcorns.webp",
-          "bytes": 7598,
-          "sha256": "f23fe4a936224d7cfafc234d0891d280330c91148424565ed1bf416f6afdd6c4"
+          "bytes": 10396,
+          "sha256": "8a8baac0378a21aad2250c26aae9387cf1e6bc85528377de99fb28aa544209b9"
         },
         {
           "path": "apps/www/public/assets/blocks/WoodlandAcorns_1.webp",
-          "bytes": 7598,
-          "sha256": "f23fe4a936224d7cfafc234d0891d280330c91148424565ed1bf416f6afdd6c4"
+          "bytes": 10396,
+          "sha256": "8a8baac0378a21aad2250c26aae9387cf1e6bc85528377de99fb28aa544209b9"
         },
         {
           "path": "apps/www/public/assets/blocks/WoodlandAcorns_2.webp",
-          "bytes": 7680,
-          "sha256": "cbb806478f17cbbdc3f3d1a33c2461c47c1ccb9dff0d5151b1d28131bebdf49b"
+          "bytes": 10300,
+          "sha256": "df35081e9050ee13fa60b43b0d900e24218a0c1e0feed80a5367adbba1605196"
         },
         {
           "path": "apps/www/public/assets/blocks/WoodlandAcorns_3.webp",
-          "bytes": 7772,
-          "sha256": "ea45f71546f86fe98e4de9720b0c8a2c46e7956988e2503e5981158be64765e0"
+          "bytes": 10346,
+          "sha256": "b6a8ceb39306f5f8f167adf55d045a4d889ed668c8f7f1cd6f793b85498298ca"
         },
         {
           "path": "apps/www/public/assets/blocks/WoodlandAcorns_4.webp",
-          "bytes": 7836,
-          "sha256": "cf21676dff4a9b884167ef5d09391450a5c5a6d8d4e23b2703c51ef01b3777a1"
+          "bytes": 9916,
+          "sha256": "ca479596dc24ab5a31a4f9297d2ecd867561ba869d69f51df6f27597977805b3"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/WoodlandAcorns.webp",
-          "bytes": 4310,
-          "sha256": "e54d9c0f26de6e263e182710d1a98395fba5efe2d15e4bdaaca4f07629089a83"
+          "bytes": 6932,
+          "sha256": "21846491d1c5aebe65e64381db8f1416fd24faa7e857614de183bbb07e59a03f"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/WoodlandAcorns_1.webp",
-          "bytes": 4310,
-          "sha256": "e54d9c0f26de6e263e182710d1a98395fba5efe2d15e4bdaaca4f07629089a83"
+          "bytes": 6932,
+          "sha256": "21846491d1c5aebe65e64381db8f1416fd24faa7e857614de183bbb07e59a03f"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/WoodlandAcorns_2.webp",
-          "bytes": 3698,
-          "sha256": "59b33ae968e803bfc5d4f7fe8405fa708ac665f74d90b86fc657ed44d66305c0"
+          "bytes": 6884,
+          "sha256": "51944949fb81df7f69e0e7297146b363af20cf753dd0924ee47b1e21a38255c9"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/WoodlandAcorns_3.webp",
-          "bytes": 4194,
-          "sha256": "25f6c84961a047fb894548268e2e42c6503806bb10d37821822a0fd50d01a87a"
+          "bytes": 6908,
+          "sha256": "8fd5db417b1535fdb67c31cd4344be4a62c5850f47bd880ebc2720e1c32d7ca8"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/WoodlandAcorns_4.webp",
-          "bytes": 3854,
-          "sha256": "91b08d7a978229625fc120482328247ed62814cdecc1bda7b0fb89ff2ba85e70"
+          "bytes": 7160,
+          "sha256": "119a1e0521b83c0c2f73a47e6872c9845332edca01b1cf6b572d27f22d3abb8a"
         }
       ]
     },
@@ -154,53 +154,53 @@
       "images": [
         {
           "path": "apps/www/public/assets/blocks/WoodlandConkers.webp",
-          "bytes": 7764,
-          "sha256": "5f079b7693bca560aa02c250462de15d2c61802f8baed098791d40247af61d19"
+          "bytes": 11068,
+          "sha256": "6d66f2db7c8890e03ca971de25abb29158c3c833ffc11b0298eb1c5cf160afac"
         },
         {
           "path": "apps/www/public/assets/blocks/WoodlandConkers_1.webp",
-          "bytes": 7764,
-          "sha256": "5f079b7693bca560aa02c250462de15d2c61802f8baed098791d40247af61d19"
+          "bytes": 11068,
+          "sha256": "6d66f2db7c8890e03ca971de25abb29158c3c833ffc11b0298eb1c5cf160afac"
         },
         {
           "path": "apps/www/public/assets/blocks/WoodlandConkers_2.webp",
-          "bytes": 7788,
-          "sha256": "c7831519650e580782f1a5f6497e2ccf7a157cb12f036326de5b8a389cf32dd0"
+          "bytes": 11328,
+          "sha256": "4cae5afbe0ae76fbccc813503345db4b18d05bb56b18f5ff79b806b1289ca386"
         },
         {
           "path": "apps/www/public/assets/blocks/WoodlandConkers_3.webp",
-          "bytes": 7758,
-          "sha256": "0a67a69547ce78bcb584c40fb22f7fa3d748317fedd8582beaa71d37e9a4308f"
+          "bytes": 11282,
+          "sha256": "93e49b66a27f11b4ea24dc2ebe6c664a8e3ed516e81a8245d5d8f71f5934a647"
         },
         {
           "path": "apps/www/public/assets/blocks/WoodlandConkers_4.webp",
-          "bytes": 7860,
-          "sha256": "95d9e6b7098294a8237495c4f123e41e64c1b637f34e9d7f6bac94f100b30306"
+          "bytes": 11048,
+          "sha256": "d5bd5836a7b30cc0c2adfb52628651148224f108a509f8185bf5e96c8e734ee3"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/WoodlandConkers.webp",
-          "bytes": 4910,
-          "sha256": "26b7f0744b4d47c92a6f8988e234177f152987df18e7c7272129036c8fd3f2bb"
+          "bytes": 8292,
+          "sha256": "1e975f0074ab4c8e92212b9327515c698ce1b4cca8915bf7301d0607f1a1f119"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/WoodlandConkers_1.webp",
-          "bytes": 4910,
-          "sha256": "26b7f0744b4d47c92a6f8988e234177f152987df18e7c7272129036c8fd3f2bb"
+          "bytes": 8292,
+          "sha256": "1e975f0074ab4c8e92212b9327515c698ce1b4cca8915bf7301d0607f1a1f119"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/WoodlandConkers_2.webp",
-          "bytes": 4516,
-          "sha256": "1e301c0bad65ddc4b90cc7e4effb86588df28eb3bf2b9f3c92e927a099f19c0d"
+          "bytes": 8118,
+          "sha256": "89fde505538a793efa5af68c80a13fa90eb211f4953cfc282e6346f062758779"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/WoodlandConkers_3.webp",
-          "bytes": 4746,
-          "sha256": "1f056582a41c988fc50bf7cd246017c58a92b5d394050ad937e2fa5a663f07d3"
+          "bytes": 8260,
+          "sha256": "ca60edf5e866eec0492be871f840554a25fcadc5130486e3731ed07207f9fb09"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/WoodlandConkers_4.webp",
-          "bytes": 4260,
-          "sha256": "7844cd10d3f3194d87652c6144885f51e9c60757355045f3d4f66d5666b75049"
+          "bytes": 8212,
+          "sha256": "76364ebe0d945d27af49abf27a6844b7da8843550994877a93451093ae375ea7"
         }
       ]
     },
@@ -230,53 +230,53 @@
       "images": [
         {
           "path": "apps/www/public/assets/blocks/WoodlandMushroomBasket.webp",
-          "bytes": 9312,
-          "sha256": "c97190f2881d88ca956375f9c6976281892c8dd9fbaded04ce8cefa1c99e9d05"
+          "bytes": 13306,
+          "sha256": "792f1e1680c4655394e16c1a50fa27a2187a812e8c7c82748110443ddbb27e83"
         },
         {
           "path": "apps/www/public/assets/blocks/WoodlandMushroomBasket_1.webp",
-          "bytes": 9312,
-          "sha256": "c97190f2881d88ca956375f9c6976281892c8dd9fbaded04ce8cefa1c99e9d05"
+          "bytes": 13306,
+          "sha256": "792f1e1680c4655394e16c1a50fa27a2187a812e8c7c82748110443ddbb27e83"
         },
         {
           "path": "apps/www/public/assets/blocks/WoodlandMushroomBasket_2.webp",
-          "bytes": 9240,
-          "sha256": "3ec3fc734d5c5680d3734952641eac5a499e95fbe1638045064b6742ddf9ccb6"
+          "bytes": 12818,
+          "sha256": "96a568ded61ec22dee6215162b6e456fa317cab32444918892daf50c98f7588f"
         },
         {
           "path": "apps/www/public/assets/blocks/WoodlandMushroomBasket_3.webp",
-          "bytes": 9394,
-          "sha256": "e969351a9be2a7f2159fbe641c43e2ff9da318cd4adf850768f9ebdbe25ea0f8"
+          "bytes": 13220,
+          "sha256": "d62961ca3b7a5c8dce8bde5ef1a1bb6645b619660ddd8f016d6da9e72689c5c9"
         },
         {
           "path": "apps/www/public/assets/blocks/WoodlandMushroomBasket_4.webp",
-          "bytes": 9442,
-          "sha256": "f99fe870a8276417d1febe9f955c5488197e7cb5e57f4846a4fdb11e1272bd0d"
+          "bytes": 12984,
+          "sha256": "0a24850a6a47ccd047eec693da8ee9f83d3fcbe8cdd683fbc46c6ed1c6becdb9"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/WoodlandMushroomBasket.webp",
-          "bytes": 5140,
-          "sha256": "d96e9dbd44b6a7f0f679f9b729cc9c8bcde8aa5a72bb318038161cbb272dbfa3"
+          "bytes": 7038,
+          "sha256": "6d2aa10f095b061004b124f2cd10a83475e71d188877c24132127c9185a97ee2"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/WoodlandMushroomBasket_1.webp",
-          "bytes": 5140,
-          "sha256": "d96e9dbd44b6a7f0f679f9b729cc9c8bcde8aa5a72bb318038161cbb272dbfa3"
+          "bytes": 7038,
+          "sha256": "6d2aa10f095b061004b124f2cd10a83475e71d188877c24132127c9185a97ee2"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/WoodlandMushroomBasket_2.webp",
-          "bytes": 5312,
-          "sha256": "423a7b42d0ab1829393b4c15b5d65523d1c4d634f1a9012b4cd2020cbbd522a7"
+          "bytes": 7052,
+          "sha256": "d2d6194a94089b486742c3bd9e38db05417991ec4d5ac43d34399862a455ad44"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/WoodlandMushroomBasket_3.webp",
-          "bytes": 5238,
-          "sha256": "4639ae03e5cc3a65034182aeff684ca2ea0310f0bf81e909d312ba01886d9b6b"
+          "bytes": 7092,
+          "sha256": "8d637feca111a457d2c4519145b2bc504fc7502bdcf79a96971a898ecc31d643"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/WoodlandMushroomBasket_4.webp",
-          "bytes": 5086,
-          "sha256": "d9c259bac95c866f62b178c37c29e2560cc766b843f6accdb414537cb75f4e11"
+          "bytes": 7138,
+          "sha256": "213937464bc1d7b56ebf64c6829147fb3ff9394333d2ddbffdf7dc0ce9497681"
         }
       ]
     }

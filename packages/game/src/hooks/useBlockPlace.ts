@@ -73,7 +73,8 @@ function createOptimisticBlockId(blockName: string) {
     return `${optimisticBlockIdPrefix}:${blockName}:${globalThis.crypto.randomUUID()}`;
 }
 
-function updateCurrentAccountSunflowers(
+/** Adds `amountDelta` to the cached balance (never below 0). */
+export function updateCurrentAccountSunflowers(
     currentAccount: CurrentAccountData | null | undefined,
     amountDelta: number,
 ) {

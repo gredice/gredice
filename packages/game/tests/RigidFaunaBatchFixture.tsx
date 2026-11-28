@@ -130,7 +130,7 @@ function Probe({
             frames.current.count >= 3 &&
             scene.getObjectByName('RigidModel:Bee') &&
             scene.getObjectByName('RigidModel:Ladybug') &&
-            batchCount === (batch ? 7 : 0);
+            batchCount === (batch ? 8 : 0);
         if (!output.current || !ready) return;
         const shadows = scene.getObjectByName('ActorGroundingShadows');
         output.current.dataset.ready = marker;

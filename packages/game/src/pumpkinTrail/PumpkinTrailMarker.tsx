@@ -1,6 +1,7 @@
 import { Billboard } from '@react-three/drei';
 import { useEffect, useMemo } from 'react';
 import { CanvasTexture } from 'three';
+import { seasonalRoles } from '../scene/seasonalRoles';
 
 export function PumpkinTrailMarker({
     number,
@@ -37,10 +38,17 @@ export function PumpkinTrailMarker({
         >
             <mesh position={[0, 0, -0.005]} renderOrder={9}>
                 <circleGeometry args={[focused ? 0.23 : 0.2, 24]} />
+                {/* Unlit badge: it shows the role's on-screen colour as is,
+                    a pumpkin once lit and the Halloween purple before. */}
                 <meshBasicMaterial
-                    color={lit ? '#9b4c14' : '#234335'}
+                    color={
+                        lit
+                            ? seasonalRoles.pumpkinShade.screen
+                            : seasonalRoles.halloweenPurple.screen
+                    }
                     depthTest={false}
                     depthWrite={false}
+                    toneMapped={false}
                 />
             </mesh>
             <mesh renderOrder={10}>

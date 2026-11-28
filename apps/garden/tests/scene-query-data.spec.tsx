@@ -1,6 +1,6 @@
-import { expect, test } from '@playwright/experimental-ct-react';
 import type { Locator } from '@playwright/test';
 import { SceneQueryDataFixture } from '../../../packages/game/tests/SceneQueryDataFixture';
+import { expect, test } from './webglComponentTest';
 
 test.setTimeout(45_000);
 

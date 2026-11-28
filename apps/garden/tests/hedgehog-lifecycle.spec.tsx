@@ -1,6 +1,7 @@
-import { expect as baseExpect, test } from '@playwright/experimental-ct-react';
-import type { Locator } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { HedgehogShelterFixture } from '../../../packages/game/tests/HedgehogShelterFixture';
+import { drainWebglCanvases } from './webglCapture';
+import { expect as baseExpect, test } from './webglComponentTest';
 
 const expect = baseExpect.configure({ timeout: 15_000 });
 test.setTimeout(90_000);
@@ -9,6 +10,32 @@ test.use({ timezoneId: 'Europe/Zagreb' });
 async function report(fixture: Locator) {
     return JSON.parse(
         (await fixture.getAttribute('data-runtime')) || '{"actors":[]}',
+    );
+}
+
+/**
+ * Resolves once the page's IntersectionObservers have seen the scene canvas
+ * leave the viewport. The scene scheduler is notified in the same task, so no
+ * frame renders after this. A fixed wait is not enough on CI: the
+ * observation needs a real rendering update, which software WebGL can delay
+ * by seconds while frames on the test's fake clock keep advancing the visit.
+ */
+async function waitForCanvasOffscreen(page: Page) {
+    await page.evaluate(
+        () =>
+            new Promise<void>((resolve) => {
+                const canvas = document.querySelector('canvas');
+                if (!canvas) {
+                    resolve();
+                    return;
+                }
+                const observer = new IntersectionObserver(([entry]) => {
+                    if (entry?.isIntersecting) return;
+                    observer.disconnect();
+                    resolve();
+                });
+                observer.observe(canvas);
+            }),
     );
 }
 test.beforeEach(async ({ page }) => {
@@ -36,9 +63,11 @@ for (const small of [false, true])
             .poll(async () => (await report(fixture)).actors[0]?.elapsed)
             .toBe(8);
         const a = await report(fixture);
+        // The party-toy Hedgehog.glb (hedgehogModel.unit.ts) stays inside
+        // the GAME_ART.md small-critter budget of about 2,000 triangles.
         expect(a.actors[0]).toMatchObject({
             meshes: 6,
-            triangles: 444,
+            triangles: 1876,
             shadowCasters: 0,
             pickable: 0,
             elapsed: 8,
@@ -114,6 +143,8 @@ test('hedgehog live visit pauses offscreen then returns and enters cooldown', as
     await fixture.update(
         <HedgehogShelterFixture rotation={0} runtime live small offscreen />,
     );
+    await waitForCanvasOffscreen(page);
+    // Let the last visible frame's report reach the DOM.
     await page.waitForTimeout(250);
     const before = await report(fixture);
     await page.waitForTimeout(1200);
@@ -215,7 +246,7 @@ for (const pose of [
     { clip: 'HedgehogSniff', seconds: 8 },
     { clip: 'HedgehogIdle', seconds: 10 },
 ])
-    test(`hedgehog close-up ${pose.clip}`, async ({ mount }) => {
+    test(`hedgehog close-up ${pose.clip}`, async ({ mount, page }) => {
         const fixture = await mount(
             <HedgehogShelterFixture
                 rotation={0}
@@ -227,6 +258,10 @@ for (const pose of [
         await expect
             .poll(async () => (await report(fixture)).actors[0]?.clip)
             .toBe(pose.clip);
+        await expect(fixture).toHaveAttribute('data-ready', /cropMeshes/);
+        // The frozen scene goes idle once the pose is reported; let the GPU
+        // finish its queued frames so the capture shows the last one.
+        await drainWebglCanvases(page);
         await expect(fixture).toHaveScreenshot(`close-up-${pose.clip}.png`, {
             maxDiffPixels: 250,
         });

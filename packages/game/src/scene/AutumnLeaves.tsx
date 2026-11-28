@@ -1,12 +1,10 @@
 import { useFrame } from '@react-three/fiber';
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
     Color,
-    DoubleSide,
     Frustum,
     InstancedMesh,
     Matrix4,
-    MeshStandardMaterial,
     Object3D,
     OrthographicCamera,
     Sphere,
@@ -29,6 +27,7 @@ import {
     sampleAutumnGustWindow,
     secondsUntilNextAutumnGust,
 } from './autumnLeafGusts';
+import { createAutumnLeafMaterial } from './autumnLeafMaterial';
 import {
     autumnLeafCaps,
     createAutumnLeafDescriptor,
@@ -36,7 +35,7 @@ import {
     sampleAutumnLeaf,
     writeAutumnLeafSourceCounts,
 } from './autumnLeafMotion';
-import { getAutumnLeafColor } from './autumnPalette';
+import { autumnLeafSummerColor, getAutumnLeafColor } from './autumnPalette';
 import { updateGameProfileMetadata } from './gameProfileMetadata';
 import type { GameQualityProfileTier } from './gameQuality';
 import {
@@ -47,16 +46,7 @@ import {
     useSceneTimeInvalidation,
     useSceneTimeUniform,
 } from './SceneTime';
-
-const reducedMotionQuery = '(prefers-reduced-motion: reduce)';
-function subscribeReducedMotion(listener: () => void) {
-    const query = window.matchMedia(reducedMotionQuery);
-    query.addEventListener('change', listener);
-    return () => query.removeEventListener('change', listener);
-}
-function getReducedMotion() {
-    return window.matchMedia(reducedMotionQuery).matches;
-}
+import { useWeatherReducedMotion } from './weather/useWeatherReducedMotion';
 
 export function AutumnLeaves({
     tier,
@@ -79,11 +69,8 @@ export function AutumnLeaves({
 }) {
     const sources = useAutumnSources();
     const autumn = useAutumnState();
-    const reducedMotion = useSyncExternalStore(
-        subscribeReducedMotion,
-        getReducedMotion,
-        () => false,
-    );
+    // The one reduced-motion switch every weather layer shares.
+    const reducedMotion = useWeatherReducedMotion();
     const snowCoverage = useGameState((state) => state.snowCoverage);
     const year = getAutumnAccumulationYear(useLiveTime());
     const exposedBlocks = useMemo(
@@ -147,11 +134,9 @@ export function AutumnLeaves({
     const mesh = useMemo(() => {
         const value = new InstancedMesh(
             createAutumnLeafGeometry(),
-            new MeshStandardMaterial({
-                color: 'white',
-                side: DoubleSide,
-                roughness: 0.9,
-            }),
+            // Satin and lit like a canopy top, so a tumbling leaf shows its
+            // role colour instead of a dark edge or back.
+            createAutumnLeafMaterial({ color: 'white' }),
             capacity,
         );
         value.name = 'Weather:AutumnLeaves';
@@ -168,7 +153,7 @@ export function AutumnLeaves({
                 leaves: Array.from({ length: 8 }, (_, index) => ({
                     motion: createAutumnLeafDescriptor(source.id, index),
                     color: getAutumnLeafColor(
-                        new Color('#458a36'),
+                        new Color(autumnLeafSummerColor),
                         autumn.foliageColorProgress,
                         `${source.id}:${index}`,
                     ),
@@ -181,7 +166,7 @@ export function AutumnLeaves({
             gustAnchors.map((anchor) =>
                 Array.from({ length: autumnGustCaps[tier] }, (_, index) =>
                     getAutumnLeafColor(
-                        new Color('#458a36'),
+                        new Color(autumnLeafSummerColor),
                         autumn.foliageColorProgress,
                         `${anchor.id}:${index}`,
                     ),

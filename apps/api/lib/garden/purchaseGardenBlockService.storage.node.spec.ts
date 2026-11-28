@@ -72,8 +72,16 @@ function integrationService(controls: { failAfterDebit: boolean }) {
         {
             bustScheduleCache: async () => {},
             createAppearanceVariant: () => undefined,
-            createGardenBlock: (gardenId, blockName, variant, transaction) =>
-                createGardenBlock(gardenId, blockName, variant, transaction),
+            createGardenBlock: (
+                gardenId,
+                blockName,
+                variant,
+                transaction,
+                paidSunflowers,
+            ) =>
+                createGardenBlock(gardenId, blockName, variant, transaction, {
+                    paidSunflowers,
+                }),
             createGardenStack,
             createRaisedBedInTransaction: (input, transaction) =>
                 createRaisedBedInTransaction(input, transaction),

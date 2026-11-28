@@ -1,4 +1,3 @@
-import { DoubleSide } from 'three';
 import type { GameAssetName } from '../data/models';
 import type { GLTFResult } from '../models/GameAssets';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
@@ -46,19 +45,6 @@ const desertStoneConfigs = {
 
 type DesertStoneName = keyof typeof desertStoneConfigs;
 
-const desertStoneBodyMaterial = {
-    color: '#d86a2f',
-    roughness: 0.88,
-    metalness: 0,
-};
-
-const desertStoneGrooveMaterial = {
-    color: '#a04322',
-    roughness: 0.94,
-    metalness: 0,
-    side: DoubleSide,
-};
-
 function isDesertStoneName(name: string): name is DesertStoneName {
     return name in desertStoneConfigs;
 }
@@ -79,15 +65,24 @@ export function DesertStone({ stack, block, rotation }: EntityInstanceProps) {
             rotation={animatedRotation as unknown as [number, number, number]}
             scale={config.scale}
         >
-            <mesh castShadow receiveShadow geometry={body.geometry}>
-                <meshStandardMaterial {...desertStoneBodyMaterial} />
+            {/* Colours come from the model: Material.DesertStone.Body and the
+                pebbles' Material.DesertStone.Groove. */}
+            <mesh
+                castShadow
+                receiveShadow
+                geometry={body.geometry}
+                material={body.material}
+            >
                 <SnowOverlay geometry={body.geometry} {...snowPresets.stone} />
                 <RainWetOverlay geometry={body.geometry} />
             </mesh>
             {grooves ? (
-                <mesh castShadow receiveShadow geometry={grooves.geometry}>
-                    <meshStandardMaterial {...desertStoneGrooveMaterial} />
-                </mesh>
+                <mesh
+                    castShadow
+                    receiveShadow
+                    geometry={grooves.geometry}
+                    material={grooves.material}
+                />
             ) : null}
         </animated.group>
     );

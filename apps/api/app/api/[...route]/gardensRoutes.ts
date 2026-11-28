@@ -126,6 +126,10 @@ import {
     updateGardenBlockForAccount,
 } from '../../../lib/garden/gardenBlockMutationService';
 import {
+    createGardenBlockPaidSunflowersById,
+    withGardenBlockPaidSunflowers,
+} from '../../../lib/garden/gardenBlockPaidSunflowersView';
+import {
     gardenBlockPurchaseBodySchema,
     gardenBlockPurchaseParamSchema,
 } from '../../../lib/garden/gardenBlockPurchaseSchemas';
@@ -178,6 +182,7 @@ import {
 import { queryBooleanSchema } from '../../../lib/http/queryBoolean';
 import { openAdventGiftBox } from '../../../lib/occasions/adventGiftBox';
 import { getPostHogClient } from '../../../lib/posthog-server';
+import { gardenBlockBatchPurchaseRoutes } from './gardenBlockBatchPurchaseRoutes';
 
 const DEFAULT_TIMEZONE = 'Europe/Paris';
 
@@ -946,6 +951,7 @@ async function getAuthorizedGardenPreviewSource(
 
     const details = await serializeGardenDetails(garden, blocks, operations);
     return {
+        blocks,
         details,
         garden,
         sourceRevision: createGardenPreviewSourceRevision(details),
@@ -2125,8 +2131,18 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Garden not found' }, 404);
             }
 
+            // The price paid per block (the recycle refund) is for the
+            // garden's own account only, and stays out of the preview
+            // revision computed above.
+            const isOwner = source.garden.accountId === accountId;
             return context.json({
                 ...source.details,
+                stacks: withGardenBlockPaidSunflowers(
+                    source.details.stacks,
+                    isOwner
+                        ? createGardenBlockPaidSunflowersById(source.blocks)
+                        : null,
+                ),
                 previewSourceRevision: source.sourceRevision,
             });
         },
@@ -2671,6 +2687,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             });
         },
     )
+    .route('/', gardenBlockBatchPurchaseRoutes)
     .put(
         '/:gardenId/blocks/:blockId',
         describeRoute({

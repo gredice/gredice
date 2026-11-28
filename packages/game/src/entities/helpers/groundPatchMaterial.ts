@@ -5,7 +5,12 @@ import {
     registerGardenMaterialShaderHooks,
 } from '../../scene/gardenMaterials';
 import { inheritGardenMaterialOrigin } from '../../scene/resources/gardenMaterialOrigins';
-import { dryGroundDarkColor, dryGroundLightColor } from '../dryGroundPalette';
+import { seasonalRoles } from '../../scene/seasonalRoles';
+import {
+    dryGroundBaseColor,
+    dryGroundDarkColor,
+    dryGroundLightColor,
+} from '../dryGroundPalette';
 
 export type GroundPatchSurface =
     | 'dirt'
@@ -29,62 +34,100 @@ export type GroundPatchOptions = {
 };
 
 type GroundPatchPreset = {
+    /**
+     * Base colour (albedo) the preset owns. Set for surfaces whose colour
+     * lives in code or is shared by several models (sand corners, snow,
+     * swamp and dry ground), so every block, ramp and rim lip of the type
+     * shows the same colour. Without it the source material keeps its own.
+     */
+    baseColor?: string;
     darkColor: string;
     darkStrength: number;
     lightColor: string;
     lightStrength: number;
     mode: number;
+    /** Roughness the preset owns, alongside `baseColor`. */
+    roughness?: number;
 };
+
+/**
+ * Ground colours as albedo. A sunlit top face shows about 3.2 times its
+ * albedo through neutral tone mapping (see GAME_ART.md), and the blue sky
+ * fill lifts the blue channel of a top face a little more, so each value is
+ * darker and warmer than the colour players see. Measured at midday in the
+ * game: sand about #ead196, swamp #b6854a.
+ */
+export const groundSurfaceColors = {
+    /** Warm, pale sand. */
+    sand: '#968353',
+    /** The winter snow role: clean blue-white, never pure white. */
+    snow: seasonalRoles.snow.albedo,
+    /** Warm wet earth with a moss tint (#b98025 on a sunlit top face). */
+    swampDirt: '#704f23',
+} as const;
 
 const groundPatchPresets = {
     grass: {
-        darkColor: '#31561d',
-        darkStrength: 0.28,
-        lightColor: '#9eb64a',
-        lightStrength: 0.24,
+        darkColor: '#3c6b27',
+        darkStrength: 0.24,
+        lightColor: '#69a034',
+        lightStrength: 0.22,
         mode: 0,
     },
     sand: {
-        darkColor: '#d6a85d',
+        baseColor: groundSurfaceColors.sand,
+        // Soft, lighter ripples.
+        darkColor: '#8a7655',
         darkStrength: 0,
-        lightColor: '#e6c45e',
-        lightStrength: 0.18,
+        lightColor: '#aa9a70',
+        lightStrength: 0.3,
         mode: 1,
+        roughness: 0.8,
     },
     dirt: {
-        darkColor: '#0c0503',
-        darkStrength: 0.48,
-        lightColor: '#71533c',
-        lightStrength: 0.42,
+        darkColor: '#7a5630',
+        darkStrength: 0.2,
+        lightColor: '#a27a48',
+        lightStrength: 0.25,
         mode: 2,
     },
     dryDirt: {
+        baseColor: dryGroundBaseColor,
         darkColor: dryGroundDarkColor,
-        darkStrength: 0.12,
+        darkStrength: 0.16,
         lightColor: dryGroundLightColor,
-        lightStrength: 0.18,
+        lightStrength: 0.2,
         mode: 2,
+        roughness: 0.8,
     },
     raisedBedSoil: {
-        darkColor: '#2c2018',
-        darkStrength: 0.32,
-        lightColor: '#75634f',
-        lightStrength: 0.34,
+        darkColor: '#4f2c16',
+        darkStrength: 0.26,
+        lightColor: '#7f5130',
+        lightStrength: 0.26,
         mode: 3,
     },
     snow: {
-        darkColor: '#bddcf0',
-        darkStrength: 0.32,
-        lightColor: '#f9fdff',
-        lightStrength: 0.04,
+        baseColor: groundSurfaceColors.snow,
+        roughness: seasonalRoles.snow.roughness,
+        // Pale blue drift shadows (#c2d2f0 on a sunlit face).
+        darkColor: '#7b8598',
+        darkStrength: 0.3,
+        // Bright crests that keep a cool tint (#e2ecfb, saturation 0.1).
+        lightColor: '#bec8d7',
+        lightStrength: 0.18,
         mode: 4,
     },
     swampDirt: {
-        darkColor: '#3d432d',
-        darkStrength: 0.34,
-        lightColor: '#91835b',
-        lightStrength: 0.3,
+        baseColor: groundSurfaceColors.swampDirt,
+        // Deeper wet hollows (#9c6030, value 0.62).
+        darkColor: '#603e28',
+        darkStrength: 0.3,
+        // A light moss tint from the spring green role.
+        lightColor: seasonalRoles.springGreen.albedo,
+        lightStrength: 0.22,
         mode: 2,
+        roughness: 0.8,
     },
 } satisfies Record<GroundPatchSurface, GroundPatchPreset>;
 
@@ -369,8 +412,14 @@ export function applyGroundPatchMaterial(
     surface: GroundPatchSurface,
     options: GroundPatchOptions,
 ) {
-    const preset = groundPatchPresets[surface];
+    const preset: GroundPatchPreset = groundPatchPresets[surface];
     const wetPatches = options.wetPatches ?? emptyWetPatches;
+    if (preset.baseColor) {
+        material.color.set(preset.baseColor);
+    }
+    if (preset.roughness !== undefined) {
+        material.roughness = preset.roughness;
+    }
     const baseHookSignature =
         getGardenMaterialInstalledShaderHookSignature(material);
     const originalOnBeforeCompile = material.onBeforeCompile.bind(material);
@@ -469,7 +518,12 @@ export function applyGroundPatchMaterial(
     return material;
 }
 
-function createGroundPatchMaterial(
+/**
+ * A patched clone of a standard material, owned by the caller; any other
+ * material comes back as it is. `useGroundPatchMaterial` builds one per
+ * component; callers that share one across components use this.
+ */
+export function createGroundPatchMaterial(
     material: Material,
     surface: GroundPatchSurface,
     options: GroundPatchOptions,

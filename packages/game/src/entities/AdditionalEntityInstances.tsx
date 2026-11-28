@@ -1,7 +1,6 @@
 import { Html } from '@react-three/drei';
 import { type ReactNode, Suspense, useEffect, useMemo, useRef } from 'react';
 import {
-    Color,
     DoubleSide,
     type Material,
     MeshStandardMaterial,
@@ -15,13 +14,23 @@ import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useOperations } from '../hooks/useOperations';
 import { useSnapshotTime } from '../hooks/useSnapshotTime';
 import type { GLTFResult } from '../models/GameAssets';
+import type { GameQualityProfileTier } from '../scene/gameQuality';
+import { IdleBreathingGroup } from '../scene/IdleBreathingMotion';
+import type { SnowMaterialOptions } from '../snow/SnowOverlay';
 import { snowPresets } from '../snow/snowPresets';
 import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
 import { getRaisedBedFootprintSegments } from '../utils/raisedBedBlocks';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { useWaterBlockMaterial } from './BlockWater';
-import { getCactusVariantConfig } from './Cactus';
+import {
+    birdHouseRidgeColor,
+    birdHouseRidgeRoughness,
+    birdHouseRoofColor,
+    birdHouseRoofRoughness,
+} from './birdHousePalette';
+import { cactusBloomBreathingRole, getCactusVariantConfig } from './Cactus';
+import { catPillowFabricMaterial, catPillowSeamMaterial } from './CatPillow';
 import type { MeshInstanceChunk } from './chunkedMeshGeometry';
 import { dryGroundBaseColor } from './dryGroundPalette';
 import { EntityBlockPresenceGate } from './EntityBlockPresenceGate';
@@ -39,6 +48,7 @@ import {
 import { fenceExtensionName, fenceVariantNames } from './Fence';
 import type { FenceConnectionShape } from './fenceConnections';
 import { GardenFlowerModel } from './helpers/GardenFlowerModel';
+import { giftBoxPalettes, giftBoxRibbonRoughness } from './helpers/GiftBox';
 import {
     gardenBoxLidHingePosition,
     gardenBoxOpenLidRotation,
@@ -46,15 +56,24 @@ import {
 } from './helpers/gardenBoxLidTransform';
 import {
     type GroundPatchSurface,
+    groundSurfaceColors,
     useGroundPatchMaterial,
 } from './helpers/groundPatchMaterial';
 import { HoverOutline } from './helpers/HoverOutline';
 import { resolveEntityNeighbors } from './helpers/useEntityNeighbors';
 import { resolveFenceConnectionState } from './helpers/useFenceConnectionState';
+import { litWaterSurfaceMaterialProps } from './helpers/WaterSurfaceMaterial';
+import { bridgeWeatherCreases } from './helpers/weatherCreaseBridges';
 import {
     polishedStoneFenceExtensionName,
     polishedStoneFenceVariantNames,
 } from './PolishedStoneFence';
+import {
+    potGlazeColors,
+    potGlazeRoughness,
+    potSoilColor,
+    potSoilRoughness,
+} from './potPalette';
 import { RaisedBedFields } from './raisedBed/RaisedBedFields';
 import { RaisedBedFieldVisualBatches } from './raisedBed/RaisedBedFieldVisualBatches';
 import { RaisedBedHarvestBaskets } from './raisedBed/RaisedBedHarvestBasket';
@@ -69,8 +88,12 @@ import {
     waterTopInstancesEqual,
 } from './retainedWaterChunks';
 import { stoneFenceExtensionNames, stoneFenceVariantNames } from './StoneFence';
-import { swampGroundBaseColor } from './swampGroundPalette';
 import { useRetainedMeshChunks } from './useRetainedMeshChunks';
+import {
+    wateringCanBodyMaterial,
+    wateringCanRoseMaterial,
+    wateringCanTrimMaterial,
+} from './WateringCan';
 import {
     whiteFenceExtensionName,
     whiteFencePoleName,
@@ -84,6 +107,7 @@ import {
 import {
     resolveWaterFoamCorners,
     resolveWaterFoamEdges,
+    resolveWaterRimExposure,
 } from './waterBlockFoam';
 import { createMergedWaterSideGeometry } from './waterBlockGeometry';
 import {
@@ -102,6 +126,19 @@ import {
     type WaterTopChunkInstance,
 } from './waterChunkGeometry';
 import { smoothWaterTopDepthSamples } from './waterDepthSmoothing';
+import {
+    useWaterfallExtrasMaterial,
+    useWaterfallSnowLies,
+    WaterfallExtras,
+} from './waterfall/WaterfallExtras';
+import type { WaterfallFloors } from './waterfall/waterfallFloorProfile';
+import {
+    resolveWaterfallColumns,
+    stillWaterfallFloors,
+    type WaterfallColumn,
+    waterfallColumnKeyOf,
+    waterfallFloors,
+} from './waterfall/waterfallPlacements';
 import {
     resolveWaterShoreDepthSamples,
     resolveWaterShoreDepths,
@@ -145,9 +182,15 @@ type LoadedAssetBlockMaterialProps = Omit<
 type WaterBlockInstance = EntityBlockInstance & {
     depth: number;
     depthSamples: WaterBlockDepthSamples;
+    /** Where each side's water falls to; the surface where it does not. */
+    fallFloors: WaterfallFloors;
+    rimCorners: Vector4;
+    rimEdges: Vector4;
     shoreDepthSamples?: WaterBlockDepthSamples;
     style: WaterBlockStyle;
     surfaceY: number;
+    /** The column's landing foam and run-outs, on its top block only. */
+    waterfall?: WaterfallColumn;
     waterHeight: number;
 };
 type StyledWaterTopChunkInstance = WaterTopChunkInstance & {
@@ -279,54 +322,8 @@ const cactusBlockNames = [
 const deadTreeBlockNames = ['DeadTreeTall', 'DeadTreeStump'] as const;
 const catPillowBlockNames = ['CatPillow', 'Cat_Pillow'];
 
-const giftBoxConfigs = {
-    GiftBox_RedWhite: {
-        boxColor: '#ff0000',
-        ribbonColor: '#ffffff',
-        boxMetalness: 0.5,
-        boxRoughness: 1,
-    },
-    GiftBox_GreenGold: {
-        boxColor: '#228B22',
-        ribbonColor: '#FFD700',
-        boxMetalness: 0.3,
-        boxRoughness: 0.7,
-    },
-    GiftBox_BlueWhite: {
-        boxColor: '#1E90FF',
-        ribbonColor: '#FFFFFF',
-        boxMetalness: 0.3,
-        boxRoughness: 0.7,
-    },
-    GiftBox_PurpleSilver: {
-        boxColor: '#8B008B',
-        ribbonColor: '#C0C0C0',
-        boxMetalness: 0.3,
-        boxRoughness: 0.7,
-    },
-    GiftBox_GoldRed: {
-        boxColor: '#FFD700',
-        ribbonColor: '#DC143C',
-        boxMetalness: 0.7,
-        boxRoughness: 0.3,
-    },
-    GiftBox_WhiteGreen: {
-        boxColor: '#FFFFFF',
-        ribbonColor: '#006400',
-        boxMetalness: 0.3,
-        boxRoughness: 0.7,
-    },
-} satisfies Record<
-    string,
-    {
-        boxColor: string;
-        ribbonColor: string;
-        boxMetalness: number;
-        boxRoughness: number;
-    }
->;
-
-const giftBoxBlockNames = Object.keys(giftBoxConfigs);
+// Colours come from helpers/GiftBox.tsx, as in the GiftBox* entities.
+const giftBoxBlockNames = Object.keys(giftBoxPalettes);
 
 export const additionalInstancedBlockNames = [
     'Block_Ground',
@@ -366,11 +363,12 @@ export const additionalInstancedBlockNames = [
     'CatPillow',
     'Cat_Pillow',
     'Composter',
-    'Snowman',
+    // Snowman stays out: Snowman.tsx draws its face and buttons and owns its
+    // colours, so placed and picked-up snowmen look the same.
     ...potBlockNames,
     ...cactusBlockNames,
     ...deadTreeBlockNames,
-    ...Object.keys(giftBoxConfigs),
+    ...giftBoxBlockNames,
 ];
 
 function LoadedAssetBlock({ assetName, geometry, ...props }: AssetBlockProps) {
@@ -497,19 +495,7 @@ const dirtMaterialName = 'Material.Dirt';
 const metalMaterialName = 'Material.Metal';
 
 function InstancedWaterSurfaceMaterial() {
-    const waterColor = useGameState((state) => state.waterColors.shallow);
-
-    return (
-        <meshStandardMaterial
-            color={waterColor}
-            depthWrite={false}
-            metalness={0.35}
-            opacity={0.58}
-            roughness={0.24}
-            side={DoubleSide}
-            transparent
-        />
-    );
+    return <meshStandardMaterial {...litWaterSurfaceMaterialProps} />;
 }
 
 function BlockGroundInstances({
@@ -579,21 +565,23 @@ function TerrainVariationInstances({
     stacks,
     ...commonSnowProps
 }: { stacks: Stack[] | undefined } & CommonWeatherProps) {
+    // Same as BlockDryGround.tsx and BlockSwampGround.tsx; the ground patch
+    // presets own these colours and roughness too.
     const dryGroundMaterial = useMemo(
         () =>
             new MeshStandardMaterial({
                 color: dryGroundBaseColor,
                 metalness: 0,
-                roughness: 1,
+                roughness: 0.8,
             }),
         [],
     );
     const swampGroundMaterial = useMemo(
         () =>
             new MeshStandardMaterial({
-                color: swampGroundBaseColor,
+                color: groundSurfaceColors.swampDirt,
                 metalness: 0,
-                roughness: 1,
+                roughness: 0.8,
             }),
         [],
     );
@@ -623,10 +611,13 @@ function TerrainVariationInstances({
                 staticOpaqueCacheGroup="base-terrain"
                 groundPatch="dryDirt"
                 renderRainWetOverlay
+                weatherSurface="base-ground"
                 yOffset={0.2}
-                geometry={(gltf) => gltf.nodes.Block_Sand_Angle_1.geometry}
+                geometry={(gltf) =>
+                    bridgeWeatherCreases(gltf.nodes.Block_Sand_Angle_1.geometry)
+                }
                 material={() => dryGroundMaterial}
-                snow={snowPresets.sandAngle}
+                snow={snowPresets.sand}
                 snowLift={0.003}
                 renderStableChunksAsMergedGeometry
                 {...commonSnowProps}
@@ -638,10 +629,15 @@ function TerrainVariationInstances({
                 staticOpaqueCacheGroup="base-terrain"
                 groundPatch="dryDirt"
                 renderRainWetOverlay
+                weatherSurface="base-ground"
                 yOffset={0.2}
-                geometry={(gltf) => gltf.nodes.Block_Sand_Corner_1.geometry}
+                geometry={(gltf) =>
+                    bridgeWeatherCreases(
+                        gltf.nodes.Block_Sand_Corner_1.geometry,
+                    )
+                }
                 material={() => dryGroundMaterial}
-                snow={snowPresets.sandCorner}
+                snow={snowPresets.sand}
                 snowLift={0.003}
                 renderStableChunksAsMergedGeometry
                 {...commonSnowProps}
@@ -653,12 +649,15 @@ function TerrainVariationInstances({
                 staticOpaqueCacheGroup="base-terrain"
                 groundPatch="dryDirt"
                 renderRainWetOverlay
+                weatherSurface="base-ground"
                 yOffset={0.2}
                 geometry={(gltf) =>
-                    gltf.nodes.Block_Sand_Reverse_Corner_1.geometry
+                    bridgeWeatherCreases(
+                        gltf.nodes.Block_Sand_Reverse_Corner_1.geometry,
+                    )
                 }
                 material={() => dryGroundMaterial}
-                snow={snowPresets.sandReverseCorner}
+                snow={snowPresets.sand}
                 snowLift={0.003}
                 renderStableChunksAsMergedGeometry
                 {...commonSnowProps}
@@ -686,10 +685,13 @@ function TerrainVariationInstances({
                 staticOpaqueCacheGroup="base-terrain"
                 groundPatch="swampDirt"
                 renderRainWetOverlay
+                weatherSurface="base-ground"
                 yOffset={0.2}
-                geometry={(gltf) => gltf.nodes.Block_Sand_Angle_1.geometry}
+                geometry={(gltf) =>
+                    bridgeWeatherCreases(gltf.nodes.Block_Sand_Angle_1.geometry)
+                }
                 material={() => swampGroundMaterial}
-                snow={snowPresets.sandAngle}
+                snow={snowPresets.sand}
                 snowLift={0.003}
                 renderStableChunksAsMergedGeometry
                 {...commonSnowProps}
@@ -719,12 +721,34 @@ function TerrainVariationInstances({
     );
 }
 
-function WaterBlockInstances({ stacks }: { stacks: Stack[] | undefined }) {
+function WaterBlockInstances({
+    renderSnow,
+    snowOverlayMinCoverage,
+    stacks,
+    tier,
+}: {
+    stacks: Stack[] | undefined;
+    tier?: GameQualityProfileTier;
+} & Pick<CommonWeatherProps, 'renderSnow' | 'snowOverlayMinCoverage'>) {
     const { data: blockData } = useBlockData();
+    const waterfallSnow = useWaterfallSnowLies({
+        renderSnow,
+        snowOverlayMinCoverage,
+    });
     const baseWaterInstances = useEntityBlockInstances({
         names: waterBlockNames,
         stacks,
     });
+    const waterfallColumns = useMemo(() => {
+        const columns = new Map<string, WaterfallColumn>();
+        for (const column of resolveWaterfallColumns({ blockData, stacks })) {
+            columns.set(
+                waterfallColumnKeyOf(column.x, column.z, column.surfaceY),
+                column,
+            );
+        }
+        return columns;
+    }, [blockData, stacks]);
     const waterInstances = useMemo(
         () =>
             baseWaterInstances?.map((instance): WaterBlockInstance => {
@@ -741,18 +765,53 @@ function WaterBlockInstances({ stacks }: { stacks: Stack[] | undefined }) {
                     blockData,
                     stack: instance.stack,
                 });
+                const rim = resolveWaterRimExposure({
+                    block: instance.block,
+                    blockData,
+                    stack: instance.stack,
+                    stacks,
+                });
+                const surfaceY = getWaterBlockColumnSurfaceY({
+                    block: instance.block,
+                    blockData,
+                    stack: instance.stack,
+                });
+                // A block being dragged leaves its column; it shows plain
+                // water until it lands.
+                const dragged =
+                    previewYOffset !== 0 ||
+                    instance.position[0] !== instance.stack.position.x ||
+                    instance.position[2] !== instance.stack.position.z;
+                const waterfall = dragged
+                    ? undefined
+                    : waterfallColumns.get(
+                          waterfallColumnKeyOf(
+                              instance.stack.position.x,
+                              instance.stack.position.z,
+                              surfaceY,
+                          ),
+                      );
 
                 return {
                     ...instance,
                     depth: Math.max(...depthSamples),
                     depthSamples,
+                    fallFloors: waterfall
+                        ? waterfallFloors(waterfall)
+                        : stillWaterfallFloors(surfaceY),
+                    rimCorners: rim.corners,
+                    rimEdges: rim.edges,
                     style:
                         getWaterBlockStyle(instance.block.name) ?? 'standard',
-                    surfaceY: getWaterBlockColumnSurfaceY({
-                        block: instance.block,
-                        blockData,
-                        stack: instance.stack,
-                    }),
+                    surfaceY,
+                    waterfall:
+                        waterfall &&
+                        isWaterBlockTopSurfaceVisible({
+                            block: instance.block,
+                            stack: instance.stack,
+                        })
+                            ? waterfall
+                            : undefined,
                     position: [
                         instance.position[0],
                         getWaterBlockCenterY({
@@ -765,7 +824,7 @@ function WaterBlockInstances({ stacks }: { stacks: Stack[] | undefined }) {
                     waterHeight,
                 };
             }),
-        [baseWaterInstances, blockData],
+        [baseWaterInstances, blockData, stacks, waterfallColumns],
     );
     const topSurfaceInstances = useMemo(() => {
         const topInstances =
@@ -790,6 +849,8 @@ function WaterBlockInstances({ stacks }: { stacks: Stack[] | undefined }) {
                         foamEdges,
                         depthSamples: instance.depthSamples,
                         position: instance.position,
+                        rimCorners: instance.rimCorners,
+                        rimEdges: instance.rimEdges,
                         rotation: 0,
                         shoreDepth: 0,
                         style: instance.style,
@@ -850,6 +911,8 @@ function WaterBlockInstances({ stacks }: { stacks: Stack[] | undefined }) {
                     sideInstances={sideSurfaceInstances}
                     style={style}
                     topInstances={topSurfaceInstances}
+                    waterfallSimple={tier === 'low'}
+                    waterfallSnow={waterfallSnow}
                 />
             ))}
         </>
@@ -861,11 +924,16 @@ function WaterBlockStyleInstances({
     sideInstances,
     style,
     topInstances,
+    waterfallSimple,
+    waterfallSnow,
 }: {
     allSideInstances: WaterBlockInstance[];
     sideInstances: WaterBlockInstance[];
     style: WaterBlockStyle;
     topInstances: StyledWaterTopChunkInstance[];
+    waterfallSimple: boolean;
+    /** Whether snow lies on the grass around the falls. */
+    waterfallSnow: boolean;
 }) {
     const styledTopInstances = useMemo(
         () => topInstances.filter((instance) => instance.style === style),
@@ -882,6 +950,7 @@ function WaterBlockStyleInstances({
                 <WaterBlockTopChunks
                     instances={styledTopInstances}
                     style={style}
+                    waterfallSimple={waterfallSimple}
                 />
             ) : null}
             {styledSideInstances.length > 0 ? (
@@ -889,6 +958,8 @@ function WaterBlockStyleInstances({
                     allInstances={allSideInstances}
                     instances={styledSideInstances}
                     style={style}
+                    waterfallSimple={waterfallSimple}
+                    waterfallSnow={waterfallSnow}
                 />
             ) : null}
         </>
@@ -909,9 +980,11 @@ const mergedWaterTopFoamCorners = new Vector4(0, 0, 0, 0);
 function WaterBlockTopChunks({
     instances,
     style,
+    waterfallSimple,
 }: {
     instances: StyledWaterTopChunkInstance[];
     style: WaterBlockStyle;
+    waterfallSimple: boolean;
 }) {
     const chunks = useRetainedMeshChunks(instances, waterTopInstancesEqual);
     const material = useWaterBlockMaterial(
@@ -924,6 +997,8 @@ function WaterBlockTopChunks({
             useWaterDepthAttribute: true,
             useShoreDepthAttribute: true,
             useLocalPositionAttribute: true,
+            waterfall: 'lip',
+            waterfallSimple,
         },
     );
 
@@ -971,10 +1046,14 @@ function WaterBlockMergedSides({
     allInstances,
     instances,
     style,
+    waterfallSimple,
+    waterfallSnow,
 }: {
     allInstances: WaterBlockInstance[];
     instances: WaterBlockInstance[];
     style: WaterBlockStyle;
+    waterfallSimple: boolean;
+    waterfallSnow: boolean;
 }) {
     const material = useWaterBlockMaterial(
         mergedWaterSideFoamEdges,
@@ -984,7 +1063,14 @@ function WaterBlockMergedSides({
             style,
             useWaterDepthAttribute: true,
             useShoreDepthAttribute: true,
+            waterfall: 'sides',
+            waterfallSimple,
         },
+    );
+    const extrasMaterial = useWaterfallExtrasMaterial(
+        style,
+        waterfallSimple,
+        waterfallSnow,
     );
     const chunks = useRetainedMeshChunks(instances, waterSideInstancesEqual);
 
@@ -993,6 +1079,7 @@ function WaterBlockMergedSides({
             key={`Block_Water_Sides:${style}:${chunk.key}`}
             allInstances={allInstances}
             chunk={chunk}
+            extrasMaterial={extrasMaterial}
             material={material}
         />
     ));
@@ -1001,12 +1088,21 @@ function WaterBlockMergedSides({
 function WaterBlockMergedSideChunk({
     allInstances,
     chunk,
+    extrasMaterial,
     material,
 }: {
     allInstances: WaterBlockInstance[];
     chunk: MeshInstanceChunk<WaterBlockInstance>;
+    extrasMaterial: ReturnType<typeof useWaterBlockMaterial>;
     material: ReturnType<typeof useWaterBlockMaterial>;
 }) {
+    const waterfallColumns = useMemo(
+        () =>
+            chunk.instances.flatMap((instance) =>
+                instance.waterfall ? [instance.waterfall] : [],
+            ),
+        [chunk.instances],
+    );
     const previousNeighbors = useRef<WaterBlockInstance[]>([]);
     const neighbors = waterSideNeighbors(chunk.instances, allInstances);
     if (
@@ -1034,15 +1130,24 @@ function WaterBlockMergedSideChunk({
     }
 
     return (
-        <mesh
-            castShadow={false}
-            receiveShadow={false}
-            geometry={geometry}
-            material={material}
-            name={`WaterSideChunk:${chunk.key}:count:${chunk.instances.length}`}
-            renderOrder={1}
-            raycast={() => null}
-        />
+        <>
+            <mesh
+                castShadow={false}
+                receiveShadow={false}
+                geometry={geometry}
+                material={material}
+                name={`WaterSideChunk:${chunk.key}:count:${chunk.instances.length}`}
+                renderOrder={1}
+                raycast={() => null}
+            />
+            {waterfallColumns.length > 0 ? (
+                <WaterfallExtras
+                    columns={waterfallColumns}
+                    material={extrasMaterial}
+                    name={`WaterfallChunk:${chunk.key}:count:${waterfallColumns.length}`}
+                />
+            ) : null}
+        </>
     );
 }
 
@@ -2138,77 +2243,66 @@ const potConfigs = [
         assetName: 'PotLowBowl',
         potNode: 'PotVariant_01_Low_Bowl',
         soilNode: 'PotVariant_Soil_01',
-        color: '#C56C45',
     },
     {
         name: 'PotRoundedBowl',
         assetName: 'PotRoundedBowl',
         potNode: 'PotVariant_02_Rounded_Bowl',
         soilNode: 'PotVariant_Soil_02',
-        color: '#7D8F68',
     },
     {
         name: 'PotBulbousNeck',
         assetName: 'PotBulbousNeck',
         potNode: 'PotVariant_03_Bulbous_Neck',
         soilNode: 'PotVariant_Soil_03',
-        color: '#B85A3E',
     },
     {
         name: 'PotTallTapered',
         assetName: 'PotTallTapered',
         potNode: 'PotVariant_04_Tall_Tapered',
         soilNode: 'PotVariant_Soil_04',
-        color: '#D7A354',
     },
     {
         name: 'PotHourglass',
         assetName: 'PotHourglass',
         potNode: 'PotVariant_05_Hourglass',
         soilNode: 'PotVariant_Soil_05',
-        color: '#637994',
     },
     {
         name: 'PotStraightShortTub',
         assetName: 'PotStraightShortTub',
         potNode: 'PotVariant_06_Straight_Short_Tub',
         soilNode: 'PotVariant_Soil_06',
-        color: '#9B7656',
     },
     {
         name: 'PotNarrowFootBowl',
         assetName: 'PotNarrowFootBowl',
         potNode: 'PotVariant_07_Narrow_Foot_Bowl',
         soilNode: 'PotVariant_Soil_07',
-        color: '#D18A5A',
     },
     {
         name: 'PotSquatRidged',
         assetName: 'PotSquatRidged',
         potNode: 'PotVariant_08_Squat_Ridged_Pot',
         soilNode: 'PotVariant_Soil_08',
-        color: '#676F58',
     },
     {
         name: 'PotTallSlenderCone',
         assetName: 'PotTallSlenderCone',
         potNode: 'PotVariant_09_Tall_Slender_Cone',
         soilNode: 'PotVariant_Soil_09',
-        color: '#C74E3A',
     },
     {
         name: 'PotWideLippedCup',
         assetName: 'PotWideLippedCup',
         potNode: 'PotVariant_10_Wide_Lipped_Cup',
         soilNode: 'PotVariant_Soil_10',
-        color: '#C18B45',
     },
 ] satisfies {
     name: (typeof potBlockNames)[number];
     assetName: GameAssetName;
     potNode: keyof GLTFResult['nodes'];
     soilNode: keyof GLTFResult['nodes'];
-    color: string;
 }[];
 
 function LoadedPotVariant({
@@ -2229,9 +2323,9 @@ function LoadedPotVariant({
                 geometry={nodes[config.potNode].geometry}
                 materialNode={
                     <meshStandardMaterial
-                        color={config.color}
-                        roughness={0.78}
-                        metalness={0.02}
+                        color={potGlazeColors[config.name]}
+                        roughness={potGlazeRoughness}
+                        metalness={0}
                     />
                 }
                 renderRainWetOverlay
@@ -2249,8 +2343,8 @@ function LoadedPotVariant({
                 geometry={nodes[config.soilNode].geometry}
                 materialNode={
                     <meshStandardMaterial
-                        color="#3F2A1C"
-                        roughness={0.95}
+                        color={potSoilColor}
+                        roughness={potSoilRoughness}
                         metalness={0}
                     />
                 }
@@ -2339,13 +2433,8 @@ function LoadedCactusVariant({
                 instances={scaledInstances}
                 geometry={nodes[config.bodyNode].geometry}
                 scale={config.scale}
-                materialNode={
-                    <meshStandardMaterial
-                        color="#4a6411"
-                        roughness={0.82}
-                        metalness={0}
-                    />
-                }
+                // Model materials, as Cactus.tsx uses them.
+                material={nodes[config.bodyNode].material}
                 renderRainWetOverlay
                 snow={{
                     maxThickness: 0.04,
@@ -2360,13 +2449,7 @@ function LoadedCactusVariant({
                 instances={scaledInstances}
                 geometry={nodes[config.spineNode].geometry}
                 scale={config.scale}
-                materialNode={
-                    <meshStandardMaterial
-                        color="#8a5a2b"
-                        roughness={0.78}
-                        metalness={0}
-                    />
-                }
+                material={nodes[config.spineNode].material}
                 {...commonSnowProps}
             />
             {instances.map((instance) => (
@@ -2377,14 +2460,21 @@ function LoadedCactusVariant({
                     scale={config.scale}
                 >
                     {config.flowers.map((flower) => (
-                        <GardenFlowerModel
+                        // Blooms are living parts: each breathes from its own
+                        // base while the cactus body holds still.
+                        <IdleBreathingGroup
                             key={`${config.assetName}-flower-${flower.id}`}
-                            bloomOnly
-                            petalColor={flower.color}
-                            position={flower.position}
-                            rotation={flower.rotation}
-                            scale={flower.scale}
-                        />
+                            pivot={flower.position}
+                            role={cactusBloomBreathingRole}
+                        >
+                            <GardenFlowerModel
+                                bloomOnly
+                                petalColor={flower.color}
+                                position={flower.position}
+                                rotation={flower.rotation}
+                                scale={flower.scale}
+                            />
+                        </IdleBreathingGroup>
                     ))}
                 </group>
             ))}
@@ -2473,13 +2563,8 @@ function LoadedDeadTreeVariant({
                         stacks={stacks}
                         name={name}
                         geometry={node.geometry}
-                        materialNode={
-                            <meshStandardMaterial
-                                color="#70401f"
-                                roughness={0.86}
-                                metalness={0}
-                            />
-                        }
+                        // Bark-textured model material, as DeadTree.tsx.
+                        material={node.material}
                         yOffset={-config.groundSink}
                         renderRainWetOverlay
                         snow={{
@@ -2505,7 +2590,7 @@ function GiftBoxInstances({
 
     return (
         <>
-            {Object.entries(giftBoxConfigs).map(([name, config]) => (
+            {Object.entries(giftBoxPalettes).map(([name, palette]) => (
                 <Suspense key={name} fallback={null}>
                     <EntityInstancesBlock
                         stacks={stacks}
@@ -2514,9 +2599,9 @@ function GiftBoxInstances({
                         yOffset={0.25}
                         materialNode={
                             <meshStandardMaterial
-                                color={config.boxColor}
-                                metalness={config.boxMetalness}
-                                roughness={config.boxRoughness}
+                                color={palette.boxColor}
+                                metalness={0}
+                                roughness={palette.boxRoughness}
                             />
                         }
                         snow={snowPresets.giftBox}
@@ -2529,9 +2614,9 @@ function GiftBoxInstances({
                         yOffset={0.25}
                         materialNode={
                             <meshStandardMaterial
-                                color={config.ribbonColor}
-                                metalness={0.5}
-                                roughness={0.3}
+                                color={palette.ribbonColor}
+                                metalness={0}
+                                roughness={giftBoxRibbonRoughness}
                             />
                         }
                         snow={snowPresets.giftBox}
@@ -2546,9 +2631,9 @@ function GiftBoxInstances({
                         localRotation={[0, -Math.PI / 4, 0]}
                         materialNode={
                             <meshStandardMaterial
-                                color={config.ribbonColor}
-                                metalness={0.5}
-                                roughness={0.3}
+                                color={palette.ribbonColor}
+                                metalness={0}
+                                roughness={giftBoxRibbonRoughness}
                             />
                         }
                         snow={snowPresets.giftBox}
@@ -2632,26 +2717,13 @@ function CatPillowInstances({
         names: catPillowBlockNames,
         stacks,
     });
+    // The fabric and piping of CatPillow.tsx.
     const cushionMaterial = useMemo(
-        () => (
-            <meshStandardMaterial
-                color="#b80718"
-                metalness={0}
-                roughness={0.94}
-                side={DoubleSide}
-            />
-        ),
+        () => <meshStandardMaterial {...catPillowFabricMaterial} />,
         [],
     );
     const seamMaterial = useMemo(
-        () => (
-            <meshStandardMaterial
-                color="#6b0610"
-                metalness={0}
-                roughness={0.92}
-                side={DoubleSide}
-            />
-        ),
+        () => <meshStandardMaterial {...catPillowSeamMaterial} />,
         [],
     );
 
@@ -2764,14 +2836,10 @@ function WateringCanInstances({
     ...commonSnowProps
 }: { stacks: Stack[] | undefined } & CommonWeatherProps) {
     const { nodes } = useGameGLTF('WateringCan');
-    const metalMaterial = (
-        <meshStandardMaterial
-            color="#555555"
-            metalness={0}
-            roughness={0.5}
-            side={DoubleSide}
-        />
-    );
+    // The enamel body, trim and rose plate of WateringCan.tsx.
+    const bodyMaterial = <meshStandardMaterial {...wateringCanBodyMaterial} />;
+    const trimMaterial = <meshStandardMaterial {...wateringCanTrimMaterial} />;
+    const roseMaterial = <meshStandardMaterial {...wateringCanRoseMaterial} />;
     const groupScale = 0.35;
 
     return (
@@ -2782,7 +2850,7 @@ function WateringCanInstances({
                     stacks={stacks}
                     name="WateringCan"
                     geometry={nodes[nodeName].geometry}
-                    materialNode={metalMaterial}
+                    materialNode={bodyMaterial}
                     renderRainWetOverlay
                     snow={snowPresets.tool}
                     {...transformNode(nodes[nodeName], groupScale)}
@@ -2795,7 +2863,7 @@ function WateringCanInstances({
                     stacks={stacks}
                     name="WateringCan"
                     geometry={nodes[nodeName].geometry}
-                    materialNode={metalMaterial}
+                    materialNode={trimMaterial}
                     renderRainWetOverlay
                     snow={snowPresets.tool}
                     {...transformNode(nodes[nodeName], groupScale)}
@@ -2808,7 +2876,7 @@ function WateringCanInstances({
                     stacks={stacks}
                     name="WateringCan"
                     geometry={nodes[nodeName].geometry}
-                    materialNode={metalMaterial}
+                    materialNode={roseMaterial}
                     renderRainWetOverlay
                     snow={snowPresets.tool}
                     {...transformNode(nodes[nodeName], groupScale)}
@@ -2939,9 +3007,20 @@ function BirdHouseInstances({
     const roofMaterial = useMemo(
         () => (
             <meshStandardMaterial
-                color="#2f3437"
+                color={birdHouseRoofColor}
                 metalness={0}
-                roughness={0.62}
+                roughness={birdHouseRoofRoughness}
+                side={DoubleSide}
+            />
+        ),
+        [],
+    );
+    const ridgeMaterial = useMemo(
+        () => (
+            <meshStandardMaterial
+                color={birdHouseRidgeColor}
+                metalness={0}
+                roughness={birdHouseRidgeRoughness}
                 side={DoubleSide}
             />
         ),
@@ -2984,7 +3063,11 @@ function BirdHouseInstances({
                     instanceKey={nodeName}
                     instances={instances}
                     geometry={nodes[nodeName].geometry}
-                    materialNode={roofMaterial}
+                    materialNode={
+                        nodeName === 'Birdhouse_Ridge_Cap'
+                            ? ridgeMaterial
+                            : roofMaterial
+                    }
                     staticOpaqueCacheGroup="static-props"
                     renderRainWetOverlay
                     snow={{
@@ -3014,53 +3097,82 @@ const birdHouseRoofNodes = [
     'Birdhouse_Ridge_Cap',
 ] satisfies (keyof GLTFResult['nodes'])[];
 
+/**
+ * Snow on dirt ramps and corners: the flat dirt block's, so the slope, its
+ * rim lip and the flat ground beside it lift their cover alike.
+ */
+const groundSlopeSnow = {
+    maxThickness: 0.22,
+    slopeExponent: 3.2,
+    noiseScale: 1.7,
+} satisfies SnowMaterialOptions;
+
+/**
+ * Dirt ramps draw the clean shared wedge, as dry and swamp ground ramps do,
+ * with the flat dirt block's material. Their top is then the 0 to 0.4 slope
+ * the terrain rim follows; the old lumpy wedge stood above it.
+ */
+function GroundAngleInstances({
+    stacks,
+    ...commonSnowProps
+}: { stacks: Stack[] | undefined } & CommonWeatherProps) {
+    const { nodes } = useGameGLTF('BlockGround');
+    const material = nodes.Block_Ground_1.material;
+    return (
+        <AssetBlock
+            assetName="BlockSandAngle"
+            stacks={stacks}
+            name="Block_Ground_Angle"
+            staticOpaqueCacheGroup="base-terrain"
+            groundPatch="dirt"
+            renderRainWetOverlay
+            weatherSurface="base-ground"
+            yOffset={0.2}
+            geometry={(gltf) =>
+                bridgeWeatherCreases(gltf.nodes.Block_Sand_Angle_1.geometry)
+            }
+            material={() => material}
+            snow={groundSlopeSnow}
+            renderStableChunksAsMergedGeometry
+            {...commonSnowProps}
+        />
+    );
+}
+
 function SimpleAdditionalInstances({
     stacks,
     ...commonSnowProps
 }: { stacks: Stack[] | undefined } & CommonWeatherProps) {
-    const snowmanMaterial = useMemo(
-        () =>
-            new MeshStandardMaterial({
-                color: new Color('#FFFFFF'),
-                roughness: 1,
-                metalness: 0,
-            }),
-        [],
-    );
-
     return (
         <>
-            <AssetBlock
-                assetName="BlockGroundAngle"
+            <EntityBlockPresenceGate
+                names={['Block_Ground_Angle']}
                 stacks={stacks}
-                name="Block_Ground_Angle"
-                staticOpaqueCacheGroup="base-terrain"
-                groundPatch="dirt"
-                yOffset={1}
-                geometry={(gltf) => gltf.nodes.Block_Ground_Angle_1.geometry}
-                material={(gltf) => gltf.nodes.Block_Ground_Angle_1.material}
-                snow={{
-                    maxThickness: 0.18,
-                    slopeExponent: 2.2,
-                    noiseScale: 1.8,
-                }}
-                renderStableChunksAsMergedGeometry
-                {...commonSnowProps}
-            />
+            >
+                <Suspense fallback={null}>
+                    <GroundAngleInstances
+                        stacks={stacks}
+                        {...commonSnowProps}
+                    />
+                </Suspense>
+            </EntityBlockPresenceGate>
+            {/* The corner GLBs are centred like the sand corners: 0.2 up. */}
             <AssetBlock
                 assetName="BlockTerrainCorner"
                 stacks={stacks}
                 name="Block_Ground_Corner"
                 staticOpaqueCacheGroup="base-terrain"
                 groundPatch="dirt"
-                yOffset={1}
-                geometry={(gltf) => gltf.nodes.Block_Ground_Corner_1.geometry}
+                renderRainWetOverlay
+                weatherSurface="base-ground"
+                yOffset={0.2}
+                geometry={(gltf) =>
+                    bridgeWeatherCreases(
+                        gltf.nodes.Block_Ground_Corner_1.geometry,
+                    )
+                }
                 material={(gltf) => gltf.nodes.Block_Ground_Corner_1.material}
-                snow={{
-                    maxThickness: 0.18,
-                    slopeExponent: 2.2,
-                    noiseScale: 1.8,
-                }}
+                snow={groundSlopeSnow}
                 renderStableChunksAsMergedGeometry
                 {...commonSnowProps}
             />
@@ -3070,18 +3182,18 @@ function SimpleAdditionalInstances({
                 name="Block_Ground_Reverse_Corner"
                 staticOpaqueCacheGroup="base-terrain"
                 groundPatch="dirt"
-                yOffset={1}
+                renderRainWetOverlay
+                weatherSurface="base-ground"
+                yOffset={0.2}
                 geometry={(gltf) =>
-                    gltf.nodes.Block_Ground_Reverse_Corner_1.geometry
+                    bridgeWeatherCreases(
+                        gltf.nodes.Block_Ground_Reverse_Corner_1.geometry,
+                    )
                 }
                 material={(gltf) =>
                     gltf.nodes.Block_Ground_Reverse_Corner_1.material
                 }
-                snow={{
-                    maxThickness: 0.18,
-                    slopeExponent: 2.2,
-                    noiseScale: 1.8,
-                }}
+                snow={groundSlopeSnow}
                 renderStableChunksAsMergedGeometry
                 {...commonSnowProps}
             />
@@ -3129,24 +3241,19 @@ function SimpleAdditionalInstances({
                 }}
                 {...commonSnowProps}
             />
-            <AssetBlock
-                assetName="Snowman"
-                stacks={stacks}
-                name="Snowman"
-                yOffset={1.139}
-                scale={0.36}
-                geometry={(gltf) => gltf.nodes.Snowman.geometry}
-                material={() => snowmanMaterial}
-                {...commonSnowProps}
-            />
         </>
     );
 }
 
 export function AdditionalEntityInstances({
     stacks,
+    tier,
     ...commonSnowProps
-}: { stacks: Stack[] | undefined } & CommonWeatherProps) {
+}: {
+    stacks: Stack[] | undefined;
+    /** Quality tier; the low tier draws simpler waterfalls. */
+    tier?: GameQualityProfileTier;
+} & CommonWeatherProps) {
     return (
         <>
             <EntityBlockPresenceGate names={['Block_Ground']} stacks={stacks}>
@@ -3154,7 +3261,12 @@ export function AdditionalEntityInstances({
             </EntityBlockPresenceGate>
             <TerrainVariationInstances stacks={stacks} {...commonSnowProps} />
             <SimpleAdditionalInstances stacks={stacks} {...commonSnowProps} />
-            <WaterBlockInstances stacks={stacks} />
+            <WaterBlockInstances
+                stacks={stacks}
+                tier={tier}
+                renderSnow={commonSnowProps.renderSnow}
+                snowOverlayMinCoverage={commonSnowProps.snowOverlayMinCoverage}
+            />
             <EntityBlockPresenceGate names={['Raised_Bed']} stacks={stacks}>
                 <RaisedBedInstances stacks={stacks} {...commonSnowProps} />
             </EntityBlockPresenceGate>

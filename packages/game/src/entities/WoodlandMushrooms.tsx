@@ -32,7 +32,7 @@ export function WoodlandMushrooms({
                 snow={
                     disabled
                         ? false
-                        : { maxThickness: 0.012, coverageMultiplier: 0.3 }
+                        : { maxThickness: 0.025, coverageMultiplier: 0.65 }
                 }
                 rain={disabled ? false : { glossiness: 0.15 }}
             />

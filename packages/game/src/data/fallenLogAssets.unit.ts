@@ -154,7 +154,7 @@ describe('FallenLog release', () => {
                             object.geometry.getAttribute('position').count) / 3;
                 }
             });
-            assert.equal(triangles, 389);
+            assert.equal(triangles, 1814);
             assert.ok(bytes.length < 300_000);
             for (const item of logs) {
                 const hitbox = getBlockHitboxSize(

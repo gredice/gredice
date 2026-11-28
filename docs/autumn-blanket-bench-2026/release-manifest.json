@@ -4,20 +4,20 @@
   "snapshotDate": "2026-10-22T12:00:00+02:00",
   "source": {
     "path": "assets/game-assets/AutumnBlanketBench.blend",
-    "bytes": 120458,
-    "sha256": "178aa87386cad7040e1c98931bce63e3560003131bfe563164de5738e5c13479"
+    "bytes": 119223,
+    "sha256": "8b64370d76779071cad7e6b7ca79814e5ee08becba22161ba06a51bac9afb03a"
   },
   "models": [
     {
       "name": "AutumnBlanketBench",
       "path": "apps/garden/public/assets/models/AutumnBlanketBench.glb",
-      "bytes": 162344,
-      "sha256": "6bc5acbeff925d7f5a5bf255f4b2b0b48d3cec11e6b85dd15ca019fe6ec50851",
-      "url": "https://vrt.gredice.com/assets/models/AutumnBlanketBench.glb?v=6bc5acbeff92",
-      "triangles": 1768,
+      "bytes": 60824,
+      "sha256": "3dccc7577a526cd079db5f3093264eef29a43cfa6b07e149d8d6766515964d8f",
+      "url": "https://vrt.gredice.com/assets/models/AutumnBlanketBench.glb?v=3dccc7577a52",
+      "triangles": 2096,
       "trianglesByMesh": {
-        "AutumnBlanketBench_Textile": 212,
-        "AutumnBlanketBench_Timber": 1556
+        "AutumnBlanketBench_Textile": 1036,
+        "AutumnBlanketBench_Timber": 1060
       },
       "meshCount": 2,
       "materialCount": 2
@@ -50,53 +50,53 @@
       "images": [
         {
           "path": "apps/www/public/assets/blocks/AutumnBlanketBench.webp",
-          "bytes": 11688,
-          "sha256": "dd7b57085c535802fe5b08a24c8d4104faae03843c46f192758c0a5878935ed6"
+          "bytes": 11910,
+          "sha256": "e47ddfc9bb40ed0269f62ceec47cabf9cb72d0ddd413ba3392c41c8ff2da5a83"
         },
         {
           "path": "apps/www/public/assets/blocks/AutumnBlanketBench_1.webp",
-          "bytes": 11688,
-          "sha256": "dd7b57085c535802fe5b08a24c8d4104faae03843c46f192758c0a5878935ed6"
+          "bytes": 11910,
+          "sha256": "e47ddfc9bb40ed0269f62ceec47cabf9cb72d0ddd413ba3392c41c8ff2da5a83"
         },
         {
           "path": "apps/www/public/assets/blocks/AutumnBlanketBench_2.webp",
-          "bytes": 11144,
-          "sha256": "acc606dcea1ea69c1e698f24ba9140b43dd750a25c551048c8f5bb8eea31e2dd"
+          "bytes": 12342,
+          "sha256": "2194ac9bf7e482f19af32150fd05600e03eed67fd3a36b55464a4b04dcbda9ca"
         },
         {
           "path": "apps/www/public/assets/blocks/AutumnBlanketBench_3.webp",
-          "bytes": 11152,
-          "sha256": "2b72935f2a1adf39ec18ed2f93d1a9905c84c745bf7d8cb09160239cf758e5a8"
+          "bytes": 11742,
+          "sha256": "dab5ddba4733fa8550f03687eccb300bb0c8528c88806f594d4499bf489e2dd2"
         },
         {
           "path": "apps/www/public/assets/blocks/AutumnBlanketBench_4.webp",
-          "bytes": 12188,
-          "sha256": "d4e4d452f85c2a02d757e0bf1d5a2959a3c18b47d26c7ca21239169053033395"
+          "bytes": 12090,
+          "sha256": "85f971483f72fd83349a99cdaa014d3ffe835c1ab73f8f92a1e7d1faa979ae53"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/AutumnBlanketBench.webp",
-          "bytes": 1438,
-          "sha256": "136bd8259e94ad6596f35b11bfb244a78fc00be54016e84cc86f221f06f6be8d"
+          "bytes": 1690,
+          "sha256": "6da31d5dcece9195ad55d408731343912b6f899695047263a2ac18e226f03625"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/AutumnBlanketBench_1.webp",
-          "bytes": 1438,
-          "sha256": "136bd8259e94ad6596f35b11bfb244a78fc00be54016e84cc86f221f06f6be8d"
+          "bytes": 1690,
+          "sha256": "6da31d5dcece9195ad55d408731343912b6f899695047263a2ac18e226f03625"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/AutumnBlanketBench_2.webp",
-          "bytes": 1398,
-          "sha256": "7faf91bb56a91f8f9af9c7815989e5b1dd6a207c7d494da5fbd545851d6a1e12"
+          "bytes": 1898,
+          "sha256": "b9c6e525c68d6b1d374c9956d2107a279a18d571f75b2acc795c34ef98b63482"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/AutumnBlanketBench_3.webp",
-          "bytes": 1346,
-          "sha256": "e0006357552a83ae1f5fef5d1cb69c5ec6766188fae9e756504e5d0ac2d11c95"
+          "bytes": 1604,
+          "sha256": "c5c4bc17b9f32db293174669a3914cd1fb65633d584fd75cafcc896b268fe220"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/AutumnBlanketBench_4.webp",
-          "bytes": 1570,
-          "sha256": "dd30886098d333b34b962c6eee32402482b5d9861b993d1946d5e4b75a8d80f2"
+          "bytes": 1976,
+          "sha256": "7e29a46fba9321f4b88b32d3bcaa776082119637c33e1a35177c90591f772118"
         }
       ]
     }

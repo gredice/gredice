@@ -66,6 +66,24 @@ test.beforeEach(async ({ page }) => {
             });
         },
     );
+
+    // Painted textures (for example the terrain rim soil) come from the local
+    // checkout too, so snapshots match the models they are rendered with.
+    await page.route('**/assets/textures/*', async (route) => {
+        const assetName = new URL(route.request().url()).pathname
+            .split('/')
+            .at(-1);
+        if (!assetName) {
+            await route.abort();
+            return;
+        }
+        await route.fulfill({
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+            },
+            path: resolve(`../garden/public/assets/textures/${assetName}`),
+        });
+    });
 });
 
 function shouldRenderSnapshotDetails(entityName: string) {

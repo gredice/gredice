@@ -1,0 +1,21 @@
+{
+    "mode": "Built-in image_gen",
+    "useCase": "stylized-concept",
+    "file": "action-confirm.webp",
+    "prompt": "Create an original chunky 3D low-poly farming-game HUD icon. The FIRST, SECOND and THIRD images are exact rendering STYLE REFERENCES: match the backpack, shopping basket and tutorial clipboard's thick beveled polygonal geometry, forest greens, warm golden-orange wood, dark contact shadows, matte material shading and soft upper-left highlights. Subject: A single chunky raised grass-green checkmark token, like one of the clipboard's bright green molded checks presented as a freestanding thick piece. Use the familiar check silhouette with a short lower-left arm and a longer diagonal rising to the upper right. Use a broad grass-green face near #7bd03a, lighter edge bevels, and deeper forest-green thickness, all in matte material. Give it a slight three-quarter turn so its side thickness shows on the right while the whole check silhouette stays easy to read from the front. The checkmark alone is the entire object. No disk, plaque, background or other prop. Slightly elevated three-quarter front view that clearly shows the object's right-edge thickness and physical depth. Compact centered silhouette readable at 36px, like an actual Blender toy-prop render. Rich coherent shadows, not flat vector art or a pale technical model screenshot. Use broad bevels and restrained low-poly detail, with the full silhouette filling a square frame evenly. Complete icon on a genuinely transparent background with a small transparent margin. No ground plane, backdrop graphics, shadows beyond the object, letters, numbers, words or extra props.",
+    "inputs": [
+        {
+            "role": "Style reference",
+            "file": "inventory-backpack.webp"
+        },
+        {
+            "role": "Style reference",
+            "file": "shopping-basket.webp"
+        },
+        {
+            "role": "Style reference",
+            "file": "tutorial-task-list.png"
+        }
+    ],
+    "processing": "Clear alpha values below 4 of 255, trim empty alpha margins, fit within 320x320 with transparent padding, add an 8px transparent border, and save as a 336x336 WebP with real alpha using cwebp -q 90 -alpha_q 100."
+}

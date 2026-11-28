@@ -4,6 +4,10 @@ import {
     buildGeneratedPlantRenderData,
     generatePlantTopology,
 } from './generatedPlantRenderData';
+import {
+    getGeneratedPlantTemplateSeed,
+    resolveGeneratedPlantTemplateVariant,
+} from './generatedPlantTemplates';
 import { plantTypes } from './plant-definitions';
 import { buildApproximatePlantLodSummary } from './plantLodSummary';
 
@@ -89,7 +93,7 @@ test('approximate plant LOD summaries preserve lifecycle and produce state', () 
     assert.equal(seedling.accentColor, undefined);
     assert.ok(mature.height > seedling.height);
     assert.equal(immatureRoot.accentColor, undefined);
-    assert.equal(matureRoot.accentColor, '#e56a1f');
+    assert.equal(matureRoot.accentColor, '#a35800');
     assert.equal(hiddenProduce.accentColor, undefined);
 });
 
@@ -133,6 +137,53 @@ test('approximate billboards stay bounded and preserve exact developmental state
             assert.equal(approximate.foliageColor, exact.foliageColor);
             assert.equal(approximate.hasFoliage, exact.hasFoliage);
             assert.equal(approximate.accentColor, exact.accentColor);
+        }
+    }
+});
+
+test('bed plant cards summarise the 3D template plant the near view draws', () => {
+    for (const definition of [
+        plantTypes.tomato,
+        plantTypes.cucumber,
+        plantTypes.zucchini,
+        plantTypes.carrot,
+        plantTypes.lettuce,
+    ]) {
+        for (const generation of [3, 8, 12]) {
+            const seed = `${definition.key}:${generation}:bed-instance`;
+            const templateSeed = getGeneratedPlantTemplateSeed({
+                definition,
+                variant: resolveGeneratedPlantTemplateVariant(seed),
+            });
+            const near = buildGeneratedPlantRenderData({
+                ...summaryOptions,
+                plantDefinition: definition,
+                renderDetailedGeometry: false,
+                topology: generatePlantTopology({
+                    generation,
+                    plantDefinition: definition,
+                    seed: templateSeed,
+                }),
+            }).lodSummary;
+            const cards = buildApproximatePlantLodSummary({
+                ...summaryOptions,
+                generation,
+                plantDefinition: definition,
+                seed,
+            });
+
+            assert.deepEqual(cards, near, `${definition.key} ${generation}`);
+            // Callers get their own copy, never the cached summary.
+            cards.height = -1;
+            assert.notEqual(
+                buildApproximatePlantLodSummary({
+                    ...summaryOptions,
+                    generation,
+                    plantDefinition: definition,
+                    seed,
+                }).height,
+                -1,
+            );
         }
     }
 });

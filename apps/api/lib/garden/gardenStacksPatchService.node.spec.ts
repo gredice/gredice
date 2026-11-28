@@ -10,6 +10,7 @@ import {
     getGardenBlock,
     getGardenPlacementSnapshotForUpdate,
     getGardenStacks,
+    getLegacyGardenBlockPaidSunflowers,
     getSunflowers,
     listGardenRaisedBedMetadataForUpdate,
     SunflowerEarnAmountConflictError,
@@ -50,6 +51,7 @@ type HarnessState = {
         deleted: boolean;
         id: string;
         name: string;
+        paidSunflowers?: number | null;
         rotation: number | null;
     }[];
     raisedBeds: {
@@ -79,8 +81,12 @@ type HarnessOptions = Readonly<{
     failCacheBust?: boolean;
     gardenAccountId?: string;
     kind?: 'move' | 'recycle';
+    /** Stored paid price of the recycled block; null/omitted = legacy. */
+    paidSunflowers?: number | null;
     price?: number;
     raisedBedStatus?: string;
+    /** Exact legacy paid price recovered from purchase records. */
+    recoveredPaidSunflowers?: number | null;
     refundConflict?: boolean;
     sandbox?: boolean;
 }>;
@@ -111,6 +117,7 @@ function makeHarness(options: HarnessOptions = {}) {
                           deleted: false,
                           id: recycledBlockId,
                           name: blockName,
+                          paidSunflowers: options.paidSunflowers ?? null,
                           rotation: 0,
                       },
                   ],
@@ -252,7 +259,12 @@ function makeHarness(options: HarnessOptions = {}) {
             return {
                 blocks: state.blocks
                     .filter((block) => !block.deleted)
-                    .map(({ id, name, rotation }) => ({ id, name, rotation })),
+                    .map(({ id, name, paidSunflowers, rotation }) => ({
+                        id,
+                        name,
+                        paidSunflowers,
+                        rotation,
+                    })),
                 garden: {
                     accountId: options.gardenAccountId ?? accountId,
                     id: gardenId,
@@ -264,6 +276,19 @@ function makeHarness(options: HarnessOptions = {}) {
                     positionY: stack.positionY,
                 })),
             };
+        },
+        getLegacyGardenBlockPaidSunflowers: async (
+            input,
+            receivedTransaction,
+        ) => {
+            assert.deepEqual(input, {
+                accountId,
+                blockId: recycledBlockId,
+                gardenId,
+            });
+            assertTransaction(receivedTransaction);
+            calls.push('legacy-paid-price');
+            return options.recoveredPaidSunflowers ?? null;
         },
         listGardenRaisedBedMetadataForUpdate: async (
             receivedGardenId,
@@ -482,6 +507,61 @@ describe('garden stack patch orchestration', () => {
         assert.equal(harness.state().blocks[0]?.deleted, true);
         assert.equal(harness.state().raisedBeds[0]?.deleted, true);
         assert.deepEqual(harness.state().stacks[0]?.blocks, []);
+    });
+
+    it('refunds the stored paid price instead of the current price', async () => {
+        const harness = makeHarness({
+            kind: 'recycle',
+            paidSunflowers: 20,
+            price: 75,
+        });
+
+        const result = await harness.service(harness.recycleCommand());
+
+        assert.equal(result.ok && result.refundedSunflowers, 20);
+        assert.deepEqual(
+            harness.state().refunds.map((refund) => refund.amount),
+            [20],
+        );
+        assert.equal(harness.calls.includes('legacy-paid-price'), false);
+    });
+
+    it('recycles a free block with a stored zero price without a refund', async () => {
+        const harness = makeHarness({
+            kind: 'recycle',
+            paidSunflowers: 0,
+            price: 75,
+        });
+
+        const result = await harness.service(harness.recycleCommand());
+
+        assert.equal(result.ok && result.recycledBlock, true);
+        assert.equal(result.ok && result.refundedSunflowers, 0);
+        assert.equal(harness.calls.includes('refund'), false);
+        assert.equal(harness.state().blocks[0]?.deleted, true);
+    });
+
+    it('caps legacy refunds at the recovered purchase price before writing', async () => {
+        const capped = makeHarness({
+            kind: 'recycle',
+            price: 75,
+            recoveredPaidSunflowers: 30,
+        });
+        const unknown = makeHarness({ kind: 'recycle', price: 75 });
+
+        const cappedResult = await capped.service(capped.recycleCommand());
+        const unknownResult = await unknown.service(unknown.recycleCommand());
+
+        assert.equal(cappedResult.ok && cappedResult.refundedSunflowers, 30);
+        assert.equal(unknownResult.ok && unknownResult.refundedSunflowers, 75);
+        assert.deepEqual(
+            capped.state().refunds.map((refund) => refund.amount),
+            [30],
+        );
+        assert.ok(
+            capped.calls.indexOf('legacy-paid-price') <
+                capped.calls.indexOf('stack-update:0:0'),
+        );
     });
 
     it('keeps sandbox recycling currency-free', async () => {
@@ -756,6 +836,7 @@ test('real shared transaction rolls back stack, block, event, and refund after a
             directoryBlock('Block_Grass', { price: 75 }),
         ],
         getGardenPlacementSnapshotForUpdate,
+        getLegacyGardenBlockPaidSunflowers,
         listGardenRaisedBedMetadataForUpdate,
         planGardenStacksPatch,
         softDeleteGardenBlockOnce,

@@ -8,14 +8,14 @@ Implementation for [#4963](https://github.com/gredice/gredice/issues/4963), rele
 
 Inspected first-party references: [gold asters](../apps/www/public/assets/blocks/AutumnAsterPotGold.webp), [autumn shrub](../apps/www/public/assets/blocks/AutumnShrub.webp), and [grass ground](../apps/www/public/assets/blocks/Block_Grass.webp). Three deliberately grouped clumps sit on a small gravel island, distinguishing them from scattered grass, weeds and crop health. Folded solid blades and five broad tapered seed plumes need no alpha textures or tiny labels. The gold palette is retained year round.
 
-Each editable Blender source has a fixed `Base` mesh, `Foliage` mesh, three `WindRoot` empties and source-only `WindWeight` vertex groups. Materials share named `Material.AutumnGrasses.Gravel` and `.Blades` roles, matte roughness 0.94 and baked corner colours. No cached source material or geometry is mutated.
+Each editable Blender source has a fixed `Base` mesh, `Foliage` mesh, three `WindRoot` empties and source-only `WindWeight` vertex groups. Materials share named `Material.AutumnGrasses.Gravel` and `.Blades` roles and baked corner colours. Shapes and colours come from `assets/scripts/party-pass-autumn.py`, which runs after the generator (2026-11-23 party-style pass with the bright seasonal roles in GAME_ART.md): blades in hay `#F2CB5A` and hay shade `#DCAB48` at matte roughness 0.8, seed stems in hay shade, seed heads in nut caramel `#DC9A4C` and cream `#F2E4C6`, and the gravel island in stone `#B3BDD3` with cream pebbles at roughness 0.6, all as seen on screen. No cached source material or geometry is mutated.
 
 | Asset | Bounds (width × depth × height) | Hitbox | Triangles | GLB bytes | Price |
 | --- | --- | --- | --- | --- | --- |
-| AutumnGrassTuft | 0.68 × 0.68 × 0.2922 | 0.9 × 0.9 × 0.35 | 1,020 | 79,260 | 30 sunflowers |
-| AutumnSeedHeads | 0.68 × 0.68 × 0.645 | 0.9 × 0.9 × 0.7 | 1,440 | 111,016 | 40 sunflowers |
+| AutumnGrassTuft | 0.68 × 0.673 × 0.319 | 0.9 × 0.9 × 0.35 | 1,732 | 45,736 | 30 sunflowers |
+| AutumnSeedHeads | 0.68 × 0.673 × 0.66 | 0.9 × 0.9 × 0.7 | 2,932 | 75,264 | 40 sunflowers |
 
-Each asset uses two meshes/materials/primitives and two base-pass draws; 96 triangles form the gravel. No textures, animations, emitters, sounds, lights or dedicated render leases. These are structural costs, not device performance measurements. Both are one-tile, nonstackable decorations with compatible ground/path/display supports and no water placement.
+Each asset uses two meshes/materials/primitives and two base-pass draws; 472 triangles form the gravel. No textures, animations, emitters, sounds, lights or dedicated render leases. These are structural costs, not device performance measurements. Both are one-tile, nonstackable decorations with compatible ground/path/display supports and no water placement.
 
 ## Motion and catalogue boundaries
 

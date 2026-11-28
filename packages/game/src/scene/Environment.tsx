@@ -1,9 +1,9 @@
 'use client';
 
 import { useFrame, useThree } from '@react-three/fiber';
-import chroma from 'chroma-js';
 import {
     type RefObject,
+    useCallback,
     useEffect,
     useLayoutEffect,
     useMemo,
@@ -11,7 +11,7 @@ import {
     useState,
 } from 'react';
 import * as SunCalc from 'suncalc';
-import { Color, type DirectionalLight } from 'three';
+import { Color, type DirectionalLight, Vector3 } from 'three';
 import { AutumnRustle } from '../audio/AutumnRustle';
 import { WeatherAmbience } from '../audio/WeatherAmbience';
 import { WindAmbience } from '../audio/WindAmbience';
@@ -22,16 +22,24 @@ import { useSceneCurrentGarden } from '../hooks/useSceneCurrentGarden';
 import { useSnapshotTime } from '../hooks/useSnapshotTime';
 import { useSyncGameTime } from '../hooks/useSyncGameTime';
 import { useWeatherNow } from '../hooks/useWeatherNow';
-import { RainRipples } from '../rain/RainRipples';
+import { lyingSnowFullCoverageCm } from '../snow/snowShader';
 import { type GameState, useGameState } from '../useGameState';
 import { WarmProps } from '../warmProps/WarmProps';
 import { AutumnLeaves } from './AutumnLeaves';
 import { AutumnPropWindEnvironment } from './AutumnPropWindEnvironment';
+import {
+    getCameraQuarterTurns,
+    getMoonKeyAmount,
+    resolveAtmosphereFog,
+    resolveAtmosphereLighting,
+    resolveSunColorRgb,
+    resolveWeatherCoverDimming,
+} from './atmosphereLighting';
 import { getAutumnCanopyShadowKey } from './autumnCanopy';
 import { defaultGameBackgroundPaletteIndex } from './backgroundPalettes';
-import { CloudLayer } from './CloudLayer';
 import { ColdWeatherEffects } from './cold/ColdWeatherEffects';
 import { DistantBirdFlocks } from './DistantBirdFlocks';
+import { gameLightRig } from './gameArtStyle';
 import { updateGameProfileMetadata } from './gameProfileMetadata';
 import {
     type GameQualityProfile,
@@ -39,23 +47,17 @@ import {
 } from './gameQuality';
 import { enableGeneratedPlantShadowLayer } from './generatedPlantShadowLayer';
 import { LocalizedSteam } from './LocalizedSteam';
-import { MorningMist } from './MorningMist';
 import { getMoonlitNightScales } from './moonlight';
 import { Perseids } from './PerseidMeteorShower';
 import { getPerseidsMeteorRatePerHour, shouldRenderPerseids } from './perseids';
-import { Drops } from './Rain/Drops';
-import { resolveRainParticleState } from './Rain/rainParticles';
 import { SceneBlockDataBoundary } from './SceneBlockDataBoundary';
 import {
-    useSceneDeadline,
     useSceneRenderRequest,
     useSceneRuntimeVisible,
     useSceneTimeInvalidation,
 } from './SceneTime';
 import { ShadowMapController } from './ShadowMapController';
 import { SkyGradientBackground } from './SkyGradientBackground';
-import Snow from './Snow/Snow';
-import { resolveSnowParticleCounts } from './Snow/snowParticles';
 import { SolarEclipseSceneOverlay } from './SolarEclipseSceneOverlay';
 import { Stars } from './Stars';
 import { SunMoon } from './SunMoon';
@@ -75,13 +77,18 @@ import {
     type SolarEclipseState,
 } from './solarEclipse';
 import { altAzToScenePosition, timeOfDayToDate } from './sunPosition';
+import { installSurfaceGradientShaderChunk } from './surfaceGradientShaderChunk';
+import { useSceneAfterFrame } from './useSceneAfterFrame';
 import {
     getVisualDaylightAmount,
     getVisualNightAmount,
     smoothstep,
-    visualDayNightTimes,
 } from './visualDayNight';
-import { resolveWaterColors } from './waterColors';
+import { resolveBandCover } from './weather/sky/cloudBand';
+import { resolveSkyBodyWeatherVisibility } from './weather/sky/skyBodyVisibility';
+import { WeatherFrameProvider } from './weather/WeatherFrameContext';
+import { WeatherLayers } from './weather/WeatherLayers';
+import type { WeatherDebugOptions } from './weather/weatherDebug';
 import {
     advanceWeatherBlend,
     type EnvironmentWeather,
@@ -89,23 +96,10 @@ import {
     type WeatherBlendState,
 } from './weatherBlend';
 
-const sunTemperatureScale = chroma
-    .scale([
-        chroma.temperature(20000),
-        chroma.temperature(8000),
-        chroma.temperature(6000),
-        chroma.temperature(6000),
-        chroma.temperature(2000),
-        chroma.temperature(20000),
-    ])
-    .domain([
-        visualDayNightTimes.dawnNightEnd,
-        visualDayNightTimes.dawnLightEnd,
-        visualDayNightTimes.dayStart,
-        visualDayNightTimes.lateDayStart,
-        visualDayNightTimes.duskNightStart,
-        visualDayNightTimes.nightStart,
-    ]);
+// The toy surface height gradient edits a shared shader chunk, so it must be
+// installed before any garden material compiles.
+installSurfaceGradientShaderChunk();
+
 type WeatherBlendConfig = {
     transitionSeconds: number;
 };
@@ -119,16 +113,6 @@ const DEBUG_WEATHER_BLEND_CONFIG: WeatherBlendConfig = {
 };
 const BACKGROUND_COLOR_TRANSITION_SECONDS = 0.55;
 const BACKGROUND_COLOR_EPSILON = 0.001;
-const LIGHTNING_CLEAR_DELAY_MS = 120;
-
-function getLightningDelayMs(stormStrength: number) {
-    const minimumDelayMs = 8_000;
-    const maximumDelayMs = 22_000;
-    const chanceWindowMs =
-        maximumDelayMs -
-        (maximumDelayMs - minimumDelayMs) * Math.min(1, stormStrength);
-    return minimumDelayMs + Math.random() * Math.max(2_000, chanceWindowMs);
-}
 
 function isWithinColorEpsilon(current: Color, target: Color) {
     return (
@@ -300,7 +284,7 @@ export function environmentState(
     });
     const colors = {
         background: skyBackgroundColors.background,
-        sunTemperature: sunTemperatureScale(timeOfDay).rgb(),
+        sunTemperature: resolveSunColorRgb(timeOfDay),
         hemisphereSkyColor: skyBackgroundColors.hemisphereSkyColor,
     };
     const intensities = {
@@ -311,7 +295,6 @@ export function environmentState(
 
 export type EnvironmentProps = {
     celestialOffsetMultiplier?: number;
-    cloudShadowUpdateMs?: number;
     noBackground?: boolean;
     noSound?: boolean;
     noWeather?: boolean;
@@ -321,6 +304,8 @@ export type EnvironmentProps = {
     noDistantBirdFlocks?: boolean;
     quality?: GameQualityProfile;
     weather?: Partial<GameState['weather']>;
+    /** Debug switches: hidden layers, reduced motion, lightning, inspect. */
+    weatherDebug?: WeatherDebugOptions;
 };
 
 const fallbackWeather = {
@@ -352,6 +337,41 @@ function resolveWindDirection(
     return windDirection ?? resolvedFallback;
 }
 
+const cameraViewDirection = new Vector3();
+
+/**
+ * Quarter turns of the rendered camera around the garden. The key light is
+ * folded to the camera's side, so it follows the camera itself: a reset to
+ * a saved view does not always update `worldRotation`. Checked after each
+ * rendered frame, once the camera rig has moved the camera; a turn
+ * re-renders once.
+ */
+function useCameraQuarterTurns() {
+    const camera = useThree((state) => state.camera);
+    const worldRotation = useGameState((state) => state.worldRotation);
+    const [turns, setTurns] = useState(
+        () =>
+            getCameraQuarterTurns(
+                camera.getWorldDirection(cameraViewDirection),
+            ) ?? worldRotation,
+    );
+    const turnsRef = useRef(turns);
+    turnsRef.current = turns;
+
+    const checkCamera = useCallback(() => {
+        const next = getCameraQuarterTurns(
+            camera.getWorldDirection(cameraViewDirection),
+        );
+        if (next !== null && next !== turnsRef.current) {
+            turnsRef.current = next;
+            setTurns(next);
+        }
+    }, [camera]);
+    useSceneAfterFrame(checkCamera);
+
+    return turns;
+}
+
 function useEnvironmentElements({
     backgroundPaletteIndex,
     location,
@@ -367,13 +387,19 @@ function useEnvironmentElements({
     timeOfDay: number;
     weather: EnvironmentWeather | null | undefined;
 }) {
-    const {
-        sunPosition,
-        colors: { sunTemperature },
-        intensities: { sun: sunIntensity },
-    } = environmentState(location, currentTime, timeOfDay);
-    const solarEclipseScales = getSolarEclipseVisualScales(
-        solarEclipse?.obscuration ?? 0,
+    const sunPosition = useMemo(
+        () =>
+            getSunPosition(
+                { lat: location.lat, lon: location.lon },
+                currentTime,
+                timeOfDay,
+            ),
+        [currentTime, location.lat, location.lon, timeOfDay],
+    );
+    const solarEclipseObscuration = solarEclipse?.obscuration ?? 0;
+    const solarEclipseScales = useMemo(
+        () => getSolarEclipseVisualScales(solarEclipseObscuration),
+        [solarEclipseObscuration],
     );
     const sceneDate = timeOfDayToDate(currentTime, timeOfDay);
     const moonlitNightScales = getMoonlitNightScales({
@@ -391,39 +417,6 @@ function useEnvironmentElements({
             backgroundPaletteIndex,
             timeOfDay,
         });
-    const hasThemedBackground = themedBackground !== null;
-
-    // Directional light
-    const sunTemperatureRed = sunTemperature[0] / 255;
-    const sunTemperatureGreen = sunTemperature[1] / 255;
-    const sunTemperatureBlue = sunTemperature[2] / 255;
-    const directionalLightColor = useMemo(
-        () =>
-            new Color().setRGB(
-                sunTemperatureRed,
-                sunTemperatureGreen,
-                sunTemperatureBlue,
-                'srgb',
-            ),
-        [sunTemperatureBlue, sunTemperatureGreen, sunTemperatureRed],
-    );
-    const directionalLightIntensity =
-        Math.max(
-            0,
-            sunIntensity * 5 -
-                (weather?.cloudy ?? 0) * 4 -
-                (weather?.foggy ?? 0) * 4,
-        ) * solarEclipseScales.direct;
-    const directionalLightPosition = sunPosition;
-
-    // Ambient light
-    const ambientIntensityOffset = 1;
-    const ambientLightIntensity =
-        (sunIntensity *
-            (2 + Math.max(0, -(weather?.cloudy ?? 0) - (weather?.foggy ?? 0))) +
-            ambientIntensityOffset) *
-        moonlitNightScales.lightScale *
-        solarEclipseScales.ambient;
 
     // Background color
     const effectiveBackground = skyBackgroundColors.background;
@@ -466,73 +459,73 @@ function useEnvironmentElements({
         ],
     );
 
-    const waterColors = resolveWaterColors({
-        skyColor: backgroundColor,
-        timeOfDay,
-        weather: weather ?? undefined,
-    });
+    // At night the key light turns into the moon, so it needs the moon's
+    // place in the sky. Only resolved while it can contribute.
+    const moonPositionNeeded = moonlight > 0 && getMoonKeyAmount(timeOfDay) > 0;
+    const moonPositionKey = moonPositionNeeded ? sceneDate.getTime() : null;
+    const moonPosition = useMemo(() => {
+        if (moonPositionKey === null) {
+            return null;
+        }
+        const moon = SunCalc.getMoonPosition(
+            new Date(moonPositionKey),
+            location.lat,
+            location.lon,
+        );
+        return altAzToScenePosition(moon.altitude, moon.azimuth);
+    }, [location.lat, location.lon, moonPositionKey]);
 
-    const effectiveHemisphereSkyColor = skyBackgroundColors.hemisphereSkyColor;
-    const hemisphereSkyRed = effectiveHemisphereSkyColor[0] / 255;
-    const hemisphereSkyGreen = effectiveHemisphereSkyColor[1] / 255;
-    const hemisphereSkyBlue = effectiveHemisphereSkyColor[2] / 255;
-    const hemisphereColor = useMemo(
+    const worldRotation = useCameraQuarterTurns();
+    const hemisphereSkyRed = skyBackgroundColors.hemisphereSkyColor[0];
+    const hemisphereSkyGreen = skyBackgroundColors.hemisphereSkyColor[1];
+    const hemisphereSkyBlue = skyBackgroundColors.hemisphereSkyColor[2];
+    const lighting = useMemo(
         () =>
-            new Color().setRGB(
-                hasThemedBackground ? hemisphereSkyRed : hemisphereSkyRed * -0,
-                hemisphereSkyGreen,
-                hemisphereSkyBlue,
-                'srgb',
-            ),
+            resolveAtmosphereLighting({
+                backgroundColor,
+                hemisphereSkyColor: new Color().setRGB(
+                    hemisphereSkyRed / 255,
+                    hemisphereSkyGreen / 255,
+                    hemisphereSkyBlue / 255,
+                    'srgb',
+                ),
+                moonlight,
+                moonPosition,
+                solarEclipseScales,
+                sunPosition,
+                timeOfDay,
+                weather,
+                worldRotation,
+            }),
         [
-            hasThemedBackground,
+            backgroundColor,
             hemisphereSkyBlue,
             hemisphereSkyGreen,
             hemisphereSkyRed,
+            moonPosition,
+            moonlight,
+            solarEclipseScales,
+            sunPosition,
+            timeOfDay,
+            weather,
+            worldRotation,
         ],
     );
 
-    const hemisphereGroundColor = useMemo(() => {
-        const color = new Color();
-        if (hasThemedBackground) {
-            color.copy(backgroundColor);
-            color.multiplyScalar(0.42);
-            return color;
-        }
-
-        color.setRGB(
-            (backgroundColor.r / 255) * 0.5,
-            (backgroundColor.g / 255) * 0.5,
-            (backgroundColor.b / 255) * 0.5,
-            'srgb',
-        );
-        return color;
-    }, [backgroundColor, hasThemedBackground]);
-    const hemisphereIntensity =
-        (sunIntensity * 2 + 3) *
-        moonlitNightScales.lightScale *
-        solarEclipseScales.ambient;
-
     return {
         background: backgroundColor,
-        ambient: {
-            intensity: ambientLightIntensity,
-        },
-        hemisphere: {
-            color: hemisphereColor,
-            groundColor: hemisphereGroundColor,
-            intensity: hemisphereIntensity,
-        },
+        ambient: lighting.ambient,
+        hemisphere: lighting.hemisphere,
         directionalLight: {
-            color: directionalLightColor,
-            position: directionalLightPosition,
-            intensity: directionalLightIntensity,
+            color: lighting.key.color,
+            position: lighting.key.position,
+            intensity: lighting.key.intensity,
+            shadowVisibility: lighting.key.shadowVisibility,
         },
         sky: {
             lowerColor: skyLowerColor,
             moonlight,
         },
-        waterColors,
     };
 }
 
@@ -550,39 +543,21 @@ export function StaticEnvironment({
     const backgroundPaletteIndex = useGameState(
         (state) => state.backgroundPaletteIndex,
     );
-    const setWaterColors = useGameState((state) => state.setWaterColors);
-    const {
-        background,
-        ambient,
-        hemisphere,
-        directionalLight,
-        sky,
-        waterColors,
-    } = useEnvironmentElements({
-        backgroundPaletteIndex,
-        location: defaultLocation,
-        currentTime,
-        solarEclipse: null,
-        timeOfDay,
-        weather: undefined,
-    });
+    const { background, ambient, hemisphere, directionalLight, sky } =
+        useEnvironmentElements({
+            backgroundPaletteIndex,
+            location: defaultLocation,
+            currentTime,
+            solarEclipse: null,
+            timeOfDay,
+            weather: undefined,
+        });
     const shadowInvalidationKey = buildDirectionalShadowDepthSignature({
         lightPosition: directionalLight.position,
         shadowCameraSize: baseCameraShadowSize,
         shadowMapSize: qualityProfile.shadowMapSize,
         shadows: qualityProfile.shadows,
     });
-    const waterDeep = waterColors.deep;
-    const waterFoam = waterColors.foam;
-    const waterShallow = waterColors.shallow;
-
-    useEffect(() => {
-        setWaterColors({
-            deep: waterDeep,
-            foam: waterFoam,
-            shallow: waterShallow,
-        });
-    }, [setWaterColors, waterDeep, waterFoam, waterShallow]);
 
     return (
         <>
@@ -604,7 +579,7 @@ export function StaticEnvironment({
                     />
                 </>
             )}
-            <ambientLight intensity={ambient.intensity} />
+            <ambientLight color={ambient.color} intensity={ambient.intensity} />
             <hemisphereLight
                 position={[0, 1, 0]}
                 color={hemisphere.color}
@@ -616,11 +591,16 @@ export function StaticEnvironment({
                 intensity={directionalLight.intensity}
                 color={directionalLight.color}
                 position={directionalLight.position}
-                shadow-intensity={qualityProfile.shadows ? 1 : 0}
+                shadow-intensity={
+                    qualityProfile.shadows
+                        ? directionalLight.shadowVisibility *
+                          gameLightRig.shadowIntensity
+                        : 0
+                }
                 shadow-mapSize={
                     qualityProfile.shadows ? qualityProfile.shadowMapSize : 1
                 }
-                shadow-radius={2.2}
+                shadow-radius={gameLightRig.shadowRadius}
                 shadow-normalBias={0.03}
                 castShadow={qualityProfile.shadows}
             >
@@ -642,9 +622,21 @@ export function StaticEnvironment({
     );
 }
 
+/**
+ * Clear air keeps a fog attached that never reaches the garden (it starts
+ * far behind the camera), so the FOG shader variant of every lit program
+ * never toggles when fog comes and goes. A toggle recompiled every program
+ * the first time a weather change crossed it, a long frame mid-blend.
+ * Constant, so clear weather never changes the static cache's light rig.
+ */
+const inertAtmosphereFog = {
+    color: new Color('#ffffff'),
+    near: 1e6,
+    far: 1e6 + 1,
+} as const;
+
 export function Environment({
     celestialOffsetMultiplier,
-    cloudShadowUpdateMs,
     noBackground,
     noSound,
     noWeather,
@@ -652,6 +644,7 @@ export function Environment({
     noDistantBirdFlocks,
     quality,
     weather,
+    weatherDebug,
 }: EnvironmentProps) {
     const qualityProfile = quality ?? resolveGameQualityProfile();
     const directionalLightRef = useRef<DirectionalLight | null>(null);
@@ -682,7 +675,6 @@ export function Environment({
         (state) => state.setRainSurfaceIntensity,
     );
     const setSnowCoverage = useGameState((state) => state.setSnowCoverage);
-    const setWaterColors = useGameState((state) => state.setWaterColors);
     const weatherVisualizationDisabled = useGameState(
         (state) => state.weatherVisualizationDisabled,
     );
@@ -767,13 +759,9 @@ export function Environment({
                 baseWeather.snowAccumulation,
         };
     }, [overrideWeather, weatherDisabled, weatherNow]);
-    const activeWeatherAnimation =
-        !weatherDisabled &&
-        ((actualWeather?.cloudy ?? 0) > 0.01 ||
-            (actualWeather?.foggy ?? 0) > 0.01 ||
-            (actualWeather?.rainy ?? 0) > 0 ||
-            (actualWeather?.snowy ?? 0) > 0);
-    useSceneTimeInvalidation('weather-animation', activeWeatherAnimation);
+    // No environment-wide render lease for weather: every weather layer
+    // (`WeatherLayers.tsx`) holds its own lease only while it moves, so
+    // still, clear weather renders nothing per frame.
 
     const blendConfig = hasWeatherOverride
         ? DEBUG_WEATHER_BLEND_CONFIG
@@ -784,89 +772,62 @@ export function Environment({
         blendConfig,
     );
 
-    const {
-        background,
-        ambient,
-        hemisphere,
-        directionalLight,
-        sky,
-        waterColors,
-    } = useEnvironmentElements({
-        backgroundPaletteIndex,
-        location,
-        currentTime,
-        solarEclipse,
-        timeOfDay,
-        weather: blendedWeather,
-    });
-    const waterDeep = waterColors.deep;
-    const waterFoam = waterColors.foam;
-    const waterShallow = waterColors.shallow;
-
-    useEffect(() => {
-        setWaterColors({
-            deep: waterDeep,
-            foam: waterFoam,
-            shallow: waterShallow,
+    const { background, ambient, hemisphere, directionalLight, sky } =
+        useEnvironmentElements({
+            backgroundPaletteIndex,
+            location,
+            currentTime,
+            solarEclipse,
+            timeOfDay,
+            weather: blendedWeather,
         });
-    }, [setWaterColors, waterDeep, waterFoam, waterShallow]);
 
-    // Handle fog
+    // Handle fog: it takes the sky colour at the horizon and thickens gently
+    // toward the back of the garden instead of hiding it.
     const fog = blendedWeather?.foggy ?? 0;
-    const fogNear = 170 - fog * 30;
+    // Lower cloud cover keeps more of the clear-day light on the island,
+    // including the fog a storm or a shower brings (GAME_ART.md "Weather >
+    // Clouds and overcast"); exactly today's from cover 0.75 up.
+    const coverShare = useMemo(
+        () => resolveWeatherCoverDimming(blendedWeather),
+        [blendedWeather],
+    );
     const nightVisibility = getVisualNightAmount(timeOfDay);
-    const fogColor =
-        nightVisibility < 0.5 ? new Color(0xaaaaaa) : new Color(0x55556a);
+    const atmosphereFog = useMemo(
+        () =>
+            resolveAtmosphereFog({
+                foggy: fog * coverShare,
+                horizonColor: sky.lowerColor,
+            }) ?? inertAtmosphereFog,
+        [coverShare, fog, sky.lowerColor],
+    );
 
-    // Handle rain
+    // Rain wets the garden surfaces; the drops, splashes and puddles are the
+    // rain layer's (`weather/rain/RainLayer.tsx`).
     const rain = blendedWeather?.rainy ?? 0;
-    const { activeCount: rainParticleCount, intensity: rainParticleIntensity } =
-        resolveRainParticleState(rain, qualityProfile.rainParticleMultiplier);
 
     useEffect(() => {
         setRainSurfaceIntensity(weatherDisabled ? 0 : rain);
     }, [rain, setRainSurfaceIntensity, weatherDisabled]);
 
-    // Handle snow particles - based on current weather (snowy intensity 0-1)
     const snowParticles = blendedWeather?.snowy ?? 0;
-    const { activeCount: snowParticleCount, capacity: snowParticleCapacity } =
-        resolveSnowParticleCounts(
-            snowParticles,
-            qualityProfile.snowParticleMultiplier,
-        );
 
+    // Particle, cloud and other weather counts come from the weather layers.
     useEffect(() => {
         updateGameProfileMetadata({
-            rainParticleCount:
-                !weatherDisabled && rainParticleCount > 0
-                    ? rainParticleCount
-                    : 0,
             shadowMapSize: qualityProfile.shadowMapSize,
             shadowsEnabled: qualityProfile.shadows,
-            snowParticleCapacity:
-                !weatherDisabled && snowParticleCount > 0
-                    ? snowParticleCapacity
-                    : 0,
-            snowParticleCount:
-                !weatherDisabled && snowParticleCount > 0
-                    ? snowParticleCount
-                    : 0,
             weatherDisabled,
         });
-    }, [
-        qualityProfile.shadowMapSize,
-        qualityProfile.shadows,
-        rainParticleCount,
-        snowParticleCapacity,
-        snowParticleCount,
-        weatherDisabled,
-    ]);
+    }, [qualityProfile.shadowMapSize, qualityProfile.shadows, weatherDisabled]);
 
-    // Light clouds keep only a few faint bright stars visible, but only at
-    // night or during twilight transitions.
-    const cloudCover = blendedWeather?.cloudy ?? 1;
+    // The sky's cover: thunder always brings the overcast deck
+    // (GAME_ART.md "Weather > Clouds and overcast").
+    const thunder = (blendedWeather?.thundery ?? 0) > 0 ? 1 : 0;
+    const cloudCover = resolveBandCover(blendedWeather?.cloudy ?? 1, thunder);
     const fogCover = blendedWeather?.foggy ?? 0;
     const effectiveCloudCover = Math.min(1, cloudCover + fogCover * 0.35);
+    // Stars hide as cloud grows (GAME_ART.md "Weather > Clear").
     const starVisibility = weatherDisabled
         ? 0
         : Math.max(0, 1 - cloudCover / 0.6) ** 1.5 * nightVisibility;
@@ -877,27 +838,28 @@ export function Environment({
         date: currentTime,
         skyVisibility: perseidsVisibility,
     });
-    // Dense clouds or fog dim the sun/moon discs toward a small residual
-    // glow. The curve drops fast so 70%+ overcast reads as "no sun" rather
-    // than a dimmer but still-solid disc, but never fully hits zero — matching
-    // the directional light which still casts minimal shadows at full cover.
-    const obstruction = Math.min(1, Math.max(cloudCover, fogCover));
+    // The sun or moon hides behind the deck (gone at 0.85), in fog and in
+    // falling snow, with no residual ghost disc.
     const bodyVisibility = weatherDisabled
         ? 1
-        : Math.max(0.05, (1 - obstruction) ** 2);
-    const daylightVisibility = getVisualDaylightAmount(timeOfDay);
+        : resolveSkyBodyWeatherVisibility({
+              cloudy: resolveBandCover(blendedWeather?.cloudy ?? 0, thunder),
+              foggy: fogCover,
+              snowy: snowParticles,
+          });
+    // The key light casts shadows by day and, more softly, under the moon.
+    // Cover fades them, by the island's cover share (1 while the weather
+    // loads, as the cover then counts as full).
+    const shadowCoverShare = blendedWeather ? coverShare : 1;
     const shadowVisibility = weatherDisabled
-        ? 1
+        ? directionalLight.shadowVisibility
         : Math.max(
               0,
-              daylightVisibility *
-                  (1 - smoothstep(0.42, 0.95, effectiveCloudCover)),
+              directionalLight.shadowVisibility *
+                  (1 -
+                      smoothstep(0.42, 0.95, effectiveCloudCover) *
+                          shadowCoverShare),
           );
-    const cloudShadowStrength = weatherDisabled
-        ? 0
-        : daylightVisibility *
-          smoothstep(0.08, 0.22, cloudCover) *
-          (1 - smoothstep(0.5, 0.9, effectiveCloudCover));
     const gardenShadowSignature = useMemo(
         () => buildGardenShadowGeometrySignature(garden?.stacks),
         [garden?.stacks],
@@ -922,7 +884,12 @@ export function Environment({
 
     // Handle ground snow coverage - based on accumulated snow in cm
     const snowAccumulationCm = blendedWeather?.snowAccumulation ?? 0;
-    const snowCoverage = Math.min(1, snowAccumulationCm / 30); // Scale: 0cm=0, 30cm=1
+    // Scale: 0 cm = 0, 30 cm = 1, the scale the snow overlays' settle ranges
+    // (`grassSettleCm`) are written in.
+    const snowCoverage = Math.min(
+        1,
+        snowAccumulationCm / lyingSnowFullCoverageCm,
+    );
 
     useEffect(() => {
         setSnowCoverage(snowCoverage);
@@ -945,68 +912,6 @@ export function Environment({
         typeof blendedWeather?.windDirection === 'string'
             ? (compassToDirection[blendedWeather.windDirection] ?? 0)
             : 0;
-
-    const [lightningFlash, setLightningFlash] = useState(0);
-    const [lightningClearAt, setLightningClearAt] = useState<number | null>(
-        null,
-    );
-    const [nextLightningAt, setNextLightningAt] = useState<number | null>(null);
-    const thunderLevel = actualWeather?.thundery ?? 0;
-    const lightningEnabled = !weatherDisabled && thunderLevel > 0;
-    const stormStrength = Math.min(
-        1,
-        thunderLevel * 0.6 +
-            (blendedWeather?.rainy ?? 0) * 0.3 +
-            (blendedWeather?.cloudy ?? 0) * 0.2,
-    );
-    const nightFactor = 0.2 + nightVisibility * 0.6;
-    const flashStrength = Math.min(
-        1,
-        0.35 + stormStrength * 0.45 + nightFactor,
-    );
-    const requestRender = useSceneRenderRequest();
-
-    useEffect(() => {
-        if (!lightningEnabled) {
-            setLightningFlash(0);
-            setLightningClearAt(null);
-            setNextLightningAt(null);
-            requestRender('lightning-disabled');
-            return;
-        }
-
-        setLightningFlash(0);
-        setLightningClearAt(null);
-        setNextLightningAt(
-            performance.now() + getLightningDelayMs(stormStrength),
-        );
-    }, [lightningEnabled, requestRender, stormStrength]);
-
-    useSceneDeadline({
-        callback: (deadline) => {
-            if (deadline.latenessMs <= 1_000) {
-                setLightningFlash(flashStrength);
-                setLightningClearAt(deadline.nowMs + LIGHTNING_CLEAR_DELAY_MS);
-                requestRender('lightning-flash');
-            }
-            setNextLightningAt(
-                deadline.nowMs + getLightningDelayMs(stormStrength),
-            );
-        },
-        deadlineMs: nextLightningAt,
-        enabled: lightningEnabled,
-        owner: 'lightning-flash',
-    });
-    useSceneDeadline({
-        callback: () => {
-            setLightningFlash(0);
-            setLightningClearAt(null);
-            requestRender('lightning-clear');
-        },
-        deadlineMs: lightningClearAt,
-        enabled: lightningEnabled,
-        owner: 'lightning-clear',
-    });
 
     return (
         <>
@@ -1046,15 +951,9 @@ export function Environment({
             )}
             <ambientLight
                 name="Environment:AmbientLight"
+                color={ambient.color}
                 intensity={ambient.intensity}
             />
-            {lightningFlash > 0 && (
-                <ambientLight
-                    name="Environment:LightningAmbientLight"
-                    color={0xf8fbff}
-                    intensity={lightningFlash * 1.2}
-                />
-            )}
             <hemisphereLight
                 name="Environment:HemisphereLight"
                 position={[0, 1, 0]}
@@ -1070,10 +969,14 @@ export function Environment({
                 intensity={directionalLight.intensity}
                 color={directionalLight.color}
                 position={directionalLight.position}
-                shadow-intensity={qualityProfile.shadows ? shadowVisibility : 0}
+                shadow-intensity={
+                    qualityProfile.shadows
+                        ? shadowVisibility * gameLightRig.shadowIntensity
+                        : 0
+                }
                 shadow-mapSize-height={shadowMapSize}
                 shadow-mapSize-width={shadowMapSize}
-                shadow-radius={2.2}
+                shadow-radius={gameLightRig.shadowRadius}
                 // shadow-near={0.01}
                 // shadow-far={1000}
                 shadow-normalBias={0.03}
@@ -1160,43 +1063,12 @@ export function Environment({
                     fog={blendedWeather?.foggy ?? 0}
                     windSpeed={blendedWeather?.windSpeed ?? 0}
                 />
-                <MorningMist
-                    stacks={sceneGarden?.stacks}
-                    gardenId={garden?.id}
-                    tier={qualityProfile.tier}
-                    enabled={!weatherDisabled}
-                    timeOfDay={timeOfDay}
-                    weather={blendedWeather}
-                />
                 <ColdWeatherEffects
                     weather={actualWeather}
                     tier={qualityProfile.tier}
                     enabled={!weatherDisabled}
                 />
-                <RainRipples
-                    stacks={sceneGarden?.stacks}
-                    gardenId={garden?.id}
-                    tier={qualityProfile.tier}
-                    enabled={!weatherDisabled}
-                    snow={blendedWeather?.snowy ?? 0}
-                />
             </SceneBlockDataBoundary>
-            {!weatherDisabled && blendedWeather && (
-                <CloudLayer
-                    cloudy={blendedWeather.cloudy ?? 0}
-                    foggy={blendedWeather.foggy ?? 0}
-                    quality={qualityProfile}
-                    shadowUpdateMs={cloudShadowUpdateMs}
-                    shadowStrength={
-                        qualityProfile.shadows ? cloudShadowStrength : 0
-                    }
-                    stacks={garden?.stacks}
-                    sunPosition={directionalLight.position}
-                    timeOfDay={timeOfDay}
-                    windDirection={windDirection}
-                    windSpeed={windSpeed}
-                />
-            )}
             {showStars && (
                 <Stars visibility={closeupCameraSettled ? 0 : starVisibility} />
             )}
@@ -1213,32 +1085,29 @@ export function Environment({
                     visibility={closeupCameraSettled ? 0 : bodyVisibility}
                 />
             )}
-            {!weatherDisabled && fog > 0 && (
-                <fog attach="fog" args={[fogColor, fogNear, 190]} />
-            )}
-            {!weatherDisabled && rainParticleCount > 0 && (
-                <Drops
-                    count={rainParticleCount}
-                    intensity={rainParticleIntensity}
-                />
-            )}
-            {!weatherDisabled && snowParticleCount > 0 && (
-                <Snow
-                    activeCount={snowParticleCount}
-                    capacity={snowParticleCapacity}
-                    windSpeed={windSpeed}
-                    windDirection={windDirection}
-                />
-            )}
-            {lightningFlash > 0 && (
+            {!weatherDisabled && (
                 <fog
                     attach="fog"
                     args={[
-                        new Color(0xdde9ff),
-                        Math.max(80, fogNear - 20),
-                        220,
+                        atmosphereFog.color,
+                        atmosphereFog.near,
+                        atmosphereFog.far,
                     ]}
                 />
+            )}
+            {!weatherDisabled && (
+                <SceneBlockDataBoundary>
+                    <WeatherFrameProvider
+                        debug={weatherDebug}
+                        quality={qualityProfile}
+                        snowCover={snowCoverage}
+                        stacks={sceneGarden?.stacks}
+                        timeOfDay={timeOfDay}
+                        weather={blendedWeather}
+                    >
+                        <WeatherLayers />
+                    </WeatherFrameProvider>
+                </SceneBlockDataBoundary>
             )}
             {(solarEclipse?.obscuration ?? 0) > 0 ? (
                 <SolarEclipseSceneOverlay

@@ -1,4 +1,4 @@
-import { type RootState, useThree } from '@react-three/fiber';
+import { type RootState, useFrame, useThree } from '@react-three/fiber';
 import {
     createContext,
     type PropsWithChildren,
@@ -8,15 +8,18 @@ import {
     useLayoutEffect,
     useMemo,
     useRef,
+    useState,
     useSyncExternalStore,
 } from 'react';
 import {
     Box3,
+    BufferGeometry,
     type Camera,
     Color,
     DoubleSide,
     type Group,
     type Material,
+    Matrix4,
     Mesh,
     MeshBasicMaterial,
     NearestFilter,
@@ -34,8 +37,16 @@ import {
     WebGLRenderTarget,
 } from 'three';
 import { updateGameProfileMetadata } from '../../scene/gameProfileMetadata';
+import { usePrefersReducedMotion } from '../../scene/IdleBreathingMotion';
 import { useSceneRenderRequest, useSceneResume } from '../../scene/SceneTime';
+import { useSpring } from '../../scene/sceneSpring';
 import { useSceneAfterFrame } from '../../scene/useSceneAfterFrame';
+import {
+    type BouncePivot,
+    hoverPopConfig,
+    hoverPopScale,
+    popTransform,
+} from './bounceMotion';
 import {
     captureHoverOutlineMaskCacheSnapshot,
     type HoverOutlineMaskCacheSnapshot,
@@ -619,9 +630,194 @@ type HoverOutlineProps = PropsWithChildren<{
     /** Opts rigid proxy geometry into mask reuse; change when its silhouette can change. */
     maskContentKey?: unknown;
     opacity?: number;
+    /**
+     * Grows the target while it is outlined. Defaults to plain hover outlines
+     * (priority 0); pickup and highlight outlines mark a block without
+     * resizing it.
+     */
+    pop?: boolean;
     priority?: number;
     thickness?: number;
 }>;
+
+function hasVisibleMaterial(object: Object3D) {
+    if (!hasMaterial(object) || !object.material) return false;
+    if (!Array.isArray(object.material)) return object.material.visible;
+    for (const material of object.material) if (material.visible) return true;
+    return false;
+}
+
+function hasVisibleHoverContent(root: Object3D) {
+    let visible = false;
+    root.traverseVisible((child) => {
+        if (!visible) visible = hasVisibleMaterial(child);
+    });
+    return visible;
+}
+
+const hoverPopBounds = new Box3();
+const hoverPopPartBounds = new Box3();
+/** Transforms from the pop group to each depth of its content, reused. */
+const hoverPopDepthMatrices: Matrix4[] = [];
+
+/**
+ * Grows `hoverPopBounds` by the drawn content below `parent`, in the pop
+ * group's own space. It composes local matrices only, so it neither reads
+ * nor writes world matrices and allocates nothing once warm.
+ */
+function addHoverPopBounds(
+    parent: Object3D,
+    parentMatrix: Matrix4 | null,
+    depth: number,
+) {
+    let matrix = hoverPopDepthMatrices[depth];
+    if (!matrix) {
+        matrix = new Matrix4();
+        hoverPopDepthMatrices[depth] = matrix;
+    }
+    for (const child of parent.children) {
+        if (!child.visible) continue;
+        if (child.matrixAutoUpdate) child.updateMatrix();
+        if (parentMatrix) matrix.multiplyMatrices(parentMatrix, child.matrix);
+        else matrix.copy(child.matrix);
+        const geometry: unknown = Reflect.get(child, 'geometry');
+        if (geometry instanceof BufferGeometry && hasVisibleMaterial(child)) {
+            if (!geometry.boundingBox) geometry.computeBoundingBox();
+            if (geometry.boundingBox)
+                hoverPopBounds.union(
+                    hoverPopPartBounds
+                        .copy(geometry.boundingBox)
+                        .applyMatrix4(matrix),
+                );
+        }
+        addHoverPopBounds(child, matrix, depth + 1);
+    }
+}
+
+/**
+ * Centre of the footprint of the drawn content at rest, in the pop group's
+ * own space, written to `pivot`. That is the point the pop keeps fixed: the
+ * group scales about it, so it reads the same at any point of the pop.
+ * Hidden helpers such as unused weather overlays are skipped. With nothing
+ * drawn, `pivot` keeps its last value.
+ */
+function resolveHoverPopPivot(group: Group, pivot: [number, number, number]) {
+    hoverPopBounds.makeEmpty();
+    if (group.visible) addHoverPopBounds(group, null, 0);
+    if (hoverPopBounds.isEmpty()) return;
+    pivot[0] = (hoverPopBounds.min.x + hoverPopBounds.max.x) / 2;
+    pivot[1] = hoverPopBounds.min.y;
+    pivot[2] = (hoverPopBounds.min.z + hoverPopBounds.max.z) / 2;
+}
+
+function applyHoverPop(group: Group, scale: number, pivot: BouncePivot) {
+    const transform = popTransform(scale, pivot);
+    group.position.set(
+        transform.positionX,
+        transform.positionY,
+        transform.positionZ,
+    );
+    group.scale.setScalar(transform.scale);
+}
+
+/**
+ * Runs one hover pop. A single scene spring scales the toy, and on every
+ * frame the scene renders the group shifts by `(1 - scale) * pivot`, so the
+ * toy grows about the point it stands on now, even when it moves itself,
+ * such as a rolling beach ball. Mounted from a pop until the toy is back at
+ * rest: a toy that is not popped holds no springs and does no frame work.
+ */
+function HoverPopMotion({
+    groupRef,
+    onSettle,
+    popped,
+}: {
+    groupRef: { readonly current: Group | null };
+    onSettle: () => void;
+    popped: boolean;
+}) {
+    const requestRender = useSceneRenderRequest();
+    const requestRenderRef = useRef(requestRender);
+    requestRenderRef.current = requestRender;
+    const pivotRef = useRef<[number, number, number]>([0, 0, 0]);
+    const [{ scale }, api] = useSpring(() => ({
+        from: { scale: 1 },
+        config: hoverPopConfig,
+    }));
+
+    useLayoutEffect(() => {
+        void api.start({ scale: popped ? hoverPopScale : 1 });
+    }, [api, popped]);
+
+    // A pop cut short, as by reduced motion, puts the toy back at once.
+    useLayoutEffect(
+        () => () => {
+            const group = groupRef.current;
+            if (!group || group.scale.x === 1) return;
+            applyHoverPop(group, 1, pivotRef.current);
+            requestRenderRef.current('hover-pop');
+        },
+        [groupRef],
+    );
+
+    useFrame(() => {
+        const group = groupRef.current;
+        if (!group) return;
+        resolveHoverPopPivot(group, pivotRef.current);
+        const value = scale.get();
+        applyHoverPop(group, value, pivotRef.current);
+        if (!popped && value === 1 && scale.idle) onSettle();
+    });
+    return null;
+}
+
+type HoverPopState = 'popped' | 'rest' | 'settling';
+
+/**
+ * Hover pop: the outlined toy grows to `hoverPopScale` about the point it
+ * stands on and springs back when the pointer leaves. Proxy outlines, whose
+ * meshes are invisible stand-ins for an instanced block, keep their size so
+ * the outline stays on the block that is actually drawn.
+ */
+function HoverPop({
+    active,
+    children,
+}: PropsWithChildren<{ active: boolean }>) {
+    const groupRef = useRef<Group>(null);
+    const reducedMotion = usePrefersReducedMotion();
+    const [state, setState] = useState<HoverPopState>('rest');
+    const settle = useCallback(
+        () =>
+            setState((current) => (current === 'settling' ? 'rest' : current)),
+        [],
+    );
+
+    useLayoutEffect(() => {
+        const group = groupRef.current;
+        const pop =
+            active &&
+            !reducedMotion &&
+            group !== null &&
+            hasVisibleHoverContent(group);
+        setState((current) => {
+            if (pop) return 'popped';
+            return current === 'rest' || reducedMotion ? 'rest' : 'settling';
+        });
+    }, [active, reducedMotion]);
+
+    return (
+        <group ref={groupRef} name="Animation:HoverPop">
+            {children}
+            {state === 'rest' ? null : (
+                <HoverPopMotion
+                    groupRef={groupRef}
+                    onSettle={settle}
+                    popped={state === 'popped'}
+                />
+            )}
+        </group>
+    );
+}
 
 export function HoverOutline({
     children,
@@ -629,6 +825,7 @@ export function HoverOutline({
     hovered = false,
     maskContentKey,
     opacity = 1,
+    pop,
     priority = 0,
     thickness = 5,
 }: HoverOutlineProps) {
@@ -669,7 +866,9 @@ export function HoverOutline({
 
     return (
         <group ref={ref} name="Interaction:HoverOutlineTarget">
-            {children}
+            <HoverPop active={hovered && (pop ?? priority <= 0)}>
+                {children}
+            </HoverPop>
         </group>
     );
 }

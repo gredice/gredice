@@ -155,12 +155,25 @@ describe('Autumn aster pot release', () => {
                             object.geometry.getAttribute('position').count) / 3;
                 }
             });
-            assert.equal(triangles, 2152);
+            assert.equal(triangles, 2300);
             assert.ok(bytes.length < 250_000);
+            // Roughness bands of GAME_ART.md: glazed bowl, satin flowers and
+            // leaves, matte soil.
+            const roughnessBands: Record<string, [number, number]> = {
+                'Material.AutumnAster.Terracotta': [0.25, 0.45],
+                'Material.AutumnAster.Petals': [0.5, 0.6],
+                'Material.AutumnAster.Centers': [0.5, 0.6],
+                'Material.AutumnAster.Foliage': [0.5, 0.6],
+                'Material.AutumnAster.Soil': [0.75, 0.85],
+            };
             for (const material of document.materials) {
                 assert.equal(material.pbrMetallicRoughness.metallicFactor, 0);
+                const band = roughnessBands[material.name];
+                assert.ok(band, material.name);
+                const roughness = material.pbrMetallicRoughness.roughnessFactor;
                 assert.ok(
-                    material.pbrMetallicRoughness.roughnessFactor >= 0.82,
+                    roughness >= band[0] - 1e-6 && roughness <= band[1] + 1e-6,
+                    `${material.name} roughness ${roughness}`,
                 );
                 assert.equal(material.emissiveFactor, undefined);
             }

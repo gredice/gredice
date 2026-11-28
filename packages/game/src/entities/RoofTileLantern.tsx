@@ -1,6 +1,7 @@
 import { useMemo, useRef } from 'react';
 import type { MeshStandardMaterial } from 'three';
 import { animated } from '../scene/sceneSpring';
+import { seasonalEmissive, seasonalRoles } from '../scene/seasonalRoles';
 import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
@@ -9,8 +10,9 @@ import { GardenNightLight } from './helpers/GardenNightLight';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 import { WeatheredEntityPart } from './helpers/WeatheredEntityPart';
 
-const roofTileGlowColor = '#ff9425';
-const roofTileSourceColor = '#000000';
+// The lantern glow role: its day colour on the ember, its emissive at night.
+const roofTileGlowColor = seasonalEmissive.lanternGlow;
+const roofTileSource = seasonalRoles.lanternGlow;
 const roofTileLightPosition = [0, 0.23, 0] as const;
 const tileRain = {
     darkness: 0.82,
@@ -52,22 +54,22 @@ export function RoofTileLantern({
                 receiveShadow={false}
             >
                 <meshStandardMaterial
-                    color={roofTileSourceColor}
+                    color={roofTileSource.albedo}
                     emissive={roofTileGlowColor}
                     emissiveIntensity={0.3}
                     metalness={0}
                     ref={glowMaterialRef}
-                    roughness={0.36}
+                    roughness={roofTileSource.roughness}
                 />
             </WeatheredEntityPart>
             <GardenNightLight
                 color={roofTileGlowColor}
-                decay={1.9}
-                distance={3.4}
+                decay={2}
+                distance={3}
                 emissiveBaseIntensity={0.3}
                 emissiveMaterialRefs={emissiveMaterialRefs}
-                emissivePeakIntensity={3.4}
-                lightIntensity={1.65}
+                emissivePeakIntensity={4.6}
+                lightIntensity={1}
                 lightKey={`RoofTileLantern:${block.id}`}
                 position={roofTileLightPosition}
             />

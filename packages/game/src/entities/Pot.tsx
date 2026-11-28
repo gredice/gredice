@@ -7,6 +7,13 @@ import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
+import {
+    type PotVariantName,
+    potGlazeColors,
+    potGlazeRoughness,
+    potSoilColor,
+    potSoilRoughness,
+} from './potPalette';
 
 type PotVariantConfig = {
     assetName: GameAssetName;
@@ -20,63 +27,63 @@ const potVariants = {
         assetName: 'PotLowBowl',
         potNode: 'PotVariant_01_Low_Bowl',
         soilNode: 'PotVariant_Soil_01',
-        color: '#C56C45',
+        color: potGlazeColors.PotLowBowl,
     },
     PotRoundedBowl: {
         assetName: 'PotRoundedBowl',
         potNode: 'PotVariant_02_Rounded_Bowl',
         soilNode: 'PotVariant_Soil_02',
-        color: '#7D8F68',
+        color: potGlazeColors.PotRoundedBowl,
     },
     PotBulbousNeck: {
         assetName: 'PotBulbousNeck',
         potNode: 'PotVariant_03_Bulbous_Neck',
         soilNode: 'PotVariant_Soil_03',
-        color: '#B85A3E',
+        color: potGlazeColors.PotBulbousNeck,
     },
     PotTallTapered: {
         assetName: 'PotTallTapered',
         potNode: 'PotVariant_04_Tall_Tapered',
         soilNode: 'PotVariant_Soil_04',
-        color: '#D7A354',
+        color: potGlazeColors.PotTallTapered,
     },
     PotHourglass: {
         assetName: 'PotHourglass',
         potNode: 'PotVariant_05_Hourglass',
         soilNode: 'PotVariant_Soil_05',
-        color: '#637994',
+        color: potGlazeColors.PotHourglass,
     },
     PotStraightShortTub: {
         assetName: 'PotStraightShortTub',
         potNode: 'PotVariant_06_Straight_Short_Tub',
         soilNode: 'PotVariant_Soil_06',
-        color: '#9B7656',
+        color: potGlazeColors.PotStraightShortTub,
     },
     PotNarrowFootBowl: {
         assetName: 'PotNarrowFootBowl',
         potNode: 'PotVariant_07_Narrow_Foot_Bowl',
         soilNode: 'PotVariant_Soil_07',
-        color: '#D18A5A',
+        color: potGlazeColors.PotNarrowFootBowl,
     },
     PotSquatRidged: {
         assetName: 'PotSquatRidged',
         potNode: 'PotVariant_08_Squat_Ridged_Pot',
         soilNode: 'PotVariant_Soil_08',
-        color: '#676F58',
+        color: potGlazeColors.PotSquatRidged,
     },
     PotTallSlenderCone: {
         assetName: 'PotTallSlenderCone',
         potNode: 'PotVariant_09_Tall_Slender_Cone',
         soilNode: 'PotVariant_Soil_09',
-        color: '#C74E3A',
+        color: potGlazeColors.PotTallSlenderCone,
     },
     PotWideLippedCup: {
         assetName: 'PotWideLippedCup',
         potNode: 'PotVariant_10_Wide_Lipped_Cup',
         soilNode: 'PotVariant_Soil_10',
-        color: '#C18B45',
+        color: potGlazeColors.PotWideLippedCup,
     },
-} satisfies Record<string, PotVariantConfig>;
+} satisfies Record<PotVariantName, PotVariantConfig>;
 
 const potVariantByName = new Map<string, PotVariantConfig>(
     Object.entries(potVariants),
@@ -102,8 +109,8 @@ function PotEntity({
             <mesh castShadow receiveShadow geometry={potGeometry}>
                 <meshStandardMaterial
                     color={config.color}
-                    roughness={0.78}
-                    metalness={0.02}
+                    roughness={potGlazeRoughness}
+                    metalness={0}
                 />
                 <SnowOverlay
                     geometry={potGeometry}
@@ -121,8 +128,8 @@ function PotEntity({
             </mesh>
             <mesh castShadow receiveShadow geometry={soilGeometry}>
                 <meshStandardMaterial
-                    color="#3F2A1C"
-                    roughness={0.95}
+                    color={potSoilColor}
+                    roughness={potSoilRoughness}
                     metalness={0}
                 />
                 <SnowOverlay

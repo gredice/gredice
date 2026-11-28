@@ -130,7 +130,7 @@ describe('Friendly Halloween accent release', () => {
                         (node.geometry.index?.count ??
                             node.geometry.getAttribute('position').count) / 3;
             });
-            assert.equal(triangles, name === 'FriendlyGhost' ? 468 : 596);
+            assert.equal(triangles, name === 'FriendlyGhost' ? 1656 : 1780);
             assert.ok(bytes.length < 200000);
             for (const material of document.materials) {
                 assert.ok(

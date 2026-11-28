@@ -163,13 +163,17 @@ describe('Autumn leaf pile release', () => {
             });
             assert.equal(
                 triangles,
-                asset === 'AutumnLeafPileMound' ? 198 : 248,
+                asset === 'AutumnLeafPileMound' ? 2174 : 2302,
             );
             assert.ok(bytes.length < 250_000);
             for (const material of document.materials) {
                 assert.equal(material.pbrMetallicRoughness.metallicFactor, 0);
+                // GAME_ART satin band for wood, leaves and stone (float32 factors).
                 assert.ok(
-                    material.pbrMetallicRoughness.roughnessFactor >= 0.82,
+                    material.pbrMetallicRoughness.roughnessFactor >=
+                        0.5 - 1e-6 &&
+                        material.pbrMetallicRoughness.roughnessFactor <=
+                            0.6 + 1e-6,
                 );
                 assert.equal(material.emissiveFactor, undefined);
             }

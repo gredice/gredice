@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useMemo } from 'react';
-import { DoubleSide, type Material, MeshStandardMaterial } from 'three';
+import { type Material, MeshStandardMaterial } from 'three';
 import type { GameAssetName } from '../data/models';
 import type { GLTFResult } from '../models/GameAssets';
 import { StaticRenderPacketBatchProvider } from '../scene/compiler/StaticRenderPacketBatch';
@@ -36,12 +36,18 @@ import type { GroundDecorationWeather } from './groundDecorations/GroundDecorati
 import { AutumnEntityLeaves } from './helpers/AutumnEntityLeaves';
 import {
     type GroundPatchSurface,
+    groundSurfaceColors,
     useGroundPatchMaterial,
 } from './helpers/groundPatchMaterial';
+import { StaticContactShadows } from './helpers/StaticContactShadows';
+import { bridgeWeatherCreases } from './helpers/weatherCreaseBridges';
 import { MulchPatchInstances } from './raisedBed/MulchPatch';
 import { RaisedBedGeneratedPlantFieldBatches } from './raisedBed/RaisedBedGeneratedPlantFieldBatches';
 import { RAISED_BED_SUPPORT_SCALE } from './raisedBed/raisedBedDimensions';
 import { TreeCanopyInstances } from './TreeCanopyInstances';
+import { TerrainRimInstances } from './terrainRim/TerrainRimInstances';
+import { TerrainVergeInstances } from './terrainRim/TerrainVergeInstances';
+import { treeEntityScale } from './treeEntityScale';
 import { tulipBouquetStems } from './tulipBouquet';
 
 export const instancedBlockNames = [
@@ -284,31 +290,13 @@ export function EntityInstances({
     const shouldRenderGroundDecorations =
         (renderGroundDecorations ?? renderDetails) &&
         qualityProfile.groundDecorationDensity > 0;
+    // Same snow as BlockSnow.tsx; the snow ground patch preset owns it too.
     const snowMaterial = useMemo(
         () =>
             new MeshStandardMaterial({
-                color: '#f0f7ff',
-                roughness: 1,
+                color: groundSurfaceColors.snow,
+                roughness: 0.8,
                 metalness: 0,
-            }),
-        [],
-    );
-    const desertStoneBodyMaterial = useMemo(
-        () =>
-            new MeshStandardMaterial({
-                color: '#d86a2f',
-                roughness: 0.88,
-                metalness: 0,
-            }),
-        [],
-    );
-    const desertStoneGrooveMaterial = useMemo(
-        () =>
-            new MeshStandardMaterial({
-                color: '#a04322',
-                roughness: 0.94,
-                metalness: 0,
-                side: DoubleSide,
             }),
         [],
     );
@@ -344,7 +332,20 @@ export function EntityInstances({
         <EntityBlockInstanceIndexContext.Provider
             value={entityBlockInstanceIndex}
         >
+            {/* Contact blobs under standing entities, on every quality tier. */}
+            <StaticContactShadows
+                shadowMapsEnabled={qualityProfile.shadows}
+                snowOverlayMinCoverage={qualityProfile.snowOverlayMinCoverage}
+                stacks={stacks}
+            />
             <StaticRenderPacketBatchProvider>
+                <TerrainRimInstances stacks={stacks} {...commonSnowProps} />
+                <Suspense fallback={null}>
+                    <TerrainVergeInstances
+                        stacks={stacks}
+                        {...commonSnowProps}
+                    />
+                </Suspense>
                 <EntityInstancesAssetBlock
                     assetName="BlockGrass"
                     stacks={stacks}
@@ -370,13 +371,16 @@ export function EntityInstances({
                     renderRainWetOverlay
                     yOffset={0.2}
                     geometry={(gltf) =>
-                        gltf.nodes.Block_Grass_Angle_1_2.geometry
+                        bridgeWeatherCreases(
+                            gltf.nodes.Block_Grass_Angle_1_2.geometry,
+                        )
                     }
                     material={(gltf) =>
                         gltf.nodes.Block_Grass_Angle_1_2.material
                     }
-                    snow={snowPresets.grassAngle}
-                    snowLift={0.003}
+                    weatherSurface="base-ground"
+                    snow={snowPresets.grassFlat}
+                    snowLift={0.01}
                     {...mergedTerrainChunkProps}
                     {...commonSnowProps}
                 />
@@ -405,13 +409,16 @@ export function EntityInstances({
                     renderRainWetOverlay
                     yOffset={0.2}
                     geometry={(gltf) =>
-                        gltf.nodes.Block_Grass_Corner_1_2.geometry
+                        bridgeWeatherCreases(
+                            gltf.nodes.Block_Grass_Corner_1_2.geometry,
+                        )
                     }
                     material={(gltf) =>
                         gltf.nodes.Block_Grass_Corner_1_2.material
                     }
-                    snow={snowPresets.grassCorner}
-                    snowLift={0.003}
+                    weatherSurface="base-ground"
+                    snow={snowPresets.grassFlat}
+                    snowLift={0.01}
                     {...mergedTerrainChunkProps}
                     {...commonSnowProps}
                 />
@@ -440,13 +447,16 @@ export function EntityInstances({
                     renderRainWetOverlay
                     yOffset={0.2}
                     geometry={(gltf) =>
-                        gltf.nodes.Block_Grass_Reverse_Corner_1_2.geometry
+                        bridgeWeatherCreases(
+                            gltf.nodes.Block_Grass_Reverse_Corner_1_2.geometry,
+                        )
                     }
                     material={(gltf) =>
                         gltf.nodes.Block_Grass_Reverse_Corner_1_2.material
                     }
-                    snow={snowPresets.grassReverseCorner}
-                    snowLift={0.003}
+                    weatherSurface="base-ground"
+                    snow={snowPresets.grassFlat}
+                    snowLift={0.01}
                     {...mergedTerrainChunkProps}
                     {...commonSnowProps}
                 />
@@ -474,9 +484,14 @@ export function EntityInstances({
                     groundPatch="sand"
                     renderRainWetOverlay
                     yOffset={0.2}
-                    geometry={(gltf) => gltf.nodes.Block_Sand_Angle_1.geometry}
+                    geometry={(gltf) =>
+                        bridgeWeatherCreases(
+                            gltf.nodes.Block_Sand_Angle_1.geometry,
+                        )
+                    }
                     material={(gltf) => gltf.nodes.Block_Sand_Angle_1.material}
-                    snow={snowPresets.sandAngle}
+                    weatherSurface="base-ground"
+                    snow={snowPresets.sand}
                     snowLift={0.003}
                     {...mergedTerrainChunkProps}
                     {...commonSnowProps}
@@ -489,9 +504,14 @@ export function EntityInstances({
                     groundPatch="sand"
                     renderRainWetOverlay
                     yOffset={0.2}
-                    geometry={(gltf) => gltf.nodes.Block_Sand_Corner_1.geometry}
+                    geometry={(gltf) =>
+                        bridgeWeatherCreases(
+                            gltf.nodes.Block_Sand_Corner_1.geometry,
+                        )
+                    }
                     material={(gltf) => gltf.nodes.Block_Sand_Corner_1.material}
-                    snow={snowPresets.sandCorner}
+                    weatherSurface="base-ground"
+                    snow={snowPresets.sand}
                     snowLift={0.003}
                     {...mergedTerrainChunkProps}
                     {...commonSnowProps}
@@ -505,12 +525,15 @@ export function EntityInstances({
                     renderRainWetOverlay
                     yOffset={0.2}
                     geometry={(gltf) =>
-                        gltf.nodes.Block_Sand_Reverse_Corner_1.geometry
+                        bridgeWeatherCreases(
+                            gltf.nodes.Block_Sand_Reverse_Corner_1.geometry,
+                        )
                     }
                     material={(gltf) =>
                         gltf.nodes.Block_Sand_Reverse_Corner_1.material
                     }
-                    snow={snowPresets.sandReverseCorner}
+                    weatherSurface="base-ground"
+                    snow={snowPresets.sand}
                     snowLift={0.003}
                     {...mergedTerrainChunkProps}
                     {...commonSnowProps}
@@ -537,9 +560,14 @@ export function EntityInstances({
                     staticOpaqueCacheGroup="base-terrain"
                     groundPatch="snow"
                     yOffset={0.2}
-                    geometry={(gltf) => gltf.nodes.Block_Sand_Angle_1.geometry}
+                    geometry={(gltf) =>
+                        bridgeWeatherCreases(
+                            gltf.nodes.Block_Sand_Angle_1.geometry,
+                        )
+                    }
                     material={() => snowMaterial}
-                    snow={snowPresets.snowAngle}
+                    weatherSurface="base-ground"
+                    snow={snowPresets.snow}
                     snowLift={0.003}
                     {...mergedTerrainChunkProps}
                     {...commonSnowProps}
@@ -551,9 +579,14 @@ export function EntityInstances({
                     staticOpaqueCacheGroup="base-terrain"
                     groundPatch="snow"
                     yOffset={0.2}
-                    geometry={(gltf) => gltf.nodes.Block_Sand_Corner_1.geometry}
+                    geometry={(gltf) =>
+                        bridgeWeatherCreases(
+                            gltf.nodes.Block_Sand_Corner_1.geometry,
+                        )
+                    }
                     material={() => snowMaterial}
-                    snow={snowPresets.snowCorner}
+                    weatherSurface="base-ground"
+                    snow={snowPresets.snow}
                     snowLift={0.003}
                     {...mergedTerrainChunkProps}
                     {...commonSnowProps}
@@ -566,10 +599,13 @@ export function EntityInstances({
                     groundPatch="snow"
                     yOffset={0.2}
                     geometry={(gltf) =>
-                        gltf.nodes.Block_Sand_Reverse_Corner_1.geometry
+                        bridgeWeatherCreases(
+                            gltf.nodes.Block_Sand_Reverse_Corner_1.geometry,
+                        )
                     }
                     material={() => snowMaterial}
-                    snow={snowPresets.snowReverseCorner}
+                    weatherSurface="base-ground"
+                    snow={snowPresets.snow}
                     snowLift={0.003}
                     {...mergedTerrainChunkProps}
                     {...commonSnowProps}
@@ -602,7 +638,7 @@ export function EntityInstances({
                     name="Tree"
                     staticOpaqueCacheGroup="static-props"
                     yOffset={0.5}
-                    scale={[0.125, 0.5, 0.125]}
+                    scale={treeEntityScale}
                     geometry={(gltf) => gltf.nodes.Tree_1_1.geometry}
                     material={(gltf) => gltf.nodes.Tree_1_1.material}
                     {...commonSnowProps}
@@ -722,7 +758,9 @@ export function EntityInstances({
                     geometry={(gltf) =>
                         gltf.nodes.DesertStoneSmall_Body.geometry
                     }
-                    material={() => desertStoneBodyMaterial}
+                    material={(gltf) =>
+                        gltf.nodes.DesertStoneSmall_Body.material
+                    }
                     scale={[0.165, 0.165, 0.165]}
                     renderRainWetOverlay
                     snow={snowPresets.stone}
@@ -736,7 +774,9 @@ export function EntityInstances({
                     geometry={(gltf) =>
                         gltf.nodes.DesertStoneSmall_Crevices.geometry
                     }
-                    material={() => desertStoneGrooveMaterial}
+                    material={(gltf) =>
+                        gltf.nodes.DesertStoneSmall_Crevices.material
+                    }
                     scale={[0.165, 0.165, 0.165]}
                     {...commonSnowProps}
                 />
@@ -747,7 +787,9 @@ export function EntityInstances({
                     geometry={(gltf) =>
                         gltf.nodes.DesertStoneMedium_Body.geometry
                     }
-                    material={() => desertStoneBodyMaterial}
+                    material={(gltf) =>
+                        gltf.nodes.DesertStoneMedium_Body.material
+                    }
                     scale={[0.236, 0.269, 0.205]}
                     renderRainWetOverlay
                     snow={snowPresets.stone}
@@ -761,7 +803,9 @@ export function EntityInstances({
                     geometry={(gltf) =>
                         gltf.nodes.DesertStoneMedium_Crevices.geometry
                     }
-                    material={() => desertStoneGrooveMaterial}
+                    material={(gltf) =>
+                        gltf.nodes.DesertStoneMedium_Crevices.material
+                    }
                     scale={[0.236, 0.269, 0.205]}
                     {...commonSnowProps}
                 />
@@ -772,7 +816,9 @@ export function EntityInstances({
                     geometry={(gltf) =>
                         gltf.nodes.DesertStoneLarge_Body.geometry
                     }
-                    material={() => desertStoneBodyMaterial}
+                    material={(gltf) =>
+                        gltf.nodes.DesertStoneLarge_Body.material
+                    }
                     scale={[0.263, 0.426, 0.291]}
                     renderRainWetOverlay
                     snow={snowPresets.stone}
@@ -786,7 +832,9 @@ export function EntityInstances({
                     geometry={(gltf) =>
                         gltf.nodes.DesertStoneLarge_Crevices.geometry
                     }
-                    material={() => desertStoneGrooveMaterial}
+                    material={(gltf) =>
+                        gltf.nodes.DesertStoneLarge_Crevices.material
+                    }
                     scale={[0.263, 0.426, 0.291]}
                     {...commonSnowProps}
                 />
@@ -818,6 +866,7 @@ export function EntityInstances({
                     <AdditionalEntityInstances
                         stacks={stacks}
                         batchStaticMaterial
+                        tier={qualityProfile.tier}
                         {...commonSnowProps}
                     />
                 </Suspense>

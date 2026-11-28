@@ -8,6 +8,7 @@ import { useGameGLTF } from '../utils/useGameGLTF';
 import { dryGroundBaseColor } from './dryGroundPalette';
 import { BlockSurfaceDecorationSprites } from './groundDecorations/BlockSurfaceDecorationSprites';
 import {
+    groundSurfaceColors,
     useGroundPatchMaterial,
     useGroundPatchStandardMaterial,
 } from './helpers/groundPatchMaterial';
@@ -24,7 +25,7 @@ export function BlockDryGroundCorner({
     const material = useGroundPatchStandardMaterial({
         color: dryGroundBaseColor,
         metalness: 0,
-        roughness: 1,
+        roughness: 0.8,
         surface: 'dryDirt',
     });
 
@@ -167,9 +168,9 @@ export function BlockSnowCorner({
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
     const snowMaterial = useGroundPatchStandardMaterial({
-        color: '#f0f7ff',
+        color: groundSurfaceColors.snow,
         metalness: 0,
-        roughness: 1,
+        roughness: 0.8,
         surface: 'snow',
     });
 

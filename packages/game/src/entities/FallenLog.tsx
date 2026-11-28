@@ -39,7 +39,7 @@ export function FallenLog({
                 snow={
                     disabled
                         ? false
-                        : { maxThickness: 0.018, coverageMultiplier: 0.3 }
+                        : { maxThickness: 0.035, coverageMultiplier: 0.7 }
                 }
                 rain={disabled ? false : { glossiness: 0.15 }}
             />

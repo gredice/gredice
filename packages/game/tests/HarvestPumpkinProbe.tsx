@@ -2,6 +2,7 @@ import { harvestPumpkins } from '@gredice/js/harvestPumpkins';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useLayoutEffect, useRef } from 'react';
 import { Box3, Mesh, MeshStandardMaterial, Vector3 } from 'three';
+import { harvestPumpkinSkinColor } from '../src/entities/HarvestPumpkin';
 import { useSceneTimeInvalidation } from '../src/scene/SceneTime';
 
 export function HarvestPumpkinProbe({
@@ -27,7 +28,9 @@ export function HarvestPumpkinProbe({
                     child instanceof Mesh &&
                     child.material instanceof MeshStandardMaterial &&
                     child.material.color.getHexString().toLowerCase() ===
-                        item.color.slice(1).toLowerCase(),
+                        harvestPumpkinSkinColor(item.color)
+                            .slice(1)
+                            .toLowerCase(),
             );
             if (!body) throw new Error(`Wrong runtime colour: ${item.name}`);
             const bounds = new Box3().setFromObject(object);

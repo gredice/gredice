@@ -1,22 +1,28 @@
+import {
+    cropFlowerPalette,
+    cropLeafPalette,
+    cropStemPalette,
+    cropThornPalette,
+} from '../cropPalette';
 import type { PlantDefinition } from '../plant-definition-types';
 import { createDevelopmentProgram, createPlant } from './helpers';
 
 const berryShrubAppearance = {
     height: 0.74,
     stem: {
-        color: '#6f7d46',
+        color: cropStemPalette.wood,
         radius: 0.03,
         radiusDecay: 0.56,
         minRadius: 0.004,
     },
     leaf: {
-        color: '#587b37',
+        color: cropLeafPalette.base,
         size: 0.18,
         type: 'oval',
     },
     flower: {
         enabled: true,
-        color: '#fff8ef',
+        color: cropFlowerPalette.cream,
         size: 0.05,
     },
 } satisfies Pick<PlantDefinition, 'flower' | 'height' | 'leaf' | 'stem'>;
@@ -24,19 +30,19 @@ const berryShrubAppearance = {
 const strawberryAppearance = {
     height: 0.34,
     stem: {
-        color: '#7a8f4c',
+        color: cropStemPalette.base,
         radius: 0.018,
         radiusDecay: 0.7,
         minRadius: 0.003,
     },
     leaf: {
-        color: '#5c8a3d',
+        color: cropLeafPalette.base,
         size: 0.24,
         type: 'trifoliate',
     },
     flower: {
         enabled: true,
-        color: '#fff6de',
+        color: cropFlowerPalette.cream,
         size: 0.06,
     },
 } satisfies Pick<PlantDefinition, 'flower' | 'height' | 'leaf' | 'stem'>;
@@ -113,17 +119,17 @@ export const berryPlants = {
         }),
         stem: {
             ...berryShrubAppearance.stem,
-            color: '#7f6e58',
+            color: cropStemPalette.wood,
             radius: 0.028,
         },
         leaf: {
             ...berryShrubAppearance.leaf,
-            color: '#668743',
+            color: cropLeafPalette.base,
             size: 0.16,
         },
         flower: {
             ...berryShrubAppearance.flower,
-            color: '#f2efe8',
+            color: cropFlowerPalette.cream,
         },
         vegetable: {
             enabled: true,
@@ -171,13 +177,13 @@ export const berryPlants = {
         }),
         stem: {
             ...berryShrubAppearance.stem,
-            color: '#7e684c',
+            color: cropStemPalette.wood,
             radius: 0.024,
             minRadius: 0.003,
         },
         leaf: {
             ...berryShrubAppearance.leaf,
-            color: '#55762f',
+            color: cropLeafPalette.base,
             size: 0.22,
             type: 'compound',
         },
@@ -192,7 +198,7 @@ export const berryPlants = {
         },
         thorn: {
             enabled: true,
-            color: '#8f6f48',
+            color: cropThornPalette.wood,
             size: 0.07,
             density: 3,
         },

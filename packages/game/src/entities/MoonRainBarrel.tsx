@@ -16,7 +16,8 @@ import { WeatheredEntityPart } from './helpers/WeatheredEntityPart';
 
 const moonWaterColor = '#358ca3';
 const moonWaterEmissive = '#2b6e9b';
-const moonStoneColor = '#40515a';
+// Pale moonstone, #d9e2f2 on a sunlit face; it still glows at night.
+const moonStoneColor = '#8c929d';
 const moonStoneEmissive = '#6b94ad';
 const moonLightPosition = [0, 0.72, 0] as const;
 const barrelRain = {
@@ -93,7 +94,7 @@ export function MoonRainBarrel({
                     emissiveIntensity={0.14}
                     metalness={0}
                     ref={moonStoneMaterialRef}
-                    roughness={0.48}
+                    roughness={0.45}
                 />
             </WeatheredEntityPart>
             <WeatheredEntityPart
@@ -107,10 +108,10 @@ export function MoonRainBarrel({
                     distort={0.1}
                     emissive={moonWaterEmissive}
                     emissiveIntensity={0.12}
-                    metalness={0.08}
+                    metalness={0}
                     opacity={0.82}
                     ref={waterMaterialRef}
-                    roughness={0.3}
+                    roughness={0.15}
                     side={DoubleSide}
                     speed={resolveTimeDrivenMaterialSpeed(
                         0.55,

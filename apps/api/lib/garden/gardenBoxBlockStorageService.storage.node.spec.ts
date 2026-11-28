@@ -17,6 +17,7 @@ import {
     getGardenPlacementSnapshotForUpdate,
     getGardenStackForUpdate,
     getGardenStacks,
+    getLegacyGardenBlockPaidSunflowers,
     knownEventTypes,
     softDeleteGardenOnce,
     updateGardenStack,
@@ -113,6 +114,7 @@ function integrationService({
             getGardenMutationOperationReceipt,
             getGardenPlacementSnapshotForUpdate,
             getGardenStackForUpdate,
+            getLegacyGardenBlockPaidSunflowers,
             updateGardenStack,
             withGardenBoxInventoryTransaction: (
                 accountId,
@@ -141,7 +143,13 @@ async function fixture() {
         gardenId,
         'Block_Grass',
     );
-    const sourceBlockId = await createGardenBlock(gardenId, 'Shade');
+    const sourceBlockId = await createGardenBlock(
+        gardenId,
+        'Shade',
+        null,
+        undefined,
+        { paidSunflowers: 30 },
+    );
     const boxGroundBlockId = await createGardenBlock(gardenId, 'Block_Grass');
     const gardenBoxBlockId = await createGardenBlock(gardenId, 'GardenBox');
     await createGardenStack(gardenId, { x: 0, y: 0 });
@@ -228,10 +236,12 @@ test('real GardenBox store commits one deletion, inventory event, and receipt an
     );
     const committedInventoryEvents = await inventoryAddEvents(fixtureData);
     assert.equal(committedInventoryEvents.length, 1);
+    // The stored unit keeps the source block's paid price for its placement.
     assert.deepEqual(committedInventoryEvents[0]?.data, {
         amount: 1,
         entityId: '101',
         entityTypeName: 'block',
+        paidSunflowers: 30,
         source: `gardenBox:store:${getGardenBoxBlockStorageOperationId(fixtureData.sourceBlockId)}`,
     });
     assert.deepEqual(

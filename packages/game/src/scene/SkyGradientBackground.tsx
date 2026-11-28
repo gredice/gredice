@@ -38,6 +38,11 @@ import {
     timeOfDayToDate,
 } from './sunPosition';
 import { smoothstep } from './visualDayNight';
+import {
+    applyWeatherSkyGreyToGradient,
+    resolveWeatherSkyGrey,
+} from './weather/sky/skyGrey';
+import { resolveWeatherRoleTimeWeights } from './weather/weatherRoles';
 
 const SKY_GRADIENT_TRANSITION_SECONDS = 0.6;
 const SKY_GRADIENT_TRANSITION_EPSILON = 0.001;
@@ -107,7 +112,7 @@ const skyGradientFragment = /* glsl */ `
         float moonGlow = mix(screenMoonGlow, worldMoonGlow, uWorldSky);
 
         color = mix(color, uSunGlowColor, clamp(sunGlow * uSunGlowIntensity, 0.0, 1.0));
-        color = mix(color, vec3(1.0), clamp(sunCore * uSunGlowIntensity * 0.62, 0.0, 1.0));
+        color = mix(color, uSunGlowColor, clamp(sunCore * uSunGlowIntensity * 0.5, 0.0, 1.0));
         color = mix(
             color,
             uMoonGlowColor,
@@ -278,9 +283,19 @@ export function SkyGradientBackground({
             weather,
         });
 
-        return groundView
-            ? resolveGroundViewSkyGradientColors(gradient)
-            : gradient;
+        if (groundView) {
+            // The ground view keeps its colour: its horizon meets the fog
+            // the island takes, which rain does not grey.
+            return resolveGroundViewSkyGradientColors(gradient);
+        }
+        // Rain and storm at high cover grey the backdrop only.
+        return applyWeatherSkyGreyToGradient(
+            gradient,
+            resolveWeatherSkyGrey(
+                weather,
+                resolveWeatherRoleTimeWeights(timeOfDay),
+            ),
+        );
     }, [
         backgroundBlue,
         backgroundGreen,

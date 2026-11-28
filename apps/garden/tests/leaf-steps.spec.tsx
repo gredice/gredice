@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/experimental-ct-react';
 import { LeafStepFixture } from '../../../packages/game/tests/LeafStepFixture';
+import { expect, test } from './webglComponentTest';
 
 // Include cold WebGL/audio instrumentation in the same budget as the scene test.
 test.setTimeout(60_000);

@@ -7,6 +7,7 @@ import type { Stack } from '../types/Stack';
 import {
     resolveWaterFoamCorners,
     resolveWaterFoamEdges,
+    resolveWaterRimExposure,
 } from './waterBlockFoam';
 
 function waterBlock(id: string): Block {
@@ -220,6 +221,122 @@ describe('resolveWaterFoamCorners', () => {
                 stacks,
             }).toArray(),
             [1, 0, 0, 0],
+        );
+    });
+});
+
+describe('resolveWaterRimExposure', () => {
+    const blockData = getLocalSandboxBlockData();
+
+    function exposure(block: Block, currentStack: Stack, stacks: Stack[]) {
+        const rim = resolveWaterRimExposure({
+            block,
+            blockData,
+            stack: currentStack,
+            stacks,
+        });
+        return { corners: rim.corners.toArray(), edges: rim.edges.toArray() };
+    }
+
+    it('rounds every side of a lone water block', () => {
+        const currentWater = waterBlock('water-a');
+        const currentStack = stack(0, 0, [currentWater]);
+
+        assert.deepEqual(exposure(currentWater, currentStack, [currentStack]), {
+            corners: [0, 0, 0, 0],
+            edges: [1, 1, 1, 1],
+        });
+    });
+
+    it('keeps sides at a bank or next to water square', () => {
+        const currentWater = waterBlock('water-a');
+        const currentStack = stack(0, 0, [currentWater]);
+        const stacks = [
+            currentStack,
+            stack(1, 0, [grassBlock('grass-east')]),
+            stack(0, 1, [waterBlock('water-south')]),
+        ];
+
+        assert.deepEqual(
+            exposure(currentWater, currentStack, stacks).edges,
+            [1, 0, 1, 0],
+        );
+    });
+
+    it('turns the lip around an open inner corner', () => {
+        const currentWater = waterBlock('water-a');
+        const currentStack = stack(0, 0, [currentWater]);
+        const stacks = [
+            currentStack,
+            stack(1, 0, [waterBlock('water-east')]),
+            stack(0, 1, [waterBlock('water-south')]),
+        ];
+
+        assert.deepEqual(exposure(currentWater, currentStack, stacks), {
+            corners: [0, 0, 0, 1],
+            edges: [1, 0, 1, 0],
+        });
+    });
+
+    it('rounds the water over a ramp toe but not over its back wall', () => {
+        const currentWater = waterBlock('water-a');
+        const currentStack = stack(0, 0, [currentWater]);
+        // Rotation 0 rises to +x: on the east the toe faces the water, on
+        // the west the back wall stands level with it.
+        const stacks = [
+            currentStack,
+            stack(1, 0, [grassAngleBlock('ramp-east')]),
+            stack(-1, 0, [grassAngleBlock('ramp-west')]),
+            // Its side runs from the toe up to the back: lower part open.
+            stack(0, 1, [grassAngleBlock('ramp-south')]),
+        ];
+
+        assert.deepEqual(
+            exposure(currentWater, currentStack, stacks).edges,
+            [0, 1, 1, 1],
+        );
+    });
+
+    it('closes an open inner corner only where a corner reaches the top', () => {
+        const currentWater = waterBlock('water-a');
+        const currentStack = stack(0, 0, [currentWater]);
+        const ramp = (id: string, rotation: number): Block => ({
+            id,
+            name: 'Block_Grass_Angle',
+            rotation,
+        });
+        const stacks = [
+            currentStack,
+            stack(1, 0, [waterBlock('water-east')]),
+            stack(0, 1, [waterBlock('water-south')]),
+        ];
+
+        // A ramp rising to +x touches the corner with its toe.
+        assert.deepEqual(
+            exposure(currentWater, currentStack, [
+                ...stacks,
+                stack(1, 1, [ramp('ramp-low', 0)]),
+            ]).corners,
+            [0, 0, 0, 1],
+        );
+        // Turned round, it touches the corner with its high back edge.
+        assert.deepEqual(
+            exposure(currentWater, currentStack, [
+                ...stacks,
+                stack(1, 1, [ramp('ramp-high', 2)]),
+            ]).corners,
+            [0, 0, 0, 0],
+        );
+    });
+
+    it('rounds a raised water block above the grass beside it', () => {
+        const raisedWater = waterBlock('water-raised');
+        const currentStack = stack(0, 0, [grassBlock('base'), raisedWater]);
+        const stacks = [currentStack, stack(1, 0, [grassBlock('grass-east')])];
+
+        assert.deepEqual(
+            exposure(raisedWater, currentStack, stacks).edges,
+            [1, 1, 1, 1],
         );
     });
 });

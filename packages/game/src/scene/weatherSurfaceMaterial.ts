@@ -1,5 +1,6 @@
 import type { ColorRepresentation, IUniform, Material } from 'three';
-import { Color, MeshStandardMaterial, NormalBlending, Vector3 } from 'three';
+import { Color, MeshStandardMaterial, NormalBlending } from 'three';
+import { getRainWetSheenColorUniform, rainWetLook } from '../rain/rainWetSheen';
 import { getMaterialShaderHooksWithoutCloudShadowAttenuation } from './cloudShadowAttenuation';
 import {
     getGardenMaterialShaderHookSignature,
@@ -7,7 +8,7 @@ import {
     registerGardenMaterialShaderHooks,
 } from './gardenMaterials';
 
-const WEATHER_SURFACE_PLUGIN_VARIANT_KEY_PREFIX = 'gredice-weather-surface-v3';
+const WEATHER_SURFACE_PLUGIN_VARIANT_KEY_PREFIX = 'gredice-weather-surface-v4';
 const weatherUniformIds = new WeakMap<object, number>();
 let nextWeatherUniformId = 0;
 
@@ -102,7 +103,6 @@ varying float vGrediceWeatherWorldNormalY;
 `;
 
 const weatherSnowVertexPars = `
-attribute vec3 aWeatherLocalPosition;
 attribute float aWeatherSurface;
 attribute float aSnowLayer;
 attribute float aSnowTopDistance;
@@ -207,11 +207,14 @@ if (uGrediceSnowAmount > 0.001) {
         grediceSnowSlopeAlignment,
         uGrediceSnowSlopeExponent
     );
-    // Legacy stable overlays sample source-local position before applying the
-    // per-block instance matrix. Merged base chunks bake that matrix into
-    // position, so this preserved attribute retains the legacy noise phase.
+    // The snow blanket varies in world space, so neighbouring terrain blocks
+    // agree on its thickness where they meet and the cover shows no joint
+    // between blocks at the same height (GAME_ART.md terrain). Merged base
+    // chunks bake the instance matrix into position; both paths reach the
+    // same world position here.
     grediceSnowNoise = grediceWeatherNoise(
-        aWeatherLocalPosition * uGrediceSnowNoiseScale
+        (grediceWeatherObjectMatrix * vec4(transformed, 1.0)).xyz *
+            uGrediceSnowNoiseScale
     );
     float grediceSnowBaseThickness =
         uGrediceSnowMaxThickness *
@@ -322,14 +325,11 @@ varying float vGrediceWeatherWorldNormalY;
 
 const weatherRainFragmentPars = `
 uniform float uGrediceFrostIntensity;
-uniform float uGrediceRainDarkness;
-uniform float uGrediceRainGlossiness;
-uniform float uGrediceRainPuddleStrength;
 uniform float uGrediceRainTopSurfaceBias;
 uniform float uGrediceRainWetness;
-uniform vec3 uGrediceRainBoundsMax;
-uniform vec3 uGrediceRainBoundsMin;
+uniform vec3 uGrediceRainSheenColor;
 
+// Frost grain only; the wet look uses no per-pixel noise.
 float grediceWeatherFragmentNoise(vec3 p) {
     return fract(sin(dot(p, vec3(12.9898, 78.233, 45.164))) * 43758.5453123);
 }
@@ -379,6 +379,30 @@ float grediceWeatherResolveSnowCoverage() {
 }
 `;
 
+/**
+ * A sunlit top face receives about this many times the light that would show
+ * its albedo unchanged (`SUNLIT_GAIN` in `assets/scripts/party_style.py`).
+ * The snow colour is the colour a sunlit snow top shows, so the covered
+ * path divides by it to light snow like an albedo.
+ */
+export const weatherSnowSunlitGain = 3.2;
+
+/**
+ * Share of the light's tint covered snow keeps, on the ground and on props
+ * alike. Snow is a near-white neutral: the full tint of the cloud or night
+ * fill would take it past the neutral range (saturation 0.10 to 0.25), and
+ * too little left the ground grey-white at night beside lavender roofs
+ * (GAME_ART.md "Weather > Snow": clean blue-white, lilac at night).
+ */
+export const weatherSnowLightTint = 0.6;
+
+/**
+ * Covered snow never shows darker than this share of its sunlit colour
+ * (GAME_ART.md "Weather > Snow": a light floor of 0.62), so shaded sides,
+ * dusk and heavy cloud keep it a clean blue-white instead of grey.
+ */
+export const weatherSnowLightFloor = 0.62;
+
 function weatherFastSnowFragment(useBuiltInViewNormal: boolean) {
     const earlyNormal = useBuiltInViewNormal
         ? `normalize(vNormal)`
@@ -399,28 +423,51 @@ if (
     vGrediceSnowSurface > 0.5
 ) {
     vec3 grediceWeatherEarlyNormal = ${earlyNormal};
-    vec3 grediceWeatherEarlyLight = vec3(0.8);
-    #if NUM_DIR_LIGHTS > 0
-        for (int i = 0; i < NUM_DIR_LIGHTS; i++) {
-            float grediceWeatherEarlyDiffuse = max(
-                dot(
-                    grediceWeatherEarlyNormal,
-                    directionalLights[i].direction
-                ),
-                0.0
+    // A snow blanket reads as one surface: faces that mostly point up are
+    // lit as a flat top, so bevels and block joints under the snow do not
+    // draw lines through it. Steep sides keep their own shading.
+    vec3 grediceWeatherEarlyUp = normalize(viewMatrix[1].xyz);
+    grediceWeatherEarlyNormal = normalize(mix(
+        grediceWeatherEarlyNormal,
+        grediceWeatherEarlyUp,
+        smoothstep(
+            0.35,
+            0.8,
+            dot(grediceWeatherEarlyNormal, grediceWeatherEarlyUp)
+        )
+    ));
+    // Snow follows the scene lights like every other surface: the snow
+    // colour is what a sunlit top shows at midday, so it turns peach at
+    // sunrise and light lavender at night instead of staying paper white.
+    vec3 grediceWeatherEarlyLight = ambientLightColor;
+    #if NUM_HEMI_LIGHTS > 0
+        for (int i = 0; i < NUM_HEMI_LIGHTS; i++) {
+            grediceWeatherEarlyLight += getHemisphereLightIrradiance(
+                hemisphereLights[i],
+                grediceWeatherEarlyNormal
             );
-            grediceWeatherEarlyLight +=
-                directionalLights[i].color *
-                grediceWeatherEarlyDiffuse *
-                0.8;
         }
     #endif
-    float grediceWeatherEarlyHemi =
-        grediceWeatherEarlyNormal.y * 0.5 + 0.5;
-    grediceWeatherEarlyLight += mix(
-        vec3(0.2),
-        vec3(0.3),
-        grediceWeatherEarlyHemi
+    #if NUM_DIR_LIGHTS > 0
+        for (int i = 0; i < NUM_DIR_LIGHTS; i++) {
+            grediceWeatherEarlyLight +=
+                directionalLights[i].color *
+                max(
+                    dot(
+                        grediceWeatherEarlyNormal,
+                        directionalLights[i].direction
+                    ),
+                    0.0
+                );
+        }
+    #endif
+    // Snow keeps only part of the light's tint, so it stays a clean
+    // blue-white under the lavender cloud fill and a light lavender at
+    // night instead of turning periwinkle.
+    grediceWeatherEarlyLight = mix(
+        vec3(dot(grediceWeatherEarlyLight, vec3(0.2126, 0.7152, 0.0722))),
+        grediceWeatherEarlyLight,
+        ${weatherSnowLightTint.toFixed(2)}
     );
     vec3 grediceWeatherEarlySnowColor = mix(
         uGrediceSnowColor * 0.85,
@@ -428,13 +475,18 @@ if (
         grediceWeatherEarlySnowStrength
     );
     gl_FragColor = vec4(
-        grediceWeatherEarlySnowColor *
-            clamp(grediceWeatherEarlyLight, 0.5, 2.5),
+        max(
+            grediceWeatherEarlySnowColor *
+                grediceWeatherEarlyLight *
+                (RECIPROCAL_PI / ${weatherSnowSunlitGain.toFixed(2)}),
+            grediceWeatherEarlySnowColor * ${weatherSnowLightFloor.toFixed(2)}
+        ),
         1.0
     );
-    // Keep the legacy SnowOverlay output contract: it writes the lit linear
-    // color directly and only applies scene fog. Besides preserving the
-    // established snow brightness, this keeps the covered-fragment path tiny.
+    // Covered fragments skip the full lighting path, so they tone map and
+    // convert colour space here, then apply scene fog.
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
     #include <fog_fragment>
     return;
 }
@@ -465,125 +517,51 @@ diffuseColor.rgb = mix(
 );
 `;
 
-const weatherCombinedRainColorFragment = `
-float grediceWeatherTopness = 0.0;
+/**
+ * The wet look (GAME_ART.md "Weather > Rain and heavy rain"): richer, never
+ * darker. Before lighting, wet faces gain saturation and move toward a
+ * lower roughness; up-facing wet faces add a soft sky sheen to the light.
+ * No darkening and no per-pixel noise.
+ */
+function weatherRainWetFragment(normalY: string, dryShare: string) {
+    return `
 float grediceWeatherNormalY = 0.0;
 float grediceWeatherWet = 0.0;
-float grediceWeatherPuddle = 0.0;
 if (uGrediceRainWetness > 0.001) {
-    grediceWeatherNormalY = max(
-        normalize(vGrediceWeatherWorldNormal).y,
+    grediceWeatherNormalY = max(${normalY}, 0.0);
+    grediceWeatherWet = clamp(uGrediceRainWetness * ${dryShare}, 0.0, 1.0);
+    float grediceWeatherWetLuma = dot(
+        diffuseColor.rgb,
+        vec3(0.2126, 0.7152, 0.0722)
+    );
+    diffuseColor.rgb = max(
+        mix(
+            vec3(grediceWeatherWetLuma),
+            diffuseColor.rgb,
+            1.0 + ${rainWetLook.saturation.toFixed(2)} * grediceWeatherWet
+        ),
         0.0
     );
-    grediceWeatherTopness = clamp(
-        pow(
-            grediceWeatherNormalY,
-            uGrediceRainTopSurfaceBias
-        ),
-        0.0,
-        1.0
-    );
-    vec3 grediceWeatherRainLocal =
-        (
-            vGrediceWeatherWorldPosition -
-            uGrediceRainBoundsMin
-        ) /
-        max(
-            vec3(0.001),
-            uGrediceRainBoundsMax -
-            uGrediceRainBoundsMin
-        );
-    float grediceWeatherRainVariation =
-        0.75 +
-        grediceWeatherFragmentNoise(
-            grediceWeatherRainLocal * 17.0
-        ) *
-        0.25;
-    grediceWeatherWet = clamp(
-        uGrediceRainWetness *
-            grediceWeatherTopness *
-            grediceWeatherRainVariation *
-            (1.0 - grediceWeatherSnowPresence),
-        0.0,
-        1.0
-    );
-    float grediceWeatherPuddleMask =
-        smoothstep(0.6, 1.0, grediceWeatherWet) *
-        grediceWeatherTopness;
-    float grediceWeatherPuddleNoise =
-        grediceWeatherFragmentNoise(
-            grediceWeatherRainLocal * 23.0 +
-                vec3(3.1, 7.9, 1.4)
-        );
-    grediceWeatherPuddle =
-        smoothstep(0.78, 0.98, grediceWeatherPuddleNoise) *
-        grediceWeatherPuddleMask *
-        uGrediceRainPuddleStrength;
 }
 `;
-
-const weatherRainOnlyComputationFragment = `
-float grediceWeatherTopness = 0.0;
-float grediceWeatherNormalY = 0.0;
-float grediceWeatherWet = 0.0;
-float grediceWeatherPuddle = 0.0;
-if (uGrediceRainWetness > 0.001) {
-    grediceWeatherNormalY = max(
-        vGrediceWeatherWorldNormalY,
-        0.0
-    );
-    if (grediceWeatherNormalY > 0.0) {
-        grediceWeatherTopness = clamp(
-            pow(
-                grediceWeatherNormalY,
-                uGrediceRainTopSurfaceBias
-            ),
-            0.0,
-            1.0
-        );
-        vec3 grediceWeatherRainLocal =
-            (
-                vGrediceWeatherWorldPosition -
-                uGrediceRainBoundsMin
-            ) /
-            max(
-                vec3(0.001),
-                uGrediceRainBoundsMax -
-                uGrediceRainBoundsMin
-            );
-        float grediceWeatherRainVariation =
-            0.75 +
-            grediceWeatherFragmentNoise(
-                grediceWeatherRainLocal * 17.0
-            ) *
-            0.25;
-        grediceWeatherWet = clamp(
-            uGrediceRainWetness *
-                grediceWeatherTopness *
-                grediceWeatherRainVariation,
-            0.0,
-            1.0
-        );
-        float grediceWeatherPuddleMask =
-            smoothstep(0.6, 1.0, grediceWeatherWet) *
-            grediceWeatherTopness;
-        if (grediceWeatherPuddleMask > 0.0) {
-            float grediceWeatherPuddleNoise =
-                grediceWeatherFragmentNoise(
-                    grediceWeatherRainLocal * 23.0 +
-                        vec3(3.1, 7.9, 1.4)
-                );
-            grediceWeatherPuddle =
-                smoothstep(
-                    0.78,
-                    0.98,
-                    grediceWeatherPuddleNoise
-                ) *
-                grediceWeatherPuddleMask *
-                uGrediceRainPuddleStrength;
-        }
-    }
 }
+
+const weatherCombinedRainColorFragment = weatherRainWetFragment(
+    'normalize(vGrediceWeatherWorldNormal).y',
+    '(1.0 - grediceWeatherSnowPresence)',
+);
+
+const weatherRainOnlyComputationFragment = weatherRainWetFragment(
+    'vGrediceWeatherWorldNormalY',
+    '1.0',
+);
+
+const weatherRainRoughnessFragment = `
+roughnessFactor = mix(
+    roughnessFactor,
+    ${rainWetLook.roughness.toFixed(2)},
+    grediceWeatherWet
+);
 `;
 
 const weatherRoughnessFragment = `
@@ -602,25 +580,12 @@ metalnessFactor = mix(
 );
 `;
 
-const weatherOutputFragment = `
-float grediceWeatherRainAlpha = max(
-    grediceWeatherWet * 0.4,
-    grediceWeatherPuddle * 0.5
-);
-float grediceWeatherGlint =
-    pow(grediceWeatherNormalY, 20.0) *
+// A soft sky-coloured sheen on up-facing wet faces, added to the light.
+const weatherRainSheenFragment = `
+outgoingLight += uGrediceRainSheenColor * (
+    ${rainWetLook.sheen.toFixed(2)} *
     grediceWeatherWet *
-    uGrediceRainGlossiness;
-vec3 grediceWeatherRainColor =
-    vec3(0.02) * uGrediceRainDarkness +
-    vec3(
-        grediceWeatherGlint * 0.18 +
-        grediceWeatherPuddle * 0.12
-    );
-gl_FragColor.rgb = mix(
-    gl_FragColor.rgb,
-    grediceWeatherRainColor,
-    grediceWeatherRainAlpha
+    smoothstep(0.5, 1.0, grediceWeatherNormalY)
 );
 `;
 
@@ -666,20 +631,7 @@ function injectWeatherSurfaceShader(
     if (includesRain) {
         shader.uniforms.uGrediceFrostIntensity =
             options.frostIntensityUniform ?? { value: 0 };
-        shader.uniforms.uGrediceRainDarkness = {
-            value: options.rain.darkness,
-        };
-        shader.uniforms.uGrediceRainBoundsMax = {
-            value: new Vector3(...options.rain.bounds.max),
-        };
-        shader.uniforms.uGrediceRainBoundsMin = {
-            value: new Vector3(...options.rain.bounds.min),
-        };
-        shader.uniforms.uGrediceRainGlossiness = {
-            value: options.rain.glossiness,
-        };
-        shader.uniforms.uGrediceRainPuddleStrength =
-            options.rain.puddleStrengthUniform;
+        shader.uniforms.uGrediceRainSheenColor = getRainWetSheenColorUniform();
         shader.uniforms.uGrediceRainTopSurfaceBias = {
             value: options.rain.topSurfaceBias,
         };
@@ -781,15 +733,24 @@ function injectWeatherSurfaceShader(
         );
     }
     if (includesRain) {
-        const rainOutputFragment =
-            mode === 'rain-only'
-                ? `${weatherRainOnlyComputationFragment}\n${weatherOutputFragment}`
-                : weatherOutputFragment;
+        // Combined mode computes the wetness at the colour stage, after the
+        // snow; rain-only computes it here, before the roughness.
+        shader.fragmentShader = replaceShaderChunk(
+            shader.fragmentShader,
+            '#include <roughnessmap_fragment>',
+            `${
+                mode === 'rain-only' ? weatherRainOnlyComputationFragment : ''
+            }#include <roughnessmap_fragment>\n${weatherRainRoughnessFragment}`,
+        );
+        shader.fragmentShader = replaceShaderChunk(
+            shader.fragmentShader,
+            '#include <opaque_fragment>',
+            `${weatherRainSheenFragment}#include <opaque_fragment>`,
+        );
         shader.fragmentShader = replaceShaderChunk(
             shader.fragmentShader,
             '#include <dithering_fragment>',
-            `${rainOutputFragment}
-// Thin, static crystals on existing ground surfaces; no displacement.
+            `// Thin, static crystals on existing ground surfaces; no displacement.
 if (uGrediceFrostIntensity > 0.001) {
 float frostTop = ${mode === 'rain-only' ? 'vGrediceWeatherWorldNormalY' : 'normalize(vGrediceWeatherWorldNormal).y'};
 float frostGrain = grediceWeatherFragmentNoise(vGrediceWeatherWorldPosition * 95.0);

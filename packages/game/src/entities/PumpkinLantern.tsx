@@ -2,6 +2,7 @@ import { getPumpkinLantern } from '@gredice/js/pumpkinLanterns';
 import { useContext, useMemo, useRef } from 'react';
 import type { MeshStandardMaterial } from 'three';
 import { animated } from '../scene/sceneSpring';
+import { seasonalEmissive, seasonalRoles } from '../scene/seasonalRoles';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useGameState } from '../useGameState';
 import { useStackHeight } from '../utils/getStackHeight';
@@ -10,6 +11,9 @@ import { GardenNightLight } from './helpers/GardenNightLight';
 import { PumpkinLightOverrideContext } from './helpers/PumpkinLightOverrideContext';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 import { WeatheredEntityPart } from './helpers/WeatheredEntityPart';
+
+/** The glow shows around the carved face, not over the whole pumpkin. */
+const pumpkinLanternHalo = { opacity: 0.45, size: 0.75 } as const;
 
 export function PumpkinLantern({
     stack,
@@ -70,26 +74,30 @@ export function PumpkinLantern({
                 />
             ))}
             <mesh name={`${model}_Glow`} geometry={glow.geometry}>
+                {/* The carved face shows the lantern glow role by day, so it
+                    reads against the skin, and glows at night (GAME_ART.md). */}
                 <meshStandardMaterial
                     ref={glowRef}
-                    color="#392314"
-                    emissive="#ffad32"
+                    color={seasonalRoles.lanternGlow.albedo}
+                    emissive={seasonalEmissive.lanternGlow}
                     emissiveIntensity={0.025}
-                    roughness={0.9}
+                    roughness={seasonalRoles.lanternGlow.roughness}
+                    metalness={0}
                 />
             </mesh>
             <GardenNightLight
                 glowAmountOverride={
                     override === undefined ? undefined : override ? 1 : 0
                 }
-                color="#ffad32"
+                color={seasonalEmissive.lanternGlow}
                 distance={2}
                 lightIntensity={0.6}
                 lightKey={`${model}:${block.id}`}
                 position={[-0.1, 0.28, -0.1]}
                 emissiveBaseIntensity={0.025}
-                emissivePeakIntensity={1.2}
+                emissivePeakIntensity={6}
                 emissiveMaterialRefs={emissiveRefs}
+                halo={pumpkinLanternHalo}
             />
         </animated.group>
     );

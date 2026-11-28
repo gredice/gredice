@@ -1,22 +1,27 @@
+import {
+    cropFlowerPalette,
+    cropLeafPalette,
+    cropStemPalette,
+} from '../cropPalette';
 import type { PlantDefinition } from '../plant-definition-types';
 import { createDevelopmentProgram, createPlant } from './helpers';
 
 const fruitingAppearance = {
     height: 1.02,
     stem: {
-        color: '#5f7631',
+        color: cropStemPalette.base,
         radius: 0.046,
         radiusDecay: 0.55,
         minRadius: 0.005,
     },
     leaf: {
-        color: '#486724',
+        color: cropLeafPalette.base,
         size: 0.24,
         type: 'oval',
     },
     flower: {
         enabled: true,
-        color: '#f7ea72',
+        color: cropFlowerPalette.yellow,
         size: 0.075,
     },
 } satisfies Pick<PlantDefinition, 'flower' | 'height' | 'leaf' | 'stem'>;
@@ -61,17 +66,17 @@ export const fruitingPlants = {
         }),
         stem: {
             ...fruitingAppearance.stem,
-            color: '#5a6e2a',
+            color: cropStemPalette.base,
         },
         leaf: {
             ...fruitingAppearance.leaf,
-            color: '#3d5a1a',
+            color: cropLeafPalette.base,
             type: 'compound',
             size: 0.23,
         },
         flower: {
             ...fruitingAppearance.flower,
-            color: '#ffff00',
+            color: cropFlowerPalette.yellow,
         },
         vegetable: {
             enabled: true,
@@ -118,19 +123,19 @@ export const fruitingPlants = {
         }),
         stem: {
             ...fruitingAppearance.stem,
-            color: '#4f7a28',
+            color: cropStemPalette.base,
             radius: 0.056,
             radiusDecay: 0.6,
             minRadius: 0.006,
         },
         leaf: {
             ...fruitingAppearance.leaf,
-            color: '#3a591f',
+            color: cropLeafPalette.base,
             size: 0.22,
         },
         flower: {
             ...fruitingAppearance.flower,
-            color: '#ffffff',
+            color: cropFlowerPalette.cream,
             size: 0.065,
         },
         vegetable: {
@@ -178,17 +183,17 @@ export const fruitingPlants = {
         }),
         stem: {
             ...fruitingAppearance.stem,
-            color: '#62783b',
+            color: cropStemPalette.base,
             radius: 0.05,
         },
         leaf: {
             ...fruitingAppearance.leaf,
-            color: '#4f6b33',
+            color: cropLeafPalette.base,
             size: 0.27,
         },
         flower: {
             ...fruitingAppearance.flower,
-            color: '#d8b6ff',
+            color: cropFlowerPalette.lilac,
             size: 0.07,
         },
         vegetable: {
@@ -228,12 +233,12 @@ export const fruitingPlants = {
         }),
         stem: {
             ...fruitingAppearance.stem,
-            color: '#6e8450',
+            color: cropStemPalette.pale,
             radius: 0.06,
         },
         leaf: {
             ...fruitingAppearance.leaf,
-            color: '#718c56',
+            color: cropLeafPalette.silver,
             size: 0.34,
             type: 'serrated',
         },
@@ -286,17 +291,17 @@ export const fruitingPlants = {
         }),
         stem: {
             ...fruitingAppearance.stem,
-            color: '#56793d',
+            color: cropStemPalette.base,
         },
         leaf: {
             ...fruitingAppearance.leaf,
-            color: '#4f7d2f',
+            color: cropLeafPalette.base,
             size: 0.25,
             type: 'palmate',
         },
         flower: {
             ...fruitingAppearance.flower,
-            color: '#fff0d7',
+            color: cropFlowerPalette.cream,
             size: 0.08,
         },
         vegetable: {

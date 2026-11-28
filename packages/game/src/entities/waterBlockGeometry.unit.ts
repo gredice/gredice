@@ -55,7 +55,115 @@ describe('createWaterBlockGeometry', () => {
 
         geometry.dispose();
     });
+
+    it('winds every face around its outward normal', () => {
+        const geometry = createWaterBlockGeometry(new Vector4(1, 1, 1, 1));
+
+        assert.deepEqual(trianglesFacingAgainstNormal(geometry), []);
+
+        geometry.dispose();
+    });
+
+    it('rounds exposed sides over with a lip and rounded corners', () => {
+        const exposed = new Vector4(1, 1, 1, 1);
+        const geometry = createWaterBlockGeometry(exposed, {
+            rimEdges: exposed,
+        });
+        const normal = geometry.getAttribute('normal');
+        let tiltedNormals = 0;
+
+        for (let index = 0; index < normal.count; index += 1) {
+            const [x, y, z] = [
+                normal.getX(index),
+                normal.getY(index),
+                normal.getZ(index),
+            ];
+            assert.ok(Math.abs(Math.hypot(x, y, z) - 1) < 1e-4);
+            const isAxis = [x, y, z].some((value) => Math.abs(value) > 0.9999);
+            if (!isAxis) tiltedNormals += 1;
+        }
+
+        // The lip and corner columns blend between the top and side normals.
+        assert.ok(tiltedNormals > 0);
+        assert.deepEqual(trianglesFacingAgainstNormal(geometry), []);
+        const box = geometryXzExtents(geometry);
+        assert.deepEqual(box, [-0.5, 0.5]);
+
+        geometry.dispose();
+    });
+
+    it('keeps a lone water block square without rim flags', () => {
+        assert.deepEqual(geometryNormals(new Vector4(1, 1, 1, 1)), [
+            '-1,0,0',
+            '0,0,-1',
+            '0,0,1',
+            '0,1,0',
+            '1,0,0',
+        ]);
+    });
 });
+
+function geometryXzExtents(
+    geometry: ReturnType<typeof createWaterBlockGeometry>,
+) {
+    const position = geometry.getAttribute('position');
+    let min = Number.POSITIVE_INFINITY;
+    let max = Number.NEGATIVE_INFINITY;
+
+    for (let index = 0; index < position.count; index += 1) {
+        min = Math.min(min, position.getX(index), position.getZ(index));
+        max = Math.max(max, position.getX(index), position.getZ(index));
+    }
+
+    return [Number(min.toFixed(6)), Number(max.toFixed(6))];
+}
+
+/**
+ * Triangles whose vertex order winds against their stored normal. A lit
+ * double-sided material treats them as seen from behind and flips their
+ * normal, so that side of the water loses its light.
+ */
+function trianglesFacingAgainstNormal(
+    geometry: ReturnType<typeof createWaterBlockGeometry>,
+) {
+    const position = geometry.getAttribute('position');
+    const normal = geometry.getAttribute('normal');
+    const index = geometry.getIndex();
+    const reversed: string[] = [];
+    if (!index) return ['missing index'];
+
+    for (let offset = 0; offset < index.count; offset += 3) {
+        const [a, b, c] = [0, 1, 2].map((corner) => {
+            const vertex = index.getX(offset + corner);
+            return [
+                position.getX(vertex),
+                position.getY(vertex),
+                position.getZ(vertex),
+            ];
+        });
+        const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+        const ac = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+        const winding = [
+            ab[1] * ac[2] - ab[2] * ac[1],
+            ab[2] * ac[0] - ab[0] * ac[2],
+            ab[0] * ac[1] - ab[1] * ac[0],
+        ];
+        const first = index.getX(offset);
+        const stored = [
+            normal.getX(first),
+            normal.getY(first),
+            normal.getZ(first),
+        ];
+        const alignment =
+            winding[0] * stored[0] +
+            winding[1] * stored[1] +
+            winding[2] * stored[2];
+
+        if (alignment <= 0) reversed.push(stored.join(','));
+    }
+
+    return reversed;
+}
 
 function geometryNormals(
     foamEdges: Vector4,
@@ -93,6 +201,26 @@ function geometryYExtents(
 }
 
 describe('createMergedWaterSideGeometry', () => {
+    it('winds every merged side wall around its outward normal', () => {
+        const geometry = createMergedWaterSideGeometry([
+            { position: [0, 0, 0] },
+            { position: [1, 0, 0] },
+            { position: [0, 0, 1] },
+        ]);
+
+        assert.ok((geometry.getIndex()?.count ?? 0) > 0);
+        assert.deepEqual(trianglesFacingAgainstNormal(geometry), []);
+
+        const rounded = createMergedWaterSideGeometry([
+            { position: [0, 0, 0], rimEdges: new Vector4(1, 0, 1, 1) },
+            { position: [1, 0, 0], rimEdges: new Vector4(0, 1, 1, 1) },
+        ]);
+        assert.deepEqual(trianglesFacingAgainstNormal(rounded), []);
+        rounded.dispose();
+
+        geometry.dispose();
+    });
+
     it('merges continuous exterior side walls across adjacent water blocks', () => {
         const geometry = createMergedWaterSideGeometry([
             { position: [0, 0, 0] },

@@ -157,7 +157,10 @@ test('status-driven visuals preserve reproductive stages in approximate LODs', (
     assert.notEqual(fruiting.accentColor, undefined);
     assert.notEqual(fruiting.accentColor, mature.accentColor);
     assert.notEqual(mature.accentColor, undefined);
-    assert.equal(harvested.accentColor, tomato.definition.flower.color);
+    // The cards summarise the bed's 3D template plant. A harvested tomato is
+    // cut back to a younger generation that carries neither flowers nor
+    // fruit in 3D, so its cards show no dots that would vanish on zoom-in.
+    assert.equal(harvested.accentColor, undefined);
 });
 
 test('status-driven visuals preserve reproductive stages in detailed plants', () => {

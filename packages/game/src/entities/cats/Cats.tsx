@@ -163,8 +163,10 @@ const catWalkTurnDamping = 7.5;
 const catIdleTurnDamping = 8.5;
 const catWalkLookAheadProgress = 0.05;
 const fullTurn = Math.PI * 2;
-const catDarkFurColor = '#2f3437';
-const catSoftDarkFurColor = '#3b4144';
+// Albedo of a cool slate that shows at value 0.56 and 0.64 on a sunlit face,
+// the darkest the palette allows (GAME_ART.md); kept in step with Cat.glb.
+const catDarkFurColor = '#454a59';
+const catSoftDarkFurColor = '#4e5363';
 
 const catPillowBlockNames = new Set(['CatPillow', 'Cat_Pillow']);
 const treeBlockNames = new Set(['Tree', 'Pine', 'PineAdvent']);

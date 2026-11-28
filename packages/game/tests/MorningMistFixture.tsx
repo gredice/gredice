@@ -8,7 +8,6 @@ import {
     gameQualityProfiles,
 } from '../src/scene/gameQuality';
 import { MorningMist } from '../src/scene/MorningMist';
-import { Drops } from '../src/scene/Rain/Drops';
 import { Scene } from '../src/scene/Scene';
 import { SceneBlockDataBoundary } from '../src/scene/SceneBlockDataBoundary';
 import { getSeasonDebugDates } from '../src/scene/seasonDebugDates';
@@ -17,6 +16,7 @@ import {
     GameStateContext,
     useDisposeGameStateStore,
 } from '../src/useGameState';
+import { FixtureRainField } from './FixtureRainField';
 import { MorningMistProbe } from './MorningMistProbe';
 
 export function MorningMistFixture({
@@ -170,7 +170,10 @@ export function MorningMistFixture({
                                     enabled={!disabled}
                                 />
                                 {precipitation && rain > 0 && (
-                                    <Drops intensity={rain} count={700} />
+                                    <FixtureRainField
+                                        rainy={rain}
+                                        count={700}
+                                    />
                                 )}
                                 {mounted && (
                                     <MorningMist

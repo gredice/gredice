@@ -3,7 +3,8 @@
 import { IconButton } from '@gredice/ui/IconButton';
 import { Megaphone } from '@gredice/ui/icons';
 import { cx } from '@gredice/ui/utils';
-import { useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
+import { BlockOptionsHud } from './blockOptions/BlockOptionsHud';
 import type { GardenViewMode } from './gardenViewMode';
 import { useCurrentGarden } from './hooks/useCurrentGarden';
 import { useCurrentUser } from './hooks/useCurrentUser';
@@ -108,6 +109,14 @@ export function GameHud({
         )
             cancelPackPreview(null);
     }, [viewMode, gardenAvatarView, packPreviewLocked, cancelPackPreview]);
+    const blockExpandActive = useGameState(
+        (state) => state.blockEditing?.mode === 'expand',
+    );
+    const closeBlockEditing = useGameState((state) => state.closeBlockEditing);
+    useEffect(() => {
+        // The 2D overview has no block editing (pop-up, move, Expand).
+        if (viewMode !== '3d') closeBlockEditing();
+    }, [viewMode, closeBlockEditing]);
     const packPlacementMutation = useGardenPackUnitPlace();
     const packPlacement = {
         place: packPlacementMutation.mutateAsync,
@@ -148,10 +157,12 @@ export function GameHud({
     const whatsNewHudEnabled =
         !isLocalSandbox && !suppressOpeningHud && openingFlowComplete;
 
+    // `BlockOptionsHud` keeps one place in every view (below), so a view
+    // switch never remounts it: a pending Expand keeps its state.
     if (gardenAvatarView !== 'overview') {
         // Interacting with a garden box or a sign while walking has to open its
         // modal right away, so those keep rendering without their HUD shells.
-        return (
+        return withBlockOptionsHud(
             <>
                 {!isLocalSandbox && currentUser?.isTemporary ? (
                     <TemporaryAccountAuthHud />
@@ -167,11 +178,11 @@ export function GameHud({
                 <WoodenSignModal />
                 <PackLayoutPreviewHud />
                 {debugHud && viewMode === '3d' ? <DebugHudDynamic /> : null}
-            </>
+            </>,
         );
     }
 
-    return (
+    return withBlockOptionsHud(
         <SuncokretChatProvider gardenId={currentGarden?.id ?? null}>
             {!isLocalSandbox && (
                 <GardenActionHud enabled={openingFlowComplete} />
@@ -181,7 +192,7 @@ export function GameHud({
             ) : null}
             <div
                 data-game-hud-top-left
-                inert={packLayoutActive ? true : undefined}
+                inert={packLayoutActive || blockExpandActive ? true : undefined}
                 className={cx(
                     'absolute top-[calc(var(--game-safe-area-top,0px)+0.5rem)] left-[calc(var(--game-safe-area-left,0px)+0.5rem)] flex flex-col items-start gap-2',
                     gameHudEntranceClassName,
@@ -285,8 +296,14 @@ export function GameHud({
             <div className={gameHudBottomBarClassName}>
                 <div
                     data-game-hud-bottom-controls
-                    aria-hidden={isCloseup || packLayoutActive}
-                    inert={isCloseup || packLayoutActive ? true : undefined}
+                    aria-hidden={
+                        isCloseup || packLayoutActive || blockExpandActive
+                    }
+                    inert={
+                        isCloseup || packLayoutActive || blockExpandActive
+                            ? true
+                            : undefined
+                    }
                     className={cx(
                         gameHudBottomControlsClassName,
                         getGameHudBottomCloseupClassName(isCloseup),
@@ -316,8 +333,14 @@ export function GameHud({
                 </div>
                 <div
                     data-game-hud-bottom-items
-                    aria-hidden={isCloseup || packLayoutActive}
-                    inert={isCloseup || packLayoutActive ? true : undefined}
+                    aria-hidden={
+                        isCloseup || packLayoutActive || blockExpandActive
+                    }
+                    inert={
+                        isCloseup || packLayoutActive || blockExpandActive
+                            ? true
+                            : undefined
+                    }
                     className={cx(
                         gameHudBottomItemsClassName,
                         getGameHudBottomCloseupClassName(isCloseup),
@@ -353,6 +376,16 @@ export function GameHud({
             {!isLocalSandbox && <PaymentSuccessfulMessage />}
             <PackLayoutPreviewHud />
             {debugHud && viewMode === '3d' ? <DebugHudDynamic /> : null}
-        </SuncokretChatProvider>
+        </SuncokretChatProvider>,
+    );
+}
+
+/** The view's HUD, then `BlockOptionsHud` at the same tree position. */
+function withBlockOptionsHud(viewHud: ReactNode) {
+    return (
+        <>
+            {viewHud}
+            <BlockOptionsHud />
+        </>
     );
 }

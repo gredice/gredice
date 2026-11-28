@@ -644,7 +644,6 @@ def generate_stairs(
     *,
     asset_name: str,
     object_prefix: str,
-    half_width: bool,
 ) -> None:
     reset_scene(asset_name)
     materials = stone_materials()
@@ -653,23 +652,12 @@ def generate_stairs(
         "mid": [],
         "dark": [],
     }
-    if half_width:
-        specs = (
-            ("large", (-0.5, 0), (0, 0.243), 0.2),
-            ("dark", (-0.5, 0), (0.257, 0.5), 0.2),
-            ("mid", (0, 0.5), (0, 0.5), 0.4),
-        )
-        # Blender Y exports as runtime -Z, producing the requested runtime
-        # half-tile footprint Z=-0.5..0 with a center offset of -0.25.
-        expected_y_bounds = (0, 0.5)
-    else:
-        specs = (
-            ("large", (-0.5, 0), (-0.5, 0.063), 0.2),
-            ("dark", (-0.5, 0), (0.077, 0.5), 0.2),
-            ("mid", (0, 0.5), (-0.5, -0.127), 0.4),
-            ("large", (0, 0.5), (-0.113, 0.5), 0.4),
-        )
-        expected_y_bounds = (-0.5, 0.5)
+    specs = (
+        ("large", (-0.5, 0), (-0.5, 0.063), 0.2),
+        ("dark", (-0.5, 0), (0.077, 0.5), 0.2),
+        ("mid", (0, 0.5), (-0.5, -0.127), 0.4),
+        ("large", (0, 0.5), (-0.113, 0.5), 0.4),
+    )
 
     for index, (role, x_bounds, y_bounds, height) in enumerate(specs):
         roles[role].append(
@@ -699,7 +687,7 @@ def generate_stairs(
         asset_name,
         output_dir,
         final,
-        y_bounds=expected_y_bounds,
+        y_bounds=(-0.5, 0.5),
     )
 
 
@@ -708,16 +696,6 @@ def generate_block_stone_stairs(output_dir: Path) -> None:
         output_dir,
         asset_name="BlockStoneStairs",
         object_prefix="Block_Stone_Stairs",
-        half_width=False,
-    )
-
-
-def generate_block_stone_stairs_half(output_dir: Path) -> None:
-    generate_stairs(
-        output_dir,
-        asset_name="BlockStoneStairsHalf",
-        object_prefix="Block_Stone_Stairs_Half",
-        half_width=True,
     )
 
 
@@ -853,7 +831,6 @@ GENERATORS: dict[str, Callable[[Path], None]] = {
     "BlockGravel": generate_block_gravel,
     "BlockGravelAngle": generate_block_gravel_angle,
     "BlockStoneStairs": generate_block_stone_stairs,
-    "BlockStoneStairsHalf": generate_block_stone_stairs_half,
     "BlockStoneStairsCorner": generate_block_stone_stairs_corner,
     "BlockPolishedStone": generate_block_polished_stone,
     "BlockPolishedStoneAngle": generate_block_polished_stone_angle,

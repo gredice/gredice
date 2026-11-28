@@ -4,19 +4,19 @@
   "snapshotDate": "2026-10-22T12:00:00+02:00",
   "source": {
     "path": "assets/game-assets/StackedFirewood.blend",
-    "bytes": 95488,
-    "sha256": "286b0315fa4e5ff4bc1d367f2d9945aff1013e5985efba7fae1b15f23362c6bf"
+    "bytes": 111808,
+    "sha256": "5cbb88b9f3eb6a2ef5e0bb75a58f30c3359bafd7b4fe1db17400602609b1ed6d"
   },
   "models": [
     {
       "name": "StackedFirewood",
       "path": "apps/garden/public/assets/models/StackedFirewood.glb",
-      "bytes": 21788,
-      "sha256": "8e3be71b6f2349ffe6f69c15172e8b4da846040f7678e327e4236d78ed1a376b",
-      "url": "https://vrt.gredice.com/assets/models/StackedFirewood.glb?v=8e3be71b6f23",
-      "triangles": 408,
+      "bytes": 63264,
+      "sha256": "e6eaf7f929c6ee11baeb48df25fe90e826e5a9db4fa11f43aabf43971656bc8f",
+      "url": "https://vrt.gredice.com/assets/models/StackedFirewood.glb?v=e6eaf7f929c6",
+      "triangles": 1704,
       "trianglesByMesh": {
-        "StackedFirewood_Timber": 408
+        "StackedFirewood_Timber": 1704
       },
       "meshCount": 1,
       "materialCount": 1
@@ -49,53 +49,53 @@
       "images": [
         {
           "path": "apps/www/public/assets/blocks/StackedFirewood.webp",
-          "bytes": 13394,
-          "sha256": "43fd89b3a19d2b42ddc9e88eeec61cac4d9619eabe498064f6c220c4d441aedc"
+          "bytes": 14380,
+          "sha256": "f70a4fe32a185aa2f4b72a556a3ff73eaf8d7e1e603ba7d584af32ed048b914c"
         },
         {
           "path": "apps/www/public/assets/blocks/StackedFirewood_1.webp",
-          "bytes": 13394,
-          "sha256": "43fd89b3a19d2b42ddc9e88eeec61cac4d9619eabe498064f6c220c4d441aedc"
+          "bytes": 14380,
+          "sha256": "f70a4fe32a185aa2f4b72a556a3ff73eaf8d7e1e603ba7d584af32ed048b914c"
         },
         {
           "path": "apps/www/public/assets/blocks/StackedFirewood_2.webp",
-          "bytes": 12084,
-          "sha256": "0b7d08a6b580616cd7b86fa292efc24c32a272c3714bca98a71795cf9ec5fcc1"
+          "bytes": 13948,
+          "sha256": "cf6b3f6334513dc01f7febfa8bafcac93b059f06ad6fc0649984873a0617a635"
         },
         {
           "path": "apps/www/public/assets/blocks/StackedFirewood_3.webp",
-          "bytes": 13268,
-          "sha256": "fee1ad40d07c7f7add7acabb4e8058e187cd515b14690d5b850efb54d8dd24f2"
+          "bytes": 14340,
+          "sha256": "0ab9c235272efec1b3a64b80c3465c5fff63eeba95e1efc5956391135a8089c8"
         },
         {
           "path": "apps/www/public/assets/blocks/StackedFirewood_4.webp",
-          "bytes": 12428,
-          "sha256": "61937bf64057cecf0b786c4cb1fdf6b34853a7cd64f6b6c0ef427c48055804f7"
+          "bytes": 13862,
+          "sha256": "b044b022dcc50803c0e44643523515331dd1fd8bd974705da86c3aff69af1820"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/StackedFirewood.webp",
-          "bytes": 2490,
-          "sha256": "ec79eea8a29bac2d275a924ef63b5ec4502dcbcf1607fa40da28ccab89222530"
+          "bytes": 3998,
+          "sha256": "5e8c30495e07e87fcb3bb1d1a3da33f7470772e9292b21ecf452fa1729340fd6"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/StackedFirewood_1.webp",
-          "bytes": 2490,
-          "sha256": "ec79eea8a29bac2d275a924ef63b5ec4502dcbcf1607fa40da28ccab89222530"
+          "bytes": 3998,
+          "sha256": "5e8c30495e07e87fcb3bb1d1a3da33f7470772e9292b21ecf452fa1729340fd6"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/StackedFirewood_2.webp",
-          "bytes": 1830,
-          "sha256": "df069e7064b3922db71a25c9286b8d66548745e811444173093a3e4ba5d8f450"
+          "bytes": 3884,
+          "sha256": "6977263146f4034393ba0c56b172873ee680f1634097758f7e24f6752ace0e89"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/StackedFirewood_3.webp",
-          "bytes": 2544,
-          "sha256": "ffd824bcd6bb69375978841b0a2e5f6e4dd29ff9d3a0e11ea7e04182fd6b7c0d"
+          "bytes": 3942,
+          "sha256": "baf32e4ab164188cae67091a1066345b0d71ba5652c74d6f78264ed9f2af777c"
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/StackedFirewood_4.webp",
-          "bytes": 1798,
-          "sha256": "4e7a50399533b0052b67151167853569319977ac5b8795e9f607671ea29b1cdf"
+          "bytes": 3726,
+          "sha256": "992b579d53ccbb8b45e7095f9fa3279d1ca30704e8afbaa62c835e499fb0296c"
         }
       ]
     }

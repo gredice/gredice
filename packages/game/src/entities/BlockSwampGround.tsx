@@ -6,9 +6,11 @@ import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { BlockSurfaceDecorationSprites } from './groundDecorations/BlockSurfaceDecorationSprites';
-import { useGroundPatchStandardMaterial } from './helpers/groundPatchMaterial';
+import {
+    groundSurfaceColors,
+    useGroundPatchStandardMaterial,
+} from './helpers/groundPatchMaterial';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
-import { swampGroundBaseColor } from './swampGroundPalette';
 
 export function BlockSwampGround({
     stack,
@@ -19,9 +21,9 @@ export function BlockSwampGround({
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
     const material = useGroundPatchStandardMaterial({
-        color: swampGroundBaseColor,
+        color: groundSurfaceColors.swampDirt,
         metalness: 0,
-        roughness: 1,
+        roughness: 0.8,
         surface: 'swampDirt',
     });
 

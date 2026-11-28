@@ -1,2 +1,3 @@
-export const swampGroundBaseColor = '#5d6042';
+// The swamp ground colour itself is groundSurfaceColors.swampDirt in
+// helpers/groundPatchMaterial.ts.
 export const swampGroundDecorationColor = '#a58a58';

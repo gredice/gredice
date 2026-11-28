@@ -16,7 +16,6 @@ export const WEATHER_SURFACE_GEOMETRY_USER_DATA_KEY =
     'weatherSurfaceGeometry' as const;
 
 export const WEATHER_SURFACE_ATTRIBUTE_NAMES = {
-    localPosition: 'aWeatherLocalPosition',
     snowLayer: 'aSnowLayer',
     snowTopDistance: 'aSnowTopDistance',
     surface: 'aWeatherSurface',
@@ -255,13 +254,48 @@ function expandAttribute(
     return expanded;
 }
 
+/**
+ * How far snow may lift a source vertex: the source's own `aSnowLayer` where
+ * it brings one (the terrain rim lip keeps its outer face and underside in
+ * place, so the cover folds over it without lifting it off the soil), else 1.
+ */
+function readSourceSnowLayer(
+    sourceSnowLayer: GeometryAttribute | undefined,
+    index: number,
+) {
+    if (!sourceSnowLayer) {
+        return 1;
+    }
+    const value = sourceSnowLayer.getX(index);
+    return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 1;
+}
+
+/**
+ * How far below the top of its surface a source vertex lies: the source's
+ * own `aSnowTopDistance` where it brings one (a terrain rim lip that runs
+ * down a slope measures from its own top edge, not from the top of the
+ * slope), else its depth below the geometry's highest point.
+ */
+function readSourceSnowTopDistance(
+    sourceSnowTopDistance: GeometryAttribute | undefined,
+    index: number,
+    fallback: number,
+) {
+    if (!sourceSnowTopDistance) {
+        return fallback;
+    }
+    const value = sourceSnowTopDistance.getX(index);
+    return Number.isFinite(value) ? Math.max(value, 0) : fallback;
+}
+
 function createWeatherAttributes(
     position: GeometryAttribute,
     skirtVertices: readonly SkirtVertex[],
     sourceTopY: number,
+    sourceSnowLayer: GeometryAttribute | undefined,
+    sourceSnowTopDistance: GeometryAttribute | undefined,
 ) {
     const vertexCount = position.count + skirtVertices.length;
-    const localPositions = new Float32Array(vertexCount * 3);
     const snowLayers = new Float32Array(vertexCount);
     const snowTopDistances = new Float32Array(vertexCount);
     const surfaces = new Float32Array(vertexCount);
@@ -272,15 +306,14 @@ function createWeatherAttributes(
         snowLayer: number,
         surface: number,
     ) => {
-        const x = position.getX(sourceIndex);
         const y = position.getY(sourceIndex);
-        const z = position.getZ(sourceIndex);
-        const positionOffset = targetIndex * 3;
-        localPositions[positionOffset] = x;
-        localPositions[positionOffset + 1] = y;
-        localPositions[positionOffset + 2] = z;
-        snowLayers[targetIndex] = snowLayer;
-        snowTopDistances[targetIndex] = Math.max(sourceTopY - y, 0);
+        snowLayers[targetIndex] =
+            snowLayer * readSourceSnowLayer(sourceSnowLayer, sourceIndex);
+        snowTopDistances[targetIndex] = readSourceSnowTopDistance(
+            sourceSnowTopDistance,
+            sourceIndex,
+            Math.max(sourceTopY - y, 0),
+        );
         surfaces[targetIndex] = surface;
     };
 
@@ -297,7 +330,6 @@ function createWeatherAttributes(
     });
 
     return {
-        localPosition: new Float32BufferAttribute(localPositions, 3),
         snowLayer: new Float32BufferAttribute(snowLayers, 1),
         snowTopDistance: new Float32BufferAttribute(snowTopDistances, 1),
         surface: new Float32BufferAttribute(surfaces, 1),
@@ -483,14 +515,22 @@ export function createWeatherSurfaceGeometry(
         );
     }
 
+    const sourceSnowLayer = source.getAttribute(
+        WEATHER_SURFACE_ATTRIBUTE_NAMES.snowLayer,
+    );
+    const sourceSnowTopDistance = source.getAttribute(
+        WEATHER_SURFACE_ATTRIBUTE_NAMES.snowTopDistance,
+    );
     const weatherAttributes = createWeatherAttributes(
         position,
         skirtVertices,
         bounds.max.y,
-    );
-    result.setAttribute(
-        WEATHER_SURFACE_ATTRIBUTE_NAMES.localPosition,
-        weatherAttributes.localPosition,
+        sourceSnowLayer?.count === sourceVertexCount
+            ? sourceSnowLayer
+            : undefined,
+        sourceSnowTopDistance?.count === sourceVertexCount
+            ? sourceSnowTopDistance
+            : undefined,
     );
     result.setAttribute(
         WEATHER_SURFACE_ATTRIBUTE_NAMES.snowLayer,

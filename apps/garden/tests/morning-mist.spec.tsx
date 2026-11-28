@@ -1,5 +1,5 @@
-import { expect as baseExpect, test } from '@playwright/experimental-ct-react';
 import { MorningMistFixture } from '../../../packages/game/tests/MorningMistFixture';
+import { expect as baseExpect, test } from './webglComponentTest';
 
 const expect = baseExpect.configure({ timeout: 30_000 });
 test.setTimeout(90_000);
@@ -79,8 +79,10 @@ test('mist respects quality, weather, morning time, drag and reduced motion', as
     }
     await fixture.update(<MorningMistFixture compact />);
     await expect.poll(count).toBe(32);
+    // Reduced motion keeps the wisps, standing still (GAME_ART.md
+    // "Weather > Reduced motion").
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await expect.poll(count).toBe(0);
+    await expect.poll(count).toBe(32);
     await page.emulateMedia({ reducedMotion: 'no-preference' });
     await expect.poll(count).toBe(32);
 });
