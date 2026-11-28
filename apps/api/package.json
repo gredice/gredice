@@ -38,7 +38,7 @@
         "@posthog/next": "0.11.0",
         "@scalar/api-reference-react": "0.9.96",
         "@standard-community/standard-json": "0.4.1",
-        "@standard-community/standard-openapi": "0.2.11",
+        "@standard-community/standard-openapi": "0.2.12",
         "@upstash/redis": "1.41.0",
         "@valibot/to-json-schema": "1.8.0",
         "@vercel/blob": "2.9.0",
