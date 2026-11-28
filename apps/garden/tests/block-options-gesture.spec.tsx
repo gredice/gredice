@@ -1,4 +1,3 @@
-import { expect as baseExpect, test } from '@playwright/experimental-ct-react';
 import type { Page } from '@playwright/test';
 import type { JSX } from 'react';
 import type { GameStateStore } from '../../../packages/game/src/useGameState';
@@ -22,6 +21,7 @@ import {
     readBlockOptionsProbe,
     waitForBlockOptionsFixture,
 } from './blockOptionsTestSupport';
+import { expect as baseExpect, test } from './webglComponentTest';
 
 // Spec §14.3 #10-#20 (WP-4, gesture integration): a hold released without
 // moving opens the block options pop-up on the per-entity (`PickableGroup`)

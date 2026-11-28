@@ -2,9 +2,9 @@ import { execFileSync } from 'node:child_process';
 import { writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { kestenijadaItems } from '@gredice/js/kestenijada';
-import { expect as baseExpect, test } from '@playwright/experimental-ct-react';
 import { getLocalSandboxBlockData } from '../../../packages/game/src/localSandboxBlockData';
 import { KestenijadaFixture } from '../../../packages/game/tests/KestenijadaFixture';
+import { expect as baseExpect, test } from './webglComponentTest';
 
 // Capture recovery exercises several warmup/encoding cycles in software WebGL.
 // Keep the ordinary project aligned with the dedicated functional suite.

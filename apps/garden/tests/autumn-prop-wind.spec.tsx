@@ -1,7 +1,7 @@
 import { writeFileSync } from 'node:fs';
-import { expect as baseExpect, test } from '@playwright/experimental-ct-react';
 import type { Locator } from '@playwright/test';
 import { AutumnPropWindFixture } from '../../../packages/game/tests/AutumnPropWindFixture';
+import { expect as baseExpect, test } from './webglComponentTest';
 
 const expect = baseExpect.configure({ timeout: 90_000 });
 // Two matched 40-frame samples plus captures need time on CI SwiftShader.

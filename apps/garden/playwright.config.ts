@@ -100,9 +100,10 @@ export const config: PlaywrightTestConfig = {
         {
             name: 'chromium-webgl',
             grepInvert: /@profile/,
-            // Software WebGL can still be finishing the previous test's
-            // frames when the next one sets up its (reused) context, which
-            // has taken over 10 s on CI runners.
+            // Specs in the WebGL projects import `test` from
+            // tests/webglComponentTest.ts, so a test's queued GPU work does
+            // not stall the next test's setup. Software WebGL is still slow,
+            // hence the longer timeout.
             timeout: 30_000,
             testMatch: [
                 squirrelCachingComponentTestPattern,

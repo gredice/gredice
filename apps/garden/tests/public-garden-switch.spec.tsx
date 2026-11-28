@@ -1,6 +1,6 @@
-import { expect, test } from '@playwright/experimental-ct-react';
 import { getLocalSandboxBlockData } from '../../../packages/game/src/localSandboxBlockData';
 import { PublicGardenSwitchFixture } from './PublicGardenSwitchFixture';
+import { expect, test } from './webglComponentTest';
 
 test('switches gardens while preserving the one R3F canvas', async ({
     mount,

@@ -1,10 +1,10 @@
-import { expect, test } from '@playwright/experimental-ct-react';
 import type { Locator } from '@playwright/test';
 import sharp from 'sharp';
 import {
     HoverOutlineCacheFixture,
     HoverOutlineVisualFixture,
 } from './HoverOutlineVisualFixture';
+import { expect, test } from './webglComponentTest';
 
 async function readDrawingBufferPng(canvas: Locator) {
     const pngDataUrl = await canvas.evaluate((element) => {

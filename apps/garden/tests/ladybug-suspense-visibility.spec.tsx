@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/experimental-ct-react';
 import { LadybugSuspenseFixture } from '../../../packages/game/tests/LadybugSuspenseFixture';
+import { expect, test } from './webglComponentTest';
 
 test('active ladybugs survive a late Suspense hide/reveal with same-frame meshes and grounding shadows', async ({
     mount,

@@ -1,4 +1,3 @@
-import { expect as baseExpect, test } from '@playwright/experimental-ct-react';
 import type { Locator, Page } from '@playwright/test';
 import {
     createDistantBirdFlockWindow,
@@ -8,6 +7,7 @@ import {
 } from '../../../packages/game/src/scene/distantBirdFlock';
 import { DistantBirdFlockFixture } from '../../../packages/game/tests/DistantBirdFlockFixture';
 import { DistantBirdFlockProfileFixture } from '../../../packages/game/tests/DistantBirdFlockProfileFixture';
+import { expect as baseExpect, test } from './webglComponentTest';
 
 const flockFixtureWindow = createDistantBirdFlockWindow('23:2026-10-22', 0);
 const flockFixtureMidpoint =

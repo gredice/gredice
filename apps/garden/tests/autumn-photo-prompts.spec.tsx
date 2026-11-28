@@ -1,6 +1,6 @@
-import { expect, test } from '@playwright/experimental-ct-react';
 import { getLocalSandboxBlockData } from '../../../packages/game/src/localSandboxBlockData';
 import { AutumnPhotoStory } from './AutumnPhotoStory';
+import { expect, test } from './webglComponentTest';
 
 async function directoryRoutes(page: import('@playwright/test').Page) {
     await page.route('**/api/gredice/api/directories/entities/**', (route) => {

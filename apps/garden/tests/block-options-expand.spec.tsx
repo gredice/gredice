@@ -2,11 +2,6 @@ import {
     type GardenBlockBatchPurchaseBody,
     parseGardenBlockBatchPurchaseBody,
 } from '@gredice/client';
-import {
-    expect as baseExpect,
-    type ComponentFixtures,
-    test,
-} from '@playwright/experimental-ct-react';
 import type { Locator, Page } from '@playwright/test';
 import { BlockOptionsFixture } from '../../../packages/game/tests/BlockOptionsFixture';
 import {
@@ -26,6 +21,11 @@ import {
     readBlockOptionsProbe,
     waitForBlockOptionsFixture,
 } from './blockOptionsTestSupport';
+import {
+    expect as baseExpect,
+    type ComponentFixtures,
+    test,
+} from './webglComponentTest';
 
 // Expand bar, batch request and recovery (spec §14.3 #25–#31). The fixture
 // opens Expand through the probe (as Proširi does) and moves the corner

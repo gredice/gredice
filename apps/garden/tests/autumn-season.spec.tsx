@@ -1,6 +1,6 @@
-import { expect, test } from '@playwright/experimental-ct-react';
 import { AutumnGustLeaseFixture } from '../../../packages/game/tests/AutumnGustLeaseFixture';
 import { AutumnVisualFixture } from '../../../packages/game/tests/AutumnVisualFixture';
+import { expect, test } from './webglComponentTest';
 
 for (const stage of [
     'summer',

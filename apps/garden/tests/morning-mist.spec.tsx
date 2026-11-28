@@ -1,5 +1,5 @@
-import { expect as baseExpect, test } from '@playwright/experimental-ct-react';
 import { MorningMistFixture } from '../../../packages/game/tests/MorningMistFixture';
+import { expect as baseExpect, test } from './webglComponentTest';
 
 const expect = baseExpect.configure({ timeout: 30_000 });
 test.setTimeout(90_000);

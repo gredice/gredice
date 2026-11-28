@@ -1,4 +1,3 @@
-import { expect as baseExpect, test } from '@playwright/experimental-ct-react';
 import type { Page } from '@playwright/test';
 import {
     blockMoveCopy,
@@ -23,6 +22,7 @@ import {
     readBlockOptionsProbe,
     waitForBlockOptionsFixture,
 } from './blockOptionsTestSupport';
+import { expect as baseExpect, test } from './webglComponentTest';
 
 // Block options pop-up, Okreni, Recikliraj/Obriši and Pomakni (spec §14.3
 // #2-#9 and #32). The pop-up opens through the fixture probe, as a

@@ -1,7 +1,7 @@
 import { writeFile } from 'node:fs/promises';
-import { expect as baseExpect, test } from '@playwright/experimental-ct-react';
 import type { Locator } from '@playwright/test';
 import { PumpkinTrailFixture } from '../../../packages/game/tests/PumpkinTrailFixture';
+import { expect as baseExpect, test } from './webglComponentTest';
 
 test.setTimeout(120_000);
 test.use({ hasTouch: true });

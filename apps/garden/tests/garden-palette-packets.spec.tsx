@@ -1,4 +1,3 @@
-import { expect, test } from '@playwright/experimental-ct-react';
 import sharp from 'sharp';
 import { ActorShadowMembershipFixture } from '../../../packages/game/tests/ActorShadowMembershipFixture';
 import { GardenPacketLifetimeFixture } from '../../../packages/game/tests/GardenPacketLifetimeFixture';
@@ -11,6 +10,7 @@ import {
     type GardenPaletteFrameInputSnapshot,
     installGardenPaletteFrameInput,
 } from '../../../packages/game/tests/gardenPaletteFrameInput';
+import { expect, test } from './webglComponentTest';
 
 async function pixels(png: Buffer) {
     return sharp(png).ensureAlpha().raw().toBuffer();

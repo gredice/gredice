@@ -1,7 +1,7 @@
-import { expect as baseExpect, test } from '@playwright/experimental-ct-react';
 import type { Locator, Page } from '@playwright/test';
 import { HedgehogShelterFixture } from '../../../packages/game/tests/HedgehogShelterFixture';
 import { drainWebglCanvases } from './webglCapture';
+import { expect as baseExpect, test } from './webglComponentTest';
 
 const expect = baseExpect.configure({ timeout: 15_000 });
 test.setTimeout(90_000);

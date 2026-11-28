@@ -1,10 +1,10 @@
-import { expect, test } from '@playwright/experimental-ct-react';
 import sharp from 'sharp';
 import { RigidFaunaBatchFixture } from '../../../packages/game/tests/RigidFaunaBatchFixture';
 import {
     getAppByName,
     getPlaywrightBaseUrl,
 } from '../../../scripts/app-registry';
+import { expect, test } from './webglComponentTest';
 
 const appBaseUrl = getPlaywrightBaseUrl(getAppByName('garden'));
 

@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/experimental-ct-react';
 import { R3FRootIsolationStory } from './R3FRootIsolationStory';
+import { expect, test } from './webglComponentTest';
 
 type RootSnapshot = {
     effectiveVisible: boolean;

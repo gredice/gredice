@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/experimental-ct-react';
 import { SceneRootIsolationFixture } from './SceneRootIsolationFixture';
+import { expect, test } from './webglComponentTest';
 import './sceneRootIsolationState';
 
 test.beforeEach(async ({ page }) => {

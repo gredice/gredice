@@ -1,6 +1,5 @@
 import type { GardenPackGroupPlacementBody } from '@gredice/client';
 import { resolveGardenPackLayoutPlacements } from '@gredice/js/gardenPackLayouts';
-import { expect, test } from '@playwright/experimental-ct-react';
 import {
     createPackLayoutFixtureGarden,
     createPackLayoutFixtureLayout,
@@ -8,6 +7,7 @@ import {
     packLayoutFixturePurchaseId,
 } from '../../../packages/game/tests/ownedPackLayoutFixture';
 import { PackLayoutPreviewFixture } from '../../../packages/game/tests/PackLayoutPreviewFixture';
+import { expect, test } from './webglComponentTest';
 
 test.use({ hasTouch: true });
 test.setTimeout(90000);

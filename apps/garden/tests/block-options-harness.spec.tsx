@@ -1,4 +1,3 @@
-import { expect as baseExpect, test } from '@playwright/experimental-ct-react';
 import type { Page } from '@playwright/test';
 import { BlockOptionsFixture } from '../../../packages/game/tests/BlockOptionsFixture';
 import {
@@ -17,6 +16,7 @@ import {
     readBlockOptionsProbe,
     waitForBlockOptionsFixture,
 } from './blockOptionsTestSupport';
+import { expect as baseExpect, test } from './webglComponentTest';
 
 // Harness smoke checks for the block options browser specs (§14.3 #1): the
 // fixture mounts the real garden scene with `BlockOptionsScene` and

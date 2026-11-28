@@ -1,4 +1,3 @@
-import { expect as baseExpect, test } from '@playwright/experimental-ct-react';
 import type { Locator, Page } from '@playwright/test';
 import { BlockOptionsFixture } from '../../../packages/game/tests/BlockOptionsFixture';
 import {
@@ -17,6 +16,7 @@ import {
     readBlockOptionsProbe,
     waitForBlockOptionsFixture,
 } from './blockOptionsTestSupport';
+import { expect as baseExpect, test } from './webglComponentTest';
 
 // Expand scene preview (spec §7.4, §7.5, §14.3 #21–#24): the see-through
 // copies, the cell plates, the corner handle and its pointer, tap and

@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/experimental-ct-react';
 import { SolarEclipseVisualFixture } from './SolarEclipseVisualFixture';
+import { expect, test } from './webglComponentTest';
 
 const webglSnapshotOptions = { maxDiffPixelRatio: 0.003 };
 // SwiftShader rasterizes the high-contrast celestial silhouettes slightly

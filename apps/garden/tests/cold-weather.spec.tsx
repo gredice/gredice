@@ -1,6 +1,6 @@
-import { expect as baseExpect, test } from '@playwright/experimental-ct-react';
 import { ColdWeatherFixture } from '../../../packages/game/tests/ColdWeatherFixture';
 import { settleWebglScene } from './webglCapture';
+import { expect as baseExpect, test } from './webglComponentTest';
 
 const expect = baseExpect.configure({ timeout: 15_000 });
 test.setTimeout(90_000);

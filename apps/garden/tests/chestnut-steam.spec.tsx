@@ -1,8 +1,8 @@
-import { expect as baseExpect, test } from '@playwright/experimental-ct-react';
 import type { Locator } from '@playwright/test';
 import { ChestnutRoastingCartFixture } from '../../../packages/game/tests/ChestnutRoastingCartFixture';
 import { SteamLifecycleFixture } from '../../../packages/game/tests/SteamLifecycleFixture';
 import { SteamProfileFixture } from '../../../packages/game/tests/SteamProfileFixture';
+import { expect as baseExpect, test } from './webglComponentTest';
 
 test.setTimeout(120_000);
 const expect = baseExpect.configure({ timeout: 60_000 });

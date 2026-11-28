@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/experimental-ct-react';
 import { RaisedBedNotificationBubbleFixture } from './RaisedBedNotificationBubbleFixture';
+import { expect, test } from './webglComponentTest';
 
 test('renders notification media edge-to-edge and follows its raised-bed anchor', async ({
     mount,

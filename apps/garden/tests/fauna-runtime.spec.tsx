@@ -1,6 +1,6 @@
-import { expect, test } from '@playwright/experimental-ct-react';
 import { BeachBallRuntimeFixture } from '../../../packages/game/tests/BeachBallRuntimeFixture';
 import { FaunaRuntimeFixture } from './FaunaRuntimeFixture';
+import { expect, test } from './webglComponentTest';
 
 test('initial, late and remounted mixers precede poses and same-frame grounding shadows', async ({
     mount,

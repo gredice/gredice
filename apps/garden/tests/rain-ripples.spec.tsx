@@ -1,6 +1,6 @@
-import { expect as baseExpect, test } from '@playwright/experimental-ct-react';
 import { RainRippleFixture } from '../../../packages/game/tests/RainRippleFixture';
 import { settleWebglScene } from './webglCapture';
+import { expect as baseExpect, test } from './webglComponentTest';
 
 // Software WebGL runners settle shared weather over fewer rendered frames.
 const expect = baseExpect.configure({ timeout: 15_000 });

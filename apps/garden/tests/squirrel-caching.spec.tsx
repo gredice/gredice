@@ -1,5 +1,5 @@
-import { expect as baseExpect, test } from '@playwright/experimental-ct-react';
 import { RainRippleFixture } from '../../../packages/game/tests/RainRippleFixture';
+import { expect as baseExpect, test } from './webglComponentTest';
 
 const expect = baseExpect.configure({ timeout: 15_000 });
 test.setTimeout(60_000);

@@ -1,6 +1,6 @@
-import { expect, test } from '@playwright/experimental-ct-react';
 import { RetainedCompilerFixture } from '../../../packages/game/tests/RetainedCompilerFixture';
 import { SpatialInteractionFixture } from '../../../packages/game/tests/SpatialInteractionFixture';
+import { expect, test } from './webglComponentTest';
 
 test('picks the nearest rotated footprint and patches its hitbox after rotation', async ({
     mount,

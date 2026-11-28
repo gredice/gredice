@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/experimental-ct-react';
 import { DetailedInspectionFarmerFixture } from './DetailedInspectionFarmerFixture';
+import { expect, test } from './webglComponentTest';
 
 test('keeps the inspection farmer grounded while patrolling around the bed', async ({
     mount,
