@@ -402,6 +402,16 @@ pnpm --filter @gredice/cdn run regenerate-cdn:decoration-atlas
 
 The script extracts source sprites, packs them into stable atlas pages, and writes PNG, WebP, and JSON manifest files under `apps/garden/public/assets/sprites/decorations`. The manifest is the runtime source of truth. Keep sprite names stable, because the manifest uses relative input paths as sprite IDs.
 
+### Print assets
+
+Leaflets and other printed pieces live in `assets/print/<name>` as an HTML source page, its illustrations, the generation prompts, and a committed print-ready PNG. Re-render after editing a page:
+
+```bash
+pnpm print:render [name]
+```
+
+See [assets/print/README.md](./assets/print/README.md) for page conventions, adding a new asset, and generating illustrations.
+
 ## Generated files
 
 - Do not commit build output, caches, `.next`, coverage, Storybook static output, or `node_modules`.

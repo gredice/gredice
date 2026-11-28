@@ -1,0 +1,20 @@
+{
+    "generation": {
+        "mode": "Codex CLI built-in image generation (codex exec), one request for all illustrations",
+        "styleReferences": [
+            "apps/www/public/assets/shopping-basket/shopping-basket.webp"
+        ],
+        "style": "STYLE (must match the attached style-reference.png exactly): chunky stylized low-poly 3D game-asset render, three-quarter isometric view from above, bold saturated flat-shaded facets with crisp bevels, soft simple lighting, no outlines, no text, no labels, no ground shadow, single object group centered with generous empty margin. Background: fully transparent (alpha). If transparency is impossible, use a perfectly flat pure white #FFFFFF background with no shadow or gradient.",
+        "export": "Run `pnpm print:prepare-image <generated.png> <target.png>`: clears the colour of fully transparent pixels and trims the transparent margins."
+    },
+    "illustrations": {
+        "hero-bag": {
+            "asset": "assets/print/green-tomatoes-leaflet/images/hero-bag.png",
+            "prompt": "hero-bag.png (portrait, about 1024x1536): an open brown kraft paper bag standing upright, top edge folded open, filled with several unripe GREEN tomatoes clearly visible in the opening, plus exactly one bright RED ripe tomato and one ripe YELLOW banana tucked among them. Two green tomatoes rest on the surface beside the bag."
+        },
+        "tomato-stages": {
+            "asset": "assets/print/green-tomatoes-leaflet/images/tomato-stages.png",
+            "prompt": "tomato-stages.png (landscape, about 1536x1024): five tomatoes in one evenly spaced horizontal row, same size and same angle, each with a small green calyx, showing ripening left to right: fully green, green-yellow, orange, orange-red, deep ripe red. Wide gaps between them so they can be cropped apart."
+        }
+    }
+}

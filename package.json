@@ -29,6 +29,8 @@
     "test:ui-primitives": "node --test ./scripts/check-ui-primitives.test.mjs",
     "generate:models-types": "turbo generate:models-types",
     "generate:game-assets": "node ./scripts/generate-game-assets.mjs",
+    "print:render": "node ./scripts/print-asset.mjs render",
+    "print:prepare-image": "node ./scripts/print-asset.mjs prepare-image",
     "doctor": "node ./scripts/worktree-health.mjs doctor",
     "bootstrap": "node ./scripts/worktree-health.mjs setup",
     "dev:all": "node ./scripts/dev-with-proxy.mjs --all-apps",
