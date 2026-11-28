@@ -48,7 +48,7 @@
         "test:posthog": "node --import tsx --test ./lib/posthog-server.node.spec.ts"
     },
     "dependencies": {
-        "@flags-sdk/vercel": "1.6.0",
+        "@flags-sdk/vercel": "1.6.1",
         "@opentelemetry/api": "1.10.0",
         "@opentelemetry/resources": "3.1.1",
         "@opentelemetry/sdk-logs": "3.1.1",
