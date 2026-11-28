@@ -29,7 +29,9 @@ pnpm print:render green-tomatoes-leaflet   # one asset
 
 The script opens `index.html` in the `www` app's Playwright Chromium and writes `<name>.png` at the page's pixel size. If Chromium is missing, install it with `pnpm --filter www exec playwright install chromium`.
 
-Rendering needs network access, because the pages load Montserrat and Patrick Hand from Google Fonts. The script refuses to write a PNG when a font or image did not load or when content overflows the page, so a render never silently falls back to system fonts or clips text.
+Rendering needs network access, because the pages load Montserrat and Patrick Hand from Google Fonts. The script refuses to write a PNG when an image did not load, when a font face the text needs (by weight, style, or character range) did not load, when text extends past any page edge, or when content overflows the page. A render never silently falls back to system fonts or clips text.
+
+Two renders of the same source can differ by sub-pixel text anti-aliasing, which is not visible in print. Commit a re-rendered PNG only when the source changed.
 
 To preview while editing, open `index.html` in a browser.
 
@@ -68,4 +70,4 @@ Generated images are not reproducible: a new run gives new artwork, so regenerat
 pnpm print:prepare-image /tmp/print-art/hero-bag.png assets/print/<name>/images/hero-bag.png
 ```
 
-This clears the colour that generators leave in fully transparent pixels and trims the transparent margins, so `object-fit: contain` sizes the artwork rather than its empty border.
+This clears the colour that generators leave in fully transparent pixels and trims the transparent margins, so `object-fit: contain` sizes the artwork rather than its empty border. Partially transparent pixels are kept as they are.

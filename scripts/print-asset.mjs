@@ -51,24 +51,55 @@ async function inspectPrintPage() {
         }
     }
     const unquote = (family) => family.trim().replace(/^["']|["']$/g, '');
-    const loadedFamilies = new Set(
-        [...document.fonts]
-            .filter((face) => face.status === 'loaded')
-            .map((face) => unquote(face.family)),
+    const declaredFamilies = new Set(
+        [...document.fonts].map((face) => unquote(face.family)),
     );
-    const missingFamilies = new Set();
+    const missingFonts = new Set();
+    const clippedText = new Set();
+    const pageBox = page.getBoundingClientRect();
+    const textRange = document.createRange();
     const textNodes = document.createTreeWalker(page, NodeFilter.SHOW_TEXT);
     while (textNodes.nextNode()) {
         const node = textNodes.currentNode;
         if (!node.textContent?.trim() || !node.parentElement) continue;
-        const family = unquote(
-            getComputedStyle(node.parentElement).fontFamily.split(',')[0],
-        );
-        if (!loadedFamilies.has(family)) missingFamilies.add(family);
+        const style = getComputedStyle(node.parentElement);
+        const family = unquote(style.fontFamily.split(',')[0]);
+        // Check the characters as rendered, so the right unicode-range
+        // faces are required.
+        const text =
+            style.textTransform === 'uppercase'
+                ? node.textContent.toUpperCase()
+                : style.textTransform === 'lowercase'
+                  ? node.textContent.toLowerCase()
+                  : node.textContent;
+        const font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} "${family}"`;
+        if (!declaredFamilies.has(family)) {
+            missingFonts.add(`${family} (no web font with this name)`);
+        } else if (!document.fonts.check(font, text)) {
+            // A family is not enough: every face this text needs, by
+            // weight, style and unicode-range, must have loaded.
+            missingFonts.add(
+                `${family} ${style.fontWeight} ${style.fontStyle}`,
+            );
+        }
+        textRange.selectNodeContents(node);
+        const box = textRange.getBoundingClientRect();
+        if (
+            box.left < pageBox.left - 0.5 ||
+            box.top < pageBox.top - 0.5 ||
+            box.right > pageBox.right + 0.5 ||
+            box.bottom > pageBox.bottom + 0.5
+        ) {
+            clippedText.add(node.textContent.trim().slice(0, 40));
+        }
     }
-    for (const family of missingFamilies) {
-        problems.push(`font did not load: ${family}`);
+    for (const font of missingFonts) {
+        problems.push(`font did not load: ${font}`);
     }
+    for (const text of clippedText) {
+        problems.push(`text extends past the page edge: "${text}"`);
+    }
+    // Scroll size catches non-text content that overflows right or down.
     if (
         page.scrollWidth > page.clientWidth ||
         page.scrollHeight > page.clientHeight
@@ -150,7 +181,7 @@ async function prepareImage(input, output) {
         .raw()
         .toBuffer({ resolveWithObject: true });
     for (let offset = 0; offset < data.length; offset += 4) {
-        if (data[offset + 3] < 24) {
+        if (data[offset + 3] === 0) {
             data[offset] = 255;
             data[offset + 1] = 255;
             data[offset + 2] = 255;

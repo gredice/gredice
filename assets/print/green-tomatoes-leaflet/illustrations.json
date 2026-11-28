@@ -5,7 +5,7 @@
             "apps/www/public/assets/shopping-basket/shopping-basket.webp"
         ],
         "style": "STYLE (must match the attached style-reference.png exactly): chunky stylized low-poly 3D game-asset render, three-quarter isometric view from above, bold saturated flat-shaded facets with crisp bevels, soft simple lighting, no outlines, no text, no labels, no ground shadow, single object group centered with generous empty margin. Background: fully transparent (alpha). If transparency is impossible, use a perfectly flat pure white #FFFFFF background with no shadow or gradient.",
-        "export": "Run `pnpm print:prepare-image <generated.png> <target.png>`: clears the colour of fully transparent pixels and trims the transparent margins."
+        "export": "Run `pnpm print:prepare-image <generated.png> <target.png>`: clears the colour of fully transparent pixels and trims the transparent margins. The committed images were prepared with an earlier rule that also cleared pixels below alpha 24, so they are trimmed a few pixels tighter than a fresh run."
     },
     "illustrations": {
         "hero-bag": {
