@@ -22,8 +22,13 @@ export const terrainVergeDimensions = {
 /** Number of edge shapes. A piece picks one from its position. */
 export const terrainVergeVariantCount = 4;
 
-const riseSteps = 3;
-const fallSteps = 3;
+// The bank is 3 cm tall, so its cross-section is a few pixels on screen.
+// More rows there only make thin triangles, which shade the lawn's ground
+// material several times per pixel: one rise and two fall steps keep the
+// rounded look at a third fewer triangles (and a cheaper frame).
+// `edgeSteps` stays fine because it draws the wandering outline.
+const riseSteps = 1;
+const fallSteps = 2;
 const edgeSteps = 8;
 /** Length of the taper at a bank end that meets the island edge. */
 const taperLength = 0.22;
