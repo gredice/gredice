@@ -67,12 +67,18 @@ async function inspectPrintPage() {
             ancestor && ancestor !== page;
             ancestor = ancestor.parentElement
         ) {
-            if (getComputedStyle(ancestor).overflow === 'visible') continue;
+            // An ancestor can clip one axis only (overflow-x: clip with
+            // overflow-y: visible), so apply each axis separately.
+            const { overflowX, overflowY } = getComputedStyle(ancestor);
             const clip = ancestor.getBoundingClientRect();
-            left = Math.max(left, clip.left);
-            top = Math.max(top, clip.top);
-            right = Math.min(right, clip.right);
-            bottom = Math.min(bottom, clip.bottom);
+            if (overflowX !== 'visible') {
+                left = Math.max(left, clip.left);
+                right = Math.min(right, clip.right);
+            }
+            if (overflowY !== 'visible') {
+                top = Math.max(top, clip.top);
+                bottom = Math.min(bottom, clip.bottom);
+            }
         }
         if (right <= left || bottom <= top) return false;
         return (
