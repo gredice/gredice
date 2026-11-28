@@ -51,7 +51,7 @@
         "sonner": "2.0.8",
         "streamdown": "2.7.1",
         "suncalc": "2.1.4",
-        "tailwind-merge": "3.7.0"
+        "tailwind-merge": "3.7.1"
     },
     "peerDependencies": {
         "@tailwindcss/typography": "0.x",
