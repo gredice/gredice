@@ -4166,6 +4166,15 @@ test('high target acceptance proves the intended workload rendered', () => {
 });
 
 test('cross-tier acceptance verifies resolved quality and capped backing buffer', () => {
+    const population = {
+        bee: 1,
+        bird: 2,
+        butterfly: 3,
+        cat: 1,
+        dog: 1,
+        ladybug: 5,
+        squirrel: 1,
+    };
     const input = {
         apiErrors: [],
         consoleMessages: [],
@@ -4195,13 +4204,14 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
             attemptCount: 1,
             capturedAt: 700,
             measurementMode: crossTierResourceSnapshotMeasurementMode,
-            populationAtEnd: {},
-            populationAtStart: {},
-            populationExposure: {},
-            populationExposureAtEnd: {},
-            populationExposureAtStart: {},
-            populationExposureAvailable: false,
-            populationExposureSignature: '{}',
+            populationAtEnd: structuredClone(population),
+            populationAtStart: structuredClone(population),
+            populationExposure: structuredClone(population),
+            populationExposureAtEnd: structuredClone(population),
+            populationExposureAtStart: structuredClone(population),
+            populationExposureAvailable: true,
+            populationExposureSignature:
+                populationExposureSignature(population),
             rendererStatsMode: lifecycleRendererStatsCanonicalMode,
             resources: {
                 rendererGeometries: 250,
@@ -4248,7 +4258,7 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
             viewport: { height: 720, width: 1280 },
         },
         runtime: {
-            actorGroundingShadowSpeciesCounts: {},
+            actorGroundingShadowSpeciesCounts: structuredClone(population),
             dprCap: 1,
             generatedPlantExpectedInstanceCount: 537,
             generatedPlantFieldCount: 54,
@@ -4491,7 +4501,7 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
     );
     expectFailedChecks(
         (candidate) => {
-            candidate.crossTierResourceSnapshot.populationExposureAvailable = true;
+            candidate.crossTierResourceSnapshot.populationExposureAvailable = false;
         },
         ['crossTierResourcePopulationExposureAvailable'],
     );

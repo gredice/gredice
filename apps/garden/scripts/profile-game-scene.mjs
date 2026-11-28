@@ -13954,8 +13954,9 @@ function evaluateCrossTierAcceptance({
         crossTierResourceSnapshot?.populationExposureAtEnd ?? null;
     const populationExposure =
         crossTierResourceSnapshot?.populationExposure ?? null;
-    const expectedPopulationExposureAvailable =
-        requested.expectedShadows === true;
+    // Actors register their contact shadow on every tier, including the one
+    // without shadow maps, so the high-target creatures are always counted.
+    const expectedPopulationExposureAvailable = true;
     const populationExposureHasEntries =
         isNonNegativeIntegerRecord(populationExposure) &&
         Object.keys(populationExposure).length > 0;
