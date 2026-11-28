@@ -29,7 +29,7 @@ pnpm print:render green-tomatoes-leaflet   # one asset
 
 The script opens `index.html` in the `www` app's Playwright Chromium and writes `<name>.png` at the page's pixel size. If Chromium is missing, install it with `pnpm --filter www exec playwright install chromium`.
 
-Rendering needs network access, because the pages load Montserrat and Patrick Hand from Google Fonts. The script refuses to write a PNG when an image did not load, when a font face the text needs (by weight, style, or character range) did not load, when text extends past any page edge, or when content overflows the page. A render never silently falls back to system fonts or clips text.
+Rendering needs network access, because the pages load Montserrat and Patrick Hand from Google Fonts. The script refuses to write a PNG when an image did not load, when a font face the text needs (by weight, style, or character range) did not load, or when text, an image, or any other element extends past a page edge. A render never silently falls back to system fonts or clips content. To crop an image on purpose, put it in a box inside the page that has `overflow: hidden`.
 
 Two renders of the same source can differ by sub-pixel text anti-aliasing, which is not visible in print. Commit a re-rendered PNG only when the source changed.
 

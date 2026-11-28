@@ -57,6 +57,49 @@ async function inspectPrintPage() {
     const missingFonts = new Set();
     const clippedText = new Set();
     const pageBox = page.getBoundingClientRect();
+    // True when the part of the box that is actually painted crosses a page
+    // edge. Content cropped on purpose by a clipping box inside the page
+    // stays valid.
+    const pastPageEdge = (box, parent) => {
+        let { left, top, right, bottom } = box;
+        for (
+            let ancestor = parent;
+            ancestor && ancestor !== page;
+            ancestor = ancestor.parentElement
+        ) {
+            if (getComputedStyle(ancestor).overflow === 'visible') continue;
+            const clip = ancestor.getBoundingClientRect();
+            left = Math.max(left, clip.left);
+            top = Math.max(top, clip.top);
+            right = Math.min(right, clip.right);
+            bottom = Math.min(bottom, clip.bottom);
+        }
+        if (right <= left || bottom <= top) return false;
+        return (
+            left < pageBox.left - 0.5 ||
+            top < pageBox.top - 0.5 ||
+            right > pageBox.right + 0.5 ||
+            bottom > pageBox.bottom + 0.5
+        );
+    };
+    // Images and every other element box, in document order, so only the
+    // outermost element that crosses an edge is reported.
+    const clippedElements = [];
+    for (const element of page.querySelectorAll('*')) {
+        const box = element.getBoundingClientRect();
+        if (box.width === 0 && box.height === 0) continue;
+        if (clippedElements.some((outer) => outer.contains(element))) continue;
+        if (pastPageEdge(box, element.parentElement)) {
+            clippedElements.push(element);
+        }
+    }
+    for (const element of clippedElements) {
+        const source = element.getAttribute('src');
+        const label = source
+            ? `<${element.localName} src="${source}">`
+            : `<${element.localName}>`;
+        problems.push(`${label} extends past the page edge`);
+    }
     const textRange = document.createRange();
     const textNodes = document.createTreeWalker(page, NodeFilter.SHOW_TEXT);
     while (textNodes.nextNode()) {
@@ -65,13 +108,14 @@ async function inspectPrintPage() {
         const style = getComputedStyle(node.parentElement);
         const family = unquote(style.fontFamily.split(',')[0]);
         // Check the characters as rendered, so the right unicode-range
-        // faces are required.
+        // faces are required. Under any text-transform, require the faces
+        // for both cases rather than modelling each transform.
         const text =
-            style.textTransform === 'uppercase'
-                ? node.textContent.toUpperCase()
-                : style.textTransform === 'lowercase'
-                  ? node.textContent.toLowerCase()
-                  : node.textContent;
+            style.textTransform === 'none'
+                ? node.textContent
+                : node.textContent +
+                  node.textContent.toUpperCase() +
+                  node.textContent.toLowerCase();
         const font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} "${family}"`;
         if (!declaredFamilies.has(family)) {
             missingFonts.add(`${family} (no web font with this name)`);
@@ -82,13 +126,15 @@ async function inspectPrintPage() {
                 `${family} ${style.fontWeight} ${style.fontStyle}`,
             );
         }
+        // Glyphs can leave their element's box, so check the text itself
+        // unless its element is already reported.
         textRange.selectNodeContents(node);
-        const box = textRange.getBoundingClientRect();
         if (
-            box.left < pageBox.left - 0.5 ||
-            box.top < pageBox.top - 0.5 ||
-            box.right > pageBox.right + 0.5 ||
-            box.bottom > pageBox.bottom + 0.5
+            pastPageEdge(
+                textRange.getBoundingClientRect(),
+                node.parentElement,
+            ) &&
+            !clippedElements.some((outer) => outer.contains(node))
         ) {
             clippedText.add(node.textContent.trim().slice(0, 40));
         }
@@ -99,7 +145,8 @@ async function inspectPrintPage() {
     for (const text of clippedText) {
         problems.push(`text extends past the page edge: "${text}"`);
     }
-    // Scroll size catches non-text content that overflows right or down.
+    // Scroll size also catches overflow that has no element box, such as
+    // pseudo-elements.
     if (
         page.scrollWidth > page.clientWidth ||
         page.scrollHeight > page.clientHeight
